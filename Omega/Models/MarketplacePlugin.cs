@@ -1,0 +1,238 @@
+using System.Text.Json;
+
+namespace Dalagab.Omega;
+
+public sealed class MarketplacePlugin
+{
+    public string Author { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string InternalName { get; init; } = string.Empty;
+    public string Punchline { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public string Changelog { get; init; } = string.Empty;
+    public string AssemblyVersionText { get; init; } = "0.0.0.0";
+    public Version AssemblyVersion => Version.TryParse(AssemblyVersionText, out var version) ? version : new Version(0, 0);
+    public string? TestingAssemblyVersionText { get; init; }
+    public Version? TestingAssemblyVersion => Version.TryParse(TestingAssemblyVersionText, out var version) ? version : null;
+    public int DalamudApiLevel { get; init; }
+    public int? TestingDalamudApiLevel { get; init; }
+    public string ApplicableVersion { get; init; } = "any";
+    public string? MinimumDalamudVersionText { get; init; }
+    public Version? MinimumDalamudVersion => Version.TryParse(MinimumDalamudVersionText, out var version) ? version : null;
+    public string RepoUrl { get; init; } = string.Empty;
+    public string DownloadLinkInstall { get; init; } = string.Empty;
+    public string DownloadLinkUpdate { get; init; } = string.Empty;
+    public string DownloadLinkTesting { get; init; } = string.Empty;
+    public string IconUrl { get; init; } = string.Empty;
+    public IReadOnlyList<string> ImageUrls { get; init; } = [];
+    public IReadOnlyList<string> Tags { get; init; } = [];
+    public IReadOnlyList<string> CategoryTags { get; init; } = [];
+    public long DownloadCount { get; init; }
+    public long LastUpdate { get; init; }
+    public bool IsHide { get; init; }
+    public bool IsTestingExclusive { get; init; }
+    public string Dip17Channel { get; init; } = string.Empty;
+    public string SourceName { get; init; } = string.Empty;
+    public string SourceUrl { get; init; } = string.Empty;
+    public bool SourceIsOfficial { get; init; }
+
+    // Optional Omega extension fields. Standard Dalamud manifests do not need these.
+    public int? OmegaMinimumApiLevel { get; init; }
+    public int? OmegaMaximumApiLevel { get; init; }
+    public IReadOnlyList<string> OmegaCategories { get; init; } = [];
+
+    public int HighestKnownApiLevel => new[]
+    {
+        DalamudApiLevel,
+        TestingDalamudApiLevel ?? 0,
+        OmegaMaximumApiLevel ?? 0,
+    }.Max();
+
+    public IReadOnlyList<string> EffectiveCategories => CategoryTags
+        .Concat(OmegaCategories)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+    public bool SupportsApiLevel(int currentApi, bool allowTesting)
+    {
+        if (HasCurrentApiBuild(currentApi, allowTesting, out _))
+            return true;
+
+        return OmegaMinimumApiLevel is not null &&
+               OmegaMaximumApiLevel is not null &&
+               currentApi >= OmegaMinimumApiLevel &&
+               currentApi <= OmegaMaximumApiLevel;
+    }
+
+    public int DisplayApiLevel(int currentApi, bool allowTesting)
+        => SupportsApiLevel(currentApi, allowTesting) ? currentApi : HighestKnownApiLevel;
+
+    public bool IsUnmaintained(int currentApi)
+        => HighestKnownApiLevel > 0 && currentApi - HighestKnownApiLevel >= 3;
+
+    public bool HasCurrentApiBuild(int currentApi, bool allowTesting, out bool useTesting)
+    {
+        useTesting = false;
+        if (!IsTestingExclusive && DalamudApiLevel == currentApi && !string.IsNullOrWhiteSpace(DownloadLinkInstall))
+            return true;
+
+        if (allowTesting && TestingDalamudApiLevel == currentApi && TestingAssemblyVersion is not null && !string.IsNullOrWhiteSpace(DownloadLinkTesting))
+        {
+            useTesting = true;
+            return true;
+        }
+
+        if (IsTestingExclusive && TestingDalamudApiLevel == currentApi && !string.IsNullOrWhiteSpace(DownloadLinkTesting))
+        {
+            useTesting = true;
+            return true;
+        }
+
+        return false;
+    }
+
+    public string GetCompatibilityText(int currentApi, Version currentDalamudVersion, bool allowTesting)
+    {
+        if (MinimumDalamudVersion is not null && MinimumDalamudVersion > currentDalamudVersion)
+            return $"Needs Dalamud {MinimumDalamudVersion}+";
+
+        if (HasCurrentApiBuild(currentApi, allowTesting, out var testing))
+            return testing ? $"API {currentApi} testing" : $"API {currentApi} compatible";
+
+        if (OmegaMinimumApiLevel is not null && OmegaMaximumApiLevel is not null &&
+            currentApi >= OmegaMinimumApiLevel && currentApi <= OmegaMaximumApiLevel)
+            return $"API {currentApi} declared compatible";
+
+        return HighestKnownApiLevel switch
+        {
+            0 => "API unknown",
+            var api when api < currentApi => $"Outdated (max API {api})",
+            var api when api > currentApi => $"Requires newer API {api}",
+            _ => $"API {currentApi} build unavailable",
+        };
+    }
+
+    public static MarketplacePlugin FromJson(JsonElement element, RepositorySource source)
+    {
+        return new MarketplacePlugin
+        {
+            Author = ReadString(element, "Author"),
+            Name = ReadString(element, "Name"),
+            InternalName = ReadString(element, "InternalName"),
+            Punchline = ReadString(element, "Punchline"),
+            Description = ReadString(element, "Description"),
+            Changelog = ReadString(element, "Changelog"),
+            AssemblyVersionText = ReadString(element, "AssemblyVersion", "0.0.0.0"),
+            TestingAssemblyVersionText = ReadNullableString(element, "TestingAssemblyVersion"),
+            DalamudApiLevel = ReadInt(element, "DalamudApiLevel"),
+            TestingDalamudApiLevel = ReadNullableInt(element, "TestingDalamudApiLevel"),
+            ApplicableVersion = ReadString(element, "ApplicableVersion", "any"),
+            MinimumDalamudVersionText = ReadNullableString(element, "MinimumDalamudVersion"),
+            RepoUrl = ReadString(element, "RepoUrl"),
+            DownloadLinkInstall = ReadString(element, "DownloadLinkInstall"),
+            DownloadLinkUpdate = ReadString(element, "DownloadLinkUpdate"),
+            DownloadLinkTesting = ReadString(element, "DownloadLinkTesting"),
+            IconUrl = ReadString(element, "IconUrl"),
+            ImageUrls = ReadStrings(element, "ImageUrls"),
+            Tags = ReadStrings(element, "Tags"),
+            CategoryTags = ReadStrings(element, "CategoryTags"),
+            DownloadCount = ReadLong(element, "DownloadCount"),
+            LastUpdate = ReadLong(element, "LastUpdate", "LastUpdated"),
+            IsHide = ReadBool(element, "IsHide"),
+            IsTestingExclusive = ReadBool(element, "IsTestingExclusive"),
+            Dip17Channel = ReadString(element, "_Dip17Channel"),
+            SourceName = source.Name,
+            SourceUrl = source.Url,
+            SourceIsOfficial = source.IsOfficial,
+            OmegaMinimumApiLevel = ReadNullableInt(element, "OmegaMinimumApiLevel"),
+            OmegaMaximumApiLevel = ReadNullableInt(element, "OmegaMaximumApiLevel"),
+            OmegaCategories = ReadStrings(element, "OmegaCategories"),
+        };
+    }
+
+    private static bool TryGet(JsonElement element, string name, out JsonElement value)
+    {
+        if (element.TryGetProperty(name, out value))
+            return true;
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                value = property.Value;
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static string ReadString(JsonElement element, string name, string fallback = "")
+    {
+        if (!TryGet(element, name, out var value))
+            return fallback;
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString() ?? fallback,
+            JsonValueKind.Number => value.ToString(),
+            _ => fallback,
+        };
+    }
+
+    private static string? ReadNullableString(JsonElement element, string name)
+        => TryGet(element, name, out var value) && value.ValueKind != JsonValueKind.Null ? ReadString(element, name) : null;
+
+    private static int ReadInt(JsonElement element, string name)
+        => ReadNullableInt(element, name) ?? 0;
+
+    private static int? ReadNullableInt(JsonElement element, string name)
+    {
+        if (!TryGet(element, name, out var value) || value.ValueKind == JsonValueKind.Null)
+            return null;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number))
+            return number;
+        if (value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), out number))
+            return number;
+        return null;
+    }
+
+    private static long ReadLong(JsonElement element, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (!TryGet(element, name, out var value))
+                continue;
+            if (value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var number))
+                return number;
+            if (value.ValueKind == JsonValueKind.String && long.TryParse(value.GetString(), out number))
+                return number;
+        }
+
+        return 0;
+    }
+
+    private static bool ReadBool(JsonElement element, string name)
+    {
+        if (!TryGet(element, name, out var value))
+            return false;
+        if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            return value.GetBoolean();
+        if (value.ValueKind == JsonValueKind.String && bool.TryParse(value.GetString(), out var flag))
+            return flag;
+        return false;
+    }
+
+    private static IReadOnlyList<string> ReadStrings(JsonElement element, string name)
+    {
+        if (!TryGet(element, name, out var value) || value.ValueKind != JsonValueKind.Array)
+            return [];
+        return value.EnumerateArray()
+            .Where(x => x.ValueKind == JsonValueKind.String)
+            .Select(x => x.GetString())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Cast<string>()
+            .ToArray();
+    }
+}

@@ -1,0 +1,119 @@
+name: Omega catalog builder
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: omega-catalog-builder
+  cancel-in-progress: false
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out Omega
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Test catalog pipeline
+        run: python tools/catalog/test_catalog_pipeline.py
+
+      - name: Discover GitHub repository candidates
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/catalog/discover_sources.py
+          --queries catalog/search-queries.json
+          --output catalog/candidates.json
+          --token-env GITHUB_TOKEN
+          --max-pages 10
+
+      - name: Download previous catalog database seed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/seed
+          gh release download catalog-latest \
+            --pattern omega-catalog-db.zip \
+            --dir catalog/seed || true
+
+      - name: Build validated downloadable catalog database
+        run: >-
+          python tools/catalog/build_catalog.py
+          --curated sources/curated-sources.json
+          --candidates catalog/candidates.json
+          --known-bad catalog/known-bad-hashes.json
+          --out catalog/dist
+          --generated-sources-output catalog/generated-sources.json
+          --report-output catalog/latest-report.json
+          --seed-bundle catalog/seed/omega-catalog-db.zip
+          --download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-catalog-db.zip"
+          --descriptor-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/catalog.json"
+          --update-known-bad
+
+      - name: Save discovery state and deterministic bad-content hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp catalog/dist/catalog-endpoint.json catalog/catalog-endpoint.json
+          git add catalog/candidates.json catalog/known-bad-hashes.json catalog/generated-sources.json catalog/latest-report.json catalog/catalog-endpoint.json
+          if git diff --cached --quiet; then
+            echo "No catalog state changes to commit."
+          else
+            git commit -m "catalog: refresh discovery queue and validation state [skip ci]"
+            git push
+          fi
+
+      - name: Upload catalog build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: omega-catalog-db
+          path: |
+            catalog/dist/omega-catalog-db.zip
+            catalog/dist/omega-catalog-db.zip.sha256
+            catalog/dist/catalog.json
+            catalog/dist/catalog-endpoint.json
+            catalog/dist/catalog-report.json
+            catalog/dist/sources.json
+            catalog/generated-sources.json
+            catalog/known-bad-hashes.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish stable downloadable catalog release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view catalog-latest >/dev/null 2>&1; then
+            gh release create catalog-latest \
+              --title "Omega catalog database" \
+              --notes "Automatically generated Omega repository catalog. This release tag is stable; assets are replaced by the scheduled catalog builder."
+          fi
+          gh release upload catalog-latest \
+            catalog/dist/omega-catalog-db.zip \
+            catalog/dist/omega-catalog-db.zip.sha256 \
+            catalog/dist/catalog.json \
+            catalog/dist/catalog-endpoint.json \
+            catalog/dist/catalog-report.json \
+            catalog/dist/sources.json \
+            catalog/generated-sources.json \
+            catalog/known-bad-hashes.json \
+            --clobber
