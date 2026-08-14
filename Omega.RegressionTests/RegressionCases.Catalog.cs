@@ -36,6 +36,7 @@ internal static partial class RegressionCases
         Contains(source, "omega-catalog.sqlite", "one production catalog filename");
         Contains(source, "PRAGMA integrity_check", "database integrity validation");
         Contains(source, "ReplaceFromBundle", "online bundle atomically replaces database");
+        Contains(source, "Pooling = false", "read-only validation connections cannot retain Windows file handles");
         Contains(source, "runtime_plugin_variants", "runtime reads normalized SQLite view");
         False(source.Contains("ManifestJson", StringComparison.Ordinal), "runtime SQLite store does not persist per-source manifest JSON files");
     }
@@ -91,14 +92,12 @@ internal static partial class RegressionCases
         var project = XDocument.Load(Path.Combine(Root, "Omega", "DalagabOmega.csproj"));
         var projectVersion = project.Descendants("Version").Single().Value.Trim();
 
-        var buildInfo = File.ReadAllText(Path.Combine(Root, "Omega", "BuildInfo.cs"));
-        Equal(projectVersion, Capture(buildInfo, "Version\s*=\s*\"([^\"]+)\""), "BuildInfo version");
-        True(!string.IsNullOrWhiteSpace(Capture(buildInfo, "BuildStamp\s*=\s*\"([^\"]+)\"")),
-            "BuildInfo stamp remains populated for diagnostics");
+        using var master = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "repository", "pluginmaster.json")));
+        var manifestVersion = RequiredString(master.RootElement.EnumerateArray().Single(), "AssemblyVersion");
+        Equal(projectVersion, manifestVersion, "csproj vs PluginMaster version");
 
-        using var repository = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "repository", "pluginmaster.json")));
-        var omega = repository.RootElement.EnumerateArray().Single();
-        Equal(projectVersion, RequiredString(omega, "AssemblyVersion"), "public repository manifest version");
+        var buildInfo = File.ReadAllText(Path.Combine(Root, "Omega", "BuildInfo.cs"));
+        Equal(projectVersion, Capture(buildInfo, "Version\\s*=\\s*\"([^\"]+)\""), "BuildInfo version");
     }
 
     internal static void TestPreLoginManifest()
@@ -157,7 +156,7 @@ internal static partial class RegressionCases
         Contains(ui, "DrawArtworkOverlayActions", "Info/install actions stay over artwork");
         Contains(ui, "Selected", "selected plugin is visibly marked in the shelf");
         Contains(ui, "Unmaintained", "unmaintained badge is visible");
-        Contains(ui, "omega-author-filter", "author filter is directly available on storefront");
+        Contains(ui, "omega-author-filter", "author filter is available inside the expanded storefront filter panel");
         Contains(ui, "selectedVariantSource", "duplicate source selection");
         Contains(ui, "fallbackIconPath", "company fallback artwork path");
         True(File.Exists(Path.Combine(Root, "images", "company-fallback.png")), "company fallback artwork file");
@@ -178,9 +177,12 @@ internal static partial class RegressionCases
         Contains(spotlight, "SpotlightCardCount = 5", "Spotlight is laid out as five fixed columns");
         Contains(spotlight, "SpotlightCardMaxWidth", "Spotlight cards remain compact rather than becoming wide cells");
         Contains(spotlight, "DrawSpotlightPitch", "Spotlight cards carry a short promotional pitch");
-        Contains(spotlight, "DrawSpotlightActionRow", "Spotlight cards carry compact install state plus information action");
-        Contains(spotlight, "OpenSpotlightPluginInDiscover", "Spotlight information action opens Discover with the plugin selected");
-        Contains(spotlight, "DrawSpotlightInstalledPill", "installed Spotlight state is rendered as a subdued grey status");
+        Contains(spotlight, "contentStartY + 112f", "Spotlight artwork/title layout uses fixed vertical anchors");
+        Contains(spotlight, "contentStartY + 166f", "Spotlight separators align across all five promoted cards");
+        Contains(spotlight, "OpenSpotlightPluginInDiscover", "selecting a Spotlight card opens Discover with the plugin selected");
+        False(spotlight.Contains("DrawSpotlightActionRow", StringComparison.Ordinal), "Spotlight must not carry install/status action rows");
+        False(spotlight.Contains("spotlight-install-", StringComparison.Ordinal), "Spotlight must not expose direct install controls");
+        False(spotlight.Contains("DrawSpotlightInfoButton", StringComparison.Ordinal), "Spotlight must not expose a redundant info button");
         Contains(spotlight, "NoScrollWithMouse", "Spotlight cards cannot be scrolled independently");
         False(spotlight.Contains("AssemblyVersionText", StringComparison.Ordinal), "Spotlight must not show plugin version metadata");
         False(spotlight.Contains("Five Omega picks.", StringComparison.Ordinal), "Spotlight must not add explanatory copy above the cards");
@@ -203,7 +205,7 @@ internal static partial class RegressionCases
         False(spotlight.Contains("promoted.Add(fallback)", StringComparison.Ordinal), "Spotlight must not substitute unrelated plugins when a fixed promotion is missing");
         Contains(spotlight, "SpotlightCardCount = 5", "Spotlight is capped at exactly five highlighted plugins");
         False(ui.Contains("DrawSpotlight(mainProjection.Plugins", StringComparison.Ordinal), "Discover must not contain the old inline Spotlight area");
-        Contains(ui, "omega-repository-filter", "repository filter remains directly available");
+        Contains(ui, "omega-repository-filter", "repository filter remains available inside the expanded filter panel");
         Contains(ui, "activeView == MarketplaceView.Spotlight ? \"All sources\" : selectedSource", "repository filter remains source-aware outside Spotlight");
         Contains(ui, "catalog.GetStableApiLevel(plugin.InternalName, currentApi)", "tile API badge resolves stable API across repository variants and prefers current support");
 

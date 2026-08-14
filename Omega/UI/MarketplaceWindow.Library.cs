@@ -62,6 +62,30 @@ internal sealed partial class MarketplaceWindow
             _ => true,
         };
 
+    private void DrawInlineLibraryRuntimeField()
+    {
+        ImGui.TextDisabled("Status");
+        ImGui.SetNextItemWidth(-1f);
+        if (!ImGui.BeginCombo("##filter-status", LibraryRuntimeFilterLabel(libraryRuntimeFilter)))
+            return;
+
+        foreach (var value in Enum.GetValues<LibraryRuntimeFilter>())
+        {
+            if (!ImGui.Selectable(LibraryRuntimeFilterLabel(value), libraryRuntimeFilter == value))
+                continue;
+            libraryRuntimeFilter = value;
+            resetStorefrontScroll = true;
+        }
+        ImGui.EndCombo();
+    }
+
+    private static string LibraryRuntimeFilterLabel(LibraryRuntimeFilter value) => value switch
+    {
+        LibraryRuntimeFilter.Loaded => "Loaded",
+        LibraryRuntimeFilter.NotLoaded => "Not loaded",
+        _ => "All installed",
+    };
+
     private void DrawLibraryList(
         IReadOnlyList<MarketplacePlugin> plugins,
         IReadOnlyDictionary<string, IExposedPlugin> installed,
@@ -100,12 +124,14 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
+        const float rowHeight = 88f;
         var rowWidth = Math.Max(420f, ImGui.GetContentRegionAvail().X);
-        ImGui.BeginChild($"library-row-{StableId(plugin.InternalName)}", new Vector2(rowWidth, 74f), true,
+        ImGui.BeginChild($"library-row-{StableId(plugin.InternalName)}", new Vector2(rowWidth, rowHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
+        var contentTop = ImGui.GetCursorPosY();
         var artworkClicked = DrawPluginArtwork(
-            plugin, installedPlugin, 48f, 48f, currentApi, currentDalamudVersion, showOverlays: false);
+            plugin, installedPlugin, 54f, 54f, currentApi, currentDalamudVersion, showOverlays: false);
         if (artworkClicked)
             OpenPluginDetails(plugin);
 
@@ -113,14 +139,21 @@ internal sealed partial class MarketplaceWindow
         var textStart = ImGui.GetCursorPosX();
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Shorten(plugin.Name, 42));
-        var author = string.IsNullOrWhiteSpace(plugin.Author) ? "Installed plugin" : plugin.Author;
-        ImGui.TextDisabled(Shorten(author, 48));
-        ImGui.TextDisabled($"{(installedPlugin.IsLoaded ? "Loaded" : "Installed")}  •  {InstalledVersionText(installedPlugin)}");
+        ImGui.TextDisabled(Shorten(BuildAuthorSourceLine(plugin), 68));
+        ImGui.TextDisabled(Shorten(
+            $"{InstalledVersionText(installedPlugin)}  •  {(installedPlugin.IsLoaded ? "Loaded" : "Not loaded")}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}",
+            76));
         ImGui.EndGroup();
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+            OpenPluginDetails(plugin);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(BuildInstalledMetadataLine(plugin, currentApi, currentDalamudVersion));
 
-        var actionWidth = 104f;
+        const float actionWidth = 92f;
         ImGui.SameLine();
-        ImGui.SetCursorPosX(Math.Max(textStart + 220f, ImGui.GetWindowContentRegionMax().X - actionWidth - 12f));
+        ImGui.SetCursorPos(new Vector2(
+            Math.Max(textStart + 240f, ImGui.GetWindowContentRegionMax().X - actionWidth - 12f),
+            contentTop + 17f));
         var canOpen = installedPlugin.IsLoaded && installedPlugin.HasMainUi;
         if (DrawPillButton(
                 canOpen ? "Open" : "Details",
@@ -155,42 +188,74 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
+        const float rowHeight = 88f;
         var rowWidth = Math.Max(420f, ImGui.GetContentRegionAvail().X);
-        ImGui.BeginChild($"updates-row-{StableId(plugin.InternalName)}", new Vector2(rowWidth, 74f), true,
+        ImGui.BeginChild($"updates-row-{StableId(plugin.InternalName)}", new Vector2(rowWidth, rowHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
+        var contentTop = ImGui.GetCursorPosY();
         var artworkClicked = DrawPluginArtwork(
-            plugin, installedPlugin, 48f, 48f, currentApi, currentDalamudVersion, showOverlays: false);
+            plugin, installedPlugin, 54f, 54f, currentApi, currentDalamudVersion, showOverlays: false);
         if (artworkClicked)
             OpenPluginDetails(plugin);
 
         ImGui.SameLine(0f, 12f);
         var textStart = ImGui.GetCursorPosX();
+        var offered = GetAvailableUpdateVersion(plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Shorten(plugin.Name, 42));
-        var author = string.IsNullOrWhiteSpace(plugin.Author) ? "Installed plugin" : plugin.Author;
-        ImGui.TextDisabled(Shorten(author, 48));
-        var offered = GetAvailableUpdateVersion(plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
-        ImGui.TextDisabled(offered is null
-            ? $"Installed v{installedPlugin.Version}"
-            : $"v{installedPlugin.Version}  →  v{offered}");
+        ImGui.TextDisabled(Shorten(BuildAuthorSourceLine(plugin), 68));
+        var versionLine = offered is null
+            ? $"{InstalledVersionText(installedPlugin)}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}"
+            : $"{InstalledVersionText(installedPlugin)} → v{offered}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}";
+        ImGui.TextDisabled(Shorten(versionLine, 76));
         ImGui.EndGroup();
-
-        const float actionWidth = 104f;
-        ImGui.SameLine();
-        ImGui.SetCursorPosX(Math.Max(textStart + 220f, ImGui.GetWindowContentRegionMax().X - actionWidth - 12f));
-        if (DrawPillButton(
-                "Update",
-                $"update-action-{StableId(plugin.InternalName)}",
-                new Vector2(actionWidth, 32f),
-                true))
-        {
-            Plugin.PluginInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.UpdateablePlugins, plugin.Name);
-        }
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+            OpenPluginDetails(plugin);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Update through Dalamud");
+            ImGui.SetTooltip(BuildInstalledMetadataLine(plugin, currentApi, currentDalamudVersion));
+
+        const float actionSize = 38f;
+        ImGui.SameLine();
+        ImGui.SetCursorPos(new Vector2(
+            Math.Max(textStart + 240f, ImGui.GetWindowContentRegionMax().X - actionSize - 12f),
+            contentTop + 14f));
+        if (DrawUpdateActionIcon($"update-action-{StableId(plugin.InternalName)}"))
+            Plugin.PluginInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.UpdateablePlugins, plugin.Name);
 
         ImGui.EndChild();
+    }
+
+    private static bool DrawUpdateActionIcon(string id)
+    {
+        const float size = 38f;
+        const float rounding = 6f;
+        var min = ImGui.GetCursorScreenPos();
+        ImGui.InvisibleButton($"##{id}", new Vector2(size, size));
+        var hovered = ImGui.IsItemHovered();
+        var held = ImGui.IsItemActive();
+        var clicked = ImGui.IsItemClicked();
+        var draw = ImGui.GetWindowDrawList();
+
+        var background = ImGui.ColorConvertFloat4ToU32(held
+            ? new Vector4(0.02f, 0.34f, 0.36f, 1f)
+            : hovered
+                ? new Vector4(0.03f, 0.50f, 0.51f, 1f)
+                : new Vector4(0.02f, 0.40f, 0.42f, 0.96f));
+        draw.AddRectFilled(min, min + new Vector2(size, size), background, rounding);
+
+        ImGui.PushFont(UiBuilder.IconFontFixedWidth);
+        var glyph = FontAwesomeIcon.SyncAlt.ToIconString();
+        var glyphSize = ImGui.CalcTextSize(glyph);
+        draw.AddText(
+            min + new Vector2((size - glyphSize.X) * 0.5f, (size - glyphSize.Y) * 0.5f),
+            ImGui.GetColorU32(ImGuiCol.Text),
+            glyph);
+        ImGui.PopFont();
+
+        if (hovered)
+            ImGui.SetTooltip("Update through Dalamud");
+        return clicked;
     }
 
     private static IReadOnlyList<MarketplacePlugin> BuildLibraryProjection(
@@ -215,6 +280,42 @@ internal sealed partial class MarketplaceWindow
 
         return result;
     }
+
+    private string BuildInstalledMetadataLine(
+        MarketplacePlugin plugin,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
+        var source = SourceLabel(plugin);
+        var compatibility = plugin.GetCompatibilityText(
+            currentApi,
+            currentDalamudVersion,
+            configuration.PreferTestingBuilds);
+        return $"{source}  •  {compatibility}";
+    }
+
+    private static string BuildAuthorSourceLine(MarketplacePlugin plugin)
+    {
+        var author = string.IsNullOrWhiteSpace(plugin.Author) ? "Installed plugin" : plugin.Author;
+        return $"{author}  •  {SourceLabel(plugin)}";
+    }
+
+    private string BuildCompactCompatibility(
+        MarketplacePlugin plugin,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
+        var compatible = plugin.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out _) &&
+                         (plugin.MinimumDalamudVersion is null || plugin.MinimumDalamudVersion <= currentDalamudVersion);
+        var api = compatible ? currentApi : plugin.HighestKnownApiLevel;
+        var apiText = api > 0 ? $"API {api}" : "API ?";
+        return $"{apiText}  •  {(compatible ? "Compatible" : "Unsupported")}";
+    }
+
+    private static string SourceLabel(MarketplacePlugin plugin)
+        => plugin.SourceIsOfficial
+            ? "Dalamud official"
+            : string.IsNullOrWhiteSpace(plugin.SourceName) ? "Source unknown" : plugin.SourceName;
 
     private static string InstalledVersionText(IExposedPlugin installedPlugin)
         => installedPlugin.Version is { } version ? $"v{version}" : "version pending";

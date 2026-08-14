@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
@@ -35,7 +36,8 @@ internal sealed partial class MarketplaceWindow
 
         query = activeView switch
         {
-            MarketplaceView.Library => query.Where(x => installed.ContainsKey(x.InternalName)),
+            MarketplaceView.Library => ApplyLibraryRuntimeFilter(
+                query.Where(x => installed.ContainsKey(x.InternalName)), installed),
             MarketplaceView.Updates => query.Where(x =>
                 installed.TryGetValue(x.InternalName, out var installedPlugin) &&
                 HasAvailableUpdate(x.InternalName, installedPlugin, currentApi, currentDalamudVersion)),
@@ -89,6 +91,18 @@ internal sealed partial class MarketplaceWindow
             _ => query.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase),
         };
     }
+
+    private IEnumerable<MarketplacePlugin> ApplyLibraryRuntimeFilter(
+        IEnumerable<MarketplacePlugin> plugins,
+        IReadOnlyDictionary<string, IExposedPlugin> installed)
+        => libraryRuntimeFilter switch
+        {
+            LibraryRuntimeFilter.Loaded => plugins.Where(x =>
+                installed.TryGetValue(x.InternalName, out var installedPlugin) && installedPlugin.IsLoaded),
+            LibraryRuntimeFilter.NotLoaded => plugins.Where(x =>
+                installed.TryGetValue(x.InternalName, out var installedPlugin) && !installedPlugin.IsLoaded),
+            _ => plugins,
+        };
 
     private IEnumerable<MarketplacePlugin> ApplyStatusFilter(
         IEnumerable<MarketplacePlugin> plugins,
@@ -329,21 +343,48 @@ internal sealed partial class MarketplaceWindow
     private void DrawDetailsLinks(MarketplacePlugin plugin)
     {
         ImGui.Spacing();
-        if (!string.IsNullOrWhiteSpace(plugin.SourceUrl) &&
-            DrawPillButton("Copy source", $"copy-source-{StableId(plugin.SourceUrl)}", new Vector2(112f, 30f), false))
+        var hasSources = catalog.GetVariants(plugin.InternalName).Any(x => !string.IsNullOrWhiteSpace(x.SourceUrl));
+        if (hasSources &&
+            DrawPillButton("Copy source", $"copy-source-{StableId(plugin.InternalName)}", new Vector2(112f, 30f), false))
         {
-            ImGui.SetClipboardText(plugin.SourceUrl);
-            operationMessage = "Source URL copied.";
+            sourcePopupPlugin = plugin;
+            sourcePopupOpen = true;
+            requestSourcePopup = true;
         }
 
-        if (string.IsNullOrWhiteSpace(plugin.RepoUrl))
+        var projectUrl = ResolveProjectUrl(plugin);
+        if (string.IsNullOrWhiteSpace(projectUrl))
             return;
-        if (!string.IsNullOrWhiteSpace(plugin.SourceUrl))
+        if (hasSources)
             ImGui.SameLine(0f, 7f);
-        if (!DrawPillButton("Project", $"copy-project-{plugin.InternalName}", new Vector2(92f, 30f), false))
+        if (!DrawPillButton("Project", $"open-project-{plugin.InternalName}", new Vector2(92f, 30f), false))
             return;
-        ImGui.SetClipboardText(plugin.RepoUrl);
-        operationMessage = "Project URL copied.";
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(projectUrl) { UseShellExecute = true });
+            operationMessage = $"Opened {plugin.Name} project page in your browser.";
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Debug(ex, "Omega could not open project URL for {Plugin}", plugin.InternalName);
+            operationMessage = $"Could not open the project page for {plugin.Name}.";
+        }
+    }
+
+    private static string ResolveProjectUrl(MarketplacePlugin plugin)
+    {
+        foreach (var candidate in new[] { plugin.RepoUrl, plugin.OmegaWebsiteUrl })
+        {
+            if (Uri.TryCreate(candidate, UriKind.Absolute, out var uri) &&
+                (uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+                 uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)))
+            {
+                return uri.ToString();
+            }
+        }
+
+        return string.Empty;
     }
 
     /// <summary>

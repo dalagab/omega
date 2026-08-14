@@ -7,7 +7,7 @@ namespace Dalagab.Omega;
 
 /// <summary>
 /// Owns the full-width Microsoft Store-style product page used when a Discover result is selected.
-/// Installation remains delegated to Dalamud and repository choice remains explicit at install time.
+/// Plugin lifecycle actions remain delegated to Dalamud and repository choice remains explicit at install time.
 /// </summary>
 internal sealed partial class MarketplaceWindow
 {
@@ -37,6 +37,8 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
+        if (!string.IsNullOrWhiteSpace(operationMessage))
+            ImGui.TextWrapped(operationMessage);
         ImGui.Spacing();
         DrawProductHero(plugin, content, installedPlugin, currentApi, currentDalamudVersion);
         DrawProductScreenshots(content);
@@ -135,7 +137,16 @@ internal sealed partial class MarketplaceWindow
     {
         if (installedPlugin is not null)
         {
-            if (installedPlugin.HasMainUi && installedPlugin.IsLoaded)
+            var offeredUpdate = GetAvailableUpdateVersion(
+                plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
+            if (offeredUpdate is not null)
+            {
+                if (DrawProductActionButton("Update", $"product-update-{plugin.InternalName}", enabled: true, accent: true))
+                    Plugin.PluginInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.UpdateablePlugins, plugin.Name);
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip($"Update to v{offeredUpdate} through Dalamud");
+            }
+            else if (installedPlugin.HasMainUi && installedPlugin.IsLoaded)
             {
                 if (DrawProductActionButton("Open", $"product-open-{plugin.InternalName}", enabled: true, accent: true))
                 {
@@ -149,10 +160,28 @@ internal sealed partial class MarketplaceWindow
                         operationMessage = $"{plugin.Name} did not expose an openable main UI.";
                     }
                 }
-                return;
+            }
+            else
+            {
+                DrawProductActionButton("Installed", $"product-installed-{plugin.InternalName}", enabled: false, accent: false);
             }
 
-            DrawProductActionButton("Installed", $"product-installed-{plugin.InternalName}", enabled: false, accent: false);
+            ImGui.SameLine(0f, 10f);
+            var isSelf = plugin.InternalName.Equals(Plugin.PluginInterface.InternalName, StringComparison.OrdinalIgnoreCase);
+            if (uninstallTask is not null && uninstallingInternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase))
+            {
+                DrawProductUninstallButton("Uninstalling…", $"product-uninstalling-{plugin.InternalName}", enabled: false);
+            }
+            else if (isSelf)
+            {
+                DrawProductUninstallButton("Uninstall", $"product-uninstall-self-{plugin.InternalName}", enabled: false);
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Omega cannot uninstall itself while it is running. Use Dalamud to remove Omega.");
+            }
+            else if (DrawProductUninstallButton("Uninstall", $"product-uninstall-{plugin.InternalName}", enabled: uninstallTask is null))
+            {
+                OpenUninstallConfirmation(plugin);
+            }
             return;
         }
 
@@ -198,6 +227,26 @@ internal sealed partial class MarketplaceWindow
         var clicked = ImGui.Button($"{label}##{id}", size);
         ImGui.PopStyleColor(3);
         ImGui.PopStyleVar();
+        if (!enabled)
+            ImGui.EndDisabled();
+        return clicked && enabled;
+    }
+
+
+    private static bool DrawProductUninstallButton(string label, string id, bool enabled)
+    {
+        var size = new Vector2(156f, 44f);
+        if (!enabled)
+            ImGui.BeginDisabled();
+
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 6f);
+        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.40f, 0.08f, 0.10f, 0.94f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.56f, 0.10f, 0.13f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.34f, 0.06f, 0.08f, 1f));
+        var clicked = ImGui.Button($"{label}##{id}", size);
+        ImGui.PopStyleColor(3);
+        ImGui.PopStyleVar();
+
         if (!enabled)
             ImGui.EndDisabled();
         return clicked && enabled;

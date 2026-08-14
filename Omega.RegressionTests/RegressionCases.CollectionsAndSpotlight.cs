@@ -30,12 +30,15 @@ internal static partial class RegressionCases
         Contains(spotlight, "SpotlightCardMaxWidth", "Spotlight cards stay compact rather than full-width");
         False(spotlight.Contains("spotlight-card-info-", StringComparison.Ordinal), "Spotlight must not regress to split wide cells");
         Contains(spotlight, "DrawSpotlightPitch", "Spotlight card includes only a short promotional pitch");
-        Contains(spotlight, "DrawSpotlightActionRow", "Spotlight card includes compact install state plus information action");
-        Contains(spotlight, "OpenSpotlightPluginInDiscover", "Spotlight information button hands off to Discover details");
+        Contains(spotlight, "contentStartY + 112f", "Spotlight card identity content is vertically aligned");
+        Contains(spotlight, "contentStartY + 178f", "Spotlight pitch begins at the same vertical anchor on every card");
+        Contains(spotlight, "OpenSpotlightPluginInDiscover", "whole-card selection hands off to Discover details");
+        False(spotlight.Contains("DrawSpotlightActionRow", StringComparison.Ordinal), "Spotlight does not duplicate product-page actions");
+        False(spotlight.Contains("DrawSpotlightInfoButton", StringComparison.Ordinal), "Spotlight does not duplicate the Discover info action");
         Contains(spotlight, "NoScrollWithMouse", "Spotlight cards remain fixed non-scrollable promotional cards");
         False(spotlight.Contains("AssemblyVersionText", StringComparison.Ordinal), "Spotlight cards omit version metadata");
         False(spotlight.Contains("DrawDetailsDescription", StringComparison.Ordinal), "Spotlight must not copy the verbose normal details panel");
-        False(spotlight.Contains("OpenPluginDetails", StringComparison.Ordinal), "Spotlight must not open the normal right-hand details panel");
+        Contains(spotlight, "OpenPluginDetails(plugin)", "selecting Spotlight artwork routes through the canonical Discover product-page selection path");
 
         var shelves = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SpotlightShelves.cs"));
         var recency = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginRecencyLedger.cs"));
@@ -45,6 +48,9 @@ internal static partial class RegressionCases
         Contains(shelves, "pluginRecency.GetFirstSeenUnix", "latest additions use durable first-seen ordering");
         Contains(shelves, "NormalizeUnix(x.LastUpdate)", "latest updates use repository LastUpdate ordering");
         Contains(shelves, "showOverlays: false", "recency shelves keep artwork clean");
+        Contains(shelves, "OpenSpotlightPluginInDiscover(plugin)", "latest additions and updates use whole-card Discover navigation");
+        False(shelves.Contains("Install", StringComparison.Ordinal), "recency shelves do not duplicate install actions");
+        False(shelves.Contains("InfoCircle", StringComparison.Ordinal), "recency shelves do not duplicate info buttons");
         Contains(shelves, "NoScrollWithMouse", "recency shelf cards do not scroll independently");
         Contains(recency, "plugin-recency.json", "first-seen state is persisted in Omega's config directory");
         Contains(recency, "baseline && manifestDate > 0", "initial recency baseline uses manifest dates when creation dates are unavailable");
@@ -70,10 +76,18 @@ internal static partial class RegressionCases
         Contains(library, "BuildLibraryProjection", "Library includes installed plugins even when marketplace metadata is absent");
         Contains(library, "DrawLibraryList", "Library All uses an installed-app row list rather than the marketplace icon grid");
         Contains(library, "DrawUpdatesList", "Updates uses a dedicated update row list");
+        Contains(library, "const float rowHeight = 88f", "Library and Updates use a compact three-line metadata row without clipping");
+        Contains(library, "InstalledVersionText(installedPlugin)", "installed rows expose the installed version");
+        Contains(library, "installedPlugin.IsLoaded ? \"Loaded\" : \"Not loaded\"", "installed rows expose the runtime load state");
+        Contains(library, "BuildInstalledMetadataLine", "installed rows expose source and API compatibility metadata");
+        Contains(library, "→ v{offered}", "update rows expose installed-to-available version progression");
+        Contains(library, "configuration.PreferTestingBuilds", "row compatibility honors the testing-build preference");
+        Contains(library, "FontAwesomeIcon.SyncAlt", "Updates use a compact update icon instead of a text button");
         Contains(library, "PluginInstallerOpenKind.UpdateablePlugins", "Update action delegates to Dalamud's update surface");
         Contains(ui, "MarketplaceStatusFilter.Installable", "Discover Status filter preserves Installable grouping");
         Contains(ui, "MarketplaceStatusFilter.OutdatedApi", "Discover Status filter preserves Outdated API grouping");
-        Contains(ui, "Status##filter-status", "status grouping is panel-local inside Filters");
+        Contains(ui, "##filter-status", "status grouping is panel-local inside expanded Filters");
+        Contains(ui, "LibraryRuntimeFilter", "Library reuses Discover's full filter layout with a useful loaded/not-loaded status filter");
         Contains(ui, "HasAvailableUpdate", "Updates derives from newer compatible catalog packages");
         Contains(ui, "ImGui.Dummy(new Vector2(0f, 38f))", "left navigation starts below top chrome instead of above right-panel data");
         Contains(ui, "sidebar-settings", "Settings replaces Sources in the lower icon rail");
@@ -116,10 +130,11 @@ internal static partial class RegressionCases
         var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
         var storefront = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Storefront.cs"));
 
-        Contains(discover, "Enhanced listings", "Discover promotes screenshot-rich plugins before metadata-only rows");
+        Contains(discover, "Featured", "Discover labels screenshot-rich plugins as Featured");
         Contains(discover, "DiscoverRichColumns = 3", "enhanced Discover listings use Store-style three-wide cards");
+        Contains(discover, "const float gridStartX = 0f", "Featured cards align with the content edge instead of floating in a centered narrow grid");
         Contains(discover, "DrawDiscoverRichCard", "Discover renders rich screenshot cards");
-        Contains(discover, "More plugins", "metadata-only plugins continue below the enhanced cards");
+        Contains(discover, "The rest", "metadata-only plugins continue below Featured as The rest");
         Contains(discover, "DrawDiscoverResultRow", "Discover retains the compact fallback result row");
         Contains(discover, "StorefrontVirtualization.Calculate", "both Discover tiers remain virtualized for large catalogues");
         Contains(discover, "★", "website-enriched listings receive a visible star");

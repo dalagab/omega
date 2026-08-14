@@ -106,6 +106,7 @@ internal sealed partial class MarketplaceWindow
             filterTags.Equals(TagSelectionKey(), StringComparison.Ordinal) &&
             filterApi == selectedApi &&
             filterStatus == statusFilter &&
+            filterLibraryRuntime == libraryRuntimeFilter &&
             filterPreferTesting == configuration.PreferTestingBuilds)
         {
             return cachedFilteredPlugins;
@@ -126,6 +127,7 @@ internal sealed partial class MarketplaceWindow
         filterTags = TagSelectionKey();
         filterApi = selectedApi;
         filterStatus = statusFilter;
+        filterLibraryRuntime = libraryRuntimeFilter;
         filterPreferTesting = configuration.PreferTestingBuilds;
         return cachedFilteredPlugins;
     }
@@ -160,6 +162,7 @@ internal sealed partial class MarketplaceWindow
         tagSearch = string.Empty;
         selectedApi = 0;
         statusFilter = MarketplaceStatusFilter.All;
+        libraryRuntimeFilter = LibraryRuntimeFilter.All;
         sort = MarketplaceSort.Name;
     }
 

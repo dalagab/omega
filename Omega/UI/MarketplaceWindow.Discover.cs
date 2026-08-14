@@ -65,20 +65,14 @@ internal sealed partial class MarketplaceWindow
         if (rich.Count > 0)
         {
             ImGui.SetCursorPosY(contentStartY);
-            ImGui.TextUnformatted("Enhanced listings");
-            ImGui.SameLine();
-            ImGui.TextDisabled($"{rich.Count} with screenshots or richer presentation data");
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("A star marks listings whose public project page was indexed by Omega's catalog workflow.");
+            ImGui.TextUnformatted("Featured");
 
-            var gridStartY = contentStartY + 34f;
+            var gridStartY = contentStartY + 30f;
             var availableWidth = Math.Max(420f, ImGui.GetContentRegionAvail().X - 4f);
-            var cardWidth = Math.Clamp(
-                (availableWidth - (DiscoverRichColumnGap * (DiscoverRichColumns - 1))) / DiscoverRichColumns,
+            var cardWidth = Math.Max(
                 250f,
-                340f);
-            var gridWidth = (cardWidth * DiscoverRichColumns) + (DiscoverRichColumnGap * (DiscoverRichColumns - 1));
-            var gridStartX = Math.Max(0f, (availableWidth - gridWidth) * 0.5f);
+                (availableWidth - (DiscoverRichColumnGap * (DiscoverRichColumns - 1))) / DiscoverRichColumns);
+            const float gridStartX = 0f;
             var stride = DiscoverRichCardHeight + DiscoverRichRowGap;
             var visible = StorefrontVirtualization.Calculate(
                 rich.Count,
@@ -118,11 +112,9 @@ internal sealed partial class MarketplaceWindow
         {
             var listHeaderY = cursorEndY + (rich.Count > 0 ? 12f : 0f);
             ImGui.SetCursorPosY(listHeaderY);
-            ImGui.TextUnformatted(rich.Count > 0 ? "More plugins" : "Plugins");
-            ImGui.SameLine();
-            ImGui.TextDisabled($"{basic.Count} result{(basic.Count == 1 ? string.Empty : "s")}");
+            ImGui.TextUnformatted("The rest");
 
-            var listStartY = listHeaderY + 34f;
+            var listStartY = listHeaderY + 30f;
             var stride = DiscoverListRowHeight + DiscoverListRowGap;
             var visible = StorefrontVirtualization.Calculate(
                 basic.Count,
@@ -156,6 +148,8 @@ internal sealed partial class MarketplaceWindow
         Version currentDalamudVersion,
         float cardWidth)
     {
+        var availabilityStyle = PushUnavailableListingStyle(
+            IsListingCurrentlyAvailable(plugin, installedPlugin, currentApi, currentDalamudVersion));
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 9f);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.045f, 0.052f, 0.064f, 0.78f));
@@ -166,27 +160,28 @@ internal sealed partial class MarketplaceWindow
             true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        var start = ImGui.GetCursorScreenPos();
+        var cardMin = ImGui.GetWindowPos();
+        var cardMax = cardMin + ImGui.GetWindowSize();
         DrawDiscoverRichCardHeader(plugin, content, installedPlugin, currentApi, currentDalamudVersion, cardWidth);
         DrawDiscoverRichCardScreenshot(plugin.InternalName, content.Images[0], cardWidth);
 
         var hovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows);
         if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             OpenPluginDetails(plugin);
+        ImGui.EndChild();
         if (hovered)
         {
             ImGui.GetWindowDrawList().AddRect(
-                start,
-                start + new Vector2(ImGui.GetWindowSize().X - 1f, DiscoverRichCardHeight - 1f),
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0.18f, 0.54f, 0.54f, 0.58f)),
+                cardMin + new Vector2(0.5f, 0.5f),
+                cardMax - new Vector2(0.5f, 0.5f),
+                ImGui.ColorConvertFloat4ToU32(new Vector4(0.18f, 0.54f, 0.54f, 0.44f)),
                 9f,
                 ImDrawFlags.None,
                 1.2f);
         }
-
-        ImGui.EndChild();
         ImGui.PopStyleColor(2);
         ImGui.PopStyleVar(2);
+        PopUnavailableListingStyle(availabilityStyle);
     }
 
     private void DrawDiscoverRichCardHeader(
@@ -198,7 +193,8 @@ internal sealed partial class MarketplaceWindow
         float cardWidth)
     {
         ImGui.SetCursorPos(new Vector2(12f, 12f));
-        DrawPluginArtwork(plugin, installedPlugin, 46f, 46f, currentApi, currentDalamudVersion, false, false);
+        DrawPluginArtwork(plugin, installedPlugin, 46f, 46f, currentApi, currentDalamudVersion,
+            queueIfVisible: true, showOverlays: false);
         ImGui.SameLine(0f, 10f);
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Shorten(plugin.Name, 32));
@@ -276,6 +272,8 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
+        var availabilityStyle = PushUnavailableListingStyle(
+            IsListingCurrentlyAvailable(plugin, installedPlugin, currentApi, currentDalamudVersion));
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 8f);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.045f, 0.052f, 0.064f, 0.76f));
@@ -286,7 +284,8 @@ internal sealed partial class MarketplaceWindow
         var rowWidth = ImGui.GetContentRegionAvail().X;
         var start = ImGui.GetCursorScreenPos();
         ImGui.SetCursorPos(new Vector2(12f, 18f));
-        DrawPluginArtwork(plugin, installedPlugin, DiscoverListIconSize, DiscoverListIconSize, currentApi, currentDalamudVersion, false, false);
+        DrawPluginArtwork(plugin, installedPlugin, DiscoverListIconSize, DiscoverListIconSize, currentApi, currentDalamudVersion,
+            queueIfVisible: true, showOverlays: false);
         ImGui.SameLine(0f, 16f);
         ImGui.BeginGroup();
         ImGui.SetCursorPosY(18f);
@@ -315,6 +314,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.EndChild();
         ImGui.PopStyleColor(2);
         ImGui.PopStyleVar(2);
+        PopUnavailableListingStyle(availabilityStyle);
     }
 
     private void DrawDiscoverRowBadges(

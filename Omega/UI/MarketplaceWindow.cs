@@ -29,6 +29,13 @@ internal enum MarketplaceStatusFilter
     OutdatedApi,
 }
 
+internal enum LibraryRuntimeFilter
+{
+    All,
+    Loaded,
+    NotLoaded,
+}
+
 internal enum MarketplaceSort
 {
     Name,
@@ -50,6 +57,12 @@ internal enum SourceManagerSection
 {
     Curated,
     UserAdded,
+}
+
+internal enum SettingsPanel
+{
+    Sources,
+    Security,
 }
 
 internal sealed partial class MarketplaceWindow : Window, IDisposable
@@ -86,6 +99,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private MarketplaceView activeView;
     private LibrarySection librarySection;
     private MarketplaceStatusFilter statusFilter;
+    private LibraryRuntimeFilter libraryRuntimeFilter;
     private MarketplaceSort sort = MarketplaceSort.Name;
     private bool resetStorefrontScroll;
 
@@ -94,15 +108,22 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private string pendingInstallSourceUrl = string.Empty;
     private Task<InstallResult>? installTask;
     private string installingInternalName = string.Empty;
+    private MarketplacePlugin? pendingUninstall;
+    private Task<UninstallResult>? uninstallTask;
+    private string uninstallingInternalName = string.Empty;
+    private MarketplacePlugin? sourcePopupPlugin;
     private string operationMessage = string.Empty;
 
     private bool detailsOpen;
     private bool filtersOpen;
     private bool settingsOpen;
     private bool installPopupOpen;
+    private bool uninstallPopupOpen;
+    private bool sourcePopupOpen;
     private bool addSourceOpen;
     private bool requestInstallPopup;
-    private bool requestFiltersPopup;
+    private bool requestUninstallPopup;
+    private bool requestSourcePopup;
     private bool requestSettingsPopup;
     private bool requestTagsPopup;
     private bool requestEulaPopup;
@@ -111,10 +132,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private DateTimeOffset? eulaOpenedAtUtc;
     private bool isMinimized;
     private bool minimizedDragMoved;
-    private static readonly Vector2 DefaultExpandedWindowSize = new(980f, 720f);
+    private static readonly Vector2 DefaultExpandedWindowSize = new(1080f, 840f);
     private Vector2 expandedWindowSize = DefaultExpandedWindowSize;
     private Vector2 expandedWindowPosition;
+    private bool migrateLegacyFullscreenGeometry;
 
+    private SettingsPanel settingsPanel = SettingsPanel.Sources;
     private SourceManagerSection sourceSection = SourceManagerSection.Curated;
     private string sourceSearch = string.Empty;
     private string newRepositoryName = string.Empty;
@@ -157,6 +180,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private string filterTags = string.Empty;
     private int filterApi;
     private MarketplaceStatusFilter filterStatus;
+    private LibraryRuntimeFilter filterLibraryRuntime;
     private bool filterPreferTesting;
     private MarketplacePlugin[] cachedFilteredPlugins = [];
 
@@ -195,8 +219,15 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         fallbackIconTexture = File.Exists(fallbackIconPath) ? Plugin.TextureProvider.GetFromFile(fallbackIconPath) : null;
         eulaLines = LoadEulaLines(eulaPath, out var eulaAvailable);
         eulaDocumentAvailable = eulaAvailable;
+        migrateLegacyFullscreenGeometry = configuration.WindowGeometryRevision < 1;
         Size = DefaultExpandedWindowSize;
         SizeCondition = ImGuiCond.FirstUseEver;
+        SizeConstraints = new WindowSizeConstraints
+        {
+            MinimumSize = DefaultExpandedWindowSize,
+            MaximumSize = new Vector2(float.MaxValue),
+        };
+        ForceMainWindow = true;
         Flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
     }
 
@@ -207,6 +238,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     public override void Draw()
     {
         CompleteInstallTaskIfReady();
+        CompleteUninstallTaskIfReady();
         CompleteRepositoryTaskIfReady();
         CompleteCollectionOperationIfReady();
         var versionInfo = Plugin.PluginInterface.GetDalamudVersion();
@@ -226,6 +258,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         }
 
         CaptureExpandedWindowState();
+        CompleteLegacyFullscreenGeometryMigration();
         DrawApplicationBar();
         ImGui.Spacing();
 
@@ -246,7 +279,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
 
         ImGui.SameLine(0f, 12f);
         ImGui.BeginChild("omega-app-content", Vector2.Zero, false, ImGuiWindowFlags.NoScrollbar);
-        if (activeView != MarketplaceView.Spotlight && !(activeView == MarketplaceView.Discover && detailsOpen))
+        if (activeView is MarketplaceView.Library or MarketplaceView.Updates)
             DrawContentHeader(versionInfo.Version, currentApi);
 
         if (activeView == MarketplaceView.Library)
@@ -264,7 +297,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
 
         OpenRequestedPopups();
         DrawInstallModal(currentApi, versionInfo.Version);
-        DrawFiltersModal(currentApi);
+        DrawUninstallModal();
+        DrawKnownSourcesPopup();
         DrawSettingsModal();
         DrawEulaReviewModal();
         DrawTagPickerPopup(currentApi);
@@ -280,10 +314,16 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
             requestInstallPopup = false;
         }
 
-        if (requestFiltersPopup)
+        if (requestUninstallPopup)
         {
-            ImGui.OpenPopup("Filters###DalagabOmegaFilters");
-            requestFiltersPopup = false;
+            ImGui.OpenPopup("Uninstall plugin###DalagabOmegaUninstall");
+            requestUninstallPopup = false;
+        }
+
+        if (requestSourcePopup)
+        {
+            ImGui.OpenPopup("Known sources###DalagabOmegaKnownSources");
+            requestSourcePopup = false;
         }
 
         if (requestSettingsPopup)

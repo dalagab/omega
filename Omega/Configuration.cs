@@ -21,5 +21,8 @@ public sealed class Configuration : IPluginConfiguration
 
     public DateTimeOffset? EulaAcceptedAtUtc { get; set; }
 
+    // One-time migration marker for window geometry written by the retired forced-full-screen build.
+    public int WindowGeometryRevision { get; set; }
+
     public void Save() => Plugin.PluginInterface.SavePluginConfig(this);
 }

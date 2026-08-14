@@ -120,6 +120,7 @@ internal sealed class SqliteCatalogStore
             DataSource = path,
             Mode = SqliteOpenMode.ReadOnly,
             Cache = SqliteCacheMode.Private,
+            Pooling = false,
         }.ToString());
         connection.Open();
         return connection;

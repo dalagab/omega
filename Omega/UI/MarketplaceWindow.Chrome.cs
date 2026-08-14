@@ -2,6 +2,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
 using Dalamud.Interface.Textures;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 
@@ -67,7 +68,7 @@ internal sealed partial class MarketplaceWindow
             OpenSettings();
 
         ImGui.Spacing();
-        DrawSidebarUtilityIcon(MarketplaceView.Updates, FontAwesomeIcon.Download, "Updates", counts.Updates);
+        DrawSidebarUtilityIcon(MarketplaceView.Updates, FontAwesomeIcon.Download, "Updates", counts.Updates, notificationCount: counts.Updates);
         DrawSidebarUtilityIcon(MarketplaceView.Library, FontAwesomeIcon.List, "Library", counts.Installed);
 
         ImGui.Spacing();
@@ -76,12 +77,14 @@ internal sealed partial class MarketplaceWindow
             ImGui.SetTooltip($"Omega v{BuildInfo.Version}");
     }
 
-    private void DrawSidebarUtilityIcon(MarketplaceView view, FontAwesomeIcon icon, string label, int count)
+    private void DrawSidebarUtilityIcon(MarketplaceView view, FontAwesomeIcon icon, string label, int count, int notificationCount = 0)
     {
         var tooltip = count > 0 ? $"{label} ({count})" : label;
-        if (!DrawSidebarIcon(icon, $"sidebar-utility-{view}", tooltip, activeView == view))
+        if (!DrawSidebarIcon(icon, $"sidebar-utility-{view}", tooltip, activeView == view, notificationCount))
             return;
 
+        if (activeView != view)
+            filtersOpen = false;
         activeView = view;
         detailsOpen = false;
         selectedPlugin = null;
@@ -111,13 +114,15 @@ internal sealed partial class MarketplaceWindow
         if (!DrawSidebarIcon(icon, $"sidebar-view-{view}", tooltip, activeView == view))
             return;
 
+        if (activeView != view)
+            filtersOpen = false;
         activeView = view;
         detailsOpen = false;
         selectedPlugin = null;
         resetStorefrontScroll = true;
     }
 
-    private static bool DrawSidebarIcon(FontAwesomeIcon icon, string id, string tooltip, bool active)
+    private static bool DrawSidebarIcon(FontAwesomeIcon icon, string id, string tooltip, bool active, int notificationCount = 0)
     {
         const float size = 42f;
         const float rounding = 6f;
@@ -151,6 +156,24 @@ internal sealed partial class MarketplaceWindow
             : ImGui.GetColorU32(ImGuiCol.TextDisabled);
         draw.AddText(glyphPosition, glyphColor, glyph);
         ImGui.PopFont();
+
+        if (notificationCount > 0)
+        {
+            var countText = notificationCount > 99 ? "99+" : notificationCount.ToString();
+            var textSize = ImGui.CalcTextSize(countText);
+            const float badgeHeight = 15f;
+            var badgeWidth = Math.Max(badgeHeight, textSize.X + 6f);
+            var badgeMax = screen + new Vector2(size - 1f, 11f);
+            var badgeMin = badgeMax - new Vector2(badgeWidth, badgeHeight);
+            var badgeColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.50f, 0.10f, 0.13f, 0.94f));
+            var badgeBorder = ImGui.ColorConvertFloat4ToU32(new Vector4(0.68f, 0.25f, 0.28f, 0.62f));
+            draw.AddRectFilled(badgeMin, badgeMax, badgeColor, badgeHeight * 0.5f);
+            draw.AddRect(badgeMin, badgeMax, badgeBorder, badgeHeight * 0.5f, ImDrawFlags.None, 1f);
+            draw.AddText(
+                badgeMin + new Vector2((badgeWidth - textSize.X) * 0.5f, (badgeHeight - textSize.Y) * 0.5f),
+                0xFFFFFFFF,
+                countText);
+        }
 
         if (hovered)
             ImGui.SetTooltip(tooltip);
@@ -189,6 +212,54 @@ internal sealed partial class MarketplaceWindow
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(updates.LastOnlineError);
         }
+    }
+
+    public override void PreDraw()
+    {
+        Flags &= ~(ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize);
+
+        if (isMinimized)
+        {
+            SizeConstraints = null;
+            return;
+        }
+
+        SizeConstraints = new WindowSizeConstraints
+        {
+            MinimumSize = DefaultExpandedWindowSize,
+            MaximumSize = new Vector2(float.MaxValue),
+        };
+
+        if (!migrateLegacyFullscreenGeometry)
+            return;
+
+        // 0.8.1.5 wrote forced-full-screen geometry into ImGui persistence. Override it
+        // for exactly one expanded frame, then hand size/position ownership back to ImGui.
+        var viewport = ImGui.GetMainViewport();
+        var scaledDefault = DefaultExpandedWindowSize * ImGuiHelpers.GlobalScale;
+        Size = DefaultExpandedWindowSize;
+        SizeCondition = ImGuiCond.Always;
+        Position = new Vector2(
+            Math.Max(0f, (viewport.Size.X - scaledDefault.X) * 0.5f),
+            Math.Max(0f, (viewport.Size.Y - scaledDefault.Y) * 0.5f));
+        PositionCondition = ImGuiCond.Always;
+    }
+
+    private void CompleteLegacyFullscreenGeometryMigration()
+    {
+        if (!migrateLegacyFullscreenGeometry)
+            return;
+
+        migrateLegacyFullscreenGeometry = false;
+        configuration.WindowGeometryRevision = 1;
+        configuration.Save();
+
+        // The one forced frame has already updated ImGui's persisted geometry. Future
+        // frames must not impose any size or position, so user resizing remains authoritative.
+        Size = null;
+        Position = null;
+        SizeCondition = ImGuiCond.FirstUseEver;
+        PositionCondition = ImGuiCond.None;
     }
 
     private void CaptureExpandedWindowState()

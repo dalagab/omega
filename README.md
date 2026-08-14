@@ -11,14 +11,14 @@ Project site: https://github.com/dalagab/omega
 - **Spotlight** with five editorial plugin picks, latest additions, and latest updates.
 - **Discover** with screenshot-rich Microsoft Store-style cards first, a compact fallback list for metadata-only plugins, full plugin product pages, global search, authors, repositories, categories, and searchable tags.
 - **Library** for installed plugins plus Dalamud-owned Collections/profile folders.
-- **Updates** for installed plugins where a newer compatible package is available.
+- **Updates** for installed plugins where a newer compatible package is available, with a compact numeric notification badge when updates are waiting.
 - **Settings** for source visibility, user-added repositories, catalog refresh, and access to the EULA/risk disclosure.
 - Official/default Dalamud plugins alongside community repositories.
-- Repository-choice installation when the same plugin is available from multiple sources.
+- Repository-choice installation when the same plugin is available from multiple sources, plus a known-sources popup for provenance/copying.
 - One hash-checked SQLite catalog built and enriched online, with the last-known-good local database retained when offline.
 - Stale-repository suppression and API compatibility handling.
 
-Omega does **not** replace Dalamud's plugin lifecycle. Where installation is supported, Omega delegates the final plugin installation to Dalamud.
+Omega does **not** replace Dalamud's plugin lifecycle. Installation, updates, and uninstall/removal are delegated to Dalamud; Omega provides the discovery and user-facing control surface.
 
 ### Plugin artwork and screenshots
 
@@ -92,6 +92,10 @@ The OS-side script is not an Omega updater and is not needed for routine Omega u
 
 The repository manifest in [`repository/pluginmaster.json`](repository/pluginmaster.json) expects the stable Dalamud distribution package at the GitHub release tag `omega-latest` as `Omega.zip`. Public installation becomes functional when that release asset and the `main` repository manifest are published together.
 
+### Publishing a new Omega version
+
+[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a four-part version tag matching the project metadata, for example `v0.8.2.0`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
+
 ## Exactly what the installer changes
 
 The installer changes one logical Dalamud setting: the Omega entry in `ThirdRepoList`.
@@ -136,23 +140,37 @@ It also creates a timestamped backup before writing.
 
 ## Building from source
 
-Development builds require the Dalamud SDK and .NET environment used by this project:
+Building Omega requires the Dalamud SDK and the .NET version configured by the repository workflows:
 
 ```powershell
 dotnet build .\Omega.sln -c Debug
 ```
 
-Expected development assembly:
+Expected debug assembly:
 
 ```text
 Omega\bin\Debug\DalagabOmega.dll
 ```
 
-The solution runs the Omega regression suite as part of the build. Public contribution, architecture, and engineering expectations are documented in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+The solution runs the Omega regression suite as part of the build.
 
 ## Catalog pipeline
 
-Omega's central catalog workflow is documented in [`catalog/WORKFLOW.md`](catalog/WORKFLOW.md). GitHub Actions builds one `omega-catalog.sqlite` database from repository manifests and incremental website enrichment. The previous database supplies ETag/Last-Modified state and last-known-good website metadata, so unchanged sources can return HTTP 304 and fresh project pages are reused. Omega downloads and validates the finished database; if an online check fails, the existing local SQLite file remains active. JSON stage files are tooling/debug inputs, not runtime catalog formats.
+Omega's central catalog workflow is documented in [`catalog/WORKFLOW.md`](catalog/WORKFLOW.md). GitHub Actions builds one `omega-catalog.sqlite` database from repository manifests and incremental website enrichment. The previous database supplies ETag/Last-Modified state and last-known-good website metadata, so unchanged sources can return HTTP 304 and fresh project pages are reused.
+
+**The database is still downloaded and used by Omega.** At runtime Omega first loads the packaged/bootstrap SQLite catalog and the persisted local `omega-catalog.sqlite`. The catalog updater checks the small online descriptor at the `catalog-latest` release, compares the catalog SHA-256, downloads `omega-catalog.sqlite.zip` only when the database changed, verifies the bundle/database hashes and SQLite integrity, atomically replaces the local database, then immediately uses that database for marketplace projection, search, source metadata, filters, Spotlight, Library, and Updates. If the network or validation step fails, the previous local SQLite database stays active. JSON stage files remain tooling/debug inputs, not runtime catalog formats.
+
+## Repository security
+
+Omega ships repository security automation alongside the catalog builder:
+
+- **CodeQL** scans C# on `main`, pull requests, and a weekly schedule.
+- **Dependency Review** checks new dependency changes in pull requests.
+- **OpenSSF Scorecard** publishes supply-chain posture and SARIF results.
+- **Dependabot** tracks NuGet and GitHub Actions updates.
+- **Release provenance** uses GitHub artifact attestations for the published `Omega.zip`.
+
+The same controls are summarized in **Omega → Settings → Security**, with browser links to the repository's live Security and Actions pages. A configured workflow is a control, not a guarantee that the project or a third-party plugin is vulnerability-free. See [`SECURITY.md`](SECURITY.md) for reporting guidance.
 
 ## EULA and risk disclosure
 
@@ -166,9 +184,9 @@ Omega source code is licensed under **AGPL-3.0-or-later** as declared by the pro
 
 FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the Dalagab Group. Omega is not an official Square Enix, Dalamud, or XIVLauncher product.
 
-## Current development build
+## Release metadata
 
-- Omega version: `0.8.0.0`
+- Omega version: `0.8.2.0`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`

@@ -36,6 +36,10 @@ internal sealed class RepositoryClient : IDisposable
         CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, source.Url);
+        using var response = await httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken).ConfigureAwait(false);
 
         response.EnsureSuccessStatusCode();
         if (response.Content.Headers.ContentLength is > MaxResponseBytes)

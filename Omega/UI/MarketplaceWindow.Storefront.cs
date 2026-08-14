@@ -13,10 +13,50 @@ internal sealed partial class MarketplaceWindow
     {
         EnsureRepositoryFilterIsHealthy(currentApi);
 
-        var mainPlugins = catalog.GetMainProjection(currentApi, selectedSource).Plugins;
-        DrawAuthorFilter(mainPlugins);
-        DrawRepositoryFilter(currentApi);
-        DrawCategoryAndTagFilters(mainPlugins);
+        var activeFilters = CountActiveMarketplaceFilters();
+        var label = activeFilters == 0 ? "Filters" : $"Filters ({activeFilters})";
+        var triangle = filtersOpen ? "▲" : "▼";
+        var buttonWidth = activeFilters == 0 ? 98f : 118f;
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
+        var openStylePushed = filtersOpen;
+        if (openStylePushed)
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.04f, 0.32f, 0.34f, 0.94f));
+        if (ImGui.Button($"{label}  {triangle}##panel-filters-{activeView}", new Vector2(buttonWidth, 30f)))
+            filtersOpen = !filtersOpen;
+        if (openStylePushed)
+            ImGui.PopStyleColor();
+        ImGui.PopStyleVar();
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(filtersOpen ? "Hide marketplace filters" : $"Show all filters for {ViewTitle(activeView)}");
+
+        if (!filtersOpen)
+            return;
+
+        ImGui.Spacing();
+        DrawInlineMarketplaceFilters(currentApi);
+    }
+
+    private int CountActiveMarketplaceFilters()
+    {
+        var count = 0;
+        if (!string.IsNullOrWhiteSpace(author))
+            count++;
+        if (!selectedSource.Equals("All sources", StringComparison.OrdinalIgnoreCase))
+            count++;
+        if (!selectedCategory.Equals("All categories", StringComparison.OrdinalIgnoreCase))
+            count++;
+        if (selectedTags.Count > 0)
+            count++;
+        if (selectedApi > 0)
+            count++;
+        if (activeView == MarketplaceView.Discover && statusFilter != MarketplaceStatusFilter.All)
+            count++;
+        if (activeView == MarketplaceView.Library && libraryRuntimeFilter != LibraryRuntimeFilter.All)
+            count++;
+        if (sort != MarketplaceSort.Name)
+            count++;
+        return count;
     }
 
     private void EnsureRepositoryFilterIsHealthy(int currentApi)
@@ -27,133 +67,6 @@ internal sealed partial class MarketplaceWindow
                 !x.IsStale && x.SourceName.Equals(selectedSource, StringComparison.OrdinalIgnoreCase)))
             return;
         selectedSource = "All sources";
-    }
-
-    private void DrawAuthorFilter(IReadOnlyList<MarketplacePlugin> mainPlugins)
-    {
-        ImGui.SameLine(0f, 10f);
-        ImGui.SetNextItemWidth(170f);
-        var authorLabel = string.IsNullOrWhiteSpace(author) ? "All authors" : Shorten(author, 20);
-        if (ImGui.BeginCombo("##omega-author-filter", authorLabel))
-        {
-            DrawAuthorChoices(mainPlugins);
-            ImGui.EndCombo();
-        }
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Filter the marketplace by plugin author");
-    }
-
-    private void DrawAuthorChoices(IReadOnlyList<MarketplacePlugin> mainPlugins)
-    {
-        if (ImGui.Selectable("All authors", string.IsNullOrWhiteSpace(author)))
-        {
-            author = string.Empty;
-            resetStorefrontScroll = true;
-        }
-
-        foreach (var value in mainPlugins.Select(x => x.Author)
-                     .Where(x => !string.IsNullOrWhiteSpace(x))
-                     .Distinct(StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
-        {
-            if (!ImGui.Selectable(value, author.Equals(value, StringComparison.OrdinalIgnoreCase)))
-                continue;
-            author = value;
-            resetStorefrontScroll = true;
-        }
-    }
-
-    private void DrawRepositoryFilter(int currentApi)
-    {
-        ImGui.SameLine(0f, 10f);
-        ImGui.SetNextItemWidth(190f);
-        var label = selectedSource == "All sources" ? "All repositories" : Shorten(selectedSource, 24);
-        if (ImGui.BeginCombo("##omega-repository-filter", label))
-        {
-            DrawRepositoryChoices(currentApi);
-            ImGui.EndCombo();
-        }
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Filter the marketplace by repository");
-    }
-
-    private void DrawRepositoryChoices(int currentApi)
-    {
-        if (ImGui.Selectable("All repositories", selectedSource == "All sources"))
-        {
-            selectedSource = "All sources";
-            resetStorefrontScroll = true;
-        }
-
-        foreach (var status in catalog.GetRepositoryStatuses(currentApi)
-                     .Where(x => !x.IsStale)
-                     .OrderBy(x => x.SourceName, StringComparer.OrdinalIgnoreCase))
-        {
-            if (!ImGui.Selectable(status.SourceName, selectedSource.Equals(status.SourceName, StringComparison.OrdinalIgnoreCase)))
-                continue;
-            selectedSource = status.SourceName;
-            author = string.Empty;
-            resetStorefrontScroll = true;
-        }
-    }
-
-    private void DrawCategoryAndTagFilters(IReadOnlyList<MarketplacePlugin> mainPlugins)
-    {
-        var categories = GetTopCategories(mainPlugins);
-        ImGui.Spacing();
-        DrawPanelFiltersButton();
-        DrawTagPickerButton();
-        DrawCategoryButtons(categories);
-        DrawSelectedTagChips();
-    }
-
-    private void DrawPanelFiltersButton()
-    {
-        if (DrawPillButton("Filters", $"panel-filters-{activeView}", new Vector2(78f, 30f), filtersOpen))
-        {
-            filtersOpen = true;
-            requestFiltersPopup = true;
-        }
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip($"Filter {ViewTitle(activeView)}");
-    }
-
-    private void DrawTagPickerButton()
-    {
-        ImGui.SameLine(0f, 7f);
-        var label = selectedTags.Count == 0 ? "Tags" : $"Tags ({selectedTags.Count})";
-        var width = selectedTags.Count == 0 ? 68f : 86f;
-        if (DrawPillButton(label, "tag-picker", new Vector2(width, 30f), selectedTags.Count > 0))
-            requestTagsPopup = true;
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Search and combine marketplace tags");
-    }
-
-    private void DrawCategoryButtons(IReadOnlyList<string> categories)
-    {
-        ImGui.SameLine(0f, 7f);
-        var allLabel = activeView == MarketplaceView.Library ? "All categories" : "All";
-        var allWidth = activeView == MarketplaceView.Library ? 104f : 62f;
-        if (DrawPillButton(allLabel, "category-all", new Vector2(allWidth, 30f), selectedCategory == "All categories"))
-        {
-            selectedCategory = "All categories";
-            resetStorefrontScroll = true;
-        }
-
-        foreach (var category in categories)
-            DrawCategoryButton(category);
-
-    }
-
-    private void DrawCategoryButton(string category)
-    {
-        ImGui.SameLine(0f, 7f);
-        var active = selectedCategory.Equals(category, StringComparison.OrdinalIgnoreCase);
-        var width = Math.Clamp(ImGui.CalcTextSize(category).X + 26f, 66f, 130f);
-        if (!DrawPillButton(Shorten(category, 15), $"category-{StableId(category)}", new Vector2(width, 30f), active))
-            return;
-        selectedCategory = category;
-        resetStorefrontScroll = true;
     }
 
     private void DrawStorefrontLayout(

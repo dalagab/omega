@@ -32,7 +32,7 @@ var tests = new (string Name, Action Body)[]
     ("persistent catalog and conditional refresh contract", TestPersistentCatalogContract),
     ("daily update job remains conditional and cache-first", TestDailyUpdateJobContract),
     ("curated all-enabled migration remains one-time", TestCuratedEnableMigration),
-    ("public version metadata stays synchronized", TestVersionMetadataSynchronization),
+    ("release version metadata stays synchronized", TestVersionMetadataSynchronization),
     ("pre-login manifest requirements stay enabled", TestPreLoginManifest),
     ("title icon remains 64x64 PNG", TestTitleIcon),
     ("API-15 native menu hook typing stays explicit", TestSystemMenuHookTyping),
@@ -56,10 +56,13 @@ var tests = new (string Name, Action Body)[]
     ("Steam-style searchable tag picker remains wired", TestSearchableTagPickerContract),
     ("artwork actions remain aligned Font Awesome icon overlays", TestArtworkIconOverlayContract),
     ("marketplace chrome keeps controls in their owning panels", TestMarketplaceChromeOwnershipContract),
+    ("expanded marketplace enforces only a minimum usable size", TestMarketplaceMinimumWindowSizeContract),
     ("first-use EULA and Settings retrieval remain enforced", TestEulaFirstUseContract),
     ("GitHub distribution and repository-only installation remain documented", TestGitHubDistributionDocumentationContract),
+    ("GitHub release and security workflows remain publishable and visible", TestGitHubReleaseAndSecurityWorkflowsContract),
     ("install always chooses a repository and delegates to Dalamud", TestInstallRepositoryChooserContract),
-    ("engineering size and description defaults remain enforced", TestEngineeringStandardsContract),
+    ("plugin selections, project/source controls, uninstall, and update badge stay canonical", TestCanonicalPluginNavigationAndLifecycleContract),
+    ("repository HTTP response lifetime stays explicit and stream-bounded", TestRepositoryClientResponseLifetimeContract),
     ("regression runner remains wired into Omega.sln", TestRegressionBuildWiring),
 };
 

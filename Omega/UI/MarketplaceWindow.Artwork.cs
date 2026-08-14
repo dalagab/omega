@@ -357,9 +357,11 @@ internal sealed partial class MarketplaceWindow
 
     private void OpenPluginDetails(MarketplacePlugin plugin)
     {
+        activeView = MarketplaceView.Discover;
         selectedPlugin = ResolveSelectedVariant(plugin);
         detailsOpen = true;
-
+        resetStorefrontScroll = true;
+        // Every marketplace surface routes plugin selection to the canonical Discover product page.
         // With the central catalog active, opening details does not fan out to curated sources; only
         // matching user-added repositories may be checked. In fallback mode the prior per-plugin
         // conditional source check is retained.

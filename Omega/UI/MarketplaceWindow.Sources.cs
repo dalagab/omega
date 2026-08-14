@@ -22,8 +22,13 @@ internal sealed partial class MarketplaceWindow
         }
 
         var currentApi = Plugin.PluginInterface.Manifest.DalamudApiLevel;
+        if (DrawSettingsNavigationOrSecurity())
+        {
+            settingsOpen = keepOpen && settingsOpen;
+            ImGui.EndPopup();
+            return;
+        }
         DrawSourcesHeader();
-        if (eulaReviewOpen) { ImGui.EndPopup(); return; }
         var shownSources = GetVisibleSourceRows();
         var statuses = catalog.GetRepositoryStatuses(currentApi)
             .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
@@ -40,8 +45,6 @@ internal sealed partial class MarketplaceWindow
     {
         var curatedCount = configuration.Repositories.Count(x => x.IsCurated);
         var userCount = configuration.Repositories.Count(x => !x.IsCurated);
-        ImGui.Text("Settings");
-        DrawSettingsEulaShortcut();
         ImGui.TextDisabled("Plugin sources"); ImGui.TextWrapped("Omega's public catalog is built online into one SQLite database. Source switches filter that database locally. User-added sources can be checked explicitly and remain temporary until the next online catalog build includes them.");
         ImGui.TextDisabled(updates.OnlineConfigured
             ? $"SQLite catalog: configured • current mode: {updates.ModeLabel}"

@@ -219,7 +219,8 @@ internal sealed partial class MarketplaceWindow
             : new MarketplacePlugin { Name = entry.InternalName, InternalName = entry.InternalName, SourceName = "Installed" };
         installed.TryGetValue(entry.InternalName, out var installedPlugin);
         var iconSize = Math.Clamp(width - 12f, 94f, 126f);
-        _ = DrawPluginArtwork(plugin, installedPlugin, iconSize, width, currentApi, currentDalamudVersion, showOverlays: false);
+        if (DrawPluginArtwork(plugin, installedPlugin, iconSize, width, currentApi, currentDalamudVersion, showOverlays: false))
+            OpenPluginDetails(plugin);
         DrawCenteredTileText(Shorten(plugin.Name, 20), width, false);
         DrawCenteredTileText(entry.WantsEnabled ? "Enabled in collection" : "Disabled in collection", width, true);
     }

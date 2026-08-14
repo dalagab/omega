@@ -8,4 +8,4 @@ When published from the `main` branch its source URL is:
 https://raw.githubusercontent.com/dalagab/omega/main/repository/pluginmaster.json
 ```
 
-The manifest intentionally delegates install/update handling to Dalamud. The stable asset URL is expected to be published as `Omega.zip` on the `omega-latest` GitHub release.
+The manifest intentionally delegates install/update handling to Dalamud. The stable `Omega.zip` asset on the `omega-latest` GitHub release is maintained by `.github/workflows/release.yml` for each tagged Omega version.

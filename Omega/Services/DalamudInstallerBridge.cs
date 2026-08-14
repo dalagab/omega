@@ -14,9 +14,20 @@ internal enum InstallOutcome
 
 internal sealed record InstallResult(InstallOutcome Outcome, string Message);
 
+internal enum UninstallOutcome
+{
+    Uninstalled,
+    NotInstalled,
+    SelfRemovalBlocked,
+    DevPluginBlocked,
+    Failed,
+}
+
+internal sealed record UninstallResult(UninstallOutcome Outcome, string Message);
+
 /// <summary>
-/// Fail-closed API-15 bridge to Dalamud's own plugin installation path. Omega selects metadata and
-/// requests an install, while Dalamud remains responsible for package retrieval, loading, and lifecycle.
+/// Fail-closed API-15 bridge to Dalamud's plugin lifecycle paths. Omega selects metadata and requests
+/// install/uninstall actions, while Dalamud remains responsible for package retrieval, loading, and removal.
 /// </summary>
 internal sealed class DalamudInstallerBridge
 {
@@ -59,6 +70,104 @@ internal sealed class DalamudInstallerBridge
                 InstallOutcome.Failed,
                 $"Omega could not install {plugin.Name} through the current Dalamud installation service: {ex.GetBaseException().Message}");
         }
+    }
+
+    public async Task<UninstallResult> UninstallAsync(string internalName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(internalName))
+            return new UninstallResult(UninstallOutcome.NotInstalled, "No installed plugin was selected.");
+
+        if (internalName.Equals(pluginInterface.InternalName, StringComparison.OrdinalIgnoreCase))
+        {
+            return new UninstallResult(
+                UninstallOutcome.SelfRemovalBlocked,
+                "Omega cannot uninstall itself while it is running. Remove Omega from Dalamud's installed plugins page.");
+        }
+
+        var exposed = pluginInterface.InstalledPlugins.FirstOrDefault(x =>
+            x.InternalName.Equals(internalName, StringComparison.OrdinalIgnoreCase));
+        if (exposed is null)
+            return new UninstallResult(UninstallOutcome.NotInstalled, $"{internalName} is no longer installed.");
+        if (exposed.IsDev)
+        {
+            return new UninstallResult(
+                UninstallOutcome.DevPluginBlocked,
+                $"{exposed.Name} is a developer plugin. Remove its dev-plugin location through Dalamud instead.");
+        }
+
+        try
+        {
+            await UninstallThroughDalamudInternalsAsync(internalName, cancellationToken).ConfigureAwait(false);
+            return new UninstallResult(UninstallOutcome.Uninstalled, $"Uninstalled {exposed.Name}. Dalamud will clean the scheduled plugin files during its normal cleanup cycle.");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Dalamud internal uninstall bridge failed for {Plugin}", internalName);
+            return new UninstallResult(
+                UninstallOutcome.Failed,
+                $"Omega could not uninstall {exposed.Name} through the current Dalamud lifecycle service: {ex.GetBaseException().Message}");
+        }
+    }
+
+    private static async Task UninstallThroughDalamudInternalsAsync(string internalName, CancellationToken cancellationToken)
+    {
+        var dalamudAssembly = typeof(IDalamudPluginInterface).Assembly;
+        var pluginManagerType = RequireType(dalamudAssembly, "Dalamud.Plugin.Internal.PluginManager");
+        var disposalModeType = RequireType(dalamudAssembly, "Dalamud.Plugin.Internal.Types.PluginLoaderDisposalMode");
+        var serviceOpenType = RequireType(dalamudAssembly, "Dalamud.Service`1");
+        var pluginManager = GetInternalService(serviceOpenType, pluginManagerType);
+
+        var installedProperty = pluginManagerType.GetProperty("InstalledPlugins", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException("Dalamud PluginManager.InstalledPlugins was not found.");
+        if (installedProperty.GetValue(pluginManager) is not System.Collections.IEnumerable installedPlugins)
+            throw new InvalidOperationException("Dalamud PluginManager.InstalledPlugins is not enumerable.");
+
+        object? localPlugin = null;
+        foreach (var candidate in installedPlugins)
+        {
+            if (candidate is null)
+                continue;
+            var candidateName = candidate.GetType().GetProperty("InternalName", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(candidate) as string;
+            if (internalName.Equals(candidateName, StringComparison.OrdinalIgnoreCase))
+            {
+                localPlugin = candidate;
+                break;
+            }
+        }
+
+        if (localPlugin is null)
+            throw new InvalidOperationException("The installed plugin disappeared before Dalamud could uninstall it.");
+
+        var localType = localPlugin.GetType();
+        var isDevValue = localType.GetProperty("IsDev", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(localPlugin);
+        var isDev = isDevValue is bool value && value;
+        if (isDev)
+            throw new InvalidOperationException("Developer plugins are not removed through the marketplace uninstall path.");
+
+        var stateProperty = localType.GetProperty("State", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException("Dalamud LocalPlugin.State was not found.");
+        var state = stateProperty.GetValue(localPlugin)?.ToString() ?? string.Empty;
+        if (state is "Loaded" or "LoadError")
+        {
+            var unloadMethod = localType.GetMethod("UnloadAsync", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                ?? throw new MissingMethodException("Dalamud LocalPlugin.UnloadAsync was not found.");
+            var waitMode = Enum.Parse(disposalModeType, "WaitBeforeDispose");
+            var unloadTask = unloadMethod.Invoke(localPlugin, [waitMode]) as Task
+                ?? throw new InvalidOperationException("Dalamud plugin unload invocation did not return a Task.");
+            await unloadTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+            state = stateProperty.GetValue(localPlugin)?.ToString() ?? string.Empty;
+        }
+
+        if (state is not ("Unloaded" or "DependencyResolutionFailed"))
+            throw new InvalidOperationException($"Dalamud could not put the plugin into a removable state (state={state}).");
+
+        var scheduleDeletion = localType.GetMethod("ScheduleDeletion", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException("Dalamud LocalPlugin.ScheduleDeletion was not found.");
+        scheduleDeletion.Invoke(localPlugin, [true]);
+
+        var removePlugin = pluginManagerType.GetMethod("RemovePlugin", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException("Dalamud PluginManager.RemovePlugin was not found.");
+        removePlugin.Invoke(pluginManager, [localPlugin]);
     }
 
     private static async Task InstallThroughDalamudInternalsAsync(MarketplacePlugin plugin, bool useTesting, CancellationToken cancellationToken)

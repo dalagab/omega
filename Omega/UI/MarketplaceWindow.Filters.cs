@@ -143,61 +143,178 @@ internal sealed partial class MarketplaceWindow
     private string TagSelectionKey()
         => string.Join("\u001f", selectedTags.OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
 
-    private void DrawFiltersModal(int currentApi)
+    private void DrawInlineMarketplaceFilters(int currentApi)
     {
-        if (!filtersOpen)
+        var filterPlugins = catalog.GetMainProjection(currentApi, selectedSource).Plugins;
+        var panelHeight = activeView is MarketplaceView.Discover or MarketplaceView.Library ? 228f : 198f;
+
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 4f);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.045f, 0.052f, 0.064f, 0.72f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.16f, 0.20f, 0.24f, 0.52f));
+        ImGui.BeginChild("omega-inline-filters", new Vector2(0f, panelHeight), true,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+
+        ImGui.TextDisabled("All filters");
+        ImGui.Spacing();
+        DrawInlineFilterGrid(filterPlugins, currentApi);
+        DrawInlineFilterActions();
+
+        ImGui.EndChild();
+        ImGui.PopStyleColor(2);
+        ImGui.PopStyleVar(2);
+    }
+
+    private void DrawInlineFilterGrid(IReadOnlyList<MarketplacePlugin> filterPlugins, int currentApi)
+    {
+        if (!ImGui.BeginTable("omega-inline-filter-grid", 3, ImGuiTableFlags.SizingStretchSame | ImGuiTableFlags.PadOuterX))
             return;
 
-        var keepOpen = filtersOpen;
-        if (!ImGui.BeginPopupModal("Filters###DalagabOmegaFilters", ref keepOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        ImGui.TableNextColumn();
+        DrawInlineAuthorField(filterPlugins);
+        ImGui.TableNextColumn();
+        DrawInlineRepositoryField(currentApi);
+        ImGui.TableNextColumn();
+        DrawInlineCategoryField(filterPlugins);
+
+        ImGui.TableNextRow();
+        ImGui.TableNextColumn();
+        if (activeView is MarketplaceView.Discover or MarketplaceView.Library)
+            DrawInlineStatusField();
+        else
+            DrawInlineTagField();
+        ImGui.TableNextColumn();
+        DrawInlineApiField(filterPlugins, currentApi);
+        ImGui.TableNextColumn();
+        DrawInlineSortField();
+        ImGui.EndTable();
+    }
+
+    private void DrawInlineFilterActions()
+    {
+        ImGui.Spacing();
+        if (activeView is MarketplaceView.Discover or MarketplaceView.Library)
         {
-            filtersOpen = keepOpen;
+            DrawInlineTagField();
+            ImGui.SameLine(0f, 12f);
+        }
+
+        var preferTesting = configuration.PreferTestingBuilds;
+        if (ImGui.Checkbox("Allow testing builds", ref preferTesting))
+        {
+            configuration.PreferTestingBuilds = preferTesting;
+            configuration.Save();
+            resetStorefrontScroll = true;
+        }
+
+        if (CountActiveMarketplaceFilters() == 0)
+            return;
+
+        ImGui.SameLine(0f, 12f);
+        if (!ImGui.Button("Reset filters"))
+            return;
+        ResetFilters();
+        resetStorefrontScroll = true;
+    }
+
+    private void DrawInlineAuthorField(IReadOnlyList<MarketplacePlugin> filterPlugins)
+    {
+        ImGui.TextDisabled("Author");
+        ImGui.SetNextItemWidth(-1f);
+        var label = string.IsNullOrWhiteSpace(author) ? "All authors" : Shorten(author, 24);
+        if (!ImGui.BeginCombo("##omega-author-filter", label))
+            return;
+
+        if (ImGui.Selectable("All authors", string.IsNullOrWhiteSpace(author)))
+        {
+            author = string.Empty;
+            resetStorefrontScroll = true;
+        }
+
+        foreach (var value in filterPlugins.Select(x => x.Author)
+                     .Where(x => !string.IsNullOrWhiteSpace(x))
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!ImGui.Selectable(value, author.Equals(value, StringComparison.OrdinalIgnoreCase)))
+                continue;
+            author = value;
+            resetStorefrontScroll = true;
+        }
+        ImGui.EndCombo();
+    }
+
+    private void DrawInlineRepositoryField(int currentApi)
+    {
+        ImGui.TextDisabled("Repository");
+        ImGui.SetNextItemWidth(-1f);
+        var label = selectedSource == "All sources" ? "All repositories" : Shorten(selectedSource, 28);
+        if (!ImGui.BeginCombo("##omega-repository-filter", label))
+            return;
+
+        if (ImGui.Selectable("All repositories", selectedSource == "All sources"))
+        {
+            selectedSource = "All sources";
+            resetStorefrontScroll = true;
+        }
+
+        foreach (var status in catalog.GetRepositoryStatuses(currentApi)
+                     .Where(x => !x.IsStale)
+                     .OrderBy(x => x.SourceName, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!ImGui.Selectable(status.SourceName, selectedSource.Equals(status.SourceName, StringComparison.OrdinalIgnoreCase)))
+                continue;
+            selectedSource = status.SourceName;
+            author = string.Empty;
+            resetStorefrontScroll = true;
+        }
+        ImGui.EndCombo();
+    }
+
+    private void DrawInlineCategoryField(IReadOnlyList<MarketplacePlugin> filterPlugins)
+    {
+        ImGui.TextDisabled("Category");
+        ImGui.SetNextItemWidth(-1f);
+        if (!ImGui.BeginCombo("##omega-category-filter", selectedCategory))
+            return;
+
+        if (ImGui.Selectable("All categories", selectedCategory == "All categories"))
+        {
+            selectedCategory = "All categories";
+            resetStorefrontScroll = true;
+        }
+
+        foreach (var category in filterPlugins.SelectMany(x => x.EffectiveCategories)
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!ImGui.Selectable(category, selectedCategory.Equals(category, StringComparison.OrdinalIgnoreCase)))
+                continue;
+            selectedCategory = category;
+            resetStorefrontScroll = true;
+        }
+        ImGui.EndCombo();
+    }
+
+    private void DrawInlineStatusField()
+    {
+        if (activeView == MarketplaceView.Library)
+        {
+            DrawInlineLibraryRuntimeField();
             return;
         }
 
-        ImGui.Text($"Filters — {ViewTitle(activeView)}");
-        ImGui.TextDisabled("These filters are local and never download source JSON.");
-        ImGui.Separator();
-        DrawAdvancedFilterFields(currentApi);
-        DrawAdvancedFilterActions();
-        filtersOpen = keepOpen && filtersOpen;
-        ImGui.EndPopup();
-    }
-
-    private void DrawAdvancedFilterFields(int currentApi)
-    {
-        ImGui.SetNextItemWidth(360);
-        ImGui.InputTextWithHint("Author##filter-author", "Author contains...", ref author, 128);
-        if (activeView == MarketplaceView.Discover)
-            DrawAdvancedStatusField();
-        DrawAdvancedRepositoryField(currentApi);
-
-        var filterPlugins = catalog.GetMainProjection(currentApi, selectedSource).Plugins;
-        DrawAdvancedCategoryField(filterPlugins);
-        DrawAdvancedTagField();
-        DrawAdvancedApiField(filterPlugins, currentApi);
-        DrawAdvancedSortField();
-
-        var preferTesting = configuration.PreferTestingBuilds;
-        if (!ImGui.Checkbox("Allow testing builds", ref preferTesting))
-            return;
-        configuration.PreferTestingBuilds = preferTesting;
-        configuration.Save();
-    }
-
-    private void DrawAdvancedStatusField()
-    {
-        ImGui.SetNextItemWidth(360);
-        if (!ImGui.BeginCombo("Status##filter-status", StatusFilterLabel(statusFilter)))
+        ImGui.TextDisabled("Status");
+        ImGui.SetNextItemWidth(-1f);
+        if (!ImGui.BeginCombo("##filter-status", StatusFilterLabel(statusFilter)))
             return;
 
         foreach (var value in Enum.GetValues<MarketplaceStatusFilter>())
         {
-            if (ImGui.Selectable(StatusFilterLabel(value), statusFilter == value))
-            {
-                statusFilter = value;
-                resetStorefrontScroll = true;
-            }
+            if (!ImGui.Selectable(StatusFilterLabel(value), statusFilter == value))
+                continue;
+            statusFilter = value;
+            resetStorefrontScroll = true;
         }
         ImGui.EndCombo();
     }
@@ -210,46 +327,16 @@ internal sealed partial class MarketplaceWindow
         _ => "All plugins",
     };
 
-    private void DrawAdvancedRepositoryField(int currentApi)
+    private void DrawInlineTagField()
     {
-        var sources = new[] { "All sources" }
-            .Concat(catalog.GetRepositoryStatuses(currentApi)
-                .Where(x => !x.IsStale)
-                .Select(x => x.SourceName)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
-            .ToArray();
-        DrawStringCombo("Source", ref selectedSource, sources, 360);
-    }
-
-    private void DrawAdvancedCategoryField(IReadOnlyList<MarketplacePlugin> filterPlugins)
-    {
-        var categories = new[] { "All categories" }
-            .Concat(filterPlugins
-                .SelectMany(x => x.EffectiveCategories)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
-            .ToArray();
-        DrawStringCombo("Category", ref selectedCategory, categories, 360);
-    }
-
-    private void DrawAdvancedTagField()
-    {
-        var summary = selectedTags.Count == 0
-            ? "Any tags"
-            : string.Join(", ", selectedTags.Select(x => Shorten(x, 18)));
-        ImGui.SetNextItemWidth(360);
-        if (ImGui.Button($"Tags: {summary}##advanced-tag-picker", new Vector2(360f, 0f)))
-        {
-            filtersOpen = false;
-            ImGui.CloseCurrentPopup();
+        var label = selectedTags.Count == 0 ? "Tags: Any" : $"Tags: {selectedTags.Count} selected";
+        if (ImGui.Button($"{label}##advanced-tag-picker"))
             requestTagsPopup = true;
-        }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Search tags. Multiple selected tags use AND matching.");
     }
 
-    private void DrawAdvancedApiField(IReadOnlyList<MarketplacePlugin> filterPlugins, int currentApi)
+    private void DrawInlineApiField(IReadOnlyList<MarketplacePlugin> filterPlugins, int currentApi)
     {
         var apis = filterPlugins
             .SelectMany(x => new[] { x.DalamudApiLevel, x.TestingDalamudApiLevel ?? 0, x.OmegaMaximumApiLevel ?? 0 })
@@ -259,43 +346,40 @@ internal sealed partial class MarketplaceWindow
             .OrderByDescending(x => x)
             .ToArray();
 
-        ImGui.SetNextItemWidth(360);
+        ImGui.TextDisabled("Dalamud API");
+        ImGui.SetNextItemWidth(-1f);
         var label = selectedApi == 0 ? "Any API" : $"API {selectedApi}";
-        if (!ImGui.BeginCombo("API##filter-api", label))
+        if (!ImGui.BeginCombo("##filter-api", label))
             return;
         if (ImGui.Selectable("Any API", selectedApi == 0))
+        {
             selectedApi = 0;
+            resetStorefrontScroll = true;
+        }
         foreach (var api in apis)
         {
-            if (ImGui.Selectable($"API {api}", selectedApi == api))
-                selectedApi = api;
+            if (!ImGui.Selectable($"API {api}", selectedApi == api))
+                continue;
+            selectedApi = api;
+            resetStorefrontScroll = true;
         }
         ImGui.EndCombo();
     }
 
-    private void DrawAdvancedSortField()
+    private void DrawInlineSortField()
     {
-        ImGui.SetNextItemWidth(360);
-        if (!ImGui.BeginCombo("Sort##filter-sort", SortLabel(sort)))
+        ImGui.TextDisabled("Sort");
+        ImGui.SetNextItemWidth(-1f);
+        if (!ImGui.BeginCombo("##filter-sort", SortLabel(sort)))
             return;
         foreach (var value in Enum.GetValues<MarketplaceSort>())
         {
-            if (ImGui.Selectable(SortLabel(value), sort == value))
-                sort = value;
+            if (!ImGui.Selectable(SortLabel(value), sort == value))
+                continue;
+            sort = value;
+            resetStorefrontScroll = true;
         }
         ImGui.EndCombo();
-    }
-
-    private void DrawAdvancedFilterActions()
-    {
-        ImGui.Separator();
-        if (ImGui.Button("Reset filters"))
-            ResetFilters();
-        ImGui.SameLine();
-        if (!ImGui.Button("Close"))
-            return;
-        filtersOpen = false;
-        ImGui.CloseCurrentPopup();
     }
 
 }

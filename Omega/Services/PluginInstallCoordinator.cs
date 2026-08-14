@@ -1,11 +1,11 @@
 namespace Dalagab.Omega;
 
 /// <summary>
-/// Keeps repository preparation invisible to the marketplace user. A single install request
-/// ensures the selected source is serviceable by Dalamud, then delegates package installation
-/// to Dalamud's own installer bridge. Pre-existing user-managed repositories are never
-/// modified silently. Explicitly choosing a disabled repository in the install confirmation is
-/// consent to enable that repository for Dalamud servicing; ownership remains unchanged.
+/// Keeps plugin lifecycle preparation invisible to the marketplace user. Install requests ensure
+/// the selected source is serviceable before delegating to Dalamud; uninstall requests delegate
+/// directly to Dalamud's lifecycle bridge. Pre-existing user-managed repositories are never modified
+/// silently. Explicitly choosing a disabled repository in the install confirmation is consent to
+/// enable that repository for Dalamud servicing; ownership remains unchanged.
 /// </summary>
 internal sealed class PluginInstallCoordinator
 {
@@ -41,6 +41,14 @@ internal sealed class PluginInstallCoordinator
 
         return await installer.InstallAsync(plugin, allowTesting, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Uninstalls one installed plugin through Dalamud's lifecycle manager.
+    /// </summary>
+    public Task<UninstallResult> UninstallAsync(
+        string internalName,
+        CancellationToken cancellationToken = default)
+        => installer.UninstallAsync(internalName, cancellationToken);
 
     private async Task<InstallResult?> EnsureRepositoryReadyAsync(
         MarketplacePlugin plugin,

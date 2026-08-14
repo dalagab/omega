@@ -20,11 +20,11 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.Dummy(new Vector2(1f, 16f));
         DrawSpotlightSectionTitle("Latest additions");
-        DrawRecencyShelf(GetLatestAdditions(plugins), "latest-additions", currentApi, currentDalamudVersion);
+        DrawRecencyShelf(GetLatestAdditions(plugins), installed, "latest-additions", currentApi, currentDalamudVersion);
 
         ImGui.Dummy(new Vector2(1f, 16f));
         DrawSpotlightSectionTitle("Latest updates");
-        DrawRecencyShelf(GetLatestUpdates(plugins), "latest-updates", currentApi, currentDalamudVersion);
+        DrawRecencyShelf(GetLatestUpdates(plugins), installed, "latest-updates", currentApi, currentDalamudVersion);
     }
 
     private void DrawPromotedSpotlightRow(
@@ -75,6 +75,7 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawRecencyShelf(
         IReadOnlyList<MarketplacePlugin> plugins,
+        IReadOnlyDictionary<string, IExposedPlugin> installed,
         string shelfId,
         int currentApi,
         Version currentDalamudVersion)
@@ -92,18 +93,22 @@ internal sealed partial class MarketplaceWindow
                 continue;
             }
 
-            DrawRecencyShelfCard(plugins[index], shelfId, layout.CardWidth, currentApi, currentDalamudVersion);
+            installed.TryGetValue(plugins[index].InternalName, out var installedPlugin);
+            DrawRecencyShelfCard(plugins[index], installedPlugin, shelfId, layout.CardWidth, currentApi, currentDalamudVersion);
         }
     }
 
     private void DrawRecencyShelfCard(
         MarketplacePlugin plugin,
+        IExposedPlugin? installedPlugin,
         string shelfId,
         float cardWidth,
         int currentApi,
         Version currentDalamudVersion)
     {
         plugin = ResolveSpotlightVariant(plugin);
+        var availabilityStyle = PushUnavailableListingStyle(
+            IsListingCurrentlyAvailable(plugin, installedPlugin, currentApi, currentDalamudVersion));
         ImGui.BeginChild(
             $"{shelfId}-{plugin.InternalName}",
             new Vector2(cardWidth, SpotlightShelfCardHeight),
@@ -127,6 +132,7 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsWindowHovered())
             ImGui.SetTooltip("Open in Discover");
         ImGui.EndChild();
+        PopUnavailableListingStyle(availabilityStyle);
 
         if (clicked)
             OpenSpotlightPluginInDiscover(plugin);

@@ -64,4 +64,45 @@ internal static partial class RegressionCases
         var projectVersion = project.Descendants("Version").Single().Value.Trim();
         Equal(projectVersion, RequiredString(omega, "AssemblyVersion"), "public repository manifest version follows the Omega build");
     }
+
+    internal static void TestGitHubReleaseAndSecurityWorkflowsContract()
+    {
+        var release = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "release.yml"));
+        Contains(release, "v*.*.*.*", "release workflow is tag-driven");
+        Contains(release, "dotnet build .\\Omega.sln -c Release", "release workflow builds the complete solution and regression suite");
+        Contains(release, "latest.zip", "release workflow consumes the Dalamud.NET.Sdk package");
+        Contains(release, "Omega.zip", "stable Dalamud release asset is published under the PluginMaster name");
+        Contains(release, "omega-latest", "release workflow refreshes the stable repository endpoint");
+        Contains(release, "actions/attest@v4", "release artifact receives GitHub build-provenance attestation");
+
+        var codeql = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "codeql.yml"));
+        Contains(codeql, "github/codeql-action/init@v4", "CodeQL advanced workflow is configured");
+        Contains(codeql, "build-mode: none", "C# CodeQL analysis does not depend on the game runtime build environment");
+
+        var dependency = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "dependency-review.yml"));
+        Contains(dependency, "actions/dependency-review-action@v4", "dependency review is configured for pull requests");
+
+        var scorecard = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "scorecards.yml"));
+        Contains(scorecard, "ossf/scorecard-action@v2.4.4", "OpenSSF Scorecard workflow is configured");
+        Contains(scorecard, "publish_results: true", "Scorecard results can be surfaced by the public Scorecard service");
+
+        var dependabot = File.ReadAllText(Path.Combine(Root, ".github", "dependabot.yml"));
+        Contains(dependabot, "package-ecosystem: nuget", "Dependabot watches NuGet dependencies");
+        Contains(dependabot, "package-ecosystem: github-actions", "Dependabot watches workflow action dependencies");
+
+        var securityUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
+        Contains(securityUi, "Project security", "Settings exposes the configured project security features");
+        Contains(securityUi, "SQLite catalog integrity", "Settings explains runtime catalog integrity protection");
+        Contains(securityUi, "GitHub Security", "Settings links to live GitHub security results");
+
+        var availability = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Availability.cs"));
+        Contains(availability, "ImGuiCol.Text", "unavailable listings replace white primary text");
+        Contains(availability, "0.42f", "unavailable listings use a dark-grey primary text tone");
+        Contains(availability, "HasInstallableVariant", "availability styling follows current compatible install candidates");
+
+        var spotlight = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Spotlight.cs"));
+        Contains(spotlight, "honse-farm", "missing HonseFarm Spotlight entries request the curated source refresh path");
+        Contains(spotlight, "TextDisabled(\"Loading highlighted plugin…\")", "missing Spotlight entries remain visibly unavailable rather than bright white");
+    }
+
 }
