@@ -37,10 +37,11 @@ public sealed class Plugin : IDalamudPlugin
         var assemblyDirectory = PluginInterface.AssemblyLocation.Directory?.FullName ?? string.Empty;
         MergeBundledSources(assemblyDirectory);
 
-        var catalogDatabasePath = Path.Combine(PluginInterface.ConfigDirectory.FullName, "catalog-db");
+        var catalogDatabasePath = Path.Combine(PluginInterface.ConfigDirectory.FullName, SqliteCatalogStore.DatabaseFileName);
         catalog = new MarketplaceCatalogService(catalogDatabasePath);
-        ImportLocalCatalogBundles(assemblyDirectory);
+        ImportBootstrapCatalog(assemblyDirectory);
         catalog.LoadCached(Configuration.Repositories);
+        MergeDatabaseSources();
         defaultCatalogBridge = new DalamudDefaultCatalogBridge();
         RefreshDefaultCatalog();
 
@@ -77,40 +78,33 @@ public sealed class Plugin : IDalamudPlugin
             Configuration.Save();
     }
 
-    private void ImportLocalCatalogBundles(string assemblyDirectory)
+    private void ImportBootstrapCatalog(string assemblyDirectory)
     {
-        var bundlePaths = new[]
-        {
-            Path.Combine(assemblyDirectory, "omega-catalog-db.zip"),
-            Path.Combine(PluginInterface.ConfigDirectory.FullName, "omega-catalog-db.zip"),
-        };
-        var changed = false;
-        foreach (var bundlePath in bundlePaths.Distinct(StringComparer.OrdinalIgnoreCase))
-            changed |= TryImportCatalogBundle(bundlePath);
-        if (changed)
-            Configuration.Save();
-    }
-
-    private bool TryImportCatalogBundle(string bundlePath)
-    {
-        if (!File.Exists(bundlePath))
-            return false;
+        var bundlePath = Path.Combine(assemblyDirectory, "omega-catalog.sqlite.zip");
         try
         {
-            var import = catalog.ImportBundle(bundlePath);
-            var changed = CuratedSourceCatalog.MergeDefinitionsInto(Configuration, import.SourceDefinitions);
-            Log.Information(
-                "Omega imported prebuilt catalog bundle {Bundle}; imported={Imported}; skipped={Skipped}; sources={Sources}",
-                bundlePath,
-                import.ImportedRecords,
-                import.SkippedRecords,
-                import.SourceDefinitions.Count);
-            return changed;
+            if (catalog.ImportBootstrapBundle(bundlePath))
+                Log.Information("Omega seeded its production SQLite catalog from {Bundle}.", bundlePath);
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "Omega could not import prebuilt catalog bundle {Bundle}", bundlePath);
-            return false;
+            Log.Warning(ex, "Omega could not seed its SQLite catalog from {Bundle}.", bundlePath);
+        }
+    }
+
+    private void MergeDatabaseSources()
+    {
+        try
+        {
+            var definitions = catalog.ReadDatabaseSourceDefinitions();
+            if (!CuratedSourceCatalog.MergeDefinitionsInto(Configuration, definitions))
+                return;
+            Configuration.Save();
+            catalog.LoadCached(Configuration.Repositories);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Omega could not merge source definitions from its SQLite catalog.");
         }
     }
 

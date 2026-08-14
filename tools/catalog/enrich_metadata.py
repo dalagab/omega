@@ -1,0 +1,382 @@
+#!/usr/bin/env python3
+"""
+enrich_metadata.py — Stage 2 of the catalog builder.
+
+Reads `raw-sources.json` (output of collect_sources.py), fetches each URL
+in parallel, parses the JSON, normalizes the records, and records whether each variant has a complete basic
+metadata set. Rich-card/web-enriched presentation is decided later; this stage
+does not award Omega's project-page star.
+
+A plugin gets `metadataComplete: true` when ALL of:
+  * has a non-empty Punchline (one-line tagline)
+  * has a non-empty Description (longer text, ≥ 40 chars)
+  * has a non-empty RepoUrl (upstream link)
+  * has a non-empty AssemblyVersion (useable build)
+
+The aggregated output is `enriched-sources.json` — a single document the
+next stage (scrape_websites.py) reads, and which build_sqlite_catalog.py imports
+into Omega's canonical SQLite catalog.
+
+Usage:
+    python enrich_metadata.py --input catalog/raw-sources.json --output catalog/enriched-sources.json
+    python enrich_metadata.py --input -  # read JSON from stdin
+
+Requires: Python 3.8+ (stdlib only).
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sqlite3
+import sys
+import time
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/126.0.0.0 Safari/537.36"
+)
+
+# Basic manifest completeness criteria. This is not Omega's UI star.
+METADATA_CRITERIA = ("punchline", "description", "repoUrl", "assemblyVersion")
+
+
+# ---------------------------------------------------------------------------
+# HTTP + JSON
+# ---------------------------------------------------------------------------
+
+def normalize_url(value: str | None) -> str:
+    return (value or "").strip().rstrip("/")
+
+
+def load_source_cache(path: str | None) -> dict[str, dict]:
+    if not path:
+        return {}
+    db_path = Path(path)
+    if not db_path.exists():
+        return {}
+    out: dict[str, dict] = {}
+    try:
+        with sqlite3.connect(db_path) as db:
+            db.row_factory = sqlite3.Row
+            for row in db.execute("SELECT url,etag,last_modified,content_sha256 FROM sources WHERE url<>''"):
+                out[normalize_url(row["url"]).lower()] = dict(row)
+    except Exception:
+        return {}
+    return out
+
+
+def http_get(url: str, timeout: float = 20.0, conditional: dict | None = None) -> tuple[int, bytes, dict[str, str]]:
+    headers = {"User-Agent": USER_AGENT, "Accept": "application/json, */*;q=0.8"}
+    conditional = conditional or {}
+    if conditional.get("etag"):
+        headers["If-None-Match"] = str(conditional["etag"])
+    if conditional.get("last_modified"):
+        headers["If-Modified-Since"] = str(conditional["last_modified"])
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return int(resp.status), resp.read(), {k.lower(): v for k, v in resp.headers.items()}
+    except urllib.error.HTTPError as exc:
+        if exc.code == 304:
+            return 304, b"", {k.lower(): v for k, v in exc.headers.items()}
+        raise
+
+
+
+def _extract_plugin_list(data):
+    """Accept common PluginMaster root wrappers as well as a bare array."""
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, dict)]
+    if not isinstance(data, dict):
+        return None
+    for key in ("plugins", "Plugins", "pluginMaster", "PluginMaster", "pluginmaster", "Pluginmaster"):
+        value = data.get(key)
+        if isinstance(value, list):
+            return [item for item in value if isinstance(item, dict)]
+    for key in ("data", "Data", "result", "Result"):
+        value = data.get(key)
+        if isinstance(value, dict):
+            nested = _extract_plugin_list(value)
+            if nested is not None:
+                return nested
+    return None
+
+def fetch_source(source: dict, cache: dict[str, dict] | None = None, timeout: float = 20.0) -> dict:
+    """Fetch one URL with conditional headers when a previous SQLite state exists."""
+    url = source["url"]
+    cached = (cache or {}).get(normalize_url(url).lower(), {})
+    try:
+        status, body, headers = http_get(url, timeout=timeout, conditional=cached)
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
+        return _record(source, ok=False, error=f"{type(exc).__name__}: {exc}")
+    etag = headers.get("etag") or str(cached.get("etag") or "")
+    last_modified = headers.get("last-modified") or str(cached.get("last_modified") or "")
+    if status == 304:
+        return _record(
+            source, ok=True, error=None, notModified=True, etag=etag, lastModified=last_modified,
+            contentSha256=str(cached.get("content_sha256") or ""),
+        )
+    try:
+        data = json.loads(body.decode("utf-8", errors="replace"))
+    except json.JSONDecodeError as exc:
+        return _record(source, ok=False, error=f"Non-JSON response: {exc}")
+    entries = _extract_plugin_list(data)
+    if entries is None:
+        return _record(source, ok=False, error=f"Unsupported PluginMaster JSON root: {type(data).__name__}")
+    plugins = [_normalize_plugin(p) for p in entries]
+    for plugin in plugins:
+        plugin["metadataComplete"] = _is_metadata_complete(plugin)
+    return _record(
+        source, ok=True, error=None, plugins=plugins, pluginCount=len(plugins),
+        etag=etag, lastModified=last_modified, contentSha256=hashlib.sha256(body).hexdigest(),
+    )
+
+
+def _record(
+    source: dict,
+    ok: bool,
+    error: str | None,
+    plugins: list[dict] | None = None,
+    pluginCount: int | None = None,
+    *,
+    notModified: bool = False,
+    etag: str = "",
+    lastModified: str = "",
+    contentSha256: str = "",
+) -> dict:
+    return {
+        "url": source["url"],
+        "provider": source.get("provider"),
+        "kind": source.get("kind"),
+        "discoveredBy": source.get("discoveredBy"),
+        "sourceRepoUrl": source.get("sourceRepoUrl"),
+        "ok": ok,
+        "notModified": notModified,
+        "error": error,
+        "etag": etag,
+        "lastModified": lastModified,
+        "contentSha256": contentSha256,
+        "pluginCount": pluginCount if pluginCount is not None else (len(plugins) if plugins else 0),
+        "plugins": plugins or [],
+    }
+
+
+def _normalize_plugin(raw: dict) -> dict:
+    """Project a raw plugin entry to a stable, minimal record.
+
+    Keeps the case-sensitive field name `dalamudApiLevel` so downstream
+    grep across the DB still matches.
+    """
+    return {
+        "author": raw.get("Author"),
+        "name": raw.get("Name"),
+        "internalName": raw.get("InternalName"),
+        "punchline": raw.get("Punchline"),
+        "description": raw.get("Description"),
+        "changelog": raw.get("Changelog"),
+        "tags": raw.get("Tags") or [],
+        "categoryTags": raw.get("CategoryTags") or [],
+        "dalamudApiLevel": raw.get("DalamudApiLevel"),
+        "testingDalamudApiLevel": raw.get("TestingDalamudApiLevel"),
+        "assemblyVersion": raw.get("AssemblyVersion"),
+        "testingAssemblyVersion": raw.get("TestingAssemblyVersion"),
+        "applicableVersion": raw.get("ApplicableVersion"),
+        "minimumDalamudVersion": raw.get("MinimumDalamudVersion"),
+        "downloadCount": raw.get("DownloadCount"),
+        "iconUrl": raw.get("IconUrl"),
+        "imageUrls": raw.get("ImageUrls") or [],
+        "repoUrl": raw.get("RepoUrl"),
+        "downloadLinkInstall": raw.get("DownloadLinkInstall"),
+        "downloadLinkUpdate": raw.get("DownloadLinkUpdate"),
+        "downloadLinkTesting": raw.get("DownloadLinkTesting"),
+        "isHide": raw.get("IsHide"),
+        "isTestingExclusive": raw.get("IsTestingExclusive"),
+        "lastUpdate": raw.get("LastUpdate"),
+        "dip17Channel": raw.get("_Dip17Channel"),
+        "rawManifest": raw,
+    }
+
+
+def _is_metadata_complete(plugin: dict) -> bool:
+    """Return whether the manifest has enough basic descriptive metadata."""
+    for k in METADATA_CRITERIA:
+        v = plugin.get(k)
+        if v is None:
+            return False
+        if isinstance(v, str) and not v.strip():
+            return False
+        if k == "description" and isinstance(v, str) and len(v.strip()) < 40:
+            return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Orchestration
+# ---------------------------------------------------------------------------
+
+def fetch_sources_parallel(sources: list[dict], concurrency: int = 8, timeout: float = 20.0, cache: dict[str, dict] | None = None) -> list[dict]:
+    out: list[dict] = []
+    with ThreadPoolExecutor(max_workers=concurrency) as ex:
+        futures = {ex.submit(fetch_source, s, cache, timeout): s for s in sources}
+        for fut in as_completed(futures):
+            try:
+                rec = fut.result()
+            except Exception as e:  # defensive
+                src = futures[fut]
+                rec = _record(src, ok=False, error=f"{type(e).__name__}: {e}")
+            out.append(rec)
+    # Stable sort: ok first, then by provider
+    out.sort(key=lambda r: (not r["ok"], r.get("provider") or ""))
+    return out
+
+
+def enrich(raw_sources_path: str, concurrency: int = 8, timeout: float = 20.0, verbose: bool = True, seed_database: str | None = None) -> dict:
+    def log(msg: str) -> None:
+        if verbose:
+            print(msg, file=sys.stderr)
+
+    started = time.time()
+    log(f"Loading raw sources from {raw_sources_path} ...")
+    with open(raw_sources_path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    sources = raw.get("sources") or []
+    log(f"  -> {len(sources)} source URL(s)")
+
+    log(f"Fetching {len(sources)} source(s) in parallel (concurrency={concurrency}) ...")
+    records = fetch_sources_parallel(sources, concurrency=concurrency, timeout=timeout, cache=load_source_cache(seed_database))
+    ok = sum(1 for r in records if r["ok"])
+
+    # Flatten plugins + add sourceRepo field
+    all_plugins: list[dict] = []
+    for r in records:
+        for p in r["plugins"]:
+            p["sourceUrl"] = r["url"]
+            p["sourceProvider"] = r.get("provider")
+            all_plugins.append(p)
+
+    complete = [p for p in all_plugins if p.get("metadataComplete")]
+    apis: dict[str, int] = {}
+    for p in all_plugins:
+        v = p.get("dalamudApiLevel")
+        if v is not None:
+            apis[str(v)] = apis.get(str(v), 0) + 1
+
+    elapsed = time.time() - started
+    return {
+        "metadata": {
+            "generatedAt": datetime.now(timezone.utc).isoformat(),
+            "elapsedSeconds": round(elapsed, 2),
+            "sourceCount": len(sources),
+            "sourceOk": ok,
+            "sourceFailed": len(sources) - ok,
+            "sourceNotModified": sum(1 for r in records if r.get("notModified")),
+            "totalPluginCount": len(all_plugins),
+            "metadataCompletePluginCount": len(complete),
+            "dalamudApiLevelDistribution": apis,
+        },
+        "sources": records,
+        "plugins": all_plugins,
+        "metadataCompletePlugins": complete,
+    }
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Fetch and normalize JSON sources.")
+    ap.add_argument("--input", "-i", default="catalog/raw-sources.json",
+                    help="Input raw-sources.json (use '-' for stdin; default: %(default)s)")
+    ap.add_argument("--output", "-o", default="catalog/enriched-sources.json",
+                    help="Output JSON file (use '-' for stdout; default: %(default)s)")
+    ap.add_argument("--concurrency", "-c", type=int, default=8, help="Parallel fetchers (default: %(default)s)")
+    ap.add_argument("--timeout", type=float, default=20.0, help="Per-request timeout (default: %(default)s)")
+    ap.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
+    ap.add_argument("--seed-database", default="", help="Previous omega-catalog.sqlite for ETag/Last-Modified conditional fetches")
+    args = ap.parse_args()
+
+    if args.input == "-":
+        raw_text = sys.stdin.read()
+        raw_path = None
+    else:
+        with open(args.input, "r", encoding="utf-8") as f:
+            raw_text = f.read()
+        raw_path = args.input
+
+    raw = json.loads(raw_text)
+    # If the user fed a raw list (just sources), wrap it
+    if isinstance(raw, list):
+        raw = {"metadata": {}, "sources": raw}
+
+    sources = raw.get("sources") or []
+
+    # Re-implement the orchestration without writing to a file from inside
+    def log(msg: str) -> None:
+        if not args.quiet:
+            print(msg, file=sys.stderr)
+
+    started = time.time()
+    log(f"Loaded {len(sources)} source URL(s) from input")
+    log(f"Fetching in parallel (concurrency={args.concurrency}) ...")
+    records = fetch_sources_parallel(sources, concurrency=args.concurrency, timeout=args.timeout, cache=load_source_cache(args.seed_database))
+    ok = sum(1 for r in records if r["ok"])
+    log(f"  -> {ok}/{len(sources)} OK")
+
+    all_plugins: list[dict] = []
+    for r in records:
+        for p in r["plugins"]:
+            p["sourceUrl"] = r["url"]
+            p["sourceProvider"] = r.get("provider")
+            all_plugins.append(p)
+
+    complete = [p for p in all_plugins if p.get("metadataComplete")]
+    apis: dict[str, int] = {}
+    for p in all_plugins:
+        v = p.get("dalamudApiLevel")
+        if v is not None:
+            apis[str(v)] = apis.get(str(v), 0) + 1
+
+    elapsed = time.time() - started
+    out = {
+        "metadata": {
+            "generatedAt": datetime.now(timezone.utc).isoformat(),
+            "elapsedSeconds": round(elapsed, 2),
+            "sourceCount": len(sources),
+            "sourceOk": ok,
+            "sourceFailed": len(sources) - ok,
+            "sourceNotModified": sum(1 for r in records if r.get("notModified")),
+            "totalPluginCount": len(all_plugins),
+            "metadataCompletePluginCount": len(complete),
+            "dalamudApiLevelDistribution": apis,
+        },
+        "sources": records,
+        "plugins": all_plugins,
+        "metadataCompletePlugins": complete,
+    }
+
+    text = json.dumps(out, ensure_ascii=False, indent=2, sort_keys=False)
+    if args.output == "-":
+        sys.stdout.write(text)
+        sys.stdout.write("\n")
+    else:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(text)
+            f.write("\n")
+        meta = out["metadata"]
+        print(
+            f"\nWrote {args.output}: "
+            f"{meta['totalPluginCount']} plugins ({meta['metadataCompletePluginCount']} metadata-complete) from "
+            f"{meta['sourceOk']}/{meta['sourceCount']} source(s) OK. "
+            f"API levels: {meta['dalamudApiLevelDistribution']}"
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

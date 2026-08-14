@@ -17,8 +17,6 @@ internal sealed class OnlineCatalogDescriptor
     public string GeneratedAtUtc { get; init; } = string.Empty;
     public string CatalogSha256 { get; init; } = string.Empty;
     public string BundleSha256 { get; init; } = string.Empty;
-    // Legacy exact-bundle hash field accepted for early catalog.json prototypes.
-    public string Sha256 { get; init; } = string.Empty;
     public long Size { get; init; }
     public string DownloadUrl { get; init; } = string.Empty;
 }
@@ -236,15 +234,15 @@ internal sealed class OnlineCatalogClient : IDisposable
         => value is { Length: 64 } && value.All(c => char.IsAsciiHexDigit(c));
 
     internal static string EffectiveCatalogSha256(OnlineCatalogDescriptor descriptor)
-        => !string.IsNullOrWhiteSpace(descriptor.CatalogSha256) ? descriptor.CatalogSha256 : descriptor.Sha256;
+        => descriptor.CatalogSha256;
 
     internal static string EffectiveBundleSha256(OnlineCatalogDescriptor descriptor)
-        => !string.IsNullOrWhiteSpace(descriptor.BundleSha256) ? descriptor.BundleSha256 : descriptor.Sha256;
+        => descriptor.BundleSha256;
 
     private static void ValidateDescriptor(OnlineCatalogDescriptor descriptor, Uri descriptorUri)
     {
         if (descriptor.SchemaVersion != 1 ||
-            !string.Equals(descriptor.Schema, "omega.catalog.v1", StringComparison.OrdinalIgnoreCase))
+            !string.Equals(descriptor.Schema, "omega.catalog.sqlite.v1", StringComparison.Ordinal))
         {
             throw new InvalidDataException("Unsupported Omega online catalog descriptor schema.");
         }

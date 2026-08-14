@@ -134,7 +134,7 @@ internal static partial class RegressionCases
             "CatalogUpdateCoordinator.cs",
             "MarketplaceCatalogService.cs",
             "OnlineCatalogClient.cs",
-            "CatalogDatabase.cs",
+            "SqliteCatalogStore.cs",
             "RepositoryClient.cs",
             "DalamudRepositoryBridge.cs",
             "DalamudInstallerBridge.cs",

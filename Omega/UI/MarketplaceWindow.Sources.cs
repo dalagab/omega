@@ -42,10 +42,10 @@ internal sealed partial class MarketplaceWindow
         var userCount = configuration.Repositories.Count(x => !x.IsCurated);
         ImGui.Text("Settings");
         DrawSettingsEulaShortcut();
-        ImGui.TextDisabled("Plugin sources"); ImGui.TextWrapped("Checked repositories participate in Omega's local catalog. Uncheck any repository you do not want. Stale repositories stay listed here but their plugins are hidden from the main marketplace.");
+        ImGui.TextDisabled("Plugin sources"); ImGui.TextWrapped("Omega's public catalog is built online into one SQLite database. Source switches filter that database locally. User-added sources can be checked explicitly and remain temporary until the next online catalog build includes them.");
         ImGui.TextDisabled(updates.OnlineConfigured
-            ? $"Central catalog: configured • current mode: {updates.ModeLabel}"
-            : "Central catalog: not configured yet • local source fallback remains available");
+            ? $"SQLite catalog: configured • current mode: {updates.ModeLabel}"
+            : "SQLite catalog: no online endpoint configured • packaged/local database remains available");
         ImGui.Separator();
 
         if (ImGui.Button(sourceSection == SourceManagerSection.Curated ? $"[Curated ({curatedCount})]" : $"Curated ({curatedCount})"))
@@ -158,7 +158,7 @@ internal sealed partial class MarketplaceWindow
     private void DrawSourcesActions()
     {
         ImGui.Separator();
-        if (ImGui.Button(updates.IsRefreshing ? "Refreshing..." : "Refresh catalog sources") && !updates.IsRefreshing)
+        if (ImGui.Button(updates.IsRefreshing ? "Refreshing..." : "Refresh catalog database") && !updates.IsRefreshing)
         {
             RefreshSources();
         }
@@ -213,7 +213,7 @@ internal sealed partial class MarketplaceWindow
                 newRepositoryUrl = string.Empty;
                 sourceSection = SourceManagerSection.UserAdded;
                 sourceSearch = string.Empty;
-                operationMessage = $"Added {source.Name}. Use Refresh catalog sources in Settings when you want to seed or update its local catalog record.";
+                operationMessage = $"Added {source.Name}. Use Refresh catalog database in Settings when you want to seed or update its local catalog record.";
 
                 if (integrateNewRepositoryWithDalamud && repositoryTask is null)
                     StartRepositoryTask(source, RepositoryTaskKind.Integrate, repositoryBridge.EnsureIntegratedAsync(source.Url, source.Enabled));
@@ -229,7 +229,7 @@ internal sealed partial class MarketplaceWindow
             sourceSection = SourceManagerSection.UserAdded;
             sourceSearch = string.Empty;
             operationMessage = result.Added > 0
-                ? $"Added {result.Added} source(s); {result.Duplicates} duplicate(s), {result.Invalid} invalid. Refresh catalog sources in Settings when you want to seed/update them."
+                ? $"Added {result.Added} source(s); {result.Duplicates} duplicate(s), {result.Invalid} invalid. Refresh catalog database in Settings when you want to seed/update them."
                 : $"No sources added; {result.Duplicates} duplicate(s), {result.Invalid} invalid.";
         }
     }

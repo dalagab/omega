@@ -9,16 +9,22 @@ Project site: https://github.com/dalagab/omega
 ## What Omega provides
 
 - **Spotlight** with five editorial plugin picks, latest additions, and latest updates.
-- **Discover** with a stable five-column marketplace grid, global search, authors, repositories, categories, and searchable tags.
+- **Discover** with screenshot-rich Microsoft Store-style cards first, a compact fallback list for metadata-only plugins, full plugin product pages, global search, authors, repositories, categories, and searchable tags.
 - **Library** for installed plugins plus Dalamud-owned Collections/profile folders.
 - **Updates** for installed plugins where a newer compatible package is available.
 - **Settings** for source visibility, user-added repositories, catalog refresh, and access to the EULA/risk disclosure.
 - Official/default Dalamud plugins alongside community repositories.
 - Repository-choice installation when the same plugin is available from multiple sources.
-- A hash-checked downloadable central catalog with local source/cache fallback.
+- One hash-checked SQLite catalog built and enriched online, with the last-known-good local database retained when offline.
 - Stale-repository suppression and API compatibility handling.
 
 Omega does **not** replace Dalamud's plugin lifecycle. Where installation is supported, Omega delegates the final plugin installation to Dalamud.
+
+### Plugin artwork and screenshots
+
+Omega consumes the standard Dalamud manifest fields `IconUrl` and `ImageUrls`. `ImageUrls` is shown as the Screenshots section on the Discover product page, so repository authors do not need an Omega-specific screenshot field. See [`examples/pluginmaster.json`](examples/pluginmaster.json).
+
+The scheduled SQLite catalog workflow may also shallow-index the public project page already declared by a plugin. Standard page descriptions and preview images are cached and added as presentation-only Omega metadata. Listings enriched from a public project page receive a **star**; the star means richer indexed presentation data, not endorsement or security review. When repository variants disagree, Omega uses the single variant with the richest screenshot/description set for presentation while keeping normal Dalamud repository precedence for installation.
 
 ## Important third-party plugin warning
 
@@ -142,11 +148,11 @@ Expected development assembly:
 Omega\bin\Debug\DalagabOmega.dll
 ```
 
-The solution runs the Omega regression suite as part of the build. Contributor guidance and engineering expectations are documented in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+The solution runs the Omega regression suite as part of the build. Public contribution, architecture, and engineering expectations are documented in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Catalog pipeline
 
-Omega's central catalog workflow is documented in [`catalog/WORKFLOW.md`](catalog/WORKFLOW.md). The client prefers the published hash-checked catalog database and falls back to local/cached repository data when the online database cannot be used.
+Omega's central catalog workflow is documented in [`catalog/WORKFLOW.md`](catalog/WORKFLOW.md). GitHub Actions builds one `omega-catalog.sqlite` database from repository manifests and incremental website enrichment. The previous database supplies ETag/Last-Modified state and last-known-good website metadata, so unchanged sources can return HTTP 304 and fresh project pages are reused. Omega downloads and validates the finished database; if an online check fails, the existing local SQLite file remains active. JSON stage files are tooling/debug inputs, not runtime catalog formats.
 
 ## EULA and risk disclosure
 
@@ -156,13 +162,13 @@ Declining closes Omega without recording acceptance.
 
 ## License
 
-Omega source code is licensed under **AGPL-3.0-or-later**. See [`LICENSE`](LICENSE). Third-party plugins discovered through Omega remain subject to their own licenses, terms, privacy practices, and developer policies.
+Omega source code is licensed under **AGPL-3.0-or-later** as declared by the project. Third-party plugins discovered through Omega remain subject to their own licenses, terms, privacy practices, and developer policies.
 
 FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the Dalagab Group. Omega is not an official Square Enix, Dalamud, or XIVLauncher product.
 
-## Current source version
+## Current development build
 
-- Omega version: `0.7.8.11`
+- Omega version: `0.8.0.0`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`

@@ -110,24 +110,32 @@ internal static partial class RegressionCases
         False(details.Contains("DrawArtworkSelection", StringComparison.Ordinal), "details must not paint selection state over the image");
     }
 
-    internal static void TestDiscoverFixedGridContract()
+    internal static void TestDiscoverStoreListContract()
     {
         var discover = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
+        var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
         var storefront = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Storefront.cs"));
 
-        Contains(discover, "DiscoverColumns = 5", "Discover keeps five plugins per row");
-        Contains(discover, "DiscoverVisibleRows = 3", "Discover viewport keeps three visible rows");
-        Contains(discover, "DiscoverTileWidth = 188f", "Discover card width is fixed rather than responsive");
-        Contains(discover, "DiscoverIconSize = 128f", "Discover artwork size is fixed rather than responsive");
-        Contains(discover, "AlwaysVerticalScrollbar", "Discover reserves scrollbar width so tiles do not resize when result counts change");
-        Contains(discover, "StorefrontVirtualization.Calculate", "fixed Discover grid remains virtualized for large catalogs");
-        Contains(discover, "showOverlays: false", "Discover artwork stays clean instead of painting API and action badges over every icon");
-        Contains(discover, "useFallbackTexture: false", "Discover uses per-plugin neutral placeholders instead of repeating Omega branded fallback artwork");
-        Contains(discover, "DiscoverCardHeight = 190f", "Discover uses stable card height");
-        False(discover.Contains("Scroll to browse", StringComparison.Ordinal), "Discover does not add redundant browse instructions above the grid");
-        Contains(storefront, "DrawDiscoverGrid(filtered", "Discover delegates to its fixed-density grid");
-        False(storefront.Contains("targetTileWidth", StringComparison.Ordinal), "adaptive Discover tile sizing must not return");
-        False(storefront.Contains("Math.Floor((availableWidth + gap)", StringComparison.Ordinal), "adaptive Discover column counts must not return");
+        Contains(discover, "Enhanced listings", "Discover promotes screenshot-rich plugins before metadata-only rows");
+        Contains(discover, "DiscoverRichColumns = 3", "enhanced Discover listings use Store-style three-wide cards");
+        Contains(discover, "DrawDiscoverRichCard", "Discover renders rich screenshot cards");
+        Contains(discover, "More plugins", "metadata-only plugins continue below the enhanced cards");
+        Contains(discover, "DrawDiscoverResultRow", "Discover retains the compact fallback result row");
+        Contains(discover, "StorefrontVirtualization.Calculate", "both Discover tiers remain virtualized for large catalogues");
+        Contains(discover, "★", "website-enriched listings receive a visible star");
+        Contains(discover, "OpenPluginDetails(plugin)", "selecting either Discover result style opens its product page");
+        False(discover.Contains("DrawApiBadge", StringComparison.Ordinal), "Discover results do not paint API badges over artwork");
+
+        Contains(product, "DrawDiscoverProductPage", "Discover selection uses a full-width product page");
+        Contains(product, "Screenshots", "product page exposes the screenshot section");
+        Contains(product, "MarketplacePresentationContent", "product page consumes the richest presentation variant");
+        Contains(product, "Dalamud official", "official plugins receive an explicit Dalamud badge");
+        Contains(product, "★ Enhanced", "website-enriched product pages expose the enhanced marker");
+        Contains(product, "NSFW", "NSFW-tagged plugins receive a content badge");
+        Contains(product, "Install", "product page uses Install as the acquisition action");
+        False(product.Contains("Share", StringComparison.OrdinalIgnoreCase), "product page does not add a meaningless share control");
+        Contains(storefront, "DrawDiscoverList(filtered", "Discover delegates to the result list");
+        Contains(storefront, "DrawDiscoverProductPage", "selected Discover plugins replace the list with the product page");
     }
 
 }

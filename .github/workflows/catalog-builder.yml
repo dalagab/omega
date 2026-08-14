@@ -1,107 +1,230 @@
-name: Omega catalog builder
-
-# Operator guide: catalog/WORKFLOW.md
-# Manual/authoritative repository pre-seed: sources/curated-sources.json
-# Automatic GitHub discovery queries: catalog/search-queries.json
-# Validation result/state: catalog/latest-report.json
+name: Omega SQLite catalog builder
 
 on:
   schedule:
     - cron: "17 4 * * *"
   workflow_dispatch:
+    inputs:
+      concurrency:
+        description: "Parallel repository fetchers"
+        type: string
+        required: false
+        default: "8"
+      timeout:
+        description: "Per-request timeout in seconds"
+        type: string
+        required: false
+        default: "20"
+      website_max_age_hours:
+        description: "Reuse successful website enrichment for this many hours"
+        type: string
+        required: false
+        default: "168"
 
 permissions:
   contents: write
 
 concurrency:
-  group: omega-catalog-builder
+  group: omega-sqlite-catalog-builder
   cancel-in-progress: false
 
-jobs:
-  catalog:
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    steps:
-      - name: Check out Omega
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+env:
+  PYTHONUNBUFFERED: "1"
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+jobs:
+  collect:
+    name: 1) Discover source feeds
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-
-      - name: Test catalog pipeline
-        run: python tools/catalog/test_catalog_pipeline.py
-
-      - name: Discover GitHub repository candidates
+      - name: Discover curated, Puni.sh and GitHub PluginMaster sources
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
-          python tools/catalog/discover_sources.py
-          --queries catalog/search-queries.json
-          --output catalog/candidates.json
-          --token-env GITHUB_TOKEN
-          --max-pages 10
+          python tools/catalog/collect_sources.py
+          --curated sources/curated-sources.json
+          --output catalog/raw-sources.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raw-sources
+          path: catalog/raw-sources.json
+          retention-days: 7
 
-      - name: Download previous catalog database seed
+  enrich:
+    name: 2) Fetch and normalize manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: collect
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v4
+        with:
+          name: raw-sources
+          path: catalog/
+      - name: Download previous SQLite catalog for conditional manifest requests
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          gh release download catalog-latest \
-            --pattern omega-catalog-db.zip \
-            --dir catalog/seed || true
-
-      - name: Build validated downloadable catalog database
+          gh release download catalog-latest --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
+          if [ -f catalog/seed/omega-catalog.sqlite.zip ]; then
+            python - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('catalog/seed/omega-catalog.sqlite.zip') as zf:
+              zf.extract('omega-catalog.sqlite', 'catalog/seed')
+          PY
+          fi
+      - name: Fetch PluginMaster feeds
         run: >-
-          python tools/catalog/build_catalog.py
-          --curated sources/curated-sources.json
-          --candidates catalog/candidates.json
-          --known-bad catalog/known-bad-hashes.json
-          --out catalog/dist
-          --generated-sources-output catalog/generated-sources.json
-          --report-output catalog/latest-report.json
-          --seed-bundle catalog/seed/omega-catalog-db.zip
-          --download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-catalog-db.zip"
-          --descriptor-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/catalog.json"
-          --update-known-bad
+          python tools/catalog/enrich_metadata.py
+          --input catalog/raw-sources.json
+          --output catalog/enriched-sources.json
+          --seed-database catalog/seed/omega-catalog.sqlite
+          --concurrency ${{ inputs.concurrency || '8' }}
+          --timeout ${{ inputs.timeout || '20' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: enriched-sources
+          path: catalog/enriched-sources.json
+          retention-days: 7
 
-      - name: Save discovery state and deterministic bad-content hashes
+  scrape:
+    name: 3) Incrementally enrich public project pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: enrich
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v4
+        with:
+          name: enriched-sources
+          path: catalog/
+      - name: Download previous SQLite catalog for enrichment cache
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p catalog/seed
+          gh release download catalog-latest --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
+          if [ -f catalog/seed/omega-catalog.sqlite.zip ]; then
+            python - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('catalog/seed/omega-catalog.sqlite.zip') as zf:
+              zf.extract('omega-catalog.sqlite', 'catalog/seed')
+          PY
+          fi
+      - name: Reuse fresh enrichment and scrape only new/stale project pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/catalog/scrape_websites_incremental.py
+          --input catalog/enriched-sources.json
+          --output catalog/website-enrichment.json
+          --seed-database catalog/seed/omega-catalog.sqlite
+          --max-age-hours ${{ inputs.website_max_age_hours || '168' }}
+          --concurrency 4
+          --timeout ${{ inputs.timeout || '20' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: website-enrichment
+          path: catalog/website-enrichment.json
+          retention-days: 7
+
+  build:
+    name: 4) Build, validate and publish SQLite catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [collect, enrich, scrape]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v4
+        with:
+          name: raw-sources
+          path: catalog/
+      - uses: actions/download-artifact@v4
+        with:
+          name: enriched-sources
+          path: catalog/
+      - uses: actions/download-artifact@v4
+        with:
+          name: website-enrichment
+          path: catalog/
+      - name: Download previous SQLite database seed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/seed
+          gh release download catalog-latest --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
+      - name: Run SQLite catalog self-test
+        run: python tools/catalog/test_sqlite_catalog.py
+      - name: Build one authoritative SQLite catalog
+        run: >-
+          python tools/catalog/build_sqlite_catalog.py
+          --out catalog/dist
+          --seed catalog/seed/omega-catalog.sqlite.zip
+          --curated sources/curated-sources.json
+          --raw-sources catalog/raw-sources.json
+          --enriched-sources catalog/enriched-sources.json
+          --website-enrichment catalog/website-enrichment.json
+          --download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-catalog.sqlite.zip"
+          --descriptor-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/catalog.json"
+      - name: Validate generated database
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, sqlite3
+          db=sqlite3.connect('catalog/dist/omega-catalog.sqlite')
+          assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+          assert int(db.execute("select value from catalog_meta where key='schema_version'").fetchone()[0]) == 1
+          assert db.execute('select count(*) from runtime_plugin_variants').fetchone()[0] > 0
+          print(json.dumps(dict(db.execute('select key,value from catalog_meta')), indent=2))
+          PY
+      - name: Update endpoint and human-readable report only
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp catalog/dist/catalog-endpoint.json catalog/catalog-endpoint.json
+          cp catalog/dist/catalog-report.json catalog/latest-report.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp catalog/dist/catalog-endpoint.json catalog/catalog-endpoint.json
-          git add catalog/candidates.json catalog/known-bad-hashes.json catalog/generated-sources.json catalog/latest-report.json catalog/catalog-endpoint.json
-          if git diff --cached --quiet; then
-            echo "No catalog state changes to commit."
-          else
-            git commit -m "catalog: refresh discovery queue and validation state [skip ci]"
+          git add catalog/catalog-endpoint.json catalog/latest-report.json
+          if ! git diff --cached --quiet; then
+            git commit -m "catalog: refresh SQLite report [skip ci]"
             git push
           fi
-
-      - name: Upload catalog build artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: omega-catalog-db
+          name: omega-sqlite-catalog
           path: |
-            catalog/dist/omega-catalog-db.zip
-            catalog/dist/omega-catalog-db.zip.sha256
+            catalog/dist/omega-catalog.sqlite
+            catalog/dist/omega-catalog.sqlite.zip
+            catalog/dist/omega-catalog.sqlite.zip.sha256
             catalog/dist/catalog.json
             catalog/dist/catalog-endpoint.json
             catalog/dist/catalog-report.json
-            catalog/dist/sources.json
-            catalog/generated-sources.json
-            catalog/known-bad-hashes.json
-          if-no-files-found: error
+            catalog/dist/debug/*.json
           retention-days: 30
-
-      - name: Publish stable downloadable catalog release
+      - name: Publish stable catalog release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -109,22 +232,32 @@ jobs:
           set -euo pipefail
           if ! gh release view catalog-latest >/dev/null 2>&1; then
             gh release create catalog-latest \
-              --title "Omega catalog database" \
-              --notes "Automatically generated Omega repository catalog. This release tag is stable; assets are replaced by the scheduled catalog builder."
+              --title "Omega SQLite catalog" \
+              --notes "Automatically generated Omega marketplace database. The release tag stays stable while assets are replaced."
           fi
           gh release upload catalog-latest \
-            catalog/dist/omega-catalog-db.zip \
-            catalog/dist/omega-catalog-db.zip.sha256 \
+            catalog/dist/omega-catalog.sqlite.zip \
+            catalog/dist/omega-catalog.sqlite.zip.sha256 \
             catalog/dist/catalog.json \
-            catalog/dist/catalog-endpoint.json \
             catalog/dist/catalog-report.json \
-            catalog/dist/sources.json \
-            catalog/generated-sources.json \
-            catalog/known-bad-hashes.json \
             --clobber
-
-      - name: Smoke-test published catalog download
-        run: >-
-          python tools/catalog/test_live_catalog.py
-          --descriptor-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/catalog.json"
-          --expected-bundle catalog/dist/omega-catalog-db.zip
+      - name: Verify published descriptor and bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, urllib.request, zipfile, io, sqlite3, tempfile, os
+          base='https://github.com/${{ github.repository }}/releases/download/catalog-latest/'
+          d=json.load(urllib.request.urlopen(base+'catalog.json'))
+          b=urllib.request.urlopen(base+'omega-catalog.sqlite.zip').read()
+          assert hashlib.sha256(b).hexdigest() == d['bundleSha256']
+          with zipfile.ZipFile(io.BytesIO(b)) as zf:
+              raw=zf.read('omega-catalog.sqlite')
+          assert hashlib.sha256(raw).hexdigest() == d['catalogSha256']
+          fd,path=tempfile.mkstemp(suffix='.sqlite'); os.close(fd)
+          open(path,'wb').write(raw)
+          db=sqlite3.connect(path)
+          assert db.execute('pragma integrity_check').fetchone()[0]=='ok'
+          os.unlink(path)
+          print('Published SQLite catalog verified.')
+          PY

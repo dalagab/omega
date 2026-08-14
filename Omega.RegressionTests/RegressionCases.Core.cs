@@ -22,6 +22,11 @@ internal static partial class RegressionCases
             "IsHide": "False",
             "LastUpdated": "123456789",
             "CategoryTags": ["Utility"],
+            "ImageUrls": ["https://example.invalid/screenshot-1.png", "https://example.invalid/screenshot-2.png"],
+            "OmegaWebsiteUrl": "https://example.invalid/project",
+            "OmegaWebsiteDescription": "Richer website description",
+            "OmegaWebsiteImageUrls": ["https://example.invalid/web-shot.png"],
+            "OmegaEnriched": true,
             "DownloadLinkInstall": "https://example.invalid/test.zip",
           },
         ]
@@ -35,6 +40,40 @@ internal static partial class RegressionCases
         Equal(123456789L, plugin.LastUpdate, "LastUpdated alias");
         False(plugin.IsHide, "string boolean");
         True(plugin.EffectiveCategories.Contains("Utility"), "category parsing");
+        Equal(2, plugin.ImageUrls.Count, "screenshot URL parsing");
+        True(plugin.OmegaEnriched, "website enrichment marker parsing");
+        Equal(1, plugin.OmegaWebsiteImageUrls.Count, "website image parsing");
+    }
+
+
+    internal static void TestPresentationRichnessSelection()
+    {
+        var sparse = new MarketplacePlugin
+        {
+            InternalName = "SamePlugin",
+            Name = "Same Plugin",
+            SourceName = "Official",
+            SourceUrl = "https://example.invalid/official.json",
+            SourceIsOfficial = true,
+            ImageUrls = ["https://example.invalid/one.png"],
+            Description = "Short",
+        };
+        var rich = new MarketplacePlugin
+        {
+            InternalName = "SamePlugin",
+            Name = "Same Plugin",
+            SourceName = "Community rich source",
+            SourceUrl = "https://example.invalid/rich.json",
+            ImageUrls = ["https://example.invalid/a.png", "https://example.invalid/b.png", "https://example.invalid/c.png"],
+            OmegaWebsiteImageUrls = ["https://example.invalid/d.png"],
+            OmegaWebsiteDescription = "A much richer presentation source with screenshots and descriptive content.",
+            OmegaEnriched = true,
+        };
+
+        var content = MarketplacePresentationRules.Choose(sparse, [sparse, rich]);
+        Equal("Community rich source", content.Variant.SourceName, "presentation chooses the variant with the most usable information");
+        Equal(4, content.Images.Count, "presentation images come from one richest source rather than conflicting source mixing");
+        True(content.IsEnhanced, "website enrichment survives independent install-source precedence");
     }
 
     internal static void TestManifestParserWrappers()

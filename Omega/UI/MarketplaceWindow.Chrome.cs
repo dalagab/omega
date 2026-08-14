@@ -161,12 +161,6 @@ internal sealed partial class MarketplaceWindow
     {
         ImGui.TextUnformatted(ViewTitle(activeView));
 
-        if (activeView == MarketplaceView.Discover)
-        {
-            ImGui.TextDisabled($"Dalamud {dalamudVersion}  •  API {currentApi}");
-            DrawCatalogStatus(currentApi);
-        }
-
         if (!string.IsNullOrWhiteSpace(operationMessage))
             ImGui.TextWrapped(operationMessage);
 
@@ -176,11 +170,11 @@ internal sealed partial class MarketplaceWindow
     private void DrawCatalogStatus(int currentApi)
     {
         if (!catalog.HasLoaded)
-            ImGui.TextDisabled("Local catalog is empty — open Settings and refresh sources once to seed it");
+            ImGui.TextDisabled("Catalog database is empty — open Settings and refresh the online catalog");
         else if (!catalog.MatchesConfiguredSources(configuration.Repositories))
-            ImGui.TextDisabled("Local catalog is missing enabled sources — open Settings and refresh to check them");
+            ImGui.TextDisabled("Some enabled custom sources are not loaded — refresh them from Settings");
         else if (catalog.LastRefresh is not null)
-            ImGui.TextDisabled($"{catalog.GetMainProjection(currentApi).Plugins.Count} plugins • {catalog.CachedRepositoryCount} cached sources • {updates.ModeLabel} • checked {catalog.LastRefresh.Value.LocalDateTime:t}");
+            ImGui.TextDisabled($"{catalog.GetMainProjection(currentApi).Plugins.Count} plugins • {catalog.CachedRepositoryCount} database sources • {updates.ModeLabel} • checked {catalog.LastRefresh.Value.LocalDateTime:t}");
 
         if (!string.IsNullOrWhiteSpace(catalog.LastError))
         {
@@ -189,9 +183,9 @@ internal sealed partial class MarketplaceWindow
                 ImGui.SetTooltip(catalog.LastError);
         }
 
-        if (!string.IsNullOrWhiteSpace(updates.LastOnlineError) && updates.Mode == CatalogAcquisitionMode.LocalFallback)
+        if (!string.IsNullOrWhiteSpace(updates.LastOnlineError) && updates.Mode == CatalogAcquisitionMode.LocalCache)
         {
-            ImGui.TextDisabled("Central catalog unavailable — Omega is using the local source fallback.");
+            ImGui.TextDisabled("Online catalog unavailable — Omega kept the last local SQLite database.");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(updates.LastOnlineError);
         }

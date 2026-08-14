@@ -13,7 +13,7 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool PreferTestingBuilds { get; set; }
 
-    // Last completed automatic full-source conditional check. Used by the daily update job.
+    // Last completed automatic central-catalog check. Used by the daily update job.
     public DateTimeOffset? LastDailyUpdateCheckUtc { get; set; }
 
     // First-use EULA acceptance is intentionally independent of the Omega build/version.

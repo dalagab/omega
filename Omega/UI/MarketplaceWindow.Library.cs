@@ -57,6 +57,7 @@ internal sealed partial class MarketplaceWindow
         => activeView switch
         {
             MarketplaceView.Spotlight => false,
+            MarketplaceView.Discover when detailsOpen => false,
             MarketplaceView.Library when librarySection == LibrarySection.Collections => false,
             _ => true,
         };

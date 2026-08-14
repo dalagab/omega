@@ -71,7 +71,8 @@ internal static partial class RegressionCases
         var current = new DirectoryInfo(start);
         while (current is not null)
         {
-            if (File.Exists(Path.Combine(current.FullName, "Omega.sln")) && Directory.Exists(Path.Combine(current.FullName, "Omega")))
+            if (File.Exists(Path.Combine(current.FullName, "Omega.sln")) &&
+                Directory.Exists(Path.Combine(current.FullName, "Omega")))
                 return current.FullName;
             current = current.Parent;
         }

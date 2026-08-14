@@ -175,13 +175,13 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        var available = ImGui.GetContentRegionAvail();
-        if (activeView == MarketplaceView.Discover && available.X < DiscoverSplitMinimumWidth)
+        if (activeView == MarketplaceView.Discover)
         {
-            DrawPluginDetailsPanel(installed, currentApi, currentDalamudVersion);
+            DrawDiscoverProductPage(installed, currentApi, currentDalamudVersion);
             return;
         }
 
+        var available = ImGui.GetContentRegionAvail();
         if (available.X < 760f)
         {
             DrawPluginDetailsPanel(installed, currentApi, currentDalamudVersion);
@@ -209,7 +209,7 @@ internal sealed partial class MarketplaceWindow
         if (resetStorefrontScroll)
         {
             if (activeView == MarketplaceView.Discover)
-                resetDiscoverGridScroll = true;
+                resetDiscoverListScroll = true;
             else
                 ImGui.SetScrollY(0f);
             resetStorefrontScroll = false;
@@ -225,7 +225,7 @@ internal sealed partial class MarketplaceWindow
         {
             ImGui.Spacing();
             ImGui.Text("Omega needs an initial catalog snapshot.");
-            ImGui.TextWrapped("Omega first tries the published catalog database. If that cannot be downloaded or verified, it rebuilds the same local database from the bundled source list. Once seeded, the catalog is reused across restarts.");
+            ImGui.TextWrapped("Omega uses one validated SQLite catalog. A packaged bootstrap can seed the first run; online refreshes replace it only after hash, schema, and integrity validation. The last known-good local database is kept across restarts.");
             ImGui.Spacing();
             if (DrawPillButton("Open Settings", "empty-settings", new Vector2(180f, 34f), true))
                 OpenSettings();
@@ -271,7 +271,7 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        DrawDiscoverGrid(filtered, installed, currentApi, currentDalamudVersion);
+        DrawDiscoverList(filtered, installed, currentApi, currentDalamudVersion);
     }
 
 }

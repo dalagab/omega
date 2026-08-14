@@ -4,18 +4,12 @@ internal enum CatalogAcquisitionMode
 {
     LocalCache,
     OnlineCatalog,
-    LocalFallback,
 }
 
 /// <summary>
-/// Preferred/fallback catalog acquisition policy.
-///
-/// Preferred: check one tiny catalog.json descriptor, download the complete prebuilt database only
-/// when its semantic catalog hash changes, then layer the official/default Dalamud catalogue and
-/// user-added repositories on top.
-///
-/// Fallback: if the online catalog cannot be checked/downloaded/validated, conditionally rebuild
-/// the same local database from every enabled repository definition already bundled/configured.
+/// Omega's public catalog is built online and shipped as one validated SQLite database. If the
+/// online descriptor cannot be checked, the last-known-good local database remains active; the
+/// game client never rebuilds the public catalog by crawling every repository itself.
 /// </summary>
 internal sealed class CatalogUpdateCoordinator : IDisposable
 {
@@ -52,18 +46,8 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
     public bool OnlineConfigured => Uri.TryCreate(endpoint.DescriptorUrl, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps;
     public CatalogAcquisitionMode Mode { get; private set; }
     public string LastOnlineError { get; private set; } = string.Empty;
+    public string ModeLabel => Mode == CatalogAcquisitionMode.OnlineCatalog ? "Online DB" : "Local DB";
 
-    public string ModeLabel => Mode switch
-    {
-        CatalogAcquisitionMode.OnlineCatalog => "Online DB",
-        CatalogAcquisitionMode.LocalFallback => "Local fallback",
-        _ => "Local cache",
-    };
-
-    /// <summary>
-    /// Fresh installs may seed asynchronously. Existing local databases never cause startup
-    /// network traffic; their first online hash check remains daily/open/manual.
-    /// </summary>
     public void SeedIfEmpty()
     {
         if (catalog.HasLoaded || IsRefreshing)
@@ -74,19 +58,13 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
     public Task RefreshAsync() => RefreshAsync(cts.Token);
 
     /// <summary>
-    /// Refreshes a small explicitly curated subset regardless of whether the central catalog or
-    /// local fallback is active. This is used for editorial surfaces such as Spotlight when a
-    /// required curated plugin is missing from an older local cache. User-disabled sources remain
-    /// disabled and are never contacted by this helper.
+    /// Editorial recovery remains bounded: it can directly check an explicitly requested source,
+    /// but this never becomes a second persisted catalog database.
     /// </summary>
     public Task RefreshCuratedSourcesAsync(IEnumerable<string> curatedIds)
     {
-        var wanted = curatedIds
-            .Where(x => !string.IsNullOrWhiteSpace(x))
+        var wanted = curatedIds.Where(x => !string.IsNullOrWhiteSpace(x))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (wanted.Count == 0)
-            return Task.CompletedTask;
-
         var selected = configuration.Repositories
             .Where(x => x.Enabled && x.IsCurated && wanted.Contains(x.CuratedId))
             .ToArray();
@@ -103,21 +81,20 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
         try
         {
             LastOnlineError = string.Empty;
-            if (OnlineConfigured)
+            if (!OnlineConfigured)
             {
-                var onlineApplied = await TryApplyOnlineCatalogAsync(cancellationToken).ConfigureAwait(false);
-                if (onlineApplied)
-                {
-                    await RefreshOverlayRepositoriesAsync(cancellationToken).ConfigureAwait(false);
-                    Mode = CatalogAcquisitionMode.OnlineCatalog;
-                    return;
-                }
+                LastOnlineError = "No HTTPS Omega catalog endpoint is configured.";
+                Mode = CatalogAcquisitionMode.LocalCache;
+                return;
             }
 
-            // Central catalog unavailable: fall back to the complete local source definition list.
-            await catalog.RefreshAsync(configuration.Repositories).ConfigureAwait(false);
-            Mode = CatalogAcquisitionMode.LocalFallback;
-            stateStore.ClearAppliedCatalog(endpoint.DescriptorUrl);
+            var onlineApplied = await TryApplyOnlineCatalogAsync(cancellationToken).ConfigureAwait(false);
+            Mode = onlineApplied ? CatalogAcquisitionMode.OnlineCatalog : CatalogAcquisitionMode.LocalCache;
+
+            // User-added sources are an explicit local overlay and can still be refreshed directly.
+            var userSources = configuration.Repositories.Where(x => x.Enabled && !x.IsCurated).ToArray();
+            if (userSources.Length > 0)
+                await catalog.RefreshRepositoriesAsync(userSources, configuration.Repositories).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -128,23 +105,8 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
         }
     }
 
-    /// <summary>
-    /// When the authoritative online DB is active, opening plugin details checks local overlay
-    /// sources: the official Dalamud repository plus user-added repositories. Other curated sources
-    /// stay represented by the central DB. In fallback mode the complete source list is retained.
-    /// </summary>
     public Task RefreshPluginSourcesAsync(string internalName)
-    {
-        if (Mode != CatalogAcquisitionMode.OnlineCatalog)
-            return catalog.RefreshPluginSourcesAsync(internalName, configuration.Repositories);
-
-        var selected = configuration.Repositories.Where(x =>
-            IsOnlineOverlaySource(x) &&
-            catalog.GetVariants(internalName).Any(v =>
-                NormalizeUrl(v.SourceUrl).Equals(NormalizeUrl(x.Url), StringComparison.OrdinalIgnoreCase)));
-
-        return catalog.RefreshRepositoriesAsync(selected, configuration.Repositories);
-    }
+        => catalog.RefreshPluginSourcesAsync(internalName, configuration.Repositories);
 
     private async Task<bool> TryApplyOnlineCatalogAsync(CancellationToken cancellationToken)
     {
@@ -161,34 +123,26 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
         if (result.Status == OnlineCatalogCheckStatus.Unavailable)
         {
             LastOnlineError = result.Error;
-            Plugin.Log.Warning("Omega online catalog unavailable; using local repository fallback. Reason: {Reason}", result.Error);
+            Plugin.Log.Warning("Omega online SQLite catalog unavailable; retaining local database. Reason: {Reason}", result.Error);
             return false;
         }
 
         if (result.Status == OnlineCatalogCheckStatus.Current)
-        {
-            // Hash match means the local DB already corresponds to the published central snapshot.
-            if (!catalog.HasLoaded)
-                return false;
-            return true;
-        }
+            return catalog.HasLoaded;
 
         if (result.Status != OnlineCatalogCheckStatus.Downloaded ||
-            result.Descriptor is null ||
-            string.IsNullOrWhiteSpace(result.BundlePath))
+            result.Descriptor is null || string.IsNullOrWhiteSpace(result.BundlePath))
         {
-            LastOnlineError = "Online catalog returned no usable database bundle.";
+            LastOnlineError = "Online catalog returned no usable SQLite bundle.";
             return false;
         }
 
         try
         {
-            var imported = catalog.ReplaceFromBundle(result.BundlePath, configuration.Repositories);
-            var configChanged = CuratedSourceCatalog.MergeDefinitionsInto(configuration, imported.SourceDefinitions);
-            if (configChanged)
+            var applied = catalog.ReplaceFromBundle(result.BundlePath, configuration.Repositories);
+            if (CuratedSourceCatalog.MergeDefinitionsInto(configuration, applied.SourceDefinitions))
             {
                 configuration.Save();
-                // Newly introduced online source definitions should participate in projection.
                 catalog.LoadCached(configuration.Repositories);
             }
 
@@ -199,22 +153,22 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
             {
                 SchemaVersion = 1,
                 DescriptorUrl = endpoint.DescriptorUrl,
-                CatalogSha256 = OnlineCatalogClient.EffectiveCatalogSha256(result.Descriptor).ToLowerInvariant(),
+                CatalogSha256 = result.Descriptor.CatalogSha256.ToLowerInvariant(),
                 GeneratedAtUtc = generatedAt,
                 AppliedAtUtc = DateTimeOffset.UtcNow,
             });
 
             Plugin.Log.Information(
-                "Omega applied central catalog database; records={Records}; sources={Sources}; sha256={Hash}",
-                imported.Records.Count,
-                imported.SourceDefinitions.Count,
-                OnlineCatalogClient.EffectiveCatalogSha256(result.Descriptor));
+                "Omega applied SQLite catalog; variants={Variants}; sources={Sources}; sha256={Hash}",
+                applied.VariantCount,
+                applied.SourceDefinitions.Count,
+                result.Descriptor.CatalogSha256);
             return true;
         }
         catch (Exception ex)
         {
             LastOnlineError = ex.Message;
-            Plugin.Log.Warning(ex, "Omega rejected the downloaded central catalog; using local repository fallback.");
+            Plugin.Log.Warning(ex, "Omega rejected the downloaded SQLite catalog; retaining the previous local database.");
             return false;
         }
         finally
@@ -223,22 +177,6 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
         }
     }
 
-    private async Task RefreshOverlayRepositoriesAsync(CancellationToken cancellationToken)
-    {
-        var overlayRepositories = configuration.Repositories
-            .Where(IsOnlineOverlaySource)
-            .ToArray();
-        if (overlayRepositories.Length == 0)
-            return;
-
-        await catalog.RefreshRepositoriesAsync(overlayRepositories, configuration.Repositories).ConfigureAwait(false);
-    }
-
-    private static bool IsOnlineOverlaySource(RepositorySource source)
-        => source.Enabled && (source.IsOfficial || !source.IsCurated);
-
-    private static string NormalizeUrl(string? url) => (url ?? string.Empty).Trim().TrimEnd('/');
-
     public void Dispose()
     {
         cts.Cancel();
@@ -246,12 +184,11 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
         cts.Dispose();
         try
         {
-            if (Directory.Exists(tempDirectory))
+            if (!Directory.Exists(tempDirectory))
+                return;
+            foreach (var file in Directory.EnumerateFiles(tempDirectory, "omega-catalog-*.zip"))
             {
-                foreach (var file in Directory.EnumerateFiles(tempDirectory, "omega-catalog-*.zip"))
-                {
-                    try { File.Delete(file); } catch { }
-                }
+                try { File.Delete(file); } catch { }
             }
         }
         catch { }

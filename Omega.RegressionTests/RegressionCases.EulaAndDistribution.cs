@@ -23,8 +23,7 @@ internal static partial class RegressionCases
         Contains(eulaUi, "eulaDocumentAvailable && remaining <= 0", "missing EULA document fails closed instead of allowing acceptance");
         Contains(eulaUi, "https://github.com/dalagab/omega", "EULA UI points to the public project site");
 
-        var settings = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sources.cs"));
-        Contains(settings, "View EULA / Risk Disclosure", "Settings can reopen the EULA after acceptance");
+        Contains(eulaUi, "View EULA / Risk Disclosure", "Settings can reopen the EULA after acceptance");
 
         var project = XDocument.Load(Path.Combine(Root, "Omega", "DalagabOmega.csproj"));
         True(project.Descendants("Content").Any(x =>
@@ -40,7 +39,7 @@ internal static partial class RegressionCases
     internal static void TestGitHubDistributionDocumentationContract()
     {
         var readme = File.ReadAllText(Path.Combine(Root, "README.md"));
-        Contains(readme, "Omega is an open-source visual marketplace for Dalamud plugins", "GitHub README explains the product");
+        Contains(readme, "open-source visual marketplace for Dalamud plugins", "GitHub README explains the product");
         Contains(readme, "Install Omega normally through Dalamud", "README keeps installation inside Dalamud");
         Contains(readme, "Install-OmegaRepository.ps1", "README documents the source-registration installer");
         Contains(readme, "does **not** install Omega itself", "README explains the installer trust boundary");

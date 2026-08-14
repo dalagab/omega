@@ -10,116 +10,62 @@ internal static partial class RegressionCases
 {
     internal static void TestCatalogDatabaseRoundTrip()
     {
-        var temp = Path.Combine(Path.GetTempPath(), "omega-regression-" + Guid.NewGuid().ToString("N"));
+        var bootstrap = Path.Combine(Root, "catalog", "bootstrap", "omega-catalog.sqlite.zip");
+        True(File.Exists(bootstrap), "packaged SQLite bootstrap exists");
+        var temp = Path.Combine(Path.GetTempPath(), "omega-sqlite-regression-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
         try
         {
-            var database = new CatalogDatabase(temp);
-            const string url = "https://example.invalid/repository.json";
-            const string manifest = "[{\"Name\":\"Cached\",\"InternalName\":\"Cached\"}]";
-            var stored = database.Store(url, manifest, "\"etag-1\"", "Wed, 13 Aug 2026 10:00:00 GMT", DateTimeOffset.UtcNow);
-            True(stored.ContentSha256.Length == 64, "content hash stored");
-
-            var loaded = database.TryRead(url);
-            True(loaded is not null, "database record readable");
-            Equal(manifest, loaded!.ManifestJson, "manifest round-trip");
-            Equal("\"etag-1\"", loaded.ETag, "etag round-trip");
-
-            var later = DateTimeOffset.UtcNow.AddMinutes(1);
-            database.MarkChecked(loaded, "\"etag-2\"", null, later);
-            var checkedRecord = database.TryRead(url);
-            Equal("\"etag-2\"", checkedRecord!.ETag, "etag update");
-            Equal(later, checkedRecord.CheckedAtUtc, "checked timestamp update");
+            var dbPath = Path.Combine(temp, SqliteCatalogStore.DatabaseFileName);
+            var store = new SqliteCatalogStore(dbPath);
+            True(store.ImportBootstrapBundle(bootstrap), "bootstrap imports into empty catalog");
+            var snapshot = store.ReadSnapshot();
+            True(snapshot.Variants.Count > 0, "SQLite snapshot exposes variants");
+            True(snapshot.SourceDefinitions.Count > 0, "SQLite snapshot exposes source definitions");
+            True(snapshot.Variants.Any(x => x.InternalName.Equals("AetherLovePlugin", StringComparison.OrdinalIgnoreCase)), "bootstrap contains AetherLove");
         }
         finally
         {
-            if (Directory.Exists(temp))
-                Directory.Delete(temp, true);
+            if (Directory.Exists(temp)) Directory.Delete(temp, true);
         }
     }
 
     internal static void TestCatalogBundleImport()
     {
-        var temp = Path.Combine(Path.GetTempPath(), "omega-bundle-regression-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(temp);
-        try
-        {
-            var database = new CatalogDatabase(Path.Combine(temp, "db"));
-            const string url = "https://example.invalid/prebuilt.json";
-            const string manifest = "[{\"Name\":\"Prebuilt\",\"InternalName\":\"Prebuilt\",\"DalamudApiLevel\":15}]";
-            var checkedAt = DateTimeOffset.UtcNow.AddMinutes(-5);
-            var record = new CatalogDatabaseRecord
-            {
-                SchemaVersion = 1,
-                Url = url,
-                ContentSha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(manifest))).ToLowerInvariant(),
-                FetchedAtUtc = checkedAt,
-                CheckedAtUtc = checkedAt,
-                ManifestJson = manifest,
-            };
-
-            var zipPath = Path.Combine(temp, "omega-catalog-db.zip");
-            using (var archive = System.IO.Compression.ZipFile.Open(zipPath, System.IO.Compression.ZipArchiveMode.Create))
-            {
-                var recordEntry = archive.CreateEntry("catalog-db/test.json");
-                using (var writer = new StreamWriter(recordEntry.Open()))
-                    writer.Write(JsonSerializer.Serialize(record));
-
-                var sourcesEntry = archive.CreateEntry("sources.json");
-                using (var writer = new StreamWriter(sourcesEntry.Open()))
-                {
-                    writer.Write("[{\"id\":\"prebuilt\",\"name\":\"Prebuilt source\",\"url\":\"https://example.invalid/prebuilt.json\",\"enabledByDefault\":true}]");
-                }
-            }
-
-            var imported = CatalogBundleImporter.Import(zipPath, database);
-            Equal(1, imported.ImportedRecords, "bundle record import count");
-            Equal(1, imported.SourceDefinitions.Count, "bundle source definition count");
-            Equal("prebuilt", imported.SourceDefinitions[0].Id, "bundle source id");
-            True(database.TryRead(url) is not null, "bundle record becomes readable");
-
-            // Reimporting the same timestamp must not overwrite equally-new local state.
-            var second = CatalogBundleImporter.Import(zipPath, database);
-            Equal(0, second.ImportedRecords, "equal/older bundle does not overwrite local record");
-        }
-        finally
-        {
-            if (Directory.Exists(temp))
-                Directory.Delete(temp, true);
-        }
+        var source = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "SqliteCatalogStore.cs"));
+        Contains(source, "omega-catalog.sqlite", "one production catalog filename");
+        Contains(source, "PRAGMA integrity_check", "database integrity validation");
+        Contains(source, "ReplaceFromBundle", "online bundle atomically replaces database");
+        Contains(source, "runtime_plugin_variants", "runtime reads normalized SQLite view");
+        False(source.Contains("ManifestJson", StringComparison.Ordinal), "runtime SQLite store does not persist per-source manifest JSON files");
     }
 
     internal static void TestPersistentCatalogContract()
     {
         var plugin = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
-        Contains(plugin, "catalog-db", "persistent catalog directory");
+        Contains(plugin, "omega-catalog.sqlite", "single persistent SQLite catalog");
         Contains(plugin, "catalog.LoadCached", "startup database load");
-        Contains(plugin, "omega-catalog-db.zip", "optional prebuilt catalog bundle");
-        Contains(plugin, "catalog.ImportBundle", "prebuilt catalog is imported locally before projection");
-        False(plugin.Contains("catalog.RefreshAsync(Configuration.Repositories)", StringComparison.Ordinal), "startup must not contact repositories");
-
-        var client = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "RepositoryClient.cs"));
-        Contains(client, "IfNoneMatch", "ETag conditional request");
-        Contains(client, "IfModifiedSince", "Last-Modified conditional request");
-        Contains(client, "HttpStatusCode.NotModified", "304 support");
-        Contains(client, "ResponseHeadersRead", "do not eagerly buffer unchanged responses");
-        Contains(client, "MaxResponseBytes", "bounded repository response");
+        Contains(plugin, "omega-catalog.sqlite.zip", "optional packaged bootstrap database");
+        False(plugin.Contains("omega-catalog-db.zip", StringComparison.Ordinal), "legacy JSON-record bundle removed");
 
         var catalog = ReadMarketplaceCatalogServiceSource();
-        Contains(catalog, "RefreshPluginSourcesAsync", "per-plugin source freshness check");
-        Contains(catalog, "RebuildFromDatabase", "local database projection");
+        Contains(catalog, "SqliteCatalogStore", "marketplace is backed by SQLite");
+        Contains(catalog, "liveOverlayByUrl", "explicit custom source reads remain temporary overlays");
+        False(catalog.Contains("CatalogDatabaseRecord", StringComparison.Ordinal), "legacy per-source JSON database types removed");
+
+        var updater = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CatalogUpdateCoordinator.cs"));
+        Contains(updater, "retaining local database", "online failure keeps last-known-good SQLite");
+        False(updater.Contains("LocalFallback", StringComparison.Ordinal), "client-side public repository crawl fallback removed");
 
         var ui = ReadMarketplaceWindowSource();
-        Contains(ui, "updates.RefreshPluginSourcesAsync", "opening plugin details goes through the online/fallback policy");
-        Contains(ui, "published catalog database", "preferred central database is explained to the user");
-        Contains(ui, "local database", "local fallback database is explained to the user");
-        Contains(ui, "Refresh catalog sources", "explicit catalog check remains available inside Settings");
+        Contains(ui, "Refresh catalog database", "manual catalog check remains available in Settings");
     }
 
     internal static void TestDailyUpdateJobContract()
     {
         var service = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DailyCatalogUpdateService.cs"));
         Contains(service, "TimeSpan.FromDays(1)", "daily cadence");
-        Contains(service, "updates.RefreshAsync", "daily job uses the preferred central hash path with local fallback");
+        Contains(service, "updates.RefreshAsync", "daily job uses the preferred central hash path with retained local SQLite");
         Contains(service, "LastDailyUpdateCheckUtc", "daily completion is persisted");
 
         var plugin = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
@@ -146,8 +92,9 @@ internal static partial class RegressionCases
         var projectVersion = project.Descendants("Version").Single().Value.Trim();
 
         var buildInfo = File.ReadAllText(Path.Combine(Root, "Omega", "BuildInfo.cs"));
-        Equal(projectVersion, Capture(buildInfo, "Version\\s*=\\s*\"([^\"]+)\""), "BuildInfo version");
-        True(!string.IsNullOrWhiteSpace(Capture(buildInfo, "BuildStamp\\s*=\\s*\"([^\"]+)\"")), "BuildInfo stamp remains populated for diagnostics");
+        Equal(projectVersion, Capture(buildInfo, "Version\s*=\s*\"([^\"]+)\""), "BuildInfo version");
+        True(!string.IsNullOrWhiteSpace(Capture(buildInfo, "BuildStamp\s*=\s*\"([^\"]+)\"")),
+            "BuildInfo stamp remains populated for diagnostics");
 
         using var repository = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "repository", "pluginmaster.json")));
         var omega = repository.RootElement.EnumerateArray().Single();
@@ -195,12 +142,12 @@ internal static partial class RegressionCases
         False(plugin.Contains("catalog.RefreshAsync", StringComparison.Ordinal), "plugin constructor must not directly fan out across repositories");
 
         var ui = ReadMarketplaceWindowSource();
-        Contains(ui, "Refresh catalog sources", "explicit catalog update control remains inside Settings");
+        Contains(ui, "Refresh catalog database", "explicit catalog update control remains inside Settings");
         Contains(ui, "updates.RefreshAsync()", "manual source refresh uses the preferred-online/fallback coordinator");
         Contains(ui, "catalog.LoadCached", "source configuration applies locally without network");
 
         var catalog = ReadMarketplaceCatalogServiceSource();
-        Contains(catalog, "Deliberately sequential", "fallback repository checks remain sequential");
+        Contains(catalog, "x.Enabled && !x.IsCurated", "automatic direct refresh is limited to explicit user-added sources");
     }
 
     internal static void TestStorefrontContract()
@@ -254,7 +201,7 @@ internal static partial class RegressionCases
         Contains(ui, "DrawApplicationBar", "Spotlight uses the shared application bar rather than page-owned window controls");
         False(ui.Contains("DrawSpotlightWindowControls", StringComparison.Ordinal), "Spotlight must not own a second minimize/close row");
         False(spotlight.Contains("promoted.Add(fallback)", StringComparison.Ordinal), "Spotlight must not substitute unrelated plugins when a fixed promotion is missing");
-        Contains(spotlight, "Take(SpotlightCardCount)", "Spotlight is capped at exactly five highlighted plugins");
+        Contains(spotlight, "SpotlightCardCount = 5", "Spotlight is capped at exactly five highlighted plugins");
         False(ui.Contains("DrawSpotlight(mainProjection.Plugins", StringComparison.Ordinal), "Discover must not contain the old inline Spotlight area");
         Contains(ui, "omega-repository-filter", "repository filter remains directly available");
         Contains(ui, "activeView == MarketplaceView.Spotlight ? \"All sources\" : selectedSource", "repository filter remains source-aware outside Spotlight");

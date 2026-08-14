@@ -3,7 +3,31 @@ namespace Dalagab.Omega;
 internal sealed partial class MarketplaceCatalogService
 {
     public void LoadCached(IEnumerable<RepositorySource> repositories)
-        => RebuildFromDatabase(repositories.Where(IsEligible).ToArray(), preserveLastRefresh: false);
+    {
+        if (!store.Exists)
+        {
+            lock (sync)
+            {
+                allDatabaseVariants = [];
+                databaseVariants = [];
+                HasLoaded = false;
+                CachedRepositoryCount = 0;
+                RebuildProjectionLocked();
+            }
+            return;
+        }
+
+        try
+        {
+            var snapshot = store.ReadSnapshot();
+            ApplySnapshot(snapshot, repositories, preserveLastRefresh: false);
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.Message;
+            Plugin.Log.Warning(ex, "Omega could not load its SQLite catalog database.");
+        }
+    }
 
     public bool MatchesConfiguredSources(IEnumerable<RepositorySource> repositories)
     {
@@ -11,57 +35,45 @@ internal sealed partial class MarketplaceCatalogService
         {
             if (!HasLoaded)
                 return false;
-
-            var availableUrls = loadedRepositoryUrlSet
-                .Concat(defaultPlugins.Select(x => NormalizeUrl(x.SourceUrl)))
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var configuredUrls = repositories
-                .Where(IsEligible)
+            var configured = repositories.Where(x => x.Enabled && !x.IsCurated)
                 .Select(x => NormalizeUrl(x.Url))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            return configuredUrls.SetEquals(availableUrls);
+            var represented = loadedRepositoryUrlSet
+                .Concat(defaultPlugins.Select(x => NormalizeUrl(x.SourceUrl)))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            return configured.All(x => represented.Contains(x));
         }
     }
 
     /// <summary>
-    /// Explicit full-source check. Existing database records use HTTP validators, so unchanged feeds
-    /// normally return 304 without downloading their JSON payload again.
+    /// The public catalog is refreshed by CatalogUpdateCoordinator. Direct repository refresh is
+    /// intentionally reserved for user-added/explicit source checks and stays in-memory.
     /// </summary>
     public Task RefreshAsync(IEnumerable<RepositorySource> repositories)
     {
-        var all = repositories.Where(IsEligible).ToArray();
-        return RefreshSelectedAsync(all, all);
+        var selected = repositories.Where(x => x.Enabled && !x.IsCurated).ToArray();
+        return selected.Length == 0 ? Task.CompletedTask : RefreshRepositoriesAsync(selected, repositories);
     }
 
-    /// <summary>
-    /// Refreshes only a selected subset (normally user-added repositories) while rebuilding the
-    /// storefront against the complete enabled source set already present in the local database.
-    /// </summary>
     public Task RefreshRepositoriesAsync(
         IEnumerable<RepositorySource> selectedRepositories,
         IEnumerable<RepositorySource> allRepositories)
     {
-        var all = allRepositories.Where(IsEligible).ToArray();
-        var selectedUrls = selectedRepositories
-            .Where(IsEligible)
-            .Select(x => NormalizeUrl(x.Url))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var selected = all.Where(x => selectedUrls.Contains(NormalizeUrl(x.Url))).ToArray();
+        var selected = selectedRepositories.Where(IsEligible).ToArray();
+        var all = allRepositories.Where(x => x.Enabled).ToArray();
         return selected.Length == 0 ? Task.CompletedTask : RefreshSelectedAsync(selected, all);
     }
 
-    /// <summary>
-    /// Checks only the known source variants for one plugin, then rebuilds the complete storefront
-    /// from the local database. This is used when a user opens plugin details.
-    /// </summary>
     public Task RefreshPluginSourcesAsync(string internalName, IEnumerable<RepositorySource> repositories)
     {
-        var all = repositories.Where(IsEligible).ToArray();
         var knownUrls = GetVariants(internalName)
             .Select(x => NormalizeUrl(x.SourceUrl))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var selected = all.Where(x => knownUrls.Contains(NormalizeUrl(x.Url))).ToArray();
-        return selected.Length == 0 ? Task.CompletedTask : RefreshSelectedAsync(selected, all);
+        var selected = repositories
+            .Where(x => IsEligible(x) && (!x.IsCurated || x.IsOfficial))
+            .Where(x => knownUrls.Contains(NormalizeUrl(x.Url)))
+            .ToArray();
+        return selected.Length == 0 ? Task.CompletedTask : RefreshSelectedAsync(selected, repositories.Where(x => x.Enabled).ToArray());
     }
 
     private Task RefreshSelectedAsync(
@@ -70,7 +82,6 @@ internal sealed partial class MarketplaceCatalogService
     {
         if (IsRefreshing)
             return Task.CompletedTask;
-
         refreshCts?.Cancel();
         refreshCts?.Dispose();
         refreshCts = new CancellationTokenSource();
@@ -87,29 +98,14 @@ internal sealed partial class MarketplaceCatalogService
         var errors = new List<string>();
         try
         {
-            // Deliberately sequential. Omega may curate many sources, but a refresh should not create
-            // a burst of simultaneous network requests from inside the game process.
             foreach (var repository in selectedRepositories)
             {
                 try
                 {
-                    var cached = database.TryRead(repository.Url);
-                    var fetched = await client.FetchAsync(repository, cached, cancellationToken).ConfigureAwait(false);
-                    var checkedAt = DateTimeOffset.UtcNow;
-
-                    if (fetched.NotModified && cached is not null)
-                    {
-                        database.MarkChecked(cached, fetched.ETag, fetched.LastModified, checkedAt);
-                    }
-                    else
-                    {
-                        database.Store(
-                            repository.Url,
-                            fetched.ManifestJson,
-                            fetched.ETag,
-                            fetched.LastModified,
-                            checkedAt);
-                    }
+                    var fetched = await client.FetchAsync(repository, cancellationToken).ConfigureAwait(false);
+                    var parsed = RepositoryManifestParser.Parse(fetched.ManifestJson, repository).ToArray();
+                    lock (sync)
+                        liveOverlayByUrl[NormalizeUrl(repository.Url)] = parsed;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -118,17 +114,16 @@ internal sealed partial class MarketplaceCatalogService
                 catch (Exception ex)
                 {
                     errors.Add($"{repository.Name}: {ex.Message}");
-                    Plugin.Log.Warning(ex, "Failed to check Omega repository {Repository}; cached data will be retained when available.", repository.Url);
+                    Plugin.Log.Warning(ex, "Failed to check Omega repository {Repository}; central SQLite catalog remains active.", repository.Url);
                 }
             }
 
-            RebuildFromDatabase(allRepositories, preserveLastRefresh: true);
+            RebuildForConfiguration(allRepositories, preserveLastRefresh: true);
             LastRefresh = DateTimeOffset.Now;
             LastError = string.Join(" | ", errors);
         }
         catch (OperationCanceledException)
         {
-            // A newer explicit check superseded this one.
         }
         finally
         {
@@ -136,53 +131,55 @@ internal sealed partial class MarketplaceCatalogService
         }
     }
 
-    private void RebuildFromDatabase(IReadOnlyList<RepositorySource> repositories, bool preserveLastRefresh)
+    private void ApplySnapshot(
+        SqliteCatalogSnapshot snapshot,
+        IEnumerable<RepositorySource> repositories,
+        bool preserveLastRefresh)
     {
-        var results = new List<MarketplacePlugin>();
-        var loadedUrls = new List<string>();
-        var errors = new List<string>();
-        DateTimeOffset? newestCheck = null;
+        lock (sync)
+            allDatabaseVariants = snapshot.Variants;
+        RebuildForConfiguration(repositories.Where(x => x.Enabled).ToArray(), preserveLastRefresh);
+        if (!preserveLastRefresh && snapshot.GeneratedAtUtc is not null)
+            LastRefresh = snapshot.GeneratedAtUtc.Value.ToLocalTime();
+    }
 
-        foreach (var repository in repositories)
-        {
-            var cached = database.TryRead(repository.Url);
-            if (cached is null)
-                continue;
-
-            try
-            {
-                results.AddRange(RepositoryManifestParser.Parse(cached.ManifestJson, repository));
-                loadedUrls.Add(NormalizeUrl(repository.Url));
-                if (newestCheck is null || cached.CheckedAtUtc > newestCheck)
-                    newestCheck = cached.CheckedAtUtc;
-            }
-            catch (Exception ex)
-            {
-                errors.Add($"{repository.Name}: cached manifest invalid ({ex.Message})");
-                Plugin.Log.Warning(ex, "Failed to load cached Omega repository {Repository}", repository.Url);
-            }
-        }
-
-        var repositoryUrls = repositories
+    private void RebuildForConfiguration(
+        IEnumerable<RepositorySource> repositories,
+        bool preserveLastRefresh)
+    {
+        var enabledUrls = repositories
+            .Where(x => x.Enabled)
             .Select(x => NormalizeUrl(x.Url))
-            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        var repositoryUrlSet = repositoryUrls.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         lock (sync)
         {
-            databaseVariants = results;
-            loadedRepositoryUrls = repositoryUrls;
-            loadedRepositoryUrlSet = repositoryUrlSet;
-            CachedRepositoryCount = loadedUrls.Count;
+            // Central DB variants are filtered by the user's source switches. A temporary explicit
+            // source refresh replaces the same source URL for this process only.
+            var baseVariants = allDatabaseVariants
+                .Where(x => enabledUrls.Count == 0 || enabledUrls.Contains(NormalizeUrl(x.SourceUrl)))
+                .Where(x => !liveOverlayByUrl.ContainsKey(NormalizeUrl(x.SourceUrl)))
+                .ToList();
+            foreach (var pair in liveOverlayByUrl)
+            {
+                if (enabledUrls.Contains(pair.Key))
+                    baseVariants.AddRange(pair.Value);
+            }
+
+            databaseVariants = baseVariants;
+            loadedRepositoryUrls = databaseVariants.Select(x => NormalizeUrl(x.SourceUrl))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            loadedRepositoryUrlSet = loadedRepositoryUrls.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            CachedRepositoryCount = loadedRepositoryUrls.Length;
+            HasLoaded = databaseVariants.Count > 0;
             RebuildProjectionLocked();
-            HasLoaded = CachedRepositoryCount > 0;
         }
 
-        if (!preserveLastRefresh && newestCheck is not null)
-            LastRefresh = newestCheck.Value.ToLocalTime();
-        if (errors.Count > 0)
-            LastError = string.Join(" | ", errors);
+        if (!preserveLastRefresh && LastRefresh is null && HasLoaded)
+            LastRefresh = DateTimeOffset.Now;
     }
 
     private static bool IsEligible(RepositorySource source)
@@ -191,15 +188,6 @@ internal sealed partial class MarketplaceCatalogService
             return false;
         return uri.Scheme == Uri.UriSchemeHttps;
     }
-
-    private static string[] GetEligibleRepositoryUrls(IEnumerable<RepositorySource> repositories)
-        => repositories
-            .Where(IsEligible)
-            .Select(x => NormalizeUrl(x.Url))
-            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-    private static string NormalizeUrl(string url) => url.Trim().TrimEnd('/');
 
     public void Dispose()
     {

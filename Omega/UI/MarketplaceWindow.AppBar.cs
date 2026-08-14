@@ -76,7 +76,7 @@ internal sealed partial class MarketplaceWindow
         detailsOpen = false;
         selectedPlugin = null;
         resetStorefrontScroll = true;
-        resetDiscoverGridScroll = true;
+        resetDiscoverListScroll = true;
 
         if (wasDiscover)
             return;

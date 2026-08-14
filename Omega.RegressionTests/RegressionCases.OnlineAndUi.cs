@@ -10,102 +10,49 @@ internal static partial class RegressionCases
 {
     internal static void TestCatalogBuilderContract()
     {
-        var workflowPath = Path.Combine(Root, ".github", "workflows", "catalog-builder.yml");
-        True(File.Exists(workflowPath), "catalog-builder workflow exists");
-        var workflow = File.ReadAllText(workflowPath);
-        Contains(workflow, "schedule:", "scheduled discovery/update job");
-        Contains(workflow, "discover_sources.py", "GitHub discovery stage");
-        Contains(workflow, "build_catalog.py", "catalog validation/build stage");
-        Contains(workflow, "test_catalog_pipeline.py", "catalog pipeline self-test runs before publication");
-        Contains(workflow, "known-bad-hashes.json", "bad-content denylist is part of the workflow");
-        Contains(workflow, "catalog-latest", "stable downloadable catalog release");
-        Contains(workflow, "actions/upload-artifact", "catalog database is downloadable as an Actions artifact");
-        Contains(workflow, "Download previous catalog database seed", "runner reuses the previous release database as a conditional-request seed");
-        Contains(workflow, "--seed-bundle", "builder receives the previous database seed");
-        Contains(workflow, "catalog/dist/catalog.json", "runner publishes tiny online catalog descriptor");
-        Contains(workflow, "catalog/dist/catalog-endpoint.json", "runner emits the repository-specific client endpoint file");
-        Contains(workflow, "omega-catalog-db.zip.sha256", "stable release publishes companion checksum");
-        Contains(workflow, "Smoke-test published catalog download", "published release is tested through the public client download path");
-        Contains(workflow, "test_live_catalog.py", "live release smoke tester runs after publication");
+        var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
+        Contains(workflow, "collect_sources.py", "online source discovery stage");
+        Contains(workflow, "enrich_metadata.py", "manifest normalization stage");
+        Contains(workflow, "scrape_websites_incremental.py", "incremental website enrichment stage");
+        Contains(workflow, "build_sqlite_catalog.py", "SQLite build stage");
+        Contains(workflow, "test_sqlite_catalog.py", "SQLite builder self-test stage");
+        Contains(workflow, "omega-catalog.sqlite.zip", "stable SQLite release asset");
+        Contains(workflow, "Download previous SQLite", "previous database is the workflow seed/cache");
+        Contains(workflow, "--seed-database catalog/seed/omega-catalog.sqlite", "manifest fetches use prior ETag/Last-Modified state");
+        Contains(workflow, "PRAGMA integrity_check", "generated database is integrity checked");
+        Contains(workflow, "Publish stable catalog release", "stable release publication");
 
-        var liveSmoke = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "test_live_catalog.py"));
-        Contains(liveSmoke, "Omega live catalog smoke test passed", "live smoke tester validates downloadable catalog");
-        Contains(liveSmoke, "bundle SHA mismatch", "live smoke tester verifies exact bundle bytes");
-        Contains(liveSmoke, "record count mismatch", "live smoke tester verifies database completeness");
+        var builder = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "build_sqlite_catalog.py"));
+        Contains(builder, "CREATE TABLE IF NOT EXISTS plugins", "SQLite plugin table");
+        Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_variants", "SQLite variant table");
+        Contains(builder, "CREATE TABLE IF NOT EXISTS websites", "SQLite website cache table");
+        Contains(builder, "CREATE TABLE IF NOT EXISTS presentation", "presentation scoring table");
+        Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_search", "normalized search table");
+        Contains(builder, "raw_manifest_json", "original source manifest fields remain auditable");
+        Contains(builder, "VACUUM", "database is compacted before publication");
+        Contains(builder, "omega.catalog.sqlite.v1", "strict SQLite descriptor schema");
 
-        var builder = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "build_catalog.py"));
-        Contains(builder, "known_bad.get(raw_hash.lower())", "known content hashes are skipped before parsing");
-        Contains(builder, "known-bad-git-blob", "known GitHub blob hashes are skipped before downloading unchanged bad candidates");
-        Contains(builder, "merge_bad_entry", "new deterministic bad hashes are recorded");
-        Contains(builder, "transient-error", "network failures do not poison the bad-hash list");
-        Contains(builder, "omega-catalog-db.zip", "builder emits importable database ZIP");
-        Contains(builder, "omega-catalog-db.zip.sha256", "builder emits downloadable database checksum");
-        Contains(builder, "omega.catalog.v1", "builder emits hash-addressed catalog.json descriptor");
-        Contains(builder, "catalogSha256", "descriptor contains stable semantic catalog hash");
-        Contains(builder, "bundleSha256", "descriptor separately authenticates exact bundle bytes");
-        Contains(builder, "fingerprint_records", "catalog hash ignores operational timestamp-only bundle changes");
-        Contains(builder, "downloadUrl", "descriptor names the catalog database download");
-        Contains(builder, "catalog-endpoint.json", "builder emits client endpoint configuration");
-        Contains(builder, "If-None-Match", "runner uses ETag validators from the previous database");
-        Contains(builder, "If-Modified-Since", "runner uses Last-Modified validators from the previous database");
-        Contains(builder, "load_seed_bundle", "runner can seed from the previous downloadable database");
-        Contains(builder, "retainedLastKnownGood", "runner preserves last-known-good metadata on repository failures");
-
-        var pipelineTests = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "test_catalog_pipeline.py"));
-        Contains(pipelineTests, "known-bad-git-blob", "pipeline self-test covers pre-download bad-blob skip");
-        Contains(pipelineTests, "new-bad-hash", "pipeline self-test covers deterministic bad-content classification");
-        Contains(pipelineTests, "seed bundle round-trip", "pipeline self-test covers previous-database reuse");
-
-        using var knownBad = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog", "known-bad-hashes.json")));
-        Equal(1, knownBad.RootElement.GetProperty("schemaVersion").GetInt32(), "known-bad schema");
-
-        using var candidates = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog", "candidates.json")));
-        True(candidates.RootElement.GetProperty("count").GetInt32() >= 470, "uploaded discovery batches seed the candidate queue");
-
-        foreach (var file in new[] { "dalamud_batch1.json", "dalamud_batch2.json", "dalamud_batch3.json" })
-            True(File.Exists(Path.Combine(Root, "sources", "discovery", file)), $"discovery seed retained: {file}");
+        var scraper = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "scrape_websites_incremental.py"));
+        Contains(scraper, "last_success_utc", "successful website enrichment is reusable");
+        Contains(scraper, "max-age-hours", "fresh website data avoids unnecessary re-scraping");
+        Contains(scraper, "seed-database", "previous SQLite database supplies enrichment cache");
+        Contains(scraper, "load_seed_repo_urls", "304 manifests do not freeze stale website rechecks");
     }
 
     internal static void TestOnlineCatalogFallbackContract()
     {
         var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CatalogUpdateCoordinator.cs"));
-        Contains(coordinator, "TryApplyOnlineCatalogAsync", "online catalog is attempted first");
-        Contains(coordinator, "await catalog.RefreshAsync(configuration.Repositories)", "complete local source list is the fallback");
-        Contains(coordinator, "RefreshOverlayRepositoriesAsync", "successful central DB layers local marketplace overlays");
-        Contains(coordinator, "source.IsOfficial || !source.IsCurated", "official/default and user-added repositories remain live overlays");
-        Contains(coordinator, "stateStore.ClearAppliedCatalog", "fallback invalidates the central-hash shortcut after local records mutate");
-        Contains(coordinator, "SeedIfEmpty", "fresh install can acquire a catalog without blocking plugin construction");
+        Contains(coordinator, "TryApplyOnlineCatalogAsync", "online SQLite catalog is checked first");
+        Contains(coordinator, "retaining local database", "network failure retains last-known-good SQLite");
+        False(coordinator.Contains("LocalFallback", StringComparison.Ordinal), "public catalog is not rebuilt by crawling repositories in-game");
+        False(coordinator.Contains("await catalog.RefreshAsync(configuration.Repositories)", StringComparison.Ordinal), "central failure does not fan out across public sources");
+        Contains(coordinator, "!x.IsCurated", "user-added sources can remain explicit temporary overlays");
 
-        var database = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CatalogDatabase.cs"));
-        Contains(database, "ReplaceAll", "central bundle replaces the authoritative database snapshot");
-        Contains(database, ".staging-", "central database replacement is staged before swap");
-        Contains(database, "preservedLocalRecords", "user-added repository records survive central replacement");
-
-        var temp = Path.Combine(Path.GetTempPath(), $"omega-regression-replace-{Guid.NewGuid():N}");
-        try
-        {
-            var db = new CatalogDatabase(temp);
-            var oldCurated = db.Store("https://example.invalid/old.json", "[{\"Name\":\"Old\",\"InternalName\":\"Old\"}]", null, null, DateTimeOffset.UtcNow.AddMinutes(-10));
-            var local = db.Store("https://example.invalid/local.json", "[{\"Name\":\"Local\",\"InternalName\":\"Local\"}]", null, null, DateTimeOffset.UtcNow.AddMinutes(-5));
-            var replacementManifest = "[{\"Name\":\"New\",\"InternalName\":\"New\"}]";
-            var replacement = new CatalogDatabaseRecord
-            {
-                SchemaVersion = 1,
-                Url = "https://example.invalid/new.json",
-                ManifestJson = replacementManifest,
-                ContentSha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(replacementManifest))).ToLowerInvariant(),
-                FetchedAtUtc = DateTimeOffset.UtcNow,
-                CheckedAtUtc = DateTimeOffset.UtcNow,
-            };
-            db.ReplaceAll(new[] { replacement }, new[] { local });
-            True(db.TryRead("https://example.invalid/new.json") is not null, "authoritative replacement record exists");
-            True(db.TryRead("https://example.invalid/local.json") is not null, "preserved local record exists");
-            True(db.TryRead("https://example.invalid/old.json") is null, "obsolete curated record is removed by authoritative replacement");
-        }
-        finally
-        {
-            try { Directory.Delete(temp, true); } catch { }
-        }
+        var store = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "SqliteCatalogStore.cs"));
+        Contains(store, "ReplaceFromBundle", "SQLite update replaces one database");
+        Contains(store, "omega-catalog.staged-", "replacement is staged before swap");
+        Contains(store, "omega-catalog.backup-", "failed swap can restore previous database");
+        Contains(store, "PRAGMA integrity_check", "candidate database is validated before activation");
     }
 
     internal static void TestDalamudDefaultCatalogContract()
@@ -126,7 +73,7 @@ internal static partial class RegressionCases
         Contains(catalog, "defaultPlugins", "runtime defaults participate in the storefront projection");
         Contains(catalog, "!x.SourceIsOfficial || !runtimeNames.Contains", "runtime official metadata replaces stale cached official duplicates only");
 
-        Contains(catalog, "HasLoaded = CachedRepositoryCount > 0", "runtime defaults do not suppress fresh central-catalog seeding");
+        Contains(catalog, "HasLoaded = databaseVariants.Count > 0", "runtime defaults do not suppress fresh central-catalog seeding");
         False(catalog.Contains("CachedRepositoryCount > 0 || defaultPlugins.Count > 0", StringComparison.Ordinal), "runtime defaults must not masquerade as a complete database");
 
         using var curated = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "sources", "curated-sources.json")));
@@ -141,53 +88,41 @@ internal static partial class RegressionCases
         False(OnlineCatalogClient.IsValidSha256(new string('g', 64)), "non-hex SHA-256 is rejected");
         False(OnlineCatalogClient.IsValidSha256("abc"), "short SHA-256 is rejected");
 
-        var splitHashes = new OnlineCatalogDescriptor
+        var hashes = new OnlineCatalogDescriptor
         {
             CatalogSha256 = new string('a', 64),
             BundleSha256 = new string('b', 64),
-            Sha256 = new string('c', 64),
         };
-        Equal(new string('a', 64), OnlineCatalogClient.EffectiveCatalogSha256(splitHashes), "semantic catalog hash drives change detection");
-        Equal(new string('b', 64), OnlineCatalogClient.EffectiveBundleSha256(splitHashes), "exact bundle hash drives downloaded ZIP verification");
-
-        var legacyHashes = new OnlineCatalogDescriptor { Sha256 = new string('c', 64) };
-        Equal(new string('c', 64), OnlineCatalogClient.EffectiveCatalogSha256(legacyHashes), "legacy descriptor hash remains accepted for catalog comparison");
-        Equal(new string('c', 64), OnlineCatalogClient.EffectiveBundleSha256(legacyHashes), "legacy descriptor hash remains accepted for bundle verification");
+        Equal(new string('a', 64), OnlineCatalogClient.EffectiveCatalogSha256(hashes), "database hash drives change detection");
+        Equal(new string('b', 64), OnlineCatalogClient.EffectiveBundleSha256(hashes), "ZIP hash authenticates transport bytes");
 
         var descriptor = new Uri("https://example.invalid/releases/catalog.json");
-        Equal("https://example.invalid/releases/omega-catalog-db.zip",
-            OnlineCatalogClient.ResolveDownloadUri(descriptor, "omega-catalog-db.zip").ToString(),
-            "relative database URL resolves against descriptor");
-        Equal("https://cdn.example.invalid/omega-catalog-db.zip",
-            OnlineCatalogClient.ResolveDownloadUri(descriptor, "https://cdn.example.invalid/omega-catalog-db.zip").ToString(),
-            "absolute HTTPS database URL is accepted");
+        Equal("https://example.invalid/releases/omega-catalog.sqlite.zip",
+            OnlineCatalogClient.ResolveDownloadUri(descriptor, "omega-catalog.sqlite.zip").ToString(),
+            "relative SQLite URL resolves against descriptor");
         Throws<InvalidDataException>(
             () => OnlineCatalogClient.ResolveDownloadUri(descriptor, "http://example.invalid/catalog.zip"),
             "non-HTTPS central catalog is rejected");
 
-        var endpoint = File.ReadAllText(Path.Combine(Root, "catalog", "catalog-endpoint.json"));
-        Contains(endpoint, "descriptorUrl", "source package carries endpoint configuration seeded by GitHub Actions");
-        Contains(endpoint, "https://github.com/dalagab/omega/releases/download/catalog-latest/catalog.json", "source package ships the live production catalog endpoint");
-        False(endpoint.Contains("\"descriptorUrl\": \"\"", StringComparison.Ordinal), "production catalog endpoint must not ship blank");
-        var project = File.ReadAllText(Path.Combine(Root, "Omega", "DalagabOmega.csproj"));
-        Contains(project, "catalog-endpoint.json", "catalog endpoint is packaged with Omega");
+        var client = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OnlineCatalogClient.cs"));
+        Contains(client, "omega.catalog.sqlite.v1", "client accepts only the SQLite catalog descriptor schema");
+        False(client.Contains("omega.catalog.v1", StringComparison.Ordinal), "legacy JSON bundle schema removed");
     }
-
 
     internal static void TestLiveCatalogEndpointContract()
     {
         using var endpoint = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog", "catalog-endpoint.json")));
         Equal(1, endpoint.RootElement.GetProperty("schemaVersion").GetInt32(), "live endpoint schema");
-        Equal(
-            "https://github.com/dalagab/omega/releases/download/catalog-latest/catalog.json",
-            endpoint.RootElement.GetProperty("descriptorUrl").GetString(),
-            "live production descriptor URL");
+        Equal("https://github.com/dalagab/omega/releases/download/catalog-latest/catalog.json",
+            endpoint.RootElement.GetProperty("descriptorUrl").GetString(), "live production descriptor URL");
 
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
-        var publishIndex = workflow.IndexOf("Publish stable downloadable catalog release", StringComparison.Ordinal);
-        var smokeIndex = workflow.IndexOf("Smoke-test published catalog download", StringComparison.Ordinal);
-        True(publishIndex >= 0 && smokeIndex > publishIndex, "public download smoke test runs after release publication");
-        Contains(workflow, "--expected-bundle catalog/dist/omega-catalog-db.zip", "published bytes must match the just-built database bundle");
+        var publishIndex = workflow.IndexOf("Publish stable catalog release", StringComparison.Ordinal);
+        var verifyIndex = workflow.IndexOf("Verify published descriptor and bundle", StringComparison.Ordinal);
+        True(publishIndex >= 0 && verifyIndex > publishIndex, "published SQLite bundle is verified after release upload");
+        Contains(workflow, "omega-catalog.sqlite.zip", "release contains SQLite transport bundle");
+        Contains(workflow, "catalogSha256", "published database bytes are hash verified");
+        Contains(workflow, "bundleSha256", "published ZIP bytes are hash verified");
     }
 
     internal static void TestStorefrontVirtualization()
@@ -219,7 +154,7 @@ internal static partial class RegressionCases
     internal static void TestOpenWindowPerformanceGuards()
     {
         var ui = ReadMarketplaceWindowSource();
-        Contains(ui, "DrawVirtualizedDiscoverGrid", "Discover must virtualize its fixed five-column rows");
+        Contains(ui, "DrawDiscoverHybridResults", "Discover must keep the enhanced-card and fallback-list hybrid path");
         Contains(ui, "StorefrontVirtualization.Calculate", "virtualization helper must drive visible rows");
         Contains(ui, "stableIdCache", "ImGui IDs must not SHA-256 the same strings every frame");
         Contains(ui, "GetFilteredPlugins", "filter/sort results must be cached between UI frames");

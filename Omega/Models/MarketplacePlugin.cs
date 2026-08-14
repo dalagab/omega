@@ -40,6 +40,11 @@ public sealed class MarketplacePlugin
     public int? OmegaMinimumApiLevel { get; init; }
     public int? OmegaMaximumApiLevel { get; init; }
     public IReadOnlyList<string> OmegaCategories { get; init; } = [];
+    public string OmegaWebsiteUrl { get; init; } = string.Empty;
+    public string OmegaWebsiteTitle { get; init; } = string.Empty;
+    public string OmegaWebsiteDescription { get; init; } = string.Empty;
+    public IReadOnlyList<string> OmegaWebsiteImageUrls { get; init; } = [];
+    public bool OmegaEnriched { get; init; }
 
     public int HighestKnownApiLevel => new[]
     {
@@ -148,6 +153,11 @@ public sealed class MarketplacePlugin
             OmegaMinimumApiLevel = ReadNullableInt(element, "OmegaMinimumApiLevel"),
             OmegaMaximumApiLevel = ReadNullableInt(element, "OmegaMaximumApiLevel"),
             OmegaCategories = ReadStrings(element, "OmegaCategories"),
+            OmegaWebsiteUrl = ReadString(element, "OmegaWebsiteUrl"),
+            OmegaWebsiteTitle = ReadString(element, "OmegaWebsiteTitle"),
+            OmegaWebsiteDescription = ReadString(element, "OmegaWebsiteDescription"),
+            OmegaWebsiteImageUrls = ReadStrings(element, "OmegaWebsiteImageUrls"),
+            OmegaEnriched = ReadBool(element, "OmegaEnriched"),
         };
     }
 

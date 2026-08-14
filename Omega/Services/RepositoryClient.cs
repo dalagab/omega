@@ -13,8 +13,8 @@ internal sealed class RepositoryFetchResult
 }
 
 /// <summary>
-/// Performs bounded conditional HTTP reads for individual PluginMaster feeds during local fallback.
-/// It validates response size/content before callers replace last-known-good catalog records.
+/// Performs bounded direct HTTP reads for explicit user-added repository checks. The production
+/// public catalog itself is supplied by the online SQLite database, not rebuilt inside the game.
 /// </summary>
 internal sealed class RepositoryClient : IDisposable
 {
@@ -33,31 +33,9 @@ internal sealed class RepositoryClient : IDisposable
 
     public async Task<RepositoryFetchResult> FetchAsync(
         RepositorySource source,
-        CatalogDatabaseRecord? cached,
         CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, source.Url);
-
-        if (!string.IsNullOrWhiteSpace(cached?.ETag) && EntityTagHeaderValue.TryParse(cached.ETag, out var etag))
-            request.Headers.IfNoneMatch.Add(etag);
-
-        if (!string.IsNullOrWhiteSpace(cached?.LastModified) && DateTimeOffset.TryParse(cached.LastModified, out var lastModified))
-            request.Headers.IfModifiedSince = lastModified;
-
-        using var response = await httpClient.SendAsync(
-            request,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken).ConfigureAwait(false);
-
-        if (response.StatusCode == HttpStatusCode.NotModified && cached is not null)
-        {
-            return new RepositoryFetchResult
-            {
-                NotModified = true,
-                ETag = response.Headers.ETag?.ToString() ?? cached.ETag,
-                LastModified = response.Content.Headers.LastModified?.ToString("R") ?? cached.LastModified,
-            };
-        }
 
         response.EnsureSuccessStatusCode();
         if (response.Content.Headers.ContentLength is > MaxResponseBytes)

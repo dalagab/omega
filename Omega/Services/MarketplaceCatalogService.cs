@@ -1,20 +1,30 @@
 namespace Dalagab.Omega;
 
+internal sealed record SqliteCatalogApplyResult(
+    int VariantCount,
+    IReadOnlyList<CuratedSourceDefinition> SourceDefinitions,
+    DateTimeOffset? GeneratedAtUtc);
+
 /// <summary>
-/// Owns Omega's local marketplace projection and repository metadata cache. It reads validated
-/// catalog records and exposes indexed/filterable plugin views; it does not load or install plugin DLLs.
+/// Owns Omega's in-memory marketplace projection backed by one SQLite catalog file. The database is
+/// authoritative for public catalog data; direct repository reads are temporary overlays for explicit
+/// user-added/source checks and are never persisted as a second catalog format.
 /// </summary>
 internal sealed partial class MarketplaceCatalogService : IDisposable
 {
     private readonly RepositoryClient client = new();
-    private readonly CatalogDatabase database;
+    private readonly SqliteCatalogStore store;
     private readonly object sync = new();
     private IReadOnlyList<MarketplacePlugin> plugins = [];
     private IReadOnlyList<MarketplacePlugin> variants = [];
+    private IReadOnlyList<MarketplacePlugin> allDatabaseVariants = [];
     private IReadOnlyList<MarketplacePlugin> databaseVariants = [];
     private IReadOnlyList<MarketplacePlugin> defaultPlugins = [];
     private string defaultPluginFingerprint = string.Empty;
+    private readonly Dictionary<string, MarketplacePlugin[]> liveOverlayByUrl = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyDictionary<string, MarketplacePlugin[]> variantsByInternalName =
+        new Dictionary<string, MarketplacePlugin[]>(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyDictionary<string, MarketplacePlugin[]> presentationVariantsByInternalName =
         new Dictionary<string, MarketplacePlugin[]>(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<int, IReadOnlyList<RepositoryCatalogStatus>> repositoryStatusCache = new();
     private readonly Dictionary<string, MarketplaceCatalogProjection> mainProjectionCache = new(StringComparer.OrdinalIgnoreCase);
@@ -25,37 +35,29 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
     private HashSet<string> loadedRepositoryUrlSet = new(StringComparer.OrdinalIgnoreCase);
     private long revision;
 
-    public MarketplaceCatalogService(string databaseDirectory)
+    public MarketplaceCatalogService(string databasePath)
     {
-        database = new CatalogDatabase(databaseDirectory);
+        store = new SqliteCatalogStore(databasePath);
     }
 
-    public CatalogBundleImportResult ImportBundle(string zipPath)
-        => CatalogBundleImporter.Import(zipPath, database);
+    public bool ImportBootstrapBundle(string bundlePath)
+        => store.ImportBootstrapBundle(bundlePath);
 
-    /// <summary>
-    /// Replaces the curated catalog with an authoritative prebuilt bundle while preserving
-    /// cached official/default and user-added repository records. The same database projection is
-    /// used afterward regardless of whether records came from the central bundle or local feeds.
-    /// </summary>
-    public CatalogBundleImportResult ReplaceFromBundle(
+    public SqliteCatalogApplyResult ReplaceFromBundle(
         string zipPath,
         IEnumerable<RepositorySource> repositories)
     {
-        var read = CatalogBundleImporter.Read(zipPath);
-        if (read.Records.Count == 0)
-            throw new InvalidDataException("Online Omega catalog bundle contains no repository records.");
+        store.ReplaceFromBundle(zipPath);
+        var snapshot = store.ReadSnapshot();
+        ApplySnapshot(snapshot, repositories, preserveLastRefresh: false);
+        return new SqliteCatalogApplyResult(snapshot.Variants.Count, snapshot.SourceDefinitions, snapshot.GeneratedAtUtc);
+    }
 
-        var preserved = repositories
-            .Where(IsOnlineOverlaySource)
-            .Select(x => database.TryRead(x.Url))
-            .Where(x => x is not null)
-            .Cast<CatalogDatabaseRecord>()
-            .ToArray();
-
-        database.ReplaceAll(read.Records, preserved);
-        RebuildFromDatabase(repositories.Where(IsEligible).ToArray(), preserveLastRefresh: false);
-        return read;
+    public IReadOnlyList<CuratedSourceDefinition> ReadDatabaseSourceDefinitions()
+    {
+        if (!store.Exists)
+            return [];
+        return store.ReadSnapshot().SourceDefinitions;
     }
 
     public bool SetDefaultPlugins(IEnumerable<MarketplacePlugin> pluginsFromDalamud)
@@ -83,26 +85,24 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
 
     public IReadOnlyList<MarketplacePlugin> Plugins
     {
-        get
-        {
-            lock (sync)
-                return plugins;
-        }
+        get { lock (sync) return plugins; }
     }
 
     public IReadOnlyList<MarketplacePlugin> Variants
     {
-        get
-        {
-            lock (sync)
-                return variants;
-        }
+        get { lock (sync) return variants; }
     }
 
     public IReadOnlyList<MarketplacePlugin> GetVariants(string internalName)
     {
         lock (sync)
             return variantsByInternalName.TryGetValue(internalName, out var group) ? group : [];
+    }
+
+    public IReadOnlyList<MarketplacePlugin> GetPresentationVariants(string internalName)
+    {
+        lock (sync)
+            return presentationVariantsByInternalName.TryGetValue(internalName, out var group) ? group : [];
     }
 
     public int GetStableApiLevel(string internalName, int preferredApi = 0)
@@ -131,7 +131,6 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
                 index = BuildVariantIndex(projection.Variants);
                 mainVariantIndexCache[currentApi] = index;
             }
-
             return index.TryGetValue(internalName, out var group) ? group : [];
         }
     }
@@ -144,7 +143,6 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
             var cacheKey = $"{currentApi}\u001f{sourceKey}";
             if (tagIndexCache.TryGetValue(cacheKey, out var cached))
                 return cached;
-
             var projection = GetMainProjectionLocked(currentApi, sourceName);
             var index = MarketplaceTagRules.Build(projection.Variants);
             tagIndexCache[cacheKey] = index;
@@ -181,12 +179,8 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
         IEnumerable<MarketplacePlugin> visible = variants;
         if (staleUrls.Count > 0)
             visible = visible.Where(x => !staleUrls.Contains(NormalizeUrl(x.SourceUrl)));
-
-        if (!string.IsNullOrWhiteSpace(sourceKey) &&
-            !sourceKey.Equals("All sources", StringComparison.OrdinalIgnoreCase))
-        {
+        if (!string.IsNullOrWhiteSpace(sourceKey) && !sourceKey.Equals("All sources", StringComparison.OrdinalIgnoreCase))
             visible = visible.Where(x => x.SourceName.Equals(sourceKey, StringComparison.OrdinalIgnoreCase));
-        }
 
         var projection = MarketplaceCatalogRules.Project(visible);
         mainProjectionCache[cacheKey] = projection;
@@ -197,7 +191,6 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
     {
         if (repositoryStatusCache.TryGetValue(currentApi, out var cached))
             return cached;
-
         var statuses = RepositoryHealthRules.BuildStatuses(variants, currentApi);
         repositoryStatusCache[currentApi] = statuses;
         return statuses;
@@ -208,8 +201,7 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
             .GroupBy(x => x.InternalName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 x => x.Key,
-                x => x
-                    .OrderByDescending(v => v.SourceIsOfficial)
+                x => x.OrderByDescending(v => v.SourceIsOfficial)
                     .ThenByDescending(v => v.AssemblyVersion)
                     .ThenBy(v => v.SourceName, StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
@@ -217,9 +209,7 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
 
     private void RebuildProjectionLocked()
     {
-        var runtimeNames = defaultPlugins
-            .Select(x => x.InternalName)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var runtimeNames = defaultPlugins.Select(x => x.InternalName).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var combined = databaseVariants
             .Where(x => !x.SourceIsOfficial || !runtimeNames.Contains(x.InternalName))
             .Concat(defaultPlugins)
@@ -229,6 +219,7 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
         plugins = projection.Plugins;
         variants = projection.Variants;
         variantsByInternalName = BuildVariantIndex(projection.Variants);
+        presentationVariantsByInternalName = BuildVariantIndex(databaseVariants.Concat(defaultPlugins));
         repositoryStatusCache.Clear();
         mainProjectionCache.Clear();
         mainVariantIndexCache.Clear();
@@ -236,25 +227,12 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
         revision++;
     }
 
-    private static bool IsOnlineOverlaySource(RepositorySource source)
-        => source.Enabled && (source.IsOfficial || !source.IsCurated);
-
-    public long Revision
-    {
-        get
-        {
-            lock (sync)
-                return revision;
-        }
-    }
-
+    public long Revision { get { lock (sync) return revision; } }
     public bool IsRefreshing { get; private set; }
     public bool HasLoaded { get; private set; }
     public int CachedRepositoryCount { get; private set; }
     public DateTimeOffset? LastRefresh { get; private set; }
     public string LastError { get; private set; } = string.Empty;
 
-    /// <summary>
-    /// Rebuilds the marketplace entirely from the local catalog database. No network requests occur.
-    /// </summary>
+    private static string NormalizeUrl(string? url) => (url ?? string.Empty).Trim().TrimEnd('/');
 }

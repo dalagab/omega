@@ -246,7 +246,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
 
         ImGui.SameLine(0f, 12f);
         ImGui.BeginChild("omega-app-content", Vector2.Zero, false, ImGuiWindowFlags.NoScrollbar);
-        if (activeView != MarketplaceView.Spotlight)
+        if (activeView != MarketplaceView.Spotlight && !(activeView == MarketplaceView.Discover && detailsOpen))
             DrawContentHeader(versionInfo.Version, currentApi);
 
         if (activeView == MarketplaceView.Library)
