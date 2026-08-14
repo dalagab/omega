@@ -94,7 +94,7 @@ The repository manifest in [`repository/pluginmaster.json`](repository/pluginmas
 
 ### Publishing a new Omega version
 
-[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a four-part version tag matching the project metadata, for example `v0.8.3.1`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
+[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a four-part version tag matching the project metadata, for example `v0.8.3.2`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
 
 ## Exactly what the installer changes
 
@@ -186,7 +186,7 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Release metadata
 
-- Omega version: `0.8.3.1`
+- Omega version: `0.8.3.2`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`
@@ -194,7 +194,7 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Plugin security intelligence
 
-Omega 0.8.3.1 adds a separate server-side static-analysis pipeline for third-party plugin artifacts. The scheduled [`security-scanner.yml`](.github/workflows/security-scanner.yml) workflow consumes the current SQLite catalog, selects only plugin variants that are new, changed, failed, produced by an older scanner version, or due for periodic revalidation, and scans those artifacts without executing or loading plugin code.
+Omega 0.8.3.2 adds a separate server-side static-analysis pipeline for third-party plugin artifacts. The scheduled [`security-scanner.yml`](.github/workflows/security-scanner.yml) workflow consumes the current SQLite catalog, selects only plugin variants that are new, changed, failed, produced by an older scanner version, or due for periodic revalidation, and scans those artifacts without executing or loading plugin code.
 
 The scanner records the exact artifact SHA-256, scanner version, scan timestamp, observed capabilities, severity-classified findings, bounded evidence, and optional public GitHub source provenance. Source inspection is reported separately and is not treated as proof that published source corresponds to the downloaded binary. Results are stored in `plugin_security_scans`, `plugin_security_findings`, and `plugin_security_current` inside the same `omega-catalog.sqlite` database consumed by Omega.
 

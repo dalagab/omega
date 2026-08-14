@@ -17,8 +17,9 @@ internal static partial class RegressionCases
         Contains(scanner, "Preserve last-known-good intelligence", "transient revalidation failures do not erase the last completed scan");
 
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "security-scanner.yml"));
-        Contains(workflow, "cron: \"17 6 * * *\"", "security scanner runs daily");
-        Contains(workflow, "permissions:\n      contents: read", "hostile artifact scan job has read-only repository permission");
+        var normalizedWorkflow = workflow.ReplaceLineEndings("\n");
+        Contains(normalizedWorkflow, "cron: \"17 6 * * *\"", "security scanner runs daily");
+        Contains(normalizedWorkflow, "permissions:\n      contents: read", "hostile artifact scan job has read-only repository permission");
         Contains(workflow, "name: Publish security-enriched catalog", "publishing is isolated into a second job");
         Contains(workflow, "contents: write", "only publishing receives repository write permission");
         Contains(workflow, "--max-scans", "daily scan work is bounded");

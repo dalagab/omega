@@ -190,7 +190,9 @@ internal static partial class RegressionCases
         False(spotlight.Contains("DrawDetailsLinks(plugin", StringComparison.Ordinal), "Spotlight must not embed source/project link rows");
         False(spotlight.Contains("DrawSpotlightVariantSelector", StringComparison.Ordinal), "Spotlight must not spend card space on repository selectors");
         Contains(spotlight, "showOverlays: false", "Spotlight artwork stays free of API/action overlays");
-        Contains(spotlight, "RefreshCuratedSourcesAsync([\"aetherlove-aetheros\"])", "missing AetherLove is rescued from its curated source");
+        Contains(spotlight, "(InternalName: \"AetherLovePlugin\", CuratedId: \"aetherlove-aetheros\")", "AetherLove remains a curated Spotlight recovery target");
+        Contains(spotlight, "(InternalName: \"HonseFarm.Client\", CuratedId: \"honse-farm\")", "HonseFarm remains a curated Spotlight recovery target");
+        Contains(spotlight, "RefreshCuratedSourcesAsync(curatedIds)", "missing Spotlight plugins are rescued through the generalized curated-source recovery path");
         False(spotlight.Contains("OMEGA SPOTLIGHT", StringComparison.Ordinal), "Spotlight does not add a redundant promotional banner above the five plugins");
         Contains(ui, "HonseFarm.Client", "Honse promotion remains configured");
         Contains(ui, "AetherLovePlugin", "AetherLove/AetherOS promotion remains configured");
