@@ -16,3 +16,7 @@ Published assets under `catalog-latest`:
 
 Omega 0.8 consumes only the SQLite database. JSON stage files may be imported by the online builder
 but are not runtime catalog formats.
+
+### Security tables
+
+`plugin_security_scans` stores append-only scan history for exact catalog variants and artifact hashes. `plugin_security_findings` stores structured rule results and bounded evidence. `plugin_security_current` points each active variant at its latest scan summary so the runtime projection can display security information without expensive aggregation in the game client.

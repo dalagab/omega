@@ -60,6 +60,7 @@ var tests = new (string Name, Action Body)[]
     ("first-use EULA and Settings retrieval remain enforced", TestEulaFirstUseContract),
     ("GitHub distribution and repository-only installation remain documented", TestGitHubDistributionDocumentationContract),
     ("GitHub release and security workflows remain publishable and visible", TestGitHubReleaseAndSecurityWorkflowsContract),
+    ("third-party plugin security scanning remains static, incremental, and catalog-backed", TestPluginSecurityIntelligenceContract),
     ("install always chooses a repository and delegates to Dalamud", TestInstallRepositoryChooserContract),
     ("plugin selections, project/source controls, uninstall, and update badge stay canonical", TestCanonicalPluginNavigationAndLifecycleContract),
     ("repository HTTP response lifetime stays explicit and stream-bounded", TestRepositoryClientResponseLifetimeContract),

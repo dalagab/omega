@@ -260,6 +260,72 @@ CREATE TABLE IF NOT EXISTS plugin_search (
 CREATE INDEX IF NOT EXISTS ix_plugin_search_internal_name ON plugin_search(internal_name COLLATE NOCASE);
 CREATE INDEX IF NOT EXISTS ix_plugin_search_name ON plugin_search(name COLLATE NOCASE);
 CREATE INDEX IF NOT EXISTS ix_plugin_search_author ON plugin_search(author COLLATE NOCASE);
+
+CREATE TABLE IF NOT EXISTS plugin_security_scans (
+    scan_id INTEGER PRIMARY KEY,
+    plugin_id INTEGER NOT NULL REFERENCES plugins(plugin_id) ON DELETE CASCADE,
+    variant_id INTEGER NOT NULL REFERENCES plugin_variants(variant_id) ON DELETE CASCADE,
+    source_id INTEGER NOT NULL REFERENCES sources(source_id) ON DELETE CASCADE,
+    assembly_version TEXT NOT NULL DEFAULT '',
+    artifact_channel TEXT NOT NULL DEFAULT 'stable',
+    artifact_url TEXT NOT NULL DEFAULT '',
+    artifact_sha256 TEXT NOT NULL DEFAULT '',
+    scanner_version TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT '',
+    scanned_at_utc TEXT NOT NULL DEFAULT '',
+    highest_severity TEXT NOT NULL DEFAULT 'none',
+    informational_count INTEGER NOT NULL DEFAULT 0,
+    caution_count INTEGER NOT NULL DEFAULT 0,
+    high_count INTEGER NOT NULL DEFAULT 0,
+    critical_count INTEGER NOT NULL DEFAULT 0,
+    capabilities_json TEXT NOT NULL DEFAULT '[]',
+    source_available INTEGER NOT NULL DEFAULT 0,
+    source_repository TEXT NOT NULL DEFAULT '',
+    source_commit TEXT NOT NULL DEFAULT '',
+    source_to_binary_verified INTEGER NOT NULL DEFAULT 0,
+    report_json TEXT NOT NULL DEFAULT '{}',
+    error TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS ix_security_scans_variant ON plugin_security_scans(variant_id, scanned_at_utc DESC);
+CREATE INDEX IF NOT EXISTS ix_security_scans_hash ON plugin_security_scans(artifact_sha256);
+
+CREATE TABLE IF NOT EXISTS plugin_security_findings (
+    finding_id INTEGER PRIMARY KEY,
+    scan_id INTEGER NOT NULL REFERENCES plugin_security_scans(scan_id) ON DELETE CASCADE,
+    rule_id TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    category TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    evidence_json TEXT NOT NULL DEFAULT '[]'
+);
+CREATE INDEX IF NOT EXISTS ix_security_findings_scan ON plugin_security_findings(scan_id);
+CREATE INDEX IF NOT EXISTS ix_security_findings_severity ON plugin_security_findings(severity);
+
+CREATE TABLE IF NOT EXISTS plugin_security_current (
+    variant_id INTEGER PRIMARY KEY REFERENCES plugin_variants(variant_id) ON DELETE CASCADE,
+    scan_id INTEGER NOT NULL REFERENCES plugin_security_scans(scan_id) ON DELETE CASCADE,
+    assembly_version TEXT NOT NULL DEFAULT '',
+    artifact_channel TEXT NOT NULL DEFAULT 'stable',
+    artifact_url TEXT NOT NULL DEFAULT '',
+    artifact_sha256 TEXT NOT NULL DEFAULT '',
+    scanner_version TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT '',
+    scanned_at_utc TEXT NOT NULL DEFAULT '',
+    highest_severity TEXT NOT NULL DEFAULT 'none',
+    informational_count INTEGER NOT NULL DEFAULT 0,
+    caution_count INTEGER NOT NULL DEFAULT 0,
+    high_count INTEGER NOT NULL DEFAULT 0,
+    critical_count INTEGER NOT NULL DEFAULT 0,
+    capabilities_json TEXT NOT NULL DEFAULT '[]',
+    findings_json TEXT NOT NULL DEFAULT '[]',
+    source_available INTEGER NOT NULL DEFAULT 0,
+    source_repository TEXT NOT NULL DEFAULT '',
+    source_commit TEXT NOT NULL DEFAULT '',
+    source_to_binary_verified INTEGER NOT NULL DEFAULT 0,
+    report_json TEXT NOT NULL DEFAULT '{}',
+    error TEXT NOT NULL DEFAULT ''
+);
 """
 
 
@@ -722,12 +788,29 @@ def create_runtime_view(db: sqlite3.Connection) -> None:
              COALESCE(pr.nsfw,0) AS plugin_nsfw,
              COALESCE(pr.richness_score,0) AS richness_score,
              CASE WHEN pr.presentation_variant_id=v.variant_id THEN 1 ELSE 0 END AS is_presentation_variant,
-             CASE WHEN pr.preferred_variant_id=v.variant_id THEN 1 ELSE 0 END AS is_preferred_variant
+             CASE WHEN pr.preferred_variant_id=v.variant_id THEN 1 ELSE 0 END AS is_preferred_variant,
+             COALESCE(sc.status,'') AS security_status,
+             COALESCE(sc.scanned_at_utc,'') AS security_scanned_at_utc,
+             COALESCE(sc.artifact_sha256,'') AS security_artifact_sha256,
+             COALESCE(sc.scanner_version,'') AS security_scanner_version,
+             COALESCE(sc.highest_severity,'none') AS security_highest_severity,
+             COALESCE(sc.informational_count,0) AS security_informational_count,
+             COALESCE(sc.caution_count,0) AS security_caution_count,
+             COALESCE(sc.high_count,0) AS security_high_count,
+             COALESCE(sc.critical_count,0) AS security_critical_count,
+             COALESCE(sc.capabilities_json,'[]') AS security_capabilities_json,
+             COALESCE(sc.findings_json,'[]') AS security_findings_json,
+             COALESCE(sc.source_available,0) AS security_source_available,
+             COALESCE(sc.source_repository,'') AS security_source_repository,
+             COALESCE(sc.source_commit,'') AS security_source_commit,
+             COALESCE(sc.source_to_binary_verified,0) AS security_source_to_binary_verified,
+             COALESCE(sc.error,'') AS security_error
            FROM plugin_variants v
            JOIN plugins p ON p.plugin_id=v.plugin_id
            JOIN sources s ON s.source_id=v.source_id
            LEFT JOIN websites w ON w.url=v.repo_url COLLATE NOCASE
            LEFT JOIN presentation pr ON pr.plugin_id=p.plugin_id
+           LEFT JOIN plugin_security_current sc ON sc.variant_id=v.variant_id
            WHERE v.active=1 AND p.active=1"""
     )
 
@@ -789,6 +872,8 @@ def build(args: argparse.Namespace) -> dict:
             "sources": int(db.execute("SELECT COUNT(*) FROM sources").fetchone()[0]),
             "websites": int(db.execute("SELECT COUNT(*) FROM websites WHERE ok=1").fetchone()[0]),
             "richCards": int(db.execute("SELECT COUNT(*) FROM presentation WHERE rich_card=1").fetchone()[0]),
+            "securityScanned": int(db.execute("SELECT COUNT(*) FROM plugin_security_current WHERE status='complete'").fetchone()[0]),
+            "securityHighOrCritical": int(db.execute("SELECT COUNT(*) FROM plugin_security_current WHERE status='complete' AND highest_severity IN ('high','critical')").fetchone()[0]),
         }
         export_debug(db, out_dir)
     finally:
@@ -820,6 +905,8 @@ def build(args: argparse.Namespace) -> dict:
         "sourceCount": counts["sources"],
         "websiteCount": counts["websites"],
         "richCardCount": counts["richCards"],
+        "securityScanCount": counts["securityScanned"],
+        "securityHighOrCriticalCount": counts["securityHighOrCritical"],
     }
     (out_dir / "catalog.json").write_text(json.dumps(descriptor, indent=2) + "\n", encoding="utf-8")
     (out_dir / f"{ZIP_FILENAME}.sha256").write_text(f"{bundle_sha}  {ZIP_FILENAME}\n", encoding="utf-8")

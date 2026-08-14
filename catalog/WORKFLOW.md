@@ -85,3 +85,9 @@ python tools/catalog/build_sqlite_catalog.py \
 ```
 
 This is an import path for tooling and data recovery, not a compatibility path in the Omega client.
+
+## Security enrichment pass
+
+The catalog and security workflows publish through the shared `omega-catalog-publish` concurrency group. After the normal catalog builder has refreshed manifests and public project metadata, `security-scanner.yml` runs on its own daily schedule and enriches only variants that are new, changed, previously incomplete, produced by an older scanner, or due for periodic revalidation.
+
+The scanner updates security tables inside the same SQLite database and republishes the catalog bundle and descriptor with new SHA-256 hashes. The game client therefore receives security intelligence through the normal catalog update path; it never downloads third-party artifacts for scanning itself.

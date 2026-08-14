@@ -15,3 +15,9 @@ Include the affected Omega version, the component involved, reproduction details
 The repository ships workflows for CodeQL code scanning, dependency review, OpenSSF Scorecard analysis, Dependabot updates, and signed build provenance attestations for release artifacts. These controls reduce risk but do not constitute a guarantee that Omega or third-party plugins are free of vulnerabilities.
 
 Omega's runtime SQLite catalog is separately hash-checked and integrity-checked before replacement. A failed online catalog update leaves the last-known-good local database active.
+
+## Third-party plugin scanning
+
+Omega's daily plugin security scanner is intentionally static-only. Third-party plugin packages are downloaded as untrusted data, hashed, inspected without execution, and discarded with the ephemeral GitHub-hosted runner. The scan job has read-only repository permissions; a separate publish job receives write permission only after the scan artifact has been produced and validated.
+
+The scanner reports observable capabilities such as network access, filesystem writes, process launching, registry/native API use, dynamic code loading, process-memory APIs, game hooking/signature scanning, local listeners, clipboard access, and credential/protected-data APIs. Compound rules highlight combinations with higher potential impact, such as network access together with process execution. These findings are security-relevant context, not allegations of malicious behavior.

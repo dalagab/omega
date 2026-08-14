@@ -107,6 +107,7 @@ internal sealed partial class MarketplaceWindow
             filterApi == selectedApi &&
             filterStatus == statusFilter &&
             filterLibraryRuntime == libraryRuntimeFilter &&
+            filterSecurity == securityFilter &&
             filterPreferTesting == configuration.PreferTestingBuilds)
         {
             return cachedFilteredPlugins;
@@ -128,6 +129,7 @@ internal sealed partial class MarketplaceWindow
         filterApi = selectedApi;
         filterStatus = statusFilter;
         filterLibraryRuntime = libraryRuntimeFilter;
+        filterSecurity = securityFilter;
         filterPreferTesting = configuration.PreferTestingBuilds;
         return cachedFilteredPlugins;
     }
@@ -163,6 +165,7 @@ internal sealed partial class MarketplaceWindow
         selectedApi = 0;
         statusFilter = MarketplaceStatusFilter.All;
         libraryRuntimeFilter = LibraryRuntimeFilter.All;
+        securityFilter = MarketplaceSecurityFilter.All;
         sort = MarketplaceSort.Name;
     }
 

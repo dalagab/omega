@@ -35,7 +35,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextWrapped("Omega ships repository workflows for code, dependency, supply-chain, and release provenance checks. Configured means the workflow is present in this source release; GitHub remains the source of truth for live results.");
         ImGui.Spacing();
 
-        if (ImGui.BeginTable("omega-security-features", 3, ImGuiTableFlags.BordersInnerH, new Vector2(860f, 270f), 0f))
+        if (ImGui.BeginTable("omega-security-features", 3, ImGuiTableFlags.BordersInnerH, new Vector2(860f, 310f), 0f))
         {
             ImGui.TableSetupColumn("Feature", ImGuiTableColumnFlags.WidthFixed, 180f);
             ImGui.TableSetupColumn("State", ImGuiTableColumnFlags.WidthFixed, 105f);
@@ -46,6 +46,7 @@ internal sealed partial class MarketplaceWindow
             DrawSecurityFeature("OpenSSF Scorecard", "Configured", "Publishes supply-chain posture results and SARIF findings.");
             DrawSecurityFeature("Dependabot", "Configured", "Keeps NuGet packages and GitHub Actions references under update review.");
             DrawSecurityFeature("Build provenance", "Configured", "Release workflow attests the published Omega.zip artifact with GitHub artifact attestations.");
+            DrawSecurityFeature("Plugin static scanner", "Configured", "Daily bounded scanning of changed/due plugin artifacts; results are stored in the central SQLite catalog without executing plugin code.");
             DrawSecurityFeature("SQLite catalog integrity", updates.ModeLabel, "SHA-256 transport/database validation, SQLite integrity checks, and last-known-good local fallback.");
             ImGui.EndTable();
         }

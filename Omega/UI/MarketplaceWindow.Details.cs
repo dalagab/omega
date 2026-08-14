@@ -44,6 +44,8 @@ internal sealed partial class MarketplaceWindow
             _ => ApplyStatusFilter(query, installed, currentApi, currentDalamudVersion),
         };
 
+        query = ApplySecurityFilter(query);
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             var needle = search.Trim();

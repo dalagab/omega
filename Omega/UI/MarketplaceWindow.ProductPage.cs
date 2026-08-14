@@ -43,6 +43,7 @@ internal sealed partial class MarketplaceWindow
         DrawProductHero(plugin, content, installedPlugin, currentApi, currentDalamudVersion);
         DrawProductScreenshots(content);
         DrawProductInformation(plugin, content, currentApi, currentDalamudVersion);
+        DrawProductSecurity(plugin);
     }
 
     private void DrawProductHero(

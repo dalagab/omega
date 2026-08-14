@@ -87,6 +87,7 @@ internal sealed partial class MarketplaceWindow
         selectedTags.Clear();
         selectedApi = 0;
         statusFilter = MarketplaceStatusFilter.All;
+        securityFilter = MarketplaceSecurityFilter.All;
     }
 
     private void DrawApplicationControls()

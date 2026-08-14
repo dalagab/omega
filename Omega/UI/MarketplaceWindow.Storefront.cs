@@ -54,6 +54,8 @@ internal sealed partial class MarketplaceWindow
             count++;
         if (activeView == MarketplaceView.Library && libraryRuntimeFilter != LibraryRuntimeFilter.All)
             count++;
+        if (securityFilter != MarketplaceSecurityFilter.All)
+            count++;
         if (sort != MarketplaceSort.Name)
             count++;
         return count;

@@ -158,7 +158,11 @@ internal sealed class SqliteCatalogStore
                    download_link_update,download_link_testing,icon_url,image_urls_json,tags_json,
                    category_tags_json,download_count,last_update,is_hide,is_testing_exclusive,
                    dip17_channel,source_name,source_url,source_is_official,website_url,website_title,
-                   website_description,website_image_urls_json,website_enriched
+                   website_description,website_image_urls_json,website_enriched,
+                   security_status,security_scanned_at_utc,security_artifact_sha256,security_scanner_version,
+                   security_highest_severity,security_informational_count,security_caution_count,security_high_count,
+                   security_critical_count,security_capabilities_json,security_findings_json,security_source_available,
+                   security_source_repository,security_source_commit,security_source_to_binary_verified,security_error
               FROM runtime_plugin_variants;
             """;
         using var reader = command.ExecuteReader();
@@ -200,6 +204,22 @@ internal sealed class SqliteCatalogStore
                 OmegaWebsiteDescription = GetString(reader, 30),
                 OmegaWebsiteImageUrls = ReadStrings(GetString(reader, 31, "[]")),
                 OmegaEnriched = GetBool(reader, 32),
+                SecurityStatus = GetString(reader, 33),
+                SecurityScannedAtUtcText = GetString(reader, 34),
+                SecurityArtifactSha256 = GetString(reader, 35),
+                SecurityScannerVersion = GetString(reader, 36),
+                SecurityHighestSeverity = GetString(reader, 37, "none"),
+                SecurityInformationalCount = GetInt(reader, 38),
+                SecurityCautionCount = GetInt(reader, 39),
+                SecurityHighCount = GetInt(reader, 40),
+                SecurityCriticalCount = GetInt(reader, 41),
+                SecurityCapabilities = ReadStrings(GetString(reader, 42, "[]")),
+                SecurityFindings = ReadSecurityFindings(GetString(reader, 43, "[]")),
+                SecuritySourceAvailable = GetBool(reader, 44),
+                SecuritySourceRepository = GetString(reader, 45),
+                SecuritySourceCommit = GetString(reader, 46),
+                SecuritySourceToBinaryVerified = GetBool(reader, 47),
+                SecurityError = GetString(reader, 48),
             });
         }
         return result;
@@ -268,6 +288,21 @@ internal sealed class SqliteCatalogStore
         {
             var values = JsonSerializer.Deserialize<List<string>>(json);
             return values?.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static IReadOnlyList<MarketplaceSecurityFinding> ReadSecurityFindings(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<List<MarketplaceSecurityFinding>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+            }) ?? [];
         }
         catch
         {

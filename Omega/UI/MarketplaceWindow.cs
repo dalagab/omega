@@ -36,6 +36,15 @@ internal enum LibraryRuntimeFilter
     NotLoaded,
 }
 
+internal enum MarketplaceSecurityFilter
+{
+    All,
+    Scanned,
+    NotScanned,
+    CautionOrHigher,
+    HighOrCritical,
+}
+
 internal enum MarketplaceSort
 {
     Name,
@@ -100,6 +109,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private LibrarySection librarySection;
     private MarketplaceStatusFilter statusFilter;
     private LibraryRuntimeFilter libraryRuntimeFilter;
+    private MarketplaceSecurityFilter securityFilter;
     private MarketplaceSort sort = MarketplaceSort.Name;
     private bool resetStorefrontScroll;
 
@@ -181,6 +191,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private int filterApi;
     private MarketplaceStatusFilter filterStatus;
     private LibraryRuntimeFilter filterLibraryRuntime;
+    private MarketplaceSecurityFilter filterSecurity;
     private bool filterPreferTesting;
     private MarketplacePlugin[] cachedFilteredPlugins = [];
 

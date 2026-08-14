@@ -80,7 +80,7 @@ internal static partial class RegressionCases
         Contains(codeql, "build-mode: none", "C# CodeQL analysis does not depend on the game runtime build environment");
 
         var dependency = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "dependency-review.yml"));
-        Contains(dependency, "actions/dependency-review-action@v4", "dependency review is configured for pull requests");
+        Contains(dependency, "actions/dependency-review-action@v5", "dependency review is configured for pull requests");
 
         var scorecard = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "scorecards.yml"));
         Contains(scorecard, "ossf/scorecard-action@v2.4.4", "OpenSSF Scorecard workflow is configured");
@@ -94,6 +94,10 @@ internal static partial class RegressionCases
         Contains(securityUi, "Project security", "Settings exposes the configured project security features");
         Contains(securityUi, "SQLite catalog integrity", "Settings explains runtime catalog integrity protection");
         Contains(securityUi, "GitHub Security", "Settings links to live GitHub security results");
+
+        var scannerWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "security-scanner.yml"));
+        Contains(scannerWorkflow, "Omega plugin security scanner", "third-party plugin security scanner workflow is configured");
+        Contains(scannerWorkflow, "omega-catalog.sqlite.zip", "security scanner enriches the same SQLite catalog consumed by Omega");
 
         var availability = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Availability.cs"));
         Contains(availability, "ImGuiCol.Text", "unavailable listings replace white primary text");
