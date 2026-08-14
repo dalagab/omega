@@ -4,6 +4,10 @@ internal sealed record MarketplaceCatalogProjection(
     IReadOnlyList<MarketplacePlugin> Plugins,
     IReadOnlyList<MarketplacePlugin> Variants);
 
+/// <summary>
+/// Pure catalog projection rules for duplicate-source variants, presentation selection, and stable
+/// API aggregation. These rules are shared directly with regression tests.
+/// </summary>
 internal static class MarketplaceCatalogRules
 {
     public static MarketplaceCatalogProjection Project(IEnumerable<MarketplacePlugin> candidates)

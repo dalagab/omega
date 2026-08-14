@@ -16,5 +16,10 @@ public sealed class Configuration : IPluginConfiguration
     // Last completed automatic full-source conditional check. Used by the daily update job.
     public DateTimeOffset? LastDailyUpdateCheckUtc { get; set; }
 
+    // First-use EULA acceptance is intentionally independent of the Omega build/version.
+    public bool EulaAccepted { get; set; }
+
+    public DateTimeOffset? EulaAcceptedAtUtc { get; set; }
+
     public void Save() => Plugin.PluginInterface.SavePluginConfig(this);
 }

@@ -1,5 +1,9 @@
 namespace Dalagab.Omega;
 
+/// <summary>
+/// Calculates repository health from cached plugin API metadata, including the conservative stale
+/// rule used to hide repositories whose entire known catalog is three or more API levels behind.
+/// </summary>
 internal static class RepositoryHealthRules
 {
     public static IReadOnlyList<RepositoryCatalogStatus> BuildStatuses(

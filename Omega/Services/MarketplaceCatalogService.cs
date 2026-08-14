@@ -1,14 +1,29 @@
 namespace Dalagab.Omega;
 
-internal sealed class MarketplaceCatalogService : IDisposable
+/// <summary>
+/// Owns Omega's local marketplace projection and repository metadata cache. It reads validated
+/// catalog records and exposes indexed/filterable plugin views; it does not load or install plugin DLLs.
+/// </summary>
+internal sealed partial class MarketplaceCatalogService : IDisposable
 {
     private readonly RepositoryClient client = new();
     private readonly CatalogDatabase database;
     private readonly object sync = new();
     private IReadOnlyList<MarketplacePlugin> plugins = [];
     private IReadOnlyList<MarketplacePlugin> variants = [];
+    private IReadOnlyList<MarketplacePlugin> databaseVariants = [];
+    private IReadOnlyList<MarketplacePlugin> defaultPlugins = [];
+    private string defaultPluginFingerprint = string.Empty;
+    private IReadOnlyDictionary<string, MarketplacePlugin[]> variantsByInternalName =
+        new Dictionary<string, MarketplacePlugin[]>(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<int, IReadOnlyList<RepositoryCatalogStatus>> repositoryStatusCache = new();
+    private readonly Dictionary<string, MarketplaceCatalogProjection> mainProjectionCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<int, IReadOnlyDictionary<string, MarketplacePlugin[]>> mainVariantIndexCache = new();
+    private readonly Dictionary<string, MarketplaceTagIndex> tagIndexCache = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? refreshCts;
     private string[] loadedRepositoryUrls = [];
+    private HashSet<string> loadedRepositoryUrlSet = new(StringComparer.OrdinalIgnoreCase);
+    private long revision;
 
     public MarketplaceCatalogService(string databaseDirectory)
     {
@@ -20,7 +35,7 @@ internal sealed class MarketplaceCatalogService : IDisposable
 
     /// <summary>
     /// Replaces the curated catalog with an authoritative prebuilt bundle while preserving
-    /// cached records for genuinely user-added repositories. The same database projection is
+    /// cached official/default and user-added repository records. The same database projection is
     /// used afterward regardless of whether records came from the central bundle or local feeds.
     /// </summary>
     public CatalogBundleImportResult ReplaceFromBundle(
@@ -32,7 +47,7 @@ internal sealed class MarketplaceCatalogService : IDisposable
             throw new InvalidDataException("Online Omega catalog bundle contains no repository records.");
 
         var preserved = repositories
-            .Where(x => x.Enabled && !x.IsCurated)
+            .Where(IsOnlineOverlaySource)
             .Select(x => database.TryRead(x.Url))
             .Where(x => x is not null)
             .Cast<CatalogDatabaseRecord>()
@@ -41,6 +56,29 @@ internal sealed class MarketplaceCatalogService : IDisposable
         database.ReplaceAll(read.Records, preserved);
         RebuildFromDatabase(repositories.Where(IsEligible).ToArray(), preserveLastRefresh: false);
         return read;
+    }
+
+    public bool SetDefaultPlugins(IEnumerable<MarketplacePlugin> pluginsFromDalamud)
+    {
+        var next = pluginsFromDalamud
+            .Where(x => x.SourceIsOfficial && !string.IsNullOrWhiteSpace(x.InternalName))
+            .OrderBy(x => x.InternalName, StringComparer.OrdinalIgnoreCase)
+            .ThenByDescending(x => x.AssemblyVersion)
+            .ToArray();
+        if (next.Length == 0)
+            return false;
+
+        var fingerprint = string.Join("\u001e", next.Select(x => $"{x.InternalName}\u001f{x.AssemblyVersionText}\u001f{x.DalamudApiLevel}"));
+        lock (sync)
+        {
+            if (fingerprint.Equals(defaultPluginFingerprint, StringComparison.Ordinal))
+                return false;
+
+            defaultPlugins = next;
+            defaultPluginFingerprint = fingerprint;
+            RebuildProjectionLocked();
+            return true;
+        }
     }
 
     public IReadOnlyList<MarketplacePlugin> Plugins
@@ -64,53 +102,150 @@ internal sealed class MarketplaceCatalogService : IDisposable
     public IReadOnlyList<MarketplacePlugin> GetVariants(string internalName)
     {
         lock (sync)
-            return MarketplaceCatalogRules.GetVariants(variants, internalName);
+            return variantsByInternalName.TryGetValue(internalName, out var group) ? group : [];
     }
 
     public int GetStableApiLevel(string internalName, int preferredApi = 0)
     {
         lock (sync)
-            return MarketplaceCatalogRules.GetStableApiLevel(variants, internalName, preferredApi);
+        {
+            if (!variantsByInternalName.TryGetValue(internalName, out var group))
+                return 0;
+            return MarketplaceCatalogRules.GetStableApiLevel(group, internalName, preferredApi);
+        }
     }
 
     public MarketplaceCatalogProjection GetMainProjection(int currentApi, string? sourceName = null)
     {
-        IReadOnlyList<MarketplacePlugin> snapshot;
         lock (sync)
-            snapshot = variants;
-
-        var statuses = RepositoryHealthRules.BuildStatuses(snapshot, currentApi);
-        var staleUrls = statuses
-            .Where(x => x.IsStale)
-            .Select(x => NormalizeUrl(x.SourceUrl))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        var visible = snapshot.Where(x => !staleUrls.Contains(NormalizeUrl(x.SourceUrl)));
-        if (!string.IsNullOrWhiteSpace(sourceName) &&
-            !sourceName.Equals("All sources", StringComparison.OrdinalIgnoreCase))
-        {
-            visible = visible.Where(x => x.SourceName.Equals(sourceName, StringComparison.OrdinalIgnoreCase));
-        }
-
-        return MarketplaceCatalogRules.Project(visible);
+            return GetMainProjectionLocked(currentApi, sourceName);
     }
 
     public IReadOnlyList<MarketplacePlugin> GetMainVariants(string internalName, int currentApi)
-        => MarketplaceCatalogRules.GetVariants(GetMainProjection(currentApi).Variants, internalName);
+    {
+        lock (sync)
+        {
+            if (!mainVariantIndexCache.TryGetValue(currentApi, out var index))
+            {
+                var projection = GetMainProjectionLocked(currentApi, null);
+                index = BuildVariantIndex(projection.Variants);
+                mainVariantIndexCache[currentApi] = index;
+            }
+
+            return index.TryGetValue(internalName, out var group) ? group : [];
+        }
+    }
+
+    public MarketplaceTagIndex GetTagIndex(int currentApi, string? sourceName = null)
+    {
+        lock (sync)
+        {
+            var sourceKey = string.IsNullOrWhiteSpace(sourceName) ? string.Empty : sourceName.Trim();
+            var cacheKey = $"{currentApi}\u001f{sourceKey}";
+            if (tagIndexCache.TryGetValue(cacheKey, out var cached))
+                return cached;
+
+            var projection = GetMainProjectionLocked(currentApi, sourceName);
+            var index = MarketplaceTagRules.Build(projection.Variants);
+            tagIndexCache[cacheKey] = index;
+            return index;
+        }
+    }
 
     public IReadOnlyList<RepositoryCatalogStatus> GetRepositoryStatuses(int currentApi)
     {
-        IReadOnlyList<MarketplacePlugin> snapshot;
         lock (sync)
-            snapshot = variants;
-        return RepositoryHealthRules.BuildStatuses(snapshot, currentApi);
+            return GetRepositoryStatusesLocked(currentApi);
     }
 
     public RepositoryCatalogStatus? GetRepositoryStatus(string sourceUrl, int currentApi)
     {
         var normalized = NormalizeUrl(sourceUrl);
-        return GetRepositoryStatuses(currentApi)
-            .FirstOrDefault(x => NormalizeUrl(x.SourceUrl).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+        lock (sync)
+            return GetRepositoryStatusesLocked(currentApi)
+                .FirstOrDefault(x => NormalizeUrl(x.SourceUrl).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private MarketplaceCatalogProjection GetMainProjectionLocked(int currentApi, string? sourceName)
+    {
+        var sourceKey = string.IsNullOrWhiteSpace(sourceName) ? string.Empty : sourceName.Trim();
+        var cacheKey = $"{currentApi}\u001f{sourceKey}";
+        if (mainProjectionCache.TryGetValue(cacheKey, out var cached))
+            return cached;
+
+        var staleUrls = GetRepositoryStatusesLocked(currentApi)
+            .Where(x => x.IsStale)
+            .Select(x => NormalizeUrl(x.SourceUrl))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        IEnumerable<MarketplacePlugin> visible = variants;
+        if (staleUrls.Count > 0)
+            visible = visible.Where(x => !staleUrls.Contains(NormalizeUrl(x.SourceUrl)));
+
+        if (!string.IsNullOrWhiteSpace(sourceKey) &&
+            !sourceKey.Equals("All sources", StringComparison.OrdinalIgnoreCase))
+        {
+            visible = visible.Where(x => x.SourceName.Equals(sourceKey, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var projection = MarketplaceCatalogRules.Project(visible);
+        mainProjectionCache[cacheKey] = projection;
+        return projection;
+    }
+
+    private IReadOnlyList<RepositoryCatalogStatus> GetRepositoryStatusesLocked(int currentApi)
+    {
+        if (repositoryStatusCache.TryGetValue(currentApi, out var cached))
+            return cached;
+
+        var statuses = RepositoryHealthRules.BuildStatuses(variants, currentApi);
+        repositoryStatusCache[currentApi] = statuses;
+        return statuses;
+    }
+
+    private static IReadOnlyDictionary<string, MarketplacePlugin[]> BuildVariantIndex(IEnumerable<MarketplacePlugin> candidates)
+        => candidates
+            .GroupBy(x => x.InternalName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                x => x.Key,
+                x => x
+                    .OrderByDescending(v => v.SourceIsOfficial)
+                    .ThenByDescending(v => v.AssemblyVersion)
+                    .ThenBy(v => v.SourceName, StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                StringComparer.OrdinalIgnoreCase);
+
+    private void RebuildProjectionLocked()
+    {
+        var runtimeNames = defaultPlugins
+            .Select(x => x.InternalName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var combined = databaseVariants
+            .Where(x => !x.SourceIsOfficial || !runtimeNames.Contains(x.InternalName))
+            .Concat(defaultPlugins)
+            .ToArray();
+        var projection = MarketplaceCatalogRules.Project(combined);
+
+        plugins = projection.Plugins;
+        variants = projection.Variants;
+        variantsByInternalName = BuildVariantIndex(projection.Variants);
+        repositoryStatusCache.Clear();
+        mainProjectionCache.Clear();
+        mainVariantIndexCache.Clear();
+        tagIndexCache.Clear();
+        revision++;
+    }
+
+    private static bool IsOnlineOverlaySource(RepositorySource source)
+        => source.Enabled && (source.IsOfficial || !source.IsCurated);
+
+    public long Revision
+    {
+        get
+        {
+            lock (sync)
+                return revision;
+        }
     }
 
     public bool IsRefreshing { get; private set; }
@@ -122,195 +257,4 @@ internal sealed class MarketplaceCatalogService : IDisposable
     /// <summary>
     /// Rebuilds the marketplace entirely from the local catalog database. No network requests occur.
     /// </summary>
-    public void LoadCached(IEnumerable<RepositorySource> repositories)
-        => RebuildFromDatabase(repositories.Where(IsEligible).ToArray(), preserveLastRefresh: false);
-
-    public bool MatchesConfiguredSources(IEnumerable<RepositorySource> repositories)
-    {
-        var current = GetEligibleRepositoryUrls(repositories);
-        lock (sync)
-            return HasLoaded && current.SequenceEqual(loadedRepositoryUrls, StringComparer.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Explicit full-source check. Existing database records use HTTP validators, so unchanged feeds
-    /// normally return 304 without downloading their JSON payload again.
-    /// </summary>
-    public Task RefreshAsync(IEnumerable<RepositorySource> repositories)
-    {
-        var all = repositories.Where(IsEligible).ToArray();
-        return RefreshSelectedAsync(all, all);
-    }
-
-    /// <summary>
-    /// Refreshes only a selected subset (normally user-added repositories) while rebuilding the
-    /// storefront against the complete enabled source set already present in the local database.
-    /// </summary>
-    public Task RefreshRepositoriesAsync(
-        IEnumerable<RepositorySource> selectedRepositories,
-        IEnumerable<RepositorySource> allRepositories)
-    {
-        var all = allRepositories.Where(IsEligible).ToArray();
-        var selectedUrls = selectedRepositories
-            .Where(IsEligible)
-            .Select(x => NormalizeUrl(x.Url))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var selected = all.Where(x => selectedUrls.Contains(NormalizeUrl(x.Url))).ToArray();
-        return selected.Length == 0 ? Task.CompletedTask : RefreshSelectedAsync(selected, all);
-    }
-
-    /// <summary>
-    /// Checks only the known source variants for one plugin, then rebuilds the complete storefront
-    /// from the local database. This is used when a user opens plugin details.
-    /// </summary>
-    public Task RefreshPluginSourcesAsync(string internalName, IEnumerable<RepositorySource> repositories)
-    {
-        var all = repositories.Where(IsEligible).ToArray();
-        var knownUrls = GetVariants(internalName)
-            .Select(x => NormalizeUrl(x.SourceUrl))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var selected = all.Where(x => knownUrls.Contains(NormalizeUrl(x.Url))).ToArray();
-        return selected.Length == 0 ? Task.CompletedTask : RefreshSelectedAsync(selected, all);
-    }
-
-    private Task RefreshSelectedAsync(
-        IReadOnlyList<RepositorySource> selected,
-        IReadOnlyList<RepositorySource> all)
-    {
-        if (IsRefreshing)
-            return Task.CompletedTask;
-
-        refreshCts?.Cancel();
-        refreshCts?.Dispose();
-        refreshCts = new CancellationTokenSource();
-        return RefreshCoreAsync(selected, all, refreshCts.Token);
-    }
-
-    private async Task RefreshCoreAsync(
-        IReadOnlyList<RepositorySource> selectedRepositories,
-        IReadOnlyList<RepositorySource> allRepositories,
-        CancellationToken cancellationToken)
-    {
-        IsRefreshing = true;
-        LastError = string.Empty;
-        var errors = new List<string>();
-        try
-        {
-            // Deliberately sequential. Omega may curate many sources, but a refresh should not create
-            // a burst of simultaneous network requests from inside the game process.
-            foreach (var repository in selectedRepositories)
-            {
-                try
-                {
-                    var cached = database.TryRead(repository.Url);
-                    var fetched = await client.FetchAsync(repository, cached, cancellationToken).ConfigureAwait(false);
-                    var checkedAt = DateTimeOffset.UtcNow;
-
-                    if (fetched.NotModified && cached is not null)
-                    {
-                        database.MarkChecked(cached, fetched.ETag, fetched.LastModified, checkedAt);
-                    }
-                    else
-                    {
-                        database.Store(
-                            repository.Url,
-                            fetched.ManifestJson,
-                            fetched.ETag,
-                            fetched.LastModified,
-                            checkedAt);
-                    }
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    errors.Add($"{repository.Name}: {ex.Message}");
-                    Plugin.Log.Warning(ex, "Failed to check Omega repository {Repository}; cached data will be retained when available.", repository.Url);
-                }
-            }
-
-            RebuildFromDatabase(allRepositories, preserveLastRefresh: true);
-            LastRefresh = DateTimeOffset.Now;
-            LastError = string.Join(" | ", errors);
-        }
-        catch (OperationCanceledException)
-        {
-            // A newer explicit check superseded this one.
-        }
-        finally
-        {
-            IsRefreshing = false;
-        }
-    }
-
-    private void RebuildFromDatabase(IReadOnlyList<RepositorySource> repositories, bool preserveLastRefresh)
-    {
-        var results = new List<MarketplacePlugin>();
-        var loadedUrls = new List<string>();
-        var errors = new List<string>();
-        DateTimeOffset? newestCheck = null;
-
-        foreach (var repository in repositories)
-        {
-            var cached = database.TryRead(repository.Url);
-            if (cached is null)
-                continue;
-
-            try
-            {
-                results.AddRange(RepositoryManifestParser.Parse(cached.ManifestJson, repository));
-                loadedUrls.Add(NormalizeUrl(repository.Url));
-                if (newestCheck is null || cached.CheckedAtUtc > newestCheck)
-                    newestCheck = cached.CheckedAtUtc;
-            }
-            catch (Exception ex)
-            {
-                errors.Add($"{repository.Name}: cached manifest invalid ({ex.Message})");
-                Plugin.Log.Warning(ex, "Failed to load cached Omega repository {Repository}", repository.Url);
-            }
-        }
-
-        var projection = MarketplaceCatalogRules.Project(results);
-        lock (sync)
-        {
-            plugins = projection.Plugins;
-            variants = projection.Variants;
-            loadedRepositoryUrls = repositories
-                .Select(x => NormalizeUrl(x.Url))
-                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-            CachedRepositoryCount = loadedUrls.Count;
-            HasLoaded = CachedRepositoryCount > 0;
-        }
-
-        if (!preserveLastRefresh && newestCheck is not null)
-            LastRefresh = newestCheck.Value.ToLocalTime();
-        if (errors.Count > 0)
-            LastError = string.Join(" | ", errors);
-    }
-
-    private static bool IsEligible(RepositorySource source)
-    {
-        if (!source.Enabled || !Uri.TryCreate(source.Url, UriKind.Absolute, out var uri))
-            return false;
-        return uri.Scheme == Uri.UriSchemeHttps;
-    }
-
-    private static string[] GetEligibleRepositoryUrls(IEnumerable<RepositorySource> repositories)
-        => repositories
-            .Where(IsEligible)
-            .Select(x => NormalizeUrl(x.Url))
-            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-    private static string NormalizeUrl(string url) => url.Trim().TrimEnd('/');
-
-    public void Dispose()
-    {
-        refreshCts?.Cancel();
-        refreshCts?.Dispose();
-        client.Dispose();
-    }
 }

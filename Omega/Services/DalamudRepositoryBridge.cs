@@ -105,6 +105,54 @@ internal sealed class DalamudRepositoryBridge
         }
     }
 
+    /// <summary>
+    /// Enables a pre-existing Dalamud repository only after the user explicitly selected that
+    /// repository in Omega's install confirmation. Ownership remains with the user; Omega will
+    /// not subsequently toggle or remove the repository as if it were Omega-managed.
+    /// </summary>
+    public async Task<RepositoryBridgeResult> EnableExistingForExplicitInstallAsync(
+        string url,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryNormalizeUrl(url, out var normalized, out var error))
+            return new RepositoryBridgeResult(RepositoryBridgeOutcome.InvalidUrl, error);
+
+        try
+        {
+            var context = ResolveContext();
+            var existing = FindRepositorySetting(context.RepositoryList, normalized);
+            if (existing is null)
+                return new RepositoryBridgeResult(RepositoryBridgeOutcome.NotFound, "The selected repository is no longer present in Dalamud.");
+            if (ReadBool(existing, "IsEnabled"))
+                return new RepositoryBridgeResult(RepositoryBridgeOutcome.AlreadyPresent, "Repository is already enabled in Dalamud.", OwnedByOmega: false);
+
+            Set(existing, "IsEnabled", true);
+            QueueSave(context.Configuration);
+            try
+            {
+                await RefreshDalamudRepositoriesAsync(context.PluginManager, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                Set(existing, "IsEnabled", false);
+                QueueSave(context.Configuration);
+                throw;
+            }
+
+            return new RepositoryBridgeResult(
+                RepositoryBridgeOutcome.Updated,
+                "Selected repository enabled in Dalamud for this installation.",
+                OwnedByOmega: false);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Failed to enable explicitly selected Dalamud repository {Repository}", url);
+            return new RepositoryBridgeResult(
+                RepositoryBridgeOutcome.Failed,
+                $"Dalamud could not enable the selected repository: {ex.GetBaseException().Message}");
+        }
+    }
+
     public async Task<RepositoryBridgeResult> SetManagedEnabledAsync(string url, bool enabled, CancellationToken cancellationToken = default)
     {
         if (!TryNormalizeUrl(url, out var normalized, out var error))

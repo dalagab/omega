@@ -2,6 +2,10 @@ using System.Text.Json;
 
 namespace Dalagab.Omega;
 
+/// <summary>
+/// Parses bounded Dalamud-compatible PluginMaster JSON into Omega metadata records. Wrapper forms
+/// are tolerated, but invalid roots and oversized repositories fail closed.
+/// </summary>
 internal static class RepositoryManifestParser
 {
     internal const int MaximumEntriesPerRepository = 10000;

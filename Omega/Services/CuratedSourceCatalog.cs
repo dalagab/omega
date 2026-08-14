@@ -2,6 +2,10 @@ using System.Text.Json;
 
 namespace Dalagab.Omega;
 
+/// <summary>
+/// Merges bundled or catalog-discovered repository definitions into Omega configuration while
+/// preserving user enable/disable choices and repository ownership boundaries.
+/// </summary>
 internal static class CuratedSourceCatalog
 {
     private static readonly JsonSerializerOptions JsonOptions = new()

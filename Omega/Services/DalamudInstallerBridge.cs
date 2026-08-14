@@ -14,6 +14,10 @@ internal enum InstallOutcome
 
 internal sealed record InstallResult(InstallOutcome Outcome, string Message);
 
+/// <summary>
+/// Fail-closed API-15 bridge to Dalamud's own plugin installation path. Omega selects metadata and
+/// requests an install, while Dalamud remains responsible for package retrieval, loading, and lifecycle.
+/// </summary>
 internal sealed class DalamudInstallerBridge
 {
     private readonly IDalamudPluginInterface pluginInterface;
@@ -40,13 +44,13 @@ internal sealed class DalamudInstallerBridge
         {
             return new InstallResult(
                 InstallOutcome.RepositoryIntegrationRequired,
-                $"{plugin.SourceName} is not registered with Dalamud. Integrate this source from Omega's Sources window before installing so Dalamud can service and update the plugin later.");
+                $"The selected repository is not currently available to Dalamud, so {plugin.Name} could not be installed.");
         }
 
         try
         {
             await InstallThroughDalamudInternalsAsync(plugin, useTesting, cancellationToken).ConfigureAwait(false);
-            return new InstallResult(InstallOutcome.Installed, $"Installed {plugin.Name} through Dalamud.");
+            return new InstallResult(InstallOutcome.Installed, $"Installed {plugin.Name}.");
         }
         catch (Exception ex)
         {

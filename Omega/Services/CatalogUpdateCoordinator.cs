@@ -11,7 +11,8 @@ internal enum CatalogAcquisitionMode
 /// Preferred/fallback catalog acquisition policy.
 ///
 /// Preferred: check one tiny catalog.json descriptor, download the complete prebuilt database only
-/// when its semantic catalog hash changes, then optionally layer user-added repositories on top.
+/// when its semantic catalog hash changes, then layer the official/default Dalamud catalogue and
+/// user-added repositories on top.
 ///
 /// Fallback: if the online catalog cannot be checked/downloaded/validated, conditionally rebuild
 /// the same local database from every enabled repository definition already bundled/configured.
@@ -72,6 +73,28 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
 
     public Task RefreshAsync() => RefreshAsync(cts.Token);
 
+    /// <summary>
+    /// Refreshes a small explicitly curated subset regardless of whether the central catalog or
+    /// local fallback is active. This is used for editorial surfaces such as Spotlight when a
+    /// required curated plugin is missing from an older local cache. User-disabled sources remain
+    /// disabled and are never contacted by this helper.
+    /// </summary>
+    public Task RefreshCuratedSourcesAsync(IEnumerable<string> curatedIds)
+    {
+        var wanted = curatedIds
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (wanted.Count == 0)
+            return Task.CompletedTask;
+
+        var selected = configuration.Repositories
+            .Where(x => x.Enabled && x.IsCurated && wanted.Contains(x.CuratedId))
+            .ToArray();
+        return selected.Length == 0
+            ? Task.CompletedTask
+            : catalog.RefreshRepositoriesAsync(selected, configuration.Repositories);
+    }
+
     public async Task RefreshAsync(CancellationToken cancellationToken)
     {
         if (Interlocked.Exchange(ref running, 1) != 0)
@@ -85,7 +108,7 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
                 var onlineApplied = await TryApplyOnlineCatalogAsync(cancellationToken).ConfigureAwait(false);
                 if (onlineApplied)
                 {
-                    await RefreshUserRepositoriesAsync(cancellationToken).ConfigureAwait(false);
+                    await RefreshOverlayRepositoriesAsync(cancellationToken).ConfigureAwait(false);
                     Mode = CatalogAcquisitionMode.OnlineCatalog;
                     return;
                 }
@@ -106,9 +129,9 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
     }
 
     /// <summary>
-    /// When the authoritative online DB is active, opening plugin details only checks user-added
-    /// source variants. Curated repository fan-out is unnecessary because the central DB already
-    /// represents those records. In fallback mode the prior per-plugin source refresh is retained.
+    /// When the authoritative online DB is active, opening plugin details checks local overlay
+    /// sources: the official Dalamud repository plus user-added repositories. Other curated sources
+    /// stay represented by the central DB. In fallback mode the complete source list is retained.
     /// </summary>
     public Task RefreshPluginSourcesAsync(string internalName)
     {
@@ -116,8 +139,7 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
             return catalog.RefreshPluginSourcesAsync(internalName, configuration.Repositories);
 
         var selected = configuration.Repositories.Where(x =>
-            x.Enabled &&
-            !x.IsCurated &&
+            IsOnlineOverlaySource(x) &&
             catalog.GetVariants(internalName).Any(v =>
                 NormalizeUrl(v.SourceUrl).Equals(NormalizeUrl(x.Url), StringComparison.OrdinalIgnoreCase)));
 
@@ -201,16 +223,19 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
         }
     }
 
-    private async Task RefreshUserRepositoriesAsync(CancellationToken cancellationToken)
+    private async Task RefreshOverlayRepositoriesAsync(CancellationToken cancellationToken)
     {
-        var userRepositories = configuration.Repositories
-            .Where(x => x.Enabled && !x.IsCurated)
+        var overlayRepositories = configuration.Repositories
+            .Where(IsOnlineOverlaySource)
             .ToArray();
-        if (userRepositories.Length == 0)
-            return; // Central catalog is complete: no repository fan-out is required.
+        if (overlayRepositories.Length == 0)
+            return;
 
-        await catalog.RefreshRepositoriesAsync(userRepositories, configuration.Repositories).ConfigureAwait(false);
+        await catalog.RefreshRepositoriesAsync(overlayRepositories, configuration.Repositories).ConfigureAwait(false);
     }
+
+    private static bool IsOnlineOverlaySource(RepositorySource source)
+        => source.Enabled && (source.IsOfficial || !source.IsCurated);
 
     private static string NormalizeUrl(string? url) => (url ?? string.Empty).Trim().TrimEnd('/');
 

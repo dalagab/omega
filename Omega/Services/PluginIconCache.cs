@@ -9,6 +9,7 @@ namespace Dalagab.Omega;
 internal sealed class PluginIconCache : IDisposable
 {
     private const int MaximumIconBytes = 4 * 1024 * 1024;
+    private const int MaximumConcurrentIconLoads = 2;
 
     private readonly HttpClient httpClient = new()
     {
@@ -16,6 +17,7 @@ internal sealed class PluginIconCache : IDisposable
     };
 
     private readonly CancellationTokenSource cancellation = new();
+    private readonly SemaphoreSlim loadGate = new(MaximumConcurrentIconLoads, MaximumConcurrentIconLoads);
     private readonly Dictionary<string, Task<IDalamudTextureWrap?>> loads = new(StringComparer.OrdinalIgnoreCase);
 
     public IDalamudTextureWrap? GetOrQueue(string? url)
@@ -74,23 +76,27 @@ internal sealed class PluginIconCache : IDisposable
 
     private async Task<IDalamudTextureWrap?> LoadAsync(string url, CancellationToken cancellationToken)
     {
+        var entered = false;
         try
         {
-            using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            await loadGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            entered = true;
+
+            using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 return null;
 
             if (response.Content.Headers.ContentLength is > MaximumIconBytes)
                 return null;
 
-            var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
             if (bytes.Length == 0 || bytes.Length > MaximumIconBytes)
                 return null;
 
             return await Plugin.TextureProvider.CreateFromImageAsync(
                 bytes,
                 $"Omega plugin artwork: {url}",
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -100,6 +106,11 @@ internal sealed class PluginIconCache : IDisposable
         {
             Plugin.Log.Debug(ex, "Unable to load marketplace icon from {Url}", url);
             return null;
+        }
+        finally
+        {
+            if (entered)
+                loadGate.Release();
         }
     }
 }

@@ -1,5 +1,10 @@
 name: Omega catalog builder
 
+# Operator guide: catalog/WORKFLOW.md
+# Manual/authoritative repository pre-seed: sources/curated-sources.json
+# Automatic GitHub discovery queries: catalog/search-queries.json
+# Validation result/state: catalog/latest-report.json
+
 on:
   schedule:
     - cron: "17 4 * * *"
@@ -117,3 +122,9 @@ jobs:
             catalog/generated-sources.json \
             catalog/known-bad-hashes.json \
             --clobber
+
+      - name: Smoke-test published catalog download
+        run: >-
+          python tools/catalog/test_live_catalog.py
+          --descriptor-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/catalog.json"
+          --expected-bundle catalog/dist/omega-catalog-db.zip

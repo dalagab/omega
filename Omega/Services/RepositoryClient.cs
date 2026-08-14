@@ -12,6 +12,10 @@ internal sealed class RepositoryFetchResult
     public string LastModified { get; init; } = string.Empty;
 }
 
+/// <summary>
+/// Performs bounded conditional HTTP reads for individual PluginMaster feeds during local fallback.
+/// It validates response size/content before callers replace last-known-good catalog records.
+/// </summary>
 internal sealed class RepositoryClient : IDisposable
 {
     private const int MaxResponseBytes = 16 * 1024 * 1024;
