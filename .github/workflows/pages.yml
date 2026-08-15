@@ -1,0 +1,72 @@
+name: Deploy Omega public site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'images/icon.png'
+      - 'images/title-icon.png'
+      - 'tools/site/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Tailwind CSS build tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Build public site shell
+        run: python tools/site/build_site.py
+
+      - name: Compile Tailwind CSS
+        run: npx @tailwindcss/cli -i ./site/assets/tailwind.css -o ./_site/assets/site.css --minify
+
+      - name: Validate public boundary and links
+        run: python tools/site/validate_site.py
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

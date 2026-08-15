@@ -42,9 +42,12 @@ def validate_bytes(descriptor_bytes: bytes, bundle: bytes) -> dict:
         raw = archive.read(names[0])
     if sha256(raw) != str(descriptor.get("databaseSha256") or ""):
         raise RuntimeError("evidence database SHA-256 mismatch")
-    with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp:
-        tmp.write(raw); tmp.flush()
-        db = sqlite3.connect(tmp.name)
+    # NamedTemporaryFile remains open on Windows and SQLite cannot reopen that
+    # path there. Materialize the database inside a temporary directory instead.
+    with tempfile.TemporaryDirectory(prefix="omega-evidence-validate-") as td:
+        db_path = Path(td) / "omega-security-evidence.sqlite"
+        db_path.write_bytes(raw)
+        db = sqlite3.connect(db_path)
         try:
             if str(db.execute("PRAGMA integrity_check").fetchone()[0]).lower() != "ok":
                 raise RuntimeError("evidence integrity_check failed")

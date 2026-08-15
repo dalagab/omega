@@ -96,6 +96,15 @@ class UiLayoutContractTests(unittest.TestCase):
         self.assertNotIn('"Large list"', presentation)
         self.assertIn("DrawRepositoryName", presentation)
 
+    def test_discover_installed_check_overlays_artwork_without_shifting_layout(self):
+        source = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Discover.cs").read_text(encoding="utf-8")
+        self.assertIn("DrawDiscoverInstalledMarker(artworkMin", source)
+        self.assertIn("Installed state is an artwork overlay, never part of row/card geometry", source)
+        self.assertIn("ImGui.SetCursorPos(new Vector2(12f, 12f))", source)
+        self.assertIn("ImGui.SetCursorPos(new Vector2(12f, 18f))", source)
+        self.assertNotIn("installed ? 44f : 12f", source)
+        self.assertNotIn("var artworkX = installed ?", source)
+
     def test_spotlight_security_matches_product_page_package_and_keeps_automation_separate(self):
         spotlight = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Spotlight.cs").read_text(encoding="utf-8")
         shelves = (ROOT / "Omega" / "UI" / "MarketplaceWindow.SpotlightShelves.cs").read_text(encoding="utf-8")

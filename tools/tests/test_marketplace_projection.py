@@ -14,6 +14,12 @@ import validate_marketplace_catalog
 
 
 class MarketplaceProjectionTests(unittest.TestCase):
+    def test_sqlite_validators_use_windows_safe_temporary_paths(self) -> None:
+        for name in ("validate_marketplace_catalog.py", "validate_evidence_catalog.py"):
+            source = (common.ROOT / "tools" / "catalog" / name).read_text(encoding="utf-8")
+            self.assertNotIn("tempfile.NamedTemporaryFile(", source, f"{name} must not keep a temporary SQLite file open on Windows")
+            self.assertIn("TemporaryDirectory", source, f"{name} must materialize SQLite into a reopenable temporary path")
+
     def test_projection_removes_detailed_security_tables_and_keeps_runtime_projection(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-marketplace-test-") as td:
             root = Path(td)

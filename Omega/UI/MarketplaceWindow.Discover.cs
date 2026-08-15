@@ -195,14 +195,13 @@ internal sealed partial class MarketplaceWindow
         float cardWidth)
     {
         var installed = installedPlugin is not null;
-        if (installed)
-            DrawDiscoverInstalledMarker(new Vector2(8f, 22f));
-
-        var artworkX = installed ? 42f : 12f;
-        ImGui.SetCursorPos(new Vector2(artworkX, 12f));
+        ImGui.SetCursorPos(new Vector2(12f, 12f));
+        var artworkMin = ImGui.GetCursorScreenPos();
         var artworkClicked = DrawPluginArtwork(
             plugin, installedPlugin, 46f, 46f, currentApi, currentDalamudVersion,
             queueIfVisible: true, showOverlays: false);
+        if (installed)
+            DrawDiscoverInstalledMarker(artworkMin, 46f);
         ImGui.SameLine(0f, 10f);
         ImGui.BeginGroup();
         DrawDiscoverPluginTitle(Shorten(plugin.Name, 32), installed);
@@ -282,12 +281,13 @@ internal sealed partial class MarketplaceWindow
         var rowWidth = ImGui.GetContentRegionAvail().X;
         var start = ImGui.GetCursorScreenPos();
         var installed = installedPlugin is not null;
-        if (installed)
-            DrawDiscoverInstalledMarker(new Vector2(8f, 44f));
-        ImGui.SetCursorPos(new Vector2(installed ? 44f : 12f, 18f));
+        ImGui.SetCursorPos(new Vector2(12f, 18f));
+        var artworkMin = ImGui.GetCursorScreenPos();
         var artworkClicked = DrawPluginArtwork(
             plugin, installedPlugin, DiscoverListIconSize, DiscoverListIconSize, currentApi, currentDalamudVersion,
             queueIfVisible: true, showOverlays: false);
+        if (installed)
+            DrawDiscoverInstalledMarker(artworkMin, DiscoverListIconSize);
         ImGui.SameLine(0f, 16f);
         ImGui.BeginGroup();
         ImGui.SetCursorPosY(18f);
@@ -613,18 +613,24 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextUnformatted(title);
     }
 
-    private static void DrawDiscoverInstalledMarker(Vector2 localPosition)
+    private static void DrawDiscoverInstalledMarker(Vector2 artworkMin, float artworkSize)
     {
-        const float size = 26f;
-        var min = ImGui.GetWindowPos() + localPosition;
+        // Installed state is an artwork overlay, never part of row/card geometry. This keeps
+        // installed and uninstalled plugin icons aligned on the same X coordinate.
+        var size = Math.Clamp(artworkSize * 0.32f, 18f, 24f);
+        var min = artworkMin + new Vector2(3f, 3f);
         var center = min + new Vector2(size * 0.5f, size * 0.5f);
         var draw = ImGui.GetWindowDrawList();
         var installedGreen = ImGui.ColorConvertFloat4ToU32(new Vector4(0.20f, 0.72f, 0.42f, 0.98f));
         var checkColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.97f, 1.00f, 0.98f, 1f));
 
-        draw.AddCircleFilled(center, size * 0.45f, installedGreen, 24);
-        draw.AddLine(min + new Vector2(6.5f, 13.2f), min + new Vector2(11.0f, 17.3f), checkColor, 2.7f);
-        draw.AddLine(min + new Vector2(10.8f, 17.3f), min + new Vector2(19.6f, 8.4f), checkColor, 2.7f);
+        draw.AddCircleFilled(center, size * 0.46f, installedGreen, 24);
+        var a = min + new Vector2(size * 0.25f, size * 0.51f);
+        var b = min + new Vector2(size * 0.43f, size * 0.68f);
+        var c = min + new Vector2(size * 0.77f, size * 0.32f);
+        var stroke = Math.Clamp(size * 0.105f, 2f, 2.6f);
+        draw.AddLine(a, b, checkColor, stroke);
+        draw.AddLine(b, c, checkColor, stroke);
     }
 
     private static void DrawDiscoverStarIndicator(float size)
