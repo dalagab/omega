@@ -42,10 +42,32 @@ That preserves first-seen timestamps and last-known-good enrichment across trans
 4. **Build SQLite** — `build_sqlite_catalog.py` imports the JSON artifacts into the seeded DB,
    preserves last-known-good rows on failures, recalculates presentation metadata and search text,
    runs `ANALYZE`, `VACUUM`, and `PRAGMA integrity_check`, then writes the release descriptor.
-5. **Publish** — the workflow uploads `omega-catalog.sqlite.zip`, its SHA-256 file, `catalog.json`,
-   and the human-readable report to the stable `catalog-latest` release.
-6. **Verify** — the published ZIP and extracted DB are downloaded again; both hashes and SQLite
-   integrity are verified after publication.
+5. **Hand off base catalog** — the catalog builder uploads the normalized catalog bundle and descriptor as the `omega-sqlite-catalog` Actions artifact. It does not replace the production release.
+6. **Security enrichment** — `security-scanner.yml` consumes that exact builder artifact, adds bounded static security and dependency intelligence, computes candidate semantic Catalog/Security Revisions, validates the result, and emits `omega-security-catalog`. The uncompacted security database is never published as the runtime catalog.
+7. **Compact and compare** — `catalog-compaction.yml` consumes the successful security artifact, rewrites redundant security JSON snapshots to bounded summaries, runs `ANALYZE` and `VACUUM INTO`, verifies preserved history/evidence and the complete `runtime_plugin_variants` projection, then compares the candidate semantic revisions with the previous production database.
+8. **Record changelog** — when the semantic Catalog Revision changed, the compactor appends one `catalog_changelog` row containing previous/current revision IDs and bounded change counters. Timestamp-only revalidation does not create a changelog entry.
+9. **Publish final catalog when required** — only a semantic catalog change or an explicit compactor representation migration can replace `catalog-latest`. Unchanged successful runs finish without release replacement.
+10. **Verify** — the published ZIP and extracted DB are downloaded again; transport hashes, semantic revisions, SQLite integrity, foreign keys, compactor metadata, and report-size ceilings are verified after publication.
+
+## Workflow and Python regression testing
+
+The repository keeps workflow orchestration and validation logic separately testable. Complex SQLite, hash, security-enrichment, and compaction checks are implemented in importable `tools/catalog/validate_*.py` modules. The GitHub workflow files call those modules rather than embedding large Python programs directly in YAML.
+
+`tools/tests/` contains deterministic standard-library `unittest` coverage for source collection, manifest normalization, HTTP 304/cache behavior, website-cache continuity, version compatibility, archive safety, scanner resource ceilings, compaction invariants, and the catalog/security/compaction validators. Workflow-contract tests verify exact upstream workflow names, success gates, permissions, artifact names, publication ownership, command arguments, and the release regression gate.
+
+An offline handoff fixture builds a small SQLite catalog, applies the security schema/enrichment path without network scans, sends the resulting artifact through the compactor, and validates the final database. This catches schema or transport-contract regressions between workflows without touching `catalog-latest`.
+
+The dedicated `.github/workflows/regression-tests.yml` workflow runs these Python tests plus the existing scanner, hardening, compactor, SQLite, and Windows/.NET regression suites on relevant pushes and pull requests. The production catalog/security/compaction workflows also run the Python suite before doing publication work.
+
+## Semantic revisions and publication
+
+The final descriptor and SQLite metadata expose **Catalog Revision** (`cat-v1-…`) and **Security Revision** (`sec-<scanner-version>-…`). Catalog Revision hashes the logical marketplace plus current security state. Security Revision hashes normalized current security evidence and includes the scanner version because a change in analysis semantics is meaningful. Neither revision is based on generated/scanned/compacted timestamps.
+
+The exact SQLite and bundle SHA-256 values remain separate transport-integrity identifiers. A physical representation change can therefore alter `catalogSha256`/`bundleSha256` while leaving the semantic revisions unchanged. This is used when a new compactor representation must be deployed without claiming that plugin security intelligence changed.
+
+The compactor is the only production catalog publisher. It compares the candidate against the previous `catalog-latest` database and emits a fail-closed publication decision. No semantic change means no release replacement and no new `catalog_changelog` row.
+
+Operational scan freshness is intentionally separate from semantic identity. `security-scan-ledger.json` tracks successful revalidation time, scanner version, artifact URL/version, and artifact hash per variant. The scanner can therefore suppress another timestamp-only rescan even when the no-op database candidate was not published. On a semantic no-op the compactor updates only that small ledger asset; on a real catalog publication it ships the ledger alongside the database.
 
 ## Runtime update contract
 
@@ -86,8 +108,10 @@ python tools/catalog/build_sqlite_catalog.py \
 
 This is an import path for tooling and data recovery, not a compatibility path in the Omega client.
 
-## Security enrichment pass
+## Security enrichment and compaction
 
-The catalog and security workflows publish through the shared `omega-catalog-publish` concurrency group. After the normal catalog builder has refreshed manifests and public project metadata, `security-scanner.yml` runs on its own daily schedule and enriches only variants that are new, changed, previously incomplete, produced by an older scanner, or due for periodic revalidation.
+After the normal catalog builder has refreshed manifests and public project metadata, `security-scanner.yml` enriches only variants that are new, changed, previously incomplete, produced by an older scanner, or due for periodic revalidation. The scanner job has read-only repository permission and emits the security-enriched database as an Actions artifact instead of publishing the large intermediate database directly.
 
-The scanner updates security tables inside the same SQLite database and republishes the catalog bundle and descriptor with new SHA-256 hashes. The game client therefore receives security intelligence through the normal catalog update path; it never downloads third-party artifacts for scanning itself.
+`catalog-compaction.yml` runs after a successful security workflow. It preserves scan rows, findings, dependency history, normalized dependency data, managed metadata, IL call-site evidence, reachability evidence, and the current per-variant security projection. Redundant `report_json` copies are rewritten to the bounded `omega.plugin-security.scan-summary.v1` form before SQLite is vacuumed into a fresh database. The workflow hashes the complete `runtime_plugin_variants` view before and after compaction and refuses publication if client-visible data changes.
+
+Only the compacted security-enriched database is published to `catalog-latest`. `compaction-report.json` records database bytes before/after, bytes saved, payload-size changes, integrity/foreign-key results, and the runtime projection hash. The game client therefore receives security intelligence through the normal catalog update path; it never downloads third-party artifacts for scanning itself.

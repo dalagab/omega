@@ -12,6 +12,10 @@ internal sealed partial class MarketplaceCatalogService
                 databaseVariants = [];
                 HasLoaded = false;
                 CachedRepositoryCount = 0;
+                CatalogRevision = string.Empty;
+                SecurityRevision = string.Empty;
+                RevisionUpdatedAtUtc = null;
+                CatalogChangelogEntryCount = 0;
                 RebuildProjectionLocked();
             }
             return;
@@ -137,7 +141,13 @@ internal sealed partial class MarketplaceCatalogService
         bool preserveLastRefresh)
     {
         lock (sync)
+        {
             allDatabaseVariants = snapshot.Variants;
+            CatalogRevision = snapshot.CatalogRevision;
+            SecurityRevision = snapshot.SecurityRevision;
+            RevisionUpdatedAtUtc = snapshot.RevisionUpdatedAtUtc;
+            CatalogChangelogEntryCount = snapshot.ChangelogEntryCount;
+        }
         RebuildForConfiguration(repositories.Where(x => x.Enabled).ToArray(), preserveLastRefresh);
         if (!preserveLastRefresh && snapshot.GeneratedAtUtc is not null)
             LastRefresh = snapshot.GeneratedAtUtc.Value.ToLocalTime();

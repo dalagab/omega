@@ -5,7 +5,7 @@ internal static partial class RegressionCases
     internal static void TestPluginSecurityIntelligenceContract()
     {
         var scanner = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "security_scan.py"));
-        Contains(scanner, "SCANNER_VERSION = \"1.8.2\"", "scanner version is explicit so stale scans can be refreshed");
+        Contains(scanner, "SCANNER_VERSION = \"1.9.0\"", "scanner version is explicit so stale scans can be refreshed");
         Contains(scanner, "Only HTTPS downloads are scanned", "scanner refuses insecure artifact transports");
         Contains(scanner, "MAX_ARTIFACT_BYTES", "artifact downloads are bounded");
         Contains(scanner, "MAX_ARTIFACT_BYTES = 256 * 1024 * 1024", "artifact download ceiling accommodates large production plugin packages while remaining bounded");
@@ -116,43 +116,61 @@ internal static partial class RegressionCases
         Contains(normalizedWorkflow, "workflows:\n      - \"Omega SQLite catalog builder\"", "security scanner runs after successful catalog builds");
         Contains(normalizedWorkflow, "tools/catalog/security_scan.py", "scanner code changes trigger immediate repository-side validation");
         Contains(normalizedWorkflow, "github.event.workflow_run.conclusion == 'success'", "failed catalog builds cannot start a publish scan");
-        Contains(normalizedWorkflow, "permissions:\n      contents: read", "hostile artifact scan job has read-only repository permission");
-        Contains(workflow, "name: Publish security-enriched catalog", "publishing is isolated into a second job");
-        Contains(workflow, "contents: write", "only publishing receives repository write permission");
+        Contains(normalizedWorkflow, "actions: read", "security scan can read the exact upstream catalog artifact");
+        Contains(normalizedWorkflow, "contents: read", "hostile artifact scan job has read-only repository permission");
+        False(workflow.Contains("contents: write", StringComparison.Ordinal), "security scanner never receives repository write permission");
+        Contains(workflow, "name: omega-security-catalog", "security enrichment hands its database to the post-scan compactor as an Actions artifact");
         Contains(workflow, "--max-scans", "daily scan work is bounded");
         Contains(workflow, "--max-batch-seconds", "workflow supplies a wall-clock scan-start budget below the job timeout");
         Contains(workflow, "--hardening-self-test", "workflow runs the catalog/pathological-input hardening fixture");
         Contains(workflow, "--rescan-after-hours", "unchanged artifacts are periodically revalidated");
         Contains(workflow, "security-report.json", "each batch publishes an auditable scan summary");
-        Contains(workflow, "plugin_security_dependencies", "workflow validates dependency intelligence persistence");
-        Contains(workflow, "plugin_security_permission_candidates", "workflow validates permission candidate persistence");
-        Contains(workflow, "plugin_security_managed_assemblies", "workflow validates managed assembly metadata persistence");
-        Contains(workflow, "plugin_security_managed_symbols", "workflow validates managed symbol persistence");
-        Contains(workflow, "plugin_security_managed_calls", "workflow validates compiled IL call-site persistence");
-        Contains(workflow, "plugin_security_managed_reachability", "workflow validates bounded reachability persistence");
-        Contains(workflow, "requirement", "workflow validates dependency requirement semantics");
-        Contains(workflow, "plugin_security_dependency_resolutions", "workflow validates catalog cross-reference edges");
-        Contains(workflow, "plugin_security_dependency_components", "workflow validates shared dependency component aggregation");
-        Contains(workflow, "plugin_security_dependency_issues", "workflow validates version/missing dependency issue persistence");
-        Contains(workflow, "plugin_security_dependency_advisory_matches", "workflow validates the optional advisory match projection");
-        Contains(workflow, "version_requirement", "workflow validates declared dependency version constraints");
-        Contains(workflow, "version_divergence", "workflow validates shared-component version divergence state");
-        Contains(workflow, "plugin_security_scan_lineage", "workflow validates dependency scan lineage persistence");
-        Contains(workflow, "plugin_security_dependency_drift", "workflow validates historical dependency drift persistence");
-        Contains(workflow, "plugin_security_source_artifact_comparisons", "workflow validates source/artifact comparison persistence");
-        Contains(workflow, "dependency_history_version", "workflow validates dependency-history schema/version metadata");
-        Contains(workflow, "dependency_hardening_version", "workflow validates hardening metadata before publish");
-        Contains(workflow, "foreign_key_check", "workflow refuses to publish a catalog with foreign-key violations");
+        Contains(workflow, "tools/catalog/validate_security_catalog.py", "workflow delegates security persistence checks to tested Python validation");
+        Contains(workflow, "--name omega-sqlite-catalog", "security scan consumes the exact catalog-builder artifact instead of an intermediate release");
+        var securityValidator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_security_catalog.py"));
+        Contains(securityValidator, "plugin_security_dependencies", "validator checks dependency intelligence persistence");
+        Contains(securityValidator, "plugin_security_permission_candidates", "validator checks permission candidate persistence");
+        Contains(securityValidator, "plugin_security_managed_assemblies", "validator checks managed assembly metadata persistence");
+        Contains(securityValidator, "plugin_security_managed_symbols", "validator checks managed symbol persistence");
+        Contains(securityValidator, "plugin_security_managed_calls", "validator checks compiled IL call-site persistence");
+        Contains(securityValidator, "plugin_security_managed_reachability", "validator checks bounded reachability persistence");
+        Contains(securityValidator, "plugin_security_dependency_resolutions", "validator checks catalog cross-reference edges");
+        Contains(securityValidator, "plugin_security_dependency_components", "validator checks shared dependency component aggregation");
+        Contains(securityValidator, "plugin_security_dependency_issues", "validator checks version/missing dependency issue persistence");
+        Contains(securityValidator, "plugin_security_dependency_advisory_matches", "validator checks advisory match projection");
+        Contains(securityValidator, "plugin_security_scan_lineage", "validator checks scan lineage persistence");
+        Contains(securityValidator, "plugin_security_dependency_drift", "validator checks historical dependency drift persistence");
+        Contains(securityValidator, "plugin_security_source_artifact_comparisons", "validator checks source/artifact comparison persistence");
+        Contains(securityValidator, "foreign_key_check", "validator refuses catalogs with foreign-key violations");
+        Contains(securityValidator, "security_revision_candidate", "validator checks semantic security revision metadata");
 
         var builder = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "build_sqlite_catalog.py"));
         Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_security_scans", "catalog schema preserves security scan history");
         Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_security_findings", "catalog schema stores individual findings");
         Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_security_current", "catalog schema stores current per-variant security state");
         Contains(builder, "security_status", "runtime catalog view exposes security state to Omega");
+        Contains(builder, "catalog_base_revision", "catalog builder computes a stable semantic base revision");
+        var revisions = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "catalog_revisions.py"));
+        Contains(revisions, "omega.catalog-revision.v1", "catalog revision semantics have an explicit schema");
+        Contains(revisions, "omega.security-revision.v1", "security revision semantics have an explicit schema");
+        Contains(revisions, "CREATE TABLE IF NOT EXISTS catalog_changelog", "semantic catalog changes are persisted inside SQLite");
+        Contains(revisions, "scan timestamps", "revision implementation explicitly excludes scan timestamps from semantic identity");
+        Contains(revisions, "append_changelog_if_changed", "changelog rows are appended only for semantic catalog changes");
 
         var store = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "SqliteCatalogStore.cs"));
         Contains(store, "SecurityArtifactSha256", "runtime reads exact scanned artifact hashes");
         Contains(store, "ReadSecurityFindings", "runtime reads structured security findings from SQLite");
+        Contains(store, "catalog_revision", "runtime reads semantic Catalog Revision metadata");
+        Contains(store, "security_revision", "runtime reads semantic Security Revision metadata");
+
+        var onlineClient = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OnlineCatalogClient.cs"));
+        Contains(onlineClient, "CatalogRevision", "online descriptor carries Catalog Revision diagnostics");
+        Contains(onlineClient, "SecurityRevision", "online descriptor carries Security Revision diagnostics");
+        Contains(onlineClient, "256L * 1024 * 1024", "client transport ceiling accommodates compacted production catalogs while remaining bounded");
+
+        var settings = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
+        Contains(settings, "Catalog Revision", "Settings displays the semantic catalog identity");
+        Contains(settings, "Security Revision", "Settings displays the semantic security identity");
 
         var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
         Contains(product, "Observed capabilities", "product page explains observed permissions/capabilities");
@@ -160,4 +178,42 @@ internal static partial class RegressionCases
         Contains(product, "No findings is not proof", "product page avoids claiming that static analysis proves safety");
         Contains(product, "The published package was not verified to match that source.", "product page preserves source provenance uncertainty");
     }
+    internal static void TestCatalogCompactionWorkflowContract()
+    {
+        var compactor = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "compact_sqlite_catalog.py"));
+        Contains(compactor, "COMPACTOR_VERSION = \"1.1.0\"", "database compactor version is explicit");
+        Contains(compactor, "omega.plugin-security.scan-summary.v1", "redundant scan JSON is converted to a bounded summary schema");
+        Contains(compactor, "runtime_projection_digest", "compactor hashes the complete runtime projection before and after rewriting");
+        Contains(compactor, "preserved_counts", "compactor verifies historical and normalized evidence row counts are preserved");
+        Contains(compactor, "VACUUM INTO", "compactor writes a fresh SQLite database instead of leaving free pages behind");
+        Contains(compactor, "MAX_SUMMARY_BYTES = 64 * 1024", "historical summary payloads remain bounded");
+        Contains(compactor, "plugin_security_managed_calls", "managed IL call evidence remains preserved during compaction");
+        Contains(compactor, "plugin_security_dependency_drift", "historical dependency drift remains preserved during compaction");
+        Contains(compactor, "--self-test", "compactor includes an isolated history-preservation regression fixture");
+        Contains(compactor, "append_changelog_if_changed", "compactor finalizes semantic revisions and changelog before publication");
+        Contains(compactor, "publication_required", "compactor records a semantic publication decision");
+        Contains(compactor, "catalogRevision", "compactor writes the catalog revision into the production descriptor");
+        Contains(compactor, "securityRevision", "compactor writes the security revision into the production descriptor");
+        Contains(compactor, "changelogEntryCount", "descriptor exposes embedded changelog size for troubleshooting");
+
+        var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-compaction.yml"));
+        var normalized = workflow.ReplaceLineEndings("\n");
+        Contains(normalized, "workflows:\n      - \"Omega plugin security scanner\"", "compaction runs after the security scanner workflow completes");
+        Contains(normalized, "github.event.workflow_run.conclusion == 'success'", "failed security scans cannot start production compaction");
+        Contains(workflow, "gh run download", "automatic compaction consumes the exact security workflow artifact");
+        Contains(workflow, "omega-security-catalog", "compaction consumes security-enriched catalog artifacts");
+        Contains(workflow, "compaction-report.json", "compaction publishes an auditable size and integrity report");
+        Contains(workflow, "name: Publish compacted production catalog", "only the compacted database is promoted to production");
+        Contains(workflow, "contents: write", "repository write permission is isolated to the final compaction publish job");
+        Contains(workflow, "tools/catalog/validate_compacted_catalog.py", "compaction delegates integrity and projection checks to tested validation code");
+        Contains(workflow, "tools/catalog/publication_decision.py", "compaction uses tested fail-closed publication decision logic");
+        Contains(workflow, "if: needs.compact.outputs.publish == 'true'", "unchanged semantic catalogs are not republished");
+        Contains(workflow, "--previous-database", "compaction compares against the previous production database for changelog generation");
+        Contains(workflow, "tools/catalog/compact_sqlite_catalog.py", "compactor code changes can compact the current production release immediately");
+        var compactValidator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_compacted_catalog.py"));
+        Contains(compactValidator, "foreign_key_check", "compaction validator refuses foreign-key violations");
+        Contains(compactValidator, "catalog_changelog", "compaction validator requires the embedded changelog");
+        Contains(compactValidator, "catalogRevision", "compaction validator checks descriptor/database revision identity");
+    }
+
 }

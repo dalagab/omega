@@ -63,6 +63,7 @@ var tests = new (string Name, Action Body)[]
     ("GitHub distribution and repository-only installation remain documented", TestGitHubDistributionDocumentationContract),
     ("GitHub release and security workflows remain publishable and visible", TestGitHubReleaseAndSecurityWorkflowsContract),
     ("third-party plugin security scanning remains static, incremental, and catalog-backed", TestPluginSecurityIntelligenceContract),
+    ("security-enriched catalog compaction preserves history and runtime projection", TestCatalogCompactionWorkflowContract),
     ("install always chooses a repository and delegates to Dalamud", TestInstallRepositoryChooserContract),
     ("plugin selections, project navigation, uninstall, and update badge stay canonical", TestCanonicalPluginNavigationAndLifecycleContract),
     ("repository HTTP response lifetime stays explicit and stream-bounded", TestRepositoryClientResponseLifetimeContract),

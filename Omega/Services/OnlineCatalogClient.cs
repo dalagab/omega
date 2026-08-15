@@ -17,6 +17,8 @@ internal sealed class OnlineCatalogDescriptor
     public string GeneratedAtUtc { get; init; } = string.Empty;
     public string CatalogSha256 { get; init; } = string.Empty;
     public string BundleSha256 { get; init; } = string.Empty;
+    public string CatalogRevision { get; init; } = string.Empty;
+    public string SecurityRevision { get; init; } = string.Empty;
     public long Size { get; init; }
     public string DownloadUrl { get; init; } = string.Empty;
 }
@@ -26,6 +28,8 @@ internal sealed class OnlineCatalogState
     public int SchemaVersion { get; set; } = 1;
     public string DescriptorUrl { get; set; } = string.Empty;
     public string CatalogSha256 { get; set; } = string.Empty;
+    public string CatalogRevision { get; set; } = string.Empty;
+    public string SecurityRevision { get; set; } = string.Empty;
     public DateTimeOffset? GeneratedAtUtc { get; set; }
     public DateTimeOffset? AppliedAtUtc { get; set; }
 }
@@ -133,13 +137,13 @@ internal sealed class OnlineCatalogStateStore
 }
 
 /// <summary>
-/// Checks one tiny Omega catalog descriptor and downloads the catalog bundle only when its semantic catalog hash changed.
+/// Checks one tiny Omega catalog descriptor and downloads the catalog bundle only when the published SQLite file hash changed.
 /// Repository discovery and upstream validation stay on the GitHub runner; the game client never crawls GitHub.
 /// </summary>
 internal sealed class OnlineCatalogClient : IDisposable
 {
     private const int MaxDescriptorBytes = 256 * 1024;
-    private const long MaxBundleBytes = 128L * 1024 * 1024;
+    private const long MaxBundleBytes = 256L * 1024 * 1024;
 
     private readonly HttpClient httpClient = new()
     {
@@ -233,6 +237,23 @@ internal sealed class OnlineCatalogClient : IDisposable
     internal static bool IsValidSha256(string? value)
         => value is { Length: 64 } && value.All(c => char.IsAsciiHexDigit(c));
 
+    internal static bool IsValidCatalogRevision(string? value)
+        => string.IsNullOrWhiteSpace(value) ||
+           (value.StartsWith("cat-v1-", StringComparison.Ordinal) &&
+            value.Length == 23 && value.AsSpan(7).ToString().All(char.IsAsciiHexDigit));
+
+    internal static bool IsValidSecurityRevision(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return true;
+        if (!value.StartsWith("sec-", StringComparison.Ordinal))
+            return false;
+        var separator = value.LastIndexOf('-');
+        if (separator <= 4 || value.Length - separator - 1 != 16)
+            return false;
+        return value.AsSpan(separator + 1).ToString().All(char.IsAsciiHexDigit);
+    }
+
     internal static string EffectiveCatalogSha256(OnlineCatalogDescriptor descriptor)
         => descriptor.CatalogSha256;
 
@@ -253,6 +274,10 @@ internal sealed class OnlineCatalogClient : IDisposable
             throw new InvalidDataException("Online catalog descriptor has an invalid bundle SHA-256.");
         if (descriptor.Size <= 0 || descriptor.Size > MaxBundleBytes)
             throw new InvalidDataException("Online catalog descriptor has an invalid bundle size.");
+        if (!IsValidCatalogRevision(descriptor.CatalogRevision))
+            throw new InvalidDataException("Online catalog descriptor has an invalid Catalog Revision.");
+        if (!IsValidSecurityRevision(descriptor.SecurityRevision))
+            throw new InvalidDataException("Online catalog descriptor has an invalid Security Revision.");
 
         _ = ResolveDownloadUri(descriptorUri, descriptor.DownloadUrl);
     }

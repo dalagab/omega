@@ -13,6 +13,26 @@ internal sealed partial class MarketplaceWindow
         ImGui.Text("Settings");
         DrawSettingsEulaShortcut();
         ImGui.Separator();
+        DrawCatalogIdentity();
+        ImGui.Separator();
         return eulaReviewOpen;
     }
+
+    private void DrawCatalogIdentity()
+    {
+        ImGui.TextDisabled("Catalog identity");
+        ImGui.TextUnformatted($"Omega: {BuildInfo.Version}");
+        ImGui.TextUnformatted($"Catalog Revision: {DisplayRevision(catalog.CatalogRevision)}");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Identifies the logical marketplace + security state. Use this value when troubleshooting a catalog mismatch.");
+        ImGui.TextUnformatted($"Security Revision: {DisplayRevision(catalog.SecurityRevision)}");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Identifies the current static-analysis state. Re-check timestamps alone do not change this revision.");
+        ImGui.TextDisabled($"Changelog entries: {catalog.CatalogChangelogEntryCount}");
+        if (catalog.RevisionUpdatedAtUtc is not null)
+            ImGui.TextDisabled($"Revision updated: {catalog.RevisionUpdatedAtUtc.Value.ToLocalTime():g}");
+    }
+
+    private static string DisplayRevision(string value)
+        => string.IsNullOrWhiteSpace(value) ? "Not available" : value;
 }

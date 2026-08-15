@@ -162,14 +162,18 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
                 SchemaVersion = 1,
                 DescriptorUrl = endpoint.DescriptorUrl,
                 CatalogSha256 = result.Descriptor.CatalogSha256.ToLowerInvariant(),
+                CatalogRevision = applied.CatalogRevision,
+                SecurityRevision = applied.SecurityRevision,
                 GeneratedAtUtc = generatedAt,
                 AppliedAtUtc = DateTimeOffset.UtcNow,
             });
 
             Plugin.Log.Information(
-                "Omega applied SQLite catalog; variants={Variants}; sources={Sources}; sha256={Hash}",
+                "Omega applied SQLite catalog; variants={Variants}; sources={Sources}; catalogRevision={CatalogRevision}; securityRevision={SecurityRevision}; sha256={Hash}",
                 applied.VariantCount,
                 applied.SourceDefinitions.Count,
+                string.IsNullOrWhiteSpace(applied.CatalogRevision) ? "unavailable" : applied.CatalogRevision,
+                string.IsNullOrWhiteSpace(applied.SecurityRevision) ? "unavailable" : applied.SecurityRevision,
                 result.Descriptor.CatalogSha256);
             return true;
         }

@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "tools/catalog/security_scan.py"
+      - "tools/catalog/catalog_revisions.py"
+      - "tools/catalog/validate_security_catalog.py"
       - "tools/catalog/build_sqlite_catalog.py"
       - ".github/workflows/security-scanner.yml"
   workflow_run:
@@ -39,7 +41,7 @@ on:
         default: ""
 
 concurrency:
-  group: omega-catalog-publish
+  group: omega-security-scan
   cancel-in-progress: false
 
 jobs:
@@ -49,6 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
+      actions: read
       contents: read
     steps:
       - uses: actions/checkout@v6
@@ -58,28 +61,43 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Run repository Python regression suite
+        run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
+
       - name: Self-test hostile-input guards, dependency versions/conflicts, graph, managed metadata, IL call sites and reachability
         run: python tools/catalog/security_scan.py --self-test
 
       - name: Run scanner hardening and deterministic catalog projection tests
         run: python tools/catalog/security_scan.py --hardening-self-test
 
-      - name: Download current authoritative SQLite catalog
+      - name: Download catalog-builder handoff or current production catalog
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
           mkdir -p catalog/security-output
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            gh run download "$UPSTREAM_RUN_ID" \
+              --repo "$GH_REPO" \
+              --name omega-sqlite-catalog \
+              --dir catalog/security-output
+          else
+            gh release download catalog-latest \
+              --repo "$GH_REPO" \
+              --pattern omega-catalog.sqlite.zip \
+              --pattern catalog.json \
+              --dir catalog/security-output
+          fi
           gh release download catalog-latest \
-            --pattern omega-catalog.sqlite.zip \
-            --pattern catalog.json \
-            --dir catalog/security-output
-          python - <<'PY'
-          import zipfile
-          with zipfile.ZipFile('catalog/security-output/omega-catalog.sqlite.zip') as zf:
-              zf.extract('omega-catalog.sqlite', 'catalog/security-output')
-          PY
+            --repo "$GH_REPO" \
+            --pattern security-scan-ledger.json \
+            --dir catalog/security-output || true
+          test -f catalog/security-output/omega-catalog.sqlite.zip
+          test -f catalog/security-output/catalog.json
+          python -m zipfile -e catalog/security-output/omega-catalog.sqlite.zip catalog/security-output
 
       - name: Incrementally scan artifacts, resolve dependency graph/version intelligence and inspect public source
         env:
@@ -90,71 +108,14 @@ jobs:
           --bundle catalog/security-output/omega-catalog.sqlite.zip
           --descriptor catalog/security-output/catalog.json
           --report catalog/security-output/security-report.json
+          --ledger catalog/security-output/security-scan-ledger.json
           --max-scans ${{ inputs.max_scans || '60' }}
           --max-batch-seconds ${{ inputs.max_batch_seconds || '4200' }}
           --rescan-after-hours ${{ inputs.rescan_after_hours || '168' }}
           --internal-names "${{ inputs.internal_names || '' }}"
 
       - name: Validate security and dependency intelligence database and hashes
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import hashlib, json, sqlite3, zipfile
-          root='catalog/security-output'
-          db=sqlite3.connect(root+'/omega-catalog.sqlite')
-          assert db.execute('pragma integrity_check').fetchone()[0] == 'ok'
-          for table in (
-              'plugin_security_current',
-              'plugin_security_dependencies',
-              'plugin_security_dependency_resolutions',
-              'plugin_security_dependency_components',
-              'plugin_security_dependency_issues',
-              'plugin_security_dependency_advisory_matches',
-              'plugin_security_imports',
-              'plugin_security_managed_assemblies',
-              'plugin_security_managed_symbols',
-              'plugin_security_managed_calls',
-              'plugin_security_managed_reachability',
-              'plugin_security_scan_lineage',
-              'plugin_security_dependency_drift',
-              'plugin_security_source_artifact_comparisons',
-              'plugin_security_permission_candidates',
-          ):
-              assert db.execute("select count(*) from sqlite_master where type='table' and name=?", (table,)).fetchone()[0] == 1, table
-          assert db.execute("select count(*) from pragma_table_info('runtime_plugin_variants') where name='security_status'").fetchone()[0] == 1
-          assert db.execute("select count(*) from pragma_table_info('plugin_security_dependencies') where name='requirement'").fetchone()[0] == 1
-          assert db.execute("select count(*) from pragma_table_info('plugin_security_dependencies') where name='version_requirement'").fetchone()[0] == 1
-          assert db.execute("select count(*) from pragma_table_info('plugin_security_dependencies') where name='resolved_version'").fetchone()[0] == 1
-          assert db.execute("select count(*) from pragma_table_info('plugin_security_dependency_components') where name='version_divergence'").fetchone()[0] == 1
-          assert db.execute("select count(*) from pragma_table_info('plugin_security_managed_calls') where name='target_method_token'").fetchone()[0] == 1
-          current_dependencies=db.execute("""
-              select count(*)
-                from plugin_security_dependencies d
-                join plugin_security_scans s on s.scan_id=d.scan_id
-                join plugin_security_current c on c.scan_id=d.scan_id and c.variant_id=s.variant_id
-               where c.status='complete' and s.status='complete'
-          """).fetchone()[0]
-          assert db.execute("select count(*) from plugin_security_dependency_resolutions").fetchone()[0] == current_dependencies
-          assert db.execute("select count(*) from catalog_meta where key='dependency_graph_version'").fetchone()[0] == 1
-          assert db.execute("select count(*) from catalog_meta where key='dependency_version_intelligence_version'").fetchone()[0] == 1
-          assert db.execute("select count(*) from catalog_meta where key='dependency_history_version'").fetchone()[0] == 1
-          assert db.execute("select count(*) from catalog_meta where key='dependency_hardening_version'").fetchone()[0] == 1
-          assert db.execute("pragma foreign_key_check").fetchall() == []
-          report=json.load(open(root+'/security-report.json', encoding='utf-8'))
-          assert report['scannerVersion'] == '1.8.2'
-          assert report['databaseHealth']['integrity'].lower() == 'ok'
-          assert report['databaseHealth']['currentDependencies'] == report['databaseHealth']['dependencyResolutions']
-          assert report['batchBudgetSeconds'] >= 0
-          d=json.load(open(root+'/catalog.json', encoding='utf-8'))
-          raw=open(root+'/omega-catalog.sqlite','rb').read()
-          bundle=open(root+'/omega-catalog.sqlite.zip','rb').read()
-          assert hashlib.sha256(raw).hexdigest() == d['catalogSha256']
-          assert hashlib.sha256(bundle).hexdigest() == d['bundleSha256']
-          with zipfile.ZipFile(root+'/omega-catalog.sqlite.zip') as zf:
-              assert zf.namelist() == ['omega-catalog.sqlite']
-          print('Security/dependency-enriched SQLite catalog verified.')
-          PY
+        run: python tools/catalog/validate_security_catalog.py --root catalog/security-output
 
       - uses: actions/upload-artifact@v7
         with:
@@ -163,88 +124,7 @@ jobs:
             catalog/security-output/omega-catalog.sqlite.zip
             catalog/security-output/omega-catalog.sqlite.zip.sha256
             catalog/security-output/catalog.json
+            catalog/security-output/catalog-report.json
             catalog/security-output/security-report.json
+            catalog/security-output/security-scan-ledger.json
           retention-days: 30
-
-  publish:
-    name: Publish security-enriched catalog
-    needs: scan
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: omega-security-catalog
-          path: catalog/security-output
-
-      - name: Replace catalog release assets atomically by hash
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          gh release upload catalog-latest \
-            catalog/security-output/omega-catalog.sqlite.zip \
-            catalog/security-output/omega-catalog.sqlite.zip.sha256 \
-            catalog/security-output/catalog.json \
-            catalog/security-output/security-report.json \
-            --clobber
-
-      - name: Verify published security-enriched bundle
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import hashlib, io, json, sqlite3, tempfile, urllib.request, zipfile, os
-          base='https://github.com/${{ github.repository }}/releases/download/catalog-latest/'
-          descriptor=json.load(urllib.request.urlopen(base+'catalog.json'))
-          bundle=urllib.request.urlopen(base+'omega-catalog.sqlite.zip').read()
-          assert hashlib.sha256(bundle).hexdigest() == descriptor['bundleSha256']
-          raw=zipfile.ZipFile(io.BytesIO(bundle)).read('omega-catalog.sqlite')
-          assert hashlib.sha256(raw).hexdigest() == descriptor['catalogSha256']
-          fd,path=tempfile.mkstemp(suffix='.sqlite'); os.close(fd)
-          open(path,'wb').write(raw)
-          db=sqlite3.connect(path)
-          assert db.execute('pragma integrity_check').fetchone()[0] == 'ok'
-          for table in (
-              'plugin_security_current',
-              'plugin_security_dependencies',
-              'plugin_security_dependency_resolutions',
-              'plugin_security_dependency_components',
-              'plugin_security_dependency_issues',
-              'plugin_security_dependency_advisory_matches',
-              'plugin_security_imports',
-              'plugin_security_managed_assemblies',
-              'plugin_security_managed_symbols',
-              'plugin_security_managed_calls',
-              'plugin_security_managed_reachability',
-              'plugin_security_scan_lineage',
-              'plugin_security_dependency_drift',
-              'plugin_security_source_artifact_comparisons',
-              'plugin_security_permission_candidates',
-          ):
-              assert db.execute("select count(*) from sqlite_master where type='table' and name=?", (table,)).fetchone()[0] == 1, table
-          assert db.execute("select count(*) from pragma_table_info('plugin_security_dependencies') where name='requirement'").fetchone()[0] == 1
-          assert db.execute("select count(*) from pragma_table_info('plugin_security_dependencies') where name='version_requirement'").fetchone()[0] == 1
-          assert db.execute("select count(*) from pragma_table_info('plugin_security_dependencies') where name='resolved_version'").fetchone()[0] == 1
-          assert db.execute("select count(*) from pragma_table_info('plugin_security_dependency_components') where name='version_divergence'").fetchone()[0] == 1
-          assert db.execute("select count(*) from pragma_table_info('plugin_security_managed_calls') where name='target_method_token'").fetchone()[0] == 1
-          current_dependencies=db.execute("""
-              select count(*)
-                from plugin_security_dependencies d
-                join plugin_security_scans s on s.scan_id=d.scan_id
-                join plugin_security_current c on c.scan_id=d.scan_id and c.variant_id=s.variant_id
-               where c.status='complete' and s.status='complete'
-          """).fetchone()[0]
-          assert db.execute("select count(*) from plugin_security_dependency_resolutions").fetchone()[0] == current_dependencies
-          assert db.execute("select count(*) from catalog_meta where key='dependency_graph_version'").fetchone()[0] == 1
-          assert db.execute("select count(*) from catalog_meta where key='dependency_version_intelligence_version'").fetchone()[0] == 1
-          assert db.execute("select count(*) from catalog_meta where key='dependency_history_version'").fetchone()[0] == 1
-          assert db.execute("select count(*) from catalog_meta where key='dependency_hardening_version'").fetchone()[0] == 1
-          assert db.execute("pragma foreign_key_check").fetchall() == []
-          db.close(); os.unlink(path)
-          print('Published security/dependency catalog verified.')
-          PY

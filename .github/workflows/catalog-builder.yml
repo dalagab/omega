@@ -32,8 +32,23 @@ env:
   PYTHONUNBUFFERED: "1"
 
 jobs:
+  preflight:
+    name: Validate workflow contracts and Python units
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Run repository Python regression suite
+        run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
+      - name: Run SQLite catalog self-test
+        run: python tools/catalog/test_sqlite_catalog.py
+
   collect:
     name: 1) Discover source feeds
+    needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -77,11 +92,7 @@ jobs:
           mkdir -p catalog/seed
           gh release download catalog-latest --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
           if [ -f catalog/seed/omega-catalog.sqlite.zip ]; then
-            python - <<'PY'
-          import zipfile
-          with zipfile.ZipFile('catalog/seed/omega-catalog.sqlite.zip') as zf:
-              zf.extract('omega-catalog.sqlite', 'catalog/seed')
-          PY
+            python -m zipfile -e catalog/seed/omega-catalog.sqlite.zip catalog/seed
           fi
       - name: Fetch PluginMaster feeds
         run: >-
@@ -120,11 +131,7 @@ jobs:
           mkdir -p catalog/seed
           gh release download catalog-latest --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
           if [ -f catalog/seed/omega-catalog.sqlite.zip ]; then
-            python - <<'PY'
-          import zipfile
-          with zipfile.ZipFile('catalog/seed/omega-catalog.sqlite.zip') as zf:
-              zf.extract('omega-catalog.sqlite', 'catalog/seed')
-          PY
+            python -m zipfile -e catalog/seed/omega-catalog.sqlite.zip catalog/seed
           fi
       - name: Reuse fresh enrichment and scrape only new/stale project pages
         env:
@@ -144,7 +151,7 @@ jobs:
           retention-days: 7
 
   build:
-    name: 4) Build, validate and publish SQLite catalog
+    name: 4) Build and hand off SQLite catalog
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [collect, enrich, scrape]
@@ -188,17 +195,9 @@ jobs:
           --website-enrichment catalog/website-enrichment.json
           --download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-catalog.sqlite.zip"
           --descriptor-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/catalog.json"
-      - name: Validate generated database
-        shell: bash
-        run: |
-          python - <<'PY'
-          import json, sqlite3
-          db=sqlite3.connect('catalog/dist/omega-catalog.sqlite')
-          assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
-          assert int(db.execute("select value from catalog_meta where key='schema_version'").fetchone()[0]) == 1
-          assert db.execute('select count(*) from runtime_plugin_variants').fetchone()[0] > 0
-          print(json.dumps(dict(db.execute('select key,value from catalog_meta')), indent=2))
-          PY
+      - name: Validate generated database and transport bundle
+        run: python tools/catalog/validate_base_catalog.py --root catalog/dist
+
       - name: Update endpoint and human-readable report only
         shell: bash
         run: |
@@ -224,40 +223,3 @@ jobs:
             catalog/dist/catalog-report.json
             catalog/dist/debug/*.json
           retention-days: 30
-      - name: Publish stable catalog release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! gh release view catalog-latest >/dev/null 2>&1; then
-            gh release create catalog-latest \
-              --title "Omega SQLite catalog" \
-              --notes "Automatically generated Omega marketplace database. The release tag stays stable while assets are replaced."
-          fi
-          gh release upload catalog-latest \
-            catalog/dist/omega-catalog.sqlite.zip \
-            catalog/dist/omega-catalog.sqlite.zip.sha256 \
-            catalog/dist/catalog.json \
-            catalog/dist/catalog-report.json \
-            --clobber
-      - name: Verify published descriptor and bundle
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import hashlib, json, urllib.request, zipfile, io, sqlite3, tempfile, os
-          base='https://github.com/${{ github.repository }}/releases/download/catalog-latest/'
-          d=json.load(urllib.request.urlopen(base+'catalog.json'))
-          b=urllib.request.urlopen(base+'omega-catalog.sqlite.zip').read()
-          assert hashlib.sha256(b).hexdigest() == d['bundleSha256']
-          with zipfile.ZipFile(io.BytesIO(b)) as zf:
-              raw=zf.read('omega-catalog.sqlite')
-          assert hashlib.sha256(raw).hexdigest() == d['catalogSha256']
-          fd,path=tempfile.mkstemp(suffix='.sqlite'); os.close(fd)
-          open(path,'wb').write(raw)
-          db=sqlite3.connect(path)
-          assert db.execute('pragma integrity_check').fetchone()[0]=='ok'
-          os.unlink(path)
-          print('Published SQLite catalog verified.')
-          PY

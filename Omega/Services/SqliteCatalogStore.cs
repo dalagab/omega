@@ -7,7 +7,11 @@ namespace Dalagab.Omega;
 internal sealed record SqliteCatalogSnapshot(
     IReadOnlyList<MarketplacePlugin> Variants,
     IReadOnlyList<CuratedSourceDefinition> SourceDefinitions,
-    DateTimeOffset? GeneratedAtUtc);
+    DateTimeOffset? GeneratedAtUtc,
+    string CatalogRevision,
+    string SecurityRevision,
+    DateTimeOffset? RevisionUpdatedAtUtc,
+    int ChangelogEntryCount);
 
 /// <summary>
 /// Owns Omega's single production catalog database. JSON is never a runtime catalog format:
@@ -47,7 +51,11 @@ internal sealed class SqliteCatalogStore
                 return new SqliteCatalogSnapshot(
                     ReadVariants(connection),
                     ReadSourceDefinitions(connection),
-                    ReadGeneratedAt(connection));
+                    ReadGeneratedAt(connection),
+                    ReadMeta(connection, "catalog_revision"),
+                    ReadMeta(connection, "security_revision"),
+                    ReadRevisionUpdatedAt(connection),
+                    ReadChangelogEntryCount(connection));
             });
         }
     }
@@ -173,6 +181,10 @@ internal sealed class SqliteCatalogStore
         _ = ReadVariants(candidate);
         _ = ReadSourceDefinitions(candidate);
         _ = ReadGeneratedAt(candidate);
+        _ = ReadMeta(candidate, "catalog_revision");
+        _ = ReadMeta(candidate, "security_revision");
+        _ = ReadRevisionUpdatedAt(candidate);
+        _ = ReadChangelogEntryCount(candidate);
     }
 
     private static IReadOnlyList<MarketplacePlugin> ReadVariants(SqliteConnection connection)
@@ -309,6 +321,28 @@ internal sealed class SqliteCatalogStore
     private static DateTimeOffset? ReadGeneratedAt(SqliteConnection connection)
         => DateTimeOffset.TryParse(ReadMeta(connection, "generated_at_utc"), out var parsed) ? parsed : null;
 
+    private static DateTimeOffset? ReadRevisionUpdatedAt(SqliteConnection connection)
+    {
+        foreach (var key in new[] { "catalog_revision_updated_at_utc", "security_revision_updated_at_utc" })
+        {
+            if (DateTimeOffset.TryParse(ReadMeta(connection, key), out var parsed))
+                return parsed;
+        }
+        return null;
+    }
+
+    private static int ReadChangelogEntryCount(SqliteConnection connection)
+    {
+        using var exists = connection.CreateCommand();
+        exists.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='catalog_changelog';";
+        if (Convert.ToInt32(exists.ExecuteScalar() ?? 0) == 0)
+            return 0;
+
+        using var count = connection.CreateCommand();
+        count.CommandText = "SELECT COUNT(*) FROM catalog_changelog;";
+        return Convert.ToInt32(count.ExecuteScalar() ?? 0);
+    }
+
     private static string ReadMeta(SqliteConnection connection, string key)
     {
         using var command = connection.CreateCommand();
@@ -373,7 +407,7 @@ internal sealed class SqliteCatalogStore
             .ToArray();
         if (entries.Length != 1)
             throw new InvalidDataException($"Omega catalog bundle must contain exactly one {DatabaseFileName} file.");
-        if (entries[0].Length <= 0 || entries[0].Length > 256L * 1024 * 1024)
+        if (entries[0].Length <= 0 || entries[0].Length > 512L * 1024 * 1024)
             throw new InvalidDataException("Omega SQLite database has an invalid size.");
 
         using var source = entries[0].Open();

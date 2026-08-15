@@ -1,0 +1,66 @@
+name: Omega repository regression tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Omega/**"
+      - "Omega.RegressionTests/**"
+      - "tools/catalog/**"
+      - "tools/tests/**"
+      - ".github/workflows/**"
+      - "repository/pluginmaster.json"
+      - "sources/curated-sources.json"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omega-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python and workflow regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Run Python unit and workflow contract tests
+        run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
+      - name: Run SQLite catalog integration self-test
+        run: python tools/catalog/test_sqlite_catalog.py
+      - name: Run security scanner deterministic self-test
+        run: python tools/catalog/security_scan.py --self-test
+      - name: Run security scanner hardening self-test
+        run: python tools/catalog/security_scan.py --hardening-self-test
+      - name: Run database compactor self-test
+        run: python tools/catalog/compact_sqlite_catalog.py --self-test
+
+  dotnet:
+    name: Omega .NET regression suite
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+      - name: Download current Dalamud dev runtime
+        shell: pwsh
+        run: |
+          $dalamudHome = Join-Path $env:APPDATA 'XIVLauncher\addon\Hooks\dev'
+          New-Item -ItemType Directory -Force -Path $dalamudHome | Out-Null
+          Invoke-WebRequest 'https://goatcorp.github.io/dalamud-distrib/stg/latest.zip' -OutFile 'dalamud.zip'
+          Expand-Archive 'dalamud.zip' -DestinationPath $dalamudHome -Force
+          Remove-Item 'dalamud.zip'
+      - name: Build and run Omega regression suite
+        run: dotnet build .\Omega.sln -c Release

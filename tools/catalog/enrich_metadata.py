@@ -26,6 +26,7 @@ Requires: Python 3.8+ (stdlib only).
 
 from __future__ import annotations
 
+from contextlib import closing
 import argparse
 import hashlib
 import json
@@ -65,7 +66,7 @@ def load_source_cache(path: str | None) -> dict[str, dict]:
         return {}
     out: dict[str, dict] = {}
     try:
-        with sqlite3.connect(db_path) as db:
+        with closing(sqlite3.connect(db_path)) as db:
             db.row_factory = sqlite3.Row
             for row in db.execute("SELECT url,etag,last_modified,content_sha256 FROM sources WHERE url<>''"):
                 out[normalize_url(row["url"]).lower()] = dict(row)

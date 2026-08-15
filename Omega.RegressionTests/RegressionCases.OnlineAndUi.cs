@@ -16,11 +16,12 @@ internal static partial class RegressionCases
         Contains(workflow, "scrape_websites_incremental.py", "incremental website enrichment stage");
         Contains(workflow, "build_sqlite_catalog.py", "SQLite build stage");
         Contains(workflow, "test_sqlite_catalog.py", "SQLite builder self-test stage");
-        Contains(workflow, "omega-catalog.sqlite.zip", "stable SQLite release asset");
+        Contains(workflow, "omega-catalog.sqlite.zip", "SQLite transport artifact");
         Contains(workflow, "Download previous SQLite", "previous database is the workflow seed/cache");
         Contains(workflow, "--seed-database catalog/seed/omega-catalog.sqlite", "manifest fetches use prior ETag/Last-Modified state");
-        Contains(workflow, "PRAGMA integrity_check", "generated database is integrity checked");
-        Contains(workflow, "Publish stable catalog release", "stable release publication");
+        Contains(workflow, "validate_base_catalog.py", "generated database and transport are validated by tested Python");
+        Contains(workflow, "name: omega-sqlite-catalog", "validated base catalog is handed to the security workflow");
+        False(workflow.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "base catalog builder cannot publish an intermediate production database");
 
         var builder = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "build_sqlite_catalog.py"));
         Contains(builder, "CREATE TABLE IF NOT EXISTS plugins", "SQLite plugin table");
@@ -87,6 +88,10 @@ internal static partial class RegressionCases
         True(OnlineCatalogClient.IsValidSha256(new string('a', 64)), "64 hex characters form a valid SHA-256");
         False(OnlineCatalogClient.IsValidSha256(new string('g', 64)), "non-hex SHA-256 is rejected");
         False(OnlineCatalogClient.IsValidSha256("abc"), "short SHA-256 is rejected");
+        True(OnlineCatalogClient.IsValidCatalogRevision("cat-v1-0123456789abcdef"), "semantic Catalog Revision format is accepted");
+        False(OnlineCatalogClient.IsValidCatalogRevision("cat-v1-not-a-hash"), "malformed Catalog Revision is rejected");
+        True(OnlineCatalogClient.IsValidSecurityRevision("sec-1.9.0-0123456789abcdef"), "semantic Security Revision format is accepted");
+        False(OnlineCatalogClient.IsValidSecurityRevision("sec-1.9.0-short"), "malformed Security Revision is rejected");
 
         var hashes = new OnlineCatalogDescriptor
         {
@@ -116,13 +121,23 @@ internal static partial class RegressionCases
         Equal("https://github.com/dalagab/omega/releases/download/catalog-latest/catalog.json",
             endpoint.RootElement.GetProperty("descriptorUrl").GetString(), "live production descriptor URL");
 
-        var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
-        var publishIndex = workflow.IndexOf("Publish stable catalog release", StringComparison.Ordinal);
-        var verifyIndex = workflow.IndexOf("Verify published descriptor and bundle", StringComparison.Ordinal);
-        True(publishIndex >= 0 && verifyIndex > publishIndex, "published SQLite bundle is verified after release upload");
-        Contains(workflow, "omega-catalog.sqlite.zip", "release contains SQLite transport bundle");
-        Contains(workflow, "catalogSha256", "published database bytes are hash verified");
-        Contains(workflow, "bundleSha256", "published ZIP bytes are hash verified");
+        var builder = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
+        False(builder.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "base catalog builder never publishes an intermediate production database");
+        Contains(builder, "name: omega-sqlite-catalog", "base catalog is handed to security analysis as an Actions artifact");
+
+        var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-compaction.yml"));
+        var publishIndex = workflow.IndexOf("Replace stable catalog assets", StringComparison.Ordinal);
+        var verifyIndex = workflow.IndexOf("Verify published compacted catalog", StringComparison.Ordinal);
+        True(publishIndex >= 0 && verifyIndex > publishIndex, "published compacted SQLite bundle is verified after release upload");
+        Contains(workflow, "omega-catalog.sqlite.zip", "final release contains SQLite transport bundle");
+        Contains(workflow, "if: needs.compact.outputs.publish == 'true'", "semantic no-op runs do not replace the production database");
+        Contains(workflow, "security-scan-ledger.json", "timestamp-only scan freshness can advance without replacing the database");
+
+        var validator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_compacted_catalog.py"));
+        Contains(validator, "catalogSha256", "published database bytes are hash verified");
+        Contains(validator, "bundleSha256", "published ZIP bytes are hash verified");
+        Contains(validator, "catalogRevision", "published semantic Catalog Revision is verified");
+        Contains(validator, "securityRevision", "published semantic Security Revision is verified");
     }
 
     internal static void TestStorefrontVirtualization()

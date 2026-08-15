@@ -12,6 +12,7 @@ Exercises the storage invariants that matter independently of live network acces
 """
 from __future__ import annotations
 
+from contextlib import closing
 import argparse
 import json
 import sqlite3
@@ -43,7 +44,7 @@ def run_builder(root: Path, out: Path, curated: Path, raw: Path, enriched: Path,
 
 
 def query(db_path: Path, sql: str, args: tuple = ()):
-    with sqlite3.connect(db_path) as db:
+    with closing(sqlite3.connect(db_path)) as db:
         return db.execute(sql, args).fetchone()
 
 

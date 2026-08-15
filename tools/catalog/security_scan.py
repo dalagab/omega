@@ -25,6 +25,7 @@ executes.
 """
 from __future__ import annotations
 
+from contextlib import closing
 import argparse
 import dataclasses
 import datetime as dt
@@ -46,8 +47,11 @@ import zipfile
 from collections import defaultdict, deque
 from pathlib import Path, PurePosixPath
 from typing import Iterable
+from catalog_revisions import read_meta as read_catalog_meta, update_candidate_revisions
 
-SCANNER_VERSION = "1.8.2"
+
+SCANNER_VERSION = "1.9.0"
+SECURITY_LEDGER_SCHEMA = "omega.security-scan-ledger.v1"
 MAX_ARTIFACT_BYTES = 256 * 1024 * 1024
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
 MAX_ARCHIVE_ENTRIES = 16_384
@@ -3093,7 +3097,50 @@ def choose_artifact(row: sqlite3.Row) -> tuple[str, str, str]:
     return "testing", str(row["testing_assembly_version"] or row["assembly_version"] or ""), testing
 
 
-def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: set[str]) -> list[sqlite3.Row]:
+def load_scan_ledger(path: Path | None) -> dict:
+    if path is None or not path.exists():
+        return {"schema": SECURITY_LEDGER_SCHEMA, "variants": {}}
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return {"schema": SECURITY_LEDGER_SCHEMA, "variants": {}}
+    if not isinstance(doc, dict) or doc.get("schema") != SECURITY_LEDGER_SCHEMA or not isinstance(doc.get("variants"), dict):
+        return {"schema": SECURITY_LEDGER_SCHEMA, "variants": {}}
+    return doc
+
+
+def ledger_entry_is_fresh(entry: object, version: str, url: str, now: dt.datetime, rescan_hours: int) -> bool:
+    if not isinstance(entry, dict):
+        return False
+    if str(entry.get("status") or "") != "complete":
+        return False
+    if str(entry.get("scannerVersion") or "") != SCANNER_VERSION:
+        return False
+    if str(entry.get("artifactUrl") or "") != url or str(entry.get("assemblyVersion") or "") != version:
+        return False
+    validated = parse_utc(str(entry.get("lastValidatedAtUtc") or ""))
+    return validated is not None and (now - validated).total_seconds() < rescan_hours * 3600
+
+
+def write_scan_ledger(path: Path | None, ledger: dict, db: sqlite3.Connection, changed: bool) -> None:
+    if path is None:
+        return
+    variants = ledger.get("variants") if isinstance(ledger.get("variants"), dict) else {}
+    active = {str(row[0]) for row in db.execute("""
+        SELECT v.variant_id FROM plugin_variants v
+        JOIN plugins p ON p.plugin_id=v.plugin_id
+        WHERE v.active=1 AND p.active=1
+    """)}
+    ledger["schema"] = SECURITY_LEDGER_SCHEMA
+    ledger["scannerVersion"] = SCANNER_VERSION
+    ledger["variants"] = {key: value for key, value in variants.items() if key in active}
+    if changed or not path.exists():
+        ledger["updatedAtUtc"] = utc_now()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: set[str], ledger: dict | None = None) -> list[sqlite3.Row]:
     if max_scans <= 0:
         return []
     now = dt.datetime.now(dt.timezone.utc)
@@ -3119,7 +3166,9 @@ def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: s
         if not url:
             continue
         last = parse_utc(row["current_scanned_at_utc"])
-        stale = last is None or (now - last).total_seconds() >= rescan_hours * 3600
+        ledger_entry = ((ledger or {}).get("variants") or {}).get(str(row["variant_id"])) if isinstance((ledger or {}).get("variants"), dict) else None
+        operationally_fresh = ledger_entry_is_fresh(ledger_entry, version, url, now, rescan_hours)
+        stale = not operationally_fresh and (last is None or (now - last).total_seconds() >= rescan_hours * 3600)
         due = (
             row["current_status"] is None or
             str(row["current_status"]) != "complete" or
@@ -3357,6 +3406,11 @@ def update_descriptor(database_path: Path, bundle_path: Path, descriptor_path: P
     descriptor["size"] = bundle_path.stat().st_size
     descriptor["databaseBytes"] = database_path.stat().st_size
     descriptor["securityGeneratedAtUtc"] = utc_now()
+    with closing(sqlite3.connect(database_path)) as metadata_db:
+        descriptor["catalogBaseRevision"] = read_catalog_meta(metadata_db, "catalog_base_revision")
+        descriptor["securityRevision"] = read_catalog_meta(metadata_db, "security_revision_candidate")
+        descriptor["catalogRevisionCandidate"] = read_catalog_meta(metadata_db, "catalog_revision_candidate")
+        descriptor["scannerVersion"] = read_catalog_meta(metadata_db, "security_scanner_version", SCANNER_VERSION)
     descriptor_path.write_text(json.dumps(descriptor, indent=2) + "\n", encoding="utf-8")
     (bundle_path.parent / f"{bundle_path.name}.sha256").write_text(f"{bundle_sha}  {bundle_path.name}\n", encoding="ascii")
     return descriptor
@@ -3380,7 +3434,10 @@ def run(args: argparse.Namespace) -> dict:
     deadline = batch_started + max(0, int(args.max_batch_seconds)) if int(args.max_batch_seconds) > 0 else None
     try:
         ensure_schema(db)
-        rows = due_rows(db, args.max_scans, args.rescan_after_hours, names)
+        ledger_path = Path(args.ledger) if args.ledger else None
+        ledger = load_scan_ledger(ledger_path)
+        ledger_changed = False
+        rows = due_rows(db, args.max_scans, args.rescan_after_hours, names, ledger)
         summary["selected"] = len(rows)
         for index, row in enumerate(rows, start=1):
             if deadline is not None and time.monotonic() >= deadline:
@@ -3400,6 +3457,17 @@ def run(args: argparse.Namespace) -> dict:
                 db.execute("RELEASE SAVEPOINT omega_scan_persist")
                 raise
             summary["completed" if result["status"] == "complete" else "failed"] += 1
+            ledger_variants = ledger.setdefault("variants", {})
+            ledger_variants[str(row["variant_id"])] = {
+                "status": result["status"],
+                "scannerVersion": SCANNER_VERSION,
+                "lastValidatedAtUtc": result["scannedAtUtc"],
+                "assemblyVersion": result["assemblyVersion"],
+                "artifactChannel": result["artifactChannel"],
+                "artifactUrl": result["artifactUrl"],
+                "artifactSha256": result["artifactSha256"],
+            }
+            ledger_changed = True
             intel = result.get("dependencyIntelligence") or {}
             if len(summary["plugins"]) < MAX_SCAN_REPORT_PLUGINS:
                 summary["plugins"].append({
@@ -3430,7 +3498,9 @@ def run(args: argparse.Namespace) -> dict:
         summary["databaseHealth"] = validate_database_health(db)
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('dependency_hardening_version',?)", (SCANNER_VERSION,))
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('dependency_hardening_validated_at_utc',?)", (utc_now(),))
+        revisions = update_candidate_revisions(db)
         db.commit()
+        summary["revisions"] = revisions
         summary["currentScanCount"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_current WHERE status='complete'").fetchone()[0])
         summary["currentHighOrCritical"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_current WHERE status='complete' AND highest_severity IN ('high','critical')").fetchone()[0])
         summary["dependencyRows"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_dependencies").fetchone()[0])
@@ -3447,6 +3517,12 @@ def run(args: argparse.Namespace) -> dict:
         summary["dependencyDriftRows"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_dependency_drift").fetchone()[0])
         summary["sourceArtifactComparisonRows"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_source_artifact_comparisons").fetchone()[0])
         summary["scanLineageRows"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_scan_lineage").fetchone()[0])
+        write_scan_ledger(ledger_path, ledger, db, ledger_changed)
+        summary["scanLedger"] = {
+            "schema": SECURITY_LEDGER_SCHEMA,
+            "entries": len(ledger.get("variants") or {}),
+            "updated": ledger_changed,
+        }
         summary["batchElapsedSeconds"] = round(time.monotonic() - batch_started, 3)
     finally:
         db.close()
@@ -4003,6 +4079,7 @@ def main() -> int:
     parser.add_argument("--bundle", default="")
     parser.add_argument("--descriptor", default="")
     parser.add_argument("--report", default="catalog/security-report.json")
+    parser.add_argument("--ledger", default="", help="Optional persistent operational revalidation ledger; it does not define semantic security identity")
     parser.add_argument("--max-scans", type=int, default=60)
     parser.add_argument("--max-batch-seconds", type=int, default=DEFAULT_MAX_BATCH_SECONDS, help="Stop selecting new plugin scans after this wall-clock budget; 0 disables the budget")
     parser.add_argument("--rescan-after-hours", type=int, default=168)

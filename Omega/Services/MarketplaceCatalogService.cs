@@ -3,7 +3,9 @@ namespace Dalagab.Omega;
 internal sealed record SqliteCatalogApplyResult(
     int VariantCount,
     IReadOnlyList<CuratedSourceDefinition> SourceDefinitions,
-    DateTimeOffset? GeneratedAtUtc);
+    DateTimeOffset? GeneratedAtUtc,
+    string CatalogRevision,
+    string SecurityRevision);
 
 /// <summary>
 /// Owns Omega's in-memory marketplace projection backed by one SQLite catalog file. The database is
@@ -50,7 +52,12 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
         store.ReplaceFromBundle(zipPath);
         var snapshot = store.ReadSnapshot();
         ApplySnapshot(snapshot, repositories, preserveLastRefresh: false);
-        return new SqliteCatalogApplyResult(snapshot.Variants.Count, snapshot.SourceDefinitions, snapshot.GeneratedAtUtc);
+        return new SqliteCatalogApplyResult(
+            snapshot.Variants.Count,
+            snapshot.SourceDefinitions,
+            snapshot.GeneratedAtUtc,
+            snapshot.CatalogRevision,
+            snapshot.SecurityRevision);
     }
 
     public IReadOnlyList<CuratedSourceDefinition> ReadDatabaseSourceDefinitions()
@@ -232,6 +239,10 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
     public bool HasLoaded { get; private set; }
     public int CachedRepositoryCount { get; private set; }
     public DateTimeOffset? LastRefresh { get; private set; }
+    public string CatalogRevision { get; private set; } = string.Empty;
+    public string SecurityRevision { get; private set; } = string.Empty;
+    public DateTimeOffset? RevisionUpdatedAtUtc { get; private set; }
+    public int CatalogChangelogEntryCount { get; private set; }
     public string LastError { get; private set; } = string.Empty;
 
     private static string NormalizeUrl(string? url) => (url ?? string.Empty).Trim().TrimEnd('/');

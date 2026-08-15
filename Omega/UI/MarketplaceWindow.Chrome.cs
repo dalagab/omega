@@ -74,7 +74,11 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         ImGui.TextDisabled(BuildInfo.Version);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip($"Omega v{BuildInfo.Version}");
+        {
+            var catalogRevision = string.IsNullOrWhiteSpace(catalog.CatalogRevision) ? "Not available" : catalog.CatalogRevision;
+            var securityRevision = string.IsNullOrWhiteSpace(catalog.SecurityRevision) ? "Not available" : catalog.SecurityRevision;
+            ImGui.SetTooltip($"Omega v{BuildInfo.Version}\nCatalog Revision: {catalogRevision}\nSecurity Revision: {securityRevision}");
+        }
     }
 
     private void DrawSidebarUtilityIcon(MarketplaceView view, FontAwesomeIcon icon, string label, int count, int notificationCount = 0)

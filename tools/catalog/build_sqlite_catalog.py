@@ -17,6 +17,7 @@ and publishes a deterministic descriptor plus compressed transport ZIP.
 """
 from __future__ import annotations
 
+from contextlib import closing
 import argparse
 import datetime as dt
 import hashlib
@@ -29,6 +30,8 @@ import tempfile
 import zipfile
 from pathlib import Path
 from typing import Any, Iterable
+
+from catalog_revisions import compute_catalog_base_revision, ensure_revision_schema, read_meta, write_meta
 
 SCHEMA_VERSION = 1
 SCHEMA_NAME = "omega.catalog.sqlite.v1"
@@ -94,7 +97,7 @@ def copy_seed_database(seed: Path | None, destination: Path) -> bool:
                     shutil.copyfileobj(src, dst)
         else:
             shutil.copy2(seed, destination)
-        with sqlite3.connect(destination) as db:
+        with closing(sqlite3.connect(destination)) as db:
             row = db.execute("SELECT value FROM catalog_meta WHERE key='schema_version'").fetchone()
             if row is None or int(row[0]) != SCHEMA_VERSION:
                 raise ValueError("seed schema mismatch")
@@ -850,7 +853,10 @@ def build(args: argparse.Namespace) -> dict:
     seeded = copy_seed_database(seed, db_path)
     db = reset_database(db_path)
     now = utc_now()
+    parent_catalog_revision = read_meta(db, "catalog_revision")
+    parent_security_revision = read_meta(db, "security_revision")
     try:
+        ensure_revision_schema(db)
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('schema_name',?)", (SCHEMA_NAME,))
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('generated_at_utc',?)", (now,))
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('seeded',?)", ("1" if seeded else "0",))
@@ -863,6 +869,10 @@ def build(args: argparse.Namespace) -> dict:
         import_websites(db, website_doc, now)
         recompute_presentation(db, now)
         create_runtime_view(db)
+        base_revision = compute_catalog_base_revision(db)
+        write_meta(db, "catalog_base_revision", base_revision)
+        write_meta(db, "catalog_parent_revision", parent_catalog_revision)
+        write_meta(db, "security_parent_revision", parent_security_revision)
         db.execute("ANALYZE")
         db.commit()
         validate_database(db)
@@ -880,7 +890,7 @@ def build(args: argparse.Namespace) -> dict:
         db.close()
 
     # Compact only after closing normal transaction work.
-    with sqlite3.connect(db_path) as compact:
+    with closing(sqlite3.connect(db_path)) as compact:
         compact.execute("VACUUM")
         compact.execute("PRAGMA optimize")
         validate_database(compact)
@@ -907,12 +917,15 @@ def build(args: argparse.Namespace) -> dict:
         "richCardCount": counts["richCards"],
         "securityScanCount": counts["securityScanned"],
         "securityHighOrCriticalCount": counts["securityHighOrCritical"],
+        "catalogBaseRevision": base_revision,
+        "parentCatalogRevision": parent_catalog_revision,
+        "parentSecurityRevision": parent_security_revision,
     }
     (out_dir / "catalog.json").write_text(json.dumps(descriptor, indent=2) + "\n", encoding="utf-8")
     (out_dir / f"{ZIP_FILENAME}.sha256").write_text(f"{bundle_sha}  {ZIP_FILENAME}\n", encoding="utf-8")
     endpoint = {"schemaVersion": 1, "descriptorUrl": args.descriptor_url}
     (out_dir / "catalog-endpoint.json").write_text(json.dumps(endpoint, indent=2) + "\n", encoding="utf-8")
-    report = {"generatedAtUtc": now, "seeded": seeded, **counts, "catalogSha256": catalog_sha, "bundleSha256": bundle_sha}
+    report = {"generatedAtUtc": now, "seeded": seeded, **counts, "catalogBaseRevision": base_revision, "parentCatalogRevision": parent_catalog_revision, "parentSecurityRevision": parent_security_revision, "catalogSha256": catalog_sha, "bundleSha256": bundle_sha}
     (out_dir / "catalog-report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report
 
