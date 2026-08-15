@@ -239,10 +239,10 @@ internal static partial class RegressionCases
         Contains(workflow, "needs.publish_evidence.result == 'success'", "marketplace publication cannot expose an evidence revision before required evidence publication succeeds");
         Contains(workflow, "--previous-database", "compaction compares against the previous production database for changelog generation");
         Contains(workflow, "tools/catalog/compact_sqlite_catalog.py", "compactor code changes can compact the current production release immediately");
-        var publishStart = workflow.IndexOf("\n  publish_marketplace:\n", StringComparison.Ordinal);
-        var ledgerStart = workflow.IndexOf("\n  publish_evidence:\n", publishStart + 1, StringComparison.Ordinal);
+        var publishStart = normalized.IndexOf("\n  publish_marketplace:\n", StringComparison.Ordinal);
+        var ledgerStart = normalized.IndexOf("\n  publish_evidence:\n", publishStart + 1, StringComparison.Ordinal);
         True(publishStart >= 0 && ledgerStart > publishStart, "compactor publish job can be isolated for verification contracts");
-        var publishBlock = workflow[publishStart..ledgerStart];
+        var publishBlock = normalized[publishStart..ledgerStart];
         var checkoutIndex = publishBlock.IndexOf("actions/checkout@v6", StringComparison.Ordinal);
         var setupPythonIndex = publishBlock.IndexOf("actions/setup-python@v7", StringComparison.Ordinal);
         var remoteVerifyIndex = publishBlock.IndexOf("tools/catalog/validate_marketplace_catalog.py", StringComparison.Ordinal);

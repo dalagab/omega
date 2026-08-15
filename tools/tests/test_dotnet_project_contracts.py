@@ -37,6 +37,15 @@ class DotNetProjectContractTests(unittest.TestCase):
             "automation capability model must remain part of the production model set",
         )
 
+    def test_csharp_workflow_assertions_normalize_line_endings(self) -> None:
+        path = common.ROOT / "Omega.RegressionTests" / "RegressionCases.SecurityIntelligence.cs"
+        text = path.read_text(encoding="utf-8")
+        self.assertIn('var normalized = workflow.ReplaceLineEndings("\\n");', text)
+        self.assertIn('var publishStart = normalized.IndexOf("\\n  publish_marketplace:\\n"', text)
+        self.assertIn('var ledgerStart = normalized.IndexOf("\\n  publish_evidence:\\n"', text)
+        self.assertNotIn('workflow.IndexOf("\\n  publish_marketplace:', text)
+        self.assertNotIn('workflow.IndexOf("\\n  publish_evidence:', text)
+
 
 if __name__ == "__main__":
     unittest.main()

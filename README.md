@@ -94,7 +94,7 @@ The repository manifest in [`repository/pluginmaster.json`](repository/pluginmas
 
 ### Publishing a new Omega version
 
-[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a four-part version tag matching the project metadata, for example `v0.8.3.18`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
+[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a four-part version tag matching the project metadata, for example `v0.8.3.19`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
 
 ## Exactly what the installer changes
 
@@ -198,7 +198,7 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Release metadata
 
-- Omega version: `0.8.3.18`
+- Omega version: `0.8.3.19`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`
@@ -231,6 +231,6 @@ These are different from `catalogSha256` and `bundleSha256`, which verify exact 
 
 The marketplace database contains `catalog_changelog`. A row is appended only when the semantic Catalog Revision changes, recording previous/current Catalog, Security, and Evidence Revisions plus bounded change counts. Periodic no-change scan freshness is stored separately in `security-scan-ledger.json` on `security-evidence-latest`; updating that operational ledger does not force clients to download another marketplace database.
 
-Omega 0.8.3.18 displays Catalog Revision, Security Revision, and Evidence Revision in Settings for support and troubleshooting. Evidence Revision is an identifier only; it is not a download instruction.
+Omega 0.8.3.19 displays Catalog Revision, Security Revision, and Evidence Revision in Settings for support and troubleshooting. Evidence Revision is an identifier only; it is not a download instruction.
 
 Security findings describe observed static capabilities and risk indicators. They are not a malware verdict, and no findings is not proof that a plugin is safe. Plugin archives are treated as hostile input: downloads, entry counts, total expansion, compression ratio, paths, metadata parsing, graph sizes, and scan time are bounded.
