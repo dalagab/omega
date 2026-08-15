@@ -18,7 +18,7 @@ Omega's runtime SQLite catalog is separately hash-checked and integrity-checked 
 
 ## Third-party plugin scanning
 
-Omega's daily plugin security scanner is intentionally static-only. Third-party plugin packages are downloaded as untrusted data, hashed, inspected without execution, and discarded with the ephemeral GitHub-hosted runner. The scan job has read-only repository permissions; a separate publish job receives write permission only after the scan artifact has been produced and validated.
+Omega's repository-side plugin security scanner is intentionally static-only. It runs after successful catalog builds, when scanner/schema code changes on the default branch, and on a daily recovery schedule. Third-party plugin packages are downloaded as untrusted data, hashed, inspected without execution, and discarded with the ephemeral GitHub-hosted runner. The scan job has read-only repository permissions; a separate publish job receives write permission only after the scan artifact has been produced and validated.
 
 The scanner reports observable capabilities such as network access, filesystem writes, process launching, registry/native API use, dynamic code loading, process-memory APIs, game hooking/signature scanning, local listeners, clipboard access, and credential/protected-data APIs. It also records declared and compiled dependency evidence, preserves required/soft/optional dependency semantics, inventories managed assembly references and P/Invoke metadata, records bounded IL call sites and local reachability evidence, resolves current dependencies against the Omega catalog, evaluates conservative version compatibility, and records dependency/permission drift between completed scans.
 

@@ -47,11 +47,11 @@ from collections import defaultdict, deque
 from pathlib import Path, PurePosixPath
 from typing import Iterable
 
-SCANNER_VERSION = "1.8.1"
-MAX_ARTIFACT_BYTES = 64 * 1024 * 1024
+SCANNER_VERSION = "1.8.2"
+MAX_ARTIFACT_BYTES = 256 * 1024 * 1024
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
 MAX_ARCHIVE_ENTRIES = 16_384
-MAX_ARCHIVE_UNCOMPRESSED = 256 * 1024 * 1024
+MAX_ARCHIVE_UNCOMPRESSED = 512 * 1024 * 1024
 MAX_ENTRY_SCAN_BYTES = 16 * 1024 * 1024
 MAX_TEXT_SOURCE_BYTES = 1024 * 1024
 MAX_SOURCE_TEXT_TOTAL = 24 * 1024 * 1024
@@ -3862,6 +3862,12 @@ internal sealed class Services {
 
 def hardening_self_test() -> None:
     """Exercise pathological inputs and catalog-scale projection hardening."""
+    # Plugin packages may legitimately be large because they bundle media/resources. The
+    # download and uncompressed-size guards remain finite while allowing production-sized
+    # packages that exceed the former 64 MiB download ceiling.
+    assert MAX_ARTIFACT_BYTES == 256 * 1024 * 1024
+    assert MAX_ARCHIVE_UNCOMPRESSED == 512 * 1024 * 1024
+
     # Real plugin packages can legitimately contain thousands of small resources. Keep the
     # central-directory guard bounded, but prove that packages larger than the old 1,024-entry
     # ceiling (including the 2,342-entry production example) remain scannable.

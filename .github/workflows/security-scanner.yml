@@ -1,6 +1,18 @@
 name: Omega plugin security scanner
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "tools/catalog/security_scan.py"
+      - "tools/catalog/build_sqlite_catalog.py"
+      - ".github/workflows/security-scanner.yml"
+  workflow_run:
+    workflows:
+      - "Omega SQLite catalog builder"
+    types:
+      - completed
   schedule:
     - cron: "17 6 * * *"
   workflow_dispatch:
@@ -33,6 +45,7 @@ concurrency:
 jobs:
   scan:
     name: Scan due plugin artifacts
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -129,7 +142,7 @@ jobs:
           assert db.execute("select count(*) from catalog_meta where key='dependency_hardening_version'").fetchone()[0] == 1
           assert db.execute("pragma foreign_key_check").fetchall() == []
           report=json.load(open(root+'/security-report.json', encoding='utf-8'))
-          assert report['scannerVersion'] == '1.8.1'
+          assert report['scannerVersion'] == '1.8.2'
           assert report['databaseHealth']['integrity'].lower() == 'ok'
           assert report['databaseHealth']['currentDependencies'] == report['databaseHealth']['dependencyResolutions']
           assert report['batchBudgetSeconds'] >= 0

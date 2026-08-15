@@ -5,9 +5,11 @@ internal static partial class RegressionCases
     internal static void TestPluginSecurityIntelligenceContract()
     {
         var scanner = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "security_scan.py"));
-        Contains(scanner, "SCANNER_VERSION = \"1.8.1\"", "scanner version is explicit so stale scans can be refreshed");
+        Contains(scanner, "SCANNER_VERSION = \"1.8.2\"", "scanner version is explicit so stale scans can be refreshed");
         Contains(scanner, "Only HTTPS downloads are scanned", "scanner refuses insecure artifact transports");
         Contains(scanner, "MAX_ARTIFACT_BYTES", "artifact downloads are bounded");
+        Contains(scanner, "MAX_ARTIFACT_BYTES = 256 * 1024 * 1024", "artifact download ceiling accommodates large production plugin packages while remaining bounded");
+        Contains(scanner, "MAX_ARCHIVE_UNCOMPRESSED = 512 * 1024 * 1024", "archive expansion remains bounded above large production packages");
         Contains(scanner, "MAX_ARCHIVE_ENTRIES", "archive entry count is bounded");
         Contains(scanner, "MAX_ARCHIVE_ENTRIES = 16_384", "archive ceiling accommodates legitimate multi-thousand-entry plugin packages while remaining bounded");
         Contains(scanner, "many_metadata[\"files\"] == 3000", "hardening suite proves packages above the former 1,024-entry ceiling remain scannable");
@@ -111,6 +113,9 @@ internal static partial class RegressionCases
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "security-scanner.yml"));
         var normalizedWorkflow = workflow.ReplaceLineEndings("\n");
         Contains(normalizedWorkflow, "cron: \"17 6 * * *\"", "security scanner runs daily");
+        Contains(normalizedWorkflow, "workflows:\n      - \"Omega SQLite catalog builder\"", "security scanner runs after successful catalog builds");
+        Contains(normalizedWorkflow, "tools/catalog/security_scan.py", "scanner code changes trigger immediate repository-side validation");
+        Contains(normalizedWorkflow, "github.event.workflow_run.conclusion == 'success'", "failed catalog builds cannot start a publish scan");
         Contains(normalizedWorkflow, "permissions:\n      contents: read", "hostile artifact scan job has read-only repository permission");
         Contains(workflow, "name: Publish security-enriched catalog", "publishing is isolated into a second job");
         Contains(workflow, "contents: write", "only publishing receives repository write permission");
