@@ -222,6 +222,13 @@ internal static partial class RegressionCases
         Contains(ui, "selectedVariantSource", "duplicate source selection");
         Contains(ui, "fallbackIconPath", "company fallback artwork path");
         True(File.Exists(Path.Combine(Root, "images", "company-fallback.png")), "company fallback artwork file");
+        var artwork = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Artwork.cs"));
+        Contains(artwork, "fallbackIconTexture.GetWrapOrDefault()", "all plugin artwork surfaces share the packaged fallback texture");
+        False(artwork.Contains("useFallbackTexture", StringComparison.Ordinal), "plugin artwork surfaces may not opt out of the fallback image");
+        False(File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs")).Contains("useFallbackTexture", StringComparison.Ordinal),
+            "product hero must show fallback artwork when the plugin has no usable icon");
+        False(File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SpotlightShelves.cs")).Contains("useFallbackTexture", StringComparison.Ordinal),
+            "Spotlight shelves must show fallback artwork when the plugin has no usable icon");
         Contains(ui, "ImGui.IsRectVisible", "lazy visible icon loading");
         False(ui.Contains("storefrontPage", StringComparison.Ordinal), "pagination must not return");
         False(ui.Contains("rowsPerPage", StringComparison.Ordinal), "fixed-page rows must not return");

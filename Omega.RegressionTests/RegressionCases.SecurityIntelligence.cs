@@ -233,7 +233,9 @@ internal static partial class RegressionCases
         Contains(workflow, "omega-security-evidence.sqlite.zip", "server-side release retains detailed evidence");
         Contains(workflow, "security-evidence-latest", "detailed evidence has a separate stable release");
         Contains(workflow, "contents: write", "repository write permission is isolated to the final compaction publish job");
-        Contains(workflow, "tools/catalog/validate_compacted_catalog.py", "compaction delegates integrity and projection checks to tested validation code");
+        Contains(workflow, "tools/catalog/validate_marketplace_catalog.py", "compaction validates the projected client marketplace database before publication");
+        Contains(workflow, "tools/catalog/validate_evidence_catalog.py", "compaction validates the detailed evidence database before publication");
+        Contains(compactor, "validate_compacted_database", "compactor validates its intermediate compacted evidence database before projection");
         Contains(workflow, "tools/catalog/publication_decision.py", "compaction uses tested fail-closed publication decision logic");
         Contains(workflow, "needs: [compact, publish_evidence]", "marketplace publication waits for the evidence publication decision");
         Contains(workflow, "needs.publish_evidence.result == 'success'", "marketplace publication cannot expose an evidence revision before required evidence publication succeeds");

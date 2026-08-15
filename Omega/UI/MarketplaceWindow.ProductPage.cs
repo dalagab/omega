@@ -70,8 +70,7 @@ internal sealed partial class MarketplaceWindow
             ProductHeroIconSize,
             currentApi,
             currentDalamudVersion,
-            showOverlays: false,
-            useFallbackTexture: false);
+            showOverlays: false);
 
         ImGui.SameLine(0f, 24f);
         ImGui.BeginGroup();

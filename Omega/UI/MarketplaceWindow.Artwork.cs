@@ -41,8 +41,7 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion,
         bool queueIfVisible = true,
-        bool showOverlays = true,
-        bool useFallbackTexture = true)
+        bool showOverlays = true)
     {
         var startX = ImGui.GetCursorPosX();
         ImGui.SetCursorPosX(startX + Math.Max(0f, (layoutWidth - iconSize) * 0.5f));
@@ -53,7 +52,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.BeginChild($"artwork-{plugin.InternalName}-{StableId(plugin.SourceUrl)}", new Vector2(iconSize, iconSize), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        var clicked = DrawArtworkImage(plugin, iconSize, queueIfVisible, useFallbackTexture, ref overlayMin, ref overlaySize);
+        var clicked = DrawArtworkImage(plugin, iconSize, queueIfVisible, ref overlayMin, ref overlaySize);
         var overlayConsumed = showOverlays &&
                               DrawArtworkTopLayer(plugin, installedPlugin, overlayMin, overlaySize, currentApi, currentDalamudVersion);
 
@@ -67,7 +66,6 @@ internal sealed partial class MarketplaceWindow
         MarketplacePlugin plugin,
         float iconSize,
         bool queueIfVisible,
-        bool useFallbackTexture,
         ref Vector2 overlayMin,
         ref Vector2 overlaySize)
     {
@@ -76,7 +74,7 @@ internal sealed partial class MarketplaceWindow
             texture = iconCache.GetOrQueue(GetOfficialDalamudIconUrl(plugin));
 
         var usingFallback = texture is null;
-        if (texture is null && useFallbackTexture && fallbackIconTexture is not null)
+        if (texture is null && fallbackIconTexture is not null)
             texture = fallbackIconTexture.GetWrapOrDefault();
 
         if (texture is null || texture.Size.X <= 0 || texture.Size.Y <= 0)

@@ -122,8 +122,7 @@ internal sealed partial class MarketplaceWindow
             ImGui.GetContentRegionAvail().X,
             currentApi,
             currentDalamudVersion,
-            showOverlays: false,
-            useFallbackTexture: false);
+            showOverlays: false);
         ImGui.Spacing();
         CenterText(Shorten(plugin.Name, 24));
         CenterText(Shorten(string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author, 24), disabled: true);
