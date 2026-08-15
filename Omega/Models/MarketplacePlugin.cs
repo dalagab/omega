@@ -48,6 +48,8 @@ public sealed class MarketplacePlugin
     public int SecurityHighCount { get; init; }
     public int SecurityCriticalCount { get; init; }
     public IReadOnlyList<string> SecurityCapabilities { get; init; } = [];
+    public string SecurityAutomationLevel { get; init; } = "none";
+    public IReadOnlyList<MarketplaceAutomationCapability> SecurityAutomationCapabilities { get; init; } = [];
     public IReadOnlyList<MarketplaceSecurityFinding> SecurityFindings { get; init; } = [];
     public bool SecuritySourceAvailable { get; init; }
     public string SecuritySourceRepository { get; init; } = string.Empty;

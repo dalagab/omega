@@ -41,6 +41,21 @@ class RevisionSemanticsTests(unittest.TestCase):
                 second = catalog_revisions.compute_security_revision(db)
             self.assertNotEqual(first, second)
 
+    def test_detailed_callsite_change_only_changes_evidence_revision(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-revision-split-") as td:
+            path = self.build_fixture_database(Path(td))
+            with closing(sqlite3.connect(path)) as db:
+                security_first = catalog_revisions.compute_security_revision(db)
+                evidence_first = catalog_revisions.compute_evidence_revision(db)
+                row = db.execute("SELECT managed_call_id FROM plugin_security_managed_calls ORDER BY managed_call_id LIMIT 1").fetchone()
+                self.assertIsNotNone(row)
+                db.execute("UPDATE plugin_security_managed_calls SET il_offset=il_offset+1 WHERE managed_call_id=?", (row[0],))
+                db.commit()
+                security_second = catalog_revisions.compute_security_revision(db)
+                evidence_second = catalog_revisions.compute_evidence_revision(db)
+            self.assertEqual(security_first, security_second)
+            self.assertNotEqual(evidence_first, evidence_second)
+
     def test_compaction_records_one_changelog_entry_and_noop_second_pass(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-revision-changelog-") as td:
             root = Path(td)
@@ -83,11 +98,13 @@ class RevisionSemanticsTests(unittest.TestCase):
             report = Path(td) / "report.json"
             report.write_text(json.dumps({
                 "publication": {"required": False},
-                "revisions": {"catalogRevision": "cat-v1-0123456789abcdef", "securityRevision": "sec-1.9.0-0123456789abcdef"},
+                "revisions": {"catalogRevision": "cat-v1-0123456789abcdef", "securityRevision": "sec-2.0.0-0123456789abcdef", "evidenceRevision": "ev-v1-fedcba9876543210"},
             }), encoding="utf-8")
             result = publication_decision.decision(report)
             self.assertEqual("false", result["publish"])
             self.assertEqual("cat-v1-0123456789abcdef", result["catalog_revision"])
+            self.assertEqual("sec-2.0.0-0123456789abcdef", result["security_revision"])
+            self.assertEqual("ev-v1-fedcba9876543210", result["evidence_revision"])
             report.write_text("{}", encoding="utf-8")
             with self.assertRaises(ValueError):
                 publication_decision.decision(report)

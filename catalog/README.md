@@ -1,37 +1,54 @@
 # Catalog data
 
-Omega's production marketplace catalog is a SQLite database built by GitHub Actions.
-See [`WORKFLOW.md`](WORKFLOW.md) for the complete lifecycle.
+Omega's repository pipeline publishes two SQLite databases with separate roles. See [`WORKFLOW.md`](WORKFLOW.md) for the complete lifecycle.
 
-The repository intentionally commits only small human-maintained inputs and human-readable status
-files. Large generated intermediate JSON files are Actions artifacts; the generated SQLite database is a
-release asset rather than a binary committed to `main`.
+The repository commits only small human-maintained inputs and human-readable status files. Generated SQLite databases and large intermediate data are release assets or GitHub Actions artifacts rather than binaries committed to `main`.
 
-Published assets under `catalog-latest`:
+## Client marketplace release
 
-- `omega-catalog.sqlite.zip` — compressed production database.
-- `omega-catalog.sqlite.zip.sha256` — transport checksum.
-- `catalog.json` — descriptor containing semantic Catalog/Security Revisions plus separate SQLite and ZIP SHA-256 hashes.
-- `catalog-report.json` — counts and generation metadata for operators.
-- `security-report.json` — summary of the most recent security-scanner batch.
-- `compaction-report.json` — before/after size, integrity, semantic publication decision, and projection-preservation report for the published compacted database.
-- `security-scan-ledger.json` — small operational freshness ledger used to avoid repeated timestamp-only rescans; it does not define the semantic Security Revision.
+Published under `catalog-latest`:
 
-Omega 0.8 consumes only the SQLite database. Intermediate JSON files may be imported by the online builder
-but are not runtime catalog formats.
+- `omega-marketplace.sqlite.zip` — small production marketplace database; this is the only online database Omega downloads.
+- `omega-marketplace.sqlite.zip.sha256` — transport checksum.
+- `catalog.json` — marketplace descriptor containing Catalog, Security, and Evidence Revisions plus exact SQLite/ZIP hashes.
+- `marketplace-projection-report.json` — projection size and runtime-equivalence validation.
+- `catalog-report.json` — catalog build summary when available.
 
-### Revision identity and changelog
+The ZIP contains an internal `omega-catalog.sqlite` entry so the client can keep its established local filename and atomic replacement behavior.
 
-`catalog_meta` stores the current `catalog_revision` and `security_revision`. These are semantic troubleshooting identifiers, not transport checksums. `catalogSha256` verifies the exact SQLite bytes and `bundleSha256` verifies the downloaded ZIP; the semantic revisions ignore operational timestamps and packaging-only changes.
+## Server-side evidence release
 
-`catalog_changelog` is retained inside the production database. A row is added only when the logical Catalog Revision changes and includes the previous/current Catalog and Security Revisions plus bounded counts for plugin, source, security, finding, and dependency changes. No-op security revalidation therefore does not manufacture a new database identity or changelog entry.
+Published under `security-evidence-latest`:
 
-Timestamp-only revalidation freshness lives in `security-scan-ledger.json` instead of forcing a new database release. The scanner consults that ledger when deciding whether an unchanged artifact is due again. The compactor publishes only the ledger on semantic no-op runs.
+- `omega-security-evidence.sqlite.zip` — detailed static-analysis evidence database used by repository automation and auditing.
+- `omega-security-evidence.sqlite.zip.sha256` — evidence transport checksum.
+- `evidence.json` — evidence database descriptor and Evidence Revision.
+- `security-report.json` — most recent scanner batch summary when available.
+- `compaction-report.json` — evidence compaction, integrity, revision, and publication report.
+- `security-scan-ledger.json` — operational scan freshness used to avoid repeated timestamp-only rescans.
 
-### Security and dependency intelligence
+The Omega plugin has no endpoint for this release and never downloads the evidence database.
 
-`plugin_security_scans` stores append-only scan history for exact catalog variants and artifact hashes. `plugin_security_findings` stores structured rule results and bounded evidence. `plugin_security_current` points each active variant at its latest scan summary so the runtime projection can display security information without expensive aggregation in the game client.
+## Revision identity and changelog
 
-Detailed dependency, import, managed-metadata, IL call-site, reachability, permission, dependency-resolution, component, compatibility/advisory, lineage, drift, and source/artifact-comparison evidence is normalized into dedicated tables. The database compactor therefore does not need to retain duplicate multi-megabyte copies of that same evidence inside `report_json`: historical and current report payloads are reduced to the bounded `omega.plugin-security.scan-summary.v1` form while normalized evidence and scan history remain intact.
+`catalog_meta` stores `catalog_revision`, `security_revision`, and `evidence_revision`. These are semantic troubleshooting identifiers, not transport checksums:
 
-Soft and optional dependencies remain distinct from required dependencies. The compactor validates SQLite integrity, foreign keys, preserved row counts, and an exact hash of the runtime catalog projection before a compacted database can replace the production release.
+- Catalog Revision identifies the logical marketplace plus current user-facing security state.
+- Security Revision identifies normalized current static-analysis conclusions and incorporates scanner semantics.
+- Evidence Revision identifies the detailed server-side evidence state.
+
+Exact SQLite and ZIP bytes are verified separately with SHA-256 values. Operational timestamps and packaging-only changes do not advance semantic revisions.
+
+`catalog_changelog` records logical Catalog Revision changes with previous/current Catalog, Security, and Evidence Revisions plus bounded change counters. A detailed evidence-only change can advance Evidence Revision without manufacturing a new logical Catalog Revision; the small marketplace projection is refreshed so its Evidence Revision remains an exact troubleshooting reference.
+
+Timestamp-only revalidation freshness lives in `security-scan-ledger.json`, so normal rechecks do not create false semantic revisions or unnecessary database replacements.
+
+## Marketplace security projection
+
+The marketplace database carries only current compact security information required by Omega: status, artifact hash, scanner version, severity/counts, observed capabilities, automation classification, bounded findings/evidence, source provenance, and errors. Detailed `plugin_security_*` forensic tables are physically absent.
+
+## Detailed evidence storage
+
+The evidence database retains append-only scan history and normalized dependency/import/permission/automation evidence, managed assembly metadata, managed symbols, IL call sites, bounded local reachability, dependency graph/version intelligence, lineage, drift, and source/artifact comparisons.
+
+The compactor bounds redundant report JSON while preserving normalized rows and verifies SQLite integrity, foreign keys, and the full runtime projection. The marketplace projector then creates the physically smaller client database and verifies the same logical runtime projection before publication.

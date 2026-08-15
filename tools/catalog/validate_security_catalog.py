@@ -15,7 +15,7 @@ import zipfile
 from pathlib import Path
 
 import security_scan
-from catalog_revisions import CATALOG_REVISION_SCHEMA, SECURITY_REVISION_SCHEMA
+from catalog_revisions import CATALOG_REVISION_SCHEMA, EVIDENCE_REVISION_SCHEMA, SECURITY_REVISION_SCHEMA
 
 REQUIRED_TABLES = (
     "plugin_security_current",
@@ -33,6 +33,7 @@ REQUIRED_TABLES = (
     "plugin_security_dependency_drift",
     "plugin_security_source_artifact_comparisons",
     "plugin_security_permission_candidates",
+    "plugin_security_automation_capabilities",
 )
 
 
@@ -59,6 +60,10 @@ def validate_database(database: Path, report_path: Path | None = None) -> dict:
             ("plugin_security_dependencies", "resolved_version"),
             ("plugin_security_dependency_components", "version_divergence"),
             ("plugin_security_managed_calls", "target_method_token"),
+            ("plugin_security_current", "automation_level"),
+            ("plugin_security_current", "automation_capabilities_json"),
+            ("runtime_plugin_variants", "security_automation_level"),
+            ("runtime_plugin_variants", "security_automation_capabilities_json"),
         )
         for table, column in required_columns:
             if not _column_exists(db, table, column):
@@ -89,12 +94,17 @@ def validate_database(database: Path, report_path: Path | None = None) -> dict:
         meta = dict(db.execute("SELECT key,value FROM catalog_meta"))
         security_revision = str(meta.get("security_revision_candidate", ""))
         catalog_revision = str(meta.get("catalog_revision_candidate", ""))
+        evidence_revision = str(meta.get("evidence_revision_candidate", ""))
         base_revision = str(meta.get("catalog_base_revision", ""))
         if not security_revision.startswith(f"sec-{security_scan.SCANNER_VERSION}-"):
             raise RuntimeError("security revision candidate is missing or stale")
+        if not evidence_revision.startswith("ev-v1-"):
+            raise RuntimeError("evidence revision candidate is missing or stale")
         if not catalog_revision.startswith("cat-v1-") or not base_revision.startswith("base-v1-"):
             raise RuntimeError("catalog revision candidate metadata is missing")
-        if meta.get("catalog_revision_schema") != CATALOG_REVISION_SCHEMA or meta.get("security_revision_schema") != SECURITY_REVISION_SCHEMA:
+        if (meta.get("catalog_revision_schema") != CATALOG_REVISION_SCHEMA or
+                meta.get("security_revision_schema") != SECURITY_REVISION_SCHEMA or
+                meta.get("evidence_revision_schema") != EVIDENCE_REVISION_SCHEMA):
             raise RuntimeError("semantic revision schema metadata is missing or stale")
 
     result = {
@@ -104,6 +114,7 @@ def validate_database(database: Path, report_path: Path | None = None) -> dict:
         "scannerVersion": security_scan.SCANNER_VERSION,
         "catalogRevisionCandidate": catalog_revision,
         "securityRevision": security_revision,
+        "evidenceRevision": evidence_revision,
         "catalogBaseRevision": base_revision,
     }
     if report_path:
@@ -118,7 +129,9 @@ def validate_database(database: Path, report_path: Path | None = None) -> dict:
         if int(report.get("batchBudgetSeconds", -1)) < 0:
             raise RuntimeError("security report contains an invalid batch budget")
         revisions = report.get("revisions") or {}
-        if revisions.get("securityRevision") != security_revision or revisions.get("catalogRevision") != catalog_revision:
+        if (revisions.get("securityRevision") != security_revision or
+                revisions.get("catalogRevision") != catalog_revision or
+                revisions.get("evidenceRevision") != evidence_revision):
             raise RuntimeError("security report semantic revisions do not match database metadata")
         result["reportedPlugins"] = int(report.get("reportedPluginRows", len(report.get("plugins") or [])))
     return result
@@ -143,6 +156,8 @@ def validate_transport(database: Path, bundle: Path, descriptor_path: Path) -> d
         raise RuntimeError("descriptor securityRevision does not match database")
     if descriptor.get("catalogRevisionCandidate") != meta.get("catalog_revision_candidate"):
         raise RuntimeError("descriptor catalogRevisionCandidate does not match database")
+    if descriptor.get("evidenceRevision") != meta.get("evidence_revision_candidate"):
+        raise RuntimeError("descriptor evidenceRevision does not match database")
     return {"catalogSha256": catalog_sha, "bundleSha256": bundle_sha, "bundleBytes": bundle.stat().st_size}
 
 

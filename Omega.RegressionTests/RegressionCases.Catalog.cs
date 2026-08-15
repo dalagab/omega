@@ -25,6 +25,7 @@ internal static partial class RegressionCases
             True(snapshot.Variants.Any(x => x.InternalName.Equals("AetherLovePlugin", StringComparison.OrdinalIgnoreCase)), "bootstrap contains AetherLove");
             True(snapshot.CatalogRevision is not null, "catalog snapshot always exposes a troubleshooting Catalog Revision field");
             True(snapshot.SecurityRevision is not null, "catalog snapshot always exposes a troubleshooting Security Revision field");
+            True(snapshot.EvidenceRevision is not null, "catalog snapshot always exposes a troubleshooting Evidence Revision field");
         }
         finally
         {
@@ -73,6 +74,7 @@ internal static partial class RegressionCases
             Equal("none", snapshot.Variants[0].SecurityHighestSeverity, "legacy variant receives neutral security defaults");
             Equal(string.Empty, snapshot.CatalogRevision, "legacy catalog without revision metadata remains readable");
             Equal(string.Empty, snapshot.SecurityRevision, "legacy catalog without security revision metadata remains readable");
+            Equal(string.Empty, snapshot.EvidenceRevision, "legacy catalog without evidence revision metadata remains readable");
             Equal(0, snapshot.ChangelogEntryCount, "legacy catalog without changelog table remains readable");
         }
         finally
@@ -91,7 +93,7 @@ internal static partial class RegressionCases
         Contains(source, "runtime_plugin_variants", "runtime reads normalized SQLite view");
         Contains(source, "ValidateRuntimeSnapshot(candidate)", "downloaded database is fully readable before it can replace the last-known-good catalog");
         Contains(source, "ReadChangelogEntryCount", "runtime reads embedded catalog changelog identity without requiring a second format");
-        Contains(source, "512L * 1024 * 1024", "runtime accepts bounded compacted catalogs above the old 256 MiB ceiling");
+        Contains(source, "128L * 1024 * 1024", "runtime extracted marketplace database ceiling remains bounded well below the detailed evidence database size");
         var runtimeValidation = source.IndexOf("ValidateRuntimeSnapshot(candidate)", StringComparison.Ordinal);
         var backupMove = source.IndexOf("File.Move(DatabasePath, backup", StringComparison.Ordinal);
         True(runtimeValidation >= 0 && backupMove > runtimeValidation, "candidate runtime projection is validated before the existing database is moved");
@@ -119,6 +121,7 @@ internal static partial class RegressionCases
         Contains(ui, "Refresh catalog database", "manual catalog check remains available in Settings");
         Contains(ui, "Catalog Revision", "Settings exposes the catalog troubleshooting revision");
         Contains(ui, "Security Revision", "Settings exposes the security troubleshooting revision");
+        Contains(ui, "Evidence Revision", "Settings exposes the evidence troubleshooting revision without downloading evidence");
     }
 
     internal static void TestDailyUpdateJobContract()

@@ -41,6 +41,41 @@ class CompactorUnitTests(unittest.TestCase):
                 self.assertEqual(1, db.execute("SELECT COUNT(*) FROM plugin_security_managed_calls").fetchone()[0])
             result = validate_compacted_catalog.validate_local(out)
             self.assertEqual("ok", result["integrity"])
+            compacted_descriptor = json.loads((out / "catalog.json").read_text(encoding="utf-8"))
+            self.assertEqual("2.0.0", compacted_descriptor["scannerVersion"])
+
+    def test_compactor_migrates_legacy_evidence_schema_before_validation(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-compactor-legacy-") as td:
+            tmp = Path(td)
+            source = tmp / "omega-catalog.sqlite"
+            compact_sqlite_catalog.build_self_test_database(source)
+            with closing(sqlite3.connect(source)) as db:
+                db.execute("DROP TABLE plugin_security_automation_capabilities")
+                db.commit()
+                self.assertEqual(0, db.execute(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='plugin_security_automation_capabilities'"
+                ).fetchone()[0])
+
+            descriptor = tmp / "catalog.json"
+            descriptor.write_text(json.dumps({
+                "schemaVersion": 1,
+                "schema": "omega.catalog.sqlite.v1",
+                "catalogSha256": "",
+                "bundleSha256": "",
+                "size": 0,
+                "databaseBytes": source.stat().st_size,
+            }), encoding="utf-8")
+            out = tmp / "out"
+            compact_sqlite_catalog.compact(source, descriptor, out, out / "compaction-report.json")
+
+            with closing(sqlite3.connect(out / "omega-catalog.sqlite")) as db:
+                self.assertEqual(1, db.execute(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='plugin_security_automation_capabilities'"
+                ).fetchone()[0])
+                columns = {row[1] for row in db.execute("PRAGMA table_info(runtime_plugin_variants)")}
+                self.assertIn("security_automation_level", columns)
+                self.assertIn("security_automation_capabilities_json", columns)
+
 
 
 if __name__ == "__main__":

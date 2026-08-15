@@ -5,7 +5,8 @@ internal sealed record SqliteCatalogApplyResult(
     IReadOnlyList<CuratedSourceDefinition> SourceDefinitions,
     DateTimeOffset? GeneratedAtUtc,
     string CatalogRevision,
-    string SecurityRevision);
+    string SecurityRevision,
+    string EvidenceRevision);
 
 /// <summary>
 /// Owns Omega's in-memory marketplace projection backed by one SQLite catalog file. The database is
@@ -57,7 +58,8 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
             snapshot.SourceDefinitions,
             snapshot.GeneratedAtUtc,
             snapshot.CatalogRevision,
-            snapshot.SecurityRevision);
+            snapshot.SecurityRevision,
+            snapshot.EvidenceRevision);
     }
 
     public IReadOnlyList<CuratedSourceDefinition> ReadDatabaseSourceDefinitions()
@@ -241,6 +243,7 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
     public DateTimeOffset? LastRefresh { get; private set; }
     public string CatalogRevision { get; private set; } = string.Empty;
     public string SecurityRevision { get; private set; } = string.Empty;
+    public string EvidenceRevision { get; private set; } = string.Empty;
     public DateTimeOffset? RevisionUpdatedAtUtc { get; private set; }
     public int CatalogChangelogEntryCount { get; private set; }
     public string LastError { get; private set; } = string.Empty;

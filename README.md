@@ -94,7 +94,7 @@ The repository manifest in [`repository/pluginmaster.json`](repository/pluginmas
 
 ### Publishing a new Omega version
 
-[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a four-part version tag matching the project metadata, for example `v0.8.3.15`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
+[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a four-part version tag matching the project metadata, for example `v0.8.3.18`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
 
 ## Exactly what the installer changes
 
@@ -170,7 +170,7 @@ python -m unittest discover -s tools/tests -p 'test_*.py' -v
 
 Omega's central catalog workflow is documented in [`catalog/WORKFLOW.md`](catalog/WORKFLOW.md). GitHub Actions builds one `omega-catalog.sqlite` database from repository manifests and incremental website enrichment. The previous database supplies ETag/Last-Modified state and last-known-good website metadata, so unchanged sources can return HTTP 304 and fresh project pages are reused.
 
-**The database is still downloaded and used by Omega.** At runtime Omega first loads the packaged/bootstrap SQLite catalog and the persisted local `omega-catalog.sqlite`. The catalog updater checks the small online descriptor at the `catalog-latest` release, compares the catalog SHA-256, downloads `omega-catalog.sqlite.zip` only when the database changed, verifies the bundle/database hashes and SQLite integrity, atomically replaces the local database, then immediately uses that database for marketplace projection, search, source metadata, filters, Spotlight, Library, and Updates. If the network or validation step fails, the previous local SQLite database stays active. Intermediate JSON files remain catalog-build inputs, not runtime catalog formats.
+**Only the small marketplace database is downloaded and used by Omega.** At runtime Omega first loads the packaged/bootstrap SQLite catalog and the persisted local `omega-catalog.sqlite`. The catalog updater checks the small online descriptor at the `catalog-latest` release, compares the catalog SHA-256, downloads `omega-marketplace.sqlite.zip` only when the marketplace database changed, verifies the bundle/database hashes and SQLite integrity, atomically replaces the local database, then immediately uses that database for marketplace projection, search, source metadata, filters, Spotlight, Library, Updates, and current security summaries. The detailed `security-evidence-latest` database is repository-side infrastructure and is never downloaded by Omega. If the network or validation step fails, the previous local SQLite database stays active. Intermediate JSON files remain catalog-build inputs, not runtime catalog formats.
 
 ## Repository security
 
@@ -198,7 +198,7 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Release metadata
 
-- Omega version: `0.8.3.15`
+- Omega version: `0.8.3.18`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`
@@ -206,23 +206,31 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Plugin security intelligence
 
-The Omega repository includes a separate server-side static-analysis pipeline for third-party plugin artifacts. The scanner is not executed inside the Dalamud plugin. The repository-side [`security-scanner.yml`](.github/workflows/security-scanner.yml) workflow runs after successful catalog builds, on scanner/schema changes to the default branch, on a daily recovery schedule, or by manual dispatch. It consumes the current SQLite catalog, selects only plugin variants that are new, changed, failed, produced by an older scanner version, or due for periodic revalidation, and scans those artifacts without executing or loading plugin code. The security workflow emits an Actions artifact rather than publishing the large intermediate database directly.
+Omega's third-party plugin analysis runs entirely in GitHub Actions. The scanner never executes or loads the plugin code it inspects. [`security-scanner.yml`](.github/workflows/security-scanner.yml) consumes the authoritative server-side evidence database, scans only new, changed, failed, stale-scanner, or periodically due plugin variants, and hands the enriched evidence database to the compaction workflow as an Actions artifact.
 
-Scanner 1.9.0 records the exact artifact SHA-256, scanner version, scan timestamp, observed capabilities, severity-classified findings, bounded evidence, dependency declarations, managed assembly metadata, IL call-site evidence, hard/soft/optional dependency semantics, catalog dependency resolution, version compatibility, dependency drift history, and optional public GitHub source provenance. Source inspection is reported separately and is not treated as proof that published source corresponds to the downloaded binary. Results are stored in normalized security tables inside the same `omega-catalog.sqlite` database consumed by Omega.
+Scanner 2.0.0 records exact artifact SHA-256 values, source provenance when available, dependencies, managed metadata, IL call sites, reachability, permission candidates, and static capability evidence. It also derives bounded automation classifications for game UI/menu control, synthetic clicks, targeting, character action execution, world/NPC interaction, teleport/travel, character movement/navigation, camera control, inventory/vendor/retainer control, native input injection, and known automation-oriented IPC integrations. These are capability findings, not claims that a runtime branch necessarily executes. A statically reachable path from a lifecycle/callback root raises confidence but still does not prove runtime behavior.
 
-After a successful security run, [`catalog-compaction.yml`](.github/workflows/catalog-compaction.yml) compacts the security-enriched database before it becomes the production release. Compactor 1.1.0 rewrites redundant historical/current `report_json` copies to bounded summaries while scan history and normalized evidence remain intact. It validates preserved row counts, SQLite integrity, foreign keys, and an exact hash of the complete runtime catalog projection before publishing. `compaction-report.json` records the resulting size reduction, semantic publication decision, revision IDs, and validation state.
+### Separate marketplace and evidence databases
+
+The production pipeline deliberately publishes two physically separate SQLite databases:
+
+- **Marketplace database** (`catalog-latest/omega-marketplace.sqlite.zip`) is the only database downloaded by Omega. It contains plugin/source presentation data, current security summaries, current automation summaries, semantic revision IDs, and the catalog changelog. It contains no detailed `plugin_security_*` forensic tables.
+- **Security evidence database** (`security-evidence-latest/omega-security-evidence.sqlite.zip`) is server-side scanner infrastructure. It retains scan history, normalized findings/dependencies, managed symbols, IL call sites, reachability, automation evidence, lineage, drift, and source/artifact comparison data. The Omega plugin contains no evidence-release endpoint and never downloads this database.
+
+Compactor 1.2.0 bounds redundant report JSON, preserves normalized evidence/history, validates SQLite integrity and foreign keys, and assigns the semantic revisions. Marketplace projector 1.0.0 then creates the small client projection and verifies that `runtime_plugin_variants` is byte-for-byte equivalent at the logical projection level before any release is published. The compactor workflow is the only database publisher: `catalog-latest` receives the marketplace projection, while `security-evidence-latest` receives the detailed evidence store.
 
 ### Catalog identity and changelog
 
-Every final production database carries two semantic troubleshooting identifiers in `catalog_meta` and `catalog.json`:
+Every production marketplace database carries three troubleshooting identifiers:
 
 - **Catalog Revision** (`cat-v1-…`) identifies the logical marketplace plus current security state.
-- **Security Revision** (`sec-<scanner-version>-…`) identifies the current normalized static-analysis state.
+- **Security Revision** (`sec-<scanner-version>-…`) identifies the current user-facing normalized static-analysis state.
+- **Evidence Revision** (`ev-v1-…`) identifies the detailed server-side evidence state that produced the security summaries.
 
-These are deliberately different from `catalogSha256` and `bundleSha256`, which verify the exact SQLite file and ZIP bytes. Scan timestamps, compaction timestamps, and transport representation do not by themselves create a new semantic revision. A scanner-version change does create a new Security Revision because the analysis semantics changed. Omega 0.8.3.15 shows both revision IDs in Settings and in the version tooltip so support reports can identify the exact database state.
+These are different from `catalogSha256` and `bundleSha256`, which verify exact transport bytes. Scan timestamps, compaction timestamps, and ZIP representation do not by themselves change semantic revisions. A managed call-site-only evidence change can advance Evidence Revision without changing the user-facing Security Revision; the small marketplace database is refreshed in that case so its troubleshooting identity stays exact. A meaningful current finding/capability/dependency change advances Security Revision and therefore Catalog Revision.
 
-The database also contains `catalog_changelog`. One row is appended when the semantic Catalog Revision changes, recording the previous/current catalog and security revisions plus plugin, source, security-finding, and dependency change counts. An unchanged revalidation does not append another row and does not republish `catalog-latest`. A compactor representation migration may republish the same semantic revision once so clients can receive the improved physical database without pretending the security state changed.
+The marketplace database contains `catalog_changelog`. A row is appended only when the semantic Catalog Revision changes, recording previous/current Catalog, Security, and Evidence Revisions plus bounded change counts. Periodic no-change scan freshness is stored separately in `security-scan-ledger.json` on `security-evidence-latest`; updating that operational ledger does not force clients to download another marketplace database.
 
-Periodic no-change revalidation freshness is kept separately in the small `security-scan-ledger.json` release asset. That operational ledger prevents an unchanged plugin from being rescanned every day after its database timestamp becomes old, while leaving the semantic database revision and transport bundle untouched. When a no-op scan completes, the compaction workflow may update only this ledger; it does not replace the SQLite catalog.
+Omega 0.8.3.18 displays Catalog Revision, Security Revision, and Evidence Revision in Settings for support and troubleshooting. Evidence Revision is an identifier only; it is not a download instruction.
 
-Security findings describe capabilities and risk indicators. They are not a malware verdict, and a scan with no findings is not proof that a plugin is safe. Plugin archives are treated as hostile input: the scanner enforces download, archive-entry, uncompressed-size, compression-ratio, and path-traversal limits and never extracts plugin packages into an executable workspace.
+Security findings describe observed static capabilities and risk indicators. They are not a malware verdict, and no findings is not proof that a plugin is safe. Plugin archives are treated as hostile input: downloads, entry counts, total expansion, compression ratio, paths, metadata parsing, graph sizes, and scan time are bounded.

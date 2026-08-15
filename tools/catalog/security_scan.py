@@ -50,7 +50,7 @@ from typing import Iterable
 from catalog_revisions import read_meta as read_catalog_meta, update_candidate_revisions
 
 
-SCANNER_VERSION = "1.9.0"
+SCANNER_VERSION = "2.0.0"
 SECURITY_LEDGER_SCHEMA = "omega.security-scan-ledger.v1"
 MAX_ARTIFACT_BYTES = 256 * 1024 * 1024
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
@@ -191,6 +191,113 @@ SERVICE_PERMISSION_MAP = {
 PACKAGE_PERMISSION_MAP = {
     "ffxivclientstructs": ("game.memory.read", "High", "High", "FFXIVClientStructs package/reference is declared."),
 }
+
+
+@dataclasses.dataclass(frozen=True)
+class AutomationCallRule:
+    capability_id: str
+    label: str
+    severity: str
+    automation_level: str
+    type_patterns: tuple[str, ...] = ()
+    member_names: tuple[str, ...] = ()
+    native_entries: tuple[str, ...] = ()
+    description: str = ""
+
+
+# These rules intentionally describe *capability evidence*. A matching call site is not proof that
+# a branch executes during ordinary play. Reachability from a plugin lifecycle/callback root raises
+# confidence because the call is connected to code Omega can statically trace from an entry point.
+AUTOMATION_CALL_RULES: tuple[AutomationCallRule, ...] = (
+    AutomationCallRule(
+        "game.ui.callback", "Game UI callback/control", "caution", "ui-automation",
+        ("AtkUnitBase", "Dalamud.Game.Addon", "Dalamud.Utility.Signatures.Callback", "Callback"),
+        ("FireCallback", "ReceiveEvent", "SendAction", "Invoke", "Fire"),
+        description="Invokes game-addon callback or event mechanisms that can drive game UI state.",
+    ),
+    AutomationCallRule(
+        "game.ui.synthetic_click", "Synthetic game UI interaction", "caution", "ui-automation",
+        ("Click", "AddonSelect", "SelectString", "SelectIconString", "SelectYesno"),
+        ("Click", "Select", "Invoke", "Fire", "Execute"),
+        description="Invokes code associated with synthetic clicks or selection dialogs.",
+    ),
+    AutomationCallRule(
+        "game.character.target", "Character target control", "caution", "character-automation",
+        ("ITargetManager", "TargetManager", "TargetSystem"),
+        ("set_Target", "set_FocusTarget", "SetTarget", "SetFocusTarget", "Target"),
+        description="References a target-setting API rather than only reading the current target.",
+    ),
+    AutomationCallRule(
+        "game.character.execute_action", "Character action execution", "high", "full-gameplay-automation",
+        ("ActionManager",),
+        ("UseAction", "UseActionLocation", "UseActionOnLocation", "UseActionOnTarget"),
+        description="Invokes game action-execution APIs that can perform combat, crafting, gathering, or other character actions.",
+    ),
+    AutomationCallRule(
+        "game.character.interact", "World/NPC interaction control", "caution", "character-automation",
+        ("TargetSystem", "GameObject", "Interaction"),
+        ("InteractWithObject", "Interact", "Use", "ExecuteInteraction"),
+        description="Invokes an interaction mechanism capable of activating an NPC, object, or other world target.",
+    ),
+    AutomationCallRule(
+        "game.character.teleport", "Teleport/travel control", "caution", "character-automation",
+        ("Telepo", "Teleport", "AgentTeleport"),
+        ("Teleport", "TeleportWithTickets", "ExecuteTeleport", "SelectDestination"),
+        description="Invokes teleport or travel-control functionality.",
+    ),
+    AutomationCallRule(
+        "game.character.move", "Character movement control", "high", "full-gameplay-automation",
+        ("MoveController", "MovementController", "PlayerMove", "Navmesh", "Navigation"),
+        ("Move", "SetMovement", "MoveTo", "Pathfind", "PathfindAndMoveTo", "Stop", "StopMoving"),
+        description="Invokes movement or navigation functionality capable of moving the player character.",
+    ),
+    AutomationCallRule(
+        "game.camera.control", "Camera control", "caution", "character-automation",
+        ("Camera", "CameraManager"),
+        ("set_", "SetCamera", "SetPosition", "SetRotation", "SetYaw", "SetPitch"),
+        description="References camera-mutating functionality.",
+    ),
+    AutomationCallRule(
+        "game.ui.inventory_control", "Inventory UI/control", "caution", "ui-automation",
+        ("InventoryManager", "AgentInventory", "InventoryItem"),
+        ("MoveItemSlot", "DiscardItem", "UseItem", "MoveItem", "Execute", "HandleAction"),
+        description="Invokes inventory-mutating or inventory-action functionality.",
+    ),
+    AutomationCallRule(
+        "game.ui.vendor_control", "Vendor/shop automation", "caution", "ui-automation",
+        ("Shop", "Vendor", "AgentShop"),
+        ("Buy", "Sell", "Purchase", "Execute", "HandleAction"),
+        description="Invokes vendor/shop functionality capable of buying or selling items.",
+    ),
+    AutomationCallRule(
+        "game.ui.retainer_control", "Retainer automation", "caution", "ui-automation",
+        ("Retainer", "AgentRetainer"),
+        ("Entrust", "Withdraw", "Sell", "Execute", "HandleAction", "Select"),
+        description="Invokes retainer-management functionality.",
+    ),
+    AutomationCallRule(
+        "input.keyboard.inject", "Keyboard input injection", "high", "full-gameplay-automation",
+        native_entries=("SendInput", "keybd_event"),
+        description="Calls a native keyboard/input injection API.",
+    ),
+    AutomationCallRule(
+        "input.mouse.inject", "Mouse input injection", "high", "full-gameplay-automation",
+        native_entries=("SendInput", "mouse_event"),
+        description="Calls a native mouse/input injection API.",
+    ),
+)
+
+
+# IPC names are not standardized, so this stays deliberately bounded and explicit. These patterns
+# mark known automation-oriented channels as *indirect* capability evidence; they do not claim that
+# the provider is installed or that a particular IPC call is exercised at runtime.
+IPC_AUTOMATION_HINTS: tuple[tuple[tuple[str, ...], tuple[tuple[str, str, str], ...]], ...] = (
+    (("vnavmesh", "navmesh", "navigation"), (("game.character.move", "Character movement via IPC", "full-gameplay-automation"),)),
+    (("yesalready", "textadvance", "click"), (("game.ui.synthetic_click", "Game UI automation via IPC", "ui-automation"),)),
+    (("autoretainer",), (("game.ui.retainer_control", "Retainer automation via IPC", "ui-automation"),)),
+    (("artisan",), (("game.character.execute_action", "Crafting/action automation via IPC", "full-gameplay-automation"),)),
+    (("lifestream", "teleport"), (("game.character.teleport", "Teleport/travel control via IPC", "character-automation"),)),
+)
 
 
 def utc_now() -> str:
@@ -1798,6 +1905,134 @@ def finding_payload(hits: dict[str, list[str]], archive_meta: dict) -> tuple[lis
     return findings, sorted(capabilities, key=str.lower)
 
 
+AUTOMATION_LEVEL_RANK = {
+    "none": 0,
+    "observational": 1,
+    "ui-automation": 2,
+    "character-automation": 3,
+    "full-gameplay-automation": 4,
+}
+
+
+def _automation_rule_matches(rule: AutomationCallRule, call: dict) -> bool:
+    declaring = str(call.get("targetDeclaringType") or "")
+    name = str(call.get("targetName") or "")
+    native = str(call.get("targetNativeEntryPoint") or "")
+    if rule.native_entries and any(native.casefold() == item.casefold() for item in rule.native_entries):
+        return True
+    if not rule.type_patterns:
+        return False
+    if not any(pattern.casefold() in declaring.casefold() for pattern in rule.type_patterns):
+        return False
+    if not rule.member_names:
+        return True
+    for expected in rule.member_names:
+        if expected.endswith("_") and name.startswith(expected):
+            return True
+        if expected == "set_" and name.startswith("set_"):
+            return True
+        if name.casefold() == expected.casefold():
+            return True
+    return False
+
+
+def derive_automation_capabilities(intel: dict) -> dict:
+    """Produce bounded, user-facing automation capability evidence from detailed static analysis."""
+    reachable_tokens = {
+        str(item.get("methodToken") or "")
+        for item in intel.get("managedReachability") or []
+        if str(item.get("methodToken") or "")
+    }
+    aggregated: dict[str, dict] = {}
+
+    def add(capability_id: str, label: str, level: str, confidence: str, reachable: bool, indirect: bool, reason: str, evidence: str) -> None:
+        item = aggregated.setdefault(capability_id, {
+            "capabilityId": capability_id,
+            "label": label,
+            "automationLevel": level,
+            "confidence": confidence,
+            "reachable": reachable,
+            "indirect": indirect,
+            "reason": reason,
+            "evidence": [],
+        })
+        if AUTOMATION_LEVEL_RANK.get(level, 0) > AUTOMATION_LEVEL_RANK.get(str(item.get("automationLevel") or "none"), 0):
+            item["automationLevel"] = level
+        confidence_rank = {"low": 0, "medium": 1, "high": 2, "very-high": 3}
+        if confidence_rank.get(confidence, 0) > confidence_rank.get(str(item.get("confidence") or "low"), 0):
+            item["confidence"] = confidence
+        item["reachable"] = bool(item.get("reachable")) or reachable
+        item["indirect"] = bool(item.get("indirect")) or indirect
+        if evidence and evidence not in item["evidence"] and len(item["evidence"]) < 8:
+            item["evidence"].append(evidence)
+
+    for call in intel.get("managedCallSites") or []:
+        source_token = str(call.get("sourceMethodToken") or "")
+        reachable = bool(source_token and source_token in reachable_tokens)
+        for rule in AUTOMATION_CALL_RULES:
+            if not _automation_rule_matches(rule, call):
+                continue
+            confidence = "very-high" if reachable else "high"
+            evidence_items = call.get("evidence") or []
+            evidence = str(evidence_items[0]) if evidence_items else (
+                f"IL call: {call.get('targetDeclaringType','')}.{call.get('targetName','')}"
+            )
+            add(rule.capability_id, rule.label, rule.automation_level, confidence, reachable, False, rule.description, evidence)
+
+    for ipc in intel.get("ipcIntegrations") or []:
+        channel = str(ipc.get("channel") or "")
+        lowered = channel.casefold()
+        for patterns, hints in IPC_AUTOMATION_HINTS:
+            if not any(pattern in lowered for pattern in patterns):
+                continue
+            for capability_id, label, level in hints:
+                add(
+                    capability_id, label, level, "medium", False, True,
+                    "References an IPC channel associated with an external automation provider; this is indirect capability evidence.",
+                    f"IPC channel: {channel}",
+                )
+            add(
+                "automation.via_ipc", "Indirect automation via IPC", level, "medium", False, True,
+                "Uses an IPC integration associated with automation functionality supplied by another plugin.",
+                f"IPC channel: {channel}",
+            )
+
+    capabilities = sorted(aggregated.values(), key=lambda item: (item["capabilityId"], item["label"]))
+    level = "none"
+    for item in capabilities:
+        candidate = str(item.get("automationLevel") or "none")
+        if AUTOMATION_LEVEL_RANK.get(candidate, 0) > AUTOMATION_LEVEL_RANK.get(level, 0):
+            level = candidate
+    if level == "none" and (
+        intel.get("dalamudServices") or intel.get("managedAssemblies") or intel.get("managedSymbols")
+    ):
+        level = "observational"
+
+    findings = []
+    for item in capabilities:
+        severity = "caution"
+        if item["automationLevel"] == "full-gameplay-automation":
+            severity = "high"
+        reachability = " A call path from a plugin lifecycle/callback root was found." if item["reachable"] else ""
+        indirect = " This capability is provided indirectly through IPC." if item["indirect"] else ""
+        findings.append({
+            "ruleId": f"automation.{item['capabilityId']}",
+            "severity": severity,
+            "category": "automation",
+            "title": item["label"],
+            "description": (
+                f"Static analysis found capability evidence for {item['label'].lower()}. "
+                f"This does not prove that the behavior executes during normal use.{reachability}{indirect}"
+            ).strip(),
+            "evidence": list(item["evidence"])[:4],
+        })
+    return {
+        "level": level,
+        "capabilities": capabilities,
+        "findings": findings,
+    }
+
+
 def ensure_schema(db: sqlite3.Connection) -> None:
     db.executescript("""
     CREATE TABLE IF NOT EXISTS plugin_security_scans (
@@ -2121,6 +2356,22 @@ def ensure_schema(db: sqlite3.Connection) -> None:
     CREATE INDEX IF NOT EXISTS ix_security_permission_candidates_scan ON plugin_security_permission_candidates(scan_id);
     CREATE INDEX IF NOT EXISTS ix_security_permission_candidates_permission ON plugin_security_permission_candidates(permission_id);
 
+    CREATE TABLE IF NOT EXISTS plugin_security_automation_capabilities (
+        automation_capability_id INTEGER PRIMARY KEY,
+        scan_id INTEGER NOT NULL REFERENCES plugin_security_scans(scan_id) ON DELETE CASCADE,
+        capability_id TEXT NOT NULL DEFAULT '',
+        label TEXT NOT NULL DEFAULT '',
+        automation_level TEXT NOT NULL DEFAULT 'none',
+        confidence TEXT NOT NULL DEFAULT '',
+        reachable INTEGER NOT NULL DEFAULT 0,
+        indirect INTEGER NOT NULL DEFAULT 0,
+        reason TEXT NOT NULL DEFAULT '',
+        evidence_json TEXT NOT NULL DEFAULT '[]'
+    );
+    CREATE INDEX IF NOT EXISTS ix_security_automation_scan ON plugin_security_automation_capabilities(scan_id);
+    CREATE INDEX IF NOT EXISTS ix_security_automation_capability ON plugin_security_automation_capabilities(capability_id);
+    CREATE INDEX IF NOT EXISTS ix_security_automation_level ON plugin_security_automation_capabilities(automation_level);
+
     CREATE TABLE IF NOT EXISTS plugin_security_current (
         variant_id INTEGER PRIMARY KEY REFERENCES plugin_variants(variant_id) ON DELETE CASCADE,
         scan_id INTEGER NOT NULL REFERENCES plugin_security_scans(scan_id) ON DELETE CASCADE,
@@ -2137,6 +2388,8 @@ def ensure_schema(db: sqlite3.Connection) -> None:
         high_count INTEGER NOT NULL DEFAULT 0,
         critical_count INTEGER NOT NULL DEFAULT 0,
         capabilities_json TEXT NOT NULL DEFAULT '[]',
+        automation_level TEXT NOT NULL DEFAULT 'none',
+        automation_capabilities_json TEXT NOT NULL DEFAULT '[]',
         findings_json TEXT NOT NULL DEFAULT '[]',
         source_available INTEGER NOT NULL DEFAULT 0,
         source_repository TEXT NOT NULL DEFAULT '',
@@ -2173,6 +2426,11 @@ def ensure_schema(db: sqlite3.Connection) -> None:
     managed_call_columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_security_managed_calls)")}
     if "target_method_token" not in managed_call_columns:
         db.execute("ALTER TABLE plugin_security_managed_calls ADD COLUMN target_method_token TEXT NOT NULL DEFAULT ''")
+    current_columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_security_current)")}
+    if "automation_level" not in current_columns:
+        db.execute("ALTER TABLE plugin_security_current ADD COLUMN automation_level TEXT NOT NULL DEFAULT 'none'")
+    if "automation_capabilities_json" not in current_columns:
+        db.execute("ALTER TABLE plugin_security_current ADD COLUMN automation_capabilities_json TEXT NOT NULL DEFAULT '[]'")
     db.execute("CREATE INDEX IF NOT EXISTS ix_security_dependencies_requirement ON plugin_security_dependencies(requirement)")
     db.execute("CREATE INDEX IF NOT EXISTS ix_security_managed_calls_target_method ON plugin_security_managed_calls(target_method_token)")
 
@@ -3272,6 +3530,27 @@ def save_dependency_intelligence(db: sqlite3.Connection, scan_id: int, result: d
         )
 
 
+def save_automation_capabilities(db: sqlite3.Connection, scan_id: int, result: dict) -> None:
+    automation = result.get("automation") if isinstance(result.get("automation"), dict) else {}
+    for item in automation.get("capabilities") or []:
+        db.execute(
+            """INSERT INTO plugin_security_automation_capabilities(
+                   scan_id,capability_id,label,automation_level,confidence,reachable,indirect,reason,evidence_json)
+               VALUES(?,?,?,?,?,?,?,?,?)""",
+            (
+                scan_id,
+                str(item.get("capabilityId") or ""),
+                str(item.get("label") or ""),
+                str(item.get("automationLevel") or "none"),
+                str(item.get("confidence") or ""),
+                int(bool(item.get("reachable"))),
+                int(bool(item.get("indirect"))),
+                str(item.get("reason") or ""),
+                json.dumps(item.get("evidence") or [], separators=(",", ":")),
+            ),
+        )
+
+
 def save_scan(db: sqlite3.Connection, row: sqlite3.Row, result: dict) -> int:
     counts = result["counts"]
     previous_current = db.execute("SELECT scan_id,status FROM plugin_security_current WHERE variant_id=?", (row["variant_id"],)).fetchone()
@@ -3299,6 +3578,7 @@ def save_scan(db: sqlite3.Connection, row: sqlite3.Row, result: dict) -> int:
             (scan_id, finding["ruleId"], finding["severity"], finding["category"], finding["title"], finding["description"], json.dumps(finding["evidence"], separators=(",", ":"))),
         )
     save_dependency_intelligence(db, scan_id, result)
+    save_automation_capabilities(db, scan_id, result)
 
     if result["status"] == "complete":
         result["sourceArtifactComparison"] = save_source_artifact_comparison(db, scan_id, int(row["variant_id"]), result)
@@ -3313,21 +3593,27 @@ def save_scan(db: sqlite3.Connection, row: sqlite3.Row, result: dict) -> int:
         INSERT INTO plugin_security_current(
             variant_id,scan_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,
             scanned_at_utc,highest_severity,informational_count,caution_count,high_count,critical_count,capabilities_json,
-            findings_json,source_available,source_repository,source_commit,source_to_binary_verified,report_json,error)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            automation_level,automation_capabilities_json,findings_json,source_available,source_repository,source_commit,
+            source_to_binary_verified,report_json,error)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(variant_id) DO UPDATE SET
             scan_id=excluded.scan_id,assembly_version=excluded.assembly_version,artifact_channel=excluded.artifact_channel,
             artifact_url=excluded.artifact_url,artifact_sha256=excluded.artifact_sha256,scanner_version=excluded.scanner_version,
             status=excluded.status,scanned_at_utc=excluded.scanned_at_utc,highest_severity=excluded.highest_severity,
             informational_count=excluded.informational_count,caution_count=excluded.caution_count,high_count=excluded.high_count,
-            critical_count=excluded.critical_count,capabilities_json=excluded.capabilities_json,findings_json=excluded.findings_json,
+            critical_count=excluded.critical_count,capabilities_json=excluded.capabilities_json,
+            automation_level=excluded.automation_level,automation_capabilities_json=excluded.automation_capabilities_json,
+            findings_json=excluded.findings_json,
             source_available=excluded.source_available,source_repository=excluded.source_repository,source_commit=excluded.source_commit,
             source_to_binary_verified=excluded.source_to_binary_verified,report_json=excluded.report_json,error=excluded.error
     """, (
         row["variant_id"], scan_id, result["assemblyVersion"], result["artifactChannel"], result["artifactUrl"],
         result["artifactSha256"], SCANNER_VERSION, result["status"], result["scannedAtUtc"], result["highestSeverity"],
         counts["informational"], counts["caution"], counts["high"], counts["critical"],
-        json.dumps(result["capabilities"], separators=(",", ":")), json.dumps(result["findings"], separators=(",", ":")),
+        json.dumps(result["capabilities"], separators=(",", ":")),
+        str((result.get("automation") or {}).get("level") or "none"),
+        json.dumps((result.get("automation") or {}).get("capabilities") or [], separators=(",", ":")),
+        json.dumps(result["findings"], separators=(",", ":")),
         int(result["source"]["available"]), result["source"]["repository"], result["source"]["commit"], 0,
         json.dumps(result, separators=(",", ":")), result.get("error", ""),
     ))
@@ -3352,6 +3638,7 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool) -> dict:
         "counts": {"informational": 0, "caution": 0, "high": 0, "critical": 0},
         "capabilities": [],
         "findings": [],
+        "automation": {"level": "none", "capabilities": [], "findings": []},
         "dependencyIntelligence": empty_dependency_intelligence("combined"),
         "source": {
             "available": False, "repository": str(row["repo_url"] or ""), "commit": "", "branch": "", "treeSha256": "",
@@ -3383,6 +3670,14 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool) -> dict:
             base["source"]["capabilities"] = source_capabilities
 
         base["dependencyIntelligence"] = merge_dependency_intelligence(artifact_intel, source_intel)
+        automation = derive_automation_capabilities(base["dependencyIntelligence"])
+        base["automation"] = automation
+        findings.extend(automation["findings"])
+        capabilities = sorted(
+            set(capabilities) | {str(item.get("label") or "") for item in automation["capabilities"] if str(item.get("label") or "")},
+            key=str.lower,
+        )
+        findings.sort(key=lambda f: (-SEVERITY_RANK.get(f["severity"], 0), f["ruleId"]))
         counts = {severity: sum(1 for f in findings if f["severity"] == severity) for severity in ("informational", "caution", "high", "critical")}
         highest = "none"
         for severity in ("critical", "high", "caution", "informational"):
@@ -3397,7 +3692,7 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool) -> dict:
 
 def update_descriptor(database_path: Path, bundle_path: Path, descriptor_path: Path) -> dict:
     descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
-    with zipfile.ZipFile(bundle_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+    with zipfile.ZipFile(bundle_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         archive.write(database_path, "omega-catalog.sqlite")
     catalog_sha = hashlib.sha256(database_path.read_bytes()).hexdigest()
     bundle_sha = hashlib.sha256(bundle_path.read_bytes()).hexdigest()
@@ -3409,6 +3704,7 @@ def update_descriptor(database_path: Path, bundle_path: Path, descriptor_path: P
     with closing(sqlite3.connect(database_path)) as metadata_db:
         descriptor["catalogBaseRevision"] = read_catalog_meta(metadata_db, "catalog_base_revision")
         descriptor["securityRevision"] = read_catalog_meta(metadata_db, "security_revision_candidate")
+        descriptor["evidenceRevision"] = read_catalog_meta(metadata_db, "evidence_revision_candidate")
         descriptor["catalogRevisionCandidate"] = read_catalog_meta(metadata_db, "catalog_revision_candidate")
         descriptor["scannerVersion"] = read_catalog_meta(metadata_db, "security_scanner_version", SCANNER_VERSION)
     descriptor_path.write_text(json.dumps(descriptor, indent=2) + "\n", encoding="utf-8")
@@ -3790,10 +4086,26 @@ internal sealed class Services {
     add_dependency(source_intel, "nuget", "Newtonsoft.Json", "13.0.3", "TestPlugin.csproj", "known", "source PackageReference", "required", version_requirement="[13.0.3, )", resolved_version="13.0.3")
     finalize_intelligence(source_intel)
     combined_intel = merge_dependency_intelligence(intel, source_intel)
+    automation_fixture = derive_automation_capabilities({
+        **combined_intel,
+        "managedCallSites": list(combined_intel.get("managedCallSites") or []) + [{
+            "sourceMethodToken": "0x06000001",
+            "targetDeclaringType": "FFXIVClientStructs.FFXIV.Client.Game.ActionManager",
+            "targetName": "UseAction",
+            "targetNativeEntryPoint": "",
+            "evidence": ["il:Fixture.dll:OnFrameworkUpdate+0x10: call ActionManager.UseAction"],
+        }],
+        "managedReachability": list(combined_intel.get("managedReachability") or []) + [{"methodToken": "0x06000001"}],
+        "ipcIntegrations": list(combined_intel.get("ipcIntegrations") or []) + [{"channel": "vnavmesh.Path.MoveTo"}],
+    })
+    assert automation_fixture["level"] == "full-gameplay-automation"
+    assert any(x["capabilityId"] == "game.character.execute_action" and x["reachable"] for x in automation_fixture["capabilities"])
+    assert any(x["capabilityId"] == "game.character.move" and x["indirect"] for x in automation_fixture["capabilities"])
     result = {
         "assemblyVersion": "1.2.3.4", "artifactChannel": "stable", "artifactUrl": "https://example.invalid/TestPlugin.zip",
         "artifactSha256": sha256_bytes(payload.getvalue()), "status": "complete", "scannedAtUtc": utc_now(),
         "highestSeverity": highest, "counts": counts, "capabilities": capabilities, "findings": findings,
+        "automation": automation_fixture,
         "dependencyIntelligence": combined_intel,
         "package": {"dependencyIntelligence": intel},
         "source": {"available": True, "repository": "https://github.com/example/TestPlugin", "commit": "source-a", "dependencyIntelligence": source_intel},
@@ -3810,6 +4122,9 @@ internal sealed class Services {
     assert db.execute("SELECT COUNT(*) FROM plugin_security_dependencies WHERE scan_id=? AND kind='managed-assembly-reference'", (scan_id,)).fetchone()[0] >= 2
     assert db.execute("SELECT COUNT(*) FROM plugin_security_dependencies WHERE scan_id=? AND requirement='soft'", (scan_id,)).fetchone()[0] >= 3
     assert db.execute("SELECT COUNT(*) FROM plugin_security_permission_candidates WHERE scan_id=? AND permission_id='process.execute'", (scan_id,)).fetchone()[0] >= 1
+    assert db.execute("SELECT COUNT(*) FROM plugin_security_automation_capabilities WHERE scan_id=? AND capability_id='game.character.execute_action' AND reachable=1", (scan_id,)).fetchone()[0] == 1
+    current_automation = db.execute("SELECT automation_level,automation_capabilities_json FROM plugin_security_current WHERE variant_id=1").fetchone()
+    assert current_automation is not None and current_automation["automation_level"] == "full-gameplay-automation"
     comparison = db.execute("SELECT source_available,matched_component_count,comparison_status FROM plugin_security_source_artifact_comparisons WHERE scan_id=?", (scan_id,)).fetchone()
     assert comparison is not None and comparison["source_available"] == 1 and comparison["matched_component_count"] >= 2
     assert comparison["comparison_status"] == "compared-not-verified"
@@ -3878,6 +4193,7 @@ internal sealed class Services {
         "assemblyVersion": "1.2.4.0", "artifactChannel": "stable", "artifactUrl": "https://example.invalid/TestPlugin-v2.zip",
         "artifactSha256": sha256_bytes(payload.getvalue() + b"dependency-drift-v2"), "status": "complete", "scannedAtUtc": utc_now(),
         "highestSeverity": highest, "counts": counts, "capabilities": capabilities, "findings": findings,
+        "automation": automation_fixture,
         "dependencyIntelligence": changed_combined, "package": {"dependencyIntelligence": changed_artifact},
         "source": {"available": True, "repository": "https://github.com/example/TestPlugin", "commit": "source-b", "dependencyIntelligence": changed_source},
         "error": "",

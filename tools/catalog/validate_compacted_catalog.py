@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import compact_sqlite_catalog
-from catalog_revisions import CATALOG_REVISION_SCHEMA, CHANGELOG_SCHEMA, SECURITY_REVISION_SCHEMA
+from catalog_revisions import CATALOG_REVISION_SCHEMA, CHANGELOG_SCHEMA, EVIDENCE_REVISION_SCHEMA, SECURITY_REVISION_SCHEMA
 
 
 def validate_database_bytes(raw: bytes, descriptor: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:
@@ -53,28 +53,37 @@ def validate_database_bytes(raw: bytes, descriptor: dict[str, Any], report: dict
             meta = dict(db.execute("SELECT key,value FROM catalog_meta"))
             catalog_revision = str(meta.get("catalog_revision", ""))
             security_revision = str(meta.get("security_revision", ""))
+            evidence_revision = str(meta.get("evidence_revision", ""))
             if descriptor.get("catalogRevision") != catalog_revision or not catalog_revision.startswith("cat-v1-"):
                 raise RuntimeError("descriptor catalogRevision does not match compacted database")
             if descriptor.get("securityRevision") != security_revision or not security_revision.startswith("sec-"):
                 raise RuntimeError("descriptor securityRevision does not match compacted database")
-            if meta.get("catalog_revision_schema") != CATALOG_REVISION_SCHEMA or meta.get("security_revision_schema") != SECURITY_REVISION_SCHEMA:
+            if descriptor.get("evidenceRevision") != evidence_revision or not evidence_revision.startswith("ev-v1-"):
+                raise RuntimeError("descriptor evidenceRevision does not match compacted database")
+            if (meta.get("catalog_revision_schema") != CATALOG_REVISION_SCHEMA or
+                    meta.get("security_revision_schema") != SECURITY_REVISION_SCHEMA or
+                    meta.get("evidence_revision_schema") != EVIDENCE_REVISION_SCHEMA):
                 raise RuntimeError("compacted database revision schema metadata is missing")
             if meta.get("catalog_changelog_schema") != CHANGELOG_SCHEMA:
                 raise RuntimeError("compacted database changelog schema metadata is missing")
             if db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='catalog_changelog'").fetchone()[0] != 1:
                 raise RuntimeError("compacted database is missing catalog_changelog")
+            if db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='plugin_security_automation_capabilities'").fetchone()[0] != 1:
+                raise RuntimeError("compacted evidence database is missing automation capability evidence")
     finally:
         try:
             os.unlink(path)
         except FileNotFoundError:
             pass
     revisions = report.get("revisions") or {}
-    if revisions.get("catalogRevision") != descriptor.get("catalogRevision") or revisions.get("securityRevision") != descriptor.get("securityRevision"):
+    if (revisions.get("catalogRevision") != descriptor.get("catalogRevision") or
+            revisions.get("securityRevision") != descriptor.get("securityRevision") or
+            revisions.get("evidenceRevision") != descriptor.get("evidenceRevision")):
         raise RuntimeError("compaction report revisions do not match descriptor")
     publication = report.get("publication") or {}
     if not isinstance(publication.get("required"), bool):
         raise RuntimeError("compaction report publication decision is missing")
-    return {"integrity": "ok", "databaseBytes": len(raw), "maxSummaryBytes": max(max_scan, max_current), "catalogRevision": descriptor.get("catalogRevision"), "securityRevision": descriptor.get("securityRevision"), "publicationRequired": publication.get("required")}
+    return {"integrity": "ok", "databaseBytes": len(raw), "maxSummaryBytes": max(max_scan, max_current), "catalogRevision": descriptor.get("catalogRevision"), "securityRevision": descriptor.get("securityRevision"), "evidenceRevision": descriptor.get("evidenceRevision"), "publicationRequired": publication.get("required")}
 
 
 def validate_bundle(bundle: bytes, descriptor: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:

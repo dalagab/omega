@@ -2,13 +2,11 @@ name: Omega plugin security scanner
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - "tools/catalog/security_scan.py"
       - "tools/catalog/catalog_revisions.py"
       - "tools/catalog/validate_security_catalog.py"
-      - "tools/catalog/build_sqlite_catalog.py"
       - ".github/workflows/security-scanner.yml"
   workflow_run:
     workflows:
@@ -60,17 +58,13 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-
       - name: Run repository Python regression suite
         run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
-
-      - name: Self-test hostile-input guards, dependency versions/conflicts, graph, managed metadata, IL call sites and reachability
+      - name: Self-test scanner semantics and automation capability detection
         run: python tools/catalog/security_scan.py --self-test
-
-      - name: Run scanner hardening and deterministic catalog projection tests
+      - name: Run scanner hardening and deterministic projection tests
         run: python tools/catalog/security_scan.py --hardening-self-test
-
-      - name: Download catalog-builder handoff or current production catalog
+      - name: Download builder handoff or current server-side evidence database
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -80,26 +74,22 @@ jobs:
           set -euo pipefail
           mkdir -p catalog/security-output
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            gh run download "$UPSTREAM_RUN_ID" \
-              --repo "$GH_REPO" \
-              --name omega-sqlite-catalog \
-              --dir catalog/security-output
+            gh run download "$UPSTREAM_RUN_ID" --repo "$GH_REPO" --name omega-sqlite-catalog --dir catalog/security-output
           else
-            gh release download catalog-latest \
-              --repo "$GH_REPO" \
-              --pattern omega-catalog.sqlite.zip \
-              --pattern catalog.json \
-              --dir catalog/security-output
+            gh release download security-evidence-latest --repo "$GH_REPO" --pattern omega-security-evidence.sqlite.zip --dir catalog/security-output || true
+            gh release download catalog-latest --repo "$GH_REPO" --pattern catalog.json --dir catalog/security-output
+            if [ -f catalog/security-output/omega-security-evidence.sqlite.zip ]; then
+              cp catalog/security-output/omega-security-evidence.sqlite.zip catalog/security-output/omega-catalog.sqlite.zip
+            else
+              gh release download catalog-latest --repo "$GH_REPO" --pattern omega-catalog.sqlite.zip --dir catalog/security-output
+            fi
           fi
-          gh release download catalog-latest \
-            --repo "$GH_REPO" \
-            --pattern security-scan-ledger.json \
-            --dir catalog/security-output || true
+          gh release download security-evidence-latest --repo "$GH_REPO" --pattern security-scan-ledger.json --dir catalog/security-output || \
+            gh release download catalog-latest --repo "$GH_REPO" --pattern security-scan-ledger.json --dir catalog/security-output || true
           test -f catalog/security-output/omega-catalog.sqlite.zip
           test -f catalog/security-output/catalog.json
           python -m zipfile -e catalog/security-output/omega-catalog.sqlite.zip catalog/security-output
-
-      - name: Incrementally scan artifacts, resolve dependency graph/version intelligence and inspect public source
+      - name: Incrementally scan artifacts and derive security/automation intelligence
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
@@ -113,10 +103,8 @@ jobs:
           --max-batch-seconds ${{ inputs.max_batch_seconds || '4200' }}
           --rescan-after-hours ${{ inputs.rescan_after_hours || '168' }}
           --internal-names "${{ inputs.internal_names || '' }}"
-
       - name: Validate security and dependency intelligence database and hashes
         run: python tools/catalog/validate_security_catalog.py --root catalog/security-output
-
       - uses: actions/upload-artifact@v7
         with:
           name: omega-security-catalog

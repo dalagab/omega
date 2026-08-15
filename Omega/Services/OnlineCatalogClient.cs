@@ -19,6 +19,9 @@ internal sealed class OnlineCatalogDescriptor
     public string BundleSha256 { get; init; } = string.Empty;
     public string CatalogRevision { get; init; } = string.Empty;
     public string SecurityRevision { get; init; } = string.Empty;
+    public string EvidenceRevision { get; init; } = string.Empty;
+    public string DatabaseRole { get; init; } = string.Empty;
+    public bool DetailedSecurityEvidenceIncluded { get; init; }
     public long Size { get; init; }
     public string DownloadUrl { get; init; } = string.Empty;
 }
@@ -30,6 +33,7 @@ internal sealed class OnlineCatalogState
     public string CatalogSha256 { get; set; } = string.Empty;
     public string CatalogRevision { get; set; } = string.Empty;
     public string SecurityRevision { get; set; } = string.Empty;
+    public string EvidenceRevision { get; set; } = string.Empty;
     public DateTimeOffset? GeneratedAtUtc { get; set; }
     public DateTimeOffset? AppliedAtUtc { get; set; }
 }
@@ -143,7 +147,7 @@ internal sealed class OnlineCatalogStateStore
 internal sealed class OnlineCatalogClient : IDisposable
 {
     private const int MaxDescriptorBytes = 256 * 1024;
-    private const long MaxBundleBytes = 256L * 1024 * 1024;
+    private const long MaxBundleBytes = 64L * 1024 * 1024;
 
     private readonly HttpClient httpClient = new()
     {
@@ -254,6 +258,11 @@ internal sealed class OnlineCatalogClient : IDisposable
         return value.AsSpan(separator + 1).ToString().All(char.IsAsciiHexDigit);
     }
 
+    internal static bool IsValidEvidenceRevision(string? value)
+        => string.IsNullOrWhiteSpace(value) ||
+           (value.StartsWith("ev-v1-", StringComparison.Ordinal) &&
+            value.Length == 22 && value.AsSpan(6).ToString().All(char.IsAsciiHexDigit));
+
     internal static string EffectiveCatalogSha256(OnlineCatalogDescriptor descriptor)
         => descriptor.CatalogSha256;
 
@@ -278,6 +287,12 @@ internal sealed class OnlineCatalogClient : IDisposable
             throw new InvalidDataException("Online catalog descriptor has an invalid Catalog Revision.");
         if (!IsValidSecurityRevision(descriptor.SecurityRevision))
             throw new InvalidDataException("Online catalog descriptor has an invalid Security Revision.");
+        if (!IsValidEvidenceRevision(descriptor.EvidenceRevision))
+            throw new InvalidDataException("Online catalog descriptor has an invalid Evidence Revision.");
+        if (!descriptor.DatabaseRole.Equals("marketplace", StringComparison.Ordinal))
+            throw new InvalidDataException("Online catalog descriptor is not a client marketplace database.");
+        if (descriptor.DetailedSecurityEvidenceIncluded)
+            throw new InvalidDataException("Omega refuses descriptors that include detailed server-side security evidence.");
 
         _ = ResolveDownloadUri(descriptorUri, descriptor.DownloadUrl);
     }

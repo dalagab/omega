@@ -96,6 +96,12 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertGreaterEqual(security_scan.MAX_ARCHIVE_ENTRIES, 2_342)
         self.assertGreater(security_scan.MAX_ARCHIVE_UNCOMPRESSED, security_scan.MAX_ARTIFACT_BYTES)
 
+
+    def test_builder_handoff_compression_is_bounded_for_large_evidence_seed(self) -> None:
+        source = Path(build_sqlite_catalog.__file__).read_text(encoding="utf-8")
+        self.assertIn("compresslevel=6", source)
+        self.assertNotIn("compresslevel=9", source)
+
     def test_compactor_summary_ceiling_is_bounded(self) -> None:
         self.assertEqual(64 * 1024, compact_sqlite_catalog.MAX_SUMMARY_BYTES)
         self.assertEqual("omega.plugin-security.scan-summary.v1", compact_sqlite_catalog.SUMMARY_SCHEMA)

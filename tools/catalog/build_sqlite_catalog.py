@@ -321,6 +321,8 @@ CREATE TABLE IF NOT EXISTS plugin_security_current (
     high_count INTEGER NOT NULL DEFAULT 0,
     critical_count INTEGER NOT NULL DEFAULT 0,
     capabilities_json TEXT NOT NULL DEFAULT '[]',
+    automation_level TEXT NOT NULL DEFAULT 'none',
+    automation_capabilities_json TEXT NOT NULL DEFAULT '[]',
     findings_json TEXT NOT NULL DEFAULT '[]',
     source_available INTEGER NOT NULL DEFAULT 0,
     source_repository TEXT NOT NULL DEFAULT '',
@@ -337,6 +339,11 @@ def reset_database(path: Path) -> sqlite3.Connection:
     db = sqlite3.connect(path)
     db.row_factory = sqlite3.Row
     db.executescript(SCHEMA_SQL)
+    security_current_columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_security_current)")}
+    if "automation_level" not in security_current_columns:
+        db.execute("ALTER TABLE plugin_security_current ADD COLUMN automation_level TEXT NOT NULL DEFAULT 'none'")
+    if "automation_capabilities_json" not in security_current_columns:
+        db.execute("ALTER TABLE plugin_security_current ADD COLUMN automation_capabilities_json TEXT NOT NULL DEFAULT '[]'")
     db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('schema_version',?)", (str(SCHEMA_VERSION),))
     db.commit()
     return db
@@ -802,6 +809,8 @@ def create_runtime_view(db: sqlite3.Connection) -> None:
              COALESCE(sc.high_count,0) AS security_high_count,
              COALESCE(sc.critical_count,0) AS security_critical_count,
              COALESCE(sc.capabilities_json,'[]') AS security_capabilities_json,
+             COALESCE(sc.automation_level,'none') AS security_automation_level,
+             COALESCE(sc.automation_capabilities_json,'[]') AS security_automation_capabilities_json,
              COALESCE(sc.findings_json,'[]') AS security_findings_json,
              COALESCE(sc.source_available,0) AS security_source_available,
              COALESCE(sc.source_repository,'') AS security_source_repository,
@@ -898,7 +907,7 @@ def build(args: argparse.Namespace) -> dict:
     catalog_sha = sha256_file(db_path)
     zip_path = out_dir / ZIP_FILENAME
     zip_path.unlink(missing_ok=True)
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
         zf.write(db_path, DB_FILENAME)
     bundle_sha = sha256_file(zip_path)
     descriptor = {

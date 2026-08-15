@@ -14,6 +14,7 @@ internal sealed partial class MarketplaceCatalogService
                 CachedRepositoryCount = 0;
                 CatalogRevision = string.Empty;
                 SecurityRevision = string.Empty;
+                EvidenceRevision = string.Empty;
                 RevisionUpdatedAtUtc = null;
                 CatalogChangelogEntryCount = 0;
                 RebuildProjectionLocked();
@@ -145,6 +146,7 @@ internal sealed partial class MarketplaceCatalogService
             allDatabaseVariants = snapshot.Variants;
             CatalogRevision = snapshot.CatalogRevision;
             SecurityRevision = snapshot.SecurityRevision;
+            EvidenceRevision = snapshot.EvidenceRevision;
             RevisionUpdatedAtUtc = snapshot.RevisionUpdatedAtUtc;
             CatalogChangelogEntryCount = snapshot.ChangelogEntryCount;
         }

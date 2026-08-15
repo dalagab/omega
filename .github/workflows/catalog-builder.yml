@@ -45,6 +45,8 @@ jobs:
         run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
       - name: Run SQLite catalog self-test
         run: python tools/catalog/test_sqlite_catalog.py
+      - name: Run marketplace projection self-test
+        run: python tools/catalog/project_marketplace_catalog.py --self-test
 
   collect:
     name: 1) Discover source feeds
@@ -52,8 +54,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Discover curated, Puni.sh and GitHub PluginMaster sources
@@ -63,7 +65,7 @@ jobs:
           python tools/catalog/collect_sources.py
           --curated sources/curated-sources.json
           --output catalog/raw-sources.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: raw-sources
           path: catalog/raw-sources.json
@@ -75,24 +77,31 @@ jobs:
     timeout-minutes: 30
     needs: collect
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: raw-sources
           path: catalog/
-      - name: Download previous SQLite catalog for conditional manifest requests
+      - name: Download previous marketplace database for conditional manifest requests
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          gh release download catalog-latest --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
-          if [ -f catalog/seed/omega-catalog.sqlite.zip ]; then
-            python -m zipfile -e catalog/seed/omega-catalog.sqlite.zip catalog/seed
+          gh release download catalog-latest --repo "$GH_REPO" --pattern omega-marketplace.sqlite.zip --dir catalog/seed || true
+          if [ ! -f catalog/seed/omega-marketplace.sqlite.zip ]; then
+            gh release download catalog-latest --repo "$GH_REPO" --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
+          fi
+          bundle=""
+          [ -f catalog/seed/omega-marketplace.sqlite.zip ] && bundle=catalog/seed/omega-marketplace.sqlite.zip
+          [ -z "$bundle" ] && [ -f catalog/seed/omega-catalog.sqlite.zip ] && bundle=catalog/seed/omega-catalog.sqlite.zip
+          if [ -n "$bundle" ]; then
+            python -m zipfile -e "$bundle" catalog/seed
           fi
       - name: Fetch PluginMaster feeds
         run: >-
@@ -102,7 +111,7 @@ jobs:
           --seed-database catalog/seed/omega-catalog.sqlite
           --concurrency ${{ inputs.concurrency || '8' }}
           --timeout ${{ inputs.timeout || '20' }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: enriched-sources
           path: catalog/enriched-sources.json
@@ -114,24 +123,31 @@ jobs:
     timeout-minutes: 45
     needs: enrich
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: enriched-sources
           path: catalog/
-      - name: Download previous SQLite catalog for enrichment cache
+      - name: Download previous marketplace database for enrichment cache
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          gh release download catalog-latest --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
-          if [ -f catalog/seed/omega-catalog.sqlite.zip ]; then
-            python -m zipfile -e catalog/seed/omega-catalog.sqlite.zip catalog/seed
+          gh release download catalog-latest --repo "$GH_REPO" --pattern omega-marketplace.sqlite.zip --dir catalog/seed || true
+          if [ ! -f catalog/seed/omega-marketplace.sqlite.zip ]; then
+            gh release download catalog-latest --repo "$GH_REPO" --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
+          fi
+          bundle=""
+          [ -f catalog/seed/omega-marketplace.sqlite.zip ] && bundle=catalog/seed/omega-marketplace.sqlite.zip
+          [ -z "$bundle" ] && [ -f catalog/seed/omega-catalog.sqlite.zip ] && bundle=catalog/seed/omega-catalog.sqlite.zip
+          if [ -n "$bundle" ]; then
+            python -m zipfile -e "$bundle" catalog/seed
           fi
       - name: Reuse fresh enrichment and scrape only new/stale project pages
         env:
@@ -144,60 +160,68 @@ jobs:
           --max-age-hours ${{ inputs.website_max_age_hours || '168' }}
           --concurrency 4
           --timeout ${{ inputs.timeout || '20' }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: website-enrichment
           path: catalog/website-enrichment.json
           retention-days: 7
 
   build:
-    name: 4) Build and hand off SQLite catalog
+    name: 4) Build and hand off authoritative catalog state
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [collect, enrich, scrape]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: raw-sources
           path: catalog/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: enriched-sources
           path: catalog/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: website-enrichment
           path: catalog/
-      - name: Download previous SQLite database seed
+      - name: Download previous security evidence database as authoritative seed
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          gh release download catalog-latest --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
-      - name: Run SQLite catalog self-test
-        run: python tools/catalog/test_sqlite_catalog.py
-      - name: Build one authoritative SQLite catalog
-        run: >-
-          python tools/catalog/build_sqlite_catalog.py
-          --out catalog/dist
-          --seed catalog/seed/omega-catalog.sqlite.zip
-          --curated sources/curated-sources.json
-          --raw-sources catalog/raw-sources.json
-          --enriched-sources catalog/enriched-sources.json
-          --website-enrichment catalog/website-enrichment.json
-          --download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-catalog.sqlite.zip"
-          --descriptor-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/catalog.json"
+          gh release download security-evidence-latest --repo "$GH_REPO" --pattern omega-security-evidence.sqlite.zip --dir catalog/seed || true
+          if [ ! -f catalog/seed/omega-security-evidence.sqlite.zip ]; then
+            gh release download catalog-latest --repo "$GH_REPO" --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
+          fi
+      - name: Build one authoritative server-side catalog state
+        shell: bash
+        run: |
+          set -euo pipefail
+          seed=""
+          [ -f catalog/seed/omega-security-evidence.sqlite.zip ] && seed=catalog/seed/omega-security-evidence.sqlite.zip
+          [ -z "$seed" ] && [ -f catalog/seed/omega-catalog.sqlite.zip ] && seed=catalog/seed/omega-catalog.sqlite.zip
+          args=(
+            --out catalog/dist
+            --curated sources/curated-sources.json
+            --raw-sources catalog/raw-sources.json
+            --enriched-sources catalog/enriched-sources.json
+            --website-enrichment catalog/website-enrichment.json
+            --download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-marketplace.sqlite.zip"
+            --descriptor-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/catalog.json"
+          )
+          if [ -n "$seed" ]; then args+=(--seed "$seed"); fi
+          python tools/catalog/build_sqlite_catalog.py "${args[@]}"
       - name: Validate generated database and transport bundle
         run: python tools/catalog/validate_base_catalog.py --root catalog/dist
-
       - name: Update endpoint and human-readable report only
         shell: bash
         run: |
@@ -211,7 +235,7 @@ jobs:
             git commit -m "catalog: refresh SQLite report [skip ci]"
             git push
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: omega-sqlite-catalog
           path: |

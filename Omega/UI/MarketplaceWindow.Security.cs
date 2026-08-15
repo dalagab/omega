@@ -28,6 +28,9 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextUnformatted($"Security Revision: {DisplayRevision(catalog.SecurityRevision)}");
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Identifies the current static-analysis state. Re-check timestamps alone do not change this revision.");
+        ImGui.TextUnformatted($"Evidence Revision: {DisplayRevision(catalog.EvidenceRevision)}");
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Identifies the detailed server-side analysis evidence that produced the security summary. Omega does not download the evidence database.");
         ImGui.TextDisabled($"Changelog entries: {catalog.CatalogChangelogEntryCount}");
         if (catalog.RevisionUpdatedAtUtc is not null)
             ImGui.TextDisabled($"Revision updated: {catalog.RevisionUpdatedAtUtc.Value.ToLocalTime():g}");

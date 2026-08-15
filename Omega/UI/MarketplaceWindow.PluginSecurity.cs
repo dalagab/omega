@@ -45,6 +45,24 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextWrapped(string.Join("  •  ", plugin.SecurityCapabilities.Take(12)));
         }
 
+        if (plugin.SecurityAutomationCapabilities.Count > 0)
+        {
+            ImGui.Spacing();
+            ImGui.TextDisabled($"Automation capability: {AutomationLevelLabel(plugin.SecurityAutomationLevel)}");
+            foreach (var capability in plugin.SecurityAutomationCapabilities.Take(10))
+            {
+                var qualifiers = new List<string>();
+                if (!string.IsNullOrWhiteSpace(capability.Confidence))
+                    qualifiers.Add($"confidence {capability.Confidence}");
+                if (capability.Reachable)
+                    qualifiers.Add("reachable from plugin entry/callback code");
+                if (capability.Indirect)
+                    qualifiers.Add("via IPC");
+                var suffix = qualifiers.Count == 0 ? string.Empty : $" ({string.Join(", ", qualifiers)})";
+                ImGui.TextWrapped($"• {capability.Label}{suffix}");
+            }
+        }
+
         if (plugin.SecurityFindings.Count > 0 &&
             ImGui.TreeNode($"Why these findings were reported ({plugin.SecurityFindings.Count})##security-findings-{plugin.InternalName}"))
         {
@@ -102,6 +120,16 @@ internal sealed partial class MarketplaceWindow
 
     private static string SecurityCountSummary(MarketplacePlugin plugin)
         => $"Critical {plugin.SecurityCriticalCount}  •  High {plugin.SecurityHighCount}  •  Caution {plugin.SecurityCautionCount}  •  Info {plugin.SecurityInformationalCount}";
+
+    private static string AutomationLevelLabel(string level)
+        => (level ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "observational" => "Observational only",
+            "ui-automation" => "Game UI/menu automation",
+            "character-automation" => "Character control",
+            "full-gameplay-automation" => "Full gameplay automation",
+            _ => "None detected",
+        };
 
     private static void DrawSecurityDisclaimer()
     {

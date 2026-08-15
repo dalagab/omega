@@ -16,7 +16,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 CATALOG_REVISION_SCHEMA = "omega.catalog-revision.v1"
-SECURITY_REVISION_SCHEMA = "omega.security-revision.v1"
+SECURITY_REVISION_SCHEMA = "omega.security-revision.v2"
+EVIDENCE_REVISION_SCHEMA = "omega.security-evidence-revision.v1"
 CHANGELOG_SCHEMA = "omega.catalog-changelog.v1"
 
 JSON_COLUMNS = {
@@ -33,6 +34,8 @@ CREATE TABLE IF NOT EXISTS catalog_changelog (
     previous_catalog_revision TEXT NOT NULL DEFAULT '',
     security_revision TEXT NOT NULL,
     previous_security_revision TEXT NOT NULL DEFAULT '',
+    evidence_revision TEXT NOT NULL DEFAULT '',
+    previous_evidence_revision TEXT NOT NULL DEFAULT '',
     schema_version TEXT NOT NULL DEFAULT '',
     scanner_version TEXT NOT NULL DEFAULT '',
     compactor_version TEXT NOT NULL DEFAULT '',
@@ -66,8 +69,14 @@ def table_exists(db: sqlite3.Connection, name: str) -> bool:
 
 def ensure_revision_schema(db: sqlite3.Connection) -> None:
     db.executescript(CHANGELOG_SQL)
+    changelog_columns = {row[1] for row in db.execute("PRAGMA table_info(catalog_changelog)")}
+    if "evidence_revision" not in changelog_columns:
+        db.execute("ALTER TABLE catalog_changelog ADD COLUMN evidence_revision TEXT NOT NULL DEFAULT ''")
+    if "previous_evidence_revision" not in changelog_columns:
+        db.execute("ALTER TABLE catalog_changelog ADD COLUMN previous_evidence_revision TEXT NOT NULL DEFAULT ''")
     db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('catalog_revision_schema',?)", (CATALOG_REVISION_SCHEMA,))
     db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_revision_schema',?)", (SECURITY_REVISION_SCHEMA,))
+    db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('evidence_revision_schema',?)", (EVIDENCE_REVISION_SCHEMA,))
     db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('catalog_changelog_schema',?)", (CHANGELOG_SCHEMA,))
 
 
@@ -209,7 +218,8 @@ SECURITY_QUERY_BUILDERS: tuple[tuple[str, str], ...] = (
     ("current", """
         SELECT p.internal_name,src.url AS source_url,v.source_entry_key,c.assembly_version,c.artifact_channel,
                c.artifact_sha256,c.scanner_version,c.status,c.highest_severity,c.informational_count,c.caution_count,
-               c.high_count,c.critical_count,c.capabilities_json,c.findings_json,c.source_available,c.source_repository,
+               c.high_count,c.critical_count,c.capabilities_json,c.automation_level,c.automation_capabilities_json,
+               c.findings_json,c.source_available,c.source_repository,
                c.source_commit,c.source_to_binary_verified
           FROM plugin_security_current c
           JOIN plugin_variants v ON v.variant_id=c.variant_id
@@ -241,23 +251,10 @@ SECURITY_QUERY_BUILDERS: tuple[tuple[str, str], ...] = (
         "ma.reference_count,ma.type_reference_count,ma.member_reference_count,ma.native_import_count,ma.truncated,ma.error",
         "ma.origin,ma.path,ma.sha256,ma.assembly_name,ma.assembly_version"
     )),
-    ("managed_symbols", _child_current_query(
-        "plugin_security_managed_symbols", "ms",
-        "ms.origin,ms.path,ms.symbol_kind,ms.declaring_type,ms.name,ms.assembly_name,ms.evidence_json",
-        "ms.origin,ms.path,ms.symbol_kind,ms.declaring_type,ms.name,ms.assembly_name,ms.evidence_json"
-    )),
-    ("managed_calls", _child_current_query(
-        "plugin_security_managed_calls", "mc",
-        "mc.origin,mc.path,mc.source_method_token,mc.source_declaring_type,mc.source_method_name,mc.il_offset,mc.opcode,"
-        "mc.target_token,mc.target_kind,mc.target_declaring_type,mc.target_name,mc.target_assembly_name,"
-        "mc.target_native_library,mc.target_native_entry_point,mc.target_method_token,mc.evidence_json",
-        "mc.origin,mc.path,mc.source_method_token,mc.il_offset,mc.opcode,mc.target_token,mc.target_method_token,mc.evidence_json"
-    )),
-    ("managed_reachability", _child_current_query(
-        "plugin_security_managed_reachability", "mr",
-        "mr.origin,mr.path,mr.root_method_token,mr.root_declaring_type,mr.root_method_name,mr.root_kind,mr.root_confidence,"
-        "mr.method_token,mr.method_declaring_type,mr.method_name,mr.depth,mr.via_method_token,mr.via_il_offset,mr.evidence_json",
-        "mr.origin,mr.path,mr.root_method_token,mr.method_token,mr.depth,mr.via_method_token,mr.via_il_offset,mr.evidence_json"
+    ("automation_capabilities", _child_current_query(
+        "plugin_security_automation_capabilities", "ac",
+        "ac.capability_id,ac.label,ac.automation_level,ac.confidence,ac.reachable,ac.indirect,ac.reason,ac.evidence_json",
+        "ac.capability_id,ac.automation_level,ac.confidence,ac.reachable,ac.indirect,ac.evidence_json"
     )),
     ("source_artifact_comparisons", _child_current_query(
         "plugin_security_source_artifact_comparisons", "sa",
@@ -305,6 +302,28 @@ SECURITY_QUERY_BUILDERS: tuple[tuple[str, str], ...] = (
 )
 
 
+EVIDENCE_QUERY_BUILDERS: tuple[tuple[str, str], ...] = (
+    ("managed_symbols", _child_current_query(
+        "plugin_security_managed_symbols", "ms",
+        "ms.origin,ms.path,ms.symbol_kind,ms.declaring_type,ms.name,ms.assembly_name,ms.evidence_json",
+        "ms.origin,ms.path,ms.symbol_kind,ms.declaring_type,ms.name,ms.assembly_name,ms.evidence_json"
+    )),
+    ("managed_calls", _child_current_query(
+        "plugin_security_managed_calls", "mc",
+        "mc.origin,mc.path,mc.source_method_token,mc.source_declaring_type,mc.source_method_name,mc.il_offset,mc.opcode,"
+        "mc.target_token,mc.target_kind,mc.target_declaring_type,mc.target_name,mc.target_assembly_name,"
+        "mc.target_native_library,mc.target_native_entry_point,mc.target_method_token,mc.evidence_json",
+        "mc.origin,mc.path,mc.source_method_token,mc.il_offset,mc.opcode,mc.target_token,mc.target_method_token,mc.evidence_json"
+    )),
+    ("managed_reachability", _child_current_query(
+        "plugin_security_managed_reachability", "mr",
+        "mr.origin,mr.path,mr.root_method_token,mr.root_declaring_type,mr.root_method_name,mr.root_kind,mr.root_confidence,"
+        "mr.method_token,mr.method_declaring_type,mr.method_name,mr.depth,mr.via_method_token,mr.via_il_offset,mr.evidence_json",
+        "mr.origin,mr.path,mr.root_method_token,mr.method_token,mr.depth,mr.via_method_token,mr.via_il_offset,mr.evidence_json"
+    )),
+)
+
+
 def compute_security_revision(db: sqlite3.Connection) -> str:
     scanner_version = read_meta(db, "security_scanner_version", "unknown") or "unknown"
     # Older/pre-security catalogs have only the baseline tables. Treat that as a stable empty state.
@@ -327,6 +346,20 @@ def compute_security_revision(db: sqlite3.Connection) -> str:
     return f"sec-{safe_version}-{digest[:16]}"
 
 
+def compute_evidence_revision(db: sqlite3.Connection) -> str:
+    scanner_version = read_meta(db, "security_scanner_version", "unknown") or "unknown"
+    available_queries = []
+    for label, sql in EVIDENCE_QUERY_BUILDERS:
+        tokens = sql.replace("\n", " ").split()
+        table = tokens[tokens.index("FROM") + 1] if "FROM" in tokens else ""
+        if table and table_exists(db, table):
+            available_queries.append((label, sql))
+    digest = _hash_queries(EVIDENCE_REVISION_SCHEMA + ":" + scanner_version, db, available_queries) if available_queries else hashlib.sha256(
+        (EVIDENCE_REVISION_SCHEMA + ":empty:" + scanner_version).encode("utf-8")
+    ).hexdigest()
+    return f"ev-v1-{digest[:16]}"
+
+
 def compute_catalog_revision(db: sqlite3.Connection, base_revision: str | None = None, security_revision: str | None = None) -> str:
     base = base_revision or compute_catalog_base_revision(db)
     security = security_revision or compute_security_revision(db)
@@ -340,13 +373,16 @@ def update_candidate_revisions(db: sqlite3.Connection) -> dict[str, str]:
     ensure_revision_schema(db)
     base_revision = compute_catalog_base_revision(db)
     security_revision = compute_security_revision(db)
+    evidence_revision = compute_evidence_revision(db)
     catalog_revision = compute_catalog_revision(db, base_revision, security_revision)
     write_meta(db, "catalog_base_revision", base_revision)
     write_meta(db, "security_revision_candidate", security_revision)
+    write_meta(db, "evidence_revision_candidate", evidence_revision)
     write_meta(db, "catalog_revision_candidate", catalog_revision)
     return {
         "baseRevision": base_revision,
         "securityRevision": security_revision,
+        "evidenceRevision": evidence_revision,
         "catalogRevision": catalog_revision,
     }
 
@@ -354,6 +390,7 @@ def update_candidate_revisions(db: sqlite3.Connection) -> dict[str, str]:
 def finalize_revisions(db: sqlite3.Connection) -> dict[str, str]:
     revisions = update_candidate_revisions(db)
     write_meta(db, "security_revision", revisions["securityRevision"])
+    write_meta(db, "evidence_revision", revisions["evidenceRevision"])
     write_meta(db, "catalog_revision", revisions["catalogRevision"])
     return revisions
 
@@ -405,15 +442,20 @@ def change_summary(previous: sqlite3.Connection | None, current: sqlite3.Connect
         SELECT url,provider,curated_id,name,description,kind,source_repo_url,is_official,enabled_by_default,
                integrate_with_dalamud,content_sha256,plugin_count,highest_api FROM sources ORDER BY url COLLATE NOCASE
     """
-    security_sql = """
+    def security_sql_for(db: sqlite3.Connection) -> str:
+        columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_security_current)")} if table_exists(db, "plugin_security_current") else set()
+        automation_level = "c.automation_level" if "automation_level" in columns else "'none'"
+        automation_caps = "c.automation_capabilities_json" if "automation_capabilities_json" in columns else "'[]'"
+        return f"""
         SELECT p.internal_name,src.url,v.source_entry_key,c.assembly_version,c.artifact_channel,c.artifact_sha256,
                c.scanner_version,c.status,c.highest_severity,c.informational_count,c.caution_count,c.high_count,
-               c.critical_count,c.capabilities_json,c.findings_json,c.source_available,c.source_repository,c.source_commit,
+               c.critical_count,c.capabilities_json,{automation_level},{automation_caps},c.findings_json,
+               c.source_available,c.source_repository,c.source_commit,
                c.source_to_binary_verified
           FROM plugin_security_current c JOIN plugin_variants v ON v.variant_id=c.variant_id
           JOIN plugins p ON p.plugin_id=v.plugin_id JOIN sources src ON src.source_id=v.source_id
          ORDER BY p.internal_name COLLATE NOCASE,src.url COLLATE NOCASE,v.source_entry_key
-    """
+        """
     findings_sql = """
         SELECT p.internal_name,src.url,v.source_entry_key,f.rule_id,f.severity,f.category,f.title,f.description,f.evidence_json
           FROM plugin_security_findings f JOIN plugin_security_current c ON c.scan_id=f.scan_id
@@ -434,8 +476,8 @@ def change_summary(previous: sqlite3.Connection | None, current: sqlite3.Connect
     curr_plugins = _digest_map(current, plugin_sql, 1)
     prev_sources = _digest_map(previous, source_sql, 1) if previous and table_exists(previous, "sources") else {}
     curr_sources = _digest_map(current, source_sql, 1)
-    prev_security = _digest_map(previous, security_sql, 3, {13, 14}) if previous and table_exists(previous, "plugin_security_current") else {}
-    curr_security = _digest_map(current, security_sql, 3, {13, 14}) if table_exists(current, "plugin_security_current") else {}
+    prev_security = _digest_map(previous, security_sql_for(previous), 3, {13, 15, 16}) if previous and table_exists(previous, "plugin_security_current") else {}
+    curr_security = _digest_map(current, security_sql_for(current), 3, {13, 15, 16}) if table_exists(current, "plugin_security_current") else {}
     p_add, p_remove, p_update = _diff_maps(prev_plugins, curr_plugins)
     s_add, s_remove, s_update = _diff_maps(prev_sources, curr_sources)
     sec_add, sec_remove, sec_update = _diff_maps(prev_security, curr_security)
@@ -473,12 +515,14 @@ def append_changelog_if_changed(
     previous_db: sqlite3.Connection | None = None
     previous_catalog_revision = ""
     previous_security_revision = ""
+    previous_evidence_revision = ""
     try:
         if previous_db_path is not None and previous_db_path.exists():
             previous_db = sqlite3.connect(previous_db_path)
             previous_db.row_factory = sqlite3.Row
             previous_catalog_revision = read_meta(previous_db, "catalog_revision")
             previous_security_revision = read_meta(previous_db, "security_revision")
+            previous_evidence_revision = read_meta(previous_db, "evidence_revision")
         changes = change_summary(previous_db, db)
     finally:
         if previous_db is not None:
@@ -486,16 +530,20 @@ def append_changelog_if_changed(
 
     changed = revisions["catalogRevision"] != previous_catalog_revision
     security_changed = revisions["securityRevision"] != previous_security_revision
+    evidence_changed = revisions["evidenceRevision"] != previous_evidence_revision
     write_meta(db, "previous_published_catalog_revision", previous_catalog_revision)
     write_meta(db, "previous_published_security_revision", previous_security_revision)
+    write_meta(db, "previous_published_evidence_revision", previous_evidence_revision)
     write_meta(db, "catalog_revision_updated_at_utc", created_at_utc if changed else read_meta(db, "catalog_revision_updated_at_utc", created_at_utc))
     write_meta(db, "security_revision_updated_at_utc", created_at_utc if security_changed else read_meta(db, "security_revision_updated_at_utc", created_at_utc))
+    write_meta(db, "evidence_revision_updated_at_utc", created_at_utc if evidence_changed else read_meta(db, "evidence_revision_updated_at_utc", created_at_utc))
 
     if changed:
         details = {
             "schema": CHANGELOG_SCHEMA,
             "catalogRevisionSchema": CATALOG_REVISION_SCHEMA,
             "securityRevisionSchema": SECURITY_REVISION_SCHEMA,
+            "evidenceRevisionSchema": EVIDENCE_REVISION_SCHEMA,
             "baseRevision": revisions["baseRevision"],
             "changes": changes,
         }
@@ -503,15 +551,17 @@ def append_changelog_if_changed(
             """
             INSERT OR IGNORE INTO catalog_changelog(
                 created_at_utc,catalog_revision,previous_catalog_revision,security_revision,previous_security_revision,
+                evidence_revision,previous_evidence_revision,
                 schema_version,scanner_version,compactor_version,
                 plugins_added,plugins_removed,plugins_updated,sources_added,sources_removed,sources_updated,
                 security_variants_added,security_variants_removed,security_variants_changed,
                 security_findings_added,security_findings_removed,security_findings_changed,
                 dependencies_added,dependencies_removed,dependencies_changed,change_reason,details_json)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 created_at_utc,revisions["catalogRevision"],previous_catalog_revision,revisions["securityRevision"],previous_security_revision,
+                revisions["evidenceRevision"],previous_evidence_revision,
                 read_meta(db, "schema_version"),read_meta(db, "security_scanner_version"),compactor_version,
                 changes["pluginsAdded"],changes["pluginsRemoved"],changes["pluginsUpdated"],
                 changes["sourcesAdded"],changes["sourcesRemoved"],changes["sourcesUpdated"],
@@ -526,8 +576,10 @@ def append_changelog_if_changed(
         **revisions,
         "previousCatalogRevision": previous_catalog_revision,
         "previousSecurityRevision": previous_security_revision,
+        "previousEvidenceRevision": previous_evidence_revision,
         "catalogRevisionChanged": changed,
         "securityRevisionChanged": security_changed,
+        "evidenceRevisionChanged": evidence_changed,
         "changes": changes,
     }
 

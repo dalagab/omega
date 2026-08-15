@@ -103,7 +103,8 @@ internal static partial class RegressionCases
 
         var scannerWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "security-scanner.yml"));
         Contains(scannerWorkflow, "Omega plugin security scanner", "third-party plugin security scanner workflow is configured");
-        Contains(scannerWorkflow, "omega-catalog.sqlite.zip", "security scanner enriches the same SQLite catalog consumed by Omega");
+        Contains(scannerWorkflow, "omega-security-evidence.sqlite.zip", "security scanner enriches the separate server-side evidence database");
+        False(scannerWorkflow.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "scanner never publishes a client database directly");
 
         var availability = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Availability.cs"));
         Contains(availability, "ImGuiCol.Text", "unavailable listings replace white primary text");

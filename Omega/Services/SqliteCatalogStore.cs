@@ -10,12 +10,14 @@ internal sealed record SqliteCatalogSnapshot(
     DateTimeOffset? GeneratedAtUtc,
     string CatalogRevision,
     string SecurityRevision,
+    string EvidenceRevision,
     DateTimeOffset? RevisionUpdatedAtUtc,
     int ChangelogEntryCount);
 
 /// <summary>
-/// Owns Omega's single production catalog database. JSON is never a runtime catalog format:
-/// the client validates and reads one SQLite file, and online updates atomically replace it.
+/// Owns Omega's single client marketplace database. Detailed security evidence remains server-side.
+/// JSON is never a runtime catalog format: the client validates and reads one SQLite file, and
+/// online marketplace updates atomically replace it.
 /// </summary>
 internal sealed class SqliteCatalogStore
 {
@@ -54,6 +56,7 @@ internal sealed class SqliteCatalogStore
                     ReadGeneratedAt(connection),
                     ReadMeta(connection, "catalog_revision"),
                     ReadMeta(connection, "security_revision"),
+                    ReadMeta(connection, "evidence_revision"),
                     ReadRevisionUpdatedAt(connection),
                     ReadChangelogEntryCount(connection));
             });
@@ -164,6 +167,12 @@ internal sealed class SqliteCatalogStore
             throw new InvalidDataException("Unsupported Omega SQLite catalog schema.");
         }
 
+        var databaseRole = ReadMeta(connection, "database_role");
+        if (!string.IsNullOrWhiteSpace(databaseRole) && !databaseRole.Equals("marketplace", StringComparison.Ordinal))
+            throw new InvalidDataException("Omega refuses a SQLite database that is not a marketplace projection.");
+        if (ReadMeta(connection, "detailed_security_evidence_included").Equals("1", StringComparison.Ordinal))
+            throw new InvalidDataException("Omega refuses SQLite databases that contain detailed server-side security evidence.");
+
         using var command = connection.CreateCommand();
         command.CommandText = "PRAGMA integrity_check;";
         var result = command.ExecuteScalar()?.ToString();
@@ -183,23 +192,34 @@ internal sealed class SqliteCatalogStore
         _ = ReadGeneratedAt(candidate);
         _ = ReadMeta(candidate, "catalog_revision");
         _ = ReadMeta(candidate, "security_revision");
+        _ = ReadMeta(candidate, "evidence_revision");
         _ = ReadRevisionUpdatedAt(candidate);
         _ = ReadChangelogEntryCount(candidate);
     }
 
     private static IReadOnlyList<MarketplacePlugin> ReadVariants(SqliteConnection connection)
     {
-        var securityProjection = RuntimeViewHasSecurityColumns(connection)
-            ? """
+        var runtimeColumns = RuntimeViewColumns(connection);
+        var hasSecurityProjection = runtimeColumns.Contains("security_status");
+        var automationLevelProjection = runtimeColumns.Contains("security_automation_level")
+            ? "security_automation_level"
+            : "'none' AS security_automation_level";
+        var automationCapabilitiesProjection = runtimeColumns.Contains("security_automation_capabilities_json")
+            ? "security_automation_capabilities_json"
+            : "'[]' AS security_automation_capabilities_json";
+        var securityProjection = hasSecurityProjection
+            ? $"""
                    security_status,security_scanned_at_utc,security_artifact_sha256,security_scanner_version,
                    security_highest_severity,security_informational_count,security_caution_count,security_high_count,
-                   security_critical_count,security_capabilities_json,security_findings_json,security_source_available,
+                   security_critical_count,security_capabilities_json,{automationLevelProjection},{automationCapabilitiesProjection},
+                   security_findings_json,security_source_available,
                    security_source_repository,security_source_commit,security_source_to_binary_verified,security_error
               """
             : """
                    '' AS security_status,'' AS security_scanned_at_utc,'' AS security_artifact_sha256,'' AS security_scanner_version,
                    'none' AS security_highest_severity,0 AS security_informational_count,0 AS security_caution_count,0 AS security_high_count,
-                   0 AS security_critical_count,'[]' AS security_capabilities_json,'[]' AS security_findings_json,0 AS security_source_available,
+                   0 AS security_critical_count,'[]' AS security_capabilities_json,'none' AS security_automation_level,
+                   '[]' AS security_automation_capabilities_json,'[]' AS security_findings_json,0 AS security_source_available,
                    '' AS security_source_repository,'' AS security_source_commit,0 AS security_source_to_binary_verified,'' AS security_error
               """;
 
@@ -264,28 +284,28 @@ internal sealed class SqliteCatalogStore
                 SecurityHighCount = GetInt(reader, 40),
                 SecurityCriticalCount = GetInt(reader, 41),
                 SecurityCapabilities = ReadStrings(GetString(reader, 42, "[]")),
-                SecurityFindings = ReadSecurityFindings(GetString(reader, 43, "[]")),
-                SecuritySourceAvailable = GetBool(reader, 44),
-                SecuritySourceRepository = GetString(reader, 45),
-                SecuritySourceCommit = GetString(reader, 46),
-                SecuritySourceToBinaryVerified = GetBool(reader, 47),
-                SecurityError = GetString(reader, 48),
+                SecurityAutomationLevel = GetString(reader, 43, "none"),
+                SecurityAutomationCapabilities = ReadAutomationCapabilities(GetString(reader, 44, "[]")),
+                SecurityFindings = ReadSecurityFindings(GetString(reader, 45, "[]")),
+                SecuritySourceAvailable = GetBool(reader, 46),
+                SecuritySourceRepository = GetString(reader, 47),
+                SecuritySourceCommit = GetString(reader, 48),
+                SecuritySourceToBinaryVerified = GetBool(reader, 49),
+                SecurityError = GetString(reader, 50),
             });
         }
         return result;
     }
 
-    private static bool RuntimeViewHasSecurityColumns(SqliteConnection connection)
+    private static HashSet<string> RuntimeViewColumns(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
         command.CommandText = "PRAGMA table_info(runtime_plugin_variants);";
         using var reader = command.ExecuteReader();
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         while (reader.Read())
-        {
-            if (string.Equals(reader.GetString(1), "security_status", StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        return false;
+            columns.Add(reader.GetString(1));
+        return columns;
     }
 
     private static IReadOnlyList<CuratedSourceDefinition> ReadSourceDefinitions(SqliteConnection connection)
@@ -407,7 +427,7 @@ internal sealed class SqliteCatalogStore
             .ToArray();
         if (entries.Length != 1)
             throw new InvalidDataException($"Omega catalog bundle must contain exactly one {DatabaseFileName} file.");
-        if (entries[0].Length <= 0 || entries[0].Length > 512L * 1024 * 1024)
+        if (entries[0].Length <= 0 || entries[0].Length > 128L * 1024 * 1024)
             throw new InvalidDataException("Omega SQLite database has an invalid size.");
 
         using var source = entries[0].Open();
@@ -433,6 +453,21 @@ internal sealed class SqliteCatalogStore
         try
         {
             return JsonSerializer.Deserialize<List<MarketplaceSecurityFinding>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+            }) ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static IReadOnlyList<MarketplaceAutomationCapability> ReadAutomationCapabilities(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<List<MarketplaceAutomationCapability>>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
             }) ?? [];

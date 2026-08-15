@@ -16,8 +16,10 @@ internal static partial class RegressionCases
         Contains(workflow, "scrape_websites_incremental.py", "incremental website enrichment stage");
         Contains(workflow, "build_sqlite_catalog.py", "SQLite build stage");
         Contains(workflow, "test_sqlite_catalog.py", "SQLite builder self-test stage");
-        Contains(workflow, "omega-catalog.sqlite.zip", "SQLite transport artifact");
-        Contains(workflow, "Download previous SQLite", "previous database is the workflow seed/cache");
+        Contains(workflow, "omega-security-evidence.sqlite.zip", "builder seeds authoritative server-side evidence state");
+        Contains(workflow, "omega-marketplace.sqlite.zip", "builder reuses the small client database for presentation caches");
+        Contains(workflow, "Download previous marketplace database", "small client database supplies presentation/enrichment cache");
+        Contains(workflow, "Download previous security evidence database as authoritative seed", "full evidence database remains the authoritative server-side build seed");
         Contains(workflow, "--seed-database catalog/seed/omega-catalog.sqlite", "manifest fetches use prior ETag/Last-Modified state");
         Contains(workflow, "validate_base_catalog.py", "generated database and transport are validated by tested Python");
         Contains(workflow, "name: omega-sqlite-catalog", "validated base catalog is handed to the security workflow");
@@ -90,8 +92,10 @@ internal static partial class RegressionCases
         False(OnlineCatalogClient.IsValidSha256("abc"), "short SHA-256 is rejected");
         True(OnlineCatalogClient.IsValidCatalogRevision("cat-v1-0123456789abcdef"), "semantic Catalog Revision format is accepted");
         False(OnlineCatalogClient.IsValidCatalogRevision("cat-v1-not-a-hash"), "malformed Catalog Revision is rejected");
-        True(OnlineCatalogClient.IsValidSecurityRevision("sec-1.9.0-0123456789abcdef"), "semantic Security Revision format is accepted");
-        False(OnlineCatalogClient.IsValidSecurityRevision("sec-1.9.0-short"), "malformed Security Revision is rejected");
+        True(OnlineCatalogClient.IsValidSecurityRevision("sec-2.0.0-0123456789abcdef"), "semantic Security Revision format is accepted");
+        False(OnlineCatalogClient.IsValidSecurityRevision("sec-2.0.0-short"), "malformed Security Revision is rejected");
+        True(OnlineCatalogClient.IsValidEvidenceRevision("ev-v1-0123456789abcdef"), "semantic Evidence Revision format is accepted");
+        False(OnlineCatalogClient.IsValidEvidenceRevision("ev-v1-short"), "malformed Evidence Revision is rejected");
 
         var hashes = new OnlineCatalogDescriptor
         {
@@ -102,8 +106,8 @@ internal static partial class RegressionCases
         Equal(new string('b', 64), OnlineCatalogClient.EffectiveBundleSha256(hashes), "ZIP hash authenticates transport bytes");
 
         var descriptor = new Uri("https://example.invalid/releases/catalog.json");
-        Equal("https://example.invalid/releases/omega-catalog.sqlite.zip",
-            OnlineCatalogClient.ResolveDownloadUri(descriptor, "omega-catalog.sqlite.zip").ToString(),
+        Equal("https://example.invalid/releases/omega-marketplace.sqlite.zip",
+            OnlineCatalogClient.ResolveDownloadUri(descriptor, "omega-marketplace.sqlite.zip").ToString(),
             "relative SQLite URL resolves against descriptor");
         Throws<InvalidDataException>(
             () => OnlineCatalogClient.ResolveDownloadUri(descriptor, "http://example.invalid/catalog.zip"),
@@ -126,18 +130,20 @@ internal static partial class RegressionCases
         Contains(builder, "name: omega-sqlite-catalog", "base catalog is handed to security analysis as an Actions artifact");
 
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-compaction.yml"));
-        var publishIndex = workflow.IndexOf("Replace stable catalog assets", StringComparison.Ordinal);
-        var verifyIndex = workflow.IndexOf("Verify published compacted catalog", StringComparison.Ordinal);
-        True(publishIndex >= 0 && verifyIndex > publishIndex, "published compacted SQLite bundle is verified after release upload");
-        Contains(workflow, "omega-catalog.sqlite.zip", "final release contains SQLite transport bundle");
-        Contains(workflow, "if: needs.compact.outputs.publish == 'true'", "semantic no-op runs do not replace the production database");
+        var publishIndex = workflow.IndexOf("Replace small client catalog assets only", StringComparison.Ordinal);
+        var verifyIndex = workflow.IndexOf("Verify published marketplace database", StringComparison.Ordinal);
+        True(publishIndex >= 0 && verifyIndex > publishIndex, "published marketplace SQLite bundle is verified after release upload");
+        Contains(workflow, "omega-marketplace.sqlite.zip", "client release contains only the marketplace SQLite transport bundle");
+        Contains(workflow, "omega-security-evidence.sqlite.zip", "detailed evidence is published to its separate release");
+        Contains(workflow, "needs.compact.outputs.publish_marketplace == 'true'", "semantic no-op runs do not replace the client marketplace database");
         Contains(workflow, "security-scan-ledger.json", "timestamp-only scan freshness can advance without replacing the database");
 
-        var validator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_compacted_catalog.py"));
+        var validator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_marketplace_catalog.py"));
         Contains(validator, "catalogSha256", "published database bytes are hash verified");
         Contains(validator, "bundleSha256", "published ZIP bytes are hash verified");
         Contains(validator, "catalogRevision", "published semantic Catalog Revision is verified");
         Contains(validator, "securityRevision", "published semantic Security Revision is verified");
+        Contains(validator, "evidenceRevision", "published Evidence Revision is verified without fetching detailed evidence");
     }
 
     internal static void TestStorefrontVirtualization()

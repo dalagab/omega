@@ -2,13 +2,15 @@ name: Omega SQLite catalog compactor
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - "tools/catalog/compact_sqlite_catalog.py"
+      - "tools/catalog/project_marketplace_catalog.py"
       - "tools/catalog/catalog_revisions.py"
       - "tools/catalog/publication_decision.py"
       - "tools/catalog/validate_compacted_catalog.py"
+      - "tools/catalog/validate_marketplace_catalog.py"
+      - "tools/catalog/validate_evidence_catalog.py"
       - ".github/workflows/catalog-compaction.yml"
   workflow_run:
     workflows:
@@ -23,14 +25,16 @@ concurrency:
 
 jobs:
   compact:
-    name: Compact security-enriched catalog
+    name: Compact evidence and build marketplace projection
     outputs:
-      publish: ${{ steps.publication.outputs.publish }}
+      publish_marketplace: ${{ steps.publication.outputs.publish_marketplace }}
+      publish_evidence: ${{ steps.publication.outputs.publish_evidence }}
       catalog_revision: ${{ steps.publication.outputs.catalog_revision }}
       security_revision: ${{ steps.publication.outputs.security_revision }}
+      evidence_revision: ${{ steps.publication.outputs.evidence_revision }}
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       actions: read
       contents: read
@@ -41,14 +45,13 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-
       - name: Run repository Python regression suite
         run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
-
-      - name: Self-test compaction and history preservation
+      - name: Self-test evidence compaction
         run: python tools/catalog/compact_sqlite_catalog.py --self-test
-
-      - name: Download security handoff and previous production revision
+      - name: Self-test marketplace projection
+        run: python tools/catalog/project_marketplace_catalog.py --self-test
+      - name: Download security handoff and previous published revisions
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -56,148 +59,191 @@ jobs:
           UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
-          mkdir -p catalog/compaction-input catalog/previous
-          if gh release view catalog-latest --repo "$GH_REPO" >/dev/null 2>&1; then
-            gh release download catalog-latest \
-              --repo "$GH_REPO" \
-              --pattern omega-catalog.sqlite.zip \
-              --pattern catalog.json \
-              --dir catalog/previous
-            gh release download catalog-latest --repo "$GH_REPO" --pattern catalog-report.json --dir catalog/previous || true
-            gh release download catalog-latest --repo "$GH_REPO" --pattern security-report.json --dir catalog/previous || true
-            gh release download catalog-latest --repo "$GH_REPO" --pattern security-scan-ledger.json --dir catalog/previous || true
-          fi
-          if [ -f catalog/previous/omega-catalog.sqlite.zip ]; then
-            python -m zipfile -e catalog/previous/omega-catalog.sqlite.zip catalog/previous
+          mkdir -p catalog/compaction-input catalog/previous-evidence catalog/previous-marketplace
+          gh release download security-evidence-latest --repo "$GH_REPO" \
+            --pattern omega-security-evidence.sqlite.zip --pattern evidence.json --pattern security-scan-ledger.json \
+            --dir catalog/previous-evidence || true
+          gh release download catalog-latest --repo "$GH_REPO" --pattern catalog.json --pattern catalog-report.json --dir catalog/previous-marketplace || true
+          if [ -f catalog/previous-evidence/omega-security-evidence.sqlite.zip ]; then
+            python -m zipfile -e catalog/previous-evidence/omega-security-evidence.sqlite.zip catalog/previous-evidence
+          elif gh release view catalog-latest --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release download catalog-latest --repo "$GH_REPO" --pattern omega-catalog.sqlite.zip --dir catalog/previous-evidence || true
+            [ -f catalog/previous-evidence/omega-catalog.sqlite.zip ] && python -m zipfile -e catalog/previous-evidence/omega-catalog.sqlite.zip catalog/previous-evidence
           fi
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            gh run download "$UPSTREAM_RUN_ID" \
-              --repo "$GH_REPO" \
-              --name omega-security-catalog \
-              --dir catalog/compaction-input
+            gh run download "$UPSTREAM_RUN_ID" --repo "$GH_REPO" --name omega-security-catalog --dir catalog/compaction-input
           else
-            cp catalog/previous/omega-catalog.sqlite.zip catalog/compaction-input/
-            cp catalog/previous/catalog.json catalog/compaction-input/
-            if [ -f catalog/previous/catalog-report.json ]; then
-              cp catalog/previous/catalog-report.json catalog/compaction-input/
+            if [ -f catalog/previous-evidence/omega-security-evidence.sqlite.zip ]; then
+              cp catalog/previous-evidence/omega-security-evidence.sqlite.zip catalog/compaction-input/omega-catalog.sqlite.zip
+            else
+              cp catalog/previous-evidence/omega-catalog.sqlite.zip catalog/compaction-input/omega-catalog.sqlite.zip
             fi
-            if [ -f catalog/previous/security-report.json ]; then
-              cp catalog/previous/security-report.json catalog/compaction-input/
-            fi
-            if [ -f catalog/previous/security-scan-ledger.json ]; then
-              cp catalog/previous/security-scan-ledger.json catalog/compaction-input/
-            fi
+            cp catalog/previous-marketplace/catalog.json catalog/compaction-input/catalog.json
+            [ ! -f catalog/compaction-input/security-scan-ledger.json ] && [ -f catalog/previous-evidence/security-scan-ledger.json ] && cp catalog/previous-evidence/security-scan-ledger.json catalog/compaction-input/
           fi
           test -f catalog/compaction-input/omega-catalog.sqlite.zip
           test -f catalog/compaction-input/catalog.json
           python -m zipfile -e catalog/compaction-input/omega-catalog.sqlite.zip catalog/compaction-input
-
-      - name: Compact database and rebuild transport bundle
-        run: >-
-          python tools/catalog/compact_sqlite_catalog.py
-          --database catalog/compaction-input/omega-catalog.sqlite
-          --descriptor catalog/compaction-input/catalog.json
-          --output-dir catalog/compaction-output
-          --report catalog/compaction-output/compaction-report.json
-          --previous-database catalog/previous/omega-catalog.sqlite
-          --previous-descriptor catalog/previous/catalog.json
-
-      - name: Preserve operator reports
+      - name: Compact full server-side security evidence database
         shell: bash
         run: |
           set -euo pipefail
+          args=(
+            --database catalog/compaction-input/omega-catalog.sqlite
+            --descriptor catalog/compaction-input/catalog.json
+            --output-dir catalog/compaction-output
+            --report catalog/compaction-output/compaction-report.json
+          )
+          [ -f catalog/previous-evidence/omega-catalog.sqlite ] && args+=(--previous-database catalog/previous-evidence/omega-catalog.sqlite)
+          [ -f catalog/previous-evidence/evidence.json ] && args+=(--previous-descriptor catalog/previous-evidence/evidence.json)
+          python tools/catalog/compact_sqlite_catalog.py "${args[@]}"
+      - name: Build small client marketplace database and evidence release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --evidence-database catalog/compaction-output/omega-catalog.sqlite
+            --evidence-bundle catalog/compaction-output/omega-catalog.sqlite.zip
+            --descriptor catalog/compaction-output/catalog.json
+            --output-dir catalog/publication-output
+            --marketplace-download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-marketplace.sqlite.zip"
+            --evidence-download-url "https://github.com/${{ github.repository }}/releases/download/security-evidence-latest/omega-security-evidence.sqlite.zip"
+          )
+          [ -f catalog/previous-marketplace/catalog.json ] && args+=(--previous-marketplace-descriptor catalog/previous-marketplace/catalog.json)
+          python tools/catalog/project_marketplace_catalog.py "${args[@]}"
+          cp catalog/compaction-output/compaction-report.json catalog/publication-output/
+          [ -f catalog/compaction-input/security-report.json ] && cp catalog/compaction-input/security-report.json catalog/publication-output/
+          [ -f catalog/compaction-input/security-scan-ledger.json ] && cp catalog/compaction-input/security-scan-ledger.json catalog/publication-output/
           if [ -f catalog/compaction-input/catalog-report.json ]; then
-            cp catalog/compaction-input/catalog-report.json catalog/compaction-output/catalog-report.json
-          elif [ -f catalog/previous/catalog-report.json ]; then
-            cp catalog/previous/catalog-report.json catalog/compaction-output/catalog-report.json
+            cp catalog/compaction-input/catalog-report.json catalog/publication-output/
+          elif [ -f catalog/previous-marketplace/catalog-report.json ]; then
+            cp catalog/previous-marketplace/catalog-report.json catalog/publication-output/
           fi
-          if [ -f catalog/compaction-input/security-report.json ]; then
-            cp catalog/compaction-input/security-report.json catalog/compaction-output/security-report.json
-          fi
-          if [ -f catalog/compaction-input/security-scan-ledger.json ]; then
-            cp catalog/compaction-input/security-scan-ledger.json catalog/compaction-output/security-scan-ledger.json
-          elif [ -f catalog/previous/security-scan-ledger.json ]; then
-            cp catalog/previous/security-scan-ledger.json catalog/compaction-output/security-scan-ledger.json
-          fi
-
-      - name: Validate compacted production catalog
-        run: python tools/catalog/validate_compacted_catalog.py --root catalog/compaction-output
-
+      - name: Validate both publication databases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/catalog/validate_marketplace_catalog.py --root catalog/publication-output
+          python tools/catalog/validate_evidence_catalog.py --root catalog/publication-output
       - name: Resolve semantic publication decision
         id: publication
         run: >-
           python tools/catalog/publication_decision.py
           --report catalog/compaction-output/compaction-report.json
+          --projection-report catalog/publication-output/marketplace-projection-report.json
           --github-output "$GITHUB_OUTPUT"
-
       - uses: actions/upload-artifact@v7
         with:
-          name: omega-compacted-catalog
+          name: omega-publication-databases
           path: |
-            catalog/compaction-output/omega-catalog.sqlite.zip
-            catalog/compaction-output/omega-catalog.sqlite.zip.sha256
-            catalog/compaction-output/catalog.json
-            catalog/compaction-output/catalog-report.json
-            catalog/compaction-output/compaction-report.json
-            catalog/compaction-output/security-report.json
-            catalog/compaction-output/security-scan-ledger.json
+            catalog/publication-output/omega-marketplace.sqlite.zip
+            catalog/publication-output/omega-marketplace.sqlite.zip.sha256
+            catalog/publication-output/catalog.json
+            catalog/publication-output/omega-security-evidence.sqlite.zip
+            catalog/publication-output/omega-security-evidence.sqlite.zip.sha256
+            catalog/publication-output/evidence.json
+            catalog/publication-output/marketplace-projection-report.json
+            catalog/publication-output/compaction-report.json
+            catalog/publication-output/catalog-report.json
+            catalog/publication-output/security-report.json
+            catalog/publication-output/security-scan-ledger.json
           if-no-files-found: warn
           retention-days: 30
 
-  publish:
-    name: Publish compacted production catalog
-    needs: compact
-    if: needs.compact.outputs.publish == 'true'
+  publish_marketplace:
+    name: Publish client marketplace catalog
+    needs: [compact, publish_evidence]
+    if: ${{ always() && needs.compact.result == 'success' && needs.compact.outputs.publish_marketplace == 'true' && (needs.compact.outputs.publish_evidence == 'false' || needs.publish_evidence.result == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
       - uses: actions/download-artifact@v8
         with:
-          name: omega-compacted-catalog
-          path: catalog/compaction-output
-
-      - name: Replace stable catalog assets
+          name: omega-publication-databases
+          path: catalog/publication-output
+      - name: Replace small client catalog assets only
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          assets=(
-            catalog/compaction-output/omega-catalog.sqlite.zip
-            catalog/compaction-output/omega-catalog.sqlite.zip.sha256
-            catalog/compaction-output/catalog.json
-            catalog/compaction-output/compaction-report.json
-          )
-          if [ -f catalog/compaction-output/catalog-report.json ]; then
-            assets+=(catalog/compaction-output/catalog-report.json)
-          fi
-          if [ -f catalog/compaction-output/security-report.json ]; then
-            assets+=(catalog/compaction-output/security-report.json)
-          fi
-          if [ -f catalog/compaction-output/security-scan-ledger.json ]; then
-            assets+=(catalog/compaction-output/security-scan-ledger.json)
-          fi
           if ! gh release view catalog-latest --repo "$GH_REPO" >/dev/null 2>&1; then
-            gh release create catalog-latest \
-              --repo "$GH_REPO" \
-              --title "Omega catalog database" \
-              --notes "Automatically generated Omega marketplace catalog. Assets are replaced only when the semantic catalog state or required database representation changes."
+            gh release create catalog-latest --repo "$GH_REPO" --title "Omega marketplace database" \
+              --notes "Small Omega client marketplace catalog. Detailed scanner evidence is stored separately and is never required by the plugin."
           fi
+          assets=(
+            catalog/publication-output/omega-marketplace.sqlite.zip
+            catalog/publication-output/omega-marketplace.sqlite.zip.sha256
+            catalog/publication-output/catalog.json
+            catalog/publication-output/marketplace-projection-report.json
+          )
+          [ -f catalog/publication-output/catalog-report.json ] && assets+=(catalog/publication-output/catalog-report.json)
           gh release upload catalog-latest "${assets[@]}" --repo "$GH_REPO" --clobber
+          gh release delete-asset catalog-latest omega-catalog.sqlite.zip --repo "$GH_REPO" -y || true
+          gh release delete-asset catalog-latest omega-catalog.sqlite.zip.sha256 --repo "$GH_REPO" -y || true
+          gh release delete-asset catalog-latest security-report.json --repo "$GH_REPO" -y || true
+          gh release delete-asset catalog-latest security-scan-ledger.json --repo "$GH_REPO" -y || true
+          gh release delete-asset catalog-latest compaction-report.json --repo "$GH_REPO" -y || true
+          gh release delete-asset catalog-latest omega-catalog-db.zip --repo "$GH_REPO" -y || true
+          gh release delete-asset catalog-latest omega-catalog-db.zip.sha256 --repo "$GH_REPO" -y || true
+      - name: Verify published marketplace database
+        run: python tools/catalog/validate_marketplace_catalog.py --base-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/"
 
-      - name: Verify published compacted catalog
-        run: >-
-          python tools/catalog/validate_compacted_catalog.py
-          --base-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/"
-
+  publish_evidence:
+    name: Publish server-side security evidence database
+    needs: compact
+    if: needs.compact.outputs.publish_evidence == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v8
+        with:
+          name: omega-publication-databases
+          path: catalog/publication-output
+      - name: Replace detailed evidence assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! gh release view security-evidence-latest --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release create security-evidence-latest --repo "$GH_REPO" --title "Omega security evidence database" \
+              --notes "Server-side detailed static-analysis evidence. The Omega plugin does not download this database."
+          fi
+          assets=(
+            catalog/publication-output/omega-security-evidence.sqlite.zip
+            catalog/publication-output/omega-security-evidence.sqlite.zip.sha256
+            catalog/publication-output/evidence.json
+            catalog/publication-output/compaction-report.json
+          )
+          [ -f catalog/publication-output/security-report.json ] && assets+=(catalog/publication-output/security-report.json)
+          [ -f catalog/publication-output/security-scan-ledger.json ] && assets+=(catalog/publication-output/security-scan-ledger.json)
+          gh release upload security-evidence-latest "${assets[@]}" --repo "$GH_REPO" --clobber
+      - name: Verify published evidence database
+        run: python tools/catalog/validate_evidence_catalog.py --base-url "https://github.com/${{ github.repository }}/releases/download/security-evidence-latest/"
 
   publish_scan_ledger:
-    name: Publish scan freshness ledger without replacing catalog
+    name: Publish scan freshness ledger only
     needs: compact
-    if: needs.compact.outputs.publish == 'false'
+    if: needs.compact.outputs.publish_marketplace == 'false' && needs.compact.outputs.publish_evidence == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -205,8 +251,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: omega-compacted-catalog
-          path: catalog/compaction-output
+          name: omega-publication-databases
+          path: catalog/publication-output
       - name: Replace operational scan ledger only
         shell: bash
         env:
@@ -214,15 +260,12 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if [ ! -f catalog/compaction-output/security-scan-ledger.json ]; then
+          if [ ! -f catalog/publication-output/security-scan-ledger.json ]; then
             echo "No scan ledger was produced; nothing to publish."
             exit 0
           fi
-          if ! gh release view catalog-latest --repo "$GH_REPO" >/dev/null 2>&1; then
-            echo "Production catalog release does not exist; refusing ledger-only publication." >&2
+          if ! gh release view security-evidence-latest --repo "$GH_REPO" >/dev/null 2>&1; then
+            echo "Evidence release does not exist; refusing ledger-only publication." >&2
             exit 1
           fi
-          gh release upload catalog-latest \
-            catalog/compaction-output/security-scan-ledger.json \
-            --repo "$GH_REPO" \
-            --clobber
+          gh release upload security-evidence-latest catalog/publication-output/security-scan-ledger.json --repo "$GH_REPO" --clobber

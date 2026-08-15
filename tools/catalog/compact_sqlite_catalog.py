@@ -28,12 +28,14 @@ import zipfile
 from datetime import datetime, timezone
 from typing import Any
 
+import build_sqlite_catalog
+import security_scan
 from catalog_revisions import (
-    CATALOG_REVISION_SCHEMA, CHANGELOG_SCHEMA, SECURITY_REVISION_SCHEMA,
+    CATALOG_REVISION_SCHEMA, CHANGELOG_SCHEMA, EVIDENCE_REVISION_SCHEMA, SECURITY_REVISION_SCHEMA,
     append_changelog_if_changed, latest_changelog, read_meta,
 )
 
-COMPACTOR_VERSION = "1.1.0"
+COMPACTOR_VERSION = "1.2.0"
 SUMMARY_SCHEMA = "omega.plugin-security.scan-summary.v1"
 MAX_SUMMARY_BYTES = 64 * 1024
 DB_FILENAME = "omega-catalog.sqlite"
@@ -49,6 +51,7 @@ PRESERVED_TABLES = (
     "plugin_security_dependencies",
     "plugin_security_imports",
     "plugin_security_permission_candidates",
+    "plugin_security_automation_capabilities",
     "plugin_security_managed_assemblies",
     "plugin_security_managed_symbols",
     "plugin_security_managed_calls",
@@ -195,6 +198,13 @@ def build_compact_summary(row: sqlite3.Row) -> str:
     return encoded
 
 
+def migrate_source_schema(db: sqlite3.Connection) -> None:
+    """Apply additive scanner/runtime schema migrations before validating a legacy evidence database."""
+    security_scan.ensure_schema(db)
+    build_sqlite_catalog.create_runtime_view(db)
+    db.commit()
+
+
 def validate_source_database(db: sqlite3.Connection) -> None:
     integrity = db.execute("PRAGMA integrity_check").fetchone()
     if integrity is None or str(integrity[0]).lower() != "ok":
@@ -253,6 +263,7 @@ def compact_reports(db: sqlite3.Connection) -> dict[str, int]:
 
 
 def update_metadata(db: sqlite3.Connection, compacted_at: str) -> None:
+    db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('database_role','security-evidence')")
     db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('database_compactor_version',?)", (COMPACTOR_VERSION,))
     db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('database_compacted_at_utc',?)", (compacted_at,))
     db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_report_payload_schema',?)", (SUMMARY_SCHEMA,))
@@ -313,6 +324,8 @@ def write_bundle_and_descriptor(
 
     catalog_sha = sha256_file(database_path)
     bundle_sha = sha256_file(bundle_path)
+    with closing(sqlite3.connect(database_path)) as descriptor_db:
+        scanner_version = read_meta(descriptor_db, "security_scanner_version", "")
     descriptor = json.loads(descriptor_input.read_text(encoding="utf-8"))
     after_bytes = database_path.stat().st_size
     descriptor.update(
@@ -321,6 +334,7 @@ def write_bundle_and_descriptor(
             "bundleSha256": bundle_sha,
             "size": bundle_path.stat().st_size,
             "databaseBytes": after_bytes,
+            "scannerVersion": scanner_version,
             "compactorVersion": COMPACTOR_VERSION,
             "compactedAtUtc": compacted_at,
             "publishedAtUtc": compacted_at,
@@ -328,9 +342,11 @@ def write_bundle_and_descriptor(
             "compactionSavedBytes": max(0, before_bytes - after_bytes),
             "catalogRevision": revision_result["catalogRevision"],
             "securityRevision": revision_result["securityRevision"],
+            "evidenceRevision": revision_result["evidenceRevision"],
             "catalogBaseRevision": revision_result["baseRevision"],
             "catalogRevisionSchema": CATALOG_REVISION_SCHEMA,
             "securityRevisionSchema": SECURITY_REVISION_SCHEMA,
+            "evidenceRevisionSchema": EVIDENCE_REVISION_SCHEMA,
             "changelogSchema": CHANGELOG_SCHEMA,
             "catalogRevisionChanged": bool(revision_result["catalogRevisionChanged"]),
             "securityRevisionChanged": bool(revision_result["securityRevisionChanged"]),
@@ -368,6 +384,7 @@ def compact(
     db.execute("PRAGMA foreign_keys=ON")
     db.execute("PRAGMA busy_timeout=5000")
     try:
+        migrate_source_schema(db)
         validate_source_database(db)
         before_counts = preserved_counts(db)
         runtime_digest = runtime_projection_digest(db)
@@ -401,7 +418,9 @@ def compact(
     after_bytes = output_db.stat().st_size
     previous_compactor_version = str(previous_descriptor_doc.get("compactorVersion") or "")
     representation_changed = previous_compactor_version != COMPACTOR_VERSION
-    publication_required = bool(revision_result["catalogRevisionChanged"] or representation_changed)
+    publication_required = bool(
+        revision_result["catalogRevisionChanged"] or revision_result["evidenceRevisionChanged"] or representation_changed
+    )
     report = {
         "schema": "omega.catalog-compaction.v1",
         "compactorVersion": COMPACTOR_VERSION,
@@ -417,6 +436,7 @@ def compact(
             "required": publication_required,
             "semanticChanged": bool(revision_result["catalogRevisionChanged"]),
             "securityChanged": bool(revision_result["securityRevisionChanged"]),
+            "evidenceChanged": bool(revision_result["evidenceRevisionChanged"]),
             "representationChanged": representation_changed,
             "previousCompactorVersion": previous_compactor_version,
             "currentCompactorVersion": COMPACTOR_VERSION,
@@ -424,6 +444,7 @@ def compact(
         "descriptor": {
             "catalogRevision": descriptor_data["catalogRevision"],
             "securityRevision": descriptor_data["securityRevision"],
+            "evidenceRevision": descriptor_data["evidenceRevision"],
             "catalogSha256": descriptor_data["catalogSha256"],
             "bundleSha256": descriptor_data["bundleSha256"],
             "bundleBytes": descriptor_data["size"],
@@ -443,7 +464,7 @@ def build_self_test_database(path: Path) -> None:
     ensure_schema(db)
     db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('schema_version','1')")
     db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('schema_name','omega.catalog.sqlite.v1')")
-    db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_scanner_version','1.9.0')")
+    db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_scanner_version','2.0.0')")
     db.execute("INSERT INTO sources(url,name) VALUES('https://example.invalid/repo.json','Fixture source')")
     db.execute("INSERT INTO plugins(internal_name,canonical_name,first_seen_utc,last_seen_utc,active) VALUES('Fixture','Fixture','','',1)")
     db.execute(
@@ -452,7 +473,7 @@ def build_self_test_database(path: Path) -> None:
     large_list = [{"kind": "MemberRef", "name": f"Method{i}", "evidence": ["x" * 256]} for i in range(4000)]
     large_report = {
         "schema": "omega.plugin-security.scan.v1",
-        "scannerVersion": "1.9.0",
+        "scannerVersion": "2.0.0",
         "plugin": {"internalName": "Fixture", "name": "Fixture", "author": "Omega", "sourceName": "Fixture source"},
         "package": {"archive": "zip", "files": 3000, "uncompressedBytes": 123456, "bundledManagedAssemblies": 3},
         "dependencyIntelligence": {"managedCallSites": large_list, "coverage": {"total": 1, "analyzed": 1}, "limits": {"truncated": True, "droppedByCollection": {"managedCallSites": 50}}},
@@ -464,7 +485,7 @@ def build_self_test_database(path: Path) -> None:
             scan_id,plugin_id,variant_id,source_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,scanned_at_utc,
             highest_severity,informational_count,caution_count,high_count,critical_count,capabilities_json,source_available,source_repository,source_commit,
             source_to_binary_verified,report_json,error)
-            VALUES(1,1,1,1,'1.0','stable','https://example.invalid/plugin.zip','abc','1.9.0','complete','2026-01-01T00:00:00Z',
+            VALUES(1,1,1,1,'1.0','stable','https://example.invalid/plugin.zip','abc','2.0.0','complete','2026-01-01T00:00:00Z',
                    'caution',0,1,0,0,'[]',1,'example/repo','abc',0,?, '')""",
         (encoded,),
     )
@@ -473,7 +494,7 @@ def build_self_test_database(path: Path) -> None:
             variant_id,scan_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,scanned_at_utc,highest_severity,
             informational_count,caution_count,high_count,critical_count,capabilities_json,findings_json,source_available,source_repository,source_commit,
             source_to_binary_verified,report_json,error)
-            VALUES(1,1,'1.0','stable','https://example.invalid/plugin.zip','abc','1.9.0','complete','2026-01-01T00:00:00Z','caution',
+            VALUES(1,1,'1.0','stable','https://example.invalid/plugin.zip','abc','2.0.0','complete','2026-01-01T00:00:00Z','caution',
                    0,1,0,0,'[]','[]',1,'example/repo','abc',0,?, '')""",
         (encoded,),
     )

@@ -5,7 +5,7 @@ internal static partial class RegressionCases
     internal static void TestPluginSecurityIntelligenceContract()
     {
         var scanner = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "security_scan.py"));
-        Contains(scanner, "SCANNER_VERSION = \"1.9.0\"", "scanner version is explicit so stale scans can be refreshed");
+        Contains(scanner, "SCANNER_VERSION = \"2.0.0\"", "scanner version is explicit so stale scans can be refreshed");
         Contains(scanner, "Only HTTPS downloads are scanned", "scanner refuses insecure artifact transports");
         Contains(scanner, "MAX_ARTIFACT_BYTES", "artifact downloads are bounded");
         Contains(scanner, "MAX_ARTIFACT_BYTES = 256 * 1024 * 1024", "artifact download ceiling accommodates large production plugin packages while remaining bounded");
@@ -18,6 +18,12 @@ internal static partial class RegressionCases
         Contains(scanner, "compound.network-execute", "compound network/process risk is surfaced");
         Contains(scanner, "sourceToBinaryVerified", "source inspection does not imply source-to-binary verification");
         Contains(scanner, "plugin_security_current", "scanner persists the current result per exact catalog variant");
+        Contains(scanner, "plugin_security_automation_capabilities", "scanner persists structured character/menu automation evidence");
+        Contains(scanner, "derive_automation_capabilities", "scanner derives bounded user-facing automation classifications");
+        Contains(scanner, "game.character.move", "character movement control is classified explicitly");
+        Contains(scanner, "game.character.execute_action", "character action execution is classified explicitly");
+        Contains(scanner, "game.ui.callback", "game UI/menu callback control is classified explicitly");
+        Contains(scanner, "automation.via_ipc", "automation supplied indirectly through IPC is classified explicitly");
         Contains(scanner, "Preserve last-known-good intelligence", "transient revalidation failures do not erase the last completed scan");
 
         Contains(scanner, "omega.plugin-security.dependencies.v1", "dependency inventory has an explicit machine-readable schema");
@@ -152,7 +158,8 @@ internal static partial class RegressionCases
         Contains(builder, "catalog_base_revision", "catalog builder computes a stable semantic base revision");
         var revisions = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "catalog_revisions.py"));
         Contains(revisions, "omega.catalog-revision.v1", "catalog revision semantics have an explicit schema");
-        Contains(revisions, "omega.security-revision.v1", "security revision semantics have an explicit schema");
+        Contains(revisions, "omega.security-revision.v2", "security revision semantics have an explicit schema");
+        Contains(revisions, "omega.security-evidence-revision.v1", "detailed evidence revision semantics have an explicit schema");
         Contains(revisions, "CREATE TABLE IF NOT EXISTS catalog_changelog", "semantic catalog changes are persisted inside SQLite");
         Contains(revisions, "scan timestamps", "revision implementation explicitly excludes scan timestamps from semantic identity");
         Contains(revisions, "append_changelog_if_changed", "changelog rows are appended only for semantic catalog changes");
@@ -162,26 +169,37 @@ internal static partial class RegressionCases
         Contains(store, "ReadSecurityFindings", "runtime reads structured security findings from SQLite");
         Contains(store, "catalog_revision", "runtime reads semantic Catalog Revision metadata");
         Contains(store, "security_revision", "runtime reads semantic Security Revision metadata");
+        Contains(store, "evidence_revision", "runtime reads server-side Evidence Revision metadata without downloading evidence");
 
         var onlineClient = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OnlineCatalogClient.cs"));
         Contains(onlineClient, "CatalogRevision", "online descriptor carries Catalog Revision diagnostics");
         Contains(onlineClient, "SecurityRevision", "online descriptor carries Security Revision diagnostics");
-        Contains(onlineClient, "256L * 1024 * 1024", "client transport ceiling accommodates compacted production catalogs while remaining bounded");
+        Contains(onlineClient, "EvidenceRevision", "online marketplace descriptor carries Evidence Revision diagnostics");
+        Contains(onlineClient, "DatabaseRole", "online descriptor explicitly identifies the client marketplace database role");
+        Contains(onlineClient, "DetailedSecurityEvidenceIncluded", "client rejects descriptors that attempt to ship detailed evidence");
+        Contains(store, "database_role", "SQLite validation rejects a server-side evidence database while allowing legacy bootstrap catalogs");
+        Contains(store, "runtimeColumns.Contains(\"security_automation_level\")", "older security-enriched catalogs remain readable before automation columns exist");
+        False(onlineClient.Contains("security-evidence-latest", StringComparison.Ordinal), "Omega client contains no security-evidence release endpoint");
+        False(onlineClient.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "Omega client cannot download the detailed evidence database");
+        Contains(onlineClient, "64L * 1024 * 1024", "client transport ceiling accommodates compacted production catalogs while remaining bounded");
 
         var settings = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
         Contains(settings, "Catalog Revision", "Settings displays the semantic catalog identity");
         Contains(settings, "Security Revision", "Settings displays the semantic security identity");
+        Contains(settings, "Evidence Revision", "Settings displays the server-side evidence identity for troubleshooting");
 
         var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
         Contains(product, "Observed capabilities", "product page explains observed permissions/capabilities");
         Contains(product, "Why these findings were reported", "product page exposes expandable detailed findings");
         Contains(product, "No findings is not proof", "product page avoids claiming that static analysis proves safety");
         Contains(product, "The published package was not verified to match that source.", "product page preserves source provenance uncertainty");
+        Contains(product, "Automation capability", "product page exposes structured character/menu automation classification");
+        Contains(product, "Full gameplay automation", "product page can distinguish the strongest automation class");
     }
     internal static void TestCatalogCompactionWorkflowContract()
     {
         var compactor = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "compact_sqlite_catalog.py"));
-        Contains(compactor, "COMPACTOR_VERSION = \"1.1.0\"", "database compactor version is explicit");
+        Contains(compactor, "COMPACTOR_VERSION = \"1.2.0\"", "database compactor version is explicit");
         Contains(compactor, "omega.plugin-security.scan-summary.v1", "redundant scan JSON is converted to a bounded summary schema");
         Contains(compactor, "runtime_projection_digest", "compactor hashes the complete runtime projection before and after rewriting");
         Contains(compactor, "preserved_counts", "compactor verifies historical and normalized evidence row counts are preserved");
@@ -195,6 +213,12 @@ internal static partial class RegressionCases
         Contains(compactor, "catalogRevision", "compactor writes the catalog revision into the production descriptor");
         Contains(compactor, "securityRevision", "compactor writes the security revision into the production descriptor");
         Contains(compactor, "changelogEntryCount", "descriptor exposes embedded changelog size for troubleshooting");
+        var projector = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "project_marketplace_catalog.py"));
+        Contains(projector, "PROJECTOR_VERSION = \"1.0.0\"", "marketplace projector version is explicit");
+        Contains(projector, "marketplace_security_current", "client database retains only compact current security summaries");
+        Contains(projector, "DROP TABLE", "projector physically removes detailed security tables from the client database");
+        Contains(projector, "detailedSecurityEvidenceIncluded", "marketplace descriptor explicitly excludes detailed security evidence");
+
 
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-compaction.yml"));
         var normalized = workflow.ReplaceLineEndings("\n");
@@ -203,13 +227,27 @@ internal static partial class RegressionCases
         Contains(workflow, "gh run download", "automatic compaction consumes the exact security workflow artifact");
         Contains(workflow, "omega-security-catalog", "compaction consumes security-enriched catalog artifacts");
         Contains(workflow, "compaction-report.json", "compaction publishes an auditable size and integrity report");
-        Contains(workflow, "name: Publish compacted production catalog", "only the compacted database is promoted to production");
+        Contains(workflow, "name: Publish client marketplace catalog", "small marketplace database is promoted to the client release");
+        Contains(workflow, "name: Publish server-side security evidence database", "detailed evidence is published separately");
+        Contains(workflow, "omega-marketplace.sqlite.zip", "client release uses the small marketplace bundle");
+        Contains(workflow, "omega-security-evidence.sqlite.zip", "server-side release retains detailed evidence");
+        Contains(workflow, "security-evidence-latest", "detailed evidence has a separate stable release");
         Contains(workflow, "contents: write", "repository write permission is isolated to the final compaction publish job");
         Contains(workflow, "tools/catalog/validate_compacted_catalog.py", "compaction delegates integrity and projection checks to tested validation code");
         Contains(workflow, "tools/catalog/publication_decision.py", "compaction uses tested fail-closed publication decision logic");
-        Contains(workflow, "if: needs.compact.outputs.publish == 'true'", "unchanged semantic catalogs are not republished");
+        Contains(workflow, "needs: [compact, publish_evidence]", "marketplace publication waits for the evidence publication decision");
+        Contains(workflow, "needs.publish_evidence.result == 'success'", "marketplace publication cannot expose an evidence revision before required evidence publication succeeds");
         Contains(workflow, "--previous-database", "compaction compares against the previous production database for changelog generation");
         Contains(workflow, "tools/catalog/compact_sqlite_catalog.py", "compactor code changes can compact the current production release immediately");
+        var publishStart = workflow.IndexOf("\n  publish_marketplace:\n", StringComparison.Ordinal);
+        var ledgerStart = workflow.IndexOf("\n  publish_evidence:\n", publishStart + 1, StringComparison.Ordinal);
+        True(publishStart >= 0 && ledgerStart > publishStart, "compactor publish job can be isolated for verification contracts");
+        var publishBlock = workflow[publishStart..ledgerStart];
+        var checkoutIndex = publishBlock.IndexOf("actions/checkout@v6", StringComparison.Ordinal);
+        var setupPythonIndex = publishBlock.IndexOf("actions/setup-python@v7", StringComparison.Ordinal);
+        var remoteVerifyIndex = publishBlock.IndexOf("tools/catalog/validate_marketplace_catalog.py", StringComparison.Ordinal);
+        True(checkoutIndex >= 0 && remoteVerifyIndex > checkoutIndex, "marketplace publish job checks out repository before running the published-catalog validator");
+        True(setupPythonIndex >= 0 && remoteVerifyIndex > setupPythonIndex, "marketplace publish job configures Python before running the published-catalog validator");
         var compactValidator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_compacted_catalog.py"));
         Contains(compactValidator, "foreign_key_check", "compaction validator refuses foreign-key violations");
         Contains(compactValidator, "catalog_changelog", "compaction validator requires the embedded changelog");
