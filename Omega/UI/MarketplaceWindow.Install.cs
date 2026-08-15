@@ -51,9 +51,17 @@ internal sealed partial class MarketplaceWindow
 
         var keepOpen = installPopupOpen;
         ImGui.SetNextWindowSize(new Vector2(600f, 0f), ImGuiCond.Appearing);
-        if (!ImGui.BeginPopupModal("Choose repository###DalagabOmegaInstall", ref keepOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        if (!ImGui.BeginPopupModal("Choose repository###DalagabOmegaInstall", ref keepOpen,
+                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize))
         {
             installPopupOpen = keepOpen;
+            return;
+        }
+
+        if (DrawOmegaModalHeader("Choose repository", "install"))
+        {
+            CloseInstallChooser();
+            ImGui.EndPopup();
             return;
         }
 

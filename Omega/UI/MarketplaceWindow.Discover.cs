@@ -162,11 +162,12 @@ internal sealed partial class MarketplaceWindow
 
         var cardMin = ImGui.GetWindowPos();
         var cardMax = cardMin + ImGui.GetWindowSize();
-        DrawDiscoverRichCardHeader(plugin, content, installedPlugin, currentApi, currentDalamudVersion, cardWidth);
-        DrawDiscoverRichCardScreenshot(plugin.InternalName, content.Images[0], cardWidth);
+        var artworkClicked = DrawDiscoverRichCardHeader(
+            plugin, content, installedPlugin, currentApi, currentDalamudVersion, cardWidth);
+        var screenshotClicked = DrawDiscoverRichCardScreenshot(plugin.InternalName, content.Images[0], cardWidth);
 
         var hovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows);
-        if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        if (artworkClicked || (!screenshotClicked && hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left)))
             OpenPluginDetails(plugin);
         ImGui.EndChild();
         if (hovered)
@@ -184,7 +185,7 @@ internal sealed partial class MarketplaceWindow
         PopUnavailableListingStyle(availabilityStyle);
     }
 
-    private void DrawDiscoverRichCardHeader(
+    private bool DrawDiscoverRichCardHeader(
         MarketplacePlugin plugin,
         MarketplacePresentationContent content,
         IExposedPlugin? installedPlugin,
@@ -193,7 +194,8 @@ internal sealed partial class MarketplaceWindow
         float cardWidth)
     {
         ImGui.SetCursorPos(new Vector2(12f, 12f));
-        DrawPluginArtwork(plugin, installedPlugin, 46f, 46f, currentApi, currentDalamudVersion,
+        var artworkClicked = DrawPluginArtwork(
+            plugin, installedPlugin, 46f, 46f, currentApi, currentDalamudVersion,
             queueIfVisible: true, showOverlays: false);
         ImGui.SameLine(0f, 10f);
         ImGui.BeginGroup();
@@ -235,9 +237,11 @@ internal sealed partial class MarketplaceWindow
             ImGui.SetCursorPos(new Vector2(12f, 125f));
             ImGui.TextDisabled("Installed");
         }
+
+        return artworkClicked;
     }
 
-    private void DrawDiscoverRichCardScreenshot(string internalName, string url, float cardWidth)
+    private bool DrawDiscoverRichCardScreenshot(string internalName, string url, float cardWidth)
     {
         var screenshotY = DiscoverRichCardHeight - DiscoverRichScreenshotHeight - 12f;
         ImGui.SetCursorPos(new Vector2(12f, screenshotY));
@@ -262,8 +266,18 @@ internal sealed partial class MarketplaceWindow
             ImGui.SetCursorPos(new Vector2(Math.Max(0f, (available.X - size.X) * 0.5f), Math.Max(0f, (available.Y - size.Y) * 0.5f)));
             ImGui.Image(texture.Handle, size);
         }
+
+        var screenshotHovered = ImGui.IsWindowHovered();
+        var screenshotClicked = screenshotHovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+        if (screenshotHovered)
+            ImGui.SetTooltip("View larger screenshot");
+
         ImGui.EndChild();
         ImGui.PopStyleColor();
+
+        if (screenshotClicked)
+            OpenScreenshotViewer(url);
+        return screenshotClicked;
     }
 
     private void DrawDiscoverResultRow(
@@ -284,7 +298,8 @@ internal sealed partial class MarketplaceWindow
         var rowWidth = ImGui.GetContentRegionAvail().X;
         var start = ImGui.GetCursorScreenPos();
         ImGui.SetCursorPos(new Vector2(12f, 18f));
-        DrawPluginArtwork(plugin, installedPlugin, DiscoverListIconSize, DiscoverListIconSize, currentApi, currentDalamudVersion,
+        var artworkClicked = DrawPluginArtwork(
+            plugin, installedPlugin, DiscoverListIconSize, DiscoverListIconSize, currentApi, currentDalamudVersion,
             queueIfVisible: true, showOverlays: false);
         ImGui.SameLine(0f, 16f);
         ImGui.BeginGroup();
@@ -305,7 +320,7 @@ internal sealed partial class MarketplaceWindow
 
         DrawDiscoverRowBadges(plugin, installedPlugin, content, rowWidth);
         var hovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows);
-        if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        if (artworkClicked || (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left)))
             OpenPluginDetails(plugin);
         if (hovered)
             ImGui.GetWindowDrawList().AddRect(start, start + new Vector2(ImGui.GetWindowSize().X - 1f, DiscoverListRowHeight - 1f),

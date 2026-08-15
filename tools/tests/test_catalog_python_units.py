@@ -14,6 +14,7 @@ import build_sqlite_catalog
 import collect_sources
 import compact_sqlite_catalog
 import enrich_metadata
+import scrape_websites
 import scrape_websites_incremental
 import security_scan
 
@@ -56,6 +57,40 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertTrue(enrich_metadata._is_metadata_complete(normalized))
         self.assertEqual("preserved", normalized["rawManifest"]["FutureField"])
 
+    def test_enrichment_accepts_pluginmaster_trailing_commas_without_touching_strings(self) -> None:
+        source = {"url": "https://example.invalid/repo.json", "provider": "Community"}
+        body = b'''[
+          {
+            "Author": "Pyon",
+            "Name": "PartyPyon",
+            "InternalName": "PartyPyon",
+            "Punchline": "Automatically recreate party finder listing.",
+            "Description": "Automatically recreate party finder listing while preserving text such as comma,} literally.",
+            "AssemblyVersion": "1.0.5.0",
+            "DalamudApiLevel": 15,
+            "RepoUrl": "https://example.invalid/project",
+            "DownloadLinkUpdate": "https://example.invalid/PartyPyon.zip",
+          },
+        ]'''
+        with mock.patch.object(enrich_metadata, "http_get", return_value=(200, body, {})):
+            row = enrich_metadata.fetch_source(source)
+
+        self.assertTrue(row["ok"], row["error"])
+        self.assertEqual(1, row["pluginCount"])
+        self.assertEqual("PartyPyon", row["plugins"][0]["internalName"])
+        self.assertIn("comma,}", row["plugins"][0]["description"])
+        self.assertEqual("https://example.invalid/PartyPyon.zip", row["plugins"][0]["rawManifest"]["DownloadLinkUpdate"])
+
+    def test_enrichment_trailing_comma_tolerance_does_not_accept_other_malformed_json(self) -> None:
+        source = {"url": "https://example.invalid/broken.json", "provider": "Broken"}
+        body = b'[{"Name":"Broken","InternalName":"Broken",,}]'
+        with mock.patch.object(enrich_metadata, "http_get", return_value=(200, body, {})):
+            row = enrich_metadata.fetch_source(source)
+
+        self.assertFalse(row["ok"])
+        self.assertEqual(0, row["pluginCount"])
+        self.assertIn("Non-JSON response:", row["error"])
+
     def test_conditional_manifest_304_preserves_cache_metadata(self) -> None:
         source = {"url": "https://example.invalid/repo.json", "provider": "Example"}
         cache = {source["url"]: {"etag": '"abc"', "last_modified": "yesterday", "content_sha256": "deadbeef"}}
@@ -66,6 +101,107 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertEqual('"abc"', row["etag"])
         self.assertEqual("deadbeef", row["contentSha256"])
         self.assertEqual([], row["plugins"])
+
+
+    def test_github_tree_links_use_repository_api_identity(self) -> None:
+        self.assertEqual(
+            ("TheNickoos", "FFXIVPluginRepo"),
+            scrape_websites.parse_github_repo("https://github.com/TheNickoos/FFXIVPluginRepo/tree/main"),
+        )
+        self.assertEqual(
+            "https://github.com/TheNickoos/FFXIVPluginRepo",
+            scrape_websites.canonical_github_repo_url(("TheNickoos", "FFXIVPluginRepo")),
+        )
+
+    def test_github_tree_link_enrichment_is_mapped_back_to_manifest_alias(self) -> None:
+        plugin = {
+            "internalName": "DalamudRepoInfo",
+            "name": "DalamudRepoInfo",
+            "repoUrl": "https://github.com/TheNickoos/FFXIVPluginRepo/tree/main",
+        }
+        record = {
+            "url": "https://github.com/TheNickoos/FFXIVPluginRepo",
+            "ok": True,
+            "title": "FFXIVPluginRepo",
+            "description": "This is my personal big mod list for Final Fantasy XIV.",
+            "imageUrls": [],
+        }
+        with mock.patch.object(scrape_websites, "scrape_github_repo", return_value=record):
+            out = scrape_websites.scrape_all({"plugins": [plugin]}, token=None, concurrency=1, verbose=False)
+        alias = plugin["repoUrl"]
+        self.assertIn(alias, out["repos"])
+        self.assertEqual(alias, out["repos"][alias]["url"])
+        self.assertEqual("https://github.com/TheNickoos/FFXIVPluginRepo", out["repos"][alias]["canonicalUrl"])
+        self.assertTrue(out["plugins"][0]["webEnriched"])
+        self.assertEqual(record["description"], out["plugins"][0]["website"]["description"])
+
+    def test_http_diagnostics_are_rejected_from_presentation_text(self) -> None:
+        poisoned = "404:\n- https://example.invalid/a at line 1\n- https://example.invalid/b at line 1\n\n500:\n- https://example.invalid/c"
+        self.assertTrue(scrape_websites.looks_like_http_diagnostic(poisoned))
+        self.assertIsNone(scrape_websites.sanitize_presentation_text(poisoned))
+        self.assertEqual(
+            "A normal project description.",
+            scrape_websites.sanitize_presentation_text("A normal project description."),
+        )
+
+    def test_incremental_website_cache_rejects_poisoned_presentation_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "seed.sqlite"
+            now = dt.datetime.now(dt.timezone.utc).isoformat()
+            with closing(sqlite3.connect(path)) as db:
+                db.executescript("""
+                    CREATE TABLE websites(
+                        url TEXT, ok INTEGER, last_success_utc TEXT, metadata_json TEXT,
+                        description TEXT, homepage TEXT, stars INTEGER, forks INTEGER, watchers INTEGER,
+                        language TEXT, license TEXT, default_branch TEXT, last_commit_utc TEXT,
+                        readme_excerpt TEXT, topics_json TEXT, image_urls_json TEXT
+                    );
+                """)
+                db.execute(
+                    "INSERT INTO websites VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        "https://github.com/example/repo/tree/main", 1, now, "{}",
+                        "404:\n- https://example.invalid/missing", "", None, None, None, "", "", "main", "",
+                        "", "[]", "[]",
+                    ),
+                )
+            cache = scrape_websites_incremental.load_cache(path, 168.0)
+        self.assertEqual({}, cache)
+
+    def test_builder_cleans_seeded_plugin_display_fields_but_preserves_audit_storage_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "seed.sqlite"
+            with closing(sqlite3.connect(path)) as db:
+                db.row_factory = sqlite3.Row
+                db.execute("CREATE TABLE plugin_variants(variant_id INTEGER PRIMARY KEY, punchline TEXT, description TEXT, raw_manifest_json TEXT)")
+                raw = json.dumps({"Description": "404:\n- https://example.invalid/a"})
+                db.execute("INSERT INTO plugin_variants(punchline,description,raw_manifest_json) VALUES(?,?,?)", (
+                    "Information sur ce script",
+                    "404:\n- https://example.invalid/a",
+                    raw,
+                ))
+                changed = build_sqlite_catalog.sanitize_seeded_plugin_presentation_fields(db)
+                row = db.execute("SELECT punchline,description,raw_manifest_json FROM plugin_variants").fetchone()
+            self.assertEqual(1, changed)
+            self.assertEqual("Information sur ce script", row[0])
+            self.assertEqual("", row[1])
+            self.assertEqual(raw, row[2])
+
+    def test_builder_cleans_seeded_http_diagnostics_before_presentation(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "seed.sqlite"
+            with closing(sqlite3.connect(path)) as db:
+                db.row_factory = sqlite3.Row
+                db.execute("CREATE TABLE websites(website_id INTEGER PRIMARY KEY, description TEXT, readme_excerpt TEXT)")
+                db.execute("INSERT INTO websites(description,readme_excerpt) VALUES(?,?)", (
+                    "404:\n- https://example.invalid/a",
+                    "500:\n- https://example.invalid/b",
+                ))
+                changed = build_sqlite_catalog.sanitize_seeded_website_cache(db)
+                row = db.execute("SELECT description,readme_excerpt FROM websites").fetchone()
+            self.assertEqual(1, changed)
+            self.assertEqual("", row[0])
+            self.assertEqual("", row[1])
 
     def test_incremental_scraper_seed_urls_ignore_inactive_variants(self) -> None:
         with tempfile.TemporaryDirectory() as td:

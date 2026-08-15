@@ -39,8 +39,16 @@ internal sealed partial class MarketplaceWindow
     private void DrawTagPickerPopup(int currentApi)
     {
         ImGui.SetNextWindowSize(new Vector2(500f, 500f), ImGuiCond.Appearing);
-        if (!ImGui.BeginPopup("Tags###DalagabOmegaTags"))
+        var keepOpen = true;
+        if (!ImGui.BeginPopupModal("Tags###DalagabOmegaTags", ref keepOpen, ImGuiWindowFlags.NoTitleBar))
             return;
+
+        if (DrawOmegaModalHeader("Tags", "tags"))
+        {
+            ImGui.CloseCurrentPopup();
+            ImGui.EndPopup();
+            return;
+        }
 
         var tagIndex = catalog.GetTagIndex(currentApi, selectedSource);
         ImGui.Text("Narrow by tag");
@@ -74,18 +82,11 @@ internal sealed partial class MarketplaceWindow
         }
         ImGui.EndChild();
 
-        if (selectedTags.Count > 0)
+        if (selectedTags.Count > 0 && ImGui.Button("Clear selected tags"))
         {
-            if (ImGui.Button("Clear selected tags"))
-            {
-                selectedTags.Clear();
-                resetStorefrontScroll = true;
-            }
-            ImGui.SameLine();
+            selectedTags.Clear();
+            resetStorefrontScroll = true;
         }
-
-        if (ImGui.Button("Close"))
-            ImGui.CloseCurrentPopup();
 
         ImGui.EndPopup();
     }

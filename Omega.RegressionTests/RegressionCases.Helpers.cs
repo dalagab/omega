@@ -101,6 +101,12 @@ internal static partial class RegressionCases
             throw new InvalidOperationException($"{message}: missing '{expected}'");
     }
 
+    internal static void DoesNotContain(string input, string unexpected, string message)
+    {
+        if (input.Contains(unexpected, StringComparison.Ordinal))
+            throw new InvalidOperationException($"{message}: unexpectedly contained '{unexpected}'");
+    }
+
     internal static void True(bool condition, string message)
     {
         if (!condition)

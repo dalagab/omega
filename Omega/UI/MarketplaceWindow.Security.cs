@@ -10,7 +10,6 @@ internal sealed partial class MarketplaceWindow
 {
     private bool DrawSettingsHeader()
     {
-        ImGui.Text("Settings");
         DrawSettingsEulaShortcut();
         ImGui.Separator();
         DrawCatalogIdentity();

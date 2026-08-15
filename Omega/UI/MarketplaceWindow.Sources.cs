@@ -15,9 +15,19 @@ internal sealed partial class MarketplaceWindow
             return;
 
         var keepOpen = settingsOpen;
-        if (!ImGui.BeginPopupModal("Settings###DalagabOmegaSettings", ref keepOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        ImGui.SetNextWindowSize(new Vector2(920f, 660f), ImGuiCond.Appearing);
+        if (!ImGui.BeginPopupModal("Settings###DalagabOmegaSettings", ref keepOpen,
+                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse))
         {
             settingsOpen = keepOpen;
+            return;
+        }
+
+        if (DrawOmegaModalHeader("Settings", "settings"))
+        {
+            settingsOpen = false;
+            ImGui.CloseCurrentPopup();
+            ImGui.EndPopup();
             return;
         }
 
@@ -160,14 +170,7 @@ internal sealed partial class MarketplaceWindow
     {
         ImGui.Separator();
         if (ImGui.Button(updates.IsRefreshing ? "Refreshing..." : "Refresh catalog database") && !updates.IsRefreshing)
-        {
             RefreshSources();
-        }
-        ImGui.SameLine();
-        if (!ImGui.Button("Close"))
-            return;
-        settingsOpen = false;
-        ImGui.CloseCurrentPopup();
     }
 
     private void DrawAddSourceTools()

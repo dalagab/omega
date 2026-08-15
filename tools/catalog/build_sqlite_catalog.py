@@ -84,6 +84,63 @@ def int_value(value: Any, default: int = 0) -> int:
         return default
 
 
+
+
+def looks_like_http_diagnostic(value: Any) -> bool:
+    """Return true for transport/debug output that must never become storefront copy."""
+    text = str(value or "").strip()
+    if not text:
+        return False
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    lower = text.lower()
+    if lower.startswith((
+        "404 not found", "404:", "error 404", "http 404",
+        "500 internal server error", "500:", "error 500", "http 500",
+        "502 bad gateway", "503 service unavailable", "504 gateway timeout",
+    )):
+        return True
+    status_lines = sum(bool(re.match(r"^(?:http\s*)?[45]\d\d(?:\s|:|-|$)", line, re.I)) for line in lines)
+    url_lines = sum(bool(re.match(r"^(?:[-*]\s*)?https?://", line, re.I)) for line in lines)
+    return status_lines >= 2 or (status_lines >= 1 and url_lines >= 1)
+
+
+def sanitize_presentation_text(value: Any) -> str:
+    text = str(value or "").strip()
+    return "" if looks_like_http_diagnostic(text) else text
+
+
+def sanitize_seeded_website_cache(db: sqlite3.Connection) -> int:
+    """Remove previously-cached HTTP diagnostics before presentation is recomputed."""
+    changed = 0
+    for row in db.execute("SELECT website_id,description,readme_excerpt FROM websites").fetchall():
+        description = sanitize_presentation_text(row["description"])
+        excerpt = sanitize_presentation_text(row["readme_excerpt"])
+        if description == str(row["description"] or "") and excerpt == str(row["readme_excerpt"] or ""):
+            continue
+        db.execute(
+            "UPDATE websites SET description=?,readme_excerpt=? WHERE website_id=?",
+            (description, excerpt, int(row["website_id"])),
+        )
+        changed += 1
+    return changed
+
+
+def sanitize_seeded_plugin_presentation_fields(db: sqlite3.Connection) -> int:
+    """Clean normalized display fields while keeping raw_manifest_json untouched for audit."""
+    changed = 0
+    for row in db.execute("SELECT variant_id,punchline,description FROM plugin_variants").fetchall():
+        punchline = sanitize_presentation_text(row["punchline"])
+        description = sanitize_presentation_text(row["description"])
+        if punchline == str(row["punchline"] or "") and description == str(row["description"] or ""):
+            continue
+        db.execute(
+            "UPDATE plugin_variants SET punchline=?,description=? WHERE variant_id=?",
+            (punchline, description, int(row["variant_id"])),
+        )
+        changed += 1
+    return changed
+
+
 def copy_seed_database(seed: Path | None, destination: Path) -> bool:
     if seed is None or not seed.exists():
         return False
@@ -531,8 +588,8 @@ def import_enriched(db: sqlite3.Connection, enriched_doc: Any, now: str) -> None
                 pid, sid, key,
                 str(manifest_field(p, "author", "Author", "") or ""),
                 name,
-                str(manifest_field(p, "punchline", "Punchline", "") or ""),
-                str(manifest_field(p, "description", "Description", "") or ""),
+                sanitize_presentation_text(manifest_field(p, "punchline", "Punchline", "")),
+                sanitize_presentation_text(manifest_field(p, "description", "Description", "")),
                 str(manifest_field(p, "changelog", "Changelog", "") or ""),
                 str(manifest_field(p, "assemblyVersion", "AssemblyVersion", "0.0.0.0") or "0.0.0.0"),
                 manifest_field(p, "testingAssemblyVersion", "TestingAssemblyVersion"),
@@ -632,7 +689,8 @@ def import_websites(db: sqlite3.Connection, website_doc: Any, now: str) -> None:
         ok = bool(rec.get("ok"))
         existing = db.execute("SELECT * FROM websites WHERE url=? COLLATE NOCASE", (url,)).fetchone()
         if ok:
-            excerpt = str(rec.get("readmeExcerpt") or "")
+            excerpt = sanitize_presentation_text(rec.get("readmeExcerpt"))
+            description = sanitize_presentation_text(rec.get("description"))
             images = rec.get("imageUrls") or readme_images(url, excerpt)
             db.execute(
                 """INSERT INTO websites(url,ok,title,description,homepage,stars,forks,watchers,topics_json,language,license,
@@ -647,7 +705,7 @@ def import_websites(db: sqlite3.Connection, website_doc: Any, now: str) -> None:
                     last_checked_utc=excluded.last_checked_utc,last_success_utc=excluded.last_success_utc,
                     last_error='',failure_count=0,next_retry_utc=''""",
                 (
-                    url, 1, str(rec.get("title") or ""), str(rec.get("description") or ""), str(rec.get("homepage") or ""),
+                    url, 1, str(rec.get("title") or ""), description, str(rec.get("homepage") or ""),
                     rec.get("stars"), rec.get("forks"), rec.get("watchers"), json_text(rec.get("topics") or []),
                     str(rec.get("language") or ""), str(rec.get("license") or ""), str(rec.get("defaultBranch") or ""),
                     str(rec.get("lastCommit") or ""), excerpt, json_text(images), json.dumps(rec, ensure_ascii=False, separators=(",", ":")),
@@ -876,6 +934,8 @@ def build(args: argparse.Namespace) -> dict:
         upsert_sources(db, raw_doc, curated, now)
         import_enriched(db, enriched_doc, now)
         import_websites(db, website_doc, now)
+        sanitize_seeded_plugin_presentation_fields(db)
+        sanitize_seeded_website_cache(db)
         recompute_presentation(db, now)
         create_runtime_view(db)
         base_revision = compute_catalog_base_revision(db)

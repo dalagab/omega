@@ -22,9 +22,17 @@ internal sealed partial class MarketplaceWindow
 
         var keepOpen = uninstallPopupOpen;
         ImGui.SetNextWindowSize(new Vector2(520f, 0f), ImGuiCond.Appearing);
-        if (!ImGui.BeginPopupModal("Uninstall plugin###DalagabOmegaUninstall", ref keepOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        if (!ImGui.BeginPopupModal("Uninstall plugin###DalagabOmegaUninstall", ref keepOpen,
+                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize))
         {
             uninstallPopupOpen = keepOpen;
+            return;
+        }
+
+        if (DrawOmegaModalHeader("Uninstall plugin", "uninstall"))
+        {
+            CloseUninstallConfirmation();
+            ImGui.EndPopup();
             return;
         }
 

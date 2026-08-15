@@ -51,9 +51,59 @@ def normalize_repo_url(url: str | None) -> str:
 
 
 def parse_github_repo(url: str | None) -> tuple[str, str] | None:
+    """Resolve GitHub project links to their repository identity.
+
+    Community manifests frequently publish branch/deep links such as
+    ``https://github.com/owner/repo/tree/main``. Those are still repository
+    project links, so enrichment must use the GitHub repository API rather
+    than scraping the branch page as a generic website.
+    """
     value = normalize_repo_url(url)
-    match = re.match(r"^https://github\.com/([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+)$", value, re.I)
-    return (match.group(1), match.group(2)) if match else None
+    try:
+        parsed = urllib.parse.urlparse(value)
+    except ValueError:
+        return None
+    if parsed.scheme.lower() != "https" or (parsed.hostname or "").lower() not in {"github.com", "www.github.com"}:
+        return None
+    parts = [urllib.parse.unquote(part) for part in parsed.path.split("/") if part]
+    if len(parts) < 2:
+        return None
+    owner, repo = parts[0], parts[1]
+    if repo.lower().endswith(".git"):
+        repo = repo[:-4]
+    valid = re.compile(r"^[A-Za-z0-9._-]+$")
+    if not owner or not repo or not valid.fullmatch(owner) or not valid.fullmatch(repo):
+        return None
+    return owner, repo
+
+
+def canonical_github_repo_url(owner_repo: tuple[str, str]) -> str:
+    return f"https://github.com/{owner_repo[0]}/{owner_repo[1]}"
+
+
+def looks_like_http_diagnostic(value: str | None) -> bool:
+    """Reject transport/debug output from user-facing presentation fields."""
+    text = html.unescape(str(value or "")).strip()
+    if not text:
+        return False
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    lower = text.lower()
+    if lower.startswith((
+        "404 not found", "404:", "error 404", "http 404",
+        "500 internal server error", "500:", "error 500", "http 500",
+        "502 bad gateway", "503 service unavailable", "504 gateway timeout",
+    )):
+        return True
+    status_lines = sum(bool(re.match(r"^(?:http\s*)?[45]\d\d(?:\s|:|-|$)", line, re.I)) for line in lines)
+    url_lines = sum(bool(re.match(r"^(?:[-*]\s*)?https?://", line, re.I)) for line in lines)
+    return status_lines >= 2 or (status_lines >= 1 and url_lines >= 1)
+
+
+def sanitize_presentation_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return None if looks_like_http_diagnostic(text) else text
 
 
 def _public_addresses(host: str, port: int) -> bool:
@@ -238,7 +288,7 @@ def scrape_github_repo(owner_repo: tuple[str, str], token: str | None, timeout: 
         "stars": meta.get("stargazers_count"),
         "forks": meta.get("forks_count"),
         "watchers": meta.get("subscribers_count") if meta.get("subscribers_count") is not None else meta.get("watchers_count"),
-        "description": meta.get("description"),
+        "description": sanitize_presentation_text(meta.get("description")),
         "homepage": meta.get("homepage") or None,
         "topics": meta.get("topics") or [],
         "language": meta.get("language"),
@@ -274,7 +324,7 @@ def scrape_generic(url: str, timeout: float = 20.0) -> dict:
                 images.append(candidate)
             if len(images) >= MAX_IMAGES:
                 break
-        out.update({"ok": True, "title": parser.title or None, "description": parser.description or None, "imageUrls": images})
+        out.update({"ok": True, "title": parser.title or None, "description": sanitize_presentation_text(parser.description), "imageUrls": images})
     except Exception as exc:
         out["error"] = f"{type(exc).__name__}: {exc}"
     return out
@@ -288,6 +338,7 @@ def scrape_all(enriched: dict, token: str | None, concurrency: int = 3, timeout:
     started = time.time()
     plugins = enriched.get("plugins") or []
     github_repos: dict[tuple[str, str], list[dict]] = {}
+    github_aliases: dict[str, tuple[str, str]] = {}
     other_urls: dict[str, list[dict]] = {}
     for plugin in plugins:
         repo_url = normalize_repo_url(plugin.get("repoUrl"))
@@ -296,6 +347,7 @@ def scrape_all(enriched: dict, token: str | None, concurrency: int = 3, timeout:
         github = parse_github_repo(repo_url)
         if github:
             github_repos.setdefault(github, []).append(plugin)
+            github_aliases[repo_url] = github
         else:
             other_urls.setdefault(repo_url, []).append(plugin)
 
@@ -312,8 +364,13 @@ def scrape_all(enriched: dict, token: str | None, concurrency: int = 3, timeout:
 
     other_results = {url: scrape_generic(url, timeout) for url in other_urls}
     repo_map: dict[str, dict] = {}
-    for (owner, repo), record in github_results.items():
-        repo_map[f"https://github.com/{owner}/{repo}"] = record
+    for owner_repo, record in github_results.items():
+        canonical = canonical_github_repo_url(owner_repo)
+        repo_map[canonical] = dict(record, url=canonical)
+    for alias, owner_repo in github_aliases.items():
+        record = github_results.get(owner_repo)
+        if record is not None:
+            repo_map[alias] = dict(record, url=alias, canonicalUrl=canonical_github_repo_url(owner_repo))
     repo_map.update(other_results)
 
     enriched_plugins: list[dict] = []

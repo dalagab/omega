@@ -76,6 +76,14 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
+        if (DrawOmegaModalHeader("End User License Agreement", "eula", allowClose: !requiredAcceptance))
+        {
+            eulaReviewOpen = false;
+            ImGui.CloseCurrentPopup();
+            ImGui.EndPopup();
+            return;
+        }
+
         ImGui.TextWrapped("Plugins are executable third-party software. They may access game data and your computer, and their use may put your FFXIV account at risk.");
         ImGui.Spacing();
         if (ImGui.Button("Open Omega project on GitHub"))
@@ -162,13 +170,6 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextDisabled($"Accepted {acceptedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss zzz}");
         else
             ImGui.TextDisabled("No acceptance timestamp is stored.");
-
-        ImGui.SameLine();
-        if (ImGui.Button("Close"))
-        {
-            eulaReviewOpen = false;
-            ImGui.CloseCurrentPopup();
-        }
     }
 
     private void AcceptEula()

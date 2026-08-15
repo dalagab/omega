@@ -49,6 +49,8 @@ var tests = new (string Name, Action Body)[]
     ("installed plugin snapshots tolerate transient null version state", TestInstalledSnapshotNullSafetyContract),
     ("Library and details artwork remain clean app/plugin images", TestCleanDetailsArtworkContract),
     ("Discover uses Store-style results and product pages", TestDiscoverStoreListContract),
+    ("plugin icons open details and screenshots open a larger viewer", TestPluginArtworkAndScreenshotInteractionContract),
+    ("secondary Omega panels share the main application chrome", TestSecondaryPanelChromeContract),
     ("online catalog descriptor helpers remain strict", TestOnlineCatalogDescriptorHelpers),
     ("live catalog endpoint and publication smoke test remain wired", TestLiveCatalogEndpointContract),
     ("storefront virtualization bounds open-window draw work", TestStorefrontVirtualization),

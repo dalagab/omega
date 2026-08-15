@@ -128,6 +128,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private bool requestSettingsPopup;
     private bool requestTagsPopup;
     private bool requestEulaPopup;
+    private bool requestScreenshotPopup;
+    private string selectedScreenshotUrl = string.Empty;
     private bool eulaRequiredOpen;
     private bool eulaReviewOpen;
     private DateTimeOffset? eulaOpenedAtUtc;
@@ -302,6 +304,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         DrawSettingsModal();
         DrawEulaReviewModal();
         DrawTagPickerPopup(currentApi);
+        DrawScreenshotViewerModal();
 
         PopOmegaTheme();
     }
@@ -330,6 +333,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         {
             ImGui.OpenPopup("Tags###DalagabOmegaTags");
             requestTagsPopup = false;
+        }
+
+        if (requestScreenshotPopup)
+        {
+            ImGui.OpenPopup(ScreenshotPopupId);
+            requestScreenshotPopup = false;
         }
 
         if (requestEulaPopup)

@@ -38,7 +38,7 @@ This database can be substantially larger because it is repository infrastructur
 
 1. **Preflight** — run deterministic Python/workflow regressions plus the catalog/projector self-tests.
 2. **Collect** — `collect_sources.py` combines curated sources, the current Puni.sh repository directory, and bounded GitHub source discovery.
-3. **Enrich manifests** — `enrich_metadata.py` uses the previous small marketplace database as an HTTP/cache seed and preserves previous good rows across transient failures.
+3. **Enrich manifests** — `enrich_metadata.py` uses the previous small marketplace database as an HTTP/cache seed and preserves previous good rows across transient failures. PluginMaster feeds may use trailing commas before `]`/`}`; that narrow community-format extension is accepted without relaxing other malformed JSON.
 4. **Enrich websites** — `scrape_websites_incremental.py` reuses fresh successful enrichment and refreshes only new/stale project pages.
 5. **Build authoritative catalog state** — `build_sqlite_catalog.py` imports the stage documents into the previous full evidence database when available, preserving scanner history while refreshing marketplace/source data. On the first split migration it can consume the legacy `catalog-latest/omega-catalog.sqlite.zip` database.
 6. **Hand off builder artifact** — the builder uploads `omega-sqlite-catalog`. It does not publish either production database.
@@ -128,3 +128,7 @@ python tools/catalog/build_sqlite_catalog.py \
 ```
 
 This is a repository-tooling path, not a compatibility/fallback path in the Omega client.
+
+## Presentation metadata sanitation
+
+Project-page enrichment is presentation-only and must never surface transport/debug failures as plugin copy. GitHub deep links such as `/tree/<branch>` are resolved to the repository identity and enriched through the GitHub repository API. HTTP diagnostic text such as 404/500 failure blocks is rejected from user-facing website descriptions and README excerpts. The builder also sanitizes previously seeded website rows before recomputing presentation, so a contaminated historical cache is cleaned during the next successful catalog build. Diagnostic errors remain available in source/website health fields instead of appearing under **About this plugin**.

@@ -162,4 +162,57 @@ internal static partial class RegressionCases
         Contains(storefront, "DrawDiscoverProductPage", "selected Discover plugins replace the list with the product page");
     }
 
+
+    internal static void TestPluginArtworkAndScreenshotInteractionContract()
+    {
+        var discover = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
+        var spotlight = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Spotlight.cs"));
+        var shelves = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SpotlightShelves.cs"));
+        var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
+        var viewer = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ScreenshotViewer.cs"));
+        var window = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.cs"));
+
+        Contains(discover, "var artworkClicked = DrawDiscoverRichCardHeader(", "Featured plugin icons have their own click path");
+        Contains(discover, "if (artworkClicked || (hovered && ImGui.IsMouseClicked", "Featured plugin icon clicks open the canonical product page even through nested child windows");
+        Contains(discover, "var artworkClicked = DrawPluginArtwork(", "compact Discover plugin icons retain direct click state");
+        Contains(spotlight, "if (artworkClicked || clicked)", "Spotlight plugin icons open Discover without relying on parent-window hover propagation");
+        Contains(shelves, "if (artworkClicked || clicked)", "Spotlight shelf plugin icons open Discover without relying on parent-window hover propagation");
+
+        Contains(discover, "var screenshotClicked = DrawDiscoverRichCardScreenshot", "Featured screenshots have their own click path");
+        Contains(discover, "OpenScreenshotViewer(url)", "Featured screenshots open the larger viewer instead of relying on the card click");
+        Contains(product, "View larger screenshot", "product screenshots advertise the larger viewer");
+        Contains(product, "OpenScreenshotViewer(url)", "clicking a product screenshot requests the larger viewer");
+        Contains(window, "ImGui.OpenPopup(ScreenshotPopupId)", "screenshot clicks open a dedicated popup");
+        Contains(window, "DrawScreenshotViewerModal();", "the screenshot popup is drawn every open marketplace frame");
+        Contains(viewer, "Screenshot###DalagabOmegaScreenshot", "screenshot viewer has a stable dedicated popup identity");
+        Contains(viewer, "ImGui.GetMainViewport()", "larger screenshot viewer sizes itself against the game viewport");
+        Contains(viewer, "ImGui.Image(texture.Handle, size)", "larger screenshot viewer renders the cached source image");
+        Contains(viewer, "ImGuiWindowFlags.NoTitleBar", "screenshot viewer uses Omega chrome instead of the host/default title bar");
+        Contains(viewer, "DrawOmegaModalHeader(\"Screenshot\"", "screenshot viewer uses the shared Omega secondary-panel header");
+        DoesNotContain(viewer, "Close##screenshot-viewer-close", "screenshot viewer does not duplicate the top-right close control at the bottom");
+    }
+
+    internal static void TestSecondaryPanelChromeContract()
+    {
+        var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ModalChrome.cs"));
+        var settings = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sources.cs"));
+        var install = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Install.cs"));
+        var uninstall = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.UninstallAndSources.cs"));
+        var filters = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Filters.cs"));
+        var eula = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Eula.cs"));
+
+        Contains(chrome, "DrawOmegaModalHeader", "secondary panels share one Omega chrome implementation");
+        Contains(chrome, "DrawApplicationIconButton(FontAwesomeIcon.Times", "secondary-panel X uses the same styled application control as the main panel");
+        Contains(settings, "ImGuiWindowFlags.NoTitleBar", "Settings suppresses the host/default title bar");
+        Contains(settings, "DrawOmegaModalHeader(\"Settings\"", "Settings uses Omega chrome");
+        DoesNotContain(settings, "ImGui.Button(\"Close\")", "Settings has no redundant bottom Close button");
+        Contains(install, "ImGuiWindowFlags.NoTitleBar", "install chooser suppresses the host/default title bar");
+        Contains(install, "DrawOmegaModalHeader(\"Choose repository\"", "install chooser uses Omega chrome");
+        Contains(uninstall, "ImGuiWindowFlags.NoTitleBar", "uninstall confirmation suppresses the host/default title bar");
+        Contains(filters, "BeginPopupModal(\"Tags###DalagabOmegaTags\"", "tag picker is an Omega-styled modal panel");
+        DoesNotContain(filters, "ImGui.Button(\"Close\")", "tag picker closes from its top-right X rather than a redundant footer button");
+        Contains(eula, "DrawOmegaModalHeader(\"End User License Agreement\"", "EULA review uses Omega chrome");
+        DoesNotContain(eula, "if (ImGui.Button(\"Close\"))", "EULA review has no redundant bottom Close button");
+    }
+
 }

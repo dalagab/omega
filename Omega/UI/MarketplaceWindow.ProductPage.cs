@@ -321,8 +321,16 @@ internal sealed partial class MarketplaceWindow
             ImGui.Image(texture.Handle, size);
         }
 
+        var screenshotHovered = ImGui.IsWindowHovered();
+        var screenshotClicked = screenshotHovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+        if (screenshotHovered)
+            ImGui.SetTooltip("View larger screenshot");
+
         ImGui.EndChild();
         ImGui.PopStyleColor();
+
+        if (screenshotClicked)
+            OpenScreenshotViewer(url);
     }
 
     private void DrawProductInformation(

@@ -20,9 +20,13 @@ Project site: https://github.com/dalagab/omega
 
 Omega does **not** replace Dalamud's plugin lifecycle. Installation, updates, and uninstall/removal are delegated to Dalamud; Omega provides the discovery and user-facing control surface.
 
+### UI chrome design rule
+
+Omega-owned secondary panels use the same application chrome as the main marketplace window: dark/translucent Omega styling, no host/default ImGui title bar or colored title strip, and Omega's styled top-right close control. Settings, screenshot viewing, tag selection, install-source selection, uninstall confirmation, and review dialogs follow this contract. A normal secondary panel must not add a redundant footer **Close** button when the top-right **X** already closes it. Blocking first-use/legal flows may retain explicit accept/decline actions where those actions carry meaning beyond merely closing a panel.
+
 ### Plugin artwork and screenshots
 
-Omega consumes the standard Dalamud manifest fields `IconUrl` and `ImageUrls`. `ImageUrls` is shown as the Screenshots section on the Discover product page, so repository authors do not need an Omega-specific screenshot field. See [`examples/pluginmaster.json`](examples/pluginmaster.json).
+Omega consumes the standard Dalamud manifest fields `IconUrl` and `ImageUrls`. `ImageUrls` is shown as the Screenshots section on the Discover product page, and screenshots can be clicked to open a larger in-game viewer, so repository authors do not need an Omega-specific screenshot field. See [`examples/pluginmaster.json`](examples/pluginmaster.json).
 
 The scheduled SQLite catalog workflow may also shallow-index the public project page already declared by a plugin. Standard page descriptions and preview images are cached and added as presentation-only Omega metadata. Listings enriched from a public project page receive a **star**; the star means richer indexed presentation data, not endorsement or security review. When repository variants disagree, Omega uses the single variant with the richest screenshot/description set for presentation while keeping normal Dalamud repository precedence for installation.
 
@@ -94,7 +98,7 @@ The repository manifest in [`repository/pluginmaster.json`](repository/pluginmas
 
 ### Publishing a new Omega version
 
-[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a four-part version tag matching the project metadata, for example `v0.8.3.19`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
+[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a three-part version tag matching the project metadata, for example `v0.8.6`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
 
 ## Exactly what the installer changes
 
@@ -168,7 +172,7 @@ python -m unittest discover -s tools/tests -p 'test_*.py' -v
 
 ## Catalog pipeline
 
-Omega's central catalog workflow is documented in [`catalog/WORKFLOW.md`](catalog/WORKFLOW.md). GitHub Actions builds one `omega-catalog.sqlite` database from repository manifests and incremental website enrichment. The previous database supplies ETag/Last-Modified state and last-known-good website metadata, so unchanged sources can return HTTP 304 and fresh project pages are reused.
+Omega's central catalog workflow is documented in [`catalog/WORKFLOW.md`](catalog/WORKFLOW.md). GitHub Actions builds the authoritative catalog/evidence state from repository manifests and incremental website enrichment, then projects the small marketplace SQLite database consumed by Omega. The previous database supplies ETag/Last-Modified state and last-known-good website metadata, so unchanged sources can return HTTP 304 and fresh project pages are reused. PluginMaster ingestion accepts the common community trailing-comma extension while still rejecting other malformed JSON.
 
 **Only the small marketplace database is downloaded and used by Omega.** At runtime Omega first loads the packaged/bootstrap SQLite catalog and the persisted local `omega-catalog.sqlite`. The catalog updater checks the small online descriptor at the `catalog-latest` release, compares the catalog SHA-256, downloads `omega-marketplace.sqlite.zip` only when the marketplace database changed, verifies the bundle/database hashes and SQLite integrity, atomically replaces the local database, then immediately uses that database for marketplace projection, search, source metadata, filters, Spotlight, Library, Updates, and current security summaries. The detailed `security-evidence-latest` database is repository-side infrastructure and is never downloaded by Omega. If the network or validation step fails, the previous local SQLite database stays active. Intermediate JSON files remain catalog-build inputs, not runtime catalog formats.
 
@@ -198,7 +202,7 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Release metadata
 
-- Omega version: `0.8.3.19`
+- Omega version: `0.8.6`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`
@@ -231,6 +235,6 @@ These are different from `catalogSha256` and `bundleSha256`, which verify exact 
 
 The marketplace database contains `catalog_changelog`. A row is appended only when the semantic Catalog Revision changes, recording previous/current Catalog, Security, and Evidence Revisions plus bounded change counts. Periodic no-change scan freshness is stored separately in `security-scan-ledger.json` on `security-evidence-latest`; updating that operational ledger does not force clients to download another marketplace database.
 
-Omega 0.8.3.19 displays Catalog Revision, Security Revision, and Evidence Revision in Settings for support and troubleshooting. Evidence Revision is an identifier only; it is not a download instruction.
+Omega 0.8.6 displays Catalog Revision, Security Revision, and Evidence Revision in Settings for support and troubleshooting. Evidence Revision is an identifier only; it is not a download instruction.
 
 Security findings describe observed static capabilities and risk indicators. They are not a malware verdict, and no findings is not proof that a plugin is safe. Plugin archives are treated as hostile input: downloads, entry counts, total expansion, compression ratio, paths, metadata parsing, graph sizes, and scan time are bounded.

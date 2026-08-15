@@ -93,6 +93,58 @@ def http_get(url: str, timeout: float = 20.0, conditional: dict | None = None) -
 
 
 
+def _strip_trailing_json_commas(text: str) -> str:
+    """Remove commas immediately before ``]`` or ``}`` outside JSON strings.
+
+    Community Dalamud repositories occasionally publish PluginMaster-style feeds with
+    trailing commas. Python's standard JSON decoder rejects them, while Dalamud and
+    Omega's in-game manifest parser already tolerate them. Keep the relaxation narrow:
+    only a comma whose next non-whitespace character closes an array/object is removed.
+    """
+    out: list[str] = []
+    in_string = False
+    escaped = False
+    length = len(text)
+
+    for index, char in enumerate(text):
+        if in_string:
+            out.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+            out.append(char)
+            continue
+
+        if char == ",":
+            lookahead = index + 1
+            while lookahead < length and text[lookahead].isspace():
+                lookahead += 1
+            if lookahead < length and text[lookahead] in "]}":
+                continue
+
+        out.append(char)
+
+    return "".join(out)
+
+
+def _loads_pluginmaster_json(text: str):
+    """Parse a PluginMaster feed, retrying only for trailing-comma tolerance."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as strict_error:
+        relaxed = _strip_trailing_json_commas(text)
+        if relaxed == text:
+            raise strict_error
+        return json.loads(relaxed)
+
+
 def _extract_plugin_list(data):
     """Accept common PluginMaster root wrappers as well as a bare array."""
     if isinstance(data, list):
@@ -127,7 +179,7 @@ def fetch_source(source: dict, cache: dict[str, dict] | None = None, timeout: fl
             contentSha256=str(cached.get("content_sha256") or ""),
         )
     try:
-        data = json.loads(body.decode("utf-8", errors="replace"))
+        data = _loads_pluginmaster_json(body.decode("utf-8", errors="replace"))
     except json.JSONDecodeError as exc:
         return _record(source, ok=False, error=f"Non-JSON response: {exc}")
     entries = _extract_plugin_list(data)

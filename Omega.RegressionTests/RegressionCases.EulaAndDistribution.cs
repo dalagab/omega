@@ -68,7 +68,8 @@ internal static partial class RegressionCases
     internal static void TestGitHubReleaseAndSecurityWorkflowsContract()
     {
         var release = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "release.yml"));
-        Contains(release, "v*.*.*.*", "release workflow is tag-driven");
+        Contains(release, "v*.*.*", "release workflow is tag-driven with three-part versions");
+        DoesNotContain(release, "v*.*.*.*", "release workflow does not accept four-part ZipRunner-incompatible tags");
         Contains(release, "dotnet build .\\Omega.sln -c Release", "release workflow builds the complete solution and regression suite");
         Contains(release, "latest.zip", "release workflow consumes the Dalamud.NET.Sdk package");
         Contains(release, "Omega.zip", "stable Dalamud release asset is published under the PluginMaster name");

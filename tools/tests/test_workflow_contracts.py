@@ -194,6 +194,13 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertLess(text.index("Run repository Python regression suite"), text.index("Publish immutable versioned release"))
         self.assertLess(text.index("Build and run regression suite"), text.index("Publish immutable versioned release"))
 
+    def test_release_workflow_uses_three_part_versions_for_ziprunner(self) -> None:
+        text = self.read("release.yml")
+        self.assertIn('      - "v*.*.*"', text)
+        self.assertNotIn('      - "v*.*.*.*"', text)
+        self.assertIn(r"^v(?<version>\d+\.\d+\.\d+)$", text)
+        self.assertNotIn(r"^v(?<version>\d+\.\d+\.\d+\.\d+)$", text)
+
     def test_workflows_do_not_embed_large_python_heredocs(self) -> None:
         for name in ("catalog-builder.yml", "security-scanner.yml", "catalog-compaction.yml"):
             text = self.read(name)

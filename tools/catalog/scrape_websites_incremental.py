@@ -51,6 +51,12 @@ def load_cache(path: Path | None, max_age_hours: float) -> dict[str, dict]:
                 metadata = {}
             if not isinstance(metadata, dict):
                 metadata = {}
+            # Do not reuse presentation cache entries that contain transport/debug
+            # diagnostics. They must be re-scraped so stale 404/500 text can never
+            # persist as a plugin description.
+            if (scrape_websites.looks_like_http_diagnostic(row["description"]) or
+                    scrape_websites.looks_like_http_diagnostic(row["readme_excerpt"])):
+                continue
             metadata.update({
                 "url": row["url"],
                 "ok": True,

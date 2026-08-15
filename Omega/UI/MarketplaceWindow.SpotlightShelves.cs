@@ -115,7 +115,7 @@ internal sealed partial class MarketplaceWindow
             true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        _ = DrawPluginArtwork(
+        var artworkClicked = DrawPluginArtwork(
             plugin,
             null,
             SpotlightShelfArtworkSize,
@@ -134,7 +134,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.EndChild();
         PopUnavailableListingStyle(availabilityStyle);
 
-        if (clicked)
+        if (artworkClicked || clicked)
             OpenSpotlightPluginInDiscover(plugin);
     }
 
