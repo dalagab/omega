@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-enrich_metadata.py — Stage 2 of the catalog builder.
+enrich_metadata.py — metadata enrichment for the catalog builder.
 
 Reads `raw-sources.json` (output of collect_sources.py), fetches each URL
 in parallel, parses the JSON, normalizes the records, and records whether each variant has a complete basic
@@ -14,7 +14,7 @@ A plugin gets `metadataComplete: true` when ALL of:
   * has a non-empty AssemblyVersion (useable build)
 
 The aggregated output is `enriched-sources.json` — a single document the
-next stage (scrape_websites.py) reads, and which build_sqlite_catalog.py imports
+website enrichment step (`scrape_websites.py`) reads, and which build_sqlite_catalog.py imports
 into Omega's canonical SQLite catalog.
 
 Usage:

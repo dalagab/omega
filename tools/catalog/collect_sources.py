@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-collect_sources.py — Stage 1 of the catalog builder.
+collect_sources.py — source discovery for the catalog builder.
 
 Discovers every public JSON source on the internet that contains the
 case-sensitive string `DalamudApiLevel`, and writes them to a single file
-so the next stage can fetch and parse them.
+so the metadata enrichment step can fetch and parse them.
 
 Sources covered:
   * Puni.sh marketplace (auto-discovers all publisher repos from HTML)

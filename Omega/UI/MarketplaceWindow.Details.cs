@@ -345,21 +345,9 @@ internal sealed partial class MarketplaceWindow
     private void DrawDetailsLinks(MarketplacePlugin plugin)
     {
         ImGui.Spacing();
-        var hasSources = catalog.GetVariants(plugin.InternalName).Any(x => !string.IsNullOrWhiteSpace(x.SourceUrl));
-        if (hasSources &&
-            DrawPillButton("Copy source", $"copy-source-{StableId(plugin.InternalName)}", new Vector2(112f, 30f), false))
-        {
-            sourcePopupPlugin = plugin;
-            sourcePopupOpen = true;
-            requestSourcePopup = true;
-        }
-
         var projectUrl = ResolveProjectUrl(plugin);
-        if (string.IsNullOrWhiteSpace(projectUrl))
-            return;
-        if (hasSources)
-            ImGui.SameLine(0f, 7f);
-        if (!DrawPillButton("Project", $"open-project-{plugin.InternalName}", new Vector2(92f, 30f), false))
+        if (string.IsNullOrWhiteSpace(projectUrl) ||
+            !DrawPillButton("Project", $"open-project-{plugin.InternalName}", new Vector2(92f, 30f), false))
             return;
 
         try

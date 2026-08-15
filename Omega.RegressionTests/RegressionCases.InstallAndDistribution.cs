@@ -137,4 +137,27 @@ internal static partial class RegressionCases
         Contains(repositoryBridge, "OwnedByOmega: false", "explicit enable does not steal repository ownership");
     }
 
+    internal static void TestCatalogFirstRunLoadingContract()
+    {
+        var storefront = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Storefront.cs"));
+        var loading = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Loading.cs"));
+        var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CatalogUpdateCoordinator.cs"));
+
+        Contains(storefront, "updates.SeedIfEmpty();", "an empty catalog automatically keeps acquisition alive");
+        Contains(storefront, "DrawCatalogLoadingState();", "first-run catalog acquisition uses the shared loading renderer");
+        False(storefront.Contains("initial catalog snapshot", StringComparison.OrdinalIgnoreCase), "first-run state must not expose catalog implementation wording");
+        False(storefront.Contains("Open Settings", StringComparison.Ordinal), "normal first-run acquisition must not ask the user to configure anything");
+        False(storefront.Contains("SQLite catalog", StringComparison.OrdinalIgnoreCase), "normal first-run acquisition must not explain storage internals");
+
+        Contains(loading, "GetContentRegionAvail()", "loading indicator centers within the owning content region");
+        Contains(loading, "Environment.TickCount64", "loading indicator is animated rather than static");
+        Contains(loading, "AddCircle(center", "loading indicator follows the shared restrained visual language");
+        Contains(loading, "AddCircleFilled(dot", "loading indicator exposes visible rotation without user-facing text");
+        False(loading.Contains("ImGui.Text", StringComparison.Ordinal), "loading state remains text-free");
+        False(loading.Contains("ImGui.Button", StringComparison.Ordinal), "loading state remains action-free");
+
+        Contains(coordinator, "EmptyCatalogRetryDelay", "empty-catalog acquisition retries automatically after bounded failures");
+        Contains(coordinator, "nextEmptyCatalogAttemptUtc", "automatic retries are rate-limited rather than occurring every frame");
+    }
+
 }

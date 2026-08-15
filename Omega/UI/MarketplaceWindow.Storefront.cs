@@ -138,12 +138,8 @@ internal sealed partial class MarketplaceWindow
 
         if (!catalog.HasLoaded)
         {
-            ImGui.Spacing();
-            ImGui.Text("Omega needs an initial catalog snapshot.");
-            ImGui.TextWrapped("Omega uses one validated SQLite catalog. A packaged bootstrap can seed the first run; online refreshes replace it only after hash, schema, and integrity validation. The last known-good local database is kept across restarts.");
-            ImGui.Spacing();
-            if (DrawPillButton("Open Settings", "empty-settings", new Vector2(180f, 34f), true))
-                OpenSettings();
+            updates.SeedIfEmpty();
+            DrawCatalogLoadingState();
             return;
         }
 

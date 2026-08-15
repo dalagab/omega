@@ -12,6 +12,7 @@ namespace Dalagab.Omega;
 internal sealed partial class MarketplaceWindow
 {
     private const float ProductHeroIconSize = 132f;
+    private const float ProductHeroMaxWidth = 820f;
     private const float ProductScreenshotWidth = 360f;
     private const float ProductScreenshotHeight = 210f;
     private const int MaximumProductScreenshots = 5;
@@ -57,7 +58,8 @@ internal sealed partial class MarketplaceWindow
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.045f, 0.052f, 0.064f, 0.74f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.17f, 0.19f, 0.22f, 0.44f));
-        ImGui.BeginChild("discover-product-hero", new Vector2(0f, 265f), true,
+        var heroWidth = Math.Min(ProductHeroMaxWidth, ImGui.GetContentRegionAvail().X);
+        ImGui.BeginChild("discover-product-hero", new Vector2(heroWidth, 286f), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         ImGui.SetCursorPos(new Vector2(22f, 24f));
@@ -83,6 +85,8 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.Spacing();
         DrawProductBadges(plugin, content);
+        ImGui.Spacing();
+        DrawProductSecuritySummary(plugin);
         ImGui.Spacing();
 
         var summary = content.Summary;
@@ -116,9 +120,17 @@ internal sealed partial class MarketplaceWindow
         {
             if (drewAny)
                 ImGui.SameLine(0f, 8f);
+
+            var enhancedUrl = ResolveEnhancedProjectUrl(plugin, content);
+            if (!string.IsNullOrWhiteSpace(enhancedUrl))
+            {
+                DrawProductWebsiteIcon(plugin, enhancedUrl);
+                ImGui.SameLine(0f, 5f);
+            }
+
             DrawDiscoverTextBadge("★ Enhanced", new Vector4(0.45f, 0.34f, 0.08f, 0.96f));
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Omega indexed presentation metadata from this plugin's public project page.");
+                ImGui.SetTooltip("Omega has richer presentation information for this plugin.");
             drewAny = true;
         }
 
@@ -262,7 +274,9 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         ImGui.TextUnformatted("Screenshots");
         ImGui.Spacing();
-        ImGui.BeginChild("discover-product-screenshots", new Vector2(0f, ProductScreenshotHeight + 28f), true,
+        var style = ImGui.GetStyle();
+        var stripHeight = ProductScreenshotHeight + (style.WindowPadding.Y * 2f) + style.ScrollbarSize + 4f;
+        ImGui.BeginChild("discover-product-screenshots", new Vector2(0f, stripHeight), true,
             ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         for (var index = 0; index < screenshots.Length; index++)
@@ -331,13 +345,8 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         ImGui.TextDisabled($"Version {plugin.AssemblyVersionText}  •  {plugin.GetCompatibilityText(currentApi, currentDalamudVersion, configuration.PreferTestingBuilds)}");
         ImGui.TextDisabled($"Source: {plugin.SourceName}");
-        if (content.IsEnhanced && !string.IsNullOrWhiteSpace(content.Variant.OmegaWebsiteUrl))
-            ImGui.TextDisabled($"Enhanced from: {content.Variant.OmegaWebsiteUrl}");
         if (plugin.Tags.Count > 0)
             ImGui.TextDisabled("Tags: " + string.Join(", ", plugin.Tags));
-
-        ImGui.Spacing();
-        DrawDetailsLinks(plugin);
     }
 
     private static bool IsNsfwPlugin(MarketplacePlugin plugin)

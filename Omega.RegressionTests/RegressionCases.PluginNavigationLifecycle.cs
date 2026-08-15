@@ -12,6 +12,7 @@ internal static partial class RegressionCases
         var details = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Details.cs"));
         var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
         var popups = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.UninstallAndSources.cs"));
+        var headerLinks = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductHeaderLinks.cs"));
         var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
         var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginInstallCoordinator.cs"));
         var installer = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudInstallerBridge.cs"));
@@ -23,12 +24,11 @@ internal static partial class RegressionCases
         Contains(spotlight, "OpenPluginDetails(plugin)", "Spotlight selections use canonical product navigation");
         Contains(collections, "OpenPluginDetails(plugin)", "Collection selections use canonical product navigation");
 
-        Contains(details, "Process.Start(new ProcessStartInfo(projectUrl) { UseShellExecute = true })", "Project opens the system browser");
-        Contains(details, "requestSourcePopup = true", "Copy source opens the known-source chooser");
-        False(details.Contains("ImGui.SetClipboardText(plugin.SourceUrl)", StringComparison.Ordinal), "Copy source must not silently choose one repository");
-        Contains(popups, "Known sources###DalagabOmegaKnownSources", "known-source popup is present");
-        Contains(popups, "catalog.GetVariants(plugin.InternalName)", "known-source popup enumerates all catalog variants");
-        Contains(popups, "ImGui.SetClipboardText(source.SourceUrl)", "source is copied only after explicit selection");
+        Contains(details, "Process.Start(new ProcessStartInfo(projectUrl) { UseShellExecute = true })", "legacy Project action opens the system browser");
+        Contains(headerLinks, "FontAwesomeIcon.Globe", "Discover product header exposes project navigation as a compact globe icon");
+        Contains(headerLinks, "OpenProductWebsite", "product-header globe opens the selected project URL");
+        False(details.Contains("Copy source", StringComparison.Ordinal), "Copy source is not exposed as a product/detail action");
+        False(popups.Contains("Known sources###DalagabOmegaKnownSources", StringComparison.Ordinal), "obsolete source-copy popup is removed");
 
         Contains(product, "GetAvailableUpdateVersion", "Discover product pages detect newer compatible installed-plugin versions");
         Contains(product, "DrawProductActionButton(\"Update\"", "installed Discover products replace Installed/Open with Update when an update exists");

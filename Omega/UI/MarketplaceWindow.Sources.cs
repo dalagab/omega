@@ -22,7 +22,7 @@ internal sealed partial class MarketplaceWindow
         }
 
         var currentApi = Plugin.PluginInterface.Manifest.DalamudApiLevel;
-        if (DrawSettingsNavigationOrSecurity())
+        if (DrawSettingsHeader())
         {
             settingsOpen = keepOpen && settingsOpen;
             ImGui.EndPopup();
@@ -45,10 +45,8 @@ internal sealed partial class MarketplaceWindow
     {
         var curatedCount = configuration.Repositories.Count(x => x.IsCurated);
         var userCount = configuration.Repositories.Count(x => !x.IsCurated);
-        ImGui.TextDisabled("Plugin sources"); ImGui.TextWrapped("Omega's public catalog is built online into one SQLite database. Source switches filter that database locally. User-added sources can be checked explicitly and remain temporary until the next online catalog build includes them.");
-        ImGui.TextDisabled(updates.OnlineConfigured
-            ? $"SQLite catalog: configured • current mode: {updates.ModeLabel}"
-            : "SQLite catalog: no online endpoint configured • packaged/local database remains available");
+        ImGui.TextDisabled("Plugin sources");
+        ImGui.TextWrapped("Choose which plugin sources appear in Omega. You can also add your own repository.");
         ImGui.Separator();
 
         if (ImGui.Button(sourceSection == SourceManagerSection.Curated ? $"[Curated ({curatedCount})]" : $"Curated ({curatedCount})"))

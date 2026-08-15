@@ -141,11 +141,20 @@ internal static partial class RegressionCases
         Contains(discover, "OpenPluginDetails(plugin)", "selecting either Discover result style opens its product page");
         False(discover.Contains("DrawApiBadge", StringComparison.Ordinal), "Discover results do not paint API badges over artwork");
 
-        Contains(product, "DrawDiscoverProductPage", "Discover selection uses a full-width product page");
+        Contains(product, "DrawDiscoverProductPage", "Discover selection uses a dedicated product page");
+        Contains(product, "ProductHeroMaxWidth = 820f", "Discover product hero keeps a bounded right edge instead of stretching across the content pane");
+        Contains(product, "Math.Min(ProductHeroMaxWidth, ImGui.GetContentRegionAvail().X)", "product hero remains responsive when the content pane is narrower than its preferred width");
         Contains(product, "Screenshots", "product page exposes the screenshot section");
+        Contains(product, "style.WindowPadding.Y * 2f", "screenshot strip height reserves its vertical window padding");
+        Contains(product, "style.ScrollbarSize + 4f", "screenshot strip reserves horizontal scrollbar height so a vertical scrollbar is not induced");
+        Contains(product, "ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.NoScrollWithMouse", "screenshots remain a horizontal-only browsing strip");
         Contains(product, "MarketplacePresentationContent", "product page consumes the richest presentation variant");
         Contains(product, "Dalamud official", "official plugins receive an explicit Dalamud badge");
         Contains(product, "★ Enhanced", "website-enriched product pages expose the enhanced marker");
+        Contains(product, "DrawProductWebsiteIcon(plugin, enhancedUrl)", "enhanced product pages place their project link beside the Enhanced badge");
+        Contains(product, "DrawProductSecuritySummary(plugin)", "security posture is summarized inside the product hero instead of as a detached block");
+        False(product.Contains("Enhanced from:", StringComparison.Ordinal), "raw enrichment provenance wording must not return to the About section");
+        False(product.Contains("DrawDetailsLinks(plugin)", StringComparison.Ordinal), "product pages do not append a detached project/source button row below About");
         Contains(product, "NSFW", "NSFW-tagged plugins receive a content badge");
         Contains(product, "Install", "product page uses Install as the acquisition action");
         False(product.Contains("Share", StringComparison.OrdinalIgnoreCase), "product page does not add a meaningless share control");

@@ -37,12 +37,18 @@ internal sealed class SqliteCatalogStore
     {
         lock (sync)
         {
-            using var connection = OpenReadOnly(DatabasePath);
-            ValidateConnection(connection);
-            return new SqliteCatalogSnapshot(
-                ReadVariants(connection),
-                ReadSourceDefinitions(connection),
-                ReadGeneratedAt(connection));
+            // winsqlite3 can retain a native read handle briefly after a managed connection is
+            // disposed. Read from a disposable copy so the authoritative catalog can always be
+            // moved/replaced/deleted immediately by updates and Windows regression cleanup.
+            return WithDisposableDatabaseCopy(DatabasePath, copyPath =>
+            {
+                using var connection = OpenReadOnly(copyPath);
+                ValidateConnection(connection);
+                return new SqliteCatalogSnapshot(
+                    ReadVariants(connection),
+                    ReadSourceDefinitions(connection),
+                    ReadGeneratedAt(connection));
+            });
         }
     }
 
@@ -56,8 +62,17 @@ internal sealed class SqliteCatalogStore
         try
         {
             ExtractDatabase(zipPath, staged);
-            using (var candidate = OpenReadOnly(staged))
+
+            // Never open the staged path with SQLite: Windows/winsqlite3 may keep a native handle
+            // alive just long enough to make the subsequent File.Move fail. Validate a byte-for-byte
+            // disposable copy instead; the untouched staged file stays movable.
+            WithDisposableDatabaseCopy(staged, validationPath =>
+            {
+                using var candidate = OpenReadOnly(validationPath);
                 ValidateConnection(candidate);
+                ValidateRuntimeSnapshot(candidate);
+                return true;
+            });
 
             lock (sync)
             {
@@ -67,7 +82,8 @@ internal sealed class SqliteCatalogStore
                     if (hadExisting)
                         File.Move(DatabasePath, backup, overwrite: true);
                     File.Move(staged, DatabasePath, overwrite: true);
-                    File.Delete(backup);
+                    if (File.Exists(backup))
+                        File.Delete(backup);
                 }
                 catch
                 {
@@ -81,8 +97,8 @@ internal sealed class SqliteCatalogStore
         }
         finally
         {
-            try { File.Delete(staged); } catch { }
-            try { File.Delete(backup); } catch { }
+            TryDelete(staged);
+            TryDelete(backup);
         }
     }
 
@@ -97,8 +113,12 @@ internal sealed class SqliteCatalogStore
     internal static void ValidateDatabaseFile(string path)
     {
         EnsureSqliteInitialized();
-        using var connection = OpenReadOnly(path);
-        ValidateConnection(connection);
+        WithDisposableDatabaseCopy(path, validationPath =>
+        {
+            using var connection = OpenReadOnly(validationPath);
+            ValidateConnection(connection);
+            return true;
+        });
     }
 
     private static void EnsureSqliteInitialized()
@@ -148,10 +168,31 @@ internal sealed class SqliteCatalogStore
             throw new InvalidDataException("Omega SQLite catalog contains no active plugin variants.");
     }
 
+    private static void ValidateRuntimeSnapshot(SqliteConnection candidate)
+    {
+        _ = ReadVariants(candidate);
+        _ = ReadSourceDefinitions(candidate);
+        _ = ReadGeneratedAt(candidate);
+    }
+
     private static IReadOnlyList<MarketplacePlugin> ReadVariants(SqliteConnection connection)
     {
+        var securityProjection = RuntimeViewHasSecurityColumns(connection)
+            ? """
+                   security_status,security_scanned_at_utc,security_artifact_sha256,security_scanner_version,
+                   security_highest_severity,security_informational_count,security_caution_count,security_high_count,
+                   security_critical_count,security_capabilities_json,security_findings_json,security_source_available,
+                   security_source_repository,security_source_commit,security_source_to_binary_verified,security_error
+              """
+            : """
+                   '' AS security_status,'' AS security_scanned_at_utc,'' AS security_artifact_sha256,'' AS security_scanner_version,
+                   'none' AS security_highest_severity,0 AS security_informational_count,0 AS security_caution_count,0 AS security_high_count,
+                   0 AS security_critical_count,'[]' AS security_capabilities_json,'[]' AS security_findings_json,0 AS security_source_available,
+                   '' AS security_source_repository,'' AS security_source_commit,0 AS security_source_to_binary_verified,'' AS security_error
+              """;
+
         using var command = connection.CreateCommand();
-        command.CommandText = """
+        command.CommandText = $"""
             SELECT internal_name,author,name,punchline,description,changelog,assembly_version,
                    testing_assembly_version,dalamud_api_level,testing_dalamud_api_level,
                    applicable_version,minimum_dalamud_version,repo_url,download_link_install,
@@ -159,10 +200,7 @@ internal sealed class SqliteCatalogStore
                    category_tags_json,download_count,last_update,is_hide,is_testing_exclusive,
                    dip17_channel,source_name,source_url,source_is_official,website_url,website_title,
                    website_description,website_image_urls_json,website_enriched,
-                   security_status,security_scanned_at_utc,security_artifact_sha256,security_scanner_version,
-                   security_highest_severity,security_informational_count,security_caution_count,security_high_count,
-                   security_critical_count,security_capabilities_json,security_findings_json,security_source_available,
-                   security_source_repository,security_source_commit,security_source_to_binary_verified,security_error
+                   {securityProjection}
               FROM runtime_plugin_variants;
             """;
         using var reader = command.ExecuteReader();
@@ -225,6 +263,19 @@ internal sealed class SqliteCatalogStore
         return result;
     }
 
+    private static bool RuntimeViewHasSecurityColumns(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA table_info(runtime_plugin_variants);";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            if (string.Equals(reader.GetString(1), "security_status", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
     private static IReadOnlyList<CuratedSourceDefinition> ReadSourceDefinitions(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
@@ -264,6 +315,54 @@ internal sealed class SqliteCatalogStore
         command.CommandText = "SELECT value FROM catalog_meta WHERE key=$key LIMIT 1;";
         command.Parameters.AddWithValue("$key", key);
         return command.ExecuteScalar()?.ToString() ?? string.Empty;
+    }
+
+    private static T WithDisposableDatabaseCopy<T>(string sourcePath, Func<string, T> action)
+    {
+        if (!File.Exists(sourcePath))
+            throw new FileNotFoundException("Omega catalog database does not exist.", sourcePath);
+
+        var copyPath = Path.Combine(Path.GetTempPath(), $"omega-catalog.read-{Guid.NewGuid():N}.sqlite");
+        File.Copy(sourcePath, copyPath, overwrite: false);
+        try
+        {
+            return action(copyPath);
+        }
+        finally
+        {
+            // Pooling is disabled, but clearing pools also protects against future provider changes.
+            SqliteConnection.ClearAllPools();
+            TryDelete(copyPath);
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            try
+            {
+                if (!File.Exists(path))
+                    return;
+                File.Delete(path);
+                return;
+            }
+            catch (IOException) when (attempt < 4)
+            {
+                Thread.Sleep(20);
+            }
+            catch (UnauthorizedAccessException) when (attempt < 4)
+            {
+                Thread.Sleep(20);
+            }
+            catch
+            {
+                return;
+            }
+        }
     }
 
     private static void ExtractDatabase(string zipPath, string destination)

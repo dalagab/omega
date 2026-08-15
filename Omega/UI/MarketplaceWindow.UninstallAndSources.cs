@@ -4,9 +4,7 @@ using Dalamud.Bindings.ImGui;
 namespace Dalagab.Omega;
 
 /// <summary>
-/// Owns destructive uninstall confirmation and the per-plugin source provenance popup.
-/// Both flows remain explicit: uninstall delegates to Dalamud, while source URLs are copied only
-/// after the user chooses the exact known repository.
+/// Owns destructive uninstall confirmation. Plugin lifecycle changes remain delegated to Dalamud.
 /// </summary>
 internal sealed partial class MarketplaceWindow
 {
@@ -92,63 +90,4 @@ internal sealed partial class MarketplaceWindow
         }
     }
 
-    private void DrawKnownSourcesPopup()
-    {
-        if (!sourcePopupOpen || sourcePopupPlugin is null)
-            return;
-
-        var keepOpen = sourcePopupOpen;
-        ImGui.SetNextWindowSize(new Vector2(680f, 0f), ImGuiCond.Appearing);
-        if (!ImGui.BeginPopupModal("Known sources###DalagabOmegaKnownSources", ref keepOpen, ImGuiWindowFlags.AlwaysAutoResize))
-        {
-            sourcePopupOpen = keepOpen;
-            return;
-        }
-
-        var plugin = sourcePopupPlugin;
-        var sources = catalog.GetVariants(plugin.InternalName)
-            .Where(x => !string.IsNullOrWhiteSpace(x.SourceUrl))
-            .GroupBy(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.OrderByDescending(x => x.SourceIsOfficial).ThenByDescending(x => x.AssemblyVersion).First())
-            .OrderByDescending(x => x.SourceIsOfficial)
-            .ThenBy(x => x.SourceName, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        ImGui.TextUnformatted($"Known sources for {plugin.Name}");
-        ImGui.TextDisabled($"Omega currently knows {sources.Length} repository source{(sources.Length == 1 ? string.Empty : "s")} for this plugin.");
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        foreach (var source in sources)
-        {
-            ImGui.PushID($"known-source-{StableId(source.SourceUrl)}");
-            ImGui.TextUnformatted(source.SourceName);
-            ImGui.SameLine();
-            ImGui.TextDisabled(source.SourceIsOfficial ? "Official" : "Community");
-            ImGui.TextWrapped(source.SourceUrl);
-            ImGui.TextDisabled($"Version {source.AssemblyVersionText}  •  API {source.HighestKnownApiLevel}");
-            if (ImGui.Button("Copy source", new Vector2(120f, 30f)))
-            {
-                ImGui.SetClipboardText(source.SourceUrl);
-                operationMessage = $"Copied source for {source.SourceName}.";
-            }
-            ImGui.PopID();
-            ImGui.Spacing();
-        }
-
-        if (sources.Length == 0)
-            ImGui.TextDisabled("No repository URL is currently known for this plugin.");
-
-        ImGui.Separator();
-        if (ImGui.Button("Close", new Vector2(100f, 32f)))
-        {
-            sourcePopupPlugin = null;
-            sourcePopupOpen = false;
-            ImGui.CloseCurrentPopup();
-        }
-
-        sourcePopupOpen = keepOpen && sourcePopupOpen;
-        ImGui.EndPopup();
-    }
 }

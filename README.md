@@ -94,7 +94,7 @@ The repository manifest in [`repository/pluginmaster.json`](repository/pluginmas
 
 ### Publishing a new Omega version
 
-[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a four-part version tag matching the project metadata, for example `v0.8.3.2`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
+[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a four-part version tag matching the project metadata, for example `v0.8.3.14`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
 
 ## Exactly what the installer changes
 
@@ -158,7 +158,7 @@ The solution runs the Omega regression suite as part of the build.
 
 Omega's central catalog workflow is documented in [`catalog/WORKFLOW.md`](catalog/WORKFLOW.md). GitHub Actions builds one `omega-catalog.sqlite` database from repository manifests and incremental website enrichment. The previous database supplies ETag/Last-Modified state and last-known-good website metadata, so unchanged sources can return HTTP 304 and fresh project pages are reused.
 
-**The database is still downloaded and used by Omega.** At runtime Omega first loads the packaged/bootstrap SQLite catalog and the persisted local `omega-catalog.sqlite`. The catalog updater checks the small online descriptor at the `catalog-latest` release, compares the catalog SHA-256, downloads `omega-catalog.sqlite.zip` only when the database changed, verifies the bundle/database hashes and SQLite integrity, atomically replaces the local database, then immediately uses that database for marketplace projection, search, source metadata, filters, Spotlight, Library, and Updates. If the network or validation step fails, the previous local SQLite database stays active. JSON stage files remain tooling/debug inputs, not runtime catalog formats.
+**The database is still downloaded and used by Omega.** At runtime Omega first loads the packaged/bootstrap SQLite catalog and the persisted local `omega-catalog.sqlite`. The catalog updater checks the small online descriptor at the `catalog-latest` release, compares the catalog SHA-256, downloads `omega-catalog.sqlite.zip` only when the database changed, verifies the bundle/database hashes and SQLite integrity, atomically replaces the local database, then immediately uses that database for marketplace projection, search, source metadata, filters, Spotlight, Library, and Updates. If the network or validation step fails, the previous local SQLite database stays active. Intermediate JSON files remain catalog-build inputs, not runtime catalog formats.
 
 ## Repository security
 
@@ -170,7 +170,7 @@ Omega ships repository security automation alongside the catalog builder:
 - **Dependabot** tracks NuGet and GitHub Actions updates.
 - **Release provenance** uses GitHub artifact attestations for the published `Omega.zip`.
 
-The same controls are summarized in **Omega → Settings → Security**, with browser links to the repository's live Security and Actions pages. A configured workflow is a control, not a guarantee that the project or a third-party plugin is vulnerability-free. See [`SECURITY.md`](SECURITY.md) for reporting guidance.
+Project security automation is maintained in the GitHub repository rather than exposed as developer-oriented in-game settings. Per-plugin static-analysis results are shown on plugin product pages when a scan is available. A configured workflow or a scan with no findings is not a guarantee that Omega or a third-party plugin is vulnerability-free. See [`SECURITY.md`](SECURITY.md) for reporting guidance.
 
 ## EULA and risk disclosure
 
@@ -186,7 +186,7 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Release metadata
 
-- Omega version: `0.8.3.2`
+- Omega version: `0.8.3.14`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`
@@ -194,8 +194,8 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Plugin security intelligence
 
-Omega 0.8.3.2 adds a separate server-side static-analysis pipeline for third-party plugin artifacts. The scheduled [`security-scanner.yml`](.github/workflows/security-scanner.yml) workflow consumes the current SQLite catalog, selects only plugin variants that are new, changed, failed, produced by an older scanner version, or due for periodic revalidation, and scans those artifacts without executing or loading plugin code.
+The Omega repository includes a separate server-side static-analysis pipeline for third-party plugin artifacts. The scanner is not executed inside the Dalamud plugin. The scheduled [`security-scanner.yml`](.github/workflows/security-scanner.yml) workflow consumes the current SQLite catalog, selects only plugin variants that are new, changed, failed, produced by an older scanner version, or due for periodic revalidation, and scans those artifacts without executing or loading plugin code.
 
-The scanner records the exact artifact SHA-256, scanner version, scan timestamp, observed capabilities, severity-classified findings, bounded evidence, and optional public GitHub source provenance. Source inspection is reported separately and is not treated as proof that published source corresponds to the downloaded binary. Results are stored in `plugin_security_scans`, `plugin_security_findings`, and `plugin_security_current` inside the same `omega-catalog.sqlite` database consumed by Omega.
+Scanner 1.8.1 records the exact artifact SHA-256, scanner version, scan timestamp, observed capabilities, severity-classified findings, bounded evidence, dependency declarations, managed assembly metadata, IL call-site evidence, hard/soft/optional dependency semantics, catalog dependency resolution, version compatibility, dependency drift history, and optional public GitHub source provenance. Source inspection is reported separately and is not treated as proof that published source corresponds to the downloaded binary. Results are stored in `plugin_security_scans`, `plugin_security_findings`, and `plugin_security_current` inside the same `omega-catalog.sqlite` database consumed by Omega.
 
 Security findings describe capabilities and risk indicators. They are not a malware verdict, and a scan with no findings is not proof that a plugin is safe. Plugin archives are treated as hostile input: the scanner enforces download, archive-entry, uncompressed-size, compression-ratio, and path-traversal limits and never extracts plugin packages into an executable workspace.

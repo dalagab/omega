@@ -90,10 +90,16 @@ internal static partial class RegressionCases
         Contains(dependabot, "package-ecosystem: nuget", "Dependabot watches NuGet dependencies");
         Contains(dependabot, "package-ecosystem: github-actions", "Dependabot watches workflow action dependencies");
 
-        var securityUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
-        Contains(securityUi, "Project security", "Settings exposes the configured project security features");
-        Contains(securityUi, "SQLite catalog integrity", "Settings explains runtime catalog integrity protection");
-        Contains(securityUi, "GitHub Security", "Settings links to live GitHub security results");
+        var settingsUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
+        Contains(settingsUi, "DrawSettingsHeader", "Settings keeps a shared user-facing header");
+        False(settingsUi.Contains("Project security", StringComparison.Ordinal), "developer security workflow status stays out of in-game Settings");
+        False(settingsUi.Contains("CodeQL", StringComparison.Ordinal), "repository scanner names stay out of in-game Settings");
+        False(settingsUi.Contains("Runtime catalog", StringComparison.Ordinal), "catalog implementation state stays out of in-game Settings");
+        False(settingsUi.Contains("GitHub Security", StringComparison.Ordinal), "developer security links stay out of in-game Settings");
+
+        var sourcesUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sources.cs"));
+        Contains(sourcesUi, "Choose which plugin sources appear in Omega", "Settings explains sources in user-facing language");
+        False(sourcesUi.Contains("SQLite catalog:", StringComparison.Ordinal), "source settings do not expose catalog implementation details");
 
         var scannerWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "security-scanner.yml"));
         Contains(scannerWorkflow, "Omega plugin security scanner", "third-party plugin security scanner workflow is configured");

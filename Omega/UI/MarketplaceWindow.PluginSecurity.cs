@@ -5,57 +5,48 @@ namespace Dalagab.Omega;
 
 internal sealed partial class MarketplaceWindow
 {
-    private void DrawProductSecurity(MarketplacePlugin plugin)
+    private void DrawProductSecuritySummary(MarketplacePlugin plugin)
     {
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-        ImGui.TextUnformatted("Security");
-        ImGui.Spacing();
-
         if (string.IsNullOrWhiteSpace(plugin.SecurityStatus))
         {
             DrawDiscoverTextBadge("Not yet scanned", new Vector4(0.24f, 0.25f, 0.27f, 0.94f));
-            ImGui.SameLine(0f, 10f);
-            ImGui.TextDisabled("This exact catalog artifact has not been processed by Omega's static scanner yet.");
-            DrawSecurityDisclaimer();
             return;
         }
 
         if (!plugin.HasCompletedSecurityScan)
         {
             DrawDiscoverTextBadge("Scan incomplete", new Vector4(0.46f, 0.25f, 0.08f, 0.96f));
-            if (!string.IsNullOrWhiteSpace(plugin.SecurityError))
-            {
-                ImGui.Spacing();
-                ImGui.TextWrapped(plugin.SecurityError);
-            }
-            DrawSecurityDisclaimer();
+            if (ImGui.IsItemHovered() && !string.IsNullOrWhiteSpace(plugin.SecurityError))
+                ImGui.SetTooltip(plugin.SecurityError);
             return;
         }
 
         DrawSecuritySeverityBadge(plugin.SecurityHighestSeverity);
         ImGui.SameLine(0f, 10f);
         ImGui.TextDisabled(SecurityCountSummary(plugin));
-
         if (plugin.SecurityScannedAtUtc is { } scanned)
-            ImGui.TextDisabled($"Scanned {scanned.ToLocalTime():g}  •  Scanner {plugin.SecurityScannerVersion}");
-        if (!string.IsNullOrWhiteSpace(plugin.SecurityArtifactSha256))
-            ImGui.TextDisabled($"Artifact SHA-256: {ShortHash(plugin.SecurityArtifactSha256)}");
+            ImGui.TextDisabled($"Scanned {scanned.ToLocalTime():g}");
+    }
+
+    private void DrawProductSecurity(MarketplacePlugin plugin)
+    {
+        if (!plugin.HasCompletedSecurityScan)
+            return;
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+        ImGui.TextUnformatted("Security details");
 
         if (plugin.SecurityCapabilities.Count > 0)
         {
             ImGui.Spacing();
-            ImGui.TextUnformatted("Observed capabilities");
-            foreach (var capability in plugin.SecurityCapabilities.Take(12))
-            {
-                ImGui.Bullet();
-                ImGui.SameLine();
-                ImGui.TextUnformatted(capability);
-            }
+            ImGui.TextDisabled("Observed capabilities");
+            ImGui.TextWrapped(string.Join("  •  ", plugin.SecurityCapabilities.Take(12)));
         }
 
-        if (plugin.SecurityFindings.Count > 0 && ImGui.TreeNode($"View findings ({plugin.SecurityFindings.Count})##security-findings-{plugin.InternalName}"))
+        if (plugin.SecurityFindings.Count > 0 &&
+            ImGui.TreeNode($"Why these findings were reported ({plugin.SecurityFindings.Count})##security-findings-{plugin.InternalName}"))
         {
             foreach (var finding in plugin.SecurityFindings.Take(20))
                 DrawSecurityFinding(finding);
@@ -65,14 +56,13 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         if (plugin.SecuritySourceAvailable)
         {
-            var commit = string.IsNullOrWhiteSpace(plugin.SecuritySourceCommit) ? "unknown commit" : ShortHash(plugin.SecuritySourceCommit);
-            ImGui.TextDisabled($"Public source inspected separately: {commit}");
+            ImGui.TextDisabled("Public source was also inspected.");
             if (!plugin.SecuritySourceToBinaryVerified)
-                ImGui.TextDisabled("Source-to-binary correspondence has not been verified.");
+                ImGui.TextDisabled("The published package was not verified to match that source.");
         }
         else
         {
-            ImGui.TextDisabled("No corresponding public GitHub source was inspected for this scan.");
+            ImGui.TextDisabled("No public source was available for this scan.");
         }
         DrawSecurityDisclaimer();
     }
@@ -112,9 +102,6 @@ internal sealed partial class MarketplaceWindow
 
     private static string SecurityCountSummary(MarketplacePlugin plugin)
         => $"Critical {plugin.SecurityCriticalCount}  •  High {plugin.SecurityHighCount}  •  Caution {plugin.SecurityCautionCount}  •  Info {plugin.SecurityInformationalCount}";
-
-    private static string ShortHash(string value)
-        => value.Length <= 12 ? value : value[..12];
 
     private static void DrawSecurityDisclaimer()
     {

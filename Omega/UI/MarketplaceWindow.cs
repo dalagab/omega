@@ -68,12 +68,6 @@ internal enum SourceManagerSection
     UserAdded,
 }
 
-internal enum SettingsPanel
-{
-    Sources,
-    Security,
-}
-
 internal sealed partial class MarketplaceWindow : Window, IDisposable
 {
     private static readonly string[] PromotedInternalNames =
@@ -121,7 +115,6 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private MarketplacePlugin? pendingUninstall;
     private Task<UninstallResult>? uninstallTask;
     private string uninstallingInternalName = string.Empty;
-    private MarketplacePlugin? sourcePopupPlugin;
     private string operationMessage = string.Empty;
 
     private bool detailsOpen;
@@ -129,11 +122,9 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private bool settingsOpen;
     private bool installPopupOpen;
     private bool uninstallPopupOpen;
-    private bool sourcePopupOpen;
     private bool addSourceOpen;
     private bool requestInstallPopup;
     private bool requestUninstallPopup;
-    private bool requestSourcePopup;
     private bool requestSettingsPopup;
     private bool requestTagsPopup;
     private bool requestEulaPopup;
@@ -147,7 +138,6 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private Vector2 expandedWindowPosition;
     private bool migrateLegacyFullscreenGeometry;
 
-    private SettingsPanel settingsPanel = SettingsPanel.Sources;
     private SourceManagerSection sourceSection = SourceManagerSection.Curated;
     private string sourceSearch = string.Empty;
     private string newRepositoryName = string.Empty;
@@ -309,7 +299,6 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         OpenRequestedPopups();
         DrawInstallModal(currentApi, versionInfo.Version);
         DrawUninstallModal();
-        DrawKnownSourcesPopup();
         DrawSettingsModal();
         DrawEulaReviewModal();
         DrawTagPickerPopup(currentApi);
@@ -329,12 +318,6 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         {
             ImGui.OpenPopup("Uninstall plugin###DalagabOmegaUninstall");
             requestUninstallPopup = false;
-        }
-
-        if (requestSourcePopup)
-        {
-            ImGui.OpenPopup("Known sources###DalagabOmegaKnownSources");
-            requestSourcePopup = false;
         }
 
         if (requestSettingsPopup)

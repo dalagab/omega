@@ -20,6 +20,8 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
     private readonly OnlineCatalogEndpointDefinition endpoint;
     private readonly string tempDirectory;
     private readonly CancellationTokenSource cts = new();
+    private static readonly TimeSpan EmptyCatalogRetryDelay = TimeSpan.FromSeconds(20);
+    private DateTimeOffset nextEmptyCatalogAttemptUtc = DateTimeOffset.MinValue;
     private int running;
 
     public CatalogUpdateCoordinator(
@@ -52,6 +54,12 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
     {
         if (catalog.HasLoaded || IsRefreshing)
             return;
+
+        var now = DateTimeOffset.UtcNow;
+        if (now < nextEmptyCatalogAttemptUtc)
+            return;
+
+        nextEmptyCatalogAttemptUtc = now + EmptyCatalogRetryDelay;
         _ = RefreshAsync(cts.Token);
     }
 

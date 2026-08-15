@@ -30,6 +30,52 @@ internal static partial class RegressionCases
         }
     }
 
+
+    internal static void TestLegacyCatalogWithoutSecurityProjection()
+    {
+        var temp = Path.Combine(Path.GetTempPath(), "omega-legacy-sqlite-regression-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        try
+        {
+            var dbPath = Path.Combine(temp, SqliteCatalogStore.DatabaseFileName);
+            var store = new SqliteCatalogStore(dbPath);
+            using (var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE catalog_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+                    INSERT INTO catalog_meta VALUES('schema_version','1');
+                    INSERT INTO catalog_meta VALUES('schema_name','omega.catalog.sqlite.v1');
+                    INSERT INTO catalog_meta VALUES('generated_at_utc','2026-08-15T00:00:00Z');
+                    CREATE TABLE sources(
+                        source_id INTEGER PRIMARY KEY,curated_id TEXT,name TEXT,url TEXT,description TEXT,
+                        is_official INTEGER,enabled_by_default INTEGER,integrate_with_dalamud INTEGER);
+                    INSERT INTO sources VALUES(1,'legacy','Legacy source','https://example.invalid/plugins.json','',0,1,1);
+                    CREATE VIEW runtime_plugin_variants AS SELECT
+                        'LegacyPlugin' AS internal_name,'Tester' AS author,'Legacy Plugin' AS name,'' AS punchline,'' AS description,'' AS changelog,
+                        '1.0.0.0' AS assembly_version,NULL AS testing_assembly_version,15 AS dalamud_api_level,NULL AS testing_dalamud_api_level,
+                        'any' AS applicable_version,NULL AS minimum_dalamud_version,'' AS repo_url,'https://example.invalid/plugin.zip' AS download_link_install,
+                        '' AS download_link_update,'' AS download_link_testing,'' AS icon_url,'[]' AS image_urls_json,'[]' AS tags_json,'[]' AS category_tags_json,
+                        0 AS download_count,0 AS last_update,0 AS is_hide,0 AS is_testing_exclusive,'' AS dip17_channel,
+                        'Legacy source' AS source_name,'https://example.invalid/plugins.json' AS source_url,0 AS source_is_official,
+                        '' AS website_url,'' AS website_title,'' AS website_description,'[]' AS website_image_urls_json,0 AS website_enriched;
+                    """;
+                command.ExecuteNonQuery();
+            }
+
+            var snapshot = store.ReadSnapshot();
+            Equal(1, snapshot.Variants.Count, "legacy catalog remains readable");
+            Equal("LegacyPlugin", snapshot.Variants[0].InternalName, "legacy variant identity is preserved");
+            Equal(string.Empty, snapshot.Variants[0].SecurityStatus, "legacy variant is treated as not yet scanned");
+            Equal("none", snapshot.Variants[0].SecurityHighestSeverity, "legacy variant receives neutral security defaults");
+        }
+        finally
+        {
+            if (Directory.Exists(temp)) Directory.Delete(temp, true);
+        }
+    }
+
     internal static void TestCatalogBundleImport()
     {
         var source = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "SqliteCatalogStore.cs"));
@@ -38,6 +84,10 @@ internal static partial class RegressionCases
         Contains(source, "ReplaceFromBundle", "online bundle atomically replaces database");
         Contains(source, "Pooling = false", "read-only validation connections cannot retain Windows file handles");
         Contains(source, "runtime_plugin_variants", "runtime reads normalized SQLite view");
+        Contains(source, "ValidateRuntimeSnapshot(candidate)", "downloaded database is fully readable before it can replace the last-known-good catalog");
+        var runtimeValidation = source.IndexOf("ValidateRuntimeSnapshot(candidate)", StringComparison.Ordinal);
+        var backupMove = source.IndexOf("File.Move(DatabasePath, backup", StringComparison.Ordinal);
+        True(runtimeValidation >= 0 && backupMove > runtimeValidation, "candidate runtime projection is validated before the existing database is moved");
         False(source.Contains("ManifestJson", StringComparison.Ordinal), "runtime SQLite store does not persist per-source manifest JSON files");
     }
 
