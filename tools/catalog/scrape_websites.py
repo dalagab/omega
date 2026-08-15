@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fetch presentation-only metadata for plugin project pages.
 
-This stage never decides installation trust. It enriches the catalog with public
+This pipeline step never decides installation trust. It enriches the catalog with public
 project information that can make Discover/product pages more useful:
 - project title/description/homepage
 - GitHub topics/language/license/activity statistics

@@ -373,7 +373,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Shorten(plugin.Name, 44));
-        ImGui.TextDisabled(Shorten(BuildAuthorSourceLine(plugin), 70));
+        DrawAuthorRepositoryLine(plugin, currentApi);
         ImGui.TextDisabled(entry.WantsEnabled ? "Enabled when this collection is active" : "Disabled in this collection");
         ImGui.EndGroup();
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))

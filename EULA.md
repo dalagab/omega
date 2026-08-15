@@ -145,7 +145,7 @@ For example, you may review:
 
 - who maintains the plugin;
 - whether source code is available;
-- whether development is active;
+- whether maintenance is active;
 - the plugin's recent changes;
 - reported bugs or security concerns;
 - its documentation;

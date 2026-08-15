@@ -70,7 +70,9 @@ internal static partial class RegressionCases
         Contains(spotlight, "\"ChatTwo\" =>", "Chat 2 has its own monochrome logo-derived Spotlight palette");
         Contains(spotlight, "ImGui.PushStyleColor(ImGuiCol.ChildBg, cardColors.Background)", "promoted Spotlight cards apply the plugin-specific background tint");
         Contains(spotlight, "ImGui.PushStyleColor(ImGuiCol.Border, cardColors.Border)", "promoted Spotlight cards apply the matching plugin-specific border tint");
-        Contains(spotlight, "DrawPluginRiskIndicator(plugin, statusIconSize)", "all five promoted Spotlight cards expose the same security/automation status icon language as Discover");
+        Contains(spotlight, "DrawPluginScanAndAutomationIndicators", "all five promoted Spotlight cards use the shared exact-package scan/automation indicators");
+        Contains(spotlight, "ResolveDefaultVariant(plugin)", "Spotlight resolves the same default repository package as the product page");
+        Contains(spotlight, "!statusHovered", "Spotlight keeps scan/automation tooltips visible instead of overwriting them with the card tooltip");
         DoesNotContain(spotlight, "Omega's primary logo accent", "promoted-card color must not be derived from Omega branding");
 
         var shelves = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SpotlightShelves.cs"));
@@ -82,7 +84,8 @@ internal static partial class RegressionCases
         Contains(shelves, "NormalizeUnix(x.LastUpdate)", "latest updates use repository LastUpdate ordering");
         Contains(shelves, "showOverlays: false", "recency shelves keep artwork clean");
         Contains(shelves, "OpenSpotlightPluginInDiscover(plugin)", "latest additions and updates use whole-card Discover navigation");
-        Contains(shelves, "DrawPluginRiskIndicator(plugin, statusIconSize)", "latest additions and updates expose the same security/automation status icon language as Discover");
+        Contains(shelves, "DrawPluginScanAndAutomationIndicators", "latest additions and updates use the shared exact-package scan/automation indicators");
+        Contains(shelves, "!statusHovered", "recency shelf scan/automation tooltips are not overwritten by the whole-card tooltip");
         DoesNotContain(shelves, "SpotlightPromotedCardColors", "latest additions and updates remain neutral rather than inheriting promoted plugin palettes");
         False(shelves.Contains("Install", StringComparison.Ordinal), "recency shelves do not duplicate install actions");
         False(shelves.Contains("InfoCircle", StringComparison.Ordinal), "recency shelves do not duplicate info buttons");
@@ -204,8 +207,8 @@ internal static partial class RegressionCases
         Contains(product, "DrawProductWebsiteIcon(plugin, enhancedUrl)", "enhanced product pages place their project link beside the Enhanced badge");
         Contains(product, "DrawProductSecuritySummary(plugin)", "security posture is summarized inside the product hero instead of as a detached block");
         Contains(product, "DrawProductCollectionMembership(plugin, installedPlugin)", "installed product pages show the plugin's collection membership directly below the hero");
-        Contains(product, "foreach (var membership in control.Memberships", "all matching collection memberships are iterated instead of reducing membership to a single owner");
-        Contains(product, "CollectionDisplayName(membership.Collection)", "each Discover collection membership is rendered from its own collection identity");
+        Contains(product, "foreach (var membership in memberships)", "all matching collection memberships are iterated instead of reducing membership to a single owner");
+        Contains(product, "CollectionDisplayName(collection)", "each Discover collection membership is rendered from its own collection identity");
         False(product.Contains("Enhanced from:", StringComparison.Ordinal), "raw enrichment provenance wording must not return to the About section");
         False(product.Contains("DrawDetailsLinks(plugin)", StringComparison.Ordinal), "product pages do not append a detached project/source button row below About");
         Contains(product, "NSFW", "NSFW-tagged plugins receive a content badge");
@@ -220,24 +223,30 @@ internal static partial class RegressionCases
     internal static void TestDiscoverRiskOwnershipAndAvailabilityContract()
     {
         var discover = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
+        var security = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
+        var artwork = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Artwork.cs"));
         var plugin = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
 
-        Contains(discover, "DrawPluginRiskIndicator", "Discover renders a security indicator beside listing status");
-        Contains(discover, "DrawPluginFontAwesomeRiskIcon", "non-automation security states use Dalamud's Font Awesome icon font");
-        Contains(discover, "FontAwesomeIcon.Question", "unscanned plugins use a centered Font Awesome question icon");
-        Contains(discover, "FontAwesomeIcon.ExclamationTriangle", "risk findings use Font Awesome's warning-triangle glyph instead of hand-centered punctuation");
-        Contains(discover, "FontAwesomeIcon.InfoCircle", "informational/no-finding scans use a semantic info-circle glyph");
-        Contains(discover, "UiBuilder.IconFontFixedWidth", "risk glyphs render through Dalamud's fixed-width icon font for reliable centering");
+        Contains(discover, "DrawPluginScanAndAutomationIndicators", "Discover renders scan state and automation as separate indicators");
+        Contains(discover, "ResolveDefaultVariant(plugin)", "Discover scan state is resolved from the same default repository package opened by the product page");
+        Contains(artwork, "selectedPlugin = ResolveDefaultVariant(plugin)", "fresh product-page navigation starts from the same deterministic default package as listing security");
+        Contains(security, "ResolvePluginSecurityVisual", "card and product-page scan presentation share one exact-package visual resolver");
+        Contains(security, "DrawPluginSecurityScanIndicator", "marketplace cards consume the shared scan visual");
+        Contains(security, "DrawProductSecuritySummary", "the product hero consumes the same shared scan visual");
+        Contains(security, "FontAwesomeIcon.Question", "unscanned packages use a centered Font Awesome question icon");
+        Contains(security, "FontAwesomeIcon.ExclamationTriangle", "incomplete and elevated scan results use Font Awesome's warning-triangle glyph");
+        Contains(security, "FontAwesomeIcon.InfoCircle", "low/no-finding scans use a semantic info-circle glyph");
+        Contains(discover, "UiBuilder.IconFontFixedWidth", "scan glyphs render through Dalamud's fixed-width icon font for reliable centering");
         DoesNotContain(discover, "DrawPluginWarningTriangle", "the old custom punctuation-in-triangle renderer must not return");
-        Contains(discover, "DrawPluginRadiationIcon", "automation-capable plugins use a dedicated nuclear/radiation icon");
-        Contains(discover, "AddCircleFilled", "the nuclear indicator is drawn geometrically and cannot degrade into a pause-like missing-font glyph");
-        Contains(discover, "SecuritySeverityRank", "non-automation scan results use severity-colored risk icons");
-        Contains(discover, "0.18f, 0.48f, 0.82f", "informational/no-risk scans retain the blue status color");
-        Contains(discover, "0.94f, 0.76f, 0.12f", "low risk uses the yellow warning glyph");
-        Contains(discover, "0.94f, 0.43f, 0.10f", "medium risk uses the orange warning glyph");
-        Contains(discover, "0.86f, 0.15f, 0.17f", "high/critical risk uses the red warning glyph");
-        Contains(discover, "SecuritySeverityRank", "Discover chooses the highest observed security severity across variants");
-        Contains(discover, "AutomationRank", "UI/character/gameplay automation outranks ordinary risk coloring");
+        Contains(discover, "DrawPluginRadiationIcon", "automation-capable packages use a dedicated nuclear/radiation icon");
+        Contains(discover, "Automation is deliberately separate from scan severity", "automation can no longer replace the scan-result icon");
+        Contains(discover, "if (!plugin.HasCompletedSecurityScan)", "automation state is only derived from the exact package after a completed scan");
+        Contains(discover, "plugin.SecurityDependencies", "dependency automation starts from the selected package's own dependency evidence");
+        DoesNotContain(discover, ".Concat(catalog.GetPresentationVariants(plugin.InternalName))", "scan/automation status must not aggregate a different repository variant");
+        Contains(security, "\"No findings\"", "completed scans with no findings are labelled identically on card and product page");
+        Contains(security, "0.20f, 0.72f, 0.42f", "no-finding scan icon uses the green success color");
+        Contains(security, "0.94f, 0.58f, 0.12f", "medium scan results use the amber warning glyph");
+        Contains(security, "0.92f, 0.12f, 0.15f", "critical scan results use the red warning glyph");
         Contains(discover, "DrawDiscoverInstalledMarker", "installed Discover entries get a dedicated installed-state marker on the left");
         Contains(discover, "0.20f, 0.72f, 0.42f", "installed state uses an unambiguous green marker instead of the old blue ownership block");
         Contains(discover, "draw.AddCircleFilled(center", "installed state is rendered as a compact green circle");

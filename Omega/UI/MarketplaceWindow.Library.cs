@@ -144,7 +144,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Shorten(plugin.Name, 42));
-        ImGui.TextDisabled(Shorten(BuildAuthorSourceLine(plugin), 68));
+        DrawAuthorRepositoryLine(plugin, currentApi);
         ImGui.TextDisabled(Shorten(
             $"{InstalledVersionText(installedPlugin)}  •  {(installedPlugin.IsLoaded ? "Loaded" : "Not loaded")}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}",
             76));
@@ -231,7 +231,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Shorten(plugin.Name, 42));
-        ImGui.TextDisabled(Shorten(BuildAuthorSourceLine(plugin), 68));
+        DrawAuthorRepositoryLine(plugin, currentApi);
         var versionLine = offered is null
             ? $"{InstalledVersionText(installedPlugin)}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}"
             : $"{InstalledVersionText(installedPlugin)} → v{offered}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}";

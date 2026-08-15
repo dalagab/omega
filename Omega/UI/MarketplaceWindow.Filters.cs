@@ -251,8 +251,27 @@ internal sealed partial class MarketplaceWindow
     private void DrawInlineRepositoryField(int currentApi)
     {
         ImGui.TextDisabled("Repository");
-        ImGui.SetNextItemWidth(-1f);
         var label = selectedSource == "All sources" ? "All repositories" : Shorten(selectedSource, 28);
+        if (selectedSource != "All sources")
+        {
+            var selectedStatus = catalog.GetRepositoryStatuses(currentApi)
+                .FirstOrDefault(x => x.SourceName.Equals(selectedSource, StringComparison.OrdinalIgnoreCase));
+            if (selectedStatus is not null)
+            {
+                var configured = FindConfiguredSource(selectedStatus.SourceUrl);
+                var provider = GetRepositoryProvider(
+                    selectedStatus.SourceName,
+                    selectedStatus.SourceUrl,
+                    configured?.IsOfficial == true,
+                    currentApi);
+                if (!string.IsNullOrWhiteSpace(provider.IconUrl))
+                {
+                    DrawRepositoryProviderIcon(provider, 18f);
+                    ImGui.SameLine(0f, 7f);
+                }
+            }
+        }
+        ImGui.SetNextItemWidth(-1f);
         if (!ImGui.BeginCombo("##omega-repository-filter", label))
             return;
 
@@ -264,9 +283,25 @@ internal sealed partial class MarketplaceWindow
 
         foreach (var status in catalog.GetRepositoryStatuses(currentApi)
                      .Where(x => !x.IsStale)
-                     .OrderBy(x => x.SourceName, StringComparer.OrdinalIgnoreCase))
+                     .OrderBy(x => RepositoryProviderRules.SortPriority(x.SourceName, x.SourceUrl, false, x.PluginCount))
+                     .ThenByDescending(x => x.PluginCount)
+                     .ThenBy(x => x.SourceName, StringComparer.OrdinalIgnoreCase))
         {
-            if (!ImGui.Selectable(status.SourceName, selectedSource.Equals(status.SourceName, StringComparison.OrdinalIgnoreCase)))
+            var configured = FindConfiguredSource(status.SourceUrl);
+            var official = configured?.IsOfficial == true ||
+                           RepositoryProviderRules.Classify(status.SourceName, status.SourceUrl, false, status.PluginCount).Kind == RepositoryProviderKind.Dalamud;
+            var rowStart = ImGui.GetCursorPos();
+            var selected = selectedSource.Equals(status.SourceName, StringComparison.OrdinalIgnoreCase);
+            var clicked = ImGui.Selectable(
+                $"##repository-filter-{StableId(status.SourceUrl)}",
+                selected,
+                ImGuiSelectableFlags.None,
+                new Vector2(0f, 24f));
+            var rowEnd = ImGui.GetCursorPos();
+            ImGui.SetCursorPos(rowStart + new Vector2(5f, 3f));
+            DrawRepositoryName(status.SourceName, status.SourceUrl, official, currentApi);
+            ImGui.SetCursorPos(rowEnd);
+            if (!clicked)
                 continue;
             selectedSource = status.SourceName;
             author = string.Empty;

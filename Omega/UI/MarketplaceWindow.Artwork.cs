@@ -356,10 +356,10 @@ internal sealed partial class MarketplaceWindow
     private void OpenPluginDetails(MarketplacePlugin plugin)
     {
         activeView = MarketplaceView.Discover;
-        // Every fresh selection starts from the official Dalamud variant when one exists.
-        // A user can still switch to another repository explicitly from the product page afterwards.
+        // Every fresh selection starts from the same deterministic default variant used by
+        // marketplace cards. A user can still switch repository explicitly on the product page.
         selectedVariantSource.Remove(plugin.InternalName);
-        selectedPlugin = ResolveSelectedVariant(plugin);
+        selectedPlugin = ResolveDefaultVariant(plugin);
         detailsOpen = true;
         resetStorefrontScroll = true;
         // Every marketplace surface routes plugin selection to the canonical Discover product page.
@@ -382,6 +382,15 @@ internal sealed partial class MarketplaceWindow
             if (selected is not null)
                 return selected;
         }
+
+        return ResolveDefaultVariant(plugin);
+    }
+
+    private MarketplacePlugin ResolveDefaultVariant(MarketplacePlugin plugin)
+    {
+        var variants = catalog.GetVariants(plugin.InternalName);
+        if (variants.Count == 0)
+            return plugin;
 
         return variants
                    .Where(x => x.SourceIsOfficial)

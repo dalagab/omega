@@ -189,8 +189,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private bool filterPreferTesting;
     private MarketplacePlugin[] cachedFilteredPlugins = [];
 
-    private readonly Dictionary<string, PluginRiskState> pluginRiskStateCache = new(StringComparer.OrdinalIgnoreCase);
-    private long pluginRiskStateCatalogRevision = -1;
+    private readonly Dictionary<string, PluginAutomationState?> pluginAutomationStateCache = new(StringComparer.OrdinalIgnoreCase);
+    private long pluginAutomationStateCatalogRevision = -1;
 
     private long tagPickerCatalogRevision = -1;
     private int tagPickerCurrentApi;

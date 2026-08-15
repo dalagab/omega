@@ -125,8 +125,19 @@ internal static partial class RegressionCases
         Contains(ui, "Choose repository###DalagabOmegaInstall", "repository chooser popup");
         Contains(ui, "Choose which repository to use", "repository choice explanation");
         Contains(ui, "GetInstallCandidates", "compatible repository variants");
-        Contains(ui, "ImGui.Button(\"Install\")", "single user-facing install action");
+        Contains(ui, "ImGui.Button(\"Install\",", "single user-facing install action remains explicit in the repository chooser");
         Contains(ui, "StartSelectedInstall", "selected source install flow");
+        Contains(ui, "ImGuiSelectableFlags.DontClosePopups", "choosing a repository does not close the chooser before Install");
+        DoesNotContain(ui, "DrawInstallProviderFilters", "repository chooser does not add a redundant provider-filter row");
+        Contains(ui, "DrawRepositoryName", "repository names use shared provider presentation");
+        Contains(ui, "MarketplaceLayoutRules.InstallSourceRowHeight", "repository chooser rows use tested deterministic geometry");
+        Contains(ui, "DrawInstallRepositoryPresentMarker", "repositories already present in Dalamud receive a check marker");
+        Contains(ui, "FontAwesomeIcon.Check", "present repository marker uses a standard icon");
+        DoesNotContain(ui, "ImGui.Button(\"Cancel\")", "the modal close X is the only cancel control");
+        True(
+            ui.IndexOf("ImGui.Button(\"Install\"", StringComparison.Ordinal) <
+            ui.IndexOf("foreach (var candidate in candidates)", StringComparison.Ordinal),
+            "Install action renders above repository choices");
         False(ui.Contains("Prepare this repository", StringComparison.Ordinal), "prepare wording hidden from marketplace user");
 
         Contains(coordinator, "EnsureRepositoryReadyAsync", "hidden source preparation coordinator");
@@ -139,6 +150,29 @@ internal static partial class RegressionCases
         var repositoryBridge = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudRepositoryBridge.cs"));
         Contains(repositoryBridge, "EnableExistingForExplicitInstallAsync", "explicit repository-enable bridge");
         Contains(repositoryBridge, "OwnedByOmega: false", "explicit enable does not steal repository ownership");
+    }
+
+    internal static void TestRepositoryProviderPreferenceContract()
+    {
+        var dalamud = RepositoryProviderRules.Classify("Dalamud official", "", true, 1);
+        var puni = RepositoryProviderRules.Classify("Puni.sh — erdelf", "https://puni.sh/plugins", false, 5);
+        var nightmare = RepositoryProviderRules.Classify("NightmareXIV", "https://github.com/NightmareXIV/MyDalamudPlugins", false, 5);
+        var combatReborn = RepositoryProviderRules.Classify("Combat Reborn", "https://raw.githubusercontent.com/FFXIV-CombatReborn/CombatRebornRepo/main/pluginmaster.json", false, 5);
+        var large = RepositoryProviderRules.Classify("Big community repository", "https://example.invalid/repo.json", false, RepositoryProviderRules.LargeRepositoryPluginThreshold);
+        var other = RepositoryProviderRules.Classify("Small repository", "https://example.invalid/small.json", false, 2);
+
+        Equal(RepositoryProviderKind.Dalamud, dalamud.Kind, "official repositories are preferred first");
+        Equal(RepositoryProviderKind.PuniSh, puni.Kind, "Puni.sh identity is recognized");
+        Equal(RepositoryProviderKind.NightmareXiv, nightmare.Kind, "NightmareXIV identity is recognized");
+        Equal(RepositoryProviderKind.CombatReborn, combatReborn.Kind, "Combat Reborn is recognized as an explicit preferred provider");
+        Equal(RepositoryProviderKind.LargeRepository, large.Kind, "broad repositories receive the promoted community tier");
+        Equal(RepositoryProviderKind.Other, other.Kind, "small unrecognized repositories form the final tier");
+        True(dalamud.Priority < puni.Priority && puni.Priority < nightmare.Priority && nightmare.Priority < combatReborn.Priority && combatReborn.Priority < large.Priority && large.Priority < other.Priority,
+            "provider tiers remain ordered Dalamud, Puni.sh, NightmareXIV, Combat Reborn, broad repositories, other");
+        True(!string.IsNullOrWhiteSpace(dalamud.IconUrl) && !string.IsNullOrWhiteSpace(puni.IconUrl) && !string.IsNullOrWhiteSpace(nightmare.IconUrl) && !string.IsNullOrWhiteSpace(combatReborn.IconUrl),
+            "recognized preferred providers retain icon identities");
+        False(RepositoryProviderRules.Classify("Big community repository", "https://example.invalid/repo.json", false, RepositoryProviderRules.LargeRepositoryPluginThreshold).Label.Contains("large", StringComparison.OrdinalIgnoreCase),
+            "broad repository priority is not exposed as a Large list badge");
     }
 
     internal static void TestCatalogFirstRunLoadingContract()

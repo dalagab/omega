@@ -124,11 +124,17 @@ internal sealed partial class MarketplaceWindow
             currentDalamudVersion,
             showOverlays: false);
 
-        // Latest additions/updates keep their neutral card styling, but never hide risk/automation state.
+        // Latest additions/updates use the same exact-package scan icon as the product page.
+        // Automation remains a separate marker rather than replacing scan state.
         var afterArtwork = ImGui.GetCursorPos();
         const float statusIconSize = 22f;
-        ImGui.SetCursorPos(new Vector2(Math.Max(0f, cardWidth - statusIconSize - 8f), 8f));
-        DrawPluginRiskIndicator(plugin, statusIconSize);
+        const float statusIconGap = 7f;
+        var statusHovered = DrawPluginScanAndAutomationIndicators(
+            plugin,
+            Math.Max(statusIconSize, cardWidth - 8f),
+            8f,
+            statusIconSize,
+            statusIconGap);
         ImGui.SetCursorPos(afterArtwork);
 
         ImGui.Spacing();
@@ -136,7 +142,7 @@ internal sealed partial class MarketplaceWindow
         CenterText(Shorten(string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author, 24), disabled: true);
 
         var clicked = ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
-        if (ImGui.IsWindowHovered())
+        if (ImGui.IsWindowHovered() && !statusHovered)
             ImGui.SetTooltip("Open in Discover");
         ImGui.EndChild();
         PopUnavailableListingStyle(availabilityStyle);

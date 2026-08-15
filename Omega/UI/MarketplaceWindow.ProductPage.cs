@@ -38,8 +38,8 @@ internal sealed partial class MarketplaceWindow
         DrawProductCollectionMembership(plugin, installedPlugin);
         DrawProductScreenshots(content);
         DrawProductInformation(plugin, content, currentApi, currentDalamudVersion);
-        DrawProductSourcePackages(plugin);
         DrawProductDependencies(plugin, installed);
+        DrawProductSourcePackages(plugin, currentApi, currentDalamudVersion);
         DrawProductSecurity(plugin);
     }
 
@@ -104,6 +104,8 @@ internal sealed partial class MarketplaceWindow
         ImGui.PopStyleVar(2);
     }
 
+    private readonly HashSet<string> expandedProductCollections = new(StringComparer.OrdinalIgnoreCase);
+
     private void DrawProductCollectionMembership(MarketplacePlugin plugin, IExposedPlugin? installedPlugin)
     {
         if (installedPlugin is null)
@@ -111,6 +113,10 @@ internal sealed partial class MarketplaceWindow
 
         RefreshCollectionsIfNeeded();
         var control = GetPluginDirectControlState(plugin.InternalName);
+        var memberships = control.Memberships
+            .OrderByDescending(x => x.Collection.IsDefault)
+            .ThenBy(x => CollectionDisplayName(x.Collection), StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
         ImGui.Dummy(new Vector2(1f, 9f));
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, MarketplaceLayoutRules.ControlCornerRadius);
@@ -118,9 +124,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.035f, 0.041f, 0.052f, 0.70f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.17f, 0.19f, 0.22f, 0.38f));
         var panelWidth = Math.Min(ProductHeroMaxWidth, ImGui.GetContentRegionAvail().X);
-        var chipAreaWidth = Math.Max(180f, panelWidth - 112f);
-        var chipRows = CountProductCollectionChipRows(control.Memberships, chipAreaWidth);
-        var panelHeight = (control.CanDirectToggle ? 138f : 164f) + (Math.Max(1, chipRows) - 1) * 34f;
+        var panelHeight = ProductCollectionPanelHeight(plugin.InternalName, control, memberships);
         ImGui.BeginChild(
             "discover-product-state-collections",
             new Vector2(panelWidth, panelHeight),
@@ -132,92 +136,48 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextDisabled(installedPlugin.IsLoaded ? "Running" : "Not running");
 
         var stateRowY = ImGui.GetCursorPosY() + 6f;
-        ImGui.SetCursorPosY(stateRowY);
-        var switchValue = control.CanDirectToggle ? control.DesiredEnabled : installedPlugin.IsLoaded;
-        var canUseDirectToggle = control.CanDirectToggle &&
-                                 !(plugin.InternalName.Equals(Plugin.PluginInterface.InternalName, StringComparison.OrdinalIgnoreCase) &&
-                                   control.DesiredEnabled);
-        if (DrawToggleSwitch($"product-plugin-state-{StableId(plugin.InternalName)}", switchValue, canUseDirectToggle))
-            StartDirectPluginStateChange(plugin, control, !control.DesiredEnabled);
-
-        ImGui.SameLine(0f, 9f);
-        ImGui.SetCursorPosY(stateRowY + MarketplaceLayoutRules.CenterY(22f, ImGui.GetTextLineHeight()));
         if (control.CanDirectToggle)
         {
+            ImGui.SetCursorPosY(stateRowY);
+            var canUseDirectToggle =
+                !(plugin.InternalName.Equals(Plugin.PluginInterface.InternalName, StringComparison.OrdinalIgnoreCase) &&
+                  control.DesiredEnabled);
+            if (DrawToggleSwitch(
+                    $"product-plugin-state-{StableId(plugin.InternalName)}",
+                    control.DesiredEnabled,
+                    canUseDirectToggle))
+            {
+                StartDirectPluginStateChange(plugin, control, !control.DesiredEnabled);
+            }
+
+            ImGui.SameLine(0f, 9f);
+            ImGui.SetCursorPosY(stateRowY + MarketplaceLayoutRules.CenterY(22f, ImGui.GetTextLineHeight()));
             ImGui.TextUnformatted(control.DesiredEnabled ? "Enabled" : "Disabled");
             if (!canUseDirectToggle)
             {
                 ImGui.SameLine(0f, 8f);
                 ImGui.TextDisabled("Omega cannot disable itself here");
             }
-            else
-            {
-                ImGui.SameLine(0f, 8f);
-                ImGui.TextDisabled("Direct control through Default plugins");
-            }
         }
         else
         {
+            ImGui.SetCursorPosY(stateRowY + MarketplaceLayoutRules.CenterY(22f, ImGui.GetTextLineHeight()));
             ImGui.TextUnformatted("Managed by collection");
-            ImGui.SameLine(0f, 8f);
-            ImGui.TextDisabled("Direct toggle unavailable");
         }
 
-        var collectionsY = stateRowY + 58f;
-        if (!control.CanDirectToggle)
-        {
-            ImGui.SetCursorPosY(stateRowY + 30f);
-            ImGui.PushTextWrapPos(ImGui.GetWindowContentRegionMax().X - 12f);
-            ImGui.TextWrapped(control.Reason);
-            ImGui.PopTextWrapPos();
-            collectionsY = Math.Max(collectionsY + 22f, ImGui.GetCursorPosY() + 8f);
-        }
-
+        var collectionsY = stateRowY + 38f;
         ImGui.SetCursorPosY(collectionsY);
         ImGui.TextDisabled("Collections");
-        ImGui.SameLine(0f, 12f);
-        var collectionStartX = ImGui.GetCursorPosX();
-        if (control.Memberships.Count == 0)
+        ImGui.Dummy(new Vector2(1f, 4f));
+
+        if (memberships.Length == 0)
         {
             ImGui.TextDisabled("Membership not available");
         }
         else
         {
-            var used = 0f;
-            foreach (var membership in control.Memberships
-                         .OrderByDescending(x => x.Collection.IsDefault)
-                         .ThenBy(x => CollectionDisplayName(x.Collection), StringComparer.OrdinalIgnoreCase))
-            {
-                var label = CollectionDisplayName(membership.Collection);
-                var width = ProductCollectionChipWidth(label);
-                if (used > 0f && used + width > chipAreaWidth)
-                {
-                    ImGui.NewLine();
-                    ImGui.SetCursorPosX(collectionStartX);
-                    used = 0f;
-                }
-                else if (used > 0f)
-                {
-                    ImGui.SameLine(0f, 7f);
-                    used += 7f;
-                }
-
-                if (DrawRoundedButton(
-                        label,
-                        $"product-collection-{membership.Collection.Id}",
-                        new Vector2(width, 28f),
-                        active: membership.Collection.IsEnabled && membership.Entry.WantsEnabled))
-                {
-                    OpenCollectionView(membership.Collection);
-                }
-                if (ImGui.IsItemHovered())
-                {
-                    var collectionState = membership.Collection.IsDefault || membership.Collection.IsEnabled ? "active" : "inactive";
-                    var pluginState = membership.Entry.WantsEnabled ? "plugin enabled" : "plugin disabled";
-                    ImGui.SetTooltip($"Open {label} • {collectionState} • {pluginState}");
-                }
-                used += width;
-            }
+            foreach (var membership in memberships)
+                DrawProductCollectionRow(plugin.InternalName, membership);
         }
 
         ImGui.EndChild();
@@ -225,36 +185,127 @@ internal sealed partial class MarketplaceWindow
         ImGui.PopStyleVar(2);
     }
 
-    private static float ProductCollectionChipWidth(string label)
-        => Math.Min(180f, Math.Max(86f, ImGui.CalcTextSize(label).X + 24f));
-
-    private static int CountProductCollectionChipRows(
-        IReadOnlyList<PluginCollectionMembershipState> memberships,
-        float availableWidth)
+    private float ProductCollectionPanelHeight(
+        string productInternalName,
+        PluginDirectControlState control,
+        IReadOnlyList<PluginCollectionMembershipState> memberships)
     {
-        if (memberships.Count == 0)
-            return 1;
-
-        var rows = 1;
-        var used = 0f;
-        foreach (var membership in memberships
-                     .OrderByDescending(x => x.Collection.IsDefault)
-                     .ThenBy(x => CollectionDisplayName(x.Collection), StringComparer.OrdinalIgnoreCase))
+        const float baseHeight = 96f;
+        var height = baseHeight + memberships.Count * MarketplaceLayoutRules.ProductCollectionRowHeight;
+        foreach (var membership in memberships)
         {
-            var width = ProductCollectionChipWidth(CollectionDisplayName(membership.Collection));
-            var next = used <= 0f ? width : used + 7f + width;
-            if (used > 0f && next > availableWidth)
-            {
-                rows++;
-                used = width;
-            }
-            else
-            {
-                used = next;
-            }
+            if (!expandedProductCollections.Contains(ProductCollectionExpansionKey(productInternalName, membership.Collection.Id)))
+                continue;
+
+            var affectedCount = membership.Collection.Plugins.Count;
+            height += 8f + Math.Max(1, affectedCount) * MarketplaceLayoutRules.ProductCollectionImpactLineHeight;
         }
-        return rows;
+
+        return Math.Max(control.CanDirectToggle ? 132f : 118f, height);
     }
+
+    private void DrawProductCollectionRow(
+        string productInternalName,
+        PluginCollectionMembershipState membership)
+    {
+        var collection = membership.Collection;
+        var rowHeight = MarketplaceLayoutRules.ProductCollectionRowHeight;
+        var start = ImGui.GetCursorScreenPos();
+        var width = ImGui.GetContentRegionAvail().X;
+        var expandedKey = ProductCollectionExpansionKey(productInternalName, collection.Id);
+        var expanded = expandedProductCollections.Contains(expandedKey);
+
+        var draw = ImGui.GetWindowDrawList();
+        var rowMax = start + new Vector2(width, rowHeight - 2f);
+        draw.AddRectFilled(start, rowMax, ImGui.ColorConvertFloat4ToU32(new Vector4(0.055f, 0.064f, 0.078f, 0.62f)), MarketplaceLayoutRules.ControlCornerRadius);
+        draw.AddRect(start, rowMax, ImGui.ColorConvertFloat4ToU32(new Vector4(0.16f, 0.19f, 0.23f, 0.46f)), MarketplaceLayoutRules.ControlCornerRadius, ImDrawFlags.None, 1f);
+
+        var rowCursor = ImGui.GetCursorPos();
+        ImGui.SetCursorPos(new Vector2(rowCursor.X + 8f, rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, ImGui.GetTextLineHeight())));
+        ImGui.PushFont(UiBuilder.IconFontFixedWidth);
+        ImGui.TextUnformatted((expanded ? FontAwesomeIcon.CaretDown : FontAwesomeIcon.CaretRight).ToIconString());
+        ImGui.PopFont();
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(expanded ? "Hide affected plugins" : "Show affected plugins");
+        if (ImGui.IsItemClicked())
+        {
+            if (expanded)
+                expandedProductCollections.Remove(expandedKey);
+            else
+                expandedProductCollections.Add(expandedKey);
+            expanded = !expanded;
+        }
+
+        ImGui.SetCursorPos(new Vector2(rowCursor.X + 34f, rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, ImGui.GetTextLineHeight())));
+        var label = CollectionDisplayName(collection);
+        ImGui.TextUnformatted(label);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip($"Open {label}");
+        if (ImGui.IsItemClicked())
+        {
+            OpenCollectionView(collection);
+            return;
+        }
+
+        if (collection.IsDefault)
+        {
+            const string alwaysOn = "Always on";
+            var textWidth = ImGui.CalcTextSize(alwaysOn).X;
+            ImGui.SetCursorPos(new Vector2(
+                rowCursor.X + Math.Max(34f, width - textWidth - 10f),
+                rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, ImGui.GetTextLineHeight())));
+            ImGui.TextDisabled(alwaysOn);
+        }
+        else
+        {
+            const float switchWidth = 44f;
+            ImGui.SetCursorPos(new Vector2(
+                rowCursor.X + Math.Max(34f, width - switchWidth - 10f),
+                rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, 22f)));
+            if (DrawToggleSwitch($"product-collection-state-{collection.Id}", collection.IsEnabled))
+                StartCollectionToggle(collection, !collection.IsEnabled);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(collection.IsEnabled ? $"Disable {label}" : $"Enable {label}");
+        }
+
+        ImGui.SetCursorPos(new Vector2(rowCursor.X, rowCursor.Y + rowHeight));
+        if (!expanded)
+            return;
+
+        var affected = collection.Plugins
+            .OrderBy(x => ProductCollectionPluginName(x), StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (affected.Length == 0)
+        {
+            ImGui.Indent(34f);
+            ImGui.TextDisabled("No plugins in this collection.");
+            ImGui.Unindent(34f);
+            ImGui.Dummy(new Vector2(1f, 4f));
+            return;
+        }
+
+        ImGui.Indent(34f);
+        foreach (var entry in affected)
+        {
+            var name = ProductCollectionPluginName(entry);
+            var current = string.Equals(entry.InternalName, productInternalName, StringComparison.OrdinalIgnoreCase);
+            ImGui.TextDisabled(current ? $"• {name}  (this plugin)" : $"• {name}");
+            if (ImGui.IsItemHovered() && !string.Equals(name, entry.InternalName, StringComparison.OrdinalIgnoreCase))
+                ImGui.SetTooltip(entry.InternalName);
+        }
+        ImGui.Unindent(34f);
+        ImGui.Dummy(new Vector2(1f, 4f));
+    }
+
+    private string ProductCollectionPluginName(DalamudCollectionPlugin entry)
+    {
+        var variant = catalog.GetPresentationVariants(entry.InternalName).FirstOrDefault()
+                      ?? catalog.GetVariants(entry.InternalName).FirstOrDefault();
+        return string.IsNullOrWhiteSpace(variant?.Name) ? entry.InternalName : variant.Name;
+    }
+
+    private static string ProductCollectionExpansionKey(string productInternalName, Guid collectionId)
+        => $"{productInternalName}\u001f{collectionId:D}";
 
     private void DrawProductBadges(MarketplacePlugin plugin, MarketplacePresentationContent content)
     {
@@ -488,9 +539,7 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        DrawProductSectionHeading(
-            "About this plugin",
-            "Description and package information");
+        DrawProductSectionHeading("About this plugin");
 
         ImGui.Indent(14f);
         var description = CleanProductDescriptionForDisplay(content.Description, content.Summary);
@@ -514,7 +563,7 @@ internal sealed partial class MarketplaceWindow
             DrawProductMetadataRow(
                 "Compatibility",
                 plugin.GetCompatibilityText(currentApi, currentDalamudVersion, configuration.PreferTestingBuilds));
-            DrawProductMetadataRow("Source", string.IsNullOrWhiteSpace(plugin.SourceName) ? "Unknown" : plugin.SourceName);
+            DrawProductRepositoryMetadataRow(plugin, currentApi);
             if (plugin.Tags.Count > 0)
                 DrawProductMetadataRow("Tags", string.Join(", ", plugin.Tags));
             ImGui.EndTable();
@@ -551,12 +600,12 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextWrapped(string.IsNullOrWhiteSpace(value) ? "—" : value);
     }
 
-    private static void DrawProductSectionHeading(string title, string subtitle)
+    private static void DrawProductSectionHeading(string title)
     {
         ImGui.Dummy(new Vector2(1f, 14f));
         var x = ImGui.GetCursorPosX();
         var markerMin = ImGui.GetCursorScreenPos();
-        var markerMax = markerMin + new Vector2(3f, 38f);
+        var markerMax = markerMin + new Vector2(3f, 22f);
         ImGui.GetWindowDrawList().AddRectFilled(
             markerMin,
             markerMax,
@@ -565,8 +614,6 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.SetCursorPosX(x + 12f);
         ImGui.TextUnformatted(title);
-        ImGui.SetCursorPosX(x + 12f);
-        ImGui.TextDisabled(subtitle);
         ImGui.SetCursorPosX(x);
         ImGui.Dummy(new Vector2(1f, 8f));
     }

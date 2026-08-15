@@ -42,7 +42,7 @@ internal sealed partial class MarketplaceWindow
         if (addSourceOpen)
             DrawAddSourceTools();
 
-        var shownSources = GetVisibleSourceRows();
+        var shownSources = GetVisibleSourceRows(currentApi);
         var statuses = catalog.GetRepositoryStatuses(currentApi)
             .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
         DrawSourcesTable(shownSources, statuses);
@@ -77,15 +77,24 @@ internal sealed partial class MarketplaceWindow
         ImGui.InputTextWithHint("##source-search", "Filter repositories by name or URL...", ref sourceSearch, 256);
     }
 
-    private RepositorySource[] GetVisibleSourceRows()
-        => configuration.Repositories
+    private RepositorySource[] GetVisibleSourceRows(int currentApi)
+    {
+        var statuses = catalog.GetRepositoryStatuses(currentApi)
+            .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
+        return configuration.Repositories
             .Where(x => sourceSection == SourceManagerSection.Curated ? x.IsCurated : !x.IsCurated)
             .Where(x => string.IsNullOrWhiteSpace(sourceSearch) ||
                         Contains(x.Name, sourceSearch.Trim()) ||
                         Contains(x.Url, sourceSearch.Trim()))
-            .OrderByDescending(x => x.IsOfficial)
+            .OrderBy(x => RepositoryProviderRules.SortPriority(
+                x.Name,
+                x.Url,
+                x.IsOfficial,
+                statuses.TryGetValue(NormalizeUrl(x.Url), out var status) ? status.PluginCount : 0))
+            .ThenByDescending(x => statuses.TryGetValue(NormalizeUrl(x.Url), out var status) ? status.PluginCount : 0)
             .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
 
     private void DrawSourcesTable(
         IReadOnlyList<RepositorySource> shownSources,
@@ -116,7 +125,7 @@ internal sealed partial class MarketplaceWindow
         DrawSourceEnabledCheckbox(source);
 
         ImGui.TableSetColumnIndex(1);
-        ImGui.TextUnformatted(source.Name);
+        DrawRepositoryName(source.Name, source.Url, source.IsOfficial, Plugin.PluginInterface.Manifest.DalamudApiLevel);
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(source.Url);
 

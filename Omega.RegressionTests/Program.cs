@@ -71,6 +71,7 @@ var tests = new (string Name, Action Body)[]
     ("third-party plugin security scanning remains static, incremental, and catalog-backed", TestPluginSecurityIntelligenceContract),
     ("security-enriched catalog compaction preserves history and runtime projection", TestCatalogCompactionWorkflowContract),
     ("install always chooses a repository and delegates to Dalamud", TestInstallRepositoryChooserContract),
+    ("repository providers keep preferred ordering, filtering, and icon identities", TestRepositoryProviderPreferenceContract),
     ("plugin selections, project navigation, uninstall, and update badge stay canonical", TestCanonicalPluginNavigationAndLifecycleContract),
     ("repository HTTP response lifetime stays explicit and stream-bounded", TestRepositoryClientResponseLifetimeContract),
     ("regression runner remains wired into Omega.sln", TestRegressionBuildWiring),

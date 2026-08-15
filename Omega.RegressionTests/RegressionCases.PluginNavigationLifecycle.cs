@@ -25,7 +25,8 @@ internal static partial class RegressionCases
         Contains(artwork, "activeView = MarketplaceView.Discover", "canonical plugin selection always enters Discover");
         Contains(artwork, "selectedVariantSource.Remove(plugin.InternalName)", "a fresh plugin selection clears stale repository overrides");
         Contains(artwork, ".Where(x => x.SourceIsOfficial)", "fresh product navigation prefers official Dalamud metadata whenever it exists");
-        Contains(artwork, "selectedPlugin = ResolveSelectedVariant(plugin)", "canonical plugin selection resolves the product-page variant");
+        Contains(artwork, "selectedPlugin = ResolveDefaultVariant(plugin)", "fresh plugin selection starts from the canonical default repository variant");
+        Contains(product, "var plugin = ResolveSelectedVariant(selectedPlugin)", "product-page rendering resolves any explicit repository selection before use");
         Contains(discover, "OpenPluginDetails(plugin)", "Discover selections use canonical product navigation");
         Contains(library, "OpenPluginDetails(plugin)", "Library and Updates selections use canonical product navigation");
         Contains(spotlight, "OpenPluginDetails(plugin)", "Spotlight selections use canonical product navigation");

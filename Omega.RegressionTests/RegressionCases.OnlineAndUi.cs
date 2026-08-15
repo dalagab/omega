@@ -11,11 +11,11 @@ internal static partial class RegressionCases
     internal static void TestCatalogBuilderContract()
     {
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
-        Contains(workflow, "collect_sources.py", "online source discovery stage");
-        Contains(workflow, "enrich_metadata.py", "manifest normalization stage");
-        Contains(workflow, "scrape_websites_incremental.py", "incremental website enrichment stage");
-        Contains(workflow, "build_sqlite_catalog.py", "SQLite build stage");
-        Contains(workflow, "test_sqlite_catalog.py", "SQLite builder self-test stage");
+        Contains(workflow, "collect_sources.py", "online source discovery step");
+        Contains(workflow, "enrich_metadata.py", "manifest normalization step");
+        Contains(workflow, "scrape_websites_incremental.py", "incremental website enrichment step");
+        Contains(workflow, "build_sqlite_catalog.py", "SQLite build step");
+        Contains(workflow, "test_sqlite_catalog.py", "SQLite builder self-test step");
         Contains(workflow, "omega-security-evidence.sqlite.zip", "builder seeds authoritative server-side evidence state");
         Contains(workflow, "omega-marketplace.sqlite.zip", "builder reuses the small client database for presentation caches");
         Contains(workflow, "Download previous marketplace database", "small client database supplies presentation/enrichment cache");

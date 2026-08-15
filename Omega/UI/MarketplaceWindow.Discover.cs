@@ -362,15 +362,7 @@ internal sealed partial class MarketplaceWindow
     }
 
 
-    private enum PluginRiskIconKind
-    {
-        FontAwesome,
-        Radiation,
-    }
-
-    private readonly record struct PluginRiskState(
-        PluginRiskIconKind IconKind,
-        FontAwesomeIcon Icon,
+    private readonly record struct PluginAutomationState(
         Vector4 Color,
         string Tooltip);
 
@@ -387,10 +379,13 @@ internal sealed partial class MarketplaceWindow
         var unavailable = !HasInstallableVariant(plugin.InternalName, currentApi, currentDalamudVersion);
         var hasPrimaryMarker = unavailable || content.IsEnhanced;
         var primaryX = rightEdge - iconSize;
-        var riskX = hasPrimaryMarker ? primaryX - gap - iconSize : primaryX;
+        var securityRightEdge = hasPrimaryMarker ? primaryX - gap : rightEdge;
 
-        ImGui.SetCursorPos(new Vector2(riskX, y));
-        DrawPluginRiskIndicator(plugin, iconSize);
+        // Listing security must describe the same default repository package the user will see
+        // after opening the product page. Automation is a separate capability marker and must
+        // never replace the scan-result icon.
+        var securityPlugin = ResolveDefaultVariant(plugin);
+        _ = DrawPluginScanAndAutomationIndicators(securityPlugin, securityRightEdge, y, iconSize, gap);
 
         if (unavailable)
         {
@@ -406,6 +401,27 @@ internal sealed partial class MarketplaceWindow
             ImGui.SetCursorPos(new Vector2(primaryX, y));
             DrawDiscoverStarIndicator(iconSize);
         }
+    }
+
+    private bool DrawPluginScanAndAutomationIndicators(
+        MarketplacePlugin plugin,
+        float rightEdge,
+        float y,
+        float iconSize,
+        float gap)
+    {
+        var scanX = rightEdge - iconSize;
+        ImGui.SetCursorPos(new Vector2(scanX, y));
+        DrawPluginSecurityScanIndicator(plugin, iconSize);
+        var hovered = ImGui.IsItemHovered();
+
+        var automation = GetPluginAutomationState(plugin);
+        if (automation is null)
+            return hovered;
+
+        ImGui.SetCursorPos(new Vector2(scanX - gap - iconSize, y));
+        DrawPluginRadiationIcon(automation.Value.Color, automation.Value.Tooltip, iconSize);
+        return hovered || ImGui.IsItemHovered();
     }
 
     private void DrawDiscoverOriginAndContentBadges(MarketplacePlugin plugin, float rightEdge, float y)
@@ -426,125 +442,64 @@ internal sealed partial class MarketplaceWindow
         }
     }
 
-    private void DrawPluginRiskIndicator(MarketplacePlugin plugin, float size)
+    private PluginAutomationState? GetPluginAutomationState(MarketplacePlugin plugin)
     {
-        var state = GetPluginRiskState(plugin);
-        if (state.IconKind == PluginRiskIconKind.Radiation)
-            DrawPluginRadiationIcon(state.Color, state.Tooltip, size);
-        else
-            DrawPluginFontAwesomeRiskIcon(state.Icon, state.Color, state.Tooltip, size);
-    }
-
-    private PluginRiskState GetPluginRiskState(MarketplacePlugin plugin)
-    {
-        if (pluginRiskStateCatalogRevision != catalog.Revision)
+        if (pluginAutomationStateCatalogRevision != catalog.Revision)
         {
-            pluginRiskStateCatalogRevision = catalog.Revision;
-            pluginRiskStateCache.Clear();
+            pluginAutomationStateCatalogRevision = catalog.Revision;
+            pluginAutomationStateCache.Clear();
         }
 
-        if (pluginRiskStateCache.TryGetValue(plugin.InternalName, out var cached))
+        var cacheKey = $"{plugin.InternalName}\u001f{plugin.SourceUrl}\u001f{plugin.AssemblyVersionText}\u001f{plugin.SecurityArtifactSha256}";
+        if (pluginAutomationStateCache.TryGetValue(cacheKey, out var cached))
             return cached;
 
-        var state = ResolvePluginRiskState(plugin);
-        pluginRiskStateCache[plugin.InternalName] = state;
+        var state = ResolvePluginAutomationState(plugin);
+        pluginAutomationStateCache[cacheKey] = state;
         return state;
     }
 
-    private PluginRiskState ResolvePluginRiskState(MarketplacePlugin plugin)
+    private PluginAutomationState? ResolvePluginAutomationState(MarketplacePlugin plugin)
     {
-        var variants = new[] { plugin }
-            .Concat(catalog.GetPresentationVariants(plugin.InternalName))
-            .Where(x => x.HasCompletedSecurityScan)
-            .GroupBy(x => $"{x.SourceUrl}\u001f{x.AssemblyVersionText}", StringComparer.OrdinalIgnoreCase)
-            .Select(x => x.First())
-            .ToArray();
+        // Automation is deliberately separate from scan severity. A radiation marker may be added
+        // beside the scan icon, but it can never replace or recolor the package's scan result.
+        if (!plugin.HasCompletedSecurityScan)
+            return null;
 
-        if (variants.Length == 0)
+        if (HasPluginAutomation(plugin))
         {
-            return new PluginRiskState(
-                PluginRiskIconKind.FontAwesome,
-                FontAwesomeIcon.Question,
-                new Vector4(0.46f, 0.48f, 0.52f, 1f),
-                "Unknown: no completed Omega static security scan is available for this plugin yet.");
-        }
-
-        var automation = variants
-            .Where(HasPluginAutomation)
-            .OrderByDescending(x => AutomationRank(x.SecurityAutomationLevel))
-            .ThenByDescending(x => SecuritySeverityRank(x.SecurityHighestSeverity))
-            .FirstOrDefault();
-        if (automation is not null)
-        {
-            return new PluginRiskState(
-                PluginRiskIconKind.Radiation,
-                default,
+            return new PluginAutomationState(
                 new Vector4(0.96f, 0.76f, 0.10f, 1f),
-                $"Automation capability observed: {AutomationLevelLabel(automation.SecurityAutomationLevel)}. " +
+                $"Automation capability observed: {AutomationLevelLabel(plugin.SecurityAutomationLevel)}. " +
                 "Open the plugin page for the static-analysis evidence.");
         }
 
         var dependencyAutomation = FindRequiredDependencyAutomation(
-            plugin.InternalName,
+            plugin,
             new HashSet<string>(StringComparer.OrdinalIgnoreCase),
             depth: 0);
-        if (dependencyAutomation is not null)
-        {
-            return new PluginRiskState(
-                PluginRiskIconKind.Radiation,
-                default,
-                new Vector4(0.96f, 0.76f, 0.10f, 1f),
-                $"Automation exposure through required dependency {dependencyAutomation.DependencyName}: " +
-                $"{AutomationLevelLabel(dependencyAutomation.AutomationLevel)}. Path: {dependencyAutomation.Path}.");
-        }
+        if (dependencyAutomation is null)
+            return null;
 
-        var highest = variants
-            .OrderByDescending(x => SecuritySeverityRank(x.SecurityHighestSeverity))
-            .First();
-        return (highest.SecurityHighestSeverity ?? string.Empty).Trim().ToLowerInvariant() switch
-        {
-            "critical" or "high" => new PluginRiskState(
-                PluginRiskIconKind.FontAwesome,
-                FontAwesomeIcon.ExclamationTriangle,
-                new Vector4(0.86f, 0.15f, 0.17f, 1f),
-                $"High risk: highest static-analysis finding is {highest.SecurityHighestSeverity}."),
-            "caution" or "medium" => new PluginRiskState(
-                PluginRiskIconKind.FontAwesome,
-                FontAwesomeIcon.ExclamationTriangle,
-                new Vector4(0.94f, 0.43f, 0.10f, 1f),
-                "Medium risk: at least one caution-level static-analysis finding was observed."),
-            "low" => new PluginRiskState(
-                PluginRiskIconKind.FontAwesome,
-                FontAwesomeIcon.ExclamationTriangle,
-                new Vector4(0.94f, 0.76f, 0.12f, 1f),
-                "Low risk: only low-level static-analysis findings were observed."),
-            "informational" => new PluginRiskState(
-                PluginRiskIconKind.FontAwesome,
-                FontAwesomeIcon.InfoCircle,
-                new Vector4(0.18f, 0.48f, 0.82f, 1f),
-                "Informational only: no risk finding above informational was observed."),
-            _ => new PluginRiskState(
-                PluginRiskIconKind.FontAwesome,
-                FontAwesomeIcon.InfoCircle,
-                new Vector4(0.18f, 0.48f, 0.82f, 1f),
-                "No risk findings were observed by the completed static scan."),
-        };
+        return new PluginAutomationState(
+            new Vector4(0.96f, 0.76f, 0.10f, 1f),
+            $"Automation exposure through required dependency {dependencyAutomation.DependencyName}: " +
+            $"{AutomationLevelLabel(dependencyAutomation.AutomationLevel)}. Path: {dependencyAutomation.Path}.");
     }
 
     private sealed record DependencyAutomationMatch(string DependencyName, string AutomationLevel, string Path);
 
     private DependencyAutomationMatch? FindRequiredDependencyAutomation(
-        string internalName,
+        MarketplacePlugin plugin,
         HashSet<string> visited,
         int depth)
     {
         const int maximumDependencyRiskDepth = 8;
-        if (depth >= maximumDependencyRiskDepth || !visited.Add(internalName))
+        var visitKey = $"{plugin.InternalName}\u001f{plugin.SourceUrl}";
+        if (depth >= maximumDependencyRiskDepth || !visited.Add(visitKey) || !plugin.HasCompletedSecurityScan)
             return null;
 
-        var dependencies = catalog.GetPresentationVariants(internalName)
-            .Where(x => x.HasCompletedSecurityScan)
-            .SelectMany(x => x.SecurityDependencies)
+        var dependencies = plugin.SecurityDependencies
             .Where(x => IsRequiredDependency(x) && x.IsPluginDependency && !string.IsNullOrWhiteSpace(x.TargetInternalName))
             .GroupBy(x => x.TargetInternalName, StringComparer.OrdinalIgnoreCase)
             .Select(x => x.First())
@@ -552,32 +507,32 @@ internal sealed partial class MarketplaceWindow
 
         foreach (var dependency in dependencies)
         {
-            var targetVariants = catalog.GetPresentationVariants(dependency.TargetInternalName)
-                .Where(x => x.HasCompletedSecurityScan)
-                .ToArray();
-            var directAutomation = targetVariants
-                .Where(HasPluginAutomation)
-                .OrderByDescending(x => AutomationRank(x.SecurityAutomationLevel))
-                .FirstOrDefault();
-            var targetName = targetVariants.FirstOrDefault()?.Name;
-            if (string.IsNullOrWhiteSpace(targetName))
-                targetName = dependency.Name;
+            var targetSeed = catalog.GetVariants(dependency.TargetInternalName).FirstOrDefault();
+            if (targetSeed is null)
+                continue;
+
+            // Dependency automation follows the same default-package rule as normal product navigation.
+            var target = ResolveDefaultVariant(targetSeed);
+            if (!target.HasCompletedSecurityScan)
+                continue;
+
+            var targetName = string.IsNullOrWhiteSpace(target.Name) ? dependency.Name : target.Name;
             if (string.IsNullOrWhiteSpace(targetName))
                 targetName = dependency.TargetInternalName;
 
-            if (directAutomation is not null)
+            if (HasPluginAutomation(target))
             {
                 return new DependencyAutomationMatch(
                     targetName,
-                    directAutomation.SecurityAutomationLevel,
-                    $"{internalName} → {dependency.TargetInternalName}");
+                    target.SecurityAutomationLevel,
+                    $"{plugin.InternalName} → {dependency.TargetInternalName}");
             }
 
             var nestedVisited = new HashSet<string>(visited, StringComparer.OrdinalIgnoreCase);
-            var nested = FindRequiredDependencyAutomation(dependency.TargetInternalName, nestedVisited, depth + 1);
+            var nested = FindRequiredDependencyAutomation(target, nestedVisited, depth + 1);
             if (nested is not null)
             {
-                var prefix = $"{internalName} → ";
+                var prefix = $"{plugin.InternalName} → ";
                 var nestedPath = nested.Path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
                     ? nested.Path
                     : prefix + nested.Path;
@@ -599,17 +554,6 @@ internal sealed partial class MarketplaceWindow
             "character-automation" => 3,
             "ui-automation" => 2,
             "observational" => 1,
-            _ => 0,
-        };
-
-    private static int SecuritySeverityRank(string? severity)
-        => (severity ?? string.Empty).Trim().ToLowerInvariant() switch
-        {
-            "critical" => 5,
-            "high" => 4,
-            "caution" or "medium" => 3,
-            "low" => 2,
-            "informational" => 1,
             _ => 0,
         };
 

@@ -10,33 +10,69 @@ internal sealed partial class MarketplaceWindow
         MarketplacePlugin plugin,
         IReadOnlyDictionary<string, IExposedPlugin> installed)
     {
-        if (!plugin.HasCompletedSecurityScan || plugin.SecurityDependencyTotalCount <= 0 || plugin.SecurityDependencies.Count == 0)
-            return;
-
-        DrawProductSectionHeading(
-            "Dependencies",
-            "Required components, plugin links, packages and optional integrations");
+        DrawProductSectionHeading("Dependencies");
 
         ImGui.Indent(14f);
-        DrawDependencyGroup("Required", plugin.SecurityDependencies.Where(IsRequiredDependency).ToArray(), installed);
-        DrawDependencyGroup(
-            "Optional / integrations",
-            plugin.SecurityDependencies.Where(x => !IsRequiredDependency(x) && IsOptionalDependency(x)).ToArray(),
-            installed);
-        DrawDependencyGroup(
-            "Bundled / observed",
-            plugin.SecurityDependencies.Where(x => !IsRequiredDependency(x) && !IsOptionalDependency(x)).ToArray(),
-            installed);
 
-        if (plugin.SecurityDependencyTotalCount > plugin.SecurityDependencies.Count)
+        var dependencies = plugin.SecurityDependencies;
+        var totalCount = Math.Max(plugin.SecurityDependencyTotalCount, dependencies.Count);
+        if (dependencies.Count == 0)
+        {
+            DrawDependencyEmptyState(plugin, totalCount);
+            ImGui.Unindent(14f);
+            return;
+        }
+
+        var required = dependencies.Where(IsRequiredDependency).ToArray();
+        var optional = dependencies.Where(x => !IsRequiredDependency(x) && IsOptionalDependency(x)).ToArray();
+        var observed = dependencies.Where(x => !IsRequiredDependency(x) && !IsOptionalDependency(x)).ToArray();
+
+        ImGui.TextDisabled(
+            $"{totalCount} component{(totalCount == 1 ? string.Empty : "s")} observed" +
+            $"  •  {required.Length} required" +
+            $"  •  {optional.Length} optional / integration");
+
+        DrawDependencyGroup("Required", required, installed);
+        DrawDependencyGroup("Optional / integrations", optional, installed);
+        DrawDependencyGroup("Bundled / observed", observed, installed);
+
+        if (totalCount > dependencies.Count)
         {
             ImGui.Spacing();
             ImGui.TextDisabled(
-                $"Showing {plugin.SecurityDependencies.Count} of {plugin.SecurityDependencyTotalCount} dependency components. " +
+                $"Showing {dependencies.Count} of {totalCount} dependency components. " +
                 "Definitions keeps this summary bounded; detailed evidence remains server-side.");
         }
 
         ImGui.Unindent(14f);
+    }
+
+    private static void DrawDependencyEmptyState(MarketplacePlugin plugin, int totalCount)
+    {
+        if (totalCount > 0)
+        {
+            ImGui.TextWrapped(
+                $"Dependency analysis found {totalCount} component{(totalCount == 1 ? string.Empty : "s")}, " +
+                "but this Definitions snapshot does not contain the projected dependency rows. Refresh Definitions in Settings.");
+            return;
+        }
+
+        if (plugin.HasCompletedSecurityScan)
+        {
+            ImGui.TextDisabled("No external dependency components were detected for this package.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(plugin.SecurityStatus))
+        {
+            ImGui.TextDisabled("Dependency information is not present in the current Definitions snapshot for this package.");
+            return;
+        }
+
+        var status = plugin.SecurityStatus.Trim();
+        ImGui.TextDisabled($"Dependency analysis is {status} for this package. Published dependency data will appear here when available.");
+        if (!string.IsNullOrWhiteSpace(plugin.SecurityError) && ImGui.IsItemHovered())
+            ImGui.SetTooltip(plugin.SecurityError);
     }
 
     private void DrawDependencyGroup(

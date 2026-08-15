@@ -42,7 +42,7 @@ internal static partial class RegressionCases
         Contains(scanner, "bundledManagedAssemblies", "managed libraries bundled in plugin packages are inventoried");
         Contains(scanner, "bundledNativeLibraries", "native libraries bundled in plugin packages are inventoried");
         Contains(scanner, "projectDependencySha256", "dependency/project declarations receive a stable fingerprint");
-        Contains(scanner, "permissionCandidates", "dependency-stage permissions remain candidates rather than confirmed call-path findings");
+        Contains(scanner, "permissionCandidates", "dependency-derived permissions remain candidates rather than confirmed call-path findings");
         Contains(scanner, "parse_managed_pe", "managed PE metadata is parsed without loading assemblies");
         Contains(scanner, "#Strings", "managed metadata string heap is parsed directly");
         Contains(scanner, "managed-assembly-reference", "AssemblyRef dependencies are inventoried with resolved versions");
@@ -112,8 +112,8 @@ internal static partial class RegressionCases
         Contains(scanner, "dependency_hardening_version", "scanner marks catalogs that passed the hardening projection checks");
 
         var buildInfo = File.ReadAllText(Path.Combine(Root, "Omega", "BuildInfo.cs"));
-        Contains(buildInfo, "BuildStamp = \"omega-", "production build stamp is release-oriented rather than development-phase oriented");
-        False(buildInfo.Contains("stage", StringComparison.OrdinalIgnoreCase), "production build stamp does not expose development phase labels");
+        Contains(buildInfo, "BuildStamp = \"omega-", "production build stamp is release-oriented rather than internal-workflow oriented");
+        Equal(2, buildInfo.Split("public const string", StringSplitOptions.None).Length - 1, "production build metadata contains only the release version and release stamp constants");
         False(buildInfo.Contains("repair", StringComparison.OrdinalIgnoreCase), "production build stamp does not expose repair labels");
 
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "security-scanner.yml"));
@@ -208,37 +208,58 @@ internal static partial class RegressionCases
         Contains(product, "AutomationLevelLabel(plugin.SecurityAutomationLevel)", "product page renders the normalized automation classification");
         Contains(product, "Full gameplay automation", "product page can distinguish the strongest automation class");
         DoesNotContain(product, "Highest:", "product hero severity badge uses a concise risk label");
-        Contains(product, "\"high\" => \"High\"", "high severity is displayed simply as High");
-        Contains(product, "\"caution\" => \"Medium\"", "caution severity is presented as the user-facing Medium level");
-        Contains(product, "\"informational\" => \"Low\"", "informational severity is presented as the user-facing Low level");
+        Contains(product, "\"high\" => new PluginSecurityVisual", "high severity has an explicit shared card/product visual");
+        Contains(product, "\"caution\" or \"medium\" => new PluginSecurityVisual", "caution severity is presented through the shared Medium visual");
+        Contains(product, "\"informational\" or \"low\" => new PluginSecurityVisual", "informational severity is presented through the shared Low visual");
+        Contains(product, "\"No findings\"", "completed no-finding scans use the same user-facing label on cards and product pages");
         Contains(product, "Scanned {scanned.ToLocalTime():g}", "scan timestamp is retained in the detailed security section");
         Contains(product, "Findings:", "detailed security section retains severity counts away from the hero");
         Contains(product, "DrawSecurityBulletList", "observed capabilities render as readable vertical bullets instead of one dense line");
         var dependenciesUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Dependencies.cs"));
         Contains(dependenciesUi, "Dependencies", "product page exposes a dedicated dependency section");
+        Contains(dependenciesUi, "DrawDependencyEmptyState", "dependency section stays visible even when a package has no projected dependency rows");
+        Contains(dependenciesUi, "No external dependency components were detected for this package.", "completed scans explain a genuine zero-dependency result");
+        Contains(dependenciesUi, "Dependency information is not present in the current Definitions snapshot for this package.", "older or unscanned Definitions snapshots explain missing dependency data instead of hiding the view");
+        DoesNotContain(dependenciesUi, "if (!plugin.HasCompletedSecurityScan || plugin.SecurityDependencyTotalCount <= 0 || plugin.SecurityDependencies.Count == 0)", "dependency section must not disappear behind the old security/dependency guard");
         Contains(dependenciesUi, "Available in Omega", "resolved plugin dependencies advertise that they can be opened in Omega");
         Contains(dependenciesUi, "OpenPluginDetails", "resolved plugin dependencies navigate to their Omega product page");
         Contains(dependenciesUi, "Provided by framework", "framework-provided dependencies are distinguished from installable plugin dependencies");
         Contains(dependenciesUi, "Definitions keeps this summary bounded", "dependency UI explains bounded client projection rather than implying forensic completeness");
         var productPage = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
-        Contains(productPage, "DrawProductSourcePackages(plugin)", "product page exposes source-package provenance before dependency/security detail");
-        Contains(productPage, "DrawProductDependencies(plugin, installed)", "Dependencies render between package provenance and Security on the product page");
+        Contains(productPage, "DrawProductDependencies(plugin, installed)", "product page always includes the dependency view");
+        True(
+            productPage.IndexOf("DrawProductDependencies(plugin, installed)", StringComparison.Ordinal) <
+            productPage.IndexOf("DrawProductSourcePackages(plugin, currentApi, currentDalamudVersion)", StringComparison.Ordinal),
+            "Dependencies render before package provenance so the dependency view is not buried below package details");
 
         var packagesUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SourcePackages.cs"));
         Contains(packagesUi, "Packages & repositories", "product page explains distinct downloadable source packages");
         Contains(packagesUi, "SecurityArtifactSha256", "scanned package hashes collapse repository mirrors that point at the same artifact");
         Contains(packagesUi, "Repository manifests pointing to this package", "each package lists the repository manifests that reference it");
-        Contains(packagesUi, "OrderByDescending(x => x.Official)", "official repository references are presented first");
+        DoesNotContain(packagesUi, "$\"Packages {packages.Count}  •  Repository manifests {manifestCount}\"", "package/repository totals are not repeated above the package rows");
+        DoesNotContain(packagesUi, "ImGuiTreeNodeFlags.DefaultOpen", "package entries are collapsed by default");
+        Contains(packagesUi, "API: {package.ApiLevel}", "package API metadata is shown inside the expanded artifact metadata area");
+        Contains(packagesUi, "FontAwesomeIcon.Flask", "testing-only packages use a testing icon rather than a text channel label");
+        Contains(packagesUi, "headerMax.X - glyphSize.X - 10f", "testing icon is right-aligned inside the package row rather than overlapping label text");
+        Contains(packagesUi, "package.IsTestingOnly", "testing-only package presentation is explicit");
+        Contains(packagesUi, "0.23f, 0.20f, 0.07f", "testing-only package headers receive a subtle yellow background");
+        Contains(packagesUi, "else if (preferredInstall)", "only the preferred install package receives the green installable treatment");
+        Contains(packagesUi, "0.07f, 0.24f, 0.13f", "preferred install package uses the green header treatment");
+        Contains(packagesUi, "0.08f, 0.09f, 0.11f", "non-installable historical packages use neutral headers");
+        DoesNotContain(packagesUi, "package.Channels", "package headers do not expose Stable or Testing wording");
+        Contains(packagesUi, "RepositoryProviderRules.SortPriority", "repository references follow shared preferred-provider ordering");
 
         var discoverUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
-        Contains(discoverUi, "FindRequiredDependencyAutomation", "risk resolver follows required plugin dependencies for automation exposure");
-        Contains(discoverUi, "Automation exposure through required dependency", "dependency-provided automation is explained in the risk tooltip");
-        Contains(discoverUi, "maximumDependencyRiskDepth = 8", "recursive dependency-risk traversal remains bounded");
-        Contains(discoverUi, "FontAwesomeIcon.ExclamationTriangle", "risk findings use the standard Font Awesome warning-triangle glyph");
-        Contains(discoverUi, "UiBuilder.IconFontFixedWidth", "risk glyphs use Dalamud's fixed-width Font Awesome font for stable alignment");
-        Contains(discoverUi, "var glyphSize = ImGui.CalcTextSize(glyph)", "risk glyph centering is derived from measured glyph bounds");
-        Contains(discoverUi, "(size - glyphSize.X) * 0.5f", "risk glyphs remain horizontally centered without punctuation-specific offsets");
-        Contains(discoverUi, "(size - glyphSize.Y) * 0.5f", "risk glyphs remain vertically centered without punctuation-specific offsets");
+        var securityUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
+        Contains(discoverUi, "FindRequiredDependencyAutomation", "automation resolver follows required plugin dependencies for automation exposure");
+        Contains(discoverUi, "Automation exposure through required dependency", "dependency-provided automation is explained in the automation tooltip");
+        Contains(discoverUi, "maximumDependencyRiskDepth = 8", "recursive dependency-automation traversal remains bounded");
+        Contains(discoverUi, "plugin.SecurityDependencies", "dependency automation follows evidence from the exact selected repository package");
+        Contains(securityUi, "FontAwesomeIcon.ExclamationTriangle", "scan findings use the standard Font Awesome warning-triangle glyph");
+        Contains(discoverUi, "UiBuilder.IconFontFixedWidth", "scan glyphs use Dalamud's fixed-width Font Awesome font for stable alignment");
+        Contains(discoverUi, "var glyphSize = ImGui.CalcTextSize(glyph)", "scan glyph centering is derived from measured glyph bounds");
+        Contains(discoverUi, "(size - glyphSize.X) * 0.5f", "scan glyphs remain horizontally centered without punctuation-specific offsets");
+        Contains(discoverUi, "(size - glyphSize.Y) * 0.5f", "scan glyphs remain vertically centered without punctuation-specific offsets");
         DoesNotContain(discoverUi, "DrawPluginWarningTriangle", "the obsolete hand-drawn warning triangle renderer must not return");
     }
     internal static void TestCatalogCompactionWorkflowContract()

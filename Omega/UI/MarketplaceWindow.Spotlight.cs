@@ -74,12 +74,17 @@ internal sealed partial class MarketplaceWindow
             currentDalamudVersion,
             showOverlays: false);
 
-        // Security/automation status is important enough to stay visible on Spotlight,
-        // using exactly the same icon language and cross-variant aggregation as Discover.
+        // Spotlight uses the exact same default repository package and security visual as the
+        // product page. The scan result stays visible even when a separate automation marker exists.
         var afterArtwork = ImGui.GetCursorPos();
         const float statusIconSize = 22f;
-        ImGui.SetCursorPos(new Vector2(Math.Max(0f, cardWidth - statusIconSize - 8f), contentStartY));
-        DrawPluginRiskIndicator(plugin, statusIconSize);
+        const float statusIconGap = 7f;
+        var statusHovered = DrawPluginScanAndAutomationIndicators(
+            plugin,
+            Math.Max(statusIconSize, cardWidth - 8f),
+            contentStartY,
+            statusIconSize,
+            statusIconGap);
         ImGui.SetCursorPos(afterArtwork);
 
         ImGui.SetCursorPosY(contentStartY + 112f);
@@ -93,7 +98,7 @@ internal sealed partial class MarketplaceWindow
         DrawSpotlightPitch(plugin);
 
         var clicked = ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
-        if (ImGui.IsWindowHovered())
+        if (ImGui.IsWindowHovered() && !statusHovered)
             ImGui.SetTooltip("Open in Discover");
         ImGui.EndChild();
         ImGui.PopStyleColor(2);
@@ -104,14 +109,7 @@ internal sealed partial class MarketplaceWindow
     }
 
     private MarketplacePlugin ResolveSpotlightVariant(MarketplacePlugin plugin)
-    {
-        var variants = catalog.GetVariants(plugin.InternalName);
-        return variants
-                   .Where(x => x.SourceIsOfficial)
-                   .OrderByDescending(x => x.AssemblyVersion)
-                   .FirstOrDefault()
-               ?? ResolveSelectedVariant(plugin);
-    }
+        => ResolveDefaultVariant(plugin);
 
     private static void DrawSpotlightPitch(MarketplacePlugin plugin)
     {

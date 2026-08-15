@@ -4,7 +4,7 @@ enrich_metadata.py — metadata enrichment for the catalog builder.
 
 Reads `raw-sources.json` (output of collect_sources.py), fetches each URL
 in parallel, parses the JSON, normalizes the records, and records whether each variant has a complete basic
-metadata set. Rich-card/web-enriched presentation is decided later; this stage
+metadata set. Rich-card/web-enriched presentation is decided later; this pipeline step
 does not award Omega's project-page star.
 
 A plugin gets `metadataComplete: true` when ALL of:

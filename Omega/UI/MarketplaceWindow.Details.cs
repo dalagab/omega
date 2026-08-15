@@ -176,15 +176,23 @@ internal sealed partial class MarketplaceWindow
         string internalName,
         int currentApi,
         Version currentDalamudVersion)
-        => catalog.GetMainVariants(internalName, currentApi)
+    {
+        var statuses = catalog.GetRepositoryStatuses(currentApi)
+            .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
+        return catalog.GetMainVariants(internalName, currentApi)
             .Where(v =>
                 v.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out _) &&
                 (v.MinimumDalamudVersion is null || v.MinimumDalamudVersion <= currentDalamudVersion) &&
                 IsSourceEnabledInOmega(v))
-            .OrderByDescending(v => v.SourceIsOfficial)
+            .OrderBy(v => RepositoryProviderRules.SortPriority(
+                v.SourceName,
+                v.SourceUrl,
+                v.SourceIsOfficial,
+                statuses.TryGetValue(NormalizeUrl(v.SourceUrl), out var status) ? status.PluginCount : 0))
             .ThenByDescending(v => v.AssemblyVersion)
             .ThenBy(v => v.SourceName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
 
     private bool IsSourceEnabledInOmega(MarketplacePlugin plugin)
     {
@@ -220,7 +228,7 @@ internal sealed partial class MarketplaceWindow
         if (!DrawDetailsHeading(plugin, installedPlugin, currentApi, currentDalamudVersion))
             return;
 
-        plugin = DrawDetailsVariantSelector(plugin);
+        plugin = DrawDetailsVariantSelector(plugin, currentApi);
         DrawDetailsDescription(plugin, currentApi, currentDalamudVersion);
         DrawDetailsPrimaryAction(plugin, installedPlugin, currentApi, currentDalamudVersion);
         DrawDetailsLinks(plugin);
@@ -257,7 +265,7 @@ internal sealed partial class MarketplaceWindow
         return true;
     }
 
-    private MarketplacePlugin DrawDetailsVariantSelector(MarketplacePlugin plugin)
+    private MarketplacePlugin DrawDetailsVariantSelector(MarketplacePlugin plugin, int currentApi)
     {
         var variants = catalog.GetVariants(plugin.InternalName);
         if (variants.Count <= 1)
@@ -269,7 +277,7 @@ internal sealed partial class MarketplaceWindow
         var used = 0f;
         var available = ImGui.GetContentRegionAvail().X;
         foreach (var variant in variants)
-            plugin = DrawDetailsVariantButton(plugin, variant, available, rowStart, ref used);
+            plugin = DrawDetailsVariantButton(plugin, variant, currentApi, available, rowStart, ref used);
         ImGui.NewLine();
         return plugin;
     }
@@ -277,12 +285,15 @@ internal sealed partial class MarketplaceWindow
     private MarketplacePlugin DrawDetailsVariantButton(
         MarketplacePlugin current,
         MarketplacePlugin variant,
+        int currentApi,
         float available,
         float rowStart,
         ref float used)
     {
-        var label = $"{variant.SourceName}  •  API {(variant.HighestKnownApiLevel > 0 ? variant.HighestKnownApiLevel.ToString() : "?")}";
-        var width = Math.Min(available, Math.Max(120f, ImGui.CalcTextSize(label).X + 28f));
+        var apiText = $"API {(variant.HighestKnownApiLevel > 0 ? variant.HighestKnownApiLevel.ToString() : "?")}";
+        var label = $"{variant.SourceName}  •  {apiText}";
+        var provider = GetRepositoryProvider(variant.SourceName, variant.SourceUrl, variant.SourceIsOfficial, currentApi);
+        var width = Math.Min(available, Math.Max(120f, ImGui.CalcTextSize(label).X + 28f + (!string.IsNullOrWhiteSpace(provider.IconUrl) ? 23f : 0f)));
         if (used > 0f && used + width > available)
         {
             ImGui.NewLine();
@@ -296,7 +307,15 @@ internal sealed partial class MarketplaceWindow
         }
 
         var active = NormalizeUrl(variant.SourceUrl).Equals(NormalizeUrl(current.SourceUrl), StringComparison.OrdinalIgnoreCase);
-        if (DrawPillButton(label, $"variant-{current.InternalName}-{StableId(variant.SourceUrl)}", new Vector2(width, 30f), active))
+        if (DrawRepositoryActionButton(
+                variant.SourceName,
+                variant.SourceUrl,
+                variant.SourceIsOfficial,
+                currentApi,
+                apiText,
+                $"variant-{current.InternalName}-{StableId(variant.SourceUrl)}",
+                new Vector2(width, 30f),
+                active))
         {
             selectedVariantSource[current.InternalName] = variant.SourceUrl;
             selectedPlugin = variant;
@@ -331,7 +350,9 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextWrapped($"Compatibility: {plugin.GetCompatibilityText(currentApi, currentDalamudVersion, configuration.PreferTestingBuilds)}");
         if (plugin.IsUnmaintained(currentApi))
             ImGui.TextColored(new Vector4(0.95f, 0.48f, 0.18f, 1f), $"Unmaintained: highest advertised API is {plugin.HighestKnownApiLevel} ({currentApi - plugin.HighestKnownApiLevel} API levels behind)");
-        ImGui.TextWrapped($"Source: {plugin.SourceName}");
+        ImGui.TextDisabled("Source");
+        ImGui.SameLine(0f, 8f);
+        DrawRepositoryName(plugin.SourceName, plugin.SourceUrl, plugin.SourceIsOfficial, currentApi);
         if (plugin.Tags.Count > 0)
             ImGui.TextWrapped("Tags: " + string.Join(", ", plugin.Tags));
         if (plugin.EffectiveCategories.Count > 0)

@@ -1,29 +1,105 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 
 namespace Dalagab.Omega;
 
 internal sealed partial class MarketplaceWindow
 {
-    private void DrawProductSecuritySummary(MarketplacePlugin plugin)
+    private readonly record struct PluginSecurityVisual(
+        FontAwesomeIcon Icon,
+        Vector4 IconColor,
+        Vector4 BadgeColor,
+        string Label,
+        string Tooltip);
+
+    private static PluginSecurityVisual ResolvePluginSecurityVisual(MarketplacePlugin plugin)
     {
         if (string.IsNullOrWhiteSpace(plugin.SecurityStatus))
         {
-            DrawDiscoverTextBadge("Not yet scanned", new Vector4(0.24f, 0.25f, 0.27f, 0.94f));
-            return;
+            return new PluginSecurityVisual(
+                FontAwesomeIcon.Question,
+                new Vector4(0.46f, 0.48f, 0.52f, 1f),
+                new Vector4(0.24f, 0.25f, 0.27f, 0.94f),
+                "Not yet scanned",
+                "Not yet scanned: no completed Omega static security scan is available for this repository package.");
         }
 
         if (!plugin.HasCompletedSecurityScan)
         {
-            DrawDiscoverTextBadge("Scan incomplete", new Vector4(0.46f, 0.25f, 0.08f, 0.96f));
-            if (ImGui.IsItemHovered() && !string.IsNullOrWhiteSpace(plugin.SecurityError))
-                ImGui.SetTooltip(plugin.SecurityError);
-            return;
+            var tooltip = "Scan incomplete: Omega does not have a completed static security result for this repository package.";
+            if (!string.IsNullOrWhiteSpace(plugin.SecurityError))
+                tooltip += $" {plugin.SecurityError}";
+            return new PluginSecurityVisual(
+                FontAwesomeIcon.ExclamationTriangle,
+                new Vector4(0.94f, 0.43f, 0.10f, 1f),
+                new Vector4(0.46f, 0.25f, 0.08f, 0.96f),
+                "Scan incomplete",
+                tooltip);
         }
 
-        // Keep the hero summary intentionally terse. Scan time, counts and provenance belong
-        // in the detailed security section below where they have enough room to read well.
-        DrawSecuritySeverityBadge(plugin.SecurityHighestSeverity);
+        return ResolveCompletedSecurityVisual(plugin.SecurityHighestSeverity);
+    }
+
+    private static PluginSecurityVisual ResolveCompletedSecurityVisual(string severity)
+    {
+        var normalized = (severity ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "critical" => new PluginSecurityVisual(
+                FontAwesomeIcon.ExclamationTriangle,
+                new Vector4(0.92f, 0.12f, 0.15f, 1f),
+                new Vector4(0.55f, 0.08f, 0.10f, 0.96f),
+                "Critical",
+                "Critical: the completed static scan contains at least one critical finding."),
+            "high" => new PluginSecurityVisual(
+                FontAwesomeIcon.ExclamationTriangle,
+                new Vector4(0.90f, 0.28f, 0.12f, 1f),
+                new Vector4(0.48f, 0.16f, 0.08f, 0.96f),
+                "High",
+                "High: the completed static scan contains at least one high-severity finding."),
+            "caution" or "medium" => new PluginSecurityVisual(
+                FontAwesomeIcon.ExclamationTriangle,
+                new Vector4(0.94f, 0.58f, 0.12f, 1f),
+                new Vector4(0.43f, 0.31f, 0.07f, 0.96f),
+                "Medium",
+                "Medium: the completed static scan contains at least one caution-level finding."),
+            "informational" or "low" => new PluginSecurityVisual(
+                FontAwesomeIcon.InfoCircle,
+                new Vector4(0.18f, 0.54f, 0.86f, 1f),
+                new Vector4(0.08f, 0.30f, 0.40f, 0.96f),
+                "Low",
+                "Low: the completed static scan contains informational findings only."),
+            "none" or "" => new PluginSecurityVisual(
+                FontAwesomeIcon.InfoCircle,
+                new Vector4(0.20f, 0.72f, 0.42f, 1f),
+                new Vector4(0.10f, 0.34f, 0.22f, 0.96f),
+                "No findings",
+                "No findings were observed by the completed static scan."),
+            _ => new PluginSecurityVisual(
+                FontAwesomeIcon.InfoCircle,
+                new Vector4(0.20f, 0.72f, 0.42f, 1f),
+                new Vector4(0.10f, 0.34f, 0.22f, 0.96f),
+                "Scanned",
+                "A completed Omega static security scan is available for this repository package."),
+        };
+    }
+
+    private static void DrawPluginSecurityScanIndicator(MarketplacePlugin plugin, float size)
+    {
+        var visual = ResolvePluginSecurityVisual(plugin);
+        DrawPluginFontAwesomeRiskIcon(visual.Icon, visual.IconColor, visual.Tooltip, size);
+    }
+
+    private void DrawProductSecuritySummary(MarketplacePlugin plugin)
+    {
+        // The product hero and every marketplace card intentionally consume the same exact-variant
+        // security visual. This prevents Spotlight from aggregating another repository's scan and
+        // then showing a different state after the user opens the product page.
+        var visual = ResolvePluginSecurityVisual(plugin);
+        DrawPluginFontAwesomeRiskIcon(visual.Icon, visual.IconColor, visual.Tooltip, 20f);
+        ImGui.SameLine(0f, 8f);
+        DrawDiscoverTextBadge(visual.Label, visual.BadgeColor);
     }
 
     private void DrawProductSecurity(MarketplacePlugin plugin)
@@ -31,9 +107,7 @@ internal sealed partial class MarketplaceWindow
         if (!plugin.HasCompletedSecurityScan)
             return;
 
-        DrawProductSectionHeading(
-            "Security details",
-            "Static analysis summary, capabilities and evidence");
+        DrawProductSectionHeading("Security details");
 
         ImGui.Indent(14f);
         DrawSecuritySeverityBadge(plugin.SecurityHighestSeverity);
@@ -134,25 +208,8 @@ internal sealed partial class MarketplaceWindow
 
     private static void DrawSecuritySeverityBadge(string severity)
     {
-        var normalized = (severity ?? string.Empty).Trim().ToLowerInvariant();
-        var color = normalized switch
-        {
-            "critical" => new Vector4(0.55f, 0.08f, 0.10f, 0.96f),
-            "high" => new Vector4(0.48f, 0.16f, 0.08f, 0.96f),
-            "caution" => new Vector4(0.43f, 0.31f, 0.07f, 0.96f),
-            "informational" => new Vector4(0.08f, 0.30f, 0.40f, 0.96f),
-            _ => new Vector4(0.10f, 0.34f, 0.22f, 0.96f),
-        };
-        var label = normalized switch
-        {
-            "critical" => "Critical",
-            "high" => "High",
-            "caution" => "Medium",
-            "informational" => "Low",
-            "none" or "" => "No findings",
-            _ => "Scanned",
-        };
-        DrawDiscoverTextBadge(label, color);
+        var visual = ResolveCompletedSecurityVisual(severity);
+        DrawDiscoverTextBadge(visual.Label, visual.BadgeColor);
     }
 
     private static string SecurityCountSummary(MarketplacePlugin plugin)
