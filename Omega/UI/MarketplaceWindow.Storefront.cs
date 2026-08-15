@@ -160,7 +160,7 @@ internal sealed partial class MarketplaceWindow
         if (filtered.Length == 0)
         {
             ImGui.Text(activeView == MarketplaceView.Updates
-                ? "All installed plugins are current in Omega's catalog."
+                ? "All installed plugins are current in Omega's Definitions."
                 : "No plugins match this shelf.");
             if (DrawPillButton("Reset filters", "empty-reset-filters", new Vector2(132f, 32f), false))
             {

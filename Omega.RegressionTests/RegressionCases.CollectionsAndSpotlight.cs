@@ -5,6 +5,9 @@ internal static partial class RegressionCases
     internal static void TestDalamudCollectionsContract()
     {
         var ui = ReadMarketplaceWindowSource();
+        var window = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.cs"));
+        var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
+        var collections = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Collections.cs"));
         var bridge = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudProfileBridge.cs"));
         var spotlight = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Spotlight.cs"));
 
@@ -12,17 +15,37 @@ internal static partial class RegressionCases
         Contains(ui, "library-tab-collections", "Library exposes Collections as an in-panel section");
         Contains(ui, "DrawCollectionFolders", "collection overview uses folder renderer");
         Contains(ui, "DrawFolderShape", "collections are drawn as desktop-style folders");
-        Contains(ui, "DrawCollectionPluginGrid", "opened collection renders plugin icon grid");
-        Contains(ui, "Enabled in collection", "collection plugin desired state is visible");
-        Contains(ui, "collection-toggle-", "collection folders expose on/off controls");
+        Contains(ui, "DrawCollectionDirectoryList", "opened collections render as a stable directory list rather than a staggered marketplace tile grid");
+        Contains(ui, "Library / Collections /", "opened collection exposes folder-style breadcrumb navigation");
+        DoesNotContain(window, "DrawLibraryCollectionDropShelf", "Library > All must not render collection folders or collection drop targets");
+        DoesNotContain(library, "DrawCollectionDragHandle", "Library > All must not expose collection-management drag handles");
+        Contains(collections, "Library > All stays a clean list of installed plugins", "collection overview documents the separation between installed-list and collection management");
+        Contains(collections, "DrawCollectionAddPicker", "membership additions are managed from inside an opened collection");
+        Contains(collections, "Installed plugins not yet in this collection", "opened collections expose a searchable installed-plugin picker");
+        Contains(collections, "+ Add plugins", "named collections expose an explicit add-membership action");
+        Contains(ui, "DrawProductCollectionMembership", "the Discover individual product page exposes collection membership");
+        Contains(ui, "multiple named collections at the same time", "the product page makes overlapping named collection membership explicit");
+        Contains(ui, "StartAddPluginToCollection", "the collection-local picker starts a membership operation");
+        Contains(ui, "StartRemovePluginFromCollection", "opened named collections support removing membership");
+        Contains(ui, "StartCollectionPluginStateChange", "opened collections can change per-plugin desired state");
+        Contains(ui, "GetPluginDirectControlState", "Library and Discover derive direct plugin control from Dalamud collection membership");
+        Contains(ui, "Direct control is unavailable because this plugin is managed by:", "named collection membership visibly explains why direct plugin control is unavailable");
+        Contains(ui, "OpenCollectionView", "collection membership can navigate directly into the selected collection");
+        Contains(ui, "DrawToggleSwitch", "collection and plugin state use semantic toggle switches");
         Contains(ui, "Task.Run(() => profileBridge.SetCollectionEnabledAsync", "collection changes are delegated asynchronously");
+        Contains(ui, "Task.Run(() => profileBridge.AddPluginToCollectionAsync", "collection-local membership additions are delegated asynchronously");
         Contains(ui, "Default plugins", "default Dalamud profile remains visible");
-        Contains(ui, "Always on", "default profile is not presented as toggleable");
+        Contains(ui, "Always active", "default profile is not presented as toggleable");
 
         Contains(bridge, "Dalamud.Plugin.Internal.Profiles.ProfileManager", "bridge resolves Dalamud ProfileManager");
         Contains(bridge, "Profiles", "bridge reads Dalamud profile collection");
         Contains(bridge, "SetStateAsync", "bridge delegates collection state changes to Dalamud");
-        Contains(bridge, "IsDefaultProfile", "bridge protects the default profile");
+        Contains(bridge, "AddOrUpdateAsync", "bridge delegates plugin membership/state changes to Dalamud Profile");
+        Contains(bridge, "existing membership in other named profiles is preserved", "adding a plugin to one named collection must not evict it from another named collection");
+        Contains(bridge, "Existing named collection memberships were kept", "successful membership feedback confirms additive collection semantics");
+        Contains(bridge, "RemoveAsync", "bridge delegates membership removal to Dalamud Profile");
+        Contains(bridge, "WorkingPluginId", "bridge resolves Dalamud's canonical installed plugin identity before membership changes");
+        Contains(bridge, "IsDefaultProfile", "bridge protects the default profile from manual membership changes");
         False(bridge.Contains("File.Write", StringComparison.Ordinal), "Omega must not persist a second collection model");
 
         Contains(spotlight, "DrawSpotlightCard", "Spotlight renders card-owned promotional information");
@@ -39,6 +62,16 @@ internal static partial class RegressionCases
         False(spotlight.Contains("AssemblyVersionText", StringComparison.Ordinal), "Spotlight cards omit version metadata");
         False(spotlight.Contains("DrawDetailsDescription", StringComparison.Ordinal), "Spotlight must not copy the verbose normal details panel");
         Contains(spotlight, "OpenPluginDetails(plugin)", "selecting Spotlight artwork routes through the canonical Discover product-page selection path");
+        Contains(spotlight, "SpotlightPromotedCardColors(plugin)", "top promoted Spotlight cards derive their palette from the highlighted plugin rather than Omega branding");
+        Contains(spotlight, "\"HonseFarm.Client\" =>", "HonseFarm has its own red logo-derived Spotlight palette");
+        Contains(spotlight, "\"AetherLovePlugin\" =>", "AetherLove has its own blue logo-derived Spotlight palette");
+        Contains(spotlight, "\"InventoryTools\" =>", "Allagan Tools has its own gold logo-derived Spotlight palette");
+        Contains(spotlight, "\"GatherBuddy\" =>", "GatherBuddy has its own earthy logo-derived Spotlight palette");
+        Contains(spotlight, "\"ChatTwo\" =>", "Chat 2 has its own monochrome logo-derived Spotlight palette");
+        Contains(spotlight, "ImGui.PushStyleColor(ImGuiCol.ChildBg, cardColors.Background)", "promoted Spotlight cards apply the plugin-specific background tint");
+        Contains(spotlight, "ImGui.PushStyleColor(ImGuiCol.Border, cardColors.Border)", "promoted Spotlight cards apply the matching plugin-specific border tint");
+        Contains(spotlight, "DrawPluginRiskIndicator(plugin, statusIconSize)", "all five promoted Spotlight cards expose the same security/automation status icon language as Discover");
+        DoesNotContain(spotlight, "Omega's primary logo accent", "promoted-card color must not be derived from Omega branding");
 
         var shelves = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SpotlightShelves.cs"));
         var recency = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginRecencyLedger.cs"));
@@ -49,6 +82,8 @@ internal static partial class RegressionCases
         Contains(shelves, "NormalizeUnix(x.LastUpdate)", "latest updates use repository LastUpdate ordering");
         Contains(shelves, "showOverlays: false", "recency shelves keep artwork clean");
         Contains(shelves, "OpenSpotlightPluginInDiscover(plugin)", "latest additions and updates use whole-card Discover navigation");
+        Contains(shelves, "DrawPluginRiskIndicator(plugin, statusIconSize)", "latest additions and updates expose the same security/automation status icon language as Discover");
+        DoesNotContain(shelves, "SpotlightPromotedCardColors", "latest additions and updates remain neutral rather than inheriting promoted plugin palettes");
         False(shelves.Contains("Install", StringComparison.Ordinal), "recency shelves do not duplicate install actions");
         False(shelves.Contains("InfoCircle", StringComparison.Ordinal), "recency shelves do not duplicate info buttons");
         Contains(shelves, "NoScrollWithMouse", "recency shelf cards do not scroll independently");
@@ -59,13 +94,21 @@ internal static partial class RegressionCases
     internal static void TestStoreLibraryNavigationContract()
     {
         var ui = ReadMarketplaceWindowSource();
+        var window = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.cs"));
         var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
+        var layout = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceLayoutRules.cs"));
+
+        var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
 
         Contains(ui, "MarketplaceView.Library", "installed plugins are owned by Library");
         Contains(ui, "MarketplaceView.Updates", "updates has a dedicated lower utility destination");
-        Contains(ui, "sidebar-utility-{view}", "lower icon-rail utility navigation is separate from primary navigation");
-        Contains(ui, "DrawSidebarUtilityIcon(MarketplaceView.Updates", "Updates is rendered as a lower icon-rail destination");
-        Contains(ui, "DrawSidebarUtilityIcon(MarketplaceView.Library", "Library is rendered as a lower icon-rail destination");
+        Contains(chrome, "sidebar-utility-{view}", "lower icon-rail utility navigation is separate from primary navigation");
+        Contains(chrome, "DrawSidebarUtilityIcon(", "lower icon-rail destinations use the utility navigation renderer");
+        Contains(chrome, "MarketplaceView.Updates,", "Updates remains a lower icon-rail utility destination");
+        Contains(chrome, "FontAwesomeIcon.Download", "Updates keeps its download icon in the lower utility rail");
+        Contains(chrome, "counts.Updates + definitionsUpdateCount", "Updates badge includes both plugin and Definitions updates");
+        Contains(chrome, "MarketplaceView.Library,", "Library remains a lower icon-rail utility destination");
+        Contains(chrome, "FontAwesomeIcon.List", "Library keeps its list icon in the lower utility rail");
         False(ui.Contains("DrawSidebarView(MarketplaceView.Installed", StringComparison.Ordinal), "Installed is no longer a permanent sidebar destination");
         False(ui.Contains("DrawSidebarView(MarketplaceView.Collections", StringComparison.Ordinal), "Collections is no longer a permanent sidebar destination");
         False(ui.Contains("DrawSidebarView(MarketplaceView.Installable", StringComparison.Ordinal), "Installable is no longer a permanent sidebar destination");
@@ -75,8 +118,11 @@ internal static partial class RegressionCases
         Contains(library, "library-tab-collections", "Library has a Collections section");
         Contains(library, "BuildLibraryProjection", "Library includes installed plugins even when marketplace metadata is absent");
         Contains(library, "DrawLibraryList", "Library All uses an installed-app row list rather than the marketplace icon grid");
+        DoesNotContain(window, "DrawLibraryCollectionDropShelf", "Library All renders no collection-folder shelf above the installed list");
+        DoesNotContain(library, "DrawCollectionDragHandle", "Library All rows contain no collection-management affordance");
         Contains(library, "DrawUpdatesList", "Updates uses a dedicated update row list");
-        Contains(library, "const float rowHeight = 88f", "Library and Updates use a compact three-line metadata row without clipping");
+        Contains(layout, "public const float LibraryRowHeight = 88f", "the shared Library row-height contract remains 88px");
+        Contains(library, "const float rowHeight = MarketplaceLayoutRules.LibraryRowHeight", "Library and Updates consume the shared tested row-height contract");
         Contains(library, "InstalledVersionText(installedPlugin)", "installed rows expose the installed version");
         Contains(library, "installedPlugin.IsLoaded ? \"Loaded\" : \"Not loaded\"", "installed rows expose the runtime load state");
         Contains(library, "BuildInstalledMetadataLine", "installed rows expose source and API compatibility metadata");
@@ -89,7 +135,7 @@ internal static partial class RegressionCases
         Contains(ui, "##filter-status", "status grouping is panel-local inside expanded Filters");
         Contains(ui, "LibraryRuntimeFilter", "Library reuses Discover's full filter layout with a useful loaded/not-loaded status filter");
         Contains(ui, "HasAvailableUpdate", "Updates derives from newer compatible catalog packages");
-        Contains(ui, "ImGui.Dummy(new Vector2(0f, 38f))", "left navigation starts below top chrome instead of above right-panel data");
+        Contains(ui, "ImGui.Dummy(new Vector2(0f, 6f))", "Spotlight and Discover sit close to the top of the icon rail");
         Contains(ui, "sidebar-settings", "Settings replaces Sources in the lower icon rail");
         Contains(ui, "FontAwesomeIcon.Star", "Spotlight uses an icon");
         Contains(ui, "FontAwesomeIcon.Search", "Discover uses an icon");
@@ -144,15 +190,22 @@ internal static partial class RegressionCases
         Contains(product, "DrawDiscoverProductPage", "Discover selection uses a dedicated product page");
         Contains(product, "ProductHeroMaxWidth = 820f", "Discover product hero keeps a bounded right edge instead of stretching across the content pane");
         Contains(product, "Math.Min(ProductHeroMaxWidth, ImGui.GetContentRegionAvail().X)", "product hero remains responsive when the content pane is narrower than its preferred width");
+        Contains(product, "ProductHeroHeight = 310f", "product hero reserves enough vertical room for its primary action");
+        Contains(product, "CleanProductDescriptionForDisplay", "About removes redundant transport provenance from human-readable description copy");
+        Contains(product, "product-about-metadata", "About uses a structured metadata table instead of a dense footer paragraph");
+        Contains(product, "DrawProductSectionHeading", "About and Security use a shared readable section hierarchy");
         Contains(product, "Screenshots", "product page exposes the screenshot section");
         Contains(product, "style.WindowPadding.Y * 2f", "screenshot strip height reserves its vertical window padding");
         Contains(product, "style.ScrollbarSize + 4f", "screenshot strip reserves horizontal scrollbar height so a vertical scrollbar is not induced");
         Contains(product, "ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.NoScrollWithMouse", "screenshots remain a horizontal-only browsing strip");
-        Contains(product, "MarketplacePresentationContent", "product page consumes the richest presentation variant");
-        Contains(product, "Dalamud official", "official plugins receive an explicit Dalamud badge");
+        Contains(product, "MarketplacePresentationContent", "product page consumes the canonical presentation selection");
+        Contains(product, "DrawDalamudOfficialLogoBadge", "official plugins use the Dalamud logo rather than a text badge");
         Contains(product, "★ Enhanced", "website-enriched product pages expose the enhanced marker");
         Contains(product, "DrawProductWebsiteIcon(plugin, enhancedUrl)", "enhanced product pages place their project link beside the Enhanced badge");
         Contains(product, "DrawProductSecuritySummary(plugin)", "security posture is summarized inside the product hero instead of as a detached block");
+        Contains(product, "DrawProductCollectionMembership(plugin, installedPlugin)", "installed product pages show the plugin's collection membership directly below the hero");
+        Contains(product, "foreach (var membership in control.Memberships", "all matching collection memberships are iterated instead of reducing membership to a single owner");
+        Contains(product, "CollectionDisplayName(membership.Collection)", "each Discover collection membership is rendered from its own collection identity");
         False(product.Contains("Enhanced from:", StringComparison.Ordinal), "raw enrichment provenance wording must not return to the About section");
         False(product.Contains("DrawDetailsLinks(plugin)", StringComparison.Ordinal), "product pages do not append a detached project/source button row below About");
         Contains(product, "NSFW", "NSFW-tagged plugins receive a content badge");
@@ -162,6 +215,43 @@ internal static partial class RegressionCases
         Contains(storefront, "DrawDiscoverProductPage", "selected Discover plugins replace the list with the product page");
     }
 
+
+
+    internal static void TestDiscoverRiskOwnershipAndAvailabilityContract()
+    {
+        var discover = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
+        var plugin = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
+
+        Contains(discover, "DrawPluginRiskIndicator", "Discover renders a security indicator beside listing status");
+        Contains(discover, "DrawPluginFontAwesomeRiskIcon", "non-automation security states use Dalamud's Font Awesome icon font");
+        Contains(discover, "FontAwesomeIcon.Question", "unscanned plugins use a centered Font Awesome question icon");
+        Contains(discover, "FontAwesomeIcon.ExclamationTriangle", "risk findings use Font Awesome's warning-triangle glyph instead of hand-centered punctuation");
+        Contains(discover, "FontAwesomeIcon.InfoCircle", "informational/no-finding scans use a semantic info-circle glyph");
+        Contains(discover, "UiBuilder.IconFontFixedWidth", "risk glyphs render through Dalamud's fixed-width icon font for reliable centering");
+        DoesNotContain(discover, "DrawPluginWarningTriangle", "the old custom punctuation-in-triangle renderer must not return");
+        Contains(discover, "DrawPluginRadiationIcon", "automation-capable plugins use a dedicated nuclear/radiation icon");
+        Contains(discover, "AddCircleFilled", "the nuclear indicator is drawn geometrically and cannot degrade into a pause-like missing-font glyph");
+        Contains(discover, "SecuritySeverityRank", "non-automation scan results use severity-colored risk icons");
+        Contains(discover, "0.18f, 0.48f, 0.82f", "informational/no-risk scans retain the blue status color");
+        Contains(discover, "0.94f, 0.76f, 0.12f", "low risk uses the yellow warning glyph");
+        Contains(discover, "0.94f, 0.43f, 0.10f", "medium risk uses the orange warning glyph");
+        Contains(discover, "0.86f, 0.15f, 0.17f", "high/critical risk uses the red warning glyph");
+        Contains(discover, "SecuritySeverityRank", "Discover chooses the highest observed security severity across variants");
+        Contains(discover, "AutomationRank", "UI/character/gameplay automation outranks ordinary risk coloring");
+        Contains(discover, "DrawDiscoverInstalledMarker", "installed Discover entries get a dedicated installed-state marker on the left");
+        Contains(discover, "0.20f, 0.72f, 0.42f", "installed state uses an unambiguous green marker instead of the old blue ownership block");
+        Contains(discover, "draw.AddCircleFilled(center", "installed state is rendered as a compact green circle");
+        Contains(discover, "draw.AddLine(min + new Vector2(6.5f, 13.2f)", "installed state draws the first stroke of a geometric check mark");
+        Contains(discover, "draw.AddLine(min + new Vector2(10.8f, 17.3f)", "installed state draws the second stroke of a geometric check mark");
+        DoesNotContain(discover, "for (var i = 0; i < 3; i++)", "the confusing three-bar ownership block must not return");
+        Contains(discover, "DrawDiscoverPluginTitle", "installed titles have their own mild dimming path");
+        Contains(discover, "\"↓\"", "uninstallable/outdated listings use a red down-arrow marker");
+        Contains(discover, "var unavailable = !HasInstallableVariant", "installability decides whether the down arrow replaces the enhanced star");
+        Contains(discover, "DrawDalamudOfficialLogoBadge", "official listings show the Dalamud logo instead of an Official text pill");
+        Contains(discover, "DalamudAsset.LogoSmall", "the official badge uses Dalamud's own shipped logo asset");
+        DoesNotContain(discover, "DrawDiscoverTextBadge(\"Official\"", "Discover no longer labels official plugins with text");
+        Contains(plugin, "IDalamudAssetManager DalamudAssets", "Omega requests the public Dalamud asset service for the official logo");
+    }
 
     internal static void TestPluginArtworkAndScreenshotInteractionContract()
     {

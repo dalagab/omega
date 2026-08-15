@@ -46,7 +46,7 @@ internal static partial class RegressionCases
     {
         var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CatalogUpdateCoordinator.cs"));
         Contains(coordinator, "TryApplyOnlineCatalogAsync", "online SQLite catalog is checked first");
-        Contains(coordinator, "retaining local database", "network failure retains last-known-good SQLite");
+        Contains(coordinator, "retaining local Definitions", "network failure retains last-known-good SQLite Definitions");
         False(coordinator.Contains("LocalFallback", StringComparison.Ordinal), "public catalog is not rebuilt by crawling repositories in-game");
         False(coordinator.Contains("await catalog.RefreshAsync(configuration.Repositories)", StringComparison.Ordinal), "central failure does not fan out across public sources");
         Contains(coordinator, "!x.IsCurated", "user-added sources can remain explicit temporary overlays");
@@ -114,8 +114,54 @@ internal static partial class RegressionCases
             "non-HTTPS central catalog is rejected");
 
         var client = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OnlineCatalogClient.cs"));
+        Contains(client, "ProbeAsync", "descriptor-only checks can detect a pending Definitions update without downloading it");
+        Contains(client, "OnlineCatalogCheckStatus.UpdateAvailable", "descriptor probe distinguishes pending Definitions from current state");
         Contains(client, "omega.catalog.sqlite.v1", "client accepts only the SQLite catalog descriptor schema");
         False(client.Contains("omega.catalog.v1", StringComparison.Ordinal), "legacy JSON bundle schema removed");
+    }
+
+    internal static void TestDefinitionsUpdateUiContract()
+    {
+        var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CatalogUpdateCoordinator.cs"));
+        Contains(coordinator, "DefinitionsUpdateAvailable", "coordinator exposes a pending Definitions update state");
+        Contains(coordinator, "AvailableCatalogSha256", "pending Definitions identity is persisted separately from the applied hash");
+        Contains(coordinator, "CheckForUpdatesAsync", "Definitions can be checked without applying them");
+        Contains(coordinator, "ApplyDefinitionsUpdateAsync", "pending Definitions can be explicitly applied");
+        Contains(coordinator, "onlineClient.ProbeAsync", "normal update checks only fetch the descriptor");
+
+        var temp = Path.Combine(Path.GetTempPath(), "omega-definitions-state-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        try
+        {
+            var store = new OnlineCatalogStateStore(temp);
+            store.Save(new OnlineCatalogState
+            {
+                DescriptorUrl = "https://example.invalid/catalog.json",
+                CatalogSha256 = new string('a', 64),
+                AvailableCatalogSha256 = new string('b', 64),
+                AvailableCatalogRevision = "cat-v1-0123456789abcdef",
+            });
+            var loaded = store.Load();
+            Equal(new string('b', 64), loaded.AvailableCatalogSha256, "pending Definitions hash survives restart state round-trip");
+            Equal("cat-v1-0123456789abcdef", loaded.AvailableCatalogRevision, "pending Definitions revision survives restart state round-trip");
+        }
+        finally
+        {
+            if (Directory.Exists(temp)) Directory.Delete(temp, true);
+        }
+
+        var ui = ReadMarketplaceWindowSource();
+        Contains(ui, "Definitions update available", "Updates page advertises pending Definitions at the top");
+        Contains(ui, "Update Definitions", "Updates page exposes the explicit Definitions apply action");
+        Contains(ui, "##omega-about-version", "version footer is the About entry point");
+        Contains(ui, "(versionAvailable - versionButtonSize.X) * 0.5f", "version footer is centered in the application rail");
+        Contains(ui, "About Omega", "About popup owns version and Definitions identity");
+        Contains(ui, "Definitions Revision", "About uses Definitions terminology for the downloadable database identity");
+        Contains(ui, "Check for updates", "Settings starts with an update check action");
+        Contains(ui, "View EULA", "Settings labels the agreement simply as EULA");
+        False(ui.Contains("View EULA / Risk Disclosure", StringComparison.Ordinal), "Settings does not relabel EULA as a risk disclosure");
+        False(ui.Contains("Catalog identity", StringComparison.Ordinal), "catalog identity is removed from Settings");
+        False(ui.Contains("[Curated (", StringComparison.Ordinal), "Curated source tab has no decorative brackets");
     }
 
     internal static void TestLiveCatalogEndpointContract()

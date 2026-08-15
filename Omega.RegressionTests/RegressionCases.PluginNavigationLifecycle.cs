@@ -16,8 +16,15 @@ internal static partial class RegressionCases
         var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
         var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginInstallCoordinator.cs"));
         var installer = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudInstallerBridge.cs"));
+        var pluginEntry = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
 
+        Contains(pluginEntry, "CommandName = \"/omega\"", "Omega keeps the canonical /omega command");
+        Contains(pluginEntry, "CommandAlias = \"/omg\"", "Omega registers /omg as a compact alias");
+        Contains(pluginEntry, "CommandManager.AddHandler(CommandAlias", "the /omg alias is registered with Dalamud's command manager");
+        Contains(pluginEntry, "CommandManager.RemoveHandler(CommandAlias)", "the /omg alias is removed cleanly on plugin disposal");
         Contains(artwork, "activeView = MarketplaceView.Discover", "canonical plugin selection always enters Discover");
+        Contains(artwork, "selectedVariantSource.Remove(plugin.InternalName)", "a fresh plugin selection clears stale repository overrides");
+        Contains(artwork, ".Where(x => x.SourceIsOfficial)", "fresh product navigation prefers official Dalamud metadata whenever it exists");
         Contains(artwork, "selectedPlugin = ResolveSelectedVariant(plugin)", "canonical plugin selection resolves the product-page variant");
         Contains(discover, "OpenPluginDetails(plugin)", "Discover selections use canonical product navigation");
         Contains(library, "OpenPluginDetails(plugin)", "Library and Updates selections use canonical product navigation");
@@ -27,6 +34,13 @@ internal static partial class RegressionCases
         Contains(details, "Process.Start(new ProcessStartInfo(projectUrl) { UseShellExecute = true })", "legacy Project action opens the system browser");
         Contains(headerLinks, "FontAwesomeIcon.Globe", "Discover product header exposes project navigation as a compact globe icon");
         Contains(headerLinks, "OpenProductWebsite", "product-header globe opens the selected project URL");
+        var appBar = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.AppBar.cs"));
+        Contains(appBar, "DrawProductBackButton(searchX)", "product-page back navigation lives on the same application-bar row as search");
+        Contains(appBar, "const string label = \"Omega\"", "the application bar keeps the text Omega mark");
+        Contains(appBar, "omegaDotCenter", "the Omega wordmark places a red core inside its first O");
+        Contains(appBar, "0.88f, 0.16f, 0.20f", "the Omega core mark is visibly red");
+        DoesNotContain(appBar, "AddImage(texture.Handle", "the application bar no longer renders the Omega logo in the top-left");
+        DoesNotContain(product, "FontAwesomeIcon.ArrowLeft", "the product body no longer renders a detached back arrow below search");
         False(details.Contains("Copy source", StringComparison.Ordinal), "Copy source is not exposed as a product/detail action");
         False(popups.Contains("Known sources###DalagabOmegaKnownSources", StringComparison.Ordinal), "obsolete source-copy popup is removed");
 

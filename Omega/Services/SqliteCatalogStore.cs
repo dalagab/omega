@@ -207,19 +207,26 @@ internal sealed class SqliteCatalogStore
         var automationCapabilitiesProjection = runtimeColumns.Contains("security_automation_capabilities_json")
             ? "security_automation_capabilities_json"
             : "'[]' AS security_automation_capabilities_json";
+        var dependenciesProjection = runtimeColumns.Contains("security_dependencies_json")
+            ? "security_dependencies_json"
+            : "'[]' AS security_dependencies_json";
+        var dependencyTotalProjection = runtimeColumns.Contains("security_dependency_total_count")
+            ? "security_dependency_total_count"
+            : "0 AS security_dependency_total_count";
         var securityProjection = hasSecurityProjection
             ? $"""
                    security_status,security_scanned_at_utc,security_artifact_sha256,security_scanner_version,
                    security_highest_severity,security_informational_count,security_caution_count,security_high_count,
                    security_critical_count,security_capabilities_json,{automationLevelProjection},{automationCapabilitiesProjection},
-                   security_findings_json,security_source_available,
+                   security_findings_json,{dependenciesProjection},{dependencyTotalProjection},security_source_available,
                    security_source_repository,security_source_commit,security_source_to_binary_verified,security_error
               """
             : """
                    '' AS security_status,'' AS security_scanned_at_utc,'' AS security_artifact_sha256,'' AS security_scanner_version,
                    'none' AS security_highest_severity,0 AS security_informational_count,0 AS security_caution_count,0 AS security_high_count,
                    0 AS security_critical_count,'[]' AS security_capabilities_json,'none' AS security_automation_level,
-                   '[]' AS security_automation_capabilities_json,'[]' AS security_findings_json,0 AS security_source_available,
+                   '[]' AS security_automation_capabilities_json,'[]' AS security_findings_json,'[]' AS security_dependencies_json,
+                   0 AS security_dependency_total_count,0 AS security_source_available,
                    '' AS security_source_repository,'' AS security_source_commit,0 AS security_source_to_binary_verified,'' AS security_error
               """;
 
@@ -287,11 +294,13 @@ internal sealed class SqliteCatalogStore
                 SecurityAutomationLevel = GetString(reader, 43, "none"),
                 SecurityAutomationCapabilities = ReadAutomationCapabilities(GetString(reader, 44, "[]")),
                 SecurityFindings = ReadSecurityFindings(GetString(reader, 45, "[]")),
-                SecuritySourceAvailable = GetBool(reader, 46),
-                SecuritySourceRepository = GetString(reader, 47),
-                SecuritySourceCommit = GetString(reader, 48),
-                SecuritySourceToBinaryVerified = GetBool(reader, 49),
-                SecurityError = GetString(reader, 50),
+                SecurityDependencies = ReadDependencies(GetString(reader, 46, "[]")),
+                SecurityDependencyTotalCount = GetInt(reader, 47),
+                SecuritySourceAvailable = GetBool(reader, 48),
+                SecuritySourceRepository = GetString(reader, 49),
+                SecuritySourceCommit = GetString(reader, 50),
+                SecuritySourceToBinaryVerified = GetBool(reader, 51),
+                SecurityError = GetString(reader, 52),
             });
         }
         return result;
@@ -468,6 +477,21 @@ internal sealed class SqliteCatalogStore
         try
         {
             return JsonSerializer.Deserialize<List<MarketplaceAutomationCapability>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+            }) ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static IReadOnlyList<MarketplaceDependency> ReadDependencies(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<List<MarketplaceDependency>>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
             }) ?? [];

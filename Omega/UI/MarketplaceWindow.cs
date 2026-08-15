@@ -120,12 +120,14 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private bool detailsOpen;
     private bool filtersOpen;
     private bool settingsOpen;
+    private bool aboutOpen;
     private bool installPopupOpen;
     private bool uninstallPopupOpen;
     private bool addSourceOpen;
     private bool requestInstallPopup;
     private bool requestUninstallPopup;
     private bool requestSettingsPopup;
+    private bool requestAboutPopup;
     private bool requestTagsPopup;
     private bool requestEulaPopup;
     private bool requestScreenshotPopup;
@@ -186,6 +188,9 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private MarketplaceSecurityFilter filterSecurity;
     private bool filterPreferTesting;
     private MarketplacePlugin[] cachedFilteredPlugins = [];
+
+    private readonly Dictionary<string, PluginRiskState> pluginRiskStateCache = new(StringComparer.OrdinalIgnoreCase);
+    private long pluginRiskStateCatalogRevision = -1;
 
     private long tagPickerCatalogRevision = -1;
     private int tagPickerCurrentApi;
@@ -302,6 +307,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         DrawInstallModal(currentApi, versionInfo.Version);
         DrawUninstallModal();
         DrawSettingsModal();
+        DrawAboutModal();
         DrawEulaReviewModal();
         DrawTagPickerPopup(currentApi);
         DrawScreenshotViewerModal();
@@ -327,6 +333,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         {
             ImGui.OpenPopup("Settings###DalagabOmegaSettings");
             requestSettingsPopup = false;
+        }
+
+        if (requestAboutPopup)
+        {
+            ImGui.OpenPopup(AboutPopupId);
+            requestAboutPopup = false;
         }
 
         if (requestTagsPopup)

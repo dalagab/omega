@@ -21,11 +21,9 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
+        // Keep the hero summary intentionally terse. Scan time, counts and provenance belong
+        // in the detailed security section below where they have enough room to read well.
         DrawSecuritySeverityBadge(plugin.SecurityHighestSeverity);
-        ImGui.SameLine(0f, 10f);
-        ImGui.TextDisabled(SecurityCountSummary(plugin));
-        if (plugin.SecurityScannedAtUtc is { } scanned)
-            ImGui.TextDisabled($"Scanned {scanned.ToLocalTime():g}");
     }
 
     private void DrawProductSecurity(MarketplacePlugin plugin)
@@ -33,22 +31,34 @@ internal sealed partial class MarketplaceWindow
         if (!plugin.HasCompletedSecurityScan)
             return;
 
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-        ImGui.TextUnformatted("Security details");
+        DrawProductSectionHeading(
+            "Security details",
+            "Static analysis summary, capabilities and evidence");
+
+        ImGui.Indent(14f);
+        DrawSecuritySeverityBadge(plugin.SecurityHighestSeverity);
+        if (plugin.SecurityScannedAtUtc is { } scanned)
+        {
+            ImGui.SameLine(0f, 10f);
+            ImGui.TextDisabled($"Scanned {scanned.ToLocalTime():g}");
+        }
+        ImGui.TextDisabled(SecurityCountSummary(plugin));
 
         if (plugin.SecurityCapabilities.Count > 0)
         {
+            ImGui.Dummy(new Vector2(1f, 10f));
+            ImGui.TextUnformatted("Observed capabilities");
+            ImGui.TextDisabled("What the scanner found the package capable of accessing or invoking.");
             ImGui.Spacing();
-            ImGui.TextDisabled("Observed capabilities");
-            ImGui.TextWrapped(string.Join("  •  ", plugin.SecurityCapabilities.Take(12)));
+            DrawSecurityBulletList(plugin.SecurityCapabilities.Take(12));
         }
 
         if (plugin.SecurityAutomationCapabilities.Count > 0)
         {
+            ImGui.Dummy(new Vector2(1f, 12f));
+            ImGui.TextUnformatted("Automation");
+            ImGui.TextDisabled(AutomationLevelLabel(plugin.SecurityAutomationLevel));
             ImGui.Spacing();
-            ImGui.TextDisabled($"Automation capability: {AutomationLevelLabel(plugin.SecurityAutomationLevel)}");
             foreach (var capability in plugin.SecurityAutomationCapabilities.Take(10))
             {
                 var qualifiers = new List<string>();
@@ -58,19 +68,24 @@ internal sealed partial class MarketplaceWindow
                     qualifiers.Add("reachable from plugin entry/callback code");
                 if (capability.Indirect)
                     qualifiers.Add("via IPC");
-                var suffix = qualifiers.Count == 0 ? string.Empty : $" ({string.Join(", ", qualifiers)})";
-                ImGui.TextWrapped($"• {capability.Label}{suffix}");
+                var suffix = qualifiers.Count == 0 ? string.Empty : $" — {string.Join(", ", qualifiers)}";
+                DrawSecurityBullet($"{capability.Label}{suffix}");
             }
         }
 
-        if (plugin.SecurityFindings.Count > 0 &&
-            ImGui.TreeNode($"Why these findings were reported ({plugin.SecurityFindings.Count})##security-findings-{plugin.InternalName}"))
+        if (plugin.SecurityFindings.Count > 0)
         {
-            foreach (var finding in plugin.SecurityFindings.Take(20))
-                DrawSecurityFinding(finding);
-            ImGui.TreePop();
+            ImGui.Dummy(new Vector2(1f, 12f));
+            if (ImGui.TreeNode($"Detailed findings ({plugin.SecurityFindings.Count})##security-findings-{plugin.InternalName}"))
+            {
+                foreach (var finding in plugin.SecurityFindings.Take(20))
+                    DrawSecurityFinding(finding);
+                ImGui.TreePop();
+            }
         }
 
+        ImGui.Dummy(new Vector2(1f, 12f));
+        ImGui.Separator();
         ImGui.Spacing();
         if (plugin.SecuritySourceAvailable)
         {
@@ -83,6 +98,24 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextDisabled("No public source was available for this scan.");
         }
         DrawSecurityDisclaimer();
+        ImGui.Unindent(14f);
+    }
+
+    private static void DrawSecurityBulletList(IEnumerable<string> values)
+    {
+        foreach (var value in values.Where(x => !string.IsNullOrWhiteSpace(x)))
+            DrawSecurityBullet(value);
+    }
+
+    private static void DrawSecurityBullet(string value)
+    {
+        var x = ImGui.GetCursorPosX();
+        ImGui.TextDisabled("•");
+        ImGui.SameLine(0f, 8f);
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(280f, Math.Min(900f, ImGui.GetContentRegionAvail().X)));
+        ImGui.TextWrapped(value);
+        ImGui.PopTextWrapPos();
+        ImGui.SetCursorPosX(x);
     }
 
     private static void DrawSecurityFinding(MarketplaceSecurityFinding finding)
@@ -112,14 +145,18 @@ internal sealed partial class MarketplaceWindow
         };
         var label = normalized switch
         {
-            "none" or "" => "No findings observed",
-            _ => $"Highest: {normalized}",
+            "critical" => "Critical",
+            "high" => "High",
+            "caution" => "Medium",
+            "informational" => "Low",
+            "none" or "" => "No findings",
+            _ => "Scanned",
         };
         DrawDiscoverTextBadge(label, color);
     }
 
     private static string SecurityCountSummary(MarketplacePlugin plugin)
-        => $"Critical {plugin.SecurityCriticalCount}  •  High {plugin.SecurityHighCount}  •  Caution {plugin.SecurityCautionCount}  •  Info {plugin.SecurityInformationalCount}";
+        => $"Findings: {plugin.SecurityCriticalCount} critical  •  {plugin.SecurityHighCount} high  •  {plugin.SecurityCautionCount} medium  •  {plugin.SecurityInformationalCount} low";
 
     private static string AutomationLevelLabel(string level)
         => (level ?? string.Empty).Trim().ToLowerInvariant() switch

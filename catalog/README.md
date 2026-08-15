@@ -47,7 +47,7 @@ Timestamp-only revalidation freshness lives in `security-scan-ledger.json`, so n
 
 ## Marketplace security projection
 
-The marketplace database carries only current compact security information required by Omega: status, artifact hash, scanner version, severity/counts, observed capabilities, automation classification, bounded findings/evidence, source provenance, and errors. Detailed `plugin_security_*` forensic tables are physically absent.
+The marketplace database carries only current compact security information required by Omega: status, artifact hash, scanner version, severity/counts, observed capabilities, automation classification, bounded findings/evidence, a bounded deduplicated dependency summary (up to 30 components plus total count), source provenance, and errors. Detailed `plugin_security_*` forensic tables are physically absent.
 
 ## Detailed evidence storage
 

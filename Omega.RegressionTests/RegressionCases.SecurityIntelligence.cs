@@ -170,6 +170,11 @@ internal static partial class RegressionCases
         Contains(store, "catalog_revision", "runtime reads semantic Catalog Revision metadata");
         Contains(store, "security_revision", "runtime reads semantic Security Revision metadata");
         Contains(store, "evidence_revision", "runtime reads server-side Evidence Revision metadata without downloading evidence");
+        Contains(store, "security_dependencies_json", "runtime reads the bounded dependency summary from Definitions");
+        Contains(store, "ReadDependencies", "runtime deserializes structured dependency summaries");
+        var dependencyModel = File.ReadAllText(Path.Combine(Root, "Omega", "Models", "MarketplaceDependency.cs"));
+        Contains(dependencyModel, "TargetInternalName", "dependency summaries retain resolved Omega plugin targets");
+        Contains(dependencyModel, "WarningSeverity", "dependency summaries retain warning/advisory severity without detailed evidence");
 
         var onlineClient = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OnlineCatalogClient.cs"));
         Contains(onlineClient, "CatalogRevision", "online descriptor carries Catalog Revision diagnostics");
@@ -183,18 +188,58 @@ internal static partial class RegressionCases
         False(onlineClient.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "Omega client cannot download the detailed evidence database");
         Contains(onlineClient, "64L * 1024 * 1024", "client transport ceiling accommodates compacted production catalogs while remaining bounded");
 
-        var settings = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
-        Contains(settings, "Catalog Revision", "Settings displays the semantic catalog identity");
-        Contains(settings, "Security Revision", "Settings displays the semantic security identity");
-        Contains(settings, "Evidence Revision", "Settings displays the server-side evidence identity for troubleshooting");
+        var about = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
+        Contains(about, "About Omega", "version footer opens a dedicated About surface");
+        Contains(about, "DrawAboutIdentityHero", "About gives the Omega identity its own visual hero");
+        Contains(about, "const float iconSize = 112f", "About presents the application icon at a useful size");
+        Contains(about, "omegaIconTexture?.GetWrapOrDefault()", "About uses the packaged Omega application artwork");
+        Contains(about, "Definitions Revision", "About displays the semantic Definitions identity");
+        Contains(about, "Security Revision", "About displays the semantic security identity");
+        Contains(about, "Evidence Revision", "About displays the server-side evidence identity for troubleshooting");
+        False(about.Contains("Catalog identity", StringComparison.Ordinal), "Settings/About no longer labels Definitions as a catalog database identity");
 
         var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
         Contains(product, "Observed capabilities", "product page explains observed permissions/capabilities");
-        Contains(product, "Why these findings were reported", "product page exposes expandable detailed findings");
+        Contains(product, "Detailed findings", "product page exposes expandable detailed findings");
         Contains(product, "No findings is not proof", "product page avoids claiming that static analysis proves safety");
         Contains(product, "The published package was not verified to match that source.", "product page preserves source provenance uncertainty");
-        Contains(product, "Automation capability", "product page exposes structured character/menu automation classification");
+        Contains(product, "SecurityAutomationCapabilities.Count > 0", "product page renders structured character/menu automation evidence when present");
+        Contains(product, "ImGui.TextUnformatted(\"Automation\")", "product page labels the structured automation section clearly");
+        Contains(product, "AutomationLevelLabel(plugin.SecurityAutomationLevel)", "product page renders the normalized automation classification");
         Contains(product, "Full gameplay automation", "product page can distinguish the strongest automation class");
+        DoesNotContain(product, "Highest:", "product hero severity badge uses a concise risk label");
+        Contains(product, "\"high\" => \"High\"", "high severity is displayed simply as High");
+        Contains(product, "\"caution\" => \"Medium\"", "caution severity is presented as the user-facing Medium level");
+        Contains(product, "\"informational\" => \"Low\"", "informational severity is presented as the user-facing Low level");
+        Contains(product, "Scanned {scanned.ToLocalTime():g}", "scan timestamp is retained in the detailed security section");
+        Contains(product, "Findings:", "detailed security section retains severity counts away from the hero");
+        Contains(product, "DrawSecurityBulletList", "observed capabilities render as readable vertical bullets instead of one dense line");
+        var dependenciesUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Dependencies.cs"));
+        Contains(dependenciesUi, "Dependencies", "product page exposes a dedicated dependency section");
+        Contains(dependenciesUi, "Available in Omega", "resolved plugin dependencies advertise that they can be opened in Omega");
+        Contains(dependenciesUi, "OpenPluginDetails", "resolved plugin dependencies navigate to their Omega product page");
+        Contains(dependenciesUi, "Provided by framework", "framework-provided dependencies are distinguished from installable plugin dependencies");
+        Contains(dependenciesUi, "Definitions keeps this summary bounded", "dependency UI explains bounded client projection rather than implying forensic completeness");
+        var productPage = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
+        Contains(productPage, "DrawProductSourcePackages(plugin)", "product page exposes source-package provenance before dependency/security detail");
+        Contains(productPage, "DrawProductDependencies(plugin, installed)", "Dependencies render between package provenance and Security on the product page");
+
+        var packagesUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SourcePackages.cs"));
+        Contains(packagesUi, "Packages & repositories", "product page explains distinct downloadable source packages");
+        Contains(packagesUi, "SecurityArtifactSha256", "scanned package hashes collapse repository mirrors that point at the same artifact");
+        Contains(packagesUi, "Repository manifests pointing to this package", "each package lists the repository manifests that reference it");
+        Contains(packagesUi, "OrderByDescending(x => x.Official)", "official repository references are presented first");
+
+        var discoverUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
+        Contains(discoverUi, "FindRequiredDependencyAutomation", "risk resolver follows required plugin dependencies for automation exposure");
+        Contains(discoverUi, "Automation exposure through required dependency", "dependency-provided automation is explained in the risk tooltip");
+        Contains(discoverUi, "maximumDependencyRiskDepth = 8", "recursive dependency-risk traversal remains bounded");
+        Contains(discoverUi, "FontAwesomeIcon.ExclamationTriangle", "risk findings use the standard Font Awesome warning-triangle glyph");
+        Contains(discoverUi, "UiBuilder.IconFontFixedWidth", "risk glyphs use Dalamud's fixed-width Font Awesome font for stable alignment");
+        Contains(discoverUi, "var glyphSize = ImGui.CalcTextSize(glyph)", "risk glyph centering is derived from measured glyph bounds");
+        Contains(discoverUi, "(size - glyphSize.X) * 0.5f", "risk glyphs remain horizontally centered without punctuation-specific offsets");
+        Contains(discoverUi, "(size - glyphSize.Y) * 0.5f", "risk glyphs remain vertically centered without punctuation-specific offsets");
+        DoesNotContain(discoverUi, "DrawPluginWarningTriangle", "the obsolete hand-drawn warning triangle renderer must not return");
     }
     internal static void TestCatalogCompactionWorkflowContract()
     {
@@ -214,8 +259,12 @@ internal static partial class RegressionCases
         Contains(compactor, "securityRevision", "compactor writes the security revision into the production descriptor");
         Contains(compactor, "changelogEntryCount", "descriptor exposes embedded changelog size for troubleshooting");
         var projector = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "project_marketplace_catalog.py"));
-        Contains(projector, "PROJECTOR_VERSION = \"1.0.0\"", "marketplace projector version is explicit");
+        Contains(projector, "PROJECTOR_VERSION = \"1.1.0\"", "marketplace projector version is explicit");
         Contains(projector, "marketplace_security_current", "client database retains only compact current security summaries");
+        Contains(projector, "DEPENDENCY_SUMMARY_LIMIT = 30", "Definitions dependency projection remains bounded per plugin variant");
+        Contains(projector, "build_dependency_summaries", "projector derives compact dependencies from detailed server-side evidence before dropping it");
+        Contains(projector, "dependencies_json", "compact dependency summaries survive in the marketplace security projection");
+        Contains(projector, "dependency_total_count", "Definitions retains the full dependency count when the displayed summary is truncated");
         Contains(projector, "DROP TABLE", "projector physically removes detailed security tables from the client database");
         Contains(projector, "detailedSecurityEvidenceIncluded", "marketplace descriptor explicitly excludes detailed security evidence");
 

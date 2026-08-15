@@ -51,8 +51,8 @@ internal sealed partial class MarketplaceWindow
         var mainPlugins = catalog.GetMainProjection(currentApi).Plugins;
         var counts = GetSidebarCounts(mainPlugins, installed, currentApi, currentDalamudVersion);
 
-        // The icon rail starts at the same vertical baseline as the right-side content.
-        ImGui.Dummy(new Vector2(0f, 38f));
+        // Keep the primary destinations visually attached to the top application bar.
+        ImGui.Dummy(new Vector2(0f, 6f));
         DrawSidebarViewIcon(MarketplaceView.Spotlight, FontAwesomeIcon.Star, "Spotlight", PromotedInternalNames.Length);
         DrawSidebarViewIcon(MarketplaceView.Discover, FontAwesomeIcon.Search, "Discover", mainPlugins.Count);
         DrawSidebarFooter(counts);
@@ -68,17 +68,32 @@ internal sealed partial class MarketplaceWindow
             OpenSettings();
 
         ImGui.Spacing();
-        DrawSidebarUtilityIcon(MarketplaceView.Updates, FontAwesomeIcon.Download, "Updates", counts.Updates, notificationCount: counts.Updates);
+        var definitionsUpdateCount = updates.DefinitionsUpdateAvailable ? 1 : 0;
+        DrawSidebarUtilityIcon(
+            MarketplaceView.Updates,
+            FontAwesomeIcon.Download,
+            "Updates",
+            counts.Updates + definitionsUpdateCount,
+            notificationCount: counts.Updates + definitionsUpdateCount);
         DrawSidebarUtilityIcon(MarketplaceView.Library, FontAwesomeIcon.List, "Library", counts.Installed);
 
         ImGui.Spacing();
-        ImGui.TextDisabled(BuildInfo.Version);
-        if (ImGui.IsItemHovered())
-        {
-            var catalogRevision = string.IsNullOrWhiteSpace(catalog.CatalogRevision) ? "Not available" : catalog.CatalogRevision;
-            var securityRevision = string.IsNullOrWhiteSpace(catalog.SecurityRevision) ? "Not available" : catalog.SecurityRevision;
-            ImGui.SetTooltip($"Omega v{BuildInfo.Version}\nCatalog Revision: {catalogRevision}\nSecurity Revision: {securityRevision}");
-        }
+        var versionSize = ImGui.CalcTextSize(BuildInfo.Version);
+        var versionButtonSize = versionSize + new Vector2(8f, 4f);
+        var versionAvailable = ImGui.GetContentRegionAvail().X;
+        var versionCursorX = ImGui.GetCursorPosX();
+        ImGui.SetCursorPosX(versionCursorX + Math.Max(0f, (versionAvailable - versionButtonSize.X) * 0.5f));
+        ImGui.InvisibleButton("##omega-about-version", versionButtonSize);
+        var versionHovered = ImGui.IsItemHovered();
+        var versionPosition = ImGui.GetItemRectMin();
+        ImGui.GetWindowDrawList().AddText(
+            versionPosition + new Vector2((versionButtonSize.X - versionSize.X) * 0.5f, 2f),
+            ImGui.GetColorU32(versionHovered ? ImGuiCol.Text : ImGuiCol.TextDisabled),
+            BuildInfo.Version);
+        if (versionHovered)
+            ImGui.SetTooltip("About Omega and Definitions identity");
+        if (ImGui.IsItemClicked())
+            OpenAbout();
     }
 
     private void DrawSidebarUtilityIcon(MarketplaceView view, FontAwesomeIcon icon, string label, int count, int notificationCount = 0)
@@ -102,14 +117,6 @@ internal sealed partial class MarketplaceWindow
         InvalidateSourceCaches();
         settingsOpen = true;
         requestSettingsPopup = true;
-    }
-
-    private void RefreshSources()
-    {
-        if (updates.IsRefreshing)
-            return;
-        InvalidateSourceCaches();
-        _ = updates.RefreshAsync();
     }
 
     private void DrawSidebarViewIcon(MarketplaceView view, FontAwesomeIcon icon, string label, int count)
@@ -188,20 +195,50 @@ internal sealed partial class MarketplaceWindow
     {
         ImGui.TextUnformatted(ViewTitle(activeView));
 
+        if (activeView == MarketplaceView.Updates)
+            DrawDefinitionsUpdateBanner();
+
         if (!string.IsNullOrWhiteSpace(operationMessage))
             ImGui.TextWrapped(operationMessage);
 
         ImGui.Spacing();
     }
 
+    private void DrawDefinitionsUpdateBanner()
+    {
+        if (!updates.DefinitionsUpdateAvailable)
+            return;
+
+        ImGui.Spacing();
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.035f, 0.16f, 0.17f, 0.72f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.10f, 0.58f, 0.54f, 0.72f));
+        ImGui.BeginChild("definitions-update-banner", new Vector2(0f, 78f), true,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.TextUnformatted("Definitions update available");
+        if (!string.IsNullOrWhiteSpace(updates.AvailableDefinitionsRevision))
+            ImGui.TextDisabled($"New Definitions: {updates.AvailableDefinitionsRevision}");
+        else
+            ImGui.TextDisabled("A newer marketplace Definitions package is ready.");
+
+        ImGui.SameLine(Math.Max(340f, ImGui.GetWindowWidth() - 190f));
+        if (ImGui.Button(updates.IsRefreshing ? "Updating…" : "Update Definitions") && !updates.IsRefreshing)
+        {
+            operationMessage = "Updating Definitions…";
+            _ = ApplyDefinitionsUpdateFromUiAsync();
+        }
+        ImGui.EndChild();
+        ImGui.PopStyleColor(2);
+        ImGui.Spacing();
+    }
+
     private void DrawCatalogStatus(int currentApi)
     {
         if (!catalog.HasLoaded)
-            ImGui.TextDisabled("Catalog database is empty — open Settings and refresh the online catalog");
+            ImGui.TextDisabled("Definitions are empty — open Settings and check for updates");
         else if (!catalog.MatchesConfiguredSources(configuration.Repositories))
-            ImGui.TextDisabled("Some enabled custom sources are not loaded — refresh them from Settings");
+            ImGui.TextDisabled("Some enabled custom sources are not loaded — check for updates from Settings");
         else if (catalog.LastRefresh is not null)
-            ImGui.TextDisabled($"{catalog.GetMainProjection(currentApi).Plugins.Count} plugins • {catalog.CachedRepositoryCount} database sources • {updates.ModeLabel} • checked {catalog.LastRefresh.Value.LocalDateTime:t}");
+            ImGui.TextDisabled($"{catalog.GetMainProjection(currentApi).Plugins.Count} plugins • {catalog.CachedRepositoryCount} Definitions sources • {updates.ModeLabel} • checked {catalog.LastRefresh.Value.LocalDateTime:t}");
 
         if (!string.IsNullOrWhiteSpace(catalog.LastError))
         {
@@ -212,7 +249,7 @@ internal sealed partial class MarketplaceWindow
 
         if (!string.IsNullOrWhiteSpace(updates.LastOnlineError) && updates.Mode == CatalogAcquisitionMode.LocalCache)
         {
-            ImGui.TextDisabled("Online catalog unavailable — Omega kept the last local SQLite database.");
+            ImGui.TextDisabled("Online Definitions unavailable — Omega kept the last local Definitions.");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(updates.LastOnlineError);
         }
@@ -349,6 +386,82 @@ internal sealed partial class MarketplaceWindow
             iconMin + new Vector2((iconSize - glyphSize.X) * 0.5f, (iconSize - glyphSize.Y) * 0.5f),
             ImGui.GetColorU32(ImGuiCol.Text),
             glyph);
+    }
+
+    private static bool DrawRoundedButton(
+        string label,
+        string id,
+        Vector2 size,
+        bool active = false,
+        bool danger = false,
+        bool enabled = true)
+    {
+        var screen = ImGui.GetCursorScreenPos();
+        ImGui.InvisibleButton($"##omega-rounded-{id}", size);
+        var hovered = enabled && ImGui.IsItemHovered();
+        var held = enabled && ImGui.IsItemActive();
+        var clicked = enabled && ImGui.IsItemClicked();
+        var draw = ImGui.GetWindowDrawList();
+
+        Vector4 bgColor;
+        Vector4 borderColor;
+        if (!enabled)
+        {
+            bgColor = new Vector4(0.08f, 0.09f, 0.11f, 0.72f);
+            borderColor = new Vector4(0.20f, 0.22f, 0.26f, 0.45f);
+        }
+        else if (danger)
+        {
+            bgColor = held
+                ? new Vector4(0.55f, 0.10f, 0.13f, 0.95f)
+                : hovered
+                    ? new Vector4(0.38f, 0.09f, 0.12f, 0.92f)
+                    : new Vector4(0.14f, 0.07f, 0.09f, 0.80f);
+            borderColor = new Vector4(0.70f, 0.16f, 0.20f, hovered ? 0.95f : 0.55f);
+        }
+        else
+        {
+            bgColor = active || held
+                ? new Vector4(0.035f, 0.29f, 0.30f, 0.95f)
+                : hovered
+                    ? new Vector4(0.055f, 0.20f, 0.22f, 0.95f)
+                    : new Vector4(0.065f, 0.080f, 0.105f, 0.88f);
+            borderColor = new Vector4(0.08f, 0.55f, 0.52f, active || hovered ? 0.90f : 0.28f);
+        }
+
+        var rounding = MarketplaceLayoutRules.ControlCornerRadius;
+        draw.AddRectFilled(screen, screen + size, ImGui.ColorConvertFloat4ToU32(bgColor), rounding);
+        draw.AddRect(screen, screen + size, ImGui.ColorConvertFloat4ToU32(borderColor), rounding, ImDrawFlags.None, 1f);
+
+        var textSize = ImGui.CalcTextSize(label);
+        var textPos = screen + new Vector2((size.X - textSize.X) * 0.5f, (size.Y - textSize.Y) * 0.5f);
+        draw.AddText(textPos, ImGui.GetColorU32(enabled ? ImGuiCol.Text : ImGuiCol.TextDisabled), label);
+        return clicked;
+    }
+
+    private static bool DrawToggleSwitch(string id, bool value, bool enabled = true)
+    {
+        var size = new Vector2(44f, 22f);
+        var min = ImGui.GetCursorScreenPos();
+        ImGui.InvisibleButton($"##omega-toggle-{id}", size);
+        var hovered = enabled && ImGui.IsItemHovered();
+        var clicked = enabled && ImGui.IsItemClicked();
+        var draw = ImGui.GetWindowDrawList();
+
+        var track = !enabled
+            ? new Vector4(0.18f, 0.19f, 0.22f, 0.58f)
+            : value
+                ? new Vector4(0.03f, hovered ? 0.56f : 0.46f, hovered ? 0.54f : 0.47f, 0.96f)
+                : new Vector4(0.22f, 0.24f, 0.28f, hovered ? 0.96f : 0.84f);
+        draw.AddRectFilled(min, min + size, ImGui.ColorConvertFloat4ToU32(track), size.Y * 0.5f);
+
+        const float knobRadius = 8f;
+        var knobX = value ? min.X + size.X - 11f : min.X + 11f;
+        var knobColor = enabled
+            ? new Vector4(0.94f, 0.95f, 0.96f, 1f)
+            : new Vector4(0.62f, 0.64f, 0.68f, 0.75f);
+        draw.AddCircleFilled(new Vector2(knobX, min.Y + size.Y * 0.5f), knobRadius, ImGui.ColorConvertFloat4ToU32(knobColor), 18);
+        return clicked;
     }
 
     private static bool DrawPillButton(string label, string id, Vector2 size, bool active, bool danger = false)

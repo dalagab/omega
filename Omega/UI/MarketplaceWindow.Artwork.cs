@@ -356,6 +356,9 @@ internal sealed partial class MarketplaceWindow
     private void OpenPluginDetails(MarketplacePlugin plugin)
     {
         activeView = MarketplaceView.Discover;
+        // Every fresh selection starts from the official Dalamud variant when one exists.
+        // A user can still switch to another repository explicitly from the product page afterwards.
+        selectedVariantSource.Remove(plugin.InternalName);
         selectedPlugin = ResolveSelectedVariant(plugin);
         detailsOpen = true;
         resetStorefrontScroll = true;
@@ -380,7 +383,12 @@ internal sealed partial class MarketplaceWindow
                 return selected;
         }
 
-        return variants[0];
+        return variants
+                   .Where(x => x.SourceIsOfficial)
+                   .OrderByDescending(x => x.AssemblyVersion)
+                   .ThenByDescending(x => x.HighestKnownApiLevel)
+                   .FirstOrDefault()
+               ?? variants[0];
     }
 
     private string StableId(string value)

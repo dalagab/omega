@@ -4,17 +4,20 @@ using Dalamud.IoC;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Dalamud.Storage.Assets;
 
 namespace Dalagab.Omega;
 
 public sealed class Plugin : IDalamudPlugin
 {
     private const string CommandName = "/omega";
+    private const string CommandAlias = "/omg";
 
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
+    [PluginService] internal static IDalamudAssetManager DalamudAssets { get; private set; } = null!;
     [PluginService] internal static ITitleScreenMenu TitleScreenMenu { get; private set; } = null!;
     [PluginService] internal static IGameInteropProvider GameInterop { get; private set; } = null!;
 
@@ -137,6 +140,10 @@ public sealed class Plugin : IDalamudPlugin
         {
             HelpMessage = "Open Omega by the Dalagab Group.",
         });
+        CommandManager.AddHandler(CommandAlias, new CommandInfo(OnCommand)
+        {
+            HelpMessage = "Open Omega by the Dalagab Group.",
+        });
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
         PluginInterface.UiBuilder.OpenMainUi += OpenMainUi;
         PluginInterface.UiBuilder.OpenConfigUi += OpenMainUi;
@@ -164,6 +171,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi -= OpenMainUi;
         PluginInterface.UiBuilder.OpenConfigUi -= OpenMainUi;
         CommandManager.RemoveHandler(CommandName);
+        CommandManager.RemoveHandler(CommandAlias);
         windowSystem.RemoveAllWindows();
         marketplaceWindow.Dispose();
         iconCache.Dispose();

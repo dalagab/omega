@@ -39,14 +39,13 @@ internal sealed partial class MarketplaceWindow
             return;
         }
         DrawSourcesHeader();
+        if (addSourceOpen)
+            DrawAddSourceTools();
+
         var shownSources = GetVisibleSourceRows();
         var statuses = catalog.GetRepositoryStatuses(currentApi)
             .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
         DrawSourcesTable(shownSources, statuses);
-
-        if (addSourceOpen)
-            DrawAddSourceTools();
-        DrawSourcesActions();
         settingsOpen = keepOpen && settingsOpen;
         ImGui.EndPopup();
     }
@@ -59,19 +58,19 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextWrapped("Choose which plugin sources appear in Omega. You can also add your own repository.");
         ImGui.Separator();
 
-        if (ImGui.Button(sourceSection == SourceManagerSection.Curated ? $"[Curated ({curatedCount})]" : $"Curated ({curatedCount})"))
+        if (DrawPillButton($"Curated ({curatedCount})", "sources-curated", new Vector2(126f, 32f), sourceSection == SourceManagerSection.Curated))
         {
             sourceSection = SourceManagerSection.Curated;
             sourceSearch = string.Empty;
         }
         ImGui.SameLine();
-        if (ImGui.Button(sourceSection == SourceManagerSection.UserAdded ? $"[My Sources ({userCount})]" : $"My Sources ({userCount})"))
+        if (DrawPillButton($"My Sources ({userCount})", "sources-user", new Vector2(136f, 32f), sourceSection == SourceManagerSection.UserAdded))
         {
             sourceSection = SourceManagerSection.UserAdded;
             sourceSearch = string.Empty;
         }
         ImGui.SameLine();
-        if (ImGui.Button(addSourceOpen ? "Hide add tools" : "Add Sources"))
+        if (DrawPillButton(addSourceOpen ? "Hide add tools" : "Add sources", "sources-add", new Vector2(128f, 32f), addSourceOpen))
             addSourceOpen = !addSourceOpen;
 
         ImGui.SetNextItemWidth(520f);
@@ -93,7 +92,7 @@ internal sealed partial class MarketplaceWindow
         IReadOnlyDictionary<string, RepositoryCatalogStatus> statuses)
     {
         ImGui.Spacing();
-        if (!ImGui.BeginTable("omega-source-table", 5, ImGuiTableFlags.None, new Vector2(860f, 360f), 0f))
+        if (!ImGui.BeginTable("omega-source-table", 5, ImGuiTableFlags.None, new Vector2(860f, addSourceOpen ? 230f : 360f), 0f))
             return;
 
         ImGui.TableSetupColumn("Use");
@@ -160,17 +159,10 @@ internal sealed partial class MarketplaceWindow
         }
         if (status is null)
         {
-            ImGui.TextDisabled("Not cached");
+            ImGui.TextDisabled("Not in Definitions");
             return;
         }
         ImGui.TextColored(new Vector4(0.34f, 0.86f, 0.61f, 1f), "Active");
-    }
-
-    private void DrawSourcesActions()
-    {
-        ImGui.Separator();
-        if (ImGui.Button(updates.IsRefreshing ? "Refreshing..." : "Refresh catalog database") && !updates.IsRefreshing)
-            RefreshSources();
     }
 
     private void DrawAddSourceTools()
@@ -217,7 +209,7 @@ internal sealed partial class MarketplaceWindow
                 newRepositoryUrl = string.Empty;
                 sourceSection = SourceManagerSection.UserAdded;
                 sourceSearch = string.Empty;
-                operationMessage = $"Added {source.Name}. Use Refresh catalog database in Settings when you want to seed or update its local catalog record.";
+                operationMessage = $"Added {source.Name}. Use Check for updates to load it into your local Definitions.";
 
                 if (integrateNewRepositoryWithDalamud && repositoryTask is null)
                     StartRepositoryTask(source, RepositoryTaskKind.Integrate, repositoryBridge.EnsureIntegratedAsync(source.Url, source.Enabled));
@@ -233,7 +225,7 @@ internal sealed partial class MarketplaceWindow
             sourceSection = SourceManagerSection.UserAdded;
             sourceSearch = string.Empty;
             operationMessage = result.Added > 0
-                ? $"Added {result.Added} source(s); {result.Duplicates} duplicate(s), {result.Invalid} invalid. Refresh catalog database in Settings when you want to seed/update them."
+                ? $"Added {result.Added} source(s); {result.Duplicates} duplicate(s), {result.Invalid} invalid. Use Check for updates to load them into your local Definitions."
                 : $"No sources added; {result.Duplicates} duplicate(s), {result.Invalid} invalid.";
         }
     }

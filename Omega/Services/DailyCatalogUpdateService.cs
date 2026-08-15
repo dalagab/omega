@@ -1,9 +1,9 @@
 namespace Dalagab.Omega;
 
 /// <summary>
-/// Performs at most one automatic catalog check per 24 hours. The coordinator first checks the
-/// tiny online catalog descriptor/hash. Only a changed central database is downloaded. If the
-/// central path fails, the same job falls back to conditional checks of the local repository list.
+/// Performs at most one automatic Definitions check per 24 hours. The tiny descriptor is checked
+/// without downloading a changed central database; a pending Definitions update is surfaced on the
+/// Updates page. User-added repositories are refreshed during the same check.
 /// </summary>
 internal sealed class DailyCatalogUpdateService : IDisposable
 {
@@ -67,20 +67,21 @@ internal sealed class DailyCatalogUpdateService : IDisposable
 
         try
         {
-            await updates.RefreshAsync(cancellationToken).ConfigureAwait(false);
+            await updates.CheckForUpdatesAsync(cancellationToken).ConfigureAwait(false);
             configuration.LastDailyUpdateCheckUtc = DateTimeOffset.UtcNow;
             configuration.Save();
             Plugin.Log.Information(
-                "Omega daily catalog check completed; mode={Mode}; cachedSources={SourceCount}",
+                "Omega daily Definitions check completed; mode={Mode}; cachedSources={SourceCount}; definitionsUpdateAvailable={DefinitionsUpdateAvailable}",
                 updates.ModeLabel,
-                catalog.CachedRepositoryCount);
+                catalog.CachedRepositoryCount,
+                updates.DefinitionsUpdateAvailable);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception ex)
         {
-            Plugin.Log.Warning(ex, "Omega daily catalog update failed; cached catalog remains active.");
+            Plugin.Log.Warning(ex, "Omega daily Definitions check failed; cached Definitions remain active.");
         }
         finally
         {

@@ -12,6 +12,23 @@ internal sealed partial class MarketplaceWindow
     private const float SpotlightCardMinWidth = 142f;
     private const float SpotlightCardMaxWidth = 220f;
     private const float SpotlightArtworkSize = 104f;
+    // Promoted-card palettes are derived from each highlighted plugin logo rather than Omega branding.
+    // They are intentionally darkened so the logo remains the visual focus.
+    private static (Vector4 Background, Vector4 Border) SpotlightPromotedCardColors(MarketplacePlugin plugin)
+        => plugin.InternalName switch
+        {
+            // HonseFarm.Client: vivid red mark.
+            "HonseFarm.Client" => (new Vector4(0.115f, 0.024f, 0.031f, 0.84f), new Vector4(0.46f, 0.10f, 0.13f, 0.72f)),
+            // AetherLove / AetherOS: blue/cyan crystal.
+            "AetherLovePlugin" => (new Vector4(0.025f, 0.064f, 0.105f, 0.84f), new Vector4(0.12f, 0.35f, 0.56f, 0.72f)),
+            // Allagan Tools: parchment/gold lettering.
+            "InventoryTools" => (new Vector4(0.102f, 0.073f, 0.030f, 0.84f), new Vector4(0.43f, 0.30f, 0.10f, 0.72f)),
+            // GatherBuddy: earthy/tan emblem.
+            "GatherBuddy" => (new Vector4(0.080f, 0.070f, 0.045f, 0.84f), new Vector4(0.31f, 0.26f, 0.15f, 0.72f)),
+            // Chat 2: monochrome speech-bubble mark.
+            "ChatTwo" => (new Vector4(0.064f, 0.066f, 0.073f, 0.84f), new Vector4(0.26f, 0.27f, 0.31f, 0.72f)),
+            _ => (new Vector4(0.045f, 0.052f, 0.064f, 0.82f), new Vector4(0.17f, 0.19f, 0.22f, 0.55f)),
+        };
     private int spotlightSourceRefreshRequested;
     private DateTimeOffset spotlightSourceRefreshNotBeforeUtc;
 
@@ -38,6 +55,9 @@ internal sealed partial class MarketplaceWindow
         var availabilityStyle = PushUnavailableListingStyle(
             IsListingCurrentlyAvailable(plugin, installedPlugin, currentApi, currentDalamudVersion));
 
+        var cardColors = SpotlightPromotedCardColors(plugin);
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, cardColors.Background);
+        ImGui.PushStyleColor(ImGuiCol.Border, cardColors.Border);
         ImGui.BeginChild(
             $"spotlight-card-{plugin.InternalName}",
             new Vector2(cardWidth, SpotlightCardHeight),
@@ -54,6 +74,14 @@ internal sealed partial class MarketplaceWindow
             currentDalamudVersion,
             showOverlays: false);
 
+        // Security/automation status is important enough to stay visible on Spotlight,
+        // using exactly the same icon language and cross-variant aggregation as Discover.
+        var afterArtwork = ImGui.GetCursorPos();
+        const float statusIconSize = 22f;
+        ImGui.SetCursorPos(new Vector2(Math.Max(0f, cardWidth - statusIconSize - 8f), contentStartY));
+        DrawPluginRiskIndicator(plugin, statusIconSize);
+        ImGui.SetCursorPos(afterArtwork);
+
         ImGui.SetCursorPosY(contentStartY + 112f);
         CenterText(Shorten(plugin.Name, 24));
         ImGui.SetCursorPosY(contentStartY + 136f);
@@ -68,6 +96,7 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsWindowHovered())
             ImGui.SetTooltip("Open in Discover");
         ImGui.EndChild();
+        ImGui.PopStyleColor(2);
         PopUnavailableListingStyle(availabilityStyle);
 
         if (artworkClicked || clicked)

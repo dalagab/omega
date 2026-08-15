@@ -123,6 +123,14 @@ internal sealed partial class MarketplaceWindow
             currentApi,
             currentDalamudVersion,
             showOverlays: false);
+
+        // Latest additions/updates keep their neutral card styling, but never hide risk/automation state.
+        var afterArtwork = ImGui.GetCursorPos();
+        const float statusIconSize = 22f;
+        ImGui.SetCursorPos(new Vector2(Math.Max(0f, cardWidth - statusIconSize - 8f), 8f));
+        DrawPluginRiskIndicator(plugin, statusIconSize);
+        ImGui.SetCursorPos(afterArtwork);
+
         ImGui.Spacing();
         CenterText(Shorten(plugin.Name, 24));
         CenterText(Shorten(string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author, 24), disabled: true);

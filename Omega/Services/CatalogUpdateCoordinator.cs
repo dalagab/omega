@@ -7,9 +7,9 @@ internal enum CatalogAcquisitionMode
 }
 
 /// <summary>
-/// Omega's public catalog is built online and shipped as one validated SQLite database. If the
-/// online descriptor cannot be checked, the last-known-good local database remains active; the
-/// game client never rebuilds the public catalog by crawling every repository itself.
+/// Omega's public Definitions are built online and shipped as one validated SQLite database. A
+/// lightweight descriptor check can advertise a pending Definitions update without downloading it;
+/// applying the update remains an explicit action except when Omega must seed an empty catalog.
 /// </summary>
 internal sealed class CatalogUpdateCoordinator : IDisposable
 {
@@ -23,6 +23,8 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
     private static readonly TimeSpan EmptyCatalogRetryDelay = TimeSpan.FromSeconds(20);
     private DateTimeOffset nextEmptyCatalogAttemptUtc = DateTimeOffset.MinValue;
     private int running;
+    private int definitionsUpdateAvailable;
+    private string availableDefinitionsRevision = string.Empty;
 
     public CatalogUpdateCoordinator(
         Configuration configuration,
@@ -37,18 +39,29 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
         tempDirectory = Path.Combine(configDirectory, "catalog-downloads");
 
         var state = stateStore.Load();
+        var stateMatchesEndpoint = state.DescriptorUrl.Equals(endpoint.DescriptorUrl, StringComparison.OrdinalIgnoreCase);
         Mode = catalog.HasLoaded &&
                !string.IsNullOrWhiteSpace(state.CatalogSha256) &&
-               state.DescriptorUrl.Equals(endpoint.DescriptorUrl, StringComparison.OrdinalIgnoreCase)
+               stateMatchesEndpoint
             ? CatalogAcquisitionMode.OnlineCatalog
             : CatalogAcquisitionMode.LocalCache;
+
+        if (stateMatchesEndpoint &&
+            OnlineCatalogClient.IsValidSha256(state.AvailableCatalogSha256) &&
+            !state.AvailableCatalogSha256.Equals(state.CatalogSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            availableDefinitionsRevision = state.AvailableCatalogRevision;
+            Volatile.Write(ref definitionsUpdateAvailable, 1);
+        }
     }
 
     public bool IsRefreshing => Volatile.Read(ref running) != 0 || catalog.IsRefreshing;
     public bool OnlineConfigured => Uri.TryCreate(endpoint.DescriptorUrl, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps;
     public CatalogAcquisitionMode Mode { get; private set; }
     public string LastOnlineError { get; private set; } = string.Empty;
-    public string ModeLabel => Mode == CatalogAcquisitionMode.OnlineCatalog ? "Online DB" : "Local DB";
+    public string ModeLabel => Mode == CatalogAcquisitionMode.OnlineCatalog ? "Online Definitions" : "Local Definitions";
+    public bool DefinitionsUpdateAvailable => Volatile.Read(ref definitionsUpdateAvailable) != 0;
+    public string AvailableDefinitionsRevision => availableDefinitionsRevision;
 
     public void SeedIfEmpty()
     {
@@ -64,10 +77,12 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
     }
 
     public Task RefreshAsync() => RefreshAsync(cts.Token);
+    public Task CheckForUpdatesAsync() => CheckForUpdatesAsync(cts.Token);
+    public Task ApplyDefinitionsUpdateAsync() => RefreshAsync(cts.Token);
 
     /// <summary>
     /// Editorial recovery remains bounded: it can directly check an explicitly requested source,
-    /// but this never becomes a second persisted catalog database.
+    /// but this never becomes a second persisted Definitions database.
     /// </summary>
     public Task RefreshCuratedSourcesAsync(IEnumerable<string> curatedIds)
     {
@@ -81,6 +96,60 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
             : catalog.RefreshRepositoriesAsync(selected, configuration.Repositories);
     }
 
+    /// <summary>
+    /// Checks the tiny online descriptor and records a pending Definitions update. User-added
+    /// repositories are refreshed at the same time so the Updates page can reflect their versions.
+    /// No central Definitions bundle is downloaded by this method.
+    /// </summary>
+    public async Task CheckForUpdatesAsync(CancellationToken cancellationToken)
+    {
+        if (Interlocked.Exchange(ref running, 1) != 0)
+            return;
+
+        try
+        {
+            LastOnlineError = string.Empty;
+            if (!OnlineConfigured)
+            {
+                LastOnlineError = "No HTTPS Omega Definitions endpoint is configured.";
+                Mode = CatalogAcquisitionMode.LocalCache;
+                return;
+            }
+
+            var state = stateStore.Load();
+            var stateMatchesEndpoint = state.DescriptorUrl.Equals(endpoint.DescriptorUrl, StringComparison.OrdinalIgnoreCase);
+            var currentHash = stateMatchesEndpoint && catalog.HasLoaded ? state.CatalogSha256 : string.Empty;
+            var probe = await onlineClient.ProbeAsync(endpoint.DescriptorUrl, currentHash, cancellationToken).ConfigureAwait(false);
+
+            if (probe.Status == OnlineCatalogCheckStatus.Unavailable)
+            {
+                LastOnlineError = probe.Error;
+                Plugin.Log.Warning("Omega Definitions check failed; retaining local Definitions. Reason: {Reason}", probe.Error);
+            }
+            else if (probe.Descriptor is not null)
+            {
+                var available = probe.Status == OnlineCatalogCheckStatus.UpdateAvailable;
+                availableDefinitionsRevision = available ? probe.Descriptor.CatalogRevision : string.Empty;
+                Volatile.Write(ref definitionsUpdateAvailable, available ? 1 : 0);
+                state.DescriptorUrl = endpoint.DescriptorUrl;
+                state.AvailableCatalogSha256 = available ? probe.Descriptor.CatalogSha256.ToLowerInvariant() : string.Empty;
+                state.AvailableCatalogRevision = available ? probe.Descriptor.CatalogRevision : string.Empty;
+                state.CheckedAtUtc = DateTimeOffset.UtcNow;
+                stateStore.Save(state);
+                Mode = catalog.HasLoaded ? CatalogAcquisitionMode.OnlineCatalog : CatalogAcquisitionMode.LocalCache;
+            }
+
+            await RefreshUserSourcesAsync().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            Interlocked.Exchange(ref running, 0);
+        }
+    }
+
     public async Task RefreshAsync(CancellationToken cancellationToken)
     {
         if (Interlocked.Exchange(ref running, 1) != 0)
@@ -91,18 +160,14 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
             LastOnlineError = string.Empty;
             if (!OnlineConfigured)
             {
-                LastOnlineError = "No HTTPS Omega catalog endpoint is configured.";
+                LastOnlineError = "No HTTPS Omega Definitions endpoint is configured.";
                 Mode = CatalogAcquisitionMode.LocalCache;
                 return;
             }
 
             var onlineApplied = await TryApplyOnlineCatalogAsync(cancellationToken).ConfigureAwait(false);
             Mode = onlineApplied ? CatalogAcquisitionMode.OnlineCatalog : CatalogAcquisitionMode.LocalCache;
-
-            // User-added sources are an explicit local overlay and can still be refreshed directly.
-            var userSources = configuration.Repositories.Where(x => x.Enabled && !x.IsCurated).ToArray();
-            if (userSources.Length > 0)
-                await catalog.RefreshRepositoriesAsync(userSources, configuration.Repositories).ConfigureAwait(false);
+            await RefreshUserSourcesAsync().ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -111,6 +176,14 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
         {
             Interlocked.Exchange(ref running, 0);
         }
+    }
+
+    private Task RefreshUserSourcesAsync()
+    {
+        var userSources = configuration.Repositories.Where(x => x.Enabled && !x.IsCurated).ToArray();
+        return userSources.Length == 0
+            ? Task.CompletedTask
+            : catalog.RefreshRepositoriesAsync(userSources, configuration.Repositories);
     }
 
     public Task RefreshPluginSourcesAsync(string internalName)
@@ -131,17 +204,20 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
         if (result.Status == OnlineCatalogCheckStatus.Unavailable)
         {
             LastOnlineError = result.Error;
-            Plugin.Log.Warning("Omega online SQLite catalog unavailable; retaining local database. Reason: {Reason}", result.Error);
+            Plugin.Log.Warning("Omega online Definitions unavailable; retaining local Definitions. Reason: {Reason}", result.Error);
             return false;
         }
 
         if (result.Status == OnlineCatalogCheckStatus.Current)
+        {
+            ClearPendingDefinitionsUpdate(state);
             return catalog.HasLoaded;
+        }
 
         if (result.Status != OnlineCatalogCheckStatus.Downloaded ||
             result.Descriptor is null || string.IsNullOrWhiteSpace(result.BundlePath))
         {
-            LastOnlineError = "Online catalog returned no usable SQLite bundle.";
+            LastOnlineError = "Online Definitions returned no usable SQLite bundle.";
             return false;
         }
 
@@ -167,10 +243,13 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
                 EvidenceRevision = applied.EvidenceRevision,
                 GeneratedAtUtc = generatedAt,
                 AppliedAtUtc = DateTimeOffset.UtcNow,
+                CheckedAtUtc = DateTimeOffset.UtcNow,
             });
+            availableDefinitionsRevision = string.Empty;
+            Volatile.Write(ref definitionsUpdateAvailable, 0);
 
             Plugin.Log.Information(
-                "Omega applied SQLite catalog; variants={Variants}; sources={Sources}; catalogRevision={CatalogRevision}; securityRevision={SecurityRevision}; evidenceRevision={EvidenceRevision}; sha256={Hash}",
+                "Omega applied Definitions; variants={Variants}; sources={Sources}; definitionsRevision={DefinitionsRevision}; securityRevision={SecurityRevision}; evidenceRevision={EvidenceRevision}; sha256={Hash}",
                 applied.VariantCount,
                 applied.SourceDefinitions.Count,
                 string.IsNullOrWhiteSpace(applied.CatalogRevision) ? "unavailable" : applied.CatalogRevision,
@@ -182,13 +261,25 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
         catch (Exception ex)
         {
             LastOnlineError = ex.Message;
-            Plugin.Log.Warning(ex, "Omega rejected the downloaded SQLite catalog; retaining the previous local database.");
+            Plugin.Log.Warning(ex, "Omega rejected the downloaded Definitions; retaining the previous local Definitions.");
             return false;
         }
         finally
         {
             try { File.Delete(result.BundlePath); } catch { }
         }
+    }
+
+    private void ClearPendingDefinitionsUpdate(OnlineCatalogState state)
+    {
+        availableDefinitionsRevision = string.Empty;
+        Volatile.Write(ref definitionsUpdateAvailable, 0);
+        if (string.IsNullOrWhiteSpace(state.AvailableCatalogSha256) && string.IsNullOrWhiteSpace(state.AvailableCatalogRevision))
+            return;
+        state.AvailableCatalogSha256 = string.Empty;
+        state.AvailableCatalogRevision = string.Empty;
+        state.CheckedAtUtc = DateTimeOffset.UtcNow;
+        stateStore.Save(state);
     }
 
     public void Dispose()

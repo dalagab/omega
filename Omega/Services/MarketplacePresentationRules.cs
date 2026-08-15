@@ -9,9 +9,9 @@ internal sealed record MarketplacePresentationContent(
     int RichnessScore);
 
 /// <summary>
-/// Chooses presentation-only metadata independently from install/source precedence. This lets the
-/// richest repository variant supply screenshots and descriptive content while official/runtime
-/// variants continue to own installation and compatibility decisions.
+/// Chooses presentation-only metadata with official-source precedence. When Dalamud official
+/// metadata exists it owns the product presentation as well as installation identity; richer
+/// community presentation is used only when no official variant exists.
 /// </summary>
 internal static class MarketplacePresentationRules
 {
@@ -26,10 +26,11 @@ internal static class MarketplacePresentationRules
             .Select(x => x.OrderByDescending(RichnessScore).First())
             .ToArray();
 
-        var richest = candidates
+        var officialCandidates = candidates.Where(x => x.SourceIsOfficial).ToArray();
+        var presentationPool = officialCandidates.Length > 0 ? officialCandidates : candidates;
+        var richest = presentationPool
             .OrderByDescending(x => PresentationImages(x).Count)
             .ThenByDescending(RichnessScore)
-            .ThenByDescending(x => x.SourceIsOfficial)
             .ThenByDescending(x => x.AssemblyVersion)
             .FirstOrDefault() ?? plugin;
 

@@ -24,7 +24,8 @@ class MarketplaceProjectionTests(unittest.TestCase):
                 db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_revision','sec-2.0.0-0123456789abcdef')")
                 db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('evidence_revision','ev-v1-0123456789abcdef')")
                 db.commit()
-                before = project_marketplace_catalog.runtime_projection_digest(db)
+                before = project_marketplace_catalog.runtime_projection_digest(
+                    db, {"security_dependencies_json", "security_dependency_total_count"})
             out = root / "marketplace.sqlite"
             projected = project_marketplace_catalog.project_database(evidence, out)
             self.assertEqual(before, projected["runtimeProjectionSha256"])
@@ -32,7 +33,54 @@ class MarketplaceProjectionTests(unittest.TestCase):
                 leaked = db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchone()[0]
                 self.assertEqual(0, leaked)
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM runtime_plugin_variants").fetchone()[0], 0)
+                row = db.execute(
+                    "SELECT security_dependencies_json,security_dependency_total_count FROM runtime_plugin_variants WHERE internal_name='Fixture'"
+                ).fetchone()
+                self.assertIsNotNone(row)
+                dependencies = json.loads(row[0])
+                self.assertEqual("Fixture.Dependency", dependencies[0]["name"])
+                self.assertGreaterEqual(row[1], 1)
+                self.assertLessEqual(len(dependencies), project_marketplace_catalog.DEPENDENCY_SUMMARY_LIMIT)
                 self.assertEqual("marketplace", dict(db.execute("SELECT key,value FROM catalog_meta"))["database_role"])
+
+
+    def test_dependency_summary_preserves_resolution_type_and_warning_without_forensic_tables(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-marketplace-dependencies-") as td:
+            root = Path(td)
+            evidence = root / "evidence.sqlite"
+            compact_sqlite_catalog.build_self_test_database(evidence)
+            with closing(sqlite3.connect(evidence)) as db:
+                # Give the fixture dependency a current graph resolution and warning.
+                db.execute("UPDATE plugin_security_dependencies SET kind='external-plugin',name='TargetPlugin',requirement='required',version_requirement='>=2.0.0' WHERE dependency_id=1")
+                db.execute("INSERT INTO plugins(plugin_id,internal_name,canonical_name,first_seen_utc,last_seen_utc,active) VALUES(2,'TargetPlugin','Target Plugin','','',1)")
+                db.execute("INSERT INTO plugin_variants(variant_id,plugin_id,source_id,source_entry_key,name,author,assembly_version,first_seen_utc,last_seen_utc,active) VALUES(2,2,1,'TargetPlugin','Target Plugin','Omega','2.1.0','','',1)")
+                db.execute("""INSERT INTO plugin_security_dependency_resolutions(
+                    dependency_id,scan_id,source_plugin_id,source_variant_id,dependency_kind,dependency_name,version_requirement,
+                    normalized_name,component_key,requirement,resolution_status,version_status,target_plugin_id,target_variant_id,
+                    target_internal_name,target_variant_count,target_version,confidence,match_basis,evidence_json)
+                    VALUES(1,1,1,1,'external-plugin','TargetPlugin','>=2.0.0','targetplugin','plugin:targetplugin','required',
+                           'resolved-plugin','compatible',2,2,'TargetPlugin',1,'2.1.0','high','internal-name','[]')""")
+                db.execute("""INSERT INTO plugin_security_dependency_issues(
+                    dependency_id,scan_id,source_plugin_id,source_variant_id,component_key,issue_code,severity,title,detail,
+                    requirement,version_requirement,observed_version,target_version,evidence_json,refreshed_at_utc)
+                    VALUES(1,1,1,1,'plugin:targetplugin','fixture-warning','caution','Fixture warning','fixture','required','>=2.0.0','2.1.0','2.1.0','[]','')""")
+                db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('catalog_revision','cat-v1-0123456789abcdef')")
+                db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_revision','sec-2.0.0-0123456789abcdef')")
+                db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('evidence_revision','ev-v1-0123456789abcdef')")
+                db.commit()
+            out = root / "marketplace.sqlite"
+            project_marketplace_catalog.project_database(evidence, out)
+            with closing(sqlite3.connect(out)) as db:
+                row = db.execute("SELECT security_dependencies_json FROM runtime_plugin_variants WHERE internal_name='Fixture'").fetchone()
+                dependency = json.loads(row[0])[0]
+                self.assertEqual("hard", dependency["type"])
+                self.assertEqual("TargetPlugin", dependency["targetInternalName"])
+                self.assertEqual(">=2.0.0", dependency["versionRequirement"])
+                self.assertEqual("2.1.0", dependency["targetVersion"])
+                self.assertEqual("medium", dependency["warningSeverity"])
+                self.assertEqual(1, dependency["warningCount"])
+                leaked = db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_dependency_%'").fetchone()[0]
+                self.assertEqual(0, leaked)
 
     def test_marketplace_descriptor_does_not_expose_evidence_download_url(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-marketplace-descriptor-") as td:
@@ -63,6 +111,31 @@ class MarketplaceProjectionTests(unittest.TestCase):
             self.assertNotIn("evidenceDownloadUrl", marketplace)
             self.assertNotIn("security-evidence-latest", json.dumps(marketplace))
             validate_marketplace_catalog.validate_bytes((out / "catalog.json").read_bytes(), (out / "omega-marketplace.sqlite.zip").read_bytes())
+
+
+    def test_dependency_summary_is_bounded_and_retains_total_component_count(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-marketplace-dependency-bound-") as td:
+            root = Path(td)
+            evidence = root / "evidence.sqlite"
+            compact_sqlite_catalog.build_self_test_database(evidence)
+            with closing(sqlite3.connect(evidence)) as db:
+                for index in range(2, 47):
+                    db.execute(
+                        "INSERT INTO plugin_security_dependencies(dependency_id,scan_id,origin,kind,name,version,status,requirement,evidence_json) VALUES(?,1,'artifact','nuget',?,'1.0.0','known','required','[]')",
+                        (index, f"Package{index}"),
+                    )
+                db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('catalog_revision','cat-v1-0123456789abcdef')")
+                db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_revision','sec-2.0.0-0123456789abcdef')")
+                db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('evidence_revision','ev-v1-0123456789abcdef')")
+                db.commit()
+            out = root / "marketplace.sqlite"
+            project_marketplace_catalog.project_database(evidence, out)
+            with closing(sqlite3.connect(out)) as db:
+                encoded, total = db.execute(
+                    "SELECT security_dependencies_json,security_dependency_total_count FROM runtime_plugin_variants WHERE internal_name='Fixture'"
+                ).fetchone()
+                self.assertEqual(project_marketplace_catalog.DEPENDENCY_SUMMARY_LIMIT, len(json.loads(encoded)))
+                self.assertEqual(46, total)
 
     def test_evidence_revision_change_refreshes_small_marketplace_identity(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-marketplace-evidence-revision-") as td:

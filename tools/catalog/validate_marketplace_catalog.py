@@ -48,6 +48,20 @@ def validate_bytes(descriptor_bytes: bytes, bundle: bytes) -> dict:
                 raise RuntimeError("marketplace runtime projection is empty")
             if int(db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='marketplace_security_current'").fetchone()[0]) != 1:
                 raise RuntimeError("marketplace current-security summary table is missing")
+            security_columns = {row[1] for row in db.execute("PRAGMA table_info(marketplace_security_current)")}
+            for required in ("dependencies_json", "dependency_total_count"):
+                if required not in security_columns:
+                    raise RuntimeError(f"marketplace dependency summary column is missing: {required}")
+            runtime_columns = {row[1] for row in db.execute("PRAGMA table_info(runtime_plugin_variants)")}
+            for required in ("security_dependencies_json", "security_dependency_total_count"):
+                if required not in runtime_columns:
+                    raise RuntimeError(f"runtime dependency projection column is missing: {required}")
+            for encoded, total in db.execute("SELECT dependencies_json,dependency_total_count FROM marketplace_security_current"):
+                dependencies = json.loads(encoded or "[]")
+                if not isinstance(dependencies, list) or len(dependencies) > 30:
+                    raise RuntimeError("marketplace dependency summary is malformed or exceeds the 30-entry bound")
+                if int(total or 0) < len(dependencies):
+                    raise RuntimeError("marketplace dependency total count is smaller than its projected summary")
             leaked = [row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%' ORDER BY name")]
             if leaked:
                 raise RuntimeError(f"detailed security tables leaked into marketplace database: {leaked}")
@@ -64,6 +78,7 @@ def validate_bytes(descriptor_bytes: bytes, bundle: bytes) -> dict:
                 "securityRevision": meta.get("security_revision", ""),
                 "evidenceRevision": meta.get("evidence_revision", ""),
                 "variants": int(db.execute("SELECT COUNT(*) FROM runtime_plugin_variants").fetchone()[0]),
+                "dependencySummaryRows": int(db.execute("SELECT COUNT(*) FROM marketplace_security_current WHERE dependency_total_count>0").fetchone()[0]),
             }
         finally:
             db.close()

@@ -11,7 +11,6 @@ namespace Dalagab.Omega;
 internal sealed partial class MarketplaceWindow
 {
     private const float AppBarHeight = 42f;
-    private const float AppBarIconSize = 22f;
     private const float AppBarControlSize = 32f;
     private const float AppBarSearchWidth = 480f;
 
@@ -21,7 +20,9 @@ internal sealed partial class MarketplaceWindow
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         DrawApplicationMark();
-        DrawGlobalSearch();
+        var (searchX, searchWidth) = GetGlobalSearchLayout();
+        DrawProductBackButton(searchX);
+        DrawGlobalSearch(searchX, searchWidth);
         DrawApplicationControls();
 
         ImGui.EndChild();
@@ -29,34 +30,56 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawApplicationMark()
     {
-        var y = (AppBarHeight - AppBarIconSize) * 0.5f;
+        const string label = "Omega";
+        var labelSize = ImGui.CalcTextSize(label);
+        var hitSize = labelSize + new Vector2(12f, 8f);
+        var y = Math.Max(0f, (AppBarHeight - hitSize.Y) * 0.5f);
         ImGui.SetCursorPos(new Vector2(4f, y));
-        var min = ImGui.GetCursorScreenPos();
-        ImGui.InvisibleButton("##omega-application-mark", new Vector2(AppBarIconSize, AppBarIconSize));
-        var texture = omegaIconTexture?.GetWrapOrDefault();
-        if (texture is not null)
-            ImGui.GetWindowDrawList().AddImage(texture.Handle, min, min + new Vector2(AppBarIconSize, AppBarIconSize));
-        else
-            DrawFallbackApplicationMark(min);
+        ImGui.InvisibleButton("##omega-application-mark", hitSize);
+        var min = ImGui.GetItemRectMin();
+        var draw = ImGui.GetWindowDrawList();
+        var textPos = min + new Vector2(6f, (hitSize.Y - labelSize.Y) * 0.5f);
+        draw.AddText(textPos, ImGui.GetColorU32(ImGuiCol.Text), label);
+
+        // Small red core in the first O: a quiet Omega identity mark without bringing the old logo back.
+        var firstLetterSize = ImGui.CalcTextSize("O");
+        var omegaDotCenter = textPos + new Vector2(firstLetterSize.X * 0.50f, firstLetterSize.Y * 0.52f);
+        draw.AddCircleFilled(
+            omegaDotCenter,
+            2.15f,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(0.88f, 0.16f, 0.20f, 1f)),
+            12);
 
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Omega");
     }
 
-    private static void DrawFallbackApplicationMark(Vector2 min)
-    {
-        const string glyph = "Ω";
-        var glyphSize = ImGui.CalcTextSize(glyph);
-        var pos = min + new Vector2((AppBarIconSize - glyphSize.X) * 0.5f, (AppBarIconSize - glyphSize.Y) * 0.5f);
-        ImGui.GetWindowDrawList().AddText(pos, ImGui.GetColorU32(ImGuiCol.Text), glyph);
-    }
-
-    private void DrawGlobalSearch()
+    private static (float X, float Width) GetGlobalSearchLayout()
     {
         var width = ImGui.GetWindowWidth();
         var reserved = (AppBarControlSize * 2f) + 58f;
         var searchWidth = Math.Min(AppBarSearchWidth, Math.Max(240f, width - (reserved * 2f)));
-        var x = Math.Max(40f, (width - searchWidth) * 0.5f);
+        var x = Math.Max(96f, (width - searchWidth) * 0.5f);
+        return (x, searchWidth);
+    }
+
+    private void DrawProductBackButton(float searchX)
+    {
+        if (!detailsOpen || activeView != MarketplaceView.Discover)
+            return;
+
+        var x = Math.Max(72f, searchX - AppBarControlSize - 10f);
+        ImGui.SetCursorPos(new Vector2(x, 5f));
+        if (!DrawApplicationIconButton(FontAwesomeIcon.ArrowLeft, "discover-product-back", "Back to Discover", false))
+            return;
+
+        detailsOpen = false;
+        selectedPlugin = null;
+        resetDiscoverListScroll = false;
+    }
+
+    private void DrawGlobalSearch(float x, float searchWidth)
+    {
         ImGui.SetCursorPos(new Vector2(x, 5f));
         ImGui.SetNextItemWidth(searchWidth);
 

@@ -1,5 +1,6 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Plugin;
 
 namespace Dalagab.Omega;
@@ -10,6 +11,19 @@ internal sealed partial class MarketplaceWindow
     private DateTimeOffset collectionsLastReadUtc = DateTimeOffset.MinValue;
     private Guid? openCollectionId;
     private Task<DalamudCollectionOperationResult>? collectionOperationTask;
+    private bool collectionAddPickerOpen;
+    private string collectionAddSearch = string.Empty;
+
+    private sealed record PluginCollectionMembershipState(
+        DalamudPluginCollection Collection,
+        DalamudCollectionPlugin Entry);
+
+    private sealed record PluginDirectControlState(
+        bool CanDirectToggle,
+        bool DesiredEnabled,
+        string Reason,
+        PluginCollectionMembershipState? DirectMembership,
+        IReadOnlyList<PluginCollectionMembershipState> Memberships);
 
     private void RefreshCollectionsIfNeeded(bool force = false)
     {
@@ -65,7 +79,8 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawCollectionFolders()
     {
-        ImGui.TextDisabled("Open a collection folder to see its plugins. Toggle named collections directly from the folder.");
+        ImGui.TextDisabled("Collections use a folder-style view. Membership is additive, so a plugin can appear in multiple named folders.");
+        ImGui.TextDisabled("Open a folder to manage its membership. Library > All stays a clean list of installed plugins.");
         ImGui.Spacing();
         if (collectionSnapshot.Length == 0)
         {
@@ -73,7 +88,7 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        const float tileWidth = 150f;
+        const float tileWidth = 166f;
         const float gap = 18f;
         var available = ImGui.GetContentRegionAvail().X;
         var columns = Math.Max(1, (int)Math.Floor((available + gap) / (tileWidth + gap)));
@@ -91,15 +106,20 @@ internal sealed partial class MarketplaceWindow
     {
         ImGui.BeginGroup();
         var startX = ImGui.GetCursorPosX();
-        var folderSize = new Vector2(width, 86f);
+        var folderSize = new Vector2(width, 92f);
         var screen = ImGui.GetCursorScreenPos();
         ImGui.InvisibleButton($"##collection-folder-{collection.Id}", folderSize);
         var hovered = ImGui.IsItemHovered();
         if (ImGui.IsItemClicked())
+        {
             openCollectionId = collection.Id;
+            collectionAddPickerOpen = false;
+            collectionAddSearch = string.Empty;
+        }
+
         DrawFolderShape(screen, folderSize, collection.IsEnabled, hovered);
 
-        DrawCenteredTileText(Shorten(CollectionDisplayName(collection), 20), width, false);
+        DrawCenteredTileText(Shorten(CollectionDisplayName(collection), 22), width, false);
         DrawCenteredTileText($"{collection.Plugins.Count} plugin{(collection.Plugins.Count == 1 ? string.Empty : "s")}", width, true);
         DrawCollectionToggle(collection, width);
         ImGui.SetCursorPosX(startX);
@@ -107,12 +127,16 @@ internal sealed partial class MarketplaceWindow
         ImGui.EndGroup();
     }
 
-    private static void DrawFolderShape(Vector2 min, Vector2 size, bool enabled, bool hovered)
+    private static void DrawFolderShape(
+        Vector2 min,
+        Vector2 size,
+        bool enabled,
+        bool hovered)
     {
         var draw = ImGui.GetWindowDrawList();
         var bodyMin = min + new Vector2(6f, 22f);
         var bodyMax = min + new Vector2(size.X - 6f, size.Y - 6f);
-        var tabMax = min + new Vector2(Math.Min(size.X * 0.48f, 70f), 30f);
+        var tabMax = min + new Vector2(Math.Min(size.X * 0.48f, 78f), 30f);
         var baseColor = enabled
             ? new Vector4(0.16f, 0.58f, 0.62f, hovered ? 1f : 0.92f)
             : new Vector4(0.20f, 0.24f, 0.30f, hovered ? 0.95f : 0.78f);
@@ -128,14 +152,22 @@ internal sealed partial class MarketplaceWindow
     private void DrawCollectionToggle(DalamudPluginCollection collection, float width)
     {
         var startX = ImGui.GetCursorPosX();
-        var label = collection.IsDefault ? "Always on" : collection.IsEnabled ? "On" : "Off";
-        var buttonWidth = collection.IsDefault ? 92f : 62f;
-        ImGui.SetCursorPosX(startX + Math.Max(0f, (width - buttonWidth) * 0.5f));
-
         if (collection.IsDefault)
+        {
+            var label = "Always active";
+            var textWidth = ImGui.CalcTextSize(label).X;
+            ImGui.SetCursorPosX(startX + Math.Max(0f, (width - textWidth) * 0.5f));
             ImGui.TextDisabled(label);
-        else if (DrawPillButton(label, $"collection-toggle-{collection.Id}", new Vector2(buttonWidth, 28f), collection.IsEnabled))
+            ImGui.SetCursorPosX(startX);
+            return;
+        }
+
+        const float switchWidth = 44f;
+        ImGui.SetCursorPosX(startX + Math.Max(0f, (width - switchWidth) * 0.5f));
+        if (DrawToggleSwitch($"collection-toggle-{collection.Id}", collection.IsEnabled))
             StartCollectionToggle(collection, !collection.IsEnabled);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(collection.IsEnabled ? "Disable this collection" : "Enable this collection");
         ImGui.SetCursorPosX(startX);
     }
 
@@ -157,32 +189,138 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        if (DrawPillButton("← Folders", "collections-back", new Vector2(96f, 30f), false))
+        var headerY = ImGui.GetCursorPosY();
+        if (DrawApplicationIconButton(FontAwesomeIcon.ArrowLeft, "collections-back", "Back to collection folders", false))
             openCollectionId = null;
-        ImGui.SameLine(0f, 12f);
-        ImGui.Text(CollectionDisplayName(collection));
-        ImGui.SameLine(0f, 12f);
-        DrawCollectionHeaderToggle(collection);
+
+        ImGui.SameLine(0f, 10f);
+        ImGui.SetCursorPosY(headerY + MarketplaceLayoutRules.CenterY(32f, ImGui.GetTextLineHeight()));
+        ImGui.TextDisabled("Library / Collections /");
+        ImGui.SameLine(0f, 6f);
+        ImGui.TextUnformatted(CollectionDisplayName(collection));
+
+        ImGui.SetCursorPosY(headerY + 38f);
         ImGui.TextDisabled($"{collection.Plugins.Count} plugins in this Dalamud collection");
+        ImGui.SameLine(0f, 14f);
+        DrawCollectionHeaderToggle(collection);
+
+        ImGui.SetCursorPosY(headerY + 66f);
+        if (collection.IsDefault)
+        {
+            ImGui.TextDisabled("This is Dalamud's automatic default folder. Plugin state can be changed here, but membership is automatic.");
+        }
+        else
+        {
+            ImGui.TextDisabled("Membership is managed here. A plugin can belong to multiple named collections at the same time.");
+            ImGui.Spacing();
+            if (DrawRoundedButton(
+                    collectionAddPickerOpen ? "Close picker" : "+ Add plugins",
+                    $"collection-add-picker-toggle-{collection.Id}",
+                    new Vector2(collectionAddPickerOpen ? 108f : 112f, 30f),
+                    active: collectionAddPickerOpen))
+            {
+                collectionAddPickerOpen = !collectionAddPickerOpen;
+                if (!collectionAddPickerOpen)
+                    collectionAddSearch = string.Empty;
+            }
+            if (collectionAddPickerOpen)
+            {
+                ImGui.Spacing();
+                DrawCollectionAddPicker(collection, installed, currentApi);
+            }
+        }
         ImGui.Spacing();
 
-        DrawCollectionPluginGrid(collection, installed, currentApi, currentDalamudVersion);
+        DrawCollectionDirectoryList(collection, installed, currentApi, currentDalamudVersion);
     }
 
     private void DrawCollectionHeaderToggle(DalamudPluginCollection collection)
     {
         if (collection.IsDefault)
         {
-            ImGui.TextDisabled("Always on");
+            ImGui.TextDisabled("Always active");
             return;
         }
 
-        var label = collection.IsEnabled ? "On" : "Off";
-        if (DrawPillButton(label, $"collection-header-toggle-{collection.Id}", new Vector2(62f, 28f), collection.IsEnabled))
+        ImGui.TextDisabled("Collection active");
+        ImGui.SameLine(0f, 7f);
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() - 2f);
+        if (DrawToggleSwitch($"collection-header-toggle-{collection.Id}", collection.IsEnabled))
             StartCollectionToggle(collection, !collection.IsEnabled);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(collection.IsEnabled ? "Disable this collection" : "Enable this collection");
     }
 
-    private void DrawCollectionPluginGrid(
+    private void DrawCollectionAddPicker(
+        DalamudPluginCollection collection,
+        IReadOnlyDictionary<string, IExposedPlugin> installed,
+        int currentApi)
+    {
+        const float pickerHeight = 220f;
+        ImGui.BeginChild(
+            $"collection-add-picker-{collection.Id}",
+            new Vector2(0f, pickerHeight),
+            true,
+            ImGuiWindowFlags.NoScrollbar);
+
+        ImGui.TextUnformatted("Installed plugins not yet in this collection");
+        ImGui.SetNextItemWidth(Math.Min(360f, Math.Max(180f, ImGui.GetContentRegionAvail().X - 10f)));
+        ImGui.InputTextWithHint(
+            $"##collection-add-search-{collection.Id}",
+            "Search installed plugins...",
+            ref collectionAddSearch,
+            128);
+        ImGui.Spacing();
+
+        var projection = BuildLibraryProjection(catalog.GetMainProjection(currentApi).Plugins, installed);
+        var query = collectionAddSearch.Trim();
+        var candidates = projection
+            .Where(x => installed.ContainsKey(x.InternalName))
+            .Where(x => !CollectionContainsPlugin(collection, x.InternalName))
+            .Where(x => string.IsNullOrWhiteSpace(query) ||
+                        x.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                        x.InternalName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                        x.Author.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (candidates.Length == 0)
+        {
+            ImGui.TextDisabled(string.IsNullOrWhiteSpace(query)
+                ? "Every installed plugin is already in this collection."
+                : "No installed plugins match this search.");
+            ImGui.EndChild();
+            return;
+        }
+
+        ImGui.BeginChild(
+            $"collection-add-picker-list-{collection.Id}",
+            Vector2.Zero,
+            false,
+            ImGuiWindowFlags.AlwaysVerticalScrollbar);
+        foreach (var plugin in candidates)
+        {
+            ImGui.PushID($"collection-add-candidate-{collection.Id}-{StableId(plugin.InternalName)}");
+            var startY = ImGui.GetCursorPosY();
+            ImGui.TextUnformatted(Shorten(plugin.Name, 48));
+            ImGui.TextDisabled(Shorten(plugin.InternalName, 58));
+
+            const float addWidth = 64f;
+            ImGui.SameLine();
+            ImGui.SetCursorPos(new Vector2(
+                Math.Max(220f, ImGui.GetWindowContentRegionMax().X - addWidth - 10f),
+                startY + 4f));
+            if (DrawRoundedButton("Add", "collection-add-candidate-action", new Vector2(addWidth, 28f)))
+                StartAddPluginToCollection(collection, plugin.InternalName, plugin.Name);
+
+            ImGui.Separator();
+            ImGui.PopID();
+        }
+        ImGui.EndChild();
+        ImGui.EndChild();
+    }
+
+    private void DrawCollectionDirectoryList(
         DalamudPluginCollection collection,
         IReadOnlyDictionary<string, IExposedPlugin> installed,
         int currentApi,
@@ -190,40 +328,236 @@ internal sealed partial class MarketplaceWindow
     {
         var projection = catalog.GetMainProjection(currentApi).Plugins
             .ToDictionary(x => x.InternalName, StringComparer.OrdinalIgnoreCase);
-        const float targetWidth = 138f;
-        const float gap = 16f;
-        var available = ImGui.GetContentRegionAvail().X;
-        var columns = Math.Max(1, (int)Math.Floor((available + gap) / (targetWidth + gap)));
-        var tileWidth = Math.Max(112f, (available - ((columns - 1) * gap)) / columns);
 
-        for (var index = 0; index < collection.Plugins.Count; index++)
+        if (collection.Plugins.Count == 0)
         {
-            DrawCollectionPlugin(collection.Plugins[index], projection, installed, currentApi, currentDalamudVersion, tileWidth);
-            if ((index + 1) % columns != 0 && index + 1 < collection.Plugins.Count)
-                ImGui.SameLine(0f, gap);
-            else if (index + 1 < collection.Plugins.Count)
-                ImGui.Spacing();
+            ImGui.TextDisabled(collection.IsDefault
+                ? "No plugins are currently in the default collection."
+                : "This folder is empty. Use + Add plugins above to add installed plugins.");
+            return;
+        }
+
+        foreach (var entry in collection.Plugins.OrderBy(x => x.InternalName, StringComparer.OrdinalIgnoreCase))
+        {
+            var plugin = projection.TryGetValue(entry.InternalName, out var known)
+                ? known
+                : new MarketplacePlugin { Name = entry.InternalName, InternalName = entry.InternalName, SourceName = "Installed" };
+            installed.TryGetValue(entry.InternalName, out var installedPlugin);
+            DrawCollectionDirectoryRow(collection, entry, plugin, installedPlugin, currentApi, currentDalamudVersion);
+            ImGui.Spacing();
         }
     }
 
-    private void DrawCollectionPlugin(
+    private void DrawCollectionDirectoryRow(
+        DalamudPluginCollection collection,
         DalamudCollectionPlugin entry,
-        IReadOnlyDictionary<string, MarketplacePlugin> projection,
-        IReadOnlyDictionary<string, IExposedPlugin> installed,
+        MarketplacePlugin plugin,
+        IExposedPlugin? installedPlugin,
         int currentApi,
-        Version currentDalamudVersion,
-        float width)
+        Version currentDalamudVersion)
     {
-        var plugin = projection.TryGetValue(entry.InternalName, out var known)
-            ? known
-            : new MarketplacePlugin { Name = entry.InternalName, InternalName = entry.InternalName, SourceName = "Installed" };
-        installed.TryGetValue(entry.InternalName, out var installedPlugin);
-        var iconSize = Math.Clamp(width - 12f, 94f, 126f);
-        if (DrawPluginArtwork(plugin, installedPlugin, iconSize, width, currentApi, currentDalamudVersion, showOverlays: false))
+        const float rowHeight = MarketplaceLayoutRules.CollectionRowHeight;
+        var rowWidth = Math.Max(420f, ImGui.GetContentRegionAvail().X);
+        ImGui.BeginChild($"collection-file-{collection.Id}-{StableId(entry.InternalName)}", new Vector2(rowWidth, rowHeight), true,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+
+        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, 48f));
+        var artworkClicked = DrawPluginArtwork(
+            plugin, installedPlugin, 48f, 48f, currentApi, currentDalamudVersion, showOverlays: false);
+        if (artworkClicked)
             OpenPluginDetails(plugin);
-        DrawCenteredTileText(Shorten(plugin.Name, 20), width, false);
-        DrawCenteredTileText(entry.WantsEnabled ? "Enabled in collection" : "Disabled in collection", width, true);
+
+        ImGui.SameLine(0f, 12f);
+        var textStart = ImGui.GetCursorPosX();
+        var textHeight = ImGui.GetTextLineHeightWithSpacing() * 3f;
+        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
+        ImGui.BeginGroup();
+        ImGui.TextUnformatted(Shorten(plugin.Name, 44));
+        ImGui.TextDisabled(Shorten(BuildAuthorSourceLine(plugin), 70));
+        ImGui.TextDisabled(entry.WantsEnabled ? "Enabled when this collection is active" : "Disabled in this collection");
+        ImGui.EndGroup();
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+            OpenPluginDetails(plugin);
+
+        const float stateLabelWidth = 62f;
+        const float switchWidth = 44f;
+        const float removeWidth = 78f;
+        const float gap = 8f;
+        var actionWidth = stateLabelWidth + gap + switchWidth + (collection.IsDefault ? 0f : gap + removeWidth);
+        var actionsX = Math.Max(
+            textStart + 270f,
+            MarketplaceLayoutRules.RightAlignedX(ImGui.GetWindowContentRegionMax().X, actionWidth));
+        var toggleY = MarketplaceLayoutRules.CenterY(rowHeight, 22f);
+
+        ImGui.SetCursorPos(new Vector2(actionsX, toggleY + MarketplaceLayoutRules.CenterY(22f, ImGui.GetTextLineHeight())));
+        ImGui.TextDisabled(entry.WantsEnabled ? "Enabled" : "Disabled");
+        ImGui.SameLine(0f, gap);
+        ImGui.SetCursorPosY(toggleY);
+        if (DrawToggleSwitch(
+                $"collection-plugin-state-{collection.Id}-{StableId(entry.InternalName)}",
+                entry.WantsEnabled))
+        {
+            StartCollectionPluginStateChange(collection, entry, !entry.WantsEnabled);
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(entry.WantsEnabled ? "Disable this plugin in this collection" : "Enable this plugin in this collection");
+
+        if (!collection.IsDefault)
+        {
+            ImGui.SameLine(0f, gap);
+            ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, 30f));
+            if (DrawRoundedButton(
+                    "Remove",
+                    $"collection-plugin-remove-{collection.Id}-{StableId(entry.InternalName)}",
+                    new Vector2(removeWidth, 30f)))
+            {
+                StartRemovePluginFromCollection(collection, entry, plugin.Name);
+            }
+        }
+
+        ImGui.EndChild();
     }
+
+    private void StartAddPluginToCollection(DalamudPluginCollection collection, string internalName, string displayName)
+    {
+        if (collectionOperationTask is not null)
+        {
+            operationMessage = "Dalamud is already changing a collection.";
+            return;
+        }
+        if (collection.IsDefault)
+        {
+            operationMessage = "Default plugins is managed automatically by Dalamud.";
+            return;
+        }
+        if (CollectionContainsPlugin(collection, internalName))
+        {
+            operationMessage = $"{displayName} is already in {CollectionDisplayName(collection)}.";
+            return;
+        }
+
+        operationMessage = $"Adding {displayName} to {CollectionDisplayName(collection)}…";
+        collectionOperationTask = Task.Run(() => profileBridge.AddPluginToCollectionAsync(collection.Id, internalName));
+    }
+
+    private void StartRemovePluginFromCollection(
+        DalamudPluginCollection collection,
+        DalamudCollectionPlugin entry,
+        string displayName)
+    {
+        if (collectionOperationTask is not null)
+        {
+            operationMessage = "Dalamud is already changing a collection.";
+            return;
+        }
+        if (collection.IsDefault)
+        {
+            operationMessage = "Default plugins is managed automatically by Dalamud.";
+            return;
+        }
+
+        operationMessage = $"Removing {displayName} from {CollectionDisplayName(collection)}…";
+        collectionOperationTask = Task.Run(() => profileBridge.RemovePluginFromCollectionAsync(collection.Id, entry.WorkingPluginId));
+    }
+
+    private void StartCollectionPluginStateChange(
+        DalamudPluginCollection collection,
+        DalamudCollectionPlugin entry,
+        bool enabled)
+    {
+        if (collectionOperationTask is not null)
+        {
+            operationMessage = "Dalamud is already changing a collection.";
+            return;
+        }
+
+        operationMessage = $"Setting {entry.InternalName} {(enabled ? "enabled" : "disabled")} in {CollectionDisplayName(collection)}…";
+        collectionOperationTask = Task.Run(() => profileBridge.SetPluginStateInCollectionAsync(
+            collection.Id,
+            entry.WorkingPluginId,
+            entry.InternalName,
+            enabled));
+    }
+
+    private PluginDirectControlState GetPluginDirectControlState(string internalName)
+    {
+        RefreshCollectionsIfNeeded();
+        var memberships = collectionSnapshot
+            .SelectMany(collection => collection.Plugins
+                .Where(entry => string.Equals(entry.InternalName, internalName, StringComparison.OrdinalIgnoreCase))
+                .Select(entry => new PluginCollectionMembershipState(collection, entry)))
+            .ToArray();
+
+        var named = memberships.Where(x => !x.Collection.IsDefault).ToArray();
+        if (named.Length > 0)
+        {
+            var names = string.Join(", ", named.Select(x => CollectionDisplayName(x.Collection)));
+            return new(
+                false,
+                false,
+                $"Direct control is unavailable because this plugin is managed by: {names}. Open a collection below to change its state.",
+                null,
+                memberships);
+        }
+
+        var direct = memberships.FirstOrDefault(x => x.Collection.IsDefault);
+        if (direct is null || direct.Entry.WorkingPluginId == Guid.Empty)
+        {
+            return new(
+                false,
+                false,
+                "Dalamud collection membership is not available for direct control yet.",
+                null,
+                memberships);
+        }
+
+        return new(
+            true,
+            direct.Entry.WantsEnabled,
+            "Controlled through Dalamud's Default plugins collection.",
+            direct,
+            memberships);
+    }
+
+    private void StartDirectPluginStateChange(
+        MarketplacePlugin plugin,
+        PluginDirectControlState control,
+        bool enabled)
+    {
+        if (!control.CanDirectToggle || control.DirectMembership is null)
+        {
+            operationMessage = control.Reason;
+            return;
+        }
+
+        if (plugin.InternalName.Equals(Plugin.PluginInterface.InternalName, StringComparison.OrdinalIgnoreCase) && !enabled)
+        {
+            operationMessage = "Omega cannot disable itself from its own window. Use Dalamud to disable Omega.";
+            return;
+        }
+
+        StartCollectionPluginStateChange(
+            control.DirectMembership.Collection,
+            control.DirectMembership.Entry,
+            enabled);
+    }
+
+    private void OpenCollectionView(DalamudPluginCollection collection)
+    {
+        activeView = MarketplaceView.Library;
+        librarySection = LibrarySection.Collections;
+        openCollectionId = collection.Id;
+        collectionAddPickerOpen = false;
+        collectionAddSearch = string.Empty;
+        detailsOpen = false;
+        selectedPlugin = null;
+        filtersOpen = false;
+        resetStorefrontScroll = true;
+        RefreshCollectionsIfNeeded(force: true);
+    }
+
+    private static bool CollectionContainsPlugin(DalamudPluginCollection collection, string internalName)
+        => collection.Plugins.Any(x => string.Equals(x.InternalName, internalName, StringComparison.OrdinalIgnoreCase));
 
     private static string CollectionDisplayName(DalamudPluginCollection collection)
         => collection.IsDefault ? "Default plugins" : collection.Name;

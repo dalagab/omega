@@ -23,7 +23,8 @@ internal static partial class RegressionCases
         Contains(eulaUi, "eulaDocumentAvailable && remaining <= 0", "missing EULA document fails closed instead of allowing acceptance");
         Contains(eulaUi, "https://github.com/dalagab/omega", "EULA UI points to the public project site");
 
-        Contains(eulaUi, "View EULA / Risk Disclosure", "Settings can reopen the EULA after acceptance");
+        Contains(eulaUi, "View EULA", "Settings can reopen the EULA after acceptance");
+        False(eulaUi.Contains("View EULA / Risk Disclosure", StringComparison.Ordinal), "Settings does not relabel the EULA as a risk disclosure");
 
         var project = XDocument.Load(Path.Combine(Root, "Omega", "DalagabOmega.csproj"));
         True(project.Descendants("Content").Any(x =>

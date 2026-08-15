@@ -42,7 +42,7 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawSettingsEulaShortcut()
     {
-        if (ImGui.Button("View EULA / Risk Disclosure"))
+        if (ImGui.Button("View EULA"))
             OpenEulaFromSettings();
         ImGui.SameLine();
         ImGui.TextDisabled(configuration.EulaAcceptedAtUtc is { } acceptedAt
@@ -161,7 +161,7 @@ internal sealed partial class MarketplaceWindow
             DeclineEula();
 
         ImGui.SameLine();
-        ImGui.TextDisabled("Acceptance is recorded once and is not reset by routine Omega or catalog updates.");
+        ImGui.TextDisabled("Acceptance is recorded once and is not reset by routine Omega or Definitions updates.");
     }
 
     private void DrawEulaReviewActions()

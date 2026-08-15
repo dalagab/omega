@@ -114,21 +114,22 @@ internal static partial class RegressionCases
         False(catalog.Contains("CatalogDatabaseRecord", StringComparison.Ordinal), "legacy per-source JSON database types removed");
 
         var updater = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CatalogUpdateCoordinator.cs"));
-        Contains(updater, "retaining local database", "online failure keeps last-known-good SQLite");
+        Contains(updater, "retaining local Definitions", "online failure keeps last-known-good SQLite Definitions");
         False(updater.Contains("LocalFallback", StringComparison.Ordinal), "client-side public repository crawl fallback removed");
 
         var ui = ReadMarketplaceWindowSource();
-        Contains(ui, "Refresh catalog database", "manual catalog check remains available in Settings");
-        Contains(ui, "Catalog Revision", "Settings exposes the catalog troubleshooting revision");
-        Contains(ui, "Security Revision", "Settings exposes the security troubleshooting revision");
-        Contains(ui, "Evidence Revision", "Settings exposes the evidence troubleshooting revision without downloading evidence");
+        Contains(ui, "Check for updates", "manual Definitions/plugin update check remains available at the top of Settings");
+        Contains(ui, "Definitions Revision", "About exposes the Definitions troubleshooting revision");
+        Contains(ui, "Security Revision", "About exposes the security troubleshooting revision");
+        Contains(ui, "Evidence Revision", "About exposes the evidence troubleshooting revision without downloading evidence");
     }
 
     internal static void TestDailyUpdateJobContract()
     {
         var service = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DailyCatalogUpdateService.cs"));
         Contains(service, "TimeSpan.FromDays(1)", "daily cadence");
-        Contains(service, "updates.RefreshAsync", "daily job uses the preferred central hash path with retained local SQLite");
+        Contains(service, "updates.CheckForUpdatesAsync", "daily job probes for pending Definitions updates without silently applying them");
+        Contains(service, "DefinitionsUpdateAvailable", "daily check records whether Definitions are pending");
         Contains(service, "LastDailyUpdateCheckUtc", "daily completion is persisted");
 
         var plugin = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
@@ -203,8 +204,9 @@ internal static partial class RegressionCases
         False(plugin.Contains("catalog.RefreshAsync", StringComparison.Ordinal), "plugin constructor must not directly fan out across repositories");
 
         var ui = ReadMarketplaceWindowSource();
-        Contains(ui, "Refresh catalog database", "explicit catalog update control remains inside Settings");
-        Contains(ui, "updates.RefreshAsync()", "manual source refresh uses the preferred-online/fallback coordinator");
+        Contains(ui, "Check for updates", "explicit update check remains inside Settings");
+        Contains(ui, "updates.CheckForUpdatesAsync()", "manual check probes Definitions and refreshes explicit user sources");
+        Contains(ui, "ApplyDefinitionsUpdateAsync", "Updates page can explicitly apply a pending Definitions package");
         Contains(ui, "catalog.LoadCached", "source configuration applies locally without network");
 
         var catalog = ReadMarketplaceCatalogServiceSource();
@@ -293,7 +295,11 @@ internal static partial class RegressionCases
         Contains(ui, "source-enabled-", "repository enable checkbox");
         Contains(ui, "\"Stale\"", "stale repository status");
         Contains(ui, "catalog.LoadCached(configuration.Repositories)", "deselecting a repository immediately rebuilds local catalog");
-        Contains(ui, "ImGui.BeginTable(\"omega-source-table\", 5, ImGuiTableFlags.None, new Vector2(860f, 360f), 0f)", "API-15 BeginTable overload must include the flags argument before outer size");
+        Contains(ui, "ImGui.BeginTable(\"omega-source-table\", 5, ImGuiTableFlags.None, new Vector2(860f, addSourceOpen ? 230f : 360f), 0f)", "API-15 BeginTable overload includes flags and shrinks while add-source tools are open");
+        False(ui.Contains("[Curated (", StringComparison.Ordinal), "selected Curated tab must not use decorative brackets");
+        var addTools = ui.IndexOf("DrawAddSourceTools();", StringComparison.Ordinal);
+        var sourceTable = ui.IndexOf("DrawSourcesTable(shownSources, statuses);", StringComparison.Ordinal);
+        True(addTools >= 0 && sourceTable > addTools, "add-source tools render above the scrolling source table");
         False(ui.Contains("selectedSourceIndex", StringComparison.Ordinal), "removed selection-list index state must not return after source table migration");
 
         var health = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "RepositoryHealthRules.cs"));

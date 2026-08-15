@@ -36,12 +36,16 @@ internal sealed class OnlineCatalogState
     public string EvidenceRevision { get; set; } = string.Empty;
     public DateTimeOffset? GeneratedAtUtc { get; set; }
     public DateTimeOffset? AppliedAtUtc { get; set; }
+    public string AvailableCatalogSha256 { get; set; } = string.Empty;
+    public string AvailableCatalogRevision { get; set; } = string.Empty;
+    public DateTimeOffset? CheckedAtUtc { get; set; }
 }
 
 internal enum OnlineCatalogCheckStatus
 {
     Unavailable,
     Current,
+    UpdateAvailable,
     Downloaded,
 }
 
@@ -164,34 +168,55 @@ internal sealed class OnlineCatalogClient : IDisposable
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"Dalagab.Omega/{BuildInfo.Version}");
     }
 
+    public async Task<OnlineCatalogCheckResult> ProbeAsync(
+        string descriptorUrl,
+        string currentAppliedSha256,
+        CancellationToken cancellationToken)
+    {
+        if (!TryHttpsUri(descriptorUrl, out var descriptorUri))
+            return Unavailable("No valid HTTPS online Definitions descriptor is configured.");
+
+        try
+        {
+            var descriptorJson = await DownloadSmallTextAsync(descriptorUri, MaxDescriptorBytes, cancellationToken).ConfigureAwait(false);
+            var descriptor = JsonSerializer.Deserialize<OnlineCatalogDescriptor>(descriptorJson, jsonOptions)
+                ?? throw new InvalidDataException("Online Definitions descriptor is empty.");
+            ValidateDescriptor(descriptor, descriptorUri);
+
+            return new OnlineCatalogCheckResult
+            {
+                Status = EffectiveCatalogSha256(descriptor).Equals(currentAppliedSha256, StringComparison.OrdinalIgnoreCase)
+                    ? OnlineCatalogCheckStatus.Current
+                    : OnlineCatalogCheckStatus.UpdateAvailable,
+                Descriptor = descriptor,
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return Unavailable(ex.Message);
+        }
+    }
+
     public async Task<OnlineCatalogCheckResult> CheckAsync(
         string descriptorUrl,
         string currentAppliedSha256,
         string tempDirectory,
         CancellationToken cancellationToken)
     {
-        if (!TryHttpsUri(descriptorUrl, out var descriptorUri))
-            return Unavailable("No valid HTTPS online catalog descriptor is configured.");
+        var probe = await ProbeAsync(descriptorUrl, currentAppliedSha256, cancellationToken).ConfigureAwait(false);
+        if (probe.Status is OnlineCatalogCheckStatus.Unavailable or OnlineCatalogCheckStatus.Current)
+            return probe;
+        if (probe.Descriptor is null || !TryHttpsUri(descriptorUrl, out var descriptorUri))
+            return Unavailable("Online Definitions descriptor returned no usable update metadata.");
 
         try
         {
-            var descriptorJson = await DownloadSmallTextAsync(descriptorUri, MaxDescriptorBytes, cancellationToken).ConfigureAwait(false);
-            var descriptor = JsonSerializer.Deserialize<OnlineCatalogDescriptor>(descriptorJson, jsonOptions)
-                ?? throw new InvalidDataException("Online catalog descriptor is empty.");
-            ValidateDescriptor(descriptor, descriptorUri);
-
-            var catalogSha256 = EffectiveCatalogSha256(descriptor);
+            var descriptor = probe.Descriptor;
             var bundleSha256 = EffectiveBundleSha256(descriptor);
-
-            if (catalogSha256.Equals(currentAppliedSha256, StringComparison.OrdinalIgnoreCase))
-            {
-                return new OnlineCatalogCheckResult
-                {
-                    Status = OnlineCatalogCheckStatus.Current,
-                    Descriptor = descriptor,
-                };
-            }
-
             var downloadUri = ResolveDownloadUri(descriptorUri, descriptor.DownloadUrl);
             Directory.CreateDirectory(tempDirectory);
             var tempPath = Path.Combine(tempDirectory, $"omega-catalog-{Guid.NewGuid():N}.zip");
@@ -201,7 +226,7 @@ internal sealed class OnlineCatalogClient : IDisposable
             if (!actualSha.Equals(bundleSha256, StringComparison.OrdinalIgnoreCase))
             {
                 File.Delete(tempPath);
-                throw new InvalidDataException("Downloaded Omega catalog SHA-256 does not match catalog.json.");
+                throw new InvalidDataException("Downloaded Omega Definitions SHA-256 does not match catalog.json.");
             }
 
             return new OnlineCatalogCheckResult

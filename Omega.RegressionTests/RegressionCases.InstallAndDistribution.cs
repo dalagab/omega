@@ -46,9 +46,13 @@ internal static partial class RegressionCases
         False(ui.Contains("DrawPillButton(icon.ToIconString()", StringComparison.Ordinal), "sidebar navigation must not regress to rounded pill buttons");
         Contains(ui, "activeView is MarketplaceView.Library or MarketplaceView.Updates", "Discover omits the redundant page-title and transient operation-message header");
         Contains(ui, "OpenSettings()", "Settings owns source-management entry");
-        Contains(ui, "RefreshSources()", "Settings refresh uses the dedicated source-refresh action");
-        Contains(ui, "updates.RefreshAsync()", "source refresh still delegates to the catalog update coordinator");
-        Contains(ui, "ImGui.TextDisabled(BuildInfo.Version)", "version remains visible at the icon-rail footer");
+        Contains(ui, "CheckForUpdates()", "Settings owns the dedicated update-check action");
+        Contains(ui, "updates.CheckForUpdatesAsync()", "Settings update check delegates to the Definitions coordinator");
+        Contains(ui, "##omega-about-version", "version remains visible and clickable at the icon-rail footer");
+        Contains(ui, "OpenAbout()", "clicking the footer version opens About");
+        Contains(ui, "DrawDefinitionsUpdateBanner();", "Updates page renders a Definitions update notice at its content header");
+        Contains(ui, "Definitions update available", "pending Definitions state is clearly named for the user");
+        Contains(ui, "counts.Updates + definitionsUpdateCount", "Definitions updates participate in the Updates navigation badge");
         Contains(ui, "panel-filters-{activeView}", "Filters control belongs to the active content panel");
         Contains(ui, "var triangle = filtersOpen ? \"▲\" : \"▼\"", "Filters control exposes its open/closed state with a triangle");
         Contains(ui, "ImGuiStyleVar.FrameRounding, 4f", "Filters control uses a compact square-cornered Store-style shape");
