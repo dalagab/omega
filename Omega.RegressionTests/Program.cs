@@ -55,6 +55,7 @@ var tests = new (string Name, Action Body)[]
     ("live catalog endpoint and publication smoke test remain wired", TestLiveCatalogEndpointContract),
     ("storefront virtualization bounds open-window draw work", TestStorefrontVirtualization),
     ("open-window performance guards remain cached", TestOpenWindowPerformanceGuards),
+    ("marketplace artwork persists in a bounded local SQLite cache", TestPersistentMarketplaceImageCache),
     ("marketplace tags normalize duplicates and use AND matching", TestMarketplaceTagRules),
     ("Steam-style searchable tag picker remains wired", TestSearchableTagPickerContract),
     ("artwork actions remain aligned Font Awesome icon overlays", TestArtworkIconOverlayContract),

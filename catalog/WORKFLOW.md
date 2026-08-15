@@ -34,7 +34,9 @@ The server-side evidence database contains the complete catalog state needed by 
 
 This database can be substantially larger because it is repository infrastructure rather than a client payload. The marketplace database records the Evidence Revision that corresponds to its security summaries, so support and audit tooling can identify the detailed evidence state without teaching Omega how to download it.
 
-## Scheduled pipeline
+## Automatic pipeline
+
+The catalog builder runs daily, can be dispatched manually, and also starts on `main` whenever `tools/catalog/**`, `sources/**`, `catalog/bootstrap/**`, or any of the catalog-builder/security-scanner/catalog-compaction workflow definitions change. Scanner and compactor push triggers are intentionally not duplicated: they run from the builder/scanner `workflow_run` chain. This means a change to any database collection, normalization, schema, migration, security, compaction, or projection implementation reprocesses the existing state from the beginning instead of relying on an operator to remember a follow-up Action.
 
 1. **Preflight** — run deterministic Python/workflow regressions plus the catalog/projector self-tests.
 2. **Collect** — `collect_sources.py` combines curated sources, the current Puni.sh repository directory, and bounded GitHub source discovery.
@@ -53,6 +55,8 @@ This database can be substantially larger because it is repository infrastructur
 ## Workflow and Python regression testing
 
 Complex SQLite, hash, scanner, revision, projection, and publication checks are implemented in importable `tools/catalog/*.py` modules rather than large inline workflow scripts. `tools/tests/` exercises those modules directly and also statically checks GitHub Actions contracts such as permissions, exact upstream workflow names, success gates, artifact names, publication ownership, and release ordering.
+
+The workflow regression contract also requires the broad `tools/catalog/**` builder trigger and verifies that downstream scanner/compactor workflows do not duplicate the same push. New catalog-processing Python modules placed under `tools/catalog/` are therefore covered automatically.
 
 The offline handoff fixture builds a small catalog, applies the security schema without external network scans, runs evidence compaction, projects the marketplace database, and validates both outputs. Legacy-schema regression coverage verifies that the current production evidence database can be upgraded before strict validation, including creation of newer automation tables/columns.
 

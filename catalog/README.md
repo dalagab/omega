@@ -4,6 +4,8 @@ Omega's repository pipeline publishes two SQLite databases with separate roles. 
 
 The repository commits only small human-maintained inputs and human-readable status files. Generated SQLite databases and large intermediate data are release assets or GitHub Actions artifacts rather than binaries committed to `main`.
 
+Database-processing changes are self-applying. A `main` push touching `tools/catalog/**`, source definitions, the bootstrap database, or any of the three database-pipeline workflow files starts the catalog builder, which then hands off to the security scanner and compactor/projector. This ensures schema/normalization/sanitation changes are applied to existing state automatically.
+
 ## Client marketplace release
 
 Published under `catalog-latest`:

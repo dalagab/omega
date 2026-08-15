@@ -37,6 +37,20 @@ class DotNetProjectContractTests(unittest.TestCase):
             "automation capability model must remain part of the production model set",
         )
 
+
+    def test_persistent_image_cache_is_linked_into_runtime_and_regressions(self) -> None:
+        project = common.ROOT / "Omega.RegressionTests" / "Omega.RegressionTests.csproj"
+        text = project.read_text(encoding="utf-8")
+        self.assertIn(r"..\Omega\Services\PluginImageCacheStore.cs", text)
+
+        plugin = (common.ROOT / "Omega" / "Plugin.cs").read_text(encoding="utf-8")
+        self.assertIn("new PluginIconCache(PluginInterface.ConfigDirectory.FullName)", plugin)
+
+        cache = (common.ROOT / "Omega" / "Services" / "PluginImageCacheStore.cs").read_text(encoding="utf-8")
+        self.assertIn('DatabaseFileName = "omega-image-cache.sqlite"', cache)
+        self.assertIn("MaximumCacheBytes = 256L * 1024L * 1024L", cache)
+        self.assertIn("ORDER BY last_access_utc ASC", cache)
+
     def test_csharp_workflow_assertions_normalize_line_endings(self) -> None:
         path = common.ROOT / "Omega.RegressionTests" / "RegressionCases.SecurityIntelligence.cs"
         text = path.read_text(encoding="utf-8")

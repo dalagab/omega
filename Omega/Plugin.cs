@@ -50,7 +50,7 @@ public sealed class Plugin : IDalamudPlugin
             catalog,
             assemblyDirectory,
             PluginInterface.ConfigDirectory.FullName);
-        iconCache = new PluginIconCache();
+        iconCache = new PluginIconCache(PluginInterface.ConfigDirectory.FullName);
         pluginRecency = new PluginRecencyLedger(PluginInterface.ConfigDirectory.FullName);
         var repositoryBridge = new DalamudRepositoryBridge();
         var profileBridge = new DalamudProfileBridge();

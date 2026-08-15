@@ -19,6 +19,14 @@ class WorkflowContractTests(unittest.TestCase):
         self.assert_has(
             text,
             "name: Omega SQLite catalog builder",
+            "push:",
+            "branches: [main]",
+            '- "tools/catalog/**"',
+            '- "sources/**"',
+            '- "catalog/bootstrap/**"',
+            '- ".github/workflows/catalog-builder.yml"',
+            '- ".github/workflows/security-scanner.yml"',
+            '- ".github/workflows/catalog-compaction.yml"',
             "workflow_dispatch:",
             "schedule:",
             "name: 4) Build and hand off authoritative catalog state",
@@ -34,6 +42,30 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("gh release upload catalog-latest", text, "base builder must not publish an intermediate production catalog")
         self.assertNotIn("gh release upload security-evidence-latest", text, "base builder must not publish evidence directly")
 
+
+    def test_database_processing_changes_restart_from_catalog_builder(self) -> None:
+        builder = self.read("catalog-builder.yml")
+        security = self.read("security-scanner.yml")
+        compactor = self.read("catalog-compaction.yml")
+
+        # One broad path owns every current/future catalog-processing module. This is deliberate:
+        # adding a new Python module under tools/catalog automatically restarts the whole chain.
+        self.assertIn('- "tools/catalog/**"', builder)
+        self.assertIn('- "sources/**"', builder)
+        self.assertIn('- "catalog/bootstrap/**"', builder)
+        self.assertIn('- ".github/workflows/security-scanner.yml"', builder)
+        self.assertIn('- ".github/workflows/catalog-compaction.yml"', builder)
+
+        # Downstream workflows chain from builder/scanner completion instead of also firing on the
+        # same push. That prevents duplicate scans/compactions while still executing changed code.
+        self.assertNotRegex(security, r"(?m)^  push:\s*$")
+        self.assertNotRegex(compactor, r"(?m)^  push:\s*$")
+        self.assertIn('- "Omega SQLite catalog builder"', security)
+        self.assertIn('- "Omega plugin security scanner"', compactor)
+
+        catalog_modules = list((common.ROOT / "tools" / "catalog").glob("*.py"))
+        self.assertGreater(len(catalog_modules), 5, "catalog processing modules should exist under the trigger root")
+
     def test_security_scanner_is_read_only_and_hands_off_an_artifact(self) -> None:
         text = self.read("security-scanner.yml")
         self.assert_has(
@@ -43,7 +75,6 @@ class WorkflowContractTests(unittest.TestCase):
             "github.event.workflow_run.conclusion == 'success'",
             "actions: read",
             "contents: read",
-            '      - "tools/catalog/validate_security_catalog.py"',
             "--name omega-sqlite-catalog",
             "security-evidence-latest",
             "omega-security-evidence.sqlite.zip",
@@ -63,7 +94,6 @@ class WorkflowContractTests(unittest.TestCase):
             '- "Omega plugin security scanner"',
             "github.event.workflow_run.conclusion == 'success'",
             "--name omega-security-catalog",
-            "tools/catalog/validate_compacted_catalog.py",
             "python tools/catalog/project_marketplace_catalog.py",
             "python tools/catalog/validate_marketplace_catalog.py --root catalog/publication-output",
             "python tools/catalog/validate_evidence_catalog.py --root catalog/publication-output",
@@ -174,12 +204,11 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("1.0.0", self.read("catalog-compaction.yml"))
 
     def test_revision_and_changelog_tools_are_workflow_inputs(self) -> None:
-        security = self.read("security-scanner.yml")
+        builder = self.read("catalog-builder.yml")
         compactor = self.read("catalog-compaction.yml")
-        self.assertIn('      - "tools/catalog/catalog_revisions.py"', security)
-        self.assertIn('      - "tools/catalog/catalog_revisions.py"', compactor)
-        self.assertIn('      - "tools/catalog/publication_decision.py"', compactor)
-        self.assertIn('      - "tools/catalog/project_marketplace_catalog.py"', compactor)
+        self.assertIn('- "tools/catalog/**"', builder, "all revision/publication modules must restart from the builder on push")
+        self.assertIn("python tools/catalog/publication_decision.py", compactor)
+        self.assertIn("python tools/catalog/project_marketplace_catalog.py", compactor)
 
     def test_release_workflow_runs_python_and_dotnet_regressions_before_publish(self) -> None:
         text = self.read("release.yml")

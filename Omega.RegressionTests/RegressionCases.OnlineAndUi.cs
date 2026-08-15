@@ -198,6 +198,7 @@ internal static partial class RegressionCases
         var icons = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginIconCache.cs"));
         Contains(icons, "MaximumConcurrentIconLoads = 2", "image downloads/decodes must be bounded");
         Contains(icons, "loadGate.WaitAsync", "icon load concurrency gate must be active");
+        Contains(icons, "PluginImageCacheStore", "artwork must reuse persistent local image bytes between sessions");
     }
 
     internal static void TestMarketplaceTagRules()

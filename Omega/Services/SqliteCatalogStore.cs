@@ -132,7 +132,7 @@ internal sealed class SqliteCatalogStore
         });
     }
 
-    private static void EnsureSqliteInitialized()
+    internal static void EnsureSqliteInitialized()
     {
         if (Interlocked.Exchange(ref sqliteInitialized, 1) != 0)
             return;
