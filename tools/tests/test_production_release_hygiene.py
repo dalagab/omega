@@ -23,7 +23,7 @@ class ProductionReleaseHygieneTests(unittest.TestCase):
         self.assertIsNotNone(match)
         version = match.group(1)
         self.assertRegex(version, r"^\d+\.\d+\.\d+$")
-        self.assertEqual(version, manifest["AssemblyVersion"])
+        self.assertEqual(f"{version}.0", manifest["AssemblyVersion"])
         self.assertIn(f'Version = "{version}"', build_info)
         self.assertIn(f'BuildStamp = "omega-{version}"', build_info)
 

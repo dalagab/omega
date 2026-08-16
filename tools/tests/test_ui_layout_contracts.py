@@ -62,7 +62,11 @@ class UiLayoutContractTests(unittest.TestCase):
         dependencies = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Dependencies.cs").read_text(encoding="utf-8")
         product_page = (ROOT / "Omega" / "UI" / "MarketplaceWindow.ProductPage.cs").read_text(encoding="utf-8")
         self.assertIn("DrawDependencyEmptyState", dependencies)
-        self.assertIn("No external dependency components were detected for this package.", dependencies)
+        self.assertIn("No external plugin or IPC dependencies were detected for this package.", dependencies)
+        self.assertIn("IsDisplayablePluginDependency", dependencies)
+        self.assertIn("dependency.IsFramework", dependencies)
+        self.assertNotIn("Provided by framework", dependencies)
+        self.assertNotIn("Bundled / observed", dependencies)
         self.assertNotIn(
             "if (!plugin.HasCompletedSecurityScan || plugin.SecurityDependencyTotalCount <= 0 || plugin.SecurityDependencies.Count == 0)",
             dependencies,

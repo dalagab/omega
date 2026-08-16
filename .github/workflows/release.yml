@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing release tag to publish, for example v0.8.37"
+        description: "Existing release tag to publish, for example v0.8.38"
         required: true
         type: string
 
@@ -31,7 +31,7 @@ jobs:
         shell: pwsh
         run: |
           $tag = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ inputs.tag }}' } else { '${{ github.ref_name }}' }
-          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') { throw "Release tag '$tag' must look like v0.8.37" }
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') { throw "Release tag '$tag' must look like v0.8.38" }
           "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "version=$($Matches.version)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
@@ -71,8 +71,9 @@ jobs:
           $manifest = Get-Content 'repository/pluginmaster.json' -Raw | ConvertFrom-Json
           $manifestVersion = [string]$manifest[0].AssemblyVersion
           $tagVersion = '${{ steps.release.outputs.version }}'
+          $expectedAssemblyVersion = "$tagVersion.0"
           if ($projectVersion -ne $tagVersion) { throw "Project version $projectVersion does not match tag $tagVersion" }
-          if ($manifestVersion -ne $tagVersion) { throw "PluginMaster version $manifestVersion does not match tag $tagVersion" }
+          if ($manifestVersion -ne $expectedAssemblyVersion) { throw "PluginMaster version $manifestVersion does not match distributed assembly version $expectedAssemblyVersion" }
 
       - name: Build and run regression suite
         run: dotnet build .\Omega.sln -c Release
@@ -91,6 +92,14 @@ jobs:
           Expand-Archive 'Omega.zip' -DestinationPath $extract -Force
           foreach ($required in @('DalagabOmega.dll','DalagabOmega.json','omega-catalog.sqlite.zip')) {
             if (-not (Get-ChildItem $extract -Filter $required -Recurse -File)) { throw "Omega.zip is missing $required" }
+          }
+          $packagedManifestPath = (Get-ChildItem $extract -Filter 'DalagabOmega.json' -Recurse -File | Select-Object -First 1).FullName
+          $packagedManifest = Get-Content $packagedManifestPath -Raw | ConvertFrom-Json
+          $repoManifest = Get-Content 'repository/pluginmaster.json' -Raw | ConvertFrom-Json
+          $distributedVersion = [string]$packagedManifest.AssemblyVersion
+          $repoVersion = [string]$repoManifest[0].AssemblyVersion
+          if ($distributedVersion -ne $repoVersion) {
+            throw "Distributed plugin version $distributedVersion does not match repo version $repoVersion"
           }
           $hash = (Get-FileHash 'Omega.zip' -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  Omega.zip" | Set-Content 'Omega.zip.sha256' -Encoding ascii

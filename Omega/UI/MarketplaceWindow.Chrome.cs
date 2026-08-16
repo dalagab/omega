@@ -91,7 +91,7 @@ internal sealed partial class MarketplaceWindow
             ImGui.GetColorU32(versionHovered ? ImGuiCol.Text : ImGuiCol.TextDisabled),
             BuildInfo.Version);
         if (versionHovered)
-            ImGui.SetTooltip("About Omega and Definitions identity");
+            ImGui.SetTooltip("About Omega");
         if (ImGui.IsItemClicked())
             OpenAbout();
     }

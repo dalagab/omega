@@ -26,6 +26,7 @@ class MarketplaceProjectionTests(unittest.TestCase):
             evidence = root / "evidence.sqlite"
             compact_sqlite_catalog.build_self_test_database(evidence)
             with closing(sqlite3.connect(evidence)) as db:
+                db.execute("UPDATE plugin_security_dependencies SET kind='external-plugin',name='Fixture.Dependency',requirement='required' WHERE dependency_id=1")
                 db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('catalog_revision','cat-v1-0123456789abcdef')")
                 db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_revision','sec-2.0.0-0123456789abcdef')")
                 db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('evidence_revision','ev-v1-0123456789abcdef')")
@@ -127,7 +128,7 @@ class MarketplaceProjectionTests(unittest.TestCase):
             with closing(sqlite3.connect(evidence)) as db:
                 for index in range(2, 47):
                     db.execute(
-                        "INSERT INTO plugin_security_dependencies(dependency_id,scan_id,origin,kind,name,version,status,requirement,evidence_json) VALUES(?,1,'artifact','nuget',?,'1.0.0','known','required','[]')",
+                        "INSERT INTO plugin_security_dependencies(dependency_id,scan_id,origin,kind,name,version,status,requirement,evidence_json) VALUES(?,1,'artifact','external-plugin',?,'1.0.0','known','required','[]')",
                         (index, f"Package{index}"),
                     )
                 db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('catalog_revision','cat-v1-0123456789abcdef')")
@@ -141,7 +142,42 @@ class MarketplaceProjectionTests(unittest.TestCase):
                     "SELECT security_dependencies_json,security_dependency_total_count FROM runtime_plugin_variants WHERE internal_name='Fixture'"
                 ).fetchone()
                 self.assertEqual(project_marketplace_catalog.DEPENDENCY_SUMMARY_LIMIT, len(json.loads(encoded)))
-                self.assertEqual(46, total)
+                self.assertEqual(45, total)
+
+
+    def test_dependency_summary_only_projects_other_plugins_and_ipc(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-marketplace-plugin-dependencies-") as td:
+            root = Path(td)
+            evidence = root / "evidence.sqlite"
+            compact_sqlite_catalog.build_self_test_database(evidence)
+            with closing(sqlite3.connect(evidence)) as db:
+                db.execute("DELETE FROM plugin_security_dependencies")
+                rows = [
+                    (1, "external-plugin", "OtherPlugin", "required"),
+                    (2, "ipc", "OtherPlugin.Ipc", "optional"),
+                    (3, "assembly", "Dalamud", "required"),
+                    (4, "assembly", "FFXIVClientStructs", "required"),
+                    (5, "nuget", "Some.Package", "required"),
+                    (6, "native-library", "native.dll", "required"),
+                    (7, "managed-assembly", "Bundled.Helper", "bundled"),
+                    (8, "external-plugin", "Fixture", "required"),
+                ]
+                for dependency_id, kind, name, requirement in rows:
+                    db.execute(
+                        "INSERT INTO plugin_security_dependencies(dependency_id,scan_id,origin,kind,name,version,status,requirement,evidence_json) VALUES(?,1,'artifact',?,?,'1.0.0','known',?,'[]')",
+                        (dependency_id, kind, name, requirement),
+                    )
+                db.commit()
+            out = root / "marketplace.sqlite"
+            project_marketplace_catalog.project_database(evidence, out)
+            with closing(sqlite3.connect(out)) as db:
+                encoded, total = db.execute(
+                    "SELECT security_dependencies_json,security_dependency_total_count FROM runtime_plugin_variants WHERE internal_name='Fixture'"
+                ).fetchone()
+                dependencies = json.loads(encoded)
+                self.assertEqual(2, total)
+                self.assertEqual({"OtherPlugin", "OtherPlugin.Ipc"}, {item["name"] for item in dependencies})
+                self.assertTrue(all(item["type"] in {"hard", "ipc"} for item in dependencies))
 
     def test_evidence_revision_change_refreshes_small_marketplace_identity(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-marketplace-evidence-revision-") as td:

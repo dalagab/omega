@@ -229,6 +229,8 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn('      - "v*.*.*.*"', text)
         self.assertIn(r"^v(?<version>\d+\.\d+\.\d+)$", text)
         self.assertNotIn(r"^v(?<version>\d+\.\d+\.\d+\.\d+)$", text)
+        self.assertIn('$expectedAssemblyVersion = "$tagVersion.0"', text)
+        self.assertIn('Distributed plugin version $distributedVersion does not match repo version $repoVersion', text)
 
     def test_workflows_do_not_embed_large_python_heredocs(self) -> None:
         for name in ("catalog-builder.yml", "security-scanner.yml", "catalog-compaction.yml"):

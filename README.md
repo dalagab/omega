@@ -94,7 +94,7 @@ The repository manifest in [`repository/pluginmaster.json`](repository/pluginmas
 
 ### Publishing a new Omega version
 
-[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a three-part version tag matching the project metadata, for example `v0.8.25`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud development runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
+[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a three-part version tag matching the project metadata, for example `v0.8.38`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
 
 ## Exactly what the installer changes
 
@@ -202,7 +202,7 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Release metadata
 
-- Omega version: `0.8.25`
+- Omega version: `0.8.38`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`
@@ -227,7 +227,7 @@ Compactor 1.2.0 bounds redundant report JSON, preserves normalized evidence/hist
 
 ### Dependency summaries in Definitions
 
-Omega keeps detailed dependency evidence in the server-side security evidence database, but Definitions projects a bounded per-variant summary for the in-game product page. Up to 30 deduplicated dependency components are retained, prioritized by required/optional semantics and warning state, together with the total component count. The summary includes dependency/component name, relationship type, required or observed version, resolved Omega plugin target where known, resolution/version status, framework/bundled classification, and aggregate dependency/advisory warning counts. Platform-runtime noise such as ordinary `System.*` assemblies is omitted unless it carries a warning. Resolved plugin dependencies are clickable in Omega and the UI distinguishes installed targets, targets available in Definitions, framework-provided components, optional IPC integrations, bundled components, and unresolved required plugins. Detailed paths, raw evidence, dependency history, full resolution tables and advisory records remain server-side.
+Omega keeps detailed component evidence in the server-side security evidence database, but the in-game **Dependencies** panel deliberately shows only relationships to other plugins. Definitions projects bounded required/optional plugin relationships and IPC integrations; framework assemblies (including Dalamud itself), NuGet packages, bundled assemblies, native libraries and other implementation components are not presented as plugin dependencies. Resolved plugin dependencies are clickable in Omega, while unresolved required plugins and IPC integrations remain visible when the scanner can identify them. Detailed component paths, raw evidence, dependency history, full resolution tables and advisory records remain server-side and continue to inform security analysis.
 
 The Discover product page also groups every known repository variant into distinct downloadable **Packages & repositories**. Package identity prefers the scanner's artifact SHA-256 when available and otherwise falls back to the package URL; each group lists the repository manifests that reference it, with official Dalamud sources shown first. This makes mirrors and genuinely different package artifacts visible without duplicating binaries in Definitions. Required plugin dependencies also participate in the marketplace risk indicator: if a required dependency (recursively, within a bounded traversal) has UI/character/gameplay automation capability, the dependent plugin receives the automation/radiation status with a tooltip explaining the dependency path. Optional integrations do not automatically escalate the parent plugin.
 
@@ -242,7 +242,5 @@ Every production marketplace database carries three troubleshooting identifiers:
 These are different from `catalogSha256` and `bundleSha256`, which verify exact transport bytes. Scan timestamps, compaction timestamps, and ZIP representation do not by themselves change semantic revisions. A managed call-site-only evidence change can advance Evidence Revision without changing the user-facing Security Revision; the small marketplace database is refreshed in that case so its troubleshooting identity stays exact. A meaningful current finding/capability/dependency change advances Security Revision and therefore Catalog Revision.
 
 The marketplace database contains `catalog_changelog`. A row is appended only when the semantic Catalog Revision changes, recording previous/current Catalog, Security, and Evidence Revisions plus bounded change counts. Periodic no-change scan freshness is stored separately in `security-scan-ledger.json` on `security-evidence-latest`; updating that operational ledger does not force clients to download another marketplace database.
-
-Omega 0.8.25 displays Definitions Revision, Security Revision, and Evidence Revision in About for support and troubleshooting. Evidence Revision is an identifier only; it is not a download instruction.
 
 Security findings describe observed static capabilities and risk indicators. They are not a malware verdict, and no findings is not proof that a plugin is safe. Plugin archives are treated as hostile input: downloads, entry counts, total expansion, compression ratio, paths, metadata parsing, graph sizes, and scan time are bounded.

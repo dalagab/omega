@@ -14,52 +14,32 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.Indent(14f);
 
-        var dependencies = plugin.SecurityDependencies;
-        var totalCount = Math.Max(plugin.SecurityDependencyTotalCount, dependencies.Count);
-        if (dependencies.Count == 0)
+        var dependencies = plugin.SecurityDependencies
+            .Where(x => IsDisplayablePluginDependency(plugin, x))
+            .ToArray();
+        if (dependencies.Length == 0)
         {
-            DrawDependencyEmptyState(plugin, totalCount);
+            DrawDependencyEmptyState(plugin);
             ImGui.Unindent(14f);
             return;
         }
 
         var required = dependencies.Where(IsRequiredDependency).ToArray();
         var optional = dependencies.Where(x => !IsRequiredDependency(x) && IsOptionalDependency(x)).ToArray();
-        var observed = dependencies.Where(x => !IsRequiredDependency(x) && !IsOptionalDependency(x)).ToArray();
+        var linked = dependencies.Where(x => !IsRequiredDependency(x) && !IsOptionalDependency(x)).ToArray();
 
-        ImGui.TextDisabled(
-            $"{totalCount} component{(totalCount == 1 ? string.Empty : "s")} observed" +
-            $"  •  {required.Length} required" +
-            $"  •  {optional.Length} optional / integration");
-
-        DrawDependencyGroup("Required", required, installed);
-        DrawDependencyGroup("Optional / integrations", optional, installed);
-        DrawDependencyGroup("Bundled / observed", observed, installed);
-
-        if (totalCount > dependencies.Count)
-        {
-            ImGui.Spacing();
-            ImGui.TextDisabled(
-                $"Showing {dependencies.Count} of {totalCount} dependency components. " +
-                "Definitions keeps this summary bounded; detailed evidence remains server-side.");
-        }
+        DrawDependencyGroup("Required plugins", required, installed);
+        DrawDependencyGroup("Optional / IPC", optional, installed);
+        DrawDependencyGroup("Plugin links", linked, installed);
 
         ImGui.Unindent(14f);
     }
 
-    private static void DrawDependencyEmptyState(MarketplacePlugin plugin, int totalCount)
+    private static void DrawDependencyEmptyState(MarketplacePlugin plugin)
     {
-        if (totalCount > 0)
-        {
-            ImGui.TextWrapped(
-                $"Dependency analysis found {totalCount} component{(totalCount == 1 ? string.Empty : "s")}, " +
-                "but this Definitions snapshot does not contain the projected dependency rows. Refresh Definitions in Settings.");
-            return;
-        }
-
         if (plugin.HasCompletedSecurityScan)
         {
-            ImGui.TextDisabled("No external dependency components were detected for this package.");
+            ImGui.TextDisabled("No external plugin or IPC dependencies were detected for this package.");
             return;
         }
 
@@ -148,14 +128,38 @@ internal sealed partial class MarketplaceWindow
         var status = DependencyStatusText(dependency, availableInOmega, targetInstalled);
         if (dependency.HasWarning)
             ImGui.TextColored(DependencyWarningColor(dependency.WarningSeverity), status);
-        else if (targetInstalled || dependency.IsFramework)
+        else if (targetInstalled)
             ImGui.TextColored(new Vector4(0.26f, 0.76f, 0.48f, 1f), status);
         else
             ImGui.TextDisabled(status);
     }
 
+    private static bool IsDisplayablePluginDependency(MarketplacePlugin plugin, MarketplaceDependency dependency)
+    {
+        if (dependency.IsFramework)
+            return false;
+
+        var type = (dependency.Type ?? string.Empty).Trim().ToLowerInvariant();
+        var kind = (dependency.Kind ?? string.Empty).Trim().ToLowerInvariant();
+        var isIpc = type == "ipc" || kind == "ipc";
+        var isPlugin = type is "hard" or "soft" or "optional" or "plugin" ||
+                       kind == "external-plugin" ||
+                       !string.IsNullOrWhiteSpace(dependency.TargetInternalName);
+        if (!isIpc && !isPlugin)
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(dependency.TargetInternalName) &&
+            dependency.TargetInternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (string.IsNullOrWhiteSpace(dependency.TargetInternalName) &&
+            dependency.Name.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return true;
+    }
+
     private static bool IsRequiredDependency(MarketplaceDependency dependency)
-        => dependency.IsFramework || dependency.Requirement.Equals("required", StringComparison.OrdinalIgnoreCase) ||
+        => dependency.Requirement.Equals("required", StringComparison.OrdinalIgnoreCase) ||
            dependency.Type.Equals("hard", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsOptionalDependency(MarketplaceDependency dependency)
@@ -165,7 +169,7 @@ internal sealed partial class MarketplaceWindow
     {
         if (dependency.HasWarning)
             return "!";
-        if (dependency.IsFramework || installed)
+        if (installed)
             return "✓";
         if (availableInOmega)
             return "↓";
@@ -176,7 +180,7 @@ internal sealed partial class MarketplaceWindow
     {
         if (dependency.HasWarning)
             return DependencyWarningColor(dependency.WarningSeverity);
-        if (dependency.IsFramework || installed)
+        if (installed)
             return new Vector4(0.26f, 0.76f, 0.48f, 1f);
         if (availableInOmega)
             return new Vector4(0.16f, 0.72f, 0.75f, 1f);
@@ -196,18 +200,11 @@ internal sealed partial class MarketplaceWindow
     private static string DependencyTypeLabel(MarketplaceDependency dependency)
         => (dependency.Type ?? string.Empty).Trim().ToLowerInvariant() switch
         {
-            "framework" => "Framework",
             "hard" => "Plugin · required",
             "soft" => "Plugin · soft",
             "optional" => "Plugin · optional",
             "plugin" => "Plugin",
             "ipc" => "IPC integration",
-            "package" => "Package",
-            "bundled-assembly" => "Bundled assembly",
-            "assembly" => "Assembly",
-            "native" => "Native library",
-            "project" => "Project reference",
-            "bundled" => "Bundled component",
             var value when !string.IsNullOrWhiteSpace(value) => value,
             _ => "Component",
         };
@@ -231,9 +228,7 @@ internal sealed partial class MarketplaceWindow
     private static string DependencyStatusText(MarketplaceDependency dependency, bool availableInOmega, bool installed)
     {
         var parts = new List<string>();
-        if (dependency.IsFramework)
-            parts.Add("Provided by framework");
-        else if (installed)
+        if (installed)
             parts.Add("Installed");
         else if (availableInOmega)
             parts.Add("Available in Omega");
@@ -241,10 +236,8 @@ internal sealed partial class MarketplaceWindow
             parts.Add("Required plugin not in Definitions");
         else if (dependency.Type.Equals("ipc", StringComparison.OrdinalIgnoreCase))
             parts.Add("Integration observed");
-        else if (dependency.Requirement.Equals("bundled", StringComparison.OrdinalIgnoreCase) || dependency.Type.Equals("bundled-assembly", StringComparison.OrdinalIgnoreCase))
-            parts.Add("Bundled");
         else
-            parts.Add("Observed");
+            parts.Add("Plugin relationship observed");
 
         if (dependency.WarningCount > 0)
             parts.Add($"{dependency.WarningCount} warning{(dependency.WarningCount == 1 ? "" : "s")}");

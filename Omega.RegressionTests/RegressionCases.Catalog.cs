@@ -119,9 +119,9 @@ internal static partial class RegressionCases
 
         var ui = ReadMarketplaceWindowSource();
         Contains(ui, "Check for updates", "manual Definitions/plugin update check remains available at the top of Settings");
-        Contains(ui, "Definitions Revision", "About exposes the Definitions troubleshooting revision");
-        Contains(ui, "Security Revision", "About exposes the security troubleshooting revision");
-        Contains(ui, "Evidence Revision", "About exposes the evidence troubleshooting revision without downloading evidence");
+        Contains(ui, "Every plugin. One orbit.", "About uses the product tagline instead of database identity");
+        Contains(ui, "/omega   /omg", "About advertises both marketplace commands");
+        False(ui.Contains("Definitions Revision", StringComparison.Ordinal), "About does not expose Definitions revision internals");
     }
 
     internal static void TestDailyUpdateJobContract()
@@ -157,7 +157,7 @@ internal static partial class RegressionCases
 
         using var master = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "repository", "pluginmaster.json")));
         var manifestVersion = RequiredString(master.RootElement.EnumerateArray().Single(), "AssemblyVersion");
-        Equal(projectVersion, manifestVersion, "csproj vs PluginMaster version");
+        Equal(projectVersion + ".0", manifestVersion, "three-part product version maps to four-part Dalamud AssemblyVersion");
 
         var buildInfo = File.ReadAllText(Path.Combine(Root, "Omega", "BuildInfo.cs"));
         Equal(projectVersion, Capture(buildInfo, "Version\\s*=\\s*\"([^\"]+)\""), "BuildInfo version");

@@ -60,10 +60,16 @@ internal static partial class RegressionCases
         using var master = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "repository", "pluginmaster.json")));
         var omega = master.RootElement.EnumerateArray().Single();
         Equal("DalagabOmega", RequiredString(omega, "InternalName"), "public repository manifest targets Omega");
+        Equal("Every plugin. One orbit.", RequiredString(omega, "Punchline"), "Dalamud listing uses the Omega product tagline");
+        var listingDescription = RequiredString(omega, "Description");
+        Contains(listingDescription, "/omega", "Dalamud listing advertises the primary command");
+        Contains(listingDescription, "/omg", "Dalamud listing advertises the command alias");
+        Contains(listingDescription, "Spotlight", "Dalamud listing sells the storefront experience");
+        False(listingDescription.Contains("Definitions database", StringComparison.OrdinalIgnoreCase), "Dalamud listing avoids implementation-oriented database copy");
         Equal("https://github.com/dalagab/omega", RequiredString(omega, "RepoUrl"), "public repository manifest points back to project source");
         var project = XDocument.Load(Path.Combine(Root, "Omega", "DalagabOmega.csproj"));
         var projectVersion = project.Descendants("Version").Single().Value.Trim();
-        Equal(projectVersion, RequiredString(omega, "AssemblyVersion"), "public repository manifest version follows the Omega build");
+        Equal(projectVersion + ".0", RequiredString(omega, "AssemblyVersion"), "public repository manifest uses the four-part CLR/Dalamud assembly version");
     }
 
     internal static void TestGitHubReleaseAndSecurityWorkflowsContract()
@@ -76,6 +82,8 @@ internal static partial class RegressionCases
         Contains(release, "Omega.zip", "stable Dalamud release asset is published under the PluginMaster name");
         Contains(release, "omega-latest", "release workflow refreshes the stable repository endpoint");
         Contains(release, "actions/attest@v4", "release artifact receives GitHub build-provenance attestation");
+        Contains(release, "$expectedAssemblyVersion = "$tagVersion.0"", "three-part release tags map to four-part CLR/Dalamud assembly versions");
+        Contains(release, "Distributed plugin version $distributedVersion does not match repo version $repoVersion", "release refuses to publish a package/repository version mismatch");
 
         var codeql = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "codeql.yml"));
         Contains(codeql, "github/codeql-action/init@v4", "CodeQL advanced workflow is configured");

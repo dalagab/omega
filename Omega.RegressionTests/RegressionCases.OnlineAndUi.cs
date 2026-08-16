@@ -155,8 +155,9 @@ internal static partial class RegressionCases
         Contains(ui, "Update Definitions", "Updates page exposes the explicit Definitions apply action");
         Contains(ui, "##omega-about-version", "version footer is the About entry point");
         Contains(ui, "(versionAvailable - versionButtonSize.X) * 0.5f", "version footer is centered in the application rail");
-        Contains(ui, "About Omega", "About popup owns version and Definitions identity");
-        Contains(ui, "Definitions Revision", "About uses Definitions terminology for the downloadable database identity");
+        Contains(ui, "About Omega", "version footer opens the product-focused About popup");
+        Contains(ui, "Every plugin. One orbit.", "About uses the Omega product tagline");
+        False(ui.Contains("Definitions Revision", StringComparison.Ordinal), "About no longer exposes Definitions revision identity");
         Contains(ui, "Check for updates", "Settings starts with an update check action");
         Contains(ui, "View EULA", "Settings labels the agreement simply as EULA");
         False(ui.Contains("View EULA / Risk Disclosure", StringComparison.Ordinal), "Settings does not relabel EULA as a risk disclosure");

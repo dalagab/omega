@@ -118,16 +118,30 @@ def _dependency_type(kind: str, requirement: str, name: str, target_internal_nam
     return normalized_kind or "component", False
 
 
-def _dependency_is_presentation_candidate(item: dict[str, Any]) -> bool:
-    if int(item.get("warningRank") or 0) > 0:
-        return True
-    name = str(item.get("name") or "").strip().casefold()
+def _dependency_is_presentation_candidate(item: dict[str, Any], source_internal_name: str = "") -> bool:
+    """Only relationships to another plugin belong in the marketplace Dependencies panel.
+
+    Framework assemblies, NuGet packages, native libraries and bundled/runtime components remain
+    available to the security evidence pipeline, but they are capabilities/components rather than
+    user-facing plugin dependencies. IPC is kept because it represents integration with another plugin.
+    """
+    name = str(item.get("name") or "").strip()
     kind = str(item.get("kind") or "").strip().casefold()
-    if not name or kind in {"managed-executable", "executable"}:
+    dep_type = str(item.get("type") or "").strip().casefold()
+    target_internal_name = str(item.get("targetInternalName") or "").strip()
+    if not name:
         return False
-    if name in {"mscorlib", "netstandard", "system", "windowsbase", "presentationcore", "presentationframework"}:
+
+    is_ipc = kind == "ipc" or dep_type == "ipc"
+    is_plugin = kind == "external-plugin" or dep_type in {"hard", "soft", "optional", "plugin"} or bool(target_internal_name)
+    if not is_ipc and not is_plugin:
         return False
-    if name.startswith("system.") or name.startswith("microsoft."):
+
+    source = source_internal_name.strip().casefold()
+    target = target_internal_name.casefold()
+    if source and target and source == target:
+        return False
+    if source and not target and name.casefold() == source:
         return False
     return True
 
@@ -204,6 +218,13 @@ def build_dependency_summaries(db: sqlite3.Connection) -> dict[int, tuple[int, s
          ORDER BY sc.variant_id,d.dependency_id
     """
 
+    source_internal_names = {
+        int(row[0]): str(row[1] or "")
+        for row in db.execute(
+            "SELECT pv.variant_id,p.internal_name FROM plugin_variants pv JOIN plugins p ON p.plugin_id=pv.plugin_id"
+        )
+    } if "plugin_variants" in table_names and "plugins" in table_names else {}
+
     summaries: dict[int, tuple[int, str]] = {}
     current_variant: int | None = None
     merged: dict[tuple[str, str], dict[str, Any]] = {}
@@ -212,7 +233,8 @@ def build_dependency_summaries(db: sqlite3.Connection) -> dict[int, tuple[int, s
         nonlocal merged, current_variant
         if current_variant is None:
             return
-        items = [item for item in merged.values() if _dependency_is_presentation_candidate(item)]
+        source_internal_name = source_internal_names.get(current_variant, "")
+        items = [item for item in merged.values() if _dependency_is_presentation_candidate(item, source_internal_name)]
         total = len(items)
         items.sort(key=lambda item: (
             -_dependency_requirement_rank(str(item.get("requirement") or "")),
@@ -583,6 +605,7 @@ def self_test() -> None:
         build_self_test_database(evidence_db)
         with closing(sqlite3.connect(evidence_db)) as db:
             ensure_schema(db)
+            db.execute("UPDATE plugin_security_dependencies SET kind='external-plugin',name='Fixture.Dependency',requirement='required' WHERE dependency_id=1")
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('catalog_revision','cat-v1-0123456789abcdef')")
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_revision','sec-2.0.0-0123456789abcdef')")
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('evidence_revision','ev-v1-0123456789abcdef')")

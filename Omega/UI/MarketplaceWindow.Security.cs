@@ -4,8 +4,7 @@ using Dalamud.Bindings.ImGui;
 namespace Dalagab.Omega;
 
 /// <summary>
-/// Keeps Settings operational. Version/revision identity belongs to the About popup opened from
-/// the version number in the application rail.
+/// Keeps Settings operational and owns Omega's concise product/about surface.
 /// </summary>
 internal sealed partial class MarketplaceWindow
 {
@@ -96,7 +95,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Spacing();
-        DrawDefinitionsIdentity();
+        DrawAboutProductPitch();
 
         aboutOpen = keepOpen && aboutOpen;
         ImGui.EndPopup();
@@ -107,7 +106,7 @@ internal sealed partial class MarketplaceWindow
     {
         const float iconSize = 112f;
         var available = ImGui.GetContentRegionAvail().X;
-        var heroWidth = Math.Min(420f, available);
+        var heroWidth = Math.Min(470f, available);
         var startX = ImGui.GetCursorPosX() + Math.Max(0f, (available - heroWidth) * 0.5f);
         var startY = ImGui.GetCursorPosY();
 
@@ -134,42 +133,35 @@ internal sealed partial class MarketplaceWindow
                 glyph);
         }
 
-        ImGui.SetCursorPos(new Vector2(startX + iconSize + 24f, startY + 24f));
+        ImGui.SetCursorPos(new Vector2(startX + iconSize + 24f, startY + 12f));
         ImGui.BeginGroup();
         ImGui.TextUnformatted("Omega");
-        ImGui.TextDisabled($"Version {BuildInfo.Version}");
+        ImGui.TextDisabled($"Version {BuildInfo.Version} · Dalagab Group");
         ImGui.Spacing();
-        ImGui.TextDisabled("Dalagab Group");
+        ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), "Every plugin. One orbit.");
+        ImGui.PushTextWrapPos(startX + heroWidth);
+        ImGui.TextWrapped("Discover the wider Dalamud plugin ecosystem in one marketplace — then choose the source you trust.");
+        ImGui.PopTextWrapPos();
         ImGui.EndGroup();
 
         ImGui.SetCursorPosY(startY + iconSize);
     }
 
-    private void DrawDefinitionsIdentity()
+    private static void DrawAboutProductPitch()
     {
-        ImGui.TextDisabled("Definitions identity");
-        ImGui.TextUnformatted($"Definitions Revision: {DisplayRevision(catalog.CatalogRevision)}");
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Identifies the logical marketplace Definitions plus current security state.");
-        ImGui.TextUnformatted($"Security Revision: {DisplayRevision(catalog.SecurityRevision)}");
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Identifies the current static-analysis state. Re-check timestamps alone do not change this revision.");
-        ImGui.TextUnformatted($"Evidence Revision: {DisplayRevision(catalog.EvidenceRevision)}");
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Identifies the detailed server-side evidence that produced the security summary. Omega does not download the evidence database.");
-        ImGui.TextDisabled($"Definitions changelog entries: {catalog.CatalogChangelogEntryCount}");
-        if (catalog.RevisionUpdatedAtUtc is not null)
-            ImGui.TextDisabled($"Definitions updated: {catalog.RevisionUpdatedAtUtc.Value.ToLocalTime():g}");
+        ImGui.TextUnformatted("Open Omega");
+        ImGui.Spacing();
+        ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), "/omega   /omg");
+        ImGui.TextDisabled("Either command opens the marketplace from chat.");
 
-        if (updates.DefinitionsUpdateAvailable)
-        {
-            ImGui.Spacing();
-            ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), "A newer Definitions revision is available.");
-            if (!string.IsNullOrWhiteSpace(updates.AvailableDefinitionsRevision))
-                ImGui.TextDisabled($"Available: {updates.AvailableDefinitionsRevision}");
-        }
+        ImGui.Spacing();
+        ImGui.Spacing();
+        ImGui.TextUnformatted("Find more. Know more. Install with confidence.");
+        ImGui.Spacing();
+        ImGui.BulletText("Spotlight and Discover bring official and community plugins into one searchable storefront.");
+        ImGui.BulletText("Compare repositories, compatibility, packages and security findings before you choose a source.");
+        ImGui.BulletText("Keep installed plugins, collections and available updates together in Library.");
+        ImGui.BulletText("When you install, update or remove something, Dalamud remains in control of the plugin lifecycle.");
     }
 
-    private static string DisplayRevision(string value)
-        => string.IsNullOrWhiteSpace(value) ? "Not available" : value;
 }

@@ -193,10 +193,13 @@ internal static partial class RegressionCases
         Contains(about, "DrawAboutIdentityHero", "About gives the Omega identity its own visual hero");
         Contains(about, "const float iconSize = 112f", "About presents the application icon at a useful size");
         Contains(about, "omegaIconTexture?.GetWrapOrDefault()", "About uses the packaged Omega application artwork");
-        Contains(about, "Definitions Revision", "About displays the semantic Definitions identity");
-        Contains(about, "Security Revision", "About displays the semantic security identity");
-        Contains(about, "Evidence Revision", "About displays the server-side evidence identity for troubleshooting");
-        False(about.Contains("Catalog identity", StringComparison.Ordinal), "Settings/About no longer labels Definitions as a catalog database identity");
+        Contains(about, "Every plugin. One orbit.", "About leads with Omega's product tagline");
+        Contains(about, "/omega   /omg", "About advertises both commands that open Omega");
+        Contains(about, "Find more. Know more. Install with confidence.", "About sells the core discovery and trust workflow");
+        DoesNotContain(about, "Definitions Revision", "About does not expose internal Definitions identity");
+        DoesNotContain(about, "Security Revision", "About does not expose internal security revision identity");
+        DoesNotContain(about, "Evidence Revision", "About does not expose server-side evidence identity");
+        DoesNotContain(about, "Definitions changelog entries", "About does not expose internal changelog counts");
 
         var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
         Contains(product, "Observed capabilities", "product page explains observed permissions/capabilities");
@@ -218,13 +221,15 @@ internal static partial class RegressionCases
         var dependenciesUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Dependencies.cs"));
         Contains(dependenciesUi, "Dependencies", "product page exposes a dedicated dependency section");
         Contains(dependenciesUi, "DrawDependencyEmptyState", "dependency section stays visible even when a package has no projected dependency rows");
-        Contains(dependenciesUi, "No external dependency components were detected for this package.", "completed scans explain a genuine zero-dependency result");
+        Contains(dependenciesUi, "No external plugin or IPC dependencies were detected for this package.", "completed scans explain a genuine zero plugin-dependency result");
         Contains(dependenciesUi, "Dependency information is not present in the current Definitions snapshot for this package.", "older or unscanned Definitions snapshots explain missing dependency data instead of hiding the view");
         DoesNotContain(dependenciesUi, "if (!plugin.HasCompletedSecurityScan || plugin.SecurityDependencyTotalCount <= 0 || plugin.SecurityDependencies.Count == 0)", "dependency section must not disappear behind the old security/dependency guard");
         Contains(dependenciesUi, "Available in Omega", "resolved plugin dependencies advertise that they can be opened in Omega");
         Contains(dependenciesUi, "OpenPluginDetails", "resolved plugin dependencies navigate to their Omega product page");
-        Contains(dependenciesUi, "Provided by framework", "framework-provided dependencies are distinguished from installable plugin dependencies");
-        Contains(dependenciesUi, "Definitions keeps this summary bounded", "dependency UI explains bounded client projection rather than implying forensic completeness");
+        Contains(dependenciesUi, "IsDisplayablePluginDependency", "dependency UI filters legacy Definitions rows to plugin and IPC relationships");
+        Contains(dependenciesUi, "dependency.IsFramework", "framework dependencies are explicitly excluded from the product dependency panel");
+        DoesNotContain(dependenciesUi, "Provided by framework", "framework components are not presented as plugin dependencies");
+        DoesNotContain(dependenciesUi, "Bundled / observed", "implementation components do not get a dependency group");
         var productPage = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
         Contains(productPage, "DrawProductDependencies(plugin, installed)", "product page always includes the dependency view");
         True(
