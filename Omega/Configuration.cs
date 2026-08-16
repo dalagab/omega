@@ -5,7 +5,7 @@ namespace Dalagab.Omega;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 8;
+    public int Version { get; set; } = 9;
 
     // Persisted source state. Curated identity/name/url are refreshed from the
     // bundled curated-sources.json whenever Omega loads; user-added sources remain editable.
@@ -19,6 +19,10 @@ public sealed class Configuration : IPluginConfiguration
     // Periodic Omega application update state. This is intentionally separate from Definitions updates.
     public DateTimeOffset? LastApplicationUpdateCheckUtc { get; set; }
     public string AvailableApplicationVersion { get; set; } = string.Empty;
+
+    // Repository-risk acknowledgements are keyed to the exact current set of risky source URLs/reasons.
+    // A changed risk set produces a fresh warning instead of silently inheriting an old acknowledgement.
+    public string AcknowledgedRepositoryRiskFingerprint { get; set; } = string.Empty;
 
     // First-use EULA acceptance is intentionally independent of the Omega build/version.
     public bool EulaAccepted { get; set; }

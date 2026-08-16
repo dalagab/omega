@@ -110,15 +110,18 @@ internal sealed partial class MarketplaceWindow
         ImGui.TableSetupColumn("API");
         ImGui.TableSetupColumn("State");
         ImGui.TableHeadersRow();
+        var dalamudRepositories = repositoryBridge.GetConfiguredRepositories()
+            .ToDictionary(x => NormalizeUrl(x.Url), StringComparer.OrdinalIgnoreCase);
         foreach (var source in shownSources)
         {
             statuses.TryGetValue(NormalizeUrl(source.Url), out var status);
-            DrawSourceRow(source, status);
+            dalamudRepositories.TryGetValue(NormalizeUrl(source.Url), out var dalamudRegistration);
+            DrawSourceRow(source, status, dalamudRegistration);
         }
         ImGui.EndTable();
     }
 
-    private void DrawSourceRow(RepositorySource source, RepositoryCatalogStatus? status)
+    private void DrawSourceRow(RepositorySource source, RepositoryCatalogStatus? status, DalamudRepositoryRegistration? dalamudRegistration)
     {
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -134,7 +137,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.TableSetColumnIndex(3);
         ImGui.Text(status is null || status.HighestKnownApiLevel <= 0 ? "?" : status.HighestKnownApiLevel.ToString());
         ImGui.TableSetColumnIndex(4);
-        DrawSourceState(source, status);
+        DrawSourceState(source, status, dalamudRegistration);
     }
 
     private void DrawSourceEnabledCheckbox(RepositorySource source)
@@ -152,26 +155,44 @@ internal sealed partial class MarketplaceWindow
             StartRepositoryTask(source, RepositoryTaskKind.SetEnabled, repositoryBridge.SetManagedEnabledAsync(source.Url, enabled));
     }
 
-    private static void DrawSourceState(RepositorySource source, RepositoryCatalogStatus? status)
+    private void DrawSourceState(RepositorySource source, RepositoryCatalogStatus? status, DalamudRepositoryRegistration? dalamudRegistration)
     {
-        if (!source.Enabled)
+        var dalamudPresent = source.IsOfficial || dalamudRegistration is not null;
+        var dalamudEnabled = source.IsOfficial || dalamudRegistration?.Enabled == true;
+
+        if (IsRepositoryArtifactDivergent(source.Url))
+        {
+            ImGui.TextColored(new Vector4(0.96f, 0.30f, 0.24f, 1f), "Review");
+            if (ImGui.IsItemHovered())
+                SetReadableTooltip("This repository has at least one package whose artifact SHA-256 differs from Omega's stable-provider package for the same plugin version. Review its source/package differences before installing or updating from it.");
+        }
+        else if (!source.Enabled)
         {
             ImGui.TextDisabled("Disabled");
-            return;
         }
-        if (status?.IsStale == true)
+        else if (status?.IsStale == true)
         {
             ImGui.TextColored(new Vector4(0.95f, 0.48f, 0.18f, 1f), "Stale");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Every cached plugin in this repository is at least three Dalamud API levels behind current. Its plugins are hidden from the main marketplace.");
-            return;
+                SetReadableTooltip("Every cached plugin in this repository is at least three Dalamud API levels behind current. Its plugins are hidden from the main marketplace.");
         }
-        if (status is null)
+        else if (status is null)
         {
             ImGui.TextDisabled("Not in Definitions");
-            return;
         }
-        ImGui.TextColored(new Vector4(0.34f, 0.86f, 0.61f, 1f), "Active");
+        else
+        {
+            ImGui.TextColored(new Vector4(0.34f, 0.86f, 0.61f, 1f), "Active");
+        }
+
+        if (!source.IsOfficial && dalamudPresent)
+        {
+            ImGui.SameLine(0f, 5f);
+            ImGui.TextDisabled(dalamudEnabled ? "• Dalamud" : "• Dalamud off");
+            if (ImGui.IsItemHovered())
+                SetReadableTooltip((dalamudEnabled ? "Registered and enabled in Dalamud" : "Registered but disabled in Dalamud") +
+                    (source.DalamudManagedByOmega ? " (Omega-managed)" : " (user-managed)"));
+        }
     }
 
     private void DrawAddSourceTools()

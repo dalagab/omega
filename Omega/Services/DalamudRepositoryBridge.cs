@@ -25,6 +25,8 @@ internal sealed record RepositoryBridgeResult(
 
 internal sealed record DalamudRepositoryState(bool Available, bool Present, bool Enabled, string Message);
 
+internal sealed record DalamudRepositoryRegistration(string Url, bool Enabled);
+
 /// <summary>
 /// Isolates Omega's API-15 reflection access to Dalamud's third-party repository configuration.
 /// Omega never edits files directly; it mutates the live DalamudConfiguration object, queues a save,
@@ -33,6 +35,33 @@ internal sealed record DalamudRepositoryState(bool Available, bool Present, bool
 internal sealed class DalamudRepositoryBridge
 {
     private const BindingFlags AllInstance = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+    public IReadOnlyList<DalamudRepositoryRegistration> GetConfiguredRepositories()
+    {
+        try
+        {
+            var context = ResolveContext();
+            var result = new List<DalamudRepositoryRegistration>();
+            foreach (var item in context.RepositoryList)
+            {
+                if (item is null)
+                    continue;
+                var candidate = item.GetType().GetProperty("Url", AllInstance)?.GetValue(item) as string;
+                if (string.IsNullOrWhiteSpace(candidate))
+                    continue;
+                result.Add(new DalamudRepositoryRegistration(NormalizeUrl(candidate), ReadBool(item, "IsEnabled")));
+            }
+            return result
+                .DistinctBy(x => x.Url, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x.Url, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Debug(ex, "Omega could not enumerate Dalamud third-party repositories.");
+            return [];
+        }
+    }
 
     public DalamudRepositoryState GetState(string url)
     {

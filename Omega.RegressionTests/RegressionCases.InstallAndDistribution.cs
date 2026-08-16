@@ -60,6 +60,8 @@ internal static partial class RegressionCases
         Contains(ui, "ImGuiStyleVar.FrameRounding, 4f", "Filters control uses a compact square-cornered Store-style shape");
         Contains(ui, "var openStylePushed = filtersOpen", "Filters toggle balances its open-state style even when the click closes the panel");
         Contains(ui, "filtersOpen = !filtersOpen", "panel Filters control expands and collapses inline");
+        Contains(ui, "contentStartX + Math.Max(0f, contentWidth - buttonWidth)", "Filters button is anchored at the right edge of its owning content panel");
+        Contains(ui, "ImGui.SetCursorPosX(contentStartX);", "right-aligned Filters control restores the full-width content origin before expansion");
         Contains(ui, "DrawInlineMarketplaceFilters(currentApi)", "full filter set is hidden until Filters is expanded");
         Contains(ui, "omega-inline-filters", "expanded filters render in the owning content panel rather than a modal");
         Contains(filters, "activeView is MarketplaceView.Discover or MarketplaceView.Library ? 228f : 198f", "Discover and Library reserve enough inline filter height for all controls");

@@ -300,5 +300,15 @@ class WorkflowContractTests(unittest.TestCase):
             self.assertNotIn("python - <<'PY'", text, f"{name} should call tested Python modules instead of inline Python")
 
 
+
+    def test_release_uses_project_changelog(self):
+        release = (common.ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+        changelog = (common.ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        extractor = (common.ROOT / "tools" / "release" / "extract_changelog.py").read_text(encoding="utf-8")
+        self.assertIn("extract_changelog.py", release)
+        self.assertIn("--notes-file release-notes.md", release)
+        self.assertIn("## [0.8.56]", changelog)
+        self.assertIn("CHANGELOG.md has no release section", extractor)
+
 if __name__ == "__main__":
     unittest.main()

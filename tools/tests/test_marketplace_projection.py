@@ -100,6 +100,63 @@ class MarketplaceProjectionTests(unittest.TestCase):
                 dependencies = json.loads(rows[0][7])
                 self.assertEqual(["BaselineDependency"], [item["name"] for item in dependencies])
 
+    def test_completed_scan_history_backfills_missing_current_pointer(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-marketplace-history-backfill-") as td:
+            root = Path(td)
+            evidence = root / "evidence.sqlite"
+            compact_sqlite_catalog.build_self_test_database(evidence)
+            with closing(sqlite3.connect(evidence)) as db:
+                db.execute("INSERT INTO sources(source_id,url,name,is_official) VALUES(2,'https://history.invalid/repository.json','History mirror',0)")
+                db.execute("""INSERT INTO plugin_variants(
+                    variant_id,plugin_id,source_id,source_entry_key,name,author,assembly_version,dalamud_api_level,
+                    download_link_install,first_seen_utc,last_seen_utc,active)
+                    VALUES(2,1,2,'Fixture-History','Fixture','History author','1.0',15,'https://history.invalid/plugin.zip','','',1)""")
+                report = json.dumps({
+                    "findings": [{"ruleId": "history", "severity": "high", "category": "fixture", "title": "history", "description": "history", "evidence": []}],
+                    "automation": {"level": "none", "capabilities": []},
+                }, separators=(",", ":"))
+                db.execute("""INSERT INTO plugin_security_scans(
+                    scan_id,plugin_id,variant_id,source_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,scanned_at_utc,
+                    highest_severity,informational_count,caution_count,high_count,critical_count,capabilities_json,source_available,source_repository,source_commit,
+                    source_to_binary_verified,report_json,error)
+                    VALUES(2,1,2,2,'1.0','stable','https://history.invalid/plugin.zip',?,'2.0.0','complete','2026-01-03T00:00:00Z',
+                           'high',0,0,1,0,'[]',0,'','',0,?, '')""", ("b" * 64, report))
+                # Simulate a lost/compacted per-variant current pointer: immutable scan history remains authoritative.
+                self.assertIsNone(db.execute("SELECT 1 FROM plugin_security_current WHERE variant_id=2").fetchone())
+                db.commit()
+            out = root / "marketplace.sqlite"
+            project_marketplace_catalog.project_database(evidence, out)
+            with closing(sqlite3.connect(out)) as db:
+                row = db.execute("""SELECT security_status,security_artifact_sha256,security_highest_severity,security_high_count
+                                      FROM runtime_plugin_variants WHERE variant_id=2""").fetchone()
+                self.assertIsNotNone(row)
+                self.assertEqual(("complete", "b" * 64, "high", 1), tuple(row))
+
+    def test_exact_package_url_reuses_proven_artifact_for_unscanned_mirror(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-marketplace-url-artifact-backfill-") as td:
+            root = Path(td)
+            evidence = root / "evidence.sqlite"
+            compact_sqlite_catalog.build_self_test_database(evidence)
+            with closing(sqlite3.connect(evidence)) as db:
+                db.execute("UPDATE plugin_variants SET assembly_version='1.0',download_link_install='https://example.invalid/plugin.zip' WHERE variant_id=1")
+                db.execute("UPDATE plugin_security_scans SET artifact_sha256=? WHERE scan_id=1", ("c" * 64,))
+                db.execute("UPDATE plugin_security_current SET artifact_sha256=? WHERE variant_id=1", ("c" * 64,))
+                db.execute("INSERT INTO sources(source_id,url,name,is_official) VALUES(2,'https://urlmirror.invalid/repository.json','URL mirror',0)")
+                db.execute("""INSERT INTO plugin_variants(
+                    variant_id,plugin_id,source_id,source_entry_key,name,author,assembly_version,dalamud_api_level,
+                    download_link_install,first_seen_utc,last_seen_utc,active)
+                    VALUES(2,1,2,'Fixture-UrlMirror','Fixture','Mirror author','1.0',15,'https://example.invalid/plugin.zip','','',1)""")
+                db.commit()
+            out = root / "marketplace.sqlite"
+            project_marketplace_catalog.project_database(evidence, out)
+            with closing(sqlite3.connect(out)) as db:
+                rows = db.execute("""SELECT variant_id,security_status,security_artifact_sha256,security_highest_severity
+                                       FROM runtime_plugin_variants WHERE internal_name='Fixture' ORDER BY variant_id""").fetchall()
+                self.assertEqual(2, len(rows))
+                self.assertEqual("complete", rows[1][1])
+                self.assertEqual("c" * 64, rows[1][2])
+                self.assertEqual(rows[0][3], rows[1][3], "the exact package URL/version must reuse the proven artifact report")
+
     def test_dependency_summary_preserves_resolution_type_and_warning_without_forensic_tables(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-marketplace-dependencies-") as td:
             root = Path(td)

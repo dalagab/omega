@@ -238,7 +238,7 @@ internal sealed partial class MarketplaceWindow
             resetStorefrontScroll = true;
         }
 
-        foreach (var value in filterPlugins.Select(x => x.Author)
+        foreach (var value in filterPlugins.SelectMany(x => x.EffectiveAuthors)
                      .Where(x => !string.IsNullOrWhiteSpace(x))
                      .Distinct(StringComparer.OrdinalIgnoreCase)
                      .OrderBy(x => x, StringComparer.OrdinalIgnoreCase))

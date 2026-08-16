@@ -40,7 +40,11 @@ class UiLayoutContractTests(unittest.TestCase):
 
     def test_discover_collection_management_is_compact_expandable_and_actionable(self):
         source = (ROOT / "Omega" / "UI" / "MarketplaceWindow.ProductPage.cs").read_text(encoding="utf-8")
-        self.assertIn("Managed by collection", source)
+        self.assertIn("product-plugin-state-", source)
+        self.assertIn("var canToggleHere = control.CanDirectToggle", source)
+        self.assertIn('ImGui.TextUnformatted("Collections")', source)
+        self.assertIn("var panelWidth = Math.Max(320f, ImGui.GetContentRegionAvail().X)", source)
+        self.assertNotIn("Managed by collection", source)
         self.assertNotIn("Direct toggle unavailable", source)
         self.assertNotIn("ImGui.TextWrapped(control.Reason)", source)
         self.assertIn("FontAwesomeIcon.CaretRight", source)

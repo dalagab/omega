@@ -65,10 +65,7 @@ internal sealed partial class MarketplaceWindow
                 ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
             var text = "Loading screenshot…";
             var size = ImGui.CalcTextSize(text);
-            var inner = ImGui.GetContentRegionAvail();
-            ImGui.SetCursorPos(new Vector2(
-                Math.Max(0f, (inner.X - size.X) * 0.5f),
-                Math.Max(0f, (inner.Y - size.Y) * 0.5f)));
+            SetCursorCenteredInCurrentContent(size);
             ImGui.TextDisabled(text);
             ImGui.EndChild();
         }
@@ -79,12 +76,10 @@ internal sealed partial class MarketplaceWindow
                 imageArea,
                 true,
                 ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-            var inner = ImGui.GetContentRegionAvail();
-            var scale = Math.Min(inner.X / texture.Size.X, inner.Y / texture.Size.Y);
+            var contentSize = ImGui.GetWindowContentRegionMax() - ImGui.GetWindowContentRegionMin();
+            var scale = Math.Min(contentSize.X / texture.Size.X, contentSize.Y / texture.Size.Y);
             var size = texture.Size * scale;
-            ImGui.SetCursorPos(new Vector2(
-                Math.Max(0f, (inner.X - size.X) * 0.5f),
-                Math.Max(0f, (inner.Y - size.Y) * 0.5f)));
+            SetCursorCenteredInCurrentContent(size);
             ImGui.Image(texture.Handle, size);
             ImGui.EndChild();
         }

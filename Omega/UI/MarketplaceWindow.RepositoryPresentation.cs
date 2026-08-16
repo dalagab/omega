@@ -1,5 +1,6 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Plugin;
 
 namespace Dalagab.Omega;
 
@@ -64,6 +65,51 @@ internal sealed partial class MarketplaceWindow
             plugin.SourceIsOfficial,
             currentApi,
             disabled: true);
+    }
+
+
+    private MarketplacePlugin ResolveInstalledVariant(MarketplacePlugin fallback, IExposedPlugin installedPlugin)
+    {
+        var installedUrl = NormalizeUrl(installedPlugin.Manifest.InstalledFromUrl);
+        var installedVersion = installedPlugin.Version;
+        if (!string.IsNullOrWhiteSpace(installedUrl))
+        {
+            var variants = catalog.GetVariants(fallback.InternalName);
+            var exact = variants.FirstOrDefault(variant =>
+                NormalizeUrl(variant.SourceUrl).Equals(installedUrl, StringComparison.OrdinalIgnoreCase) &&
+                (installedVersion is null || variant.AssemblyVersion.Equals(installedVersion)));
+            if (exact is not null)
+                return exact;
+
+            var sameSource = variants.FirstOrDefault(variant =>
+                NormalizeUrl(variant.SourceUrl).Equals(installedUrl, StringComparison.OrdinalIgnoreCase));
+            if (sameSource is not null)
+                return sameSource;
+        }
+        return fallback;
+    }
+
+    private void DrawInstalledAuthorRepositoryLine(MarketplacePlugin fallback, IExposedPlugin installedPlugin, int currentApi)
+    {
+        var plugin = ResolveInstalledVariant(fallback, installedPlugin);
+        var installedUrl = NormalizeUrl(installedPlugin.Manifest.InstalledFromUrl);
+        var authorText = string.IsNullOrWhiteSpace(plugin.Author) ? "Installed plugin" : plugin.Author;
+        ImGui.TextDisabled(Shorten(authorText, 28));
+        ImGui.SameLine(0f, 6f);
+        ImGui.TextDisabled("•");
+        ImGui.SameLine(0f, 6f);
+
+        if (!string.IsNullOrWhiteSpace(installedUrl) &&
+            !NormalizeUrl(plugin.SourceUrl).Equals(installedUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            var name = Uri.TryCreate(installedPlugin.Manifest.InstalledFromUrl, UriKind.Absolute, out var uri)
+                ? uri.Host
+                : "Installed source";
+            DrawRepositoryName(name, installedPlugin.Manifest.InstalledFromUrl ?? string.Empty, false, currentApi, disabled: true);
+            return;
+        }
+
+        DrawRepositoryName(SourceLabel(plugin), plugin.SourceUrl, plugin.SourceIsOfficial, currentApi, disabled: true);
     }
 
     private void DrawProductRepositoryMetadataRow(MarketplacePlugin plugin, int currentApi)

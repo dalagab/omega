@@ -10,7 +10,7 @@ Project site: https://github.com/dalagab/omega
 
 - **Spotlight** with five editorial plugin picks, each using a subdued card tint derived from that plugin's own logo palette, plus neutral latest-additions and latest-updates shelves.
 - **Discover** with screenshot-rich Microsoft Store-style cards first, a compact fallback list for metadata-only plugins, full plugin product pages, global search, authors, repositories, categories, and searchable tags.
-- **Library** has three explicit views: **All** is a clean filtered list of installed plugins with local install timing, one-click plugin settings when exposed by Dalamud, and user-requested ZIP backups written to the Windows temporary directory and revealed in Explorer; **Security scan** summarizes the current installed environment from repository/package-specific Omega security results; **Collections** is the Dalamud-owned folder/profile manager, with additive multi-collection membership managed inside each opened folder.
+- **Library** has three explicit views: **All** is a clean filtered list of installed plugins with local install timing, one-click plugin settings when exposed by Dalamud, and user-requested portable configuration ZIP backups written to the operating-system temporary directory; the Library header can import those backups again for an already-installed plugin after validation and confirmation. **Security scan** summarizes the current installed environment from repository/package-specific Omega security results and identifies the exact artifact SHA-256 behind shared mirror results. **Collections** is the Dalamud-owned folder/profile manager, with additive multi-collection membership managed inside each opened folder.
 - **Updates** combines installed-plugin updates with periodic Omega application-version checks and durable Definitions-update state. Plugin/app update counts remain separate from the blue Definitions attention marker on the Downloads rail icon.
 - **Settings** for source visibility, user-added repositories, catalog refresh, and access to the EULA/risk disclosure.
 - Official/default Dalamud plugins alongside community repositories.
@@ -248,3 +248,9 @@ These are different from `catalogSha256` and `bundleSha256`, which verify exact 
 The marketplace database contains `catalog_changelog`. A row is appended only when the semantic Catalog Revision changes, recording previous/current Catalog, Security, and Evidence Revisions plus bounded change counts. Periodic no-change scan freshness is stored separately in `security-scan-ledger.json` on `security-evidence-latest`; updating that operational ledger does not force clients to download another marketplace database.
 
 Security findings describe observed static capabilities and risk indicators. They are not a malware verdict, and no findings is not proof that a plugin is safe. Plugin archives are treated as hostile input: downloads, entry counts, total expansion, compression ratio, paths, metadata parsing, graph sizes, and scan time are bounded.
+
+## Release notes
+
+Project release notes are maintained in [`CHANGELOG.md`](CHANGELOG.md). The release workflow extracts the matching version section and publishes it with the immutable GitHub release and `omega-latest`.
+
+Omega product pages can also surface collected usage/command information and plugin changelogs from Definitions, so installation, operation, update context, and security provenance stay in one place.

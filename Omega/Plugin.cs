@@ -40,6 +40,7 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin()
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        MigrateConfigurationSchema();
         var assemblyDirectory = PluginInterface.AssemblyLocation.Directory?.FullName ?? string.Empty;
         MergeBundledSources(assemblyDirectory);
 
@@ -48,6 +49,8 @@ public sealed class Plugin : IDalamudPlugin
         ImportBootstrapCatalog(assemblyDirectory);
         catalog.LoadCached(Configuration.Repositories);
         MergeDatabaseSources();
+        var repositoryBridge = new DalamudRepositoryBridge();
+        MergeDalamudRepositoryAwareness(repositoryBridge);
         defaultCatalogBridge = new DalamudDefaultCatalogBridge();
         RefreshDefaultCatalog();
 
@@ -62,7 +65,6 @@ public sealed class Plugin : IDalamudPlugin
         libraryLedger.ObserveInstalled(PluginInterface.InstalledPlugins.Select(x => x.InternalName));
         configBackups = new PluginConfigBackupService(PluginInterface.ConfigFile.FullName);
         selfUpdates = new OmegaSelfUpdateService(Configuration);
-        var repositoryBridge = new DalamudRepositoryBridge();
         var profileBridge = new DalamudProfileBridge();
         marketplaceWindow = CreateMarketplaceWindow(assemblyDirectory, repositoryBridge, profileBridge);
         windowSystem.AddWindow(marketplaceWindow);
@@ -80,6 +82,33 @@ public sealed class Plugin : IDalamudPlugin
             BuildInfo.BuildStamp,
             titleScreenEntry is not null,
             systemMenuBridge.IsAvailable);
+    }
+
+    private void MigrateConfigurationSchema()
+    {
+        if (Configuration.Version >= 9)
+            return;
+        Configuration.Version = 9;
+        Configuration.Save();
+    }
+
+    private void MergeDalamudRepositoryAwareness(DalamudRepositoryBridge repositoryBridge)
+    {
+        try
+        {
+            if (!DalamudRepositoryAwareness.MergeExisting(
+                    Configuration,
+                    repositoryBridge,
+                    catalog,
+                    PluginInterface.Manifest.DalamudApiLevel))
+                return;
+            Configuration.Save();
+            catalog.LoadCached(Configuration.Repositories);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Omega could not merge existing Dalamud repository awareness.");
+        }
     }
 
     private void MergeBundledSources(string assemblyDirectory)

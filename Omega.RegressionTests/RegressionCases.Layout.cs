@@ -35,7 +35,11 @@ internal static partial class RegressionCases
         Contains(product, "private static void DrawProductSectionHeading(string title)", "product sections use a single header line");
         DoesNotContain(product, "ImGui.TextDisabled(subtitle)", "product section headings do not repeat explanatory subtitles");
         DoesNotContain(collections, "DrawPillButton(\n                entry.WantsEnabled", "collection plugin state must not regress to capsule buttons");
-        Contains(product, "Managed by collection", "Discover identifies collection-managed plugins without redundant direct-toggle copy");
+        Contains(product, "product-plugin-state-", "Discover always keeps the plugin state switch beside the running state");
+        Contains(product, "var canToggleHere = control.CanDirectToggle", "named collection ownership disables direct state changes without hiding the switch");
+        Contains(product, "ImGui.TextUnformatted(\"Collections\")", "collection membership uses a normal high-contrast section label");
+        Contains(product, "var panelWidth = Math.Max(320f, ImGui.GetContentRegionAvail().X)", "state and collection ownership use the full available product width");
+        DoesNotContain(product, "Managed by collection", "redundant collection-management copy stays removed");
         DoesNotContain(product, "Direct toggle unavailable", "Discover does not repeat the unavailable-direct-toggle label");
         DoesNotContain(product, "ImGui.TextWrapped(control.Reason)", "Discover does not add a redundant collection-management explanation paragraph");
         Contains(product, "FontAwesomeIcon.CaretRight", "Discover collection impact rows default to a closed expand affordance");

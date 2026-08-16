@@ -61,7 +61,7 @@ internal sealed partial class MarketplaceWindow
         }
 
         if (!string.IsNullOrWhiteSpace(author))
-            query = query.Where(x => Contains(x.Author, author.Trim()));
+            query = query.Where(x => x.EffectiveAuthors.Any(value => value.Equals(author.Trim(), StringComparison.OrdinalIgnoreCase)));
 
 
         if (selectedCategory != "All categories")
@@ -143,26 +143,45 @@ internal sealed partial class MarketplaceWindow
         if (installedVersion is null)
             return null;
 
-        Version? best = null;
-        foreach (var variant in catalog.GetMainVariants(internalName, currentApi))
+        // The green preferred package is Omega's update authority. Do not compare unrelated
+        // repository/fork version schemes and accidentally treat an API-shaped version as newer.
+        var candidate = GetInstallCandidates(internalName, currentApi, currentDalamudVersion).FirstOrDefault();
+        if (candidate is null ||
+            !candidate.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out var useTesting))
         {
-            if (!IsSourceEnabledInOmega(variant) ||
-                (variant.MinimumDalamudVersion is not null && variant.MinimumDalamudVersion > currentDalamudVersion) ||
-                !variant.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out var useTesting))
-            {
-                continue;
-            }
-
-            var offered = useTesting
-                ? variant.TestingAssemblyVersion ?? variant.AssemblyVersion
-                : variant.AssemblyVersion;
-            if (offered.CompareTo(installedVersion) <= 0)
-                continue;
-            if (best is null || offered.CompareTo(best) > 0)
-                best = offered;
+            return null;
         }
 
-        return best;
+        var installedLastUpdate = ResolveInstalledLastUpdate(internalName, installedPlugin, installedVersion);
+        if (!PluginUpdateRules.IsUpdateCandidate(
+                installedVersion,
+                installedPlugin.Manifest.InstalledFromUrl,
+                installedLastUpdate,
+                candidate,
+                useTesting))
+        {
+            return null;
+        }
+
+        return useTesting
+            ? candidate.TestingAssemblyVersion ?? candidate.AssemblyVersion
+            : candidate.AssemblyVersion;
+    }
+
+    private long ResolveInstalledLastUpdate(string internalName, IExposedPlugin installedPlugin, Version installedVersion)
+    {
+        var manifestDate = PluginUpdateRules.NormalizeUnix(installedPlugin.Manifest.LastUpdate);
+        if (manifestDate > 0)
+            return manifestDate;
+
+        var installedSource = installedPlugin.Manifest.InstalledFromUrl;
+        return catalog.GetPresentationVariants(internalName)
+            .Where(variant =>
+                variant.AssemblyVersion.Equals(installedVersion) &&
+                PluginUpdateRules.IsSamePublishingSource(installedSource, variant.SourceUrl, variant.SourceIsOfficial))
+            .Select(variant => PluginUpdateRules.NormalizeUnix(variant.LastUpdate))
+            .DefaultIfEmpty(0)
+            .Max();
     }
 
     /// <summary>

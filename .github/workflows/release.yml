@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing release tag to publish, for example v0.8.52"
+        description: "Existing release tag to publish, for example v0.8.54"
         required: true
         type: string
 
@@ -31,7 +31,7 @@ jobs:
         shell: pwsh
         run: |
           $tag = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ inputs.tag }}' } else { '${{ github.ref_name }}' }
-          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') { throw "Release tag '$tag' must look like v0.8.52" }
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') { throw "Release tag '$tag' must look like v0.8.54" }
           "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "version=$($Matches.version)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
@@ -74,6 +74,10 @@ jobs:
           $expectedAssemblyVersion = "$tagVersion.0"
           if ($projectVersion -ne $tagVersion) { throw "Project version $projectVersion does not match tag $tagVersion" }
           if ($manifestVersion -ne $expectedAssemblyVersion) { throw "PluginMaster version $manifestVersion does not match distributed assembly version $expectedAssemblyVersion" }
+
+      - name: Build release notes from CHANGELOG.md
+        shell: pwsh
+        run: python tools/release/extract_changelog.py --version '${{ steps.release.outputs.version }}' --output release-notes.md
 
       - name: Build and run regression suite
         run: dotnet build .\Omega.sln -c Release
@@ -134,8 +138,9 @@ jobs:
           if (gh release view $tag *> $null) {
             gh release upload $tag Omega.zip Omega.zip.sha256 --clobber
           } else {
-            gh release create $tag Omega.zip Omega.zip.sha256 --verify-tag --generate-notes --title "Omega ${{ steps.release.outputs.version }}"
+            gh release create $tag Omega.zip Omega.zip.sha256 --verify-tag --notes-file release-notes.md --title "Omega ${{ steps.release.outputs.version }}"
           }
+          gh release edit $tag --notes-file release-notes.md --title "Omega ${{ steps.release.outputs.version }}"
 
       - name: Publish stable Dalamud release assets
         shell: pwsh
@@ -146,4 +151,4 @@ jobs:
             gh release create omega-latest --target '${{ github.sha }}' --title 'Omega latest stable' --notes 'Stable Dalamud distribution endpoint. Assets are replaced by the release workflow.'
           }
           gh release upload omega-latest Omega.zip Omega.zip.sha256 --clobber
-          gh release edit omega-latest --title 'Omega latest stable (${{ steps.release.outputs.version }})'
+          gh release edit omega-latest --title 'Omega latest stable (${{ steps.release.outputs.version }})' --notes-file release-notes.md

@@ -53,7 +53,7 @@ internal sealed partial class MarketplaceWindow
 
         // Keep the primary destinations visually attached to the top application bar.
         ImGui.Dummy(new Vector2(0f, 6f));
-        DrawSidebarViewIcon(MarketplaceView.Spotlight, FontAwesomeIcon.Star, "Spotlight", PromotedInternalNames.Length);
+        DrawSidebarViewIcon(MarketplaceView.Spotlight, FontAwesomeIcon.Star, "Spotlight", 0);
         DrawSidebarViewIcon(MarketplaceView.Discover, FontAwesomeIcon.Search, "Discover", mainPlugins.Count);
         DrawSidebarFooter(counts);
     }
@@ -124,6 +124,7 @@ internal sealed partial class MarketplaceWindow
 
     private void OpenSettings()
     {
+        RefreshDalamudRepositoryAwareness();
         InvalidateSourceCaches();
         settingsOpen = true;
         requestSettingsPopup = true;

@@ -12,7 +12,8 @@ internal sealed record SqliteCatalogSnapshot(
     string SecurityRevision,
     string EvidenceRevision,
     DateTimeOffset? RevisionUpdatedAtUtc,
-    int ChangelogEntryCount);
+    int ChangelogEntryCount,
+    IReadOnlyDictionary<string, IReadOnlyList<MarketplaceChangelogEntry>> PluginChangelogHistory);
 
 /// <summary>
 /// Owns Omega's single client marketplace database. Detailed security evidence remains server-side.
@@ -43,7 +44,7 @@ internal sealed class SqliteCatalogStore
     {
         lock (sync)
         {
-            // winsqlite3 can retain a native read handle briefly after a managed connection is
+            // Native SQLite can retain a read handle briefly after a managed connection is
             // disposed. Read from a disposable copy so the authoritative catalog can always be
             // moved/replaced/deleted immediately by updates and Windows regression cleanup.
             return WithDisposableDatabaseCopy(DatabasePath, copyPath =>
@@ -58,7 +59,8 @@ internal sealed class SqliteCatalogStore
                     ReadMeta(connection, "security_revision"),
                     ReadMeta(connection, "evidence_revision"),
                     ReadRevisionUpdatedAt(connection),
-                    ReadChangelogEntryCount(connection));
+                    ReadChangelogEntryCount(connection),
+                    ReadPluginChangelogHistory(connection));
             });
         }
     }
@@ -74,7 +76,7 @@ internal sealed class SqliteCatalogStore
         {
             ExtractDatabase(zipPath, staged);
 
-            // Never open the staged path with SQLite: Windows/winsqlite3 may keep a native handle
+            // Never open the staged path with SQLite: a native provider may keep a file handle
             // alive just long enough to make the subsequent File.Move fail. Validate a byte-for-byte
             // disposable copy instead; the untouched staged file stays movable.
             WithDisposableDatabaseCopy(staged, validationPath =>
@@ -196,12 +198,16 @@ internal sealed class SqliteCatalogStore
         _ = ReadMeta(candidate, "evidence_revision");
         _ = ReadRevisionUpdatedAt(candidate);
         _ = ReadChangelogEntryCount(candidate);
+        _ = ReadPluginChangelogHistory(candidate);
     }
 
     private static IReadOnlyList<MarketplacePlugin> ReadVariants(SqliteConnection connection)
     {
         var runtimeColumns = RuntimeViewColumns(connection);
         var hasSecurityProjection = runtimeColumns.Contains("security_status");
+        var authorsProjection = runtimeColumns.Contains("authors_json")
+            ? "authors_json"
+            : "'[]' AS authors_json";
         var websiteReadmeProjection = runtimeColumns.Contains("website_readme_excerpt")
             ? "website_readme_excerpt"
             : "'' AS website_readme_excerpt";
@@ -246,7 +252,8 @@ internal sealed class SqliteCatalogStore
                    category_tags_json,download_count,last_update,is_hide,is_testing_exclusive,
                    dip17_channel,source_name,source_url,source_is_official,website_url,website_title,
                    website_description,{websiteReadmeProjection},website_image_urls_json,website_enriched,{adultContentProjection},
-                   {securityProjection}
+                   {securityProjection},
+                   {authorsProjection}
               FROM runtime_plugin_variants;
             """;
         using var reader = command.ExecuteReader();
@@ -310,6 +317,7 @@ internal sealed class SqliteCatalogStore
                 SecuritySourceCommit = GetString(reader, 52),
                 SecuritySourceToBinaryVerified = GetBool(reader, 53),
                 SecurityError = GetString(reader, 54),
+                Authors = ReadStrings(GetString(reader, 55, "[]")),
             });
         }
         return result;
@@ -324,6 +332,62 @@ internal sealed class SqliteCatalogStore
         while (reader.Read())
             columns.Add(reader.GetString(1));
         return columns;
+    }
+
+
+    private static IReadOnlyDictionary<string, IReadOnlyList<MarketplaceChangelogEntry>> ReadPluginChangelogHistory(SqliteConnection connection)
+    {
+        using var exists = connection.CreateCommand();
+        exists.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='plugin_variants';";
+        if (Convert.ToInt64(exists.ExecuteScalar() ?? 0L) == 0)
+            return new Dictionary<string, IReadOnlyList<MarketplaceChangelogEntry>>(StringComparer.OrdinalIgnoreCase);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT p.internal_name,s.name,s.url,v.assembly_version,v.last_update,v.changelog,v.active,v.last_seen_utc
+              FROM plugin_variants v
+              JOIN plugins p ON p.plugin_id=v.plugin_id
+              JOIN sources s ON s.source_id=v.source_id
+             WHERE TRIM(v.changelog)<>''
+             ORDER BY p.internal_name COLLATE NOCASE,
+                      CASE WHEN v.last_update>0 THEN 0 ELSE 1 END,
+                      v.last_update DESC,v.last_seen_utc DESC,v.assembly_version DESC;
+            """;
+        using var reader = command.ExecuteReader();
+        var mutable = new Dictionary<string, List<MarketplaceChangelogEntry>>(StringComparer.OrdinalIgnoreCase);
+        var seen = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        while (reader.Read())
+        {
+            var internalName = GetString(reader, 0);
+            if (string.IsNullOrWhiteSpace(internalName))
+                continue;
+            if (!mutable.TryGetValue(internalName, out var entries))
+            {
+                entries = [];
+                mutable[internalName] = entries;
+                seen[internalName] = new HashSet<string>(StringComparer.Ordinal);
+            }
+            if (entries.Count >= 32)
+                continue;
+
+            var changelog = GetString(reader, 5).Trim();
+            var key = $"{GetString(reader, 2).TrimEnd('/')}\u001f{GetString(reader, 3)}\u001f{changelog}";
+            if (!seen[internalName].Add(key))
+                continue;
+            entries.Add(new MarketplaceChangelogEntry(
+                internalName,
+                GetString(reader, 1),
+                GetString(reader, 2),
+                GetString(reader, 3),
+                GetLong(reader, 4),
+                changelog,
+                GetBool(reader, 6)));
+        }
+
+        return mutable.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyList<MarketplaceChangelogEntry>)pair.Value,
+            StringComparer.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyList<CuratedSourceDefinition> ReadSourceDefinitions(SqliteConnection connection)

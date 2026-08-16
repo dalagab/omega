@@ -34,6 +34,7 @@ from typing import Any, Iterable
 from catalog_revisions import compute_catalog_base_revision, ensure_revision_schema, read_meta, write_meta
 from catalog_presentation import is_adult_content, split_project_image_urls
 from source_stability import stable_source_priority
+from author_identity import split_authors
 
 SCHEMA_VERSION = 1
 SCHEMA_NAME = "omega.catalog.sqlite.v1"
@@ -217,6 +218,7 @@ CREATE TABLE IF NOT EXISTS plugin_variants (
     source_id INTEGER NOT NULL REFERENCES sources(source_id) ON DELETE CASCADE,
     source_entry_key TEXT NOT NULL,
     author TEXT NOT NULL DEFAULT '',
+    authors_json TEXT NOT NULL DEFAULT '[]',
     name TEXT NOT NULL DEFAULT '',
     punchline TEXT NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '',
@@ -398,6 +400,9 @@ def reset_database(path: Path) -> sqlite3.Connection:
     db = sqlite3.connect(path)
     db.row_factory = sqlite3.Row
     db.executescript(SCHEMA_SQL)
+    variant_columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_variants)")}
+    if "authors_json" not in variant_columns:
+        db.execute("ALTER TABLE plugin_variants ADD COLUMN authors_json TEXT NOT NULL DEFAULT '[]'")
     security_current_columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_security_current)")}
     if "automation_level" not in security_current_columns:
         db.execute("ALTER TABLE plugin_security_current ADD COLUMN automation_level TEXT NOT NULL DEFAULT 'none'")
@@ -589,6 +594,7 @@ def import_enriched(db: sqlite3.Connection, enriched_doc: Any, now: str) -> None
             values = (
                 pid, sid, key,
                 str(manifest_field(p, "author", "Author", "") or ""),
+                json_text(split_authors(manifest_field(p, "author", "Author", ""))),
                 name,
                 sanitize_presentation_text(manifest_field(p, "punchline", "Punchline", "")),
                 sanitize_presentation_text(manifest_field(p, "description", "Description", "")),
@@ -615,18 +621,18 @@ def import_enriched(db: sqlite3.Connection, enriched_doc: Any, now: str) -> None
                 json.dumps(raw_manifest, ensure_ascii=False, separators=(",", ":")),
                 now, now,
             )
-            testing_api = None if values[11] < 0 else values[11]
-            values = values[:11] + (testing_api,) + values[12:]
+            testing_api = None if values[12] < 0 else values[12]
+            values = values[:12] + (testing_api,) + values[13:]
             db.execute(
                 """INSERT INTO plugin_variants(
-                    plugin_id,source_id,source_entry_key,author,name,punchline,description,changelog,
+                    plugin_id,source_id,source_entry_key,author,authors_json,name,punchline,description,changelog,
                     assembly_version,testing_assembly_version,dalamud_api_level,testing_dalamud_api_level,
                     applicable_version,minimum_dalamud_version,repo_url,download_link_install,download_link_update,
                     download_link_testing,icon_url,image_urls_json,tags_json,category_tags_json,download_count,last_update,
                     is_hide,is_testing_exclusive,dip17_channel,raw_manifest_json,first_seen_utc,last_seen_utc,active)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)
                    ON CONFLICT(source_id,source_entry_key) DO UPDATE SET
-                    plugin_id=excluded.plugin_id, author=excluded.author, name=excluded.name,
+                    plugin_id=excluded.plugin_id, author=excluded.author, authors_json=excluded.authors_json, name=excluded.name,
                     punchline=excluded.punchline, description=excluded.description, changelog=excluded.changelog,
                     assembly_version=excluded.assembly_version, testing_assembly_version=excluded.testing_assembly_version,
                     dalamud_api_level=excluded.dalamud_api_level, testing_dalamud_api_level=excluded.testing_dalamud_api_level,
@@ -826,7 +832,7 @@ def recompute_presentation(db: sqlite3.Connection, now: str) -> None:
         website_text = " ".join([str(presentation_variant["website_description"] or ""), str(presentation_variant["readme_excerpt"] or "")])
         db.execute(
             "INSERT INTO plugin_search(plugin_id,internal_name,name,author,punchline,description,tags,website_text) VALUES(?,?,?,?,?,?,?,?)",
-            (pid, str(prow["internal_name"]), str(preferred_variant["name"]), str(preferred_variant["author"]), summary, description, search_tags, website_text),
+            (pid, str(prow["internal_name"]), str(preferred_variant["name"]), " ".join(split_authors(preferred_variant["author"])), summary, description, search_tags, website_text),
         )
 
 
@@ -839,6 +845,7 @@ def create_runtime_view(db: sqlite3.Connection) -> None:
              p.plugin_id,
              p.internal_name,
              v.author,
+             COALESCE(v.authors_json,'[]') AS authors_json,
              v.name,
              v.punchline,
              v.description,

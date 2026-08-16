@@ -30,6 +30,21 @@ internal sealed partial class MarketplaceWindow
         return true;
     }
 
+    /// <summary>
+    /// Tooltips must remain readable even when the hovered listing is intentionally dimmed because
+    /// its package targets another Dalamud API. ImGui inherits the current text/alpha style into
+    /// tooltips, so temporarily restore normal tooltip contrast.
+    /// </summary>
+    private static void SetReadableTooltip(string text)
+    {
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.94f, 0.95f, 0.97f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.TextDisabled, new Vector4(0.70f, 0.73f, 0.78f, 1f));
+        ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 1f);
+        ImGui.SetTooltip(text);
+        ImGui.PopStyleVar();
+        ImGui.PopStyleColor(2);
+    }
+
     private static void PopUnavailableListingStyle(bool pushed)
     {
         if (!pushed)

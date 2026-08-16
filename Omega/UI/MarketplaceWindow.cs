@@ -2,6 +2,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
 using Dalamud.Interface.Textures;
+using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 
@@ -97,6 +98,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private readonly PluginLibraryLedger libraryLedger;
     private readonly PluginConfigBackupService configBackups;
     private readonly OmegaSelfUpdateService selfUpdates;
+    private readonly FileDialogManager fileDialogs = new();
     private readonly ISharedImmediateTexture? omegaIconTexture;
     private readonly string fallbackIconPath;
     private readonly ISharedImmediateTexture? fallbackIconTexture;
@@ -132,6 +134,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private string operationMessage = string.Empty;
     private Task<PluginConfigBackupResult>? configBackupTask;
     private string backingUpPluginName = string.Empty;
+    private Task<PluginConfigImportResult>? configImportTask;
+    private string importingPluginName = string.Empty;
+    private string pendingConfigImportPath = string.Empty;
+    private PluginConfigBackupInspection? pendingConfigImportInspection;
+    private bool configImportFinished;
+    private string configImportResultMessage = string.Empty;
 
     private bool detailsOpen;
     private bool filtersOpen;
@@ -147,6 +155,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private bool requestTagsPopup;
     private bool requestEulaPopup;
     private bool requestScreenshotPopup;
+    private bool requestConfigImportPopup;
     private string selectedScreenshotUrl = string.Empty;
     private bool eulaRequiredOpen;
     private bool eulaReviewOpen;
@@ -273,6 +282,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         CompleteRepositoryTaskIfReady();
         CompleteCollectionOperationIfReady();
         CompleteConfigBackupTaskIfReady();
+        CompleteConfigImportTaskIfReady();
         var versionInfo = Plugin.PluginInterface.GetDalamudVersion();
         var currentApi = Plugin.PluginInterface.Manifest.DalamudApiLevel;
         var installed = Plugin.PluginInterface.InstalledPlugins
@@ -301,6 +311,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
             PopOmegaTheme();
             return;
         }
+
+        EvaluateRepositoryRiskWarnings(installed, currentApi);
 
         const float sidebarWidth = 64f;
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(8f, 16f));
@@ -336,6 +348,9 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         DrawEulaReviewModal();
         DrawTagPickerPopup(currentApi);
         DrawScreenshotViewerModal();
+        DrawRepositoryRiskModal();
+        DrawConfigImportModal();
+        fileDialogs.Draw();
 
         PopOmegaTheme();
     }
@@ -382,6 +397,18 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         {
             ImGui.OpenPopup(EulaPopupId);
             requestEulaPopup = false;
+        }
+
+        if (requestRepositoryRiskPopup)
+        {
+            ImGui.OpenPopup(RepositoryRiskPopupId);
+            requestRepositoryRiskPopup = false;
+        }
+
+        if (requestConfigImportPopup)
+        {
+            ImGui.OpenPopup("Import configuration backup###DalagabOmegaConfigImport");
+            requestConfigImportPopup = false;
         }
     }
 }

@@ -265,6 +265,9 @@ internal static partial class RegressionCases
         var productPageSource = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
         Contains(productPageSource, "ResolveProductBaselineVariant", "product metadata and security are anchored to the green preferred package");
         var projector = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "project_marketplace_catalog.py"));
+        Contains(projector, "backfill_marketplace_security_from_completed_scans", "client projection recovers completed artifact scans even when a duplicate per-variant current pointer is missing");
+        Contains(projector, "plugin_security_scans", "artifact security recovery uses immutable completed scan history as its authority");
+        Contains(projector, "_normalized_package_url", "exact mirrored package URLs can reuse a proven artifact identity for the same plugin version");
         Contains(projector, "canonicalize_marketplace_security_by_artifact", "client security summaries are canonicalized by exact artifact hash");
         Contains(projector, "validate_artifact_security_consistency", "projection fails if identical artifact hashes retain different security summaries");
 
@@ -299,7 +302,7 @@ internal static partial class RegressionCases
         Contains(compactor, "securityRevision", "compactor writes the security revision into the production descriptor");
         Contains(compactor, "changelogEntryCount", "descriptor exposes embedded changelog size for troubleshooting");
         var projector = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "project_marketplace_catalog.py"));
-        Contains(projector, "PROJECTOR_VERSION = \"1.2.0\"", "marketplace projector version is explicit");
+        Contains(projector, "PROJECTOR_VERSION = \"1.4.0\"", "marketplace projector version is explicit");
         Contains(projector, "marketplace_security_current", "client database retains only compact current security summaries");
         Contains(projector, "DEPENDENCY_SUMMARY_LIMIT = 30", "Definitions dependency projection remains bounded per plugin variant");
         Contains(projector, "build_dependency_summaries", "projector derives compact dependencies from detailed server-side evidence before dropping it");

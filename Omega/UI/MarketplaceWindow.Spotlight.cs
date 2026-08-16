@@ -99,7 +99,7 @@ internal sealed partial class MarketplaceWindow
 
         var clicked = ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
         if (ImGui.IsWindowHovered() && !statusHovered)
-            ImGui.SetTooltip("Open in Discover");
+            SetReadableTooltip("Open in Discover");
         ImGui.EndChild();
         ImGui.PopStyleColor(2);
         PopUnavailableListingStyle(availabilityStyle);

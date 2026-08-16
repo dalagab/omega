@@ -22,7 +22,7 @@ from typing import Any
 
 from source_stability import stable_source_priority
 
-PROJECTOR_VERSION = "1.2.0"
+PROJECTOR_VERSION = "1.4.0"
 MARKETPLACE_DB_FILENAME = "omega-marketplace.sqlite"
 MARKETPLACE_BUNDLE_FILENAME = "omega-marketplace.sqlite.zip"
 CLIENT_INTERNAL_DB_FILENAME = "omega-catalog.sqlite"
@@ -36,7 +36,7 @@ DEPENDENCY_SUMMARY_LIMIT = 30
 # The projector is allowed to canonicalize user-facing security fields by exact artifact hash.
 # Non-security runtime metadata must remain byte-for-byte equivalent to the evidence database.
 ARTIFACT_CANONICAL_RUNTIME_COLUMNS = {
-    "security_status", "security_scanned_at_utc", "security_scanner_version", "security_highest_severity",
+    "security_status", "security_scanned_at_utc", "security_artifact_sha256", "security_scanner_version", "security_highest_severity",
     "security_informational_count", "security_caution_count", "security_high_count", "security_critical_count",
     "security_capabilities_json", "security_automation_level", "security_automation_capabilities_json",
     "security_findings_json", "security_dependencies_json", "security_dependency_total_count",
@@ -159,15 +159,17 @@ def _dependency_is_presentation_candidate(item: dict[str, Any], source_internal_
     return True
 
 
-def build_dependency_summaries(db: sqlite3.Connection) -> dict[int, tuple[int, str]]:
+def build_dependency_summaries(db: sqlite3.Connection, current_table: str = "plugin_security_current") -> dict[int, tuple[int, str]]:
     """Build a bounded, deduplicated UI summary from current dependency evidence.
 
     The detailed dependency tables stay server-side. Only relationship/type/version/resolution
     status and aggregate warning/advisory indicators are projected to Definitions.
     """
     table_names = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    if "plugin_security_dependencies" not in table_names or "plugin_security_current" not in table_names:
+    if "plugin_security_dependencies" not in table_names or current_table not in table_names:
         return {}
+    if current_table not in {"plugin_security_current", "marketplace_security_current"}:
+        raise ValueError(f"unsupported dependency-current table: {current_table}")
 
     resolution_join = "LEFT JOIN plugin_security_dependency_resolutions r ON r.dependency_id=d.dependency_id" if "plugin_security_dependency_resolutions" in table_names else "LEFT JOIN (SELECT NULL dependency_id) r ON 1=0"
     issue_ctes = ""
@@ -222,7 +224,7 @@ def build_dependency_summaries(db: sqlite3.Connection) -> dict[int, tuple[int, s
                COALESCE(r.component_key,'') AS component_key,COALESCE(r.resolution_status,'') AS resolution_status,
                COALESCE(r.version_status,'') AS version_status,COALESCE(r.target_internal_name,'') AS target_internal_name,
                COALESCE(r.target_version,'') AS target_version,{issue_fields},{advisory_fields}
-          FROM plugin_security_current sc
+          FROM {current_table} sc
           JOIN plugin_security_dependencies d ON d.scan_id=sc.scan_id
           {resolution_join}
           {issue_joins}
@@ -367,7 +369,10 @@ def create_marketplace_security_current(db: sqlite3.Connection) -> None:
           FROM plugin_security_current
         """
     )
-    for variant_id, (total_count, encoded) in build_dependency_summaries(db).items():
+    # Recover the artifact/current identity before projecting dependencies so recovered mirrors
+    # inherit the exact scan's plugin/IPC dependency summary too.
+    backfill_marketplace_security_from_completed_scans(db)
+    for variant_id, (total_count, encoded) in build_dependency_summaries(db, "marketplace_security_current").items():
         db.execute(
             "UPDATE marketplace_security_current SET dependencies_json=?,dependency_total_count=? WHERE variant_id=?",
             (encoded, total_count, variant_id),
@@ -375,6 +380,189 @@ def create_marketplace_security_current(db: sqlite3.Connection) -> None:
     canonicalize_marketplace_security_by_artifact(db)
     validate_artifact_security_consistency(db)
 
+
+def _normalized_package_url(value: str) -> str:
+    return str(value or "").strip().rstrip("/").casefold()
+
+
+def _scan_findings_json(db: sqlite3.Connection, scan_id: int, report_json: str) -> str:
+    try:
+        report = json.loads(report_json or "{}")
+        findings = report.get("findings") if isinstance(report, dict) else None
+        if isinstance(findings, list):
+            return json.dumps(findings, separators=(",", ":"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        pass
+
+    rows = db.execute(
+        """SELECT rule_id,severity,category,title,description,evidence_json
+             FROM plugin_security_findings
+            WHERE scan_id=?
+            ORDER BY finding_id""",
+        (scan_id,),
+    ).fetchall()
+    findings = []
+    for row in rows:
+        try:
+            evidence = json.loads(str(row["evidence_json"] or "[]"))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            evidence = []
+        findings.append({
+            "ruleId": str(row["rule_id"] or ""),
+            "severity": str(row["severity"] or ""),
+            "category": str(row["category"] or ""),
+            "title": str(row["title"] or ""),
+            "description": str(row["description"] or ""),
+            "evidence": evidence if isinstance(evidence, list) else [],
+        })
+    return json.dumps(findings, separators=(",", ":"))
+
+
+def _scan_automation_projection(report_json: str) -> tuple[str, str]:
+    try:
+        report = json.loads(report_json or "{}")
+        automation = report.get("automation") if isinstance(report, dict) else None
+        if isinstance(automation, dict):
+            level = str(automation.get("level") or "none")
+            capabilities = automation.get("capabilities")
+            if isinstance(capabilities, list):
+                return level, json.dumps(capabilities, separators=(",", ":"))
+            return level, "[]"
+    except (TypeError, ValueError, json.JSONDecodeError):
+        pass
+    return "none", "[]"
+
+
+def backfill_marketplace_security_from_completed_scans(db: sqlite3.Connection) -> dict[str, int]:
+    """Recover artifact-based security for variants missing a duplicate current row.
+
+    Security belongs to package bytes, not to a repository-manifest row. The scanner keeps immutable
+    completed scan history, while `plugin_security_current` is only a convenience pointer per
+    variant. If that pointer is absent, the client projection recovers the latest proven artifact
+    identity for that variant, or reuses a completed scan for the exact same package URL/version.
+    Identical SHA-256 artifacts then share the canonical user-facing result.
+    """
+    tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if "plugin_security_scans" not in tables:
+        return {"historyRecovered": 0, "exactUrlMirrorsRecovered": 0, "artifactDonorCopies": 0}
+
+    current_fields = (
+        "scan_id", "assembly_version", "artifact_channel", "artifact_url", "artifact_sha256",
+        "scanner_version", "status", "scanned_at_utc", "highest_severity", "informational_count",
+        "caution_count", "high_count", "critical_count", "capabilities_json", "automation_level",
+        "automation_capabilities_json", "findings_json", "dependencies_json", "dependency_total_count",
+        "source_available", "source_repository", "source_commit", "source_to_binary_verified", "error",
+    )
+
+    variants = db.execute(
+        """SELECT v.variant_id,p.internal_name,v.assembly_version,v.testing_assembly_version,
+                  v.download_link_install,v.download_link_update,v.download_link_testing
+             FROM plugin_variants v
+             JOIN plugins p ON p.plugin_id=v.plugin_id
+        LEFT JOIN marketplace_security_current m ON m.variant_id=v.variant_id
+            WHERE v.active=1 AND p.active=1 AND m.variant_id IS NULL
+            ORDER BY v.variant_id"""
+    ).fetchall()
+
+    history_recovered = 0
+    url_recovered = 0
+    donor_copies = 0
+
+    for variant in variants:
+        variant_id = int(variant["variant_id"])
+        internal_name = str(variant["internal_name"] or "")
+        version_candidates = {
+            str(variant["assembly_version"] or "").casefold(),
+            str(variant["testing_assembly_version"] or "").casefold(),
+        } - {""}
+
+        scan = db.execute(
+            """SELECT * FROM plugin_security_scans
+                WHERE variant_id=? AND status='complete' AND artifact_sha256<>''
+                ORDER BY scanned_at_utc DESC,scan_id DESC LIMIT 1""",
+            (variant_id,),
+        ).fetchone()
+        recovered_from_url = False
+
+        if scan is None:
+            package_urls = {
+                _normalized_package_url(variant["download_link_install"]),
+                _normalized_package_url(variant["download_link_update"]),
+                _normalized_package_url(variant["download_link_testing"]),
+            } - {""}
+            if package_urls:
+                candidates = db.execute(
+                    """SELECT s.*
+                         FROM plugin_security_scans s
+                         JOIN plugins p ON p.plugin_id=s.plugin_id
+                        WHERE p.internal_name=? COLLATE NOCASE
+                          AND s.status='complete' AND s.artifact_sha256<>''
+                        ORDER BY s.scanned_at_utc DESC,s.scan_id DESC""",
+                    (internal_name,),
+                ).fetchall()
+                scan = next((row for row in candidates
+                             if str(row["assembly_version"] or "").casefold() in version_candidates
+                             and _normalized_package_url(row["artifact_url"]) in package_urls), None)
+                recovered_from_url = scan is not None
+
+        if scan is None:
+            continue
+
+        artifact_hash = str(scan["artifact_sha256"] or "").casefold()
+        scan_version = str(scan["assembly_version"] or "").casefold()
+        donor = db.execute(
+            """SELECT m.*
+                 FROM marketplace_security_current m
+                 JOIN plugin_variants v ON v.variant_id=m.variant_id
+                 JOIN plugins p ON p.plugin_id=v.plugin_id
+                WHERE p.internal_name=? COLLATE NOCASE
+                  AND lower(m.assembly_version)=?
+                  AND lower(m.artifact_sha256)=?
+                  AND m.status='complete'
+                ORDER BY m.scanned_at_utc DESC,m.scan_id DESC,m.variant_id
+                LIMIT 1""",
+            (internal_name, scan_version, artifact_hash),
+        ).fetchone()
+
+        if donor is not None:
+            values = [donor[field] for field in current_fields]
+            placeholders = ",".join("?" for _ in range(len(current_fields) + 1))
+            db.execute(
+                f"INSERT INTO marketplace_security_current(variant_id,{','.join(current_fields)}) VALUES({placeholders})",
+                (variant_id, *values),
+            )
+            donor_copies += 1
+        else:
+            automation_level, automation_caps = _scan_automation_projection(str(scan["report_json"] or "{}"))
+            findings_json = _scan_findings_json(db, int(scan["scan_id"]), str(scan["report_json"] or "{}"))
+            db.execute(
+                """INSERT INTO marketplace_security_current(
+                       variant_id,scan_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,
+                       scanned_at_utc,highest_severity,informational_count,caution_count,high_count,critical_count,capabilities_json,
+                       automation_level,automation_capabilities_json,findings_json,dependencies_json,dependency_total_count,
+                       source_available,source_repository,source_commit,source_to_binary_verified,error)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?,?)""",
+                (
+                    variant_id,int(scan["scan_id"]),str(scan["assembly_version"] or ""),str(scan["artifact_channel"] or "stable"),
+                    str(scan["artifact_url"] or ""),str(scan["artifact_sha256"] or ""),str(scan["scanner_version"] or ""),
+                    "complete",str(scan["scanned_at_utc"] or ""),str(scan["highest_severity"] or "none"),
+                    int(scan["informational_count"] or 0),int(scan["caution_count"] or 0),int(scan["high_count"] or 0),
+                    int(scan["critical_count"] or 0),str(scan["capabilities_json"] or "[]"),automation_level,automation_caps,
+                    findings_json,"[]",int(scan["source_available"] or 0),str(scan["source_repository"] or ""),
+                    str(scan["source_commit"] or ""),int(scan["source_to_binary_verified"] or 0),str(scan["error"] or ""),
+                ),
+            )
+
+        if recovered_from_url:
+            url_recovered += 1
+        else:
+            history_recovered += 1
+
+    return {
+        "historyRecovered": history_recovered,
+        "exactUrlMirrorsRecovered": url_recovered,
+        "artifactDonorCopies": donor_copies,
+    }
 
 
 def canonicalize_marketplace_security_by_artifact(db: sqlite3.Connection) -> dict[str, int]:
@@ -474,7 +662,7 @@ def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
     db.execute(
         """CREATE VIEW runtime_plugin_variants AS
            SELECT
-             v.variant_id,p.plugin_id,p.internal_name,v.author,v.name,v.punchline,v.description,v.changelog,
+             v.variant_id,p.plugin_id,p.internal_name,v.author,COALESCE(v.authors_json,'[]') AS authors_json,v.name,v.punchline,v.description,v.changelog,
              v.assembly_version,v.testing_assembly_version,v.dalamud_api_level,v.testing_dalamud_api_level,
              v.applicable_version,v.minimum_dalamud_version,v.repo_url,v.download_link_install,v.download_link_update,
              v.download_link_testing,v.icon_url,v.image_urls_json,v.tags_json,v.category_tags_json,v.download_count,
@@ -540,8 +728,13 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
             if after_runtime != before_runtime:
                 raise RuntimeError("marketplace projection changed non-security runtime_plugin_variants metadata")
             projected_rows = int(db.execute("SELECT COUNT(*) FROM marketplace_security_current").fetchone()[0])
-            if projected_rows != current_rows:
-                raise RuntimeError("marketplace projection changed current security row count")
+            active_variants = int(db.execute(
+                "SELECT COUNT(*) FROM plugin_variants v JOIN plugins p ON p.plugin_id=v.plugin_id WHERE v.active=1 AND p.active=1"
+            ).fetchone()[0])
+            if projected_rows < current_rows:
+                raise RuntimeError("marketplace projection lost current security rows")
+            if projected_rows > active_variants:
+                raise RuntimeError("marketplace projection created security rows for nonexistent active variants")
             escaped = str(output_database).replace("'", "''")
             db.execute("ANALYZE")
             db.commit()

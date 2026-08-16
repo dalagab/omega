@@ -17,6 +17,9 @@ internal sealed partial class MarketplaceWindow
         var label = activeFilters == 0 ? "Filters" : $"Filters ({activeFilters})";
         var triangle = filtersOpen ? "▲" : "▼";
         var buttonWidth = activeFilters == 0 ? 98f : 118f;
+        var contentStartX = ImGui.GetCursorPosX();
+        var contentWidth = ImGui.GetContentRegionAvail().X;
+        ImGui.SetCursorPosX(contentStartX + Math.Max(0f, contentWidth - buttonWidth));
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
         var openStylePushed = filtersOpen;
         if (openStylePushed)
@@ -30,10 +33,13 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(filtersOpen ? "Hide marketplace filters" : $"Show all filters for {ViewTitle(activeView)}");
 
+        // Restore the content origin so an expanded panel still spans the complete owning view.
+        ImGui.SetCursorPosX(contentStartX);
         if (!filtersOpen)
             return;
 
         ImGui.Spacing();
+        ImGui.SetCursorPosX(contentStartX);
         DrawInlineMarketplaceFilters(currentApi);
     }
 

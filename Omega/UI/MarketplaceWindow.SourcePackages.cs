@@ -17,6 +17,7 @@ internal sealed partial class MarketplaceWindow
         bool IsTestingOnly,
         string Version,
         int ApiLevel,
+        long ReleaseUnix,
         string DownloadUrl,
         string Sha256,
         IReadOnlyList<ProductPackageRepository> Repositories);
@@ -26,6 +27,7 @@ internal sealed partial class MarketplaceWindow
         bool IsTesting,
         string Version,
         int ApiLevel,
+        long ReleaseUnix,
         string DownloadUrl,
         string Sha256,
         string SourceName,
@@ -44,7 +46,14 @@ internal sealed partial class MarketplaceWindow
         ImGui.Indent(14f);
         var preferredIdentity = ResolvePreferredInstallPackageIdentity(plugin, packages, currentApi, currentDalamudVersion);
         var preferredPackage = packages.FirstOrDefault(x => x.Identity.Equals(preferredIdentity, StringComparison.OrdinalIgnoreCase));
-        foreach (var package in packages)
+        var orderedPackages = packages
+            .OrderByDescending(x => x.Identity.Equals(preferredIdentity, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(x => x.ReleaseUnix > 0)
+            .ThenByDescending(x => x.ReleaseUnix)
+            .ThenByDescending(x => x.ApiLevel == currentApi)
+            .ThenBy(x => x.IsTestingOnly)
+            .ThenBy(x => x.Identity, StringComparer.OrdinalIgnoreCase);
+        foreach (var package in orderedPackages)
         {
             var preferredInstall = package.Identity.Equals(preferredIdentity, StringComparison.OrdinalIgnoreCase);
             var baselineDeviation = preferredPackage is not null && !preferredInstall &&
@@ -138,11 +147,13 @@ internal sealed partial class MarketplaceWindow
                 var version = ordered.Select(x => x.Version).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? "—";
                 var api = ordered.Select(x => x.ApiLevel).FirstOrDefault(x => x > 0);
                 var sha = ordered.Select(x => x.Sha256).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? string.Empty;
+                var releaseUnix = ordered.Select(x => x.ReleaseUnix).FirstOrDefault(x => x > 0);
                 return new ProductSourcePackage(
                     group.Key,
                     isTestingOnly,
                     version,
                     api,
+                    releaseUnix,
                     first.DownloadUrl,
                     sha,
                     repositories);
@@ -172,6 +183,7 @@ internal sealed partial class MarketplaceWindow
             isTesting,
             version,
             apiLevel,
+            PluginUpdateRules.NormalizeUnix(variant.LastUpdate),
             downloadUrl,
             normalizedSha,
             variant.SourceName,
@@ -257,6 +269,13 @@ internal sealed partial class MarketplaceWindow
             ImGui.Spacing();
         }
         ImGui.TextDisabled(package.ApiLevel > 0 ? $"API: {package.ApiLevel}" : "API: unknown");
+        if (package.ReleaseUnix > 0)
+        {
+            var released = DateTimeOffset.FromUnixTimeSeconds(package.ReleaseUnix);
+            ImGui.TextDisabled($"Published/updated: {released:yyyy-MM-dd}");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(released.ToString("u"));
+        }
 
         if (!string.IsNullOrWhiteSpace(package.Sha256))
         {

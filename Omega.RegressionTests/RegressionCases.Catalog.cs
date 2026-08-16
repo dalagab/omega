@@ -141,7 +141,7 @@ internal static partial class RegressionCases
     internal static void TestCuratedEnableMigration()
     {
         var configuration = File.ReadAllText(Path.Combine(Root, "Omega", "Configuration.cs"));
-        Contains(configuration, "Version { get; set; } = 8", "configuration schema 8");
+        Contains(configuration, "Version { get; set; } = 9", "configuration schema 9");
 
         var curated = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CuratedSourceCatalog.cs"));
         Contains(curated, "enableAllCuratedMigration", "one-time all-enabled migration");

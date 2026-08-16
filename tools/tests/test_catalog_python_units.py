@@ -13,6 +13,7 @@ from unittest import mock
 
 import common  # noqa: F401
 import build_sqlite_catalog
+import author_identity
 import catalog_presentation
 import collect_sources
 import create_source_followup_issues
@@ -31,6 +32,13 @@ import process_source_submission
 
 
 class CatalogPythonUnitTests(unittest.TestCase):
+    def test_author_identity_normalization_splits_individual_contributors(self) -> None:
+        self.assertEqual(
+            ["Inf1", "Sl0nderman", "harbingerftw"],
+            author_identity.split_authors("Inf1, Sl0nderman and harbingerftw & Contributors"),
+        )
+        self.assertEqual(["Kouzukii"], author_identity.split_authors("Kouzukii"))
+
     def test_curated_source_loader_rejects_non_https_entries(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "curated.json"

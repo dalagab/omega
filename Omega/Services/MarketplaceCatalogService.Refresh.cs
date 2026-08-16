@@ -17,6 +17,7 @@ internal sealed partial class MarketplaceCatalogService
                 EvidenceRevision = string.Empty;
                 RevisionUpdatedAtUtc = null;
                 CatalogChangelogEntryCount = 0;
+                changelogHistoryByInternalName = new Dictionary<string, IReadOnlyList<MarketplaceChangelogEntry>>(StringComparer.OrdinalIgnoreCase);
                 RebuildProjectionLocked();
             }
             return;
@@ -149,6 +150,7 @@ internal sealed partial class MarketplaceCatalogService
             EvidenceRevision = snapshot.EvidenceRevision;
             RevisionUpdatedAtUtc = snapshot.RevisionUpdatedAtUtc;
             CatalogChangelogEntryCount = snapshot.ChangelogEntryCount;
+            changelogHistoryByInternalName = snapshot.PluginChangelogHistory;
         }
         RebuildForConfiguration(repositories.Where(x => x.Enabled).ToArray(), preserveLastRefresh);
         if (!preserveLastRefresh && snapshot.GeneratedAtUtc is not null)

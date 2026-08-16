@@ -19,11 +19,11 @@ internal sealed partial class MarketplaceWindow
         DrawPromotedSpotlightRow(plugins, installed, currentApi, currentDalamudVersion);
 
         ImGui.Dummy(new Vector2(1f, 16f));
-        DrawSpotlightSectionTitle("Latest additions");
+        DrawSpotlightSectionTitle("Latest additions", "Plugins most recently first seen in Omega Definitions. This is catalog discovery time, not necessarily the plugin's original release date.");
         DrawRecencyShelf(GetLatestAdditions(plugins), installed, "latest-additions", currentApi, currentDalamudVersion);
 
         ImGui.Dummy(new Vector2(1f, 16f));
-        DrawSpotlightSectionTitle("Latest updates");
+        DrawSpotlightSectionTitle("Latest updates", "Plugins with the most recent known publication/update timestamp supplied by their preferred package source. Entries without a reliable timestamp are not promoted here.");
         DrawRecencyShelf(GetLatestUpdates(plugins), installed, "latest-updates", currentApi, currentDalamudVersion);
     }
 
@@ -143,7 +143,7 @@ internal sealed partial class MarketplaceWindow
 
         var clicked = ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
         if (ImGui.IsWindowHovered() && !statusHovered)
-            ImGui.SetTooltip("Open in Discover");
+            SetReadableTooltip("Open in Discover");
         ImGui.EndChild();
         PopUnavailableListingStyle(availabilityStyle);
 
@@ -151,9 +151,16 @@ internal sealed partial class MarketplaceWindow
             OpenSpotlightPluginInDiscover(plugin);
     }
 
-    private static void DrawSpotlightSectionTitle(string title)
+    private static void DrawSpotlightSectionTitle(string title, string? explanation = null)
     {
         ImGui.TextUnformatted(title);
+        if (!string.IsNullOrWhiteSpace(explanation))
+        {
+            ImGui.SameLine(0f, 7f);
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+                SetReadableTooltip(explanation);
+        }
         ImGui.Spacing();
     }
 

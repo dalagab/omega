@@ -237,23 +237,22 @@ internal sealed partial class MarketplaceWindow
         {
             var text = "Loading preview…";
             var size = ImGui.CalcTextSize(text);
-            var available = ImGui.GetContentRegionAvail();
-            ImGui.SetCursorPos(new Vector2(Math.Max(0f, (available.X - size.X) * 0.5f), Math.Max(0f, (available.Y - size.Y) * 0.5f)));
+            SetCursorCenteredInCurrentContent(size);
             ImGui.TextDisabled(text);
         }
         else
         {
-            var available = ImGui.GetContentRegionAvail();
-            var scale = Math.Min(available.X / texture.Size.X, available.Y / texture.Size.Y);
+            var contentSize = ImGui.GetWindowContentRegionMax() - ImGui.GetWindowContentRegionMin();
+            var scale = Math.Min(contentSize.X / texture.Size.X, contentSize.Y / texture.Size.Y);
             var size = texture.Size * scale;
-            ImGui.SetCursorPos(new Vector2(Math.Max(0f, (available.X - size.X) * 0.5f), Math.Max(0f, (available.Y - size.Y) * 0.5f)));
+            SetCursorCenteredInCurrentContent(size);
             ImGui.Image(texture.Handle, size);
         }
 
         var screenshotHovered = ImGui.IsWindowHovered();
         var screenshotClicked = screenshotHovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
         if (screenshotHovered)
-            ImGui.SetTooltip("View larger screenshot");
+            SetReadableTooltip("View larger screenshot");
 
         ImGui.EndChild();
         ImGui.PopStyleColor();
@@ -582,7 +581,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.PopFont();
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(tooltip);
+            SetReadableTooltip(tooltip);
     }
 
     private static void DrawPluginRadiationIcon(Vector4 color, string tooltip, float size)
@@ -608,7 +607,7 @@ internal sealed partial class MarketplaceWindow
         draw.AddCircleFilled(center, size * 0.095f, dark, 16);
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(tooltip);
+            SetReadableTooltip(tooltip);
     }
 
     private static void DrawDiscoverPluginTitle(string title, bool installed)
@@ -650,7 +649,7 @@ internal sealed partial class MarketplaceWindow
             ImGui.ColorConvertFloat4ToU32(new Vector4(0.94f, 0.78f, 0.27f, 1f)),
             glyph);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Enhanced listing: public project metadata indexed by Omega.");
+            SetReadableTooltip("Enhanced listing: public project metadata indexed by Omega.");
     }
 
     private static void DrawDiscoverStatusGlyph(string glyph, Vector4 color, string tooltip, float size)
@@ -663,7 +662,7 @@ internal sealed partial class MarketplaceWindow
             ImGui.ColorConvertFloat4ToU32(color),
             glyph);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(tooltip);
+            SetReadableTooltip(tooltip);
     }
 
     private static void DrawDalamudOfficialLogoBadge(float size)
@@ -695,7 +694,7 @@ internal sealed partial class MarketplaceWindow
                 glyph);
         }
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Dalamud official repository");
+            SetReadableTooltip("Dalamud official repository");
     }
 
     private static string PrimaryPluginCategory(MarketplacePlugin plugin)

@@ -87,7 +87,7 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        const float rowHeight = 94f;
+        const float rowHeight = 112f;
         var rowWidth = Math.Max(420f, ImGui.GetContentRegionAvail().X);
         ImGui.BeginChild($"library-security-{StableId(entry.Listing.InternalName)}", new Vector2(rowWidth, rowHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
@@ -113,6 +113,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextUnformatted(Shorten(entry.Listing.Name, 44));
         ImGui.TextDisabled($"{InstalledVersionText(entry.InstalledPlugin)}  •  {InstalledSecuritySourceLabel(entry.SecurityVariant, entry.InstalledPlugin)}");
         ImGui.TextDisabled(BuildEnvironmentSecurityIssueLine(entry.SecurityVariant));
+        ImGui.TextDisabled(BuildEnvironmentArtifactIdentityLine(entry.SecurityVariant));
         ImGui.EndGroup();
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
             OpenPluginDetails(entry.SecurityVariant);
@@ -121,7 +122,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.SameLine();
         ImGui.SetCursorPos(new Vector2(
             Math.Max(textStart + 260f, MarketplaceLayoutRules.RightAlignedX(ImGui.GetWindowContentRegionMax().X, indicatorWidth)),
-            23f));
+            32f));
         ImGui.BeginGroup();
         DrawPluginFontAwesomeRiskIcon(visual.Icon, visual.IconColor, visual.Tooltip, 20f);
         ImGui.SameLine(0f, 8f);
@@ -167,6 +168,27 @@ internal sealed partial class MarketplaceWindow
         if (!installedPlugin.IsThirdParty)
             return "Dalamud official";
         return "Installed source unknown";
+    }
+
+    private string BuildEnvironmentArtifactIdentityLine(MarketplacePlugin plugin)
+    {
+        var artifactHash = NormalizeArtifactHash(plugin.SecurityArtifactSha256);
+        if (string.IsNullOrWhiteSpace(artifactHash))
+            return "Artifact identity not yet published";
+
+        var variants = catalog.GetVariants(plugin.InternalName);
+        var identical = variants.Count(x =>
+            x.HasCompletedSecurityScan &&
+            NormalizeArtifactHash(x.SecurityArtifactSha256).Equals(artifactHash, StringComparison.OrdinalIgnoreCase));
+        var baseline = ResolveDefaultVariant(plugin);
+        var baselineHash = NormalizeArtifactHash(baseline.SecurityArtifactSha256);
+        var shortHash = artifactHash.Length > 12 ? artifactHash[..12] : artifactHash;
+
+        if (!string.IsNullOrWhiteSpace(baselineHash) && !baselineHash.Equals(artifactHash, StringComparison.OrdinalIgnoreCase))
+            return $"Artifact {shortHash}…  •  differs from preferred package";
+        if (identical > 1)
+            return $"Artifact {shortHash}…  •  scan shared by {identical} identical packages";
+        return $"Artifact {shortHash}…  •  exact package security identity";
     }
 
     private static string BuildEnvironmentSecurityIssueLine(MarketplacePlugin plugin)

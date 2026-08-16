@@ -151,7 +151,9 @@ internal sealed partial class MarketplaceWindow
             hash ^= HashCode.Combine(
                 nameHash,
                 plugin.Version?.GetHashCode() ?? 0,
-                plugin.IsLoaded);
+                plugin.IsLoaded,
+                StringComparer.OrdinalIgnoreCase.GetHashCode(plugin.Manifest.InstalledFromUrl ?? string.Empty),
+                PluginUpdateRules.NormalizeUnix(plugin.Manifest.LastUpdate));
         }
         return HashCode.Combine(installed.Count, hash);
     }

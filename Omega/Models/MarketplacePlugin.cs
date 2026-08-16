@@ -5,6 +5,8 @@ namespace Dalagab.Omega;
 public sealed class MarketplacePlugin
 {
     public string Author { get; init; } = string.Empty;
+    public IReadOnlyList<string> Authors { get; init; } = [];
+    public IReadOnlyList<string> EffectiveAuthors => Authors.Count > 0 ? Authors : MarketplaceAuthorRules.Split(Author);
     public string Name { get; init; } = string.Empty;
     public string InternalName { get; init; } = string.Empty;
     public string Punchline { get; init; } = string.Empty;
@@ -149,6 +151,7 @@ public sealed class MarketplacePlugin
         return new MarketplacePlugin
         {
             Author = ReadString(element, "Author"),
+            Authors = ReadStrings(element, "OmegaAuthors"),
             Name = ReadString(element, "Name"),
             InternalName = ReadString(element, "InternalName"),
             Punchline = ReadString(element, "Punchline"),

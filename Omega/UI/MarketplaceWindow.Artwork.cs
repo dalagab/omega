@@ -49,6 +49,7 @@ internal sealed partial class MarketplaceWindow
         var overlaySize = new Vector2(iconSize, iconSize);
 
         ImGui.PushStyleColor(ImGuiCol.ChildBg, 0u);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
         ImGui.BeginChild($"artwork-{plugin.InternalName}-{StableId(plugin.SourceUrl)}", new Vector2(iconSize, iconSize), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
@@ -57,6 +58,7 @@ internal sealed partial class MarketplaceWindow
                               DrawArtworkTopLayer(plugin, installedPlugin, overlayMin, overlaySize, currentApi, currentDalamudVersion);
 
         ImGui.EndChild();
+        ImGui.PopStyleVar();
         ImGui.PopStyleColor();
         ImGui.SetCursorPosX(startX);
         return clicked && !overlayConsumed;
@@ -80,11 +82,10 @@ internal sealed partial class MarketplaceWindow
         if (texture is null || texture.Size.X <= 0 || texture.Size.Y <= 0)
             return DrawArtworkPlaceholder(plugin, iconSize);
 
-        var scale = Math.Min(iconSize / texture.Size.X, iconSize / texture.Size.Y);
+        var contentSize = ImGui.GetWindowContentRegionMax() - ImGui.GetWindowContentRegionMin();
+        var scale = Math.Min(contentSize.X / texture.Size.X, contentSize.Y / texture.Size.Y);
         var drawSize = texture.Size * scale;
-        ImGui.SetCursorPos(new Vector2(
-            Math.Max(0f, (iconSize - drawSize.X) * 0.5f),
-            Math.Max(0f, (iconSize - drawSize.Y) * 0.5f)));
+        SetCursorCenteredInCurrentContent(drawSize);
         overlayMin = ImGui.GetCursorScreenPos();
         overlaySize = drawSize;
         ImGui.Image(texture.Handle, drawSize);
@@ -95,6 +96,19 @@ internal sealed partial class MarketplaceWindow
                 : string.IsNullOrWhiteSpace(plugin.Punchline) ? $"Open {plugin.Name}" : plugin.Punchline);
         return clicked;
     }
+
+    private static Vector2 CenteredCursorInCurrentContent(Vector2 itemSize)
+    {
+        var contentMin = ImGui.GetWindowContentRegionMin();
+        var contentMax = ImGui.GetWindowContentRegionMax();
+        var contentSize = Vector2.Max(Vector2.Zero, contentMax - contentMin);
+        return contentMin + new Vector2(
+            Math.Max(0f, (contentSize.X - itemSize.X) * 0.5f),
+            Math.Max(0f, (contentSize.Y - itemSize.Y) * 0.5f));
+    }
+
+    private static void SetCursorCenteredInCurrentContent(Vector2 itemSize)
+        => ImGui.SetCursorPos(CenteredCursorInCurrentContent(itemSize));
 
     private static string GetOfficialDalamudIconUrl(MarketplacePlugin plugin)
         => string.IsNullOrWhiteSpace(plugin.InternalName)

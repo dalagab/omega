@@ -211,6 +211,10 @@ internal static partial class RegressionCases
         Contains(product, "DrawProductWebsiteIcon(plugin, enhancedUrl)", "enhanced product pages place their project link beside the Enhanced badge");
         Contains(product, "DrawProductSecuritySummary(plugin)", "security posture is summarized inside the product hero instead of as a detached block");
         Contains(product, "DrawProductCollectionMembership(plugin, installedPlugin)", "installed product pages show the plugin's collection membership directly below the hero");
+        Contains(product, ".Where(x => !x.Collection.IsDefault)", "product membership excludes Dalamud's Default plugins profile from named collection claims");
+        Contains(product, "Not in a named collection", "plugins without named memberships are described accurately");
+        Contains(product, "DrawProductUsage(content)", "product pages expose collected how-to-use information");
+        Contains(product, "DrawProductChangelog(plugin)", "product pages expose plugin release notes");
         Contains(product, "foreach (var membership in memberships)", "all matching collection memberships are iterated instead of reducing membership to a single owner");
         Contains(product, "CollectionDisplayName(collection)", "each Discover collection membership is rendered from its own collection identity");
         False(product.Contains("Enhanced from:", StringComparison.Ordinal), "raw enrichment provenance wording must not return to the About section");
@@ -295,6 +299,13 @@ internal static partial class RegressionCases
         Contains(viewer, "Screenshot###DalagabOmegaScreenshot", "screenshot viewer has a stable dedicated popup identity");
         Contains(viewer, "ImGui.GetMainViewport()", "larger screenshot viewer sizes itself against the game viewport");
         Contains(viewer, "ImGui.Image(texture.Handle, size)", "larger screenshot viewer renders the cached source image");
+        var artwork = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Artwork.cs"));
+        Contains(artwork, "ImGuiStyleVar.WindowPadding, Vector2.Zero", "plugin artwork containers do not offset images with child-window padding");
+        Contains(artwork, "GetWindowContentRegionMin()", "shared image centering accounts for the actual child content origin");
+        Contains(artwork, "SetCursorCenteredInCurrentContent", "plugin artwork uses the shared horizontal and vertical centering helper");
+        Contains(discover, "SetCursorCenteredInCurrentContent", "Discover project previews use the shared centering helper");
+        Contains(product, "SetCursorCenteredInCurrentContent", "product project images use the shared centering helper");
+        Contains(viewer, "SetCursorCenteredInCurrentContent", "large image viewer uses the shared centering helper");
         Contains(viewer, "ImGuiWindowFlags.NoTitleBar", "screenshot viewer uses Omega chrome instead of the host/default title bar");
         Contains(viewer, "DrawOmegaModalHeader(\"Screenshot\"", "screenshot viewer uses the shared Omega secondary-panel header");
         DoesNotContain(viewer, "Close##screenshot-viewer-close", "screenshot viewer does not duplicate the top-right close control at the bottom");

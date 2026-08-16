@@ -50,6 +50,25 @@ internal sealed partial class MarketplaceWindow
             SetLibrarySection(LibrarySection.Collections);
         }
 
+        const float importWidth = 152f;
+        var rightEdge = ImGui.GetWindowContentRegionMax().X;
+        ImGui.SameLine();
+        ImGui.SetCursorPosX(Math.Max(ImGui.GetCursorPosX() + 12f, rightEdge - importWidth));
+        var canImport = configImportTask is null && configBackupTask is null;
+        if (!canImport)
+            ImGui.BeginDisabled();
+        if (DrawRoundedButton(
+                configImportTask is null ? "Import config backup" : $"Importing {Shorten(importingPluginName, 12)}…",
+                "library-import-config-backup",
+                new Vector2(importWidth, 32f)))
+        {
+            OpenConfigBackupPicker();
+        }
+        if (!canImport)
+            ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Restore a plugin configuration ZIP previously created by Omega. The plugin must already be installed.");
+
         ImGui.SetCursorPosX(startX);
         ImGui.Spacing();
     }
@@ -158,7 +177,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Shorten(plugin.Name, 42));
-        DrawAuthorRepositoryLine(plugin, currentApi);
+        DrawInstalledAuthorRepositoryLine(plugin, installedPlugin, currentApi);
         ImGui.TextDisabled(Shorten(
             $"{InstalledVersionText(installedPlugin)}  •  {(installedPlugin.IsLoaded ? "Loaded" : "Not loaded")}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}",
             76));
@@ -167,7 +186,7 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
             OpenPluginDetails(plugin);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(BuildInstalledMetadataLine(plugin, currentApi, currentDalamudVersion));
+            SetReadableTooltip(BuildInstalledMetadataLine(plugin, installedPlugin, currentApi, currentDalamudVersion));
 
         const float toggleWidth = 44f;
         const float iconActionSize = 34f;
@@ -296,28 +315,165 @@ internal sealed partial class MarketplaceWindow
 
     private static void RevealBackupInExplorer(string backupPath, string? backupDirectory)
     {
+        // Shell-open the containing directory instead of calling explorer.exe directly. This keeps
+        // the action compatible with Wine/Proton while still showing the user where the temp backup lives.
+        var directory = !string.IsNullOrWhiteSpace(backupDirectory)
+            ? backupDirectory
+            : Path.GetDirectoryName(Path.GetFullPath(backupPath));
+        if (string.IsNullOrWhiteSpace(directory))
+            return;
+
         try
         {
-            var fullPath = Path.GetFullPath(backupPath);
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "explorer.exe",
-                Arguments = $"/select,\"{fullPath}\"",
-                UseShellExecute = true,
-            });
+            Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            Plugin.Log.Debug(ex, "Omega could not reveal config backup in Explorer; directory={Directory}", backupDirectory ?? string.Empty);
-            if (!string.IsNullOrWhiteSpace(backupDirectory))
-            {
-                try
-                {
-                    Process.Start(new ProcessStartInfo(backupDirectory) { UseShellExecute = true });
-                }
-                catch { }
-            }
+            Plugin.Log.Debug(ex, "Omega could not reveal config backup directory {Directory}", directory);
         }
+    }
+
+    private void OpenConfigBackupPicker()
+    {
+        if (configImportTask is not null || configBackupTask is not null)
+            return;
+
+        fileDialogs.OpenFileDialog(
+            "Import Omega configuration backup",
+            ".zip",
+            (accepted, path) =>
+            {
+                if (!accepted || string.IsNullOrWhiteSpace(path))
+                    return;
+
+                var installedNames = Plugin.PluginInterface.InstalledPlugins
+                    .Where(x => x is not null && !string.IsNullOrWhiteSpace(x.InternalName))
+                    .Select(x => x.InternalName)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                var inspection = configBackups.Inspect(path, installedNames);
+                if (!inspection.Success)
+                {
+                    operationMessage = inspection.Message;
+                    return;
+                }
+
+                pendingConfigImportPath = path;
+                pendingConfigImportInspection = inspection;
+                requestConfigImportPopup = true;
+            });
+    }
+
+    private void DrawConfigImportModal()
+    {
+        if (pendingConfigImportInspection is null && configImportTask is null)
+            return;
+
+        ImGui.SetNextWindowSize(new Vector2(520f, 0f), ImGuiCond.Appearing);
+        var keepOpen = true;
+        if (!ImGui.BeginPopupModal(
+                "Import configuration backup###DalagabOmegaConfigImport",
+                ref keepOpen,
+                ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar))
+        {
+            if (!keepOpen)
+                ClearPendingConfigImport();
+            return;
+        }
+
+        if (DrawOmegaModalHeader("Import configuration backup", "config-import"))
+        {
+            ClearPendingConfigImport();
+            ImGui.CloseCurrentPopup();
+            ImGui.EndPopup();
+            return;
+        }
+
+        var inspection = pendingConfigImportInspection;
+        if (inspection is not null)
+        {
+            ImGui.TextUnformatted(inspection.DisplayName);
+            ImGui.TextDisabled(inspection.InternalName);
+            ImGui.Spacing();
+            ImGui.TextWrapped(inspection.Message);
+            ImGui.Spacing();
+            ImGui.TextDisabled("Import replaces this plugin's current config JSON and auxiliary config directory. Omega creates a temporary safety backup first.");
+            ImGui.Spacing();
+        }
+
+        if (configImportFinished)
+        {
+            ImGui.TextWrapped(configImportResultMessage);
+            ImGui.Spacing();
+            if (ImGui.Button("Close", new Vector2(100f, 34f)))
+            {
+                ClearPendingConfigImport();
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
+            return;
+        }
+
+        var importing = configImportTask is not null;
+        if (importing)
+            ImGui.BeginDisabled();
+        if (ImGui.Button(importing ? "Importing…" : "Import backup", new Vector2(150f, 34f)) && inspection is not null)
+        {
+            importingPluginName = inspection.DisplayName;
+            var path = pendingConfigImportPath;
+            configImportTask = Task.Run(() => configBackups.Restore(path, inspection));
+        }
+        if (importing)
+            ImGui.EndDisabled();
+
+        ImGui.SameLine(0f, 10f);
+        if (importing)
+            ImGui.BeginDisabled();
+        if (ImGui.Button("Cancel", new Vector2(100f, 34f)))
+        {
+            ClearPendingConfigImport();
+            ImGui.CloseCurrentPopup();
+        }
+        if (importing)
+            ImGui.EndDisabled();
+
+        ImGui.EndPopup();
+        if (!keepOpen && !importing)
+            ClearPendingConfigImport();
+    }
+
+    private void CompleteConfigImportTaskIfReady()
+    {
+        if (configImportTask is null || !configImportTask.IsCompleted)
+            return;
+
+        try
+        {
+            var result = configImportTask.GetAwaiter().GetResult();
+            configImportFinished = true;
+            configImportResultMessage = result.Message;
+            operationMessage = result.Success ? string.Empty : result.Message;
+        }
+        catch (Exception ex)
+        {
+            operationMessage = $"Config import failed: {ex.GetBaseException().Message}";
+        }
+        finally
+        {
+            configImportTask = null;
+            importingPluginName = string.Empty;
+        }
+    }
+
+    private void ClearPendingConfigImport()
+    {
+        if (configImportTask is not null)
+            return;
+        pendingConfigImportPath = string.Empty;
+        pendingConfigImportInspection = null;
+        importingPluginName = string.Empty;
+        configImportFinished = false;
+        configImportResultMessage = string.Empty;
     }
 
     private string BuildLibraryInstallDateLine(string internalName)
@@ -386,16 +542,30 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Shorten(plugin.Name, 42));
-        DrawAuthorRepositoryLine(plugin, currentApi);
-        var versionLine = offered is null
-            ? $"{InstalledVersionText(installedPlugin)}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}"
-            : $"{InstalledVersionText(installedPlugin)} → v{offered}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}";
-        ImGui.TextDisabled(Shorten(versionLine, 76));
+        DrawInstalledAuthorRepositoryLine(plugin, installedPlugin, currentApi);
+        if (offered is null)
+        {
+            ImGui.TextDisabled(Shorten(
+                $"{InstalledVersionText(installedPlugin)}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}",
+                76));
+        }
+        else
+        {
+            var updateVariant = GetInstallCandidates(plugin.InternalName, currentApi, currentDalamudVersion).FirstOrDefault() ?? plugin;
+            ImGui.TextDisabled($"{InstalledVersionText(installedPlugin)} → v{offered}");
+            if (BuildChangelogEntries(updateVariant).Count > 0)
+            {
+                ImGui.SameLine(0f, 5f);
+                DrawInlineChangelogButton(updateVariant, $"update-changelog-{StableId(plugin.InternalName)}");
+            }
+            ImGui.SameLine(0f, 6f);
+            ImGui.TextDisabled(Shorten($"•  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}", 44));
+        }
         ImGui.EndGroup();
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
             OpenPluginDetails(plugin);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(BuildInstalledMetadataLine(plugin, currentApi, currentDalamudVersion));
+            SetReadableTooltip(BuildInstalledMetadataLine(plugin, installedPlugin, currentApi, currentDalamudVersion));
 
         const float actionSize = 38f;
         ImGui.SameLine();
@@ -465,10 +635,14 @@ internal sealed partial class MarketplaceWindow
 
     private string BuildInstalledMetadataLine(
         MarketplacePlugin plugin,
+        IExposedPlugin installedPlugin,
         int currentApi,
         Version currentDalamudVersion)
     {
-        var source = SourceLabel(plugin);
+        plugin = ResolveInstalledVariant(plugin, installedPlugin);
+        var source = !string.IsNullOrWhiteSpace(installedPlugin.Manifest.InstalledFromUrl) && string.IsNullOrWhiteSpace(plugin.SourceUrl)
+            ? installedPlugin.Manifest.InstalledFromUrl
+            : SourceLabel(plugin);
         var compatibility = plugin.GetCompatibilityText(
             currentApi,
             currentDalamudVersion,

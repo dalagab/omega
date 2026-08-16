@@ -29,6 +29,8 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
         new Dictionary<string, MarketplacePlugin[]>(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyDictionary<string, MarketplacePlugin[]> presentationVariantsByInternalName =
         new Dictionary<string, MarketplacePlugin[]>(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyDictionary<string, IReadOnlyList<MarketplaceChangelogEntry>> changelogHistoryByInternalName =
+        new Dictionary<string, IReadOnlyList<MarketplaceChangelogEntry>>(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<int, IReadOnlyList<RepositoryCatalogStatus>> repositoryStatusCache = new();
     private readonly Dictionary<string, MarketplaceCatalogProjection> mainProjectionCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<int, IReadOnlyDictionary<string, MarketplacePlugin[]>> mainVariantIndexCache = new();
@@ -112,6 +114,24 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
     {
         lock (sync)
             return presentationVariantsByInternalName.TryGetValue(internalName, out var group) ? group : [];
+    }
+
+    public IReadOnlyList<MarketplaceChangelogEntry> GetChangelogHistory(string internalName, string? preferredSourceUrl = null)
+    {
+        lock (sync)
+        {
+            if (!changelogHistoryByInternalName.TryGetValue(internalName, out var entries))
+                return [];
+            var normalizedPreferred = NormalizeUrl(preferredSourceUrl);
+            return entries
+                .OrderByDescending(entry => !string.IsNullOrWhiteSpace(normalizedPreferred) &&
+                    NormalizeUrl(entry.SourceUrl).Equals(normalizedPreferred, StringComparison.OrdinalIgnoreCase))
+                .ThenByDescending(entry => PluginUpdateRules.NormalizeUnix(entry.LastUpdate))
+                .ThenByDescending(entry => Version.TryParse(entry.VersionText, out var parsed) ? parsed : new Version(0, 0))
+                .DistinctBy(entry => $"{entry.VersionText}\u001f{entry.Changelog}", StringComparer.Ordinal)
+                .Take(20)
+                .ToArray();
+        }
     }
 
     public int GetStableApiLevel(string internalName, int preferredApi = 0)

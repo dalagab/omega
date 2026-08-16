@@ -2,6 +2,94 @@ namespace Dalagab.Omega.RegressionTests;
 
 internal static partial class RegressionCases
 {
+    internal static void TestPreferredPackageUpdateChronology()
+    {
+        var sameSource = new MarketplacePlugin
+        {
+            AssemblyVersionText = "2.1.1.2",
+            SourceUrl = "https://example.invalid/repo.json",
+            LastUpdate = 1_786_000_000,
+        };
+        True(
+            PluginUpdateRules.IsUpdateCandidate(
+                new Version(2, 1, 1, 1),
+                "https://example.invalid/repo.json",
+                1_785_000_000,
+                sameSource,
+                useTesting: false),
+            "same-source monotonic versions remain ordinary updates");
+
+        var apiShapedOlderMirror = new MarketplacePlugin
+        {
+            AssemblyVersionText = "15.0.0.0",
+            SourceUrl = "https://mirror.invalid/repository.json",
+            LastUpdate = 1_770_000_000,
+        };
+        False(
+            PluginUpdateRules.IsUpdateCandidate(
+                new Version(0, 2, 2, 8),
+                "https://preferred.invalid/repository.json",
+                1_780_000_000,
+                apiShapedOlderMirror,
+                useTesting: false),
+            "a numerically larger cross-source version is not newer when its release chronology is older");
+
+        var undatedCrossSource = new MarketplacePlugin
+        {
+            AssemblyVersionText = "15.0.0.0",
+            SourceUrl = "https://mirror.invalid/repository.json",
+            LastUpdate = 0,
+        };
+        False(
+            PluginUpdateRules.IsUpdateCandidate(
+                new Version(0, 2, 2, 8),
+                "https://preferred.invalid/repository.json",
+                0,
+                undatedCrossSource,
+                useTesting: false),
+            "cross-source assembly versions are not comparable when release chronology is unknown");
+
+        var datedNewerCrossSource = new MarketplacePlugin
+        {
+            AssemblyVersionText = "3.0.0.0",
+            SourceUrl = "https://preferred.invalid/repository.json",
+            LastUpdate = 1_790_000_000,
+        };
+        True(
+            PluginUpdateRules.IsUpdateCandidate(
+                new Version(2, 9, 9, 9),
+                "https://old-source.invalid/repository.json",
+                1_780_000_000,
+                datedNewerCrossSource,
+                useTesting: false),
+            "a cross-source preferred package is an update when both version and chronology are newer");
+
+        var lowerVersionNewerDate = new MarketplacePlugin
+        {
+            AssemblyVersionText = "0.1.0.0",
+            SourceUrl = "https://preferred.invalid/repository.json",
+            LastUpdate = 1_790_000_000,
+        };
+        False(
+            PluginUpdateRules.IsUpdateCandidate(
+                new Version(0, 2, 2, 8),
+                "https://old-source.invalid/repository.json",
+                1_780_000_000,
+                lowerVersionNewerDate,
+                useTesting: false),
+            "release date alone does not turn a lower assembly version into an update Dalamud cannot apply normally");
+
+        var details = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Details.cs"));
+        var packages = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SourcePackages.cs"));
+        Contains(details, "GetInstallCandidates(internalName, currentApi, currentDalamudVersion).FirstOrDefault()", "Updates use the same green preferred package baseline as product presentation");
+        Contains(details, "PluginUpdateRules.IsUpdateCandidate", "Updates use chronology-aware cross-source comparison");
+        Contains(details, "installedPlugin.Manifest.LastUpdate", "installed release chronology comes from Dalamud's persisted local manifest when available");
+        DoesNotContain(details, "foreach (var variant in catalog.GetMainVariants(internalName, currentApi))", "Updates no longer pick the numerically largest version from arbitrary repositories");
+        Contains(packages, ".OrderByDescending(x => x.Identity.Equals(preferredIdentity", "the green preferred package is listed before historical package lines");
+        Contains(packages, ".ThenByDescending(x => x.ReleaseUnix)", "non-preferred packages use manifest chronology instead of assembly-version magnitude for display order");
+        Contains(packages, "Published/updated:", "package details expose the available manifest chronology to the user");
+    }
+
     internal static void TestCanonicalPluginNavigationAndLifecycleContract()
     {
         var artwork = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Artwork.cs"));
@@ -91,9 +179,18 @@ internal static partial class RegressionCases
         Contains(backups, "Path.Combine(pluginConfigRoot, $\"{internalName}.json\")", "config backup includes Dalamud's canonical per-plugin JSON file");
         Contains(backups, "Path.Combine(pluginConfigRoot, internalName)", "config backup includes the plugin's auxiliary config directory");
         Contains(backups, "ZipFile.Open", "plugin configuration backups are packaged as portable ZIP archives");
+        Contains(backups, "omega-backup.json", "portable backups carry an explicit Omega plugin identity manifest");
+        Contains(backups, "MaximumUncompressedBytes", "config import rejects oversized archive expansion");
+        Contains(backups, "Inspect(string archivePath", "config backups are validated before restore");
+        Contains(backups, "Restore(string archivePath", "validated config backups can be imported again");
         Contains(backups, "Path.GetTempPath()", "config backups are temporary rather than persistent Omega state");
+        Contains(library, "Import config backup", "Library exposes config restore at the top-level Library controls");
+        Contains(library, "OpenFileDialog", "Library uses Dalamud's in-game file picker for backup import");
+        Contains(library, "configBackups.Inspect", "selected backup ZIPs are validated before confirmation");
+        Contains(library, "configBackups.Restore", "confirmed imports delegate to the bounded restore service");
         Contains(library, "RevealBackupInExplorer", "successful config backups immediately reveal the generated archive");
-        Contains(library, "explorer.exe", "Windows Explorer is used to show the backup location after creation");
+        DoesNotContain(library, "new ProcessStartInfo(\"explorer.exe\"", "backup reveal must not hard-code Windows Explorer under Wine/Proton");
+        Contains(library, "UseShellExecute = true", "backup reveal delegates folder opening to the host shell association");
         Contains(pluginEntry, "PluginInterface.ActivePluginsChanged += OnActivePluginsChanged", "Omega observes plugin lifecycle changes even when the Library is closed");
         Contains(pluginEntry, "PluginInterface.ActivePluginsChanged -= OnActivePluginsChanged", "plugin lifecycle tracking unsubscribes cleanly");
         Contains(sources, "libraryLedger.MarkInstalled(installingInternalName)", "successful Omega installs record an exact local install timestamp");
@@ -113,6 +210,8 @@ internal static partial class RegressionCases
         Contains(security, "ResolveInstalledSecurityVariant", "environment scan matches installed plugins to repository-specific scan results");
         Contains(security, "installedPlugin.Manifest.InstalledFromUrl", "third-party environment scans prefer the actual installed repository URL");
         Contains(security, "Security scan not yet available", "installed plugins without evidence remain visible rather than disappearing");
+        Contains(security, "BuildEnvironmentArtifactIdentityLine", "Library security rows explain the artifact identity backing each scan");
+        Contains(security, "scan shared by", "identical package hashes disclose when one canonical scan is shared by mirrors");
         var securityVisual = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
         Contains(securityVisual, "SecuritySeverityRank", "Library security posture uses an explicit shared severity ordering helper");
         Contains(securityVisual, "\"critical\" => 4", "Library security severity ordering keeps critical above lower findings");
@@ -173,6 +272,72 @@ internal static partial class RegressionCases
         Contains(repositoryClient, "HttpCompletionOption.ResponseHeadersRead", "repository fetch streams response bodies instead of eagerly buffering them");
         Contains(repositoryClient, "response.EnsureSuccessStatusCode()", "repository fetch rejects unsuccessful HTTP responses");
         Contains(repositoryClient, "response.Content.ReadAsStreamAsync", "repository fetch reads from the declared response");
+    }
+
+
+
+    internal static void TestPluginDocumentationAndReleaseChangelogContract()
+    {
+        var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
+        var content = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductContent.cs"));
+        var usage = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "MarketplaceUsageRules.cs"));
+        var store = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "SqliteCatalogStore.cs"));
+        var release = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "release.yml"));
+        var changelog = File.ReadAllText(Path.Combine(Root, "CHANGELOG.md"));
+
+        Contains(library, "DrawInlineChangelogButton", "Updates exposes changelog access beside the offered version");
+        Contains(content, "DrawProductChangelog", "product pages render changelog history");
+        Contains(content, "DrawProductUsage", "product pages render how-to-use information");
+        Contains(usage, "how to use", "usage extraction recognizes explicit how-to headings");
+        Contains(usage, "command prefix", "usage extraction recognizes command metadata such as Questionable's command prefix");
+        Contains(store, "ReadPluginChangelogHistory", "Definitions retains and loads historical plugin changelogs from historical variants");
+        Contains(store, "WHERE TRIM(v.changelog)<>''", "empty changelog records are not projected into client history");
+        Contains(changelog, "## [0.8.56]", "repository changelog has an entry for the current release");
+        Contains(release, "extract_changelog.py", "release workflow consumes repository CHANGELOG.md");
+        Contains(release, "--notes-file release-notes.md", "GitHub Releases receive curated project release notes");
+    }
+    internal static void TestRepositoryAwarenessAuthorsAndSpotlightPolishContract()
+    {
+        var authors = MarketplaceAuthorRules.Split("Inf1, Sl0nderman and harbingerftw & Contributors");
+        Equal(3, authors.Count, "combined manifest authors are normalized into individual identities");
+        True(authors.Contains("Inf1"), "first author identity survives normalization");
+        True(authors.Contains("Sl0nderman"), "and-separated author identity survives normalization");
+        True(authors.Contains("harbingerftw"), "ampersand-separated author identity survives normalization");
+        False(authors.Any(x => x.Equals("Contributors", StringComparison.OrdinalIgnoreCase)), "generic contributor labels are not exposed as author identities");
+
+        var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
+        var spotlight = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SpotlightShelves.cs"));
+        var availability = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Availability.cs"));
+        var awareness = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.RepositoryAwareness.cs"));
+        var bridge = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudRepositoryBridge.cs"));
+        var pluginEntry = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
+        var sources = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sources.cs"));
+        var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
+        var repositoryPresentation = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.RepositoryPresentation.cs"));
+        var productAuthors = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Authors.cs"));
+        var filters = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Filters.cs"));
+        var builder = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "build_sqlite_catalog.py"));
+
+        Contains(chrome, "DrawSidebarViewIcon(MarketplaceView.Spotlight, FontAwesomeIcon.Star, \"Spotlight\", 0)", "Spotlight navigation no longer advertises a meaningless fixed plugin count");
+        Contains(spotlight, "Plugins most recently first seen in Omega Definitions", "Latest additions explains its first-seen chronology");
+        Contains(spotlight, "most recent known publication/update timestamp", "Latest updates explains its timestamp chronology");
+        Contains(availability, "SetReadableTooltip", "listing tooltips have an independent readable style");
+        Contains(availability, "ImGuiStyleVar.Alpha, 1f", "unavailable listing alpha no longer dims tooltip content");
+
+        Contains(bridge, "GetConfiguredRepositories", "Omega can enumerate repositories that already exist in Dalamud");
+        Contains(pluginEntry, "MergeDalamudRepositoryAwareness", "startup imports existing Dalamud repository awareness");
+        Contains(sources, "Dalamud off", "source manager surfaces the live Dalamud repository state");
+        Contains(awareness, "artifact.cross-source-hash-mismatch", "repository warnings are grounded in stable-baseline artifact divergence");
+        Contains(awareness, "AcknowledgedRepositoryRiskFingerprint", "repository risk acknowledgement survives restarts until the risk set changes");
+        Contains(awareness, "Review Sources", "repository warning can take the user directly to source review");
+
+        Contains(library, "DrawInstalledAuthorRepositoryLine", "Library renders repository provenance from the installed plugin rather than the marketplace baseline");
+        Contains(repositoryPresentation, "installedPlugin.Manifest.InstalledFromUrl", "installed repository provenance uses Dalamud's persisted install source");
+
+        Contains(productAuthors, "OpenAuthorInDiscover", "individual product authors are clickable navigation targets");
+        Contains(filters, "SelectMany(x => x.EffectiveAuthors)", "author filters are built from individual author identities");
+        Contains(builder, "authors_json", "normalized individual authors are persisted by the catalog builder");
+        Contains(builder, "split_authors", "the backend normalizes manifest author strings during catalog ingestion");
     }
 
 }
