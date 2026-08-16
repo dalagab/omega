@@ -82,6 +82,11 @@ jobs:
           test -f catalog/security-output/omega-catalog.sqlite.zip
           test -f catalog/security-output/catalog.json
           python -m zipfile -e catalog/security-output/omega-catalog.sqlite.zip catalog/security-output
+      - name: Collect publicly known NuGet security risks
+        run: >-
+          python tools/catalog/collect_public_advisories.py
+          --database catalog/security-output/omega-catalog.sqlite
+          --output catalog/security-output/public-advisories.json
       - name: Incrementally scan artifacts and derive security/automation intelligence
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,6 +101,7 @@ jobs:
           --max-batch-seconds ${{ inputs.max_batch_seconds || '4200' }}
           --rescan-after-hours ${{ inputs.rescan_after_hours || '168' }}
           --internal-names "${{ inputs.internal_names || '' }}"
+          --advisories catalog/security-output/public-advisories.json
       - name: Validate security and dependency intelligence database and hashes
         run: python tools/catalog/validate_security_catalog.py --root catalog/security-output
       - uses: actions/upload-artifact@v7
@@ -108,4 +114,5 @@ jobs:
             catalog/security-output/catalog-report.json
             catalog/security-output/security-report.json
             catalog/security-output/security-scan-ledger.json
+            catalog/security-output/public-advisories.json
           retention-days: 30

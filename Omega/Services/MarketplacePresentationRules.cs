@@ -5,6 +5,7 @@ internal sealed record MarketplacePresentationContent(
     IReadOnlyList<string> Images,
     string Summary,
     string Description,
+    string Readme,
     bool IsEnhanced,
     int RichnessScore);
 
@@ -37,12 +38,14 @@ internal static class MarketplacePresentationRules
         var images = PresentationImages(richest);
         var summary = ChooseSummary(richest);
         var description = ChooseDescription(richest);
+        var readme = richest.OmegaWebsiteReadmeExcerpt.Trim();
         var enhanced = candidates.Any(x => x.OmegaEnriched);
         return new MarketplacePresentationContent(
             richest,
             images,
             summary,
             description,
+            readme,
             enhanced,
             RichnessScore(richest));
     }

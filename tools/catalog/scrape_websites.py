@@ -5,7 +5,7 @@ This pipeline step never decides installation trust. It enriches the catalog wit
 project information that can make Discover/product pages more useful:
 - project title/description/homepage
 - GitHub topics/language/license/activity statistics
-- a bounded README excerpt
+- a bounded README copy
 - up to five useful screenshot/preview URLs
 
 GitHub repositories use the authenticated REST API when GITHUB_TOKEN/GH_TOKEN is
@@ -32,12 +32,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 
+from catalog_presentation import split_project_image_urls
+
 USER_AGENT = "Dalagab-Omega-Catalog/0.8 (+https://github.com/dalagab/omega)"
 GITHUB_API = "https://api.github.com"
 MAX_HTML_BYTES = 2 * 1024 * 1024
-README_EXCERPT_BYTES = 4096
+README_EXCERPT_BYTES = 32 * 1024
 README_SCAN_BYTES = 128 * 1024
 MAX_IMAGES = 5
+MAX_IMAGE_CANDIDATES = 12
 BLOCKED_PROJECT_HOSTS = {
     "discord.gg", "discord.com", "www.discord.com",
     "twitter.com", "www.twitter.com", "x.com", "www.x.com",
@@ -258,7 +261,7 @@ def extract_readme_images(text: str, owner: str, repo: str, branch: str) -> list
             url = "https://" + url[7:]
         if url.startswith("https://") and _useful_image(url) and url not in result:
             result.append(url)
-        if len(result) >= MAX_IMAGES:
+        if len(result) >= MAX_IMAGE_CANDIDATES:
             break
     return result
 
@@ -271,7 +274,7 @@ def scrape_github_repo(owner_repo: tuple[str, str], token: str | None, timeout: 
         "stars": None, "forks": None, "watchers": None, "title": None,
         "description": None, "homepage": None, "topics": [], "language": None,
         "license": None, "defaultBranch": None, "lastCommit": None,
-        "readmeExcerpt": None, "imageUrls": [], "url": f"https://github.com/{owner}/{repo}",
+        "readmeExcerpt": None, "imageUrls": [], "discordJoinImageUrls": [], "url": f"https://github.com/{owner}/{repo}",
     }
     try:
         meta = github_get(base, token, timeout)
@@ -304,7 +307,11 @@ def scrape_github_repo(owner_repo: tuple[str, str], token: str | None, timeout: 
             readme = raw.decode("utf-8", errors="replace")
             excerpt = readme.encode("utf-8")[:README_EXCERPT_BYTES].decode("utf-8", errors="ignore")
             out["readmeExcerpt"] = excerpt.strip()
-            out["imageUrls"] = extract_readme_images(readme, owner, repo, out["defaultBranch"] or "main")
+            display_images, discord_join_images = split_project_image_urls(
+                extract_readme_images(readme, owner, repo, out["defaultBranch"] or "main")
+            )
+            out["imageUrls"] = display_images[:MAX_IMAGES]
+            out["discordJoinImageUrls"] = discord_join_images[:MAX_IMAGES]
     except Exception:
         pass
     return out
@@ -312,7 +319,7 @@ def scrape_github_repo(owner_repo: tuple[str, str], token: str | None, timeout: 
 
 def scrape_generic(url: str, timeout: float = 20.0) -> dict:
     normalized = normalize_repo_url(url)
-    out = {"url": normalized, "ok": False, "error": None, "title": None, "description": None, "imageUrls": []}
+    out = {"url": normalized, "ok": False, "error": None, "title": None, "description": None, "imageUrls": [], "discordJoinImageUrls": []}
     try:
         body = http_get_public_html(normalized, timeout).decode("utf-8", errors="replace")
         parser = PageMetadataParser()
@@ -322,9 +329,10 @@ def scrape_generic(url: str, timeout: float = 20.0) -> dict:
             candidate = urllib.parse.urljoin(normalized, value)
             if candidate.startswith("https://") and _useful_image(candidate) and candidate not in images:
                 images.append(candidate)
-            if len(images) >= MAX_IMAGES:
+            if len(images) >= MAX_IMAGE_CANDIDATES:
                 break
-        out.update({"ok": True, "title": parser.title or None, "description": sanitize_presentation_text(parser.description), "imageUrls": images})
+        display_images, discord_join_images = split_project_image_urls(images)
+        out.update({"ok": True, "title": parser.title or None, "description": sanitize_presentation_text(parser.description), "imageUrls": display_images[:MAX_IMAGES], "discordJoinImageUrls": discord_join_images[:MAX_IMAGES]})
     except Exception as exc:
         out["error"] = f"{type(exc).__name__}: {exc}"
     return out

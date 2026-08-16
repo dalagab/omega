@@ -44,13 +44,14 @@ The catalog builder runs daily, can be dispatched manually, and also starts on `
 4. **Enrich websites** — `scrape_websites_incremental.py` reuses fresh successful enrichment and refreshes only new/stale project pages.
 5. **Build authoritative catalog state** — `build_sqlite_catalog.py` imports the intermediate documents into the previous full evidence database when available, preserving scanner history while refreshing marketplace/source data. On the first split migration it can consume the legacy `catalog-latest/omega-catalog.sqlite.zip` database.
 6. **Hand off builder artifact** — the builder uploads `omega-sqlite-catalog`. It does not publish either production database.
-7. **Security enrichment** — `security-scanner.yml` consumes the exact builder artifact, statically scans new/changed/due variants, writes normalized evidence, derives current security and automation summaries, updates candidate semantic revisions, and emits `omega-security-catalog`. The scanner has read-only repository permission and publishes no release assets.
-8. **Compact evidence** — `compact_sqlite_catalog.py` applies additive schema migrations, bounds redundant report JSON, preserves normalized history/evidence, runs `ANALYZE`/`VACUUM INTO`, and validates integrity, foreign keys, and the full runtime projection.
-9. **Project marketplace database** — `project_marketplace_catalog.py` creates a new small SQLite database, retains only the compact current security projection needed by Omega, derives a bounded dependency summary from current dependency/resolution/issue/advisory evidence before physically removing the detailed scanner tables, and verifies that the pre-existing runtime projection is unchanged apart from the new bounded dependency fields.
-10. **Resolve publication** — `publication_decision.py` compares semantic and representation revisions with the previously published state. Timestamp-only scans do not force database publication.
-11. **Publish evidence when required** — the detailed evidence bundle is published to `security-evidence-latest` and verified remotely.
-12. **Publish marketplace when required** — Catalog Revision, Evidence Revision, or marketplace representation changes can require the small client database to advance. If Evidence Revision must advance, marketplace publication waits for successful evidence publication first. The small client bundle is then published to `catalog-latest` and verified remotely.
-13. **No-change scan** — when neither database needs replacement, only `security-scan-ledger.json` may advance on the evidence release so scan freshness is retained without causing a client download.
+7. **Public advisory collection** — `collect_public_advisories.py` reads only NuGet package/version pairs already observed in the evidence database, queries OSV in bounded batches, and writes an inspectable advisory input. It reports publicly known security risks in dependencies; it does not judge plugin intent or safety.
+8. **Security enrichment** — `security-scanner.yml` consumes the exact builder artifact and public-advisory input, statically scans new/changed/due variants, writes normalized evidence, derives current security and automation summaries, updates candidate semantic revisions, and emits `omega-security-catalog`. The scanner has read-only repository permission and publishes no release assets.
+9. **Compact evidence** — `compact_sqlite_catalog.py` applies additive schema migrations, bounds redundant report JSON, preserves normalized history/evidence, runs `ANALYZE`/`VACUUM INTO`, and validates integrity, foreign keys, and the full runtime projection.
+10. **Project marketplace database** — `project_marketplace_catalog.py` creates a new small SQLite database, retains only the compact current security projection needed by Omega, derives a bounded dependency summary from current dependency/resolution/issue/advisory evidence before physically removing the detailed scanner tables, and verifies that the pre-existing runtime projection is unchanged apart from the new bounded dependency fields.
+11. **Resolve publication** — `publication_decision.py` compares semantic and representation revisions with the previously published state. Timestamp-only scans do not force database publication.
+12. **Publish evidence when required** — the detailed evidence bundle is published to `security-evidence-latest` and verified remotely.
+13. **Publish marketplace when required** — Catalog Revision, Evidence Revision, or marketplace representation changes can require the small client database to advance. If Evidence Revision must advance, marketplace publication waits for successful evidence publication first. The small client bundle is then published to `catalog-latest` and verified remotely.
+14. **No-change scan** — when neither database needs replacement, only `security-scan-ledger.json` may advance on the evidence release so scan freshness is retained without causing a client download.
 
 ## Workflow and Python regression testing
 
@@ -109,6 +110,10 @@ Scanner 2.0 derives bounded automation capability summaries from managed call-si
 Automation is summarized as observational, UI/menu automation, character control, or full gameplay automation. Confidence and reachability are stored separately. Static evidence shows capability or a reachable mechanism; it does not prove that a runtime branch executes during normal use.
 
 The marketplace database contains only those compact summaries, a bounded set of human-readable evidence examples, and up to 30 deduplicated dependency components per variant with a total-count field. The complete methods, symbols, call sites, reachability records, and scan lineage remain in the evidence database.
+
+## Static endpoint inventory
+
+When a scan finds both network API evidence and literal HTTP(S) URLs, Omega records a bounded endpoint inventory in the detailed scan report and exposes it through the existing security findings view. Query strings, fragments, and URL credentials are removed before storage. Literal hosts are labelled as recognised public platforms, unrecognised public hosts, insecure HTTP, public IP literals, or private/loopback targets. A literal URL is evidence that the artifact or source contains that value, not proof that the plugin connected to it at runtime. If network APIs are present but no literal HTTP endpoint is found, Omega reports the destination as dynamically undetermined rather than guessing.
 
 ## Website enrichment
 

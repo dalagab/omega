@@ -27,6 +27,8 @@ public sealed class Plugin : IDalamudPlugin
     private readonly CatalogUpdateCoordinator catalogUpdates;
     private readonly PluginIconCache iconCache;
     private readonly PluginRecencyLedger pluginRecency;
+    private readonly PluginLibraryLedger libraryLedger;
+    private readonly PluginConfigBackupService configBackups;
     private readonly MarketplaceWindow marketplaceWindow;
     private readonly DalamudSystemMenuBridge systemMenuBridge;
     private readonly DailyCatalogUpdateService dailyCatalogUpdate;
@@ -55,12 +57,18 @@ public sealed class Plugin : IDalamudPlugin
             PluginInterface.ConfigDirectory.FullName);
         iconCache = new PluginIconCache(PluginInterface.ConfigDirectory.FullName);
         pluginRecency = new PluginRecencyLedger(PluginInterface.ConfigDirectory.FullName);
+        libraryLedger = new PluginLibraryLedger(PluginInterface.ConfigDirectory.FullName);
+        libraryLedger.ObserveInstalled(PluginInterface.InstalledPlugins.Select(x => x.InternalName));
+        configBackups = new PluginConfigBackupService(
+            PluginInterface.ConfigDirectory.FullName,
+            PluginInterface.ConfigFile.FullName);
         var repositoryBridge = new DalamudRepositoryBridge();
         var profileBridge = new DalamudProfileBridge();
         marketplaceWindow = CreateMarketplaceWindow(assemblyDirectory, repositoryBridge, profileBridge);
         windowSystem.AddWindow(marketplaceWindow);
 
         RegisterUiCallbacks();
+        PluginInterface.ActivePluginsChanged += OnActivePluginsChanged;
         titleScreenEntry = TryRegisterTitleScreenEntry(assemblyDirectory);
         systemMenuBridge = new DalamudSystemMenuBridge(GameInterop, OpenMainUi);
         dailyCatalogUpdate = new DailyCatalogUpdateService(Configuration, catalog, catalogUpdates);
@@ -129,6 +137,8 @@ public sealed class Plugin : IDalamudPlugin
             profileBridge,
             iconCache,
             pluginRecency,
+            libraryLedger,
+            configBackups,
             Path.Combine(assemblyDirectory, "icon.png"),
             Path.Combine(assemblyDirectory, "company-fallback.png"),
             Path.Combine(assemblyDirectory, "EULA.md"));
@@ -167,6 +177,7 @@ public sealed class Plugin : IDalamudPlugin
             }
         }
 
+        PluginInterface.ActivePluginsChanged -= OnActivePluginsChanged;
         PluginInterface.UiBuilder.Draw -= windowSystem.Draw;
         PluginInterface.UiBuilder.OpenMainUi -= OpenMainUi;
         PluginInterface.UiBuilder.OpenConfigUi -= OpenMainUi;
@@ -200,6 +211,9 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     private void OnCommand(string command, string arguments) => OpenMainUi();
+
+    private void OnActivePluginsChanged(IActivePluginsChangedEventArgs args)
+        => libraryLedger.ObserveInstalled(PluginInterface.InstalledPlugins.Select(x => x.InternalName));
 
     private void RefreshDefaultCatalog()
     {

@@ -63,9 +63,38 @@ internal static partial class RegressionCases
         Contains(chrome, "0.50f, 0.10f, 0.13f, 0.94f", "Updates counter uses a subdued red rather than alarm-bright red");
         Contains(discover, "queueIfVisible: true", "visible Discover cards queue their real plugin icons");
         Contains(discover, "showOverlays: false", "Discover card identity icons remain clean and overlay-free");
-        Contains(discover, "var cardMin = ImGui.GetWindowPos();", "Discover hover outline anchors to the card window instead of padded content");
-        Contains(discover, "cardMax - new Vector2(0.5f, 0.5f)", "Discover hover outline remains aligned to the card bounds");
+        Contains(discover, "var cardMin = ImGui.GetWindowPos();", "rich Discover hover outline anchors to the child window rather than padded content");
+        Contains(discover, "cardMax - new Vector2(0.5f, 0.5f)", "rich Discover hover outline remains aligned to the card bounds");
+        Contains(discover, "var rowMin = ImGui.GetWindowPos();", "fallback Discover hover outline anchors to the row child window rather than its padded content cursor");
+        Contains(discover, "var rowMax = rowMin + ImGui.GetWindowSize();", "fallback Discover hover outline uses the actual row bounds");
+        Contains(discover, "rowMax - new Vector2(0.5f, 0.5f)", "fallback Discover hover outline remains fully inside the child clip rectangle");
+        False(discover.Contains("AddRect(start, start + new Vector2(ImGui.GetWindowSize().X - 1f, DiscoverListRowHeight - 1f)", StringComparison.Ordinal), "fallback Discover hover outline must not mix a padded content origin with full child-window dimensions");
     }
+
+    internal static void TestLibraryInstallMetadataConfigActionsContract()
+    {
+        var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
+        var ledger = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginLibraryLedger.cs"));
+        var backups = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginConfigBackupService.cs"));
+        var pluginEntry = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
+        var sources = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sources.cs"));
+
+        Contains(library, "BuildLibraryInstallDateLine", "Library rows expose user-local install timing metadata");
+        Contains(library, "installedPlugin.HasConfigUi", "Library checks Dalamud's exposed config-UI capability");
+        Contains(library, "installedPlugin.OpenConfigUi()", "Library opens plugin settings through Dalamud's public exposed-plugin API");
+        Contains(library, "FontAwesomeIcon.FileArchive", "Library exposes config backup as a compact icon action");
+        Contains(library, "configBackups.Backup", "Library delegates backup creation to the bounded config backup service");
+        Contains(ledger, "library-metadata.json", "install timing stays in a user-local Omega ledger");
+        Contains(ledger, "InstalledAtUtc", "the ledger distinguishes observed installation time from first-seen time");
+        Contains(ledger, "ExactInstallTime", "Library can label legacy first-seen dates without pretending they are exact install dates");
+        Contains(backups, "Path.Combine(pluginConfigRoot, $\"{internalName}.json\")", "config backup includes Dalamud's canonical per-plugin JSON file");
+        Contains(backups, "Path.Combine(pluginConfigRoot, internalName)", "config backup includes the plugin's auxiliary config directory");
+        Contains(backups, "ZipFile.Open", "plugin configuration backups are packaged as portable ZIP archives");
+        Contains(pluginEntry, "PluginInterface.ActivePluginsChanged += OnActivePluginsChanged", "Omega observes plugin lifecycle changes even when the Library is closed");
+        Contains(pluginEntry, "PluginInterface.ActivePluginsChanged -= OnActivePluginsChanged", "plugin lifecycle tracking unsubscribes cleanly");
+        Contains(sources, "libraryLedger.MarkInstalled(installingInternalName)", "successful Omega installs record an exact local install timestamp");
+    }
+
     internal static void TestRepositoryClientResponseLifetimeContract()
     {
         var repositoryClient = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "RepositoryClient.cs"));

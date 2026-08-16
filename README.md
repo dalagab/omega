@@ -10,7 +10,7 @@ Project site: https://github.com/dalagab/omega
 
 - **Spotlight** with five editorial plugin picks, each using a subdued card tint derived from that plugin's own logo palette, plus neutral latest-additions and latest-updates shelves.
 - **Discover** with screenshot-rich Microsoft Store-style cards first, a compact fallback list for metadata-only plugins, full plugin product pages, global search, authors, repositories, categories, and searchable tags.
-- **Library** has two explicit views: **All** is a clean filtered list of installed plugins only; **Collections** is the Dalamud-owned folder/profile manager, with additive multi-collection membership managed inside each opened folder.
+- **Library** has two explicit views: **All** is a clean filtered list of installed plugins with local install timing, one-click plugin settings when exposed by Dalamud, and user-requested ZIP backups of the selected plugin's configuration; **Collections** is the Dalamud-owned folder/profile manager, with additive multi-collection membership managed inside each opened folder.
 - **Updates** for installed plugins where a newer compatible package is available, with a compact numeric notification badge when updates are waiting.
 - **Settings** for source visibility, user-added repositories, catalog refresh, and access to the EULA/risk disclosure.
 - Official/default Dalamud plugins alongside community repositories.
@@ -24,7 +24,7 @@ Omega does **not** replace Dalamud's plugin lifecycle. Installation, updates, an
 
 Omega consumes the standard Dalamud manifest fields `IconUrl` and `ImageUrls`. `ImageUrls` is shown as the Screenshots section on the Discover product page, and screenshots can be clicked to open a larger in-game viewer, so repository authors do not need an Omega-specific screenshot field. See [`examples/pluginmaster.json`](examples/pluginmaster.json).
 
-The scheduled SQLite catalog workflow may also shallow-index the public project page already declared by a plugin. Standard page descriptions and preview images are cached and added as presentation-only Omega metadata. Listings enriched from a public project page receive a **star**; the star means richer indexed presentation data, not endorsement or security review. When repository variants disagree, official Dalamud metadata owns the listing and product presentation whenever an official variant exists; the richest community presentation is used only when no official variant exists. Installation still remains delegated to Dalamud.
+The scheduled SQLite catalog workflow may also shallow-index the public project page already declared by a plugin. Standard page descriptions, a bounded README excerpt, and useful project images are cached and added as presentation-only Omega metadata. Discord join/widget banners are classified separately instead of being presented as product artwork, and explicit 18+ markers from declared tags or public project text feed the marketplace content-rating badge/filter. Listings enriched from a public project page receive a **star**; the star means richer indexed presentation data, not endorsement or security review. When repository variants disagree, official Dalamud metadata owns the listing and product presentation whenever an official variant exists; the richest community presentation is used only when no official variant exists. Installation still remains delegated to Dalamud.
 
 ## Important third-party plugin warning
 
@@ -94,7 +94,7 @@ The repository manifest in [`repository/pluginmaster.json`](repository/pluginmas
 
 ### Publishing a new Omega version
 
-[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a three-part version tag matching the project metadata, for example `v0.8.39`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
+[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a three-part version tag matching the project metadata, for example `v0.8.43`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
 
 ## Exactly what the installer changes
 
@@ -202,7 +202,7 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Release metadata
 
-- Omega version: `0.8.39`
+- Omega version: `0.8.43`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`
@@ -214,6 +214,8 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 Omega's third-party plugin analysis runs entirely in GitHub Actions. The scanner never executes or loads the plugin code it inspects. [`security-scanner.yml`](.github/workflows/security-scanner.yml) consumes the authoritative server-side evidence database, scans only new, changed, failed, stale-scanner, or periodically due plugin variants, and hands the enriched evidence database to the compaction workflow as an Actions artifact.
 
 Scanner 2.0.0 records exact artifact SHA-256 values, source provenance when available, dependencies, managed metadata, IL call sites, reachability, permission candidates, and static capability evidence. It also derives bounded automation classifications for game UI/menu control, synthetic clicks, targeting, character action execution, world/NPC interaction, teleport/travel, character movement/navigation, camera control, inventory/vendor/retainer control, native input injection, and known automation-oriented IPC integrations. These are capability findings, not claims that a runtime branch necessarily executes. A statically reachable path from a lifecycle/callback root raises confidence but still does not prove runtime behavior.
+
+Security enrichment also inventories literal HTTP(S) endpoints without contacting them, strips credentials/query strings/fragments before storage, flags hard-coded filesystem paths outside known FFXIV/Dalamud locations when filesystem API evidence is present, compares artifact hashes for the same plugin version across independent sources, and imports publicly known NuGet vulnerability records from OSV for dependency evidence. Endpoint strings and paths are static indicators, and cross-source hash differences can be legitimate repackaging; each finding is presented as evidence for review rather than a malware verdict. Detailed endpoint, dependency, advisory, call-site, and reachability evidence remains in the server-side security database.
 
 ### Separate marketplace and evidence databases
 

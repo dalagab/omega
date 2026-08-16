@@ -38,6 +38,7 @@ internal sealed partial class MarketplaceWindow
         DrawProductCollectionMembership(plugin, installedPlugin);
         DrawProductScreenshots(content);
         DrawProductInformation(plugin, content, currentApi, currentDalamudVersion);
+        DrawProductReadme(content);
         DrawProductDependencies(plugin, installed);
         DrawProductSourcePackages(plugin, currentApi, currentDalamudVersion);
         DrawProductSecurity(plugin);
@@ -338,7 +339,7 @@ internal sealed partial class MarketplaceWindow
         {
             if (drewAny)
                 ImGui.SameLine(0f, 8f);
-            DrawDiscoverTextBadge("NSFW", new Vector4(0.56f, 0.16f, 0.22f, 0.96f));
+            DrawDiscoverTextBadge("18+", new Vector4(0.56f, 0.16f, 0.22f, 0.96f));
         }
     }
 
@@ -472,7 +473,7 @@ internal sealed partial class MarketplaceWindow
             return;
 
         ImGui.Spacing();
-        ImGui.TextUnformatted("Screenshots");
+        ImGui.TextUnformatted("Project images");
         ImGui.Spacing();
         var style = ImGui.GetStyle();
         var stripHeight = ProductScreenshotHeight + (style.WindowPadding.Y * 2f) + style.ScrollbarSize + 4f;
@@ -503,7 +504,7 @@ internal sealed partial class MarketplaceWindow
             var min = ImGui.GetCursorScreenPos();
             var avail = ImGui.GetContentRegionAvail();
             ImGui.Dummy(avail);
-            var text = "Loading screenshot…";
+            var text = "Loading image…";
             var textSize = ImGui.CalcTextSize(text);
             ImGui.GetWindowDrawList().AddText(
                 min + new Vector2((avail.X - textSize.X) * 0.5f, (avail.Y - textSize.Y) * 0.5f),
@@ -524,7 +525,7 @@ internal sealed partial class MarketplaceWindow
         var screenshotHovered = ImGui.IsWindowHovered();
         var screenshotClicked = screenshotHovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
         if (screenshotHovered)
-            ImGui.SetTooltip("View larger screenshot");
+            ImGui.SetTooltip("View larger image");
 
         ImGui.EndChild();
         ImGui.PopStyleColor();
@@ -619,7 +620,7 @@ internal sealed partial class MarketplaceWindow
     }
 
     private static bool IsNsfwPlugin(MarketplacePlugin plugin)
-        => plugin.Tags.Concat(plugin.EffectiveCategories).Any(IsContentRatingTag);
+        => plugin.OmegaIsAdultContent || plugin.Tags.Concat(plugin.EffectiveCategories).Any(IsContentRatingTag);
 
     private static bool IsContentRatingTag(string value)
     {

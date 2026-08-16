@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from catalog_revisions import compute_catalog_base_revision, ensure_revision_schema, read_meta, write_meta
+from catalog_presentation import is_adult_content, split_project_image_urls
 
 SCHEMA_VERSION = 1
 SCHEMA_NAME = "omega.catalog.sqlite.v1"
@@ -691,7 +692,10 @@ def import_websites(db: sqlite3.Connection, website_doc: Any, now: str) -> None:
         if ok:
             excerpt = sanitize_presentation_text(rec.get("readmeExcerpt"))
             description = sanitize_presentation_text(rec.get("description"))
-            images = rec.get("imageUrls") or readme_images(url, excerpt)
+            image_candidates = list(rec.get("imageUrls") or readme_images(url, excerpt)) + list(rec.get("discordJoinImageUrls") or [])
+            images, discord_join_images = split_project_image_urls(image_candidates)
+            metadata = dict(rec)
+            metadata["discordJoinImageUrls"] = discord_join_images
             db.execute(
                 """INSERT INTO websites(url,ok,title,description,homepage,stars,forks,watchers,topics_json,language,license,
                     default_branch,last_commit_utc,readme_excerpt,image_urls_json,metadata_json,last_checked_utc,last_success_utc,last_error,failure_count,next_retry_utc)
@@ -708,7 +712,7 @@ def import_websites(db: sqlite3.Connection, website_doc: Any, now: str) -> None:
                     url, 1, str(rec.get("title") or ""), description, str(rec.get("homepage") or ""),
                     rec.get("stars"), rec.get("forks"), rec.get("watchers"), json_text(rec.get("topics") or []),
                     str(rec.get("language") or ""), str(rec.get("license") or ""), str(rec.get("defaultBranch") or ""),
-                    str(rec.get("lastCommit") or ""), excerpt, json_text(images), json.dumps(rec, ensure_ascii=False, separators=(",", ":")),
+                    str(rec.get("lastCommit") or ""), excerpt, json_text(images), json.dumps(metadata, ensure_ascii=False, separators=(",", ":")),
                     now, now,
                 ),
             )
@@ -792,7 +796,13 @@ def recompute_presentation(db: sqlite3.Connection, now: str) -> None:
         summary = str(presentation_variant["punchline"] or "").strip() or native_desc or web_desc
         description = native_desc if len(native_desc) >= 120 or not web_desc else (web_desc if len(web_desc) > len(native_desc) else native_desc)
         tags = parse_json_array(presentation_variant["tags_json"]) + parse_json_array(presentation_variant["category_tags_json"])
-        nsfw = any(t.lower() in {"nsfw", "adult", "18+", "sexual", "explicit"} for t in tags)
+        nsfw = is_adult_content(
+            tags,
+            [
+                presentation_variant["name"], presentation_variant["punchline"], native_desc, web_desc,
+                presentation_variant["readme_excerpt"],
+            ],
+        )
         official = any(int(v["is_official"] or 0) for v in variants)
         web_enriched = any(int(v["website_ok"] or 0) for v in variants)
         score = richness(presentation_variant)
@@ -849,6 +859,7 @@ def create_runtime_view(db: sqlite3.Connection) -> None:
              COALESCE(w.url,'') AS website_url,
              COALESCE(w.title,'') AS website_title,
              COALESCE(w.description,'') AS website_description,
+             COALESCE(w.readme_excerpt,'') AS website_readme_excerpt,
              COALESCE(w.image_urls_json,'[]') AS website_image_urls_json,
              CASE WHEN w.website_id IS NOT NULL AND w.ok=1 THEN 1 ELSE 0 END AS website_enriched,
              COALESCE(pr.rich_card,0) AS rich_card,

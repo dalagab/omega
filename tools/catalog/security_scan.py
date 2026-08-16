@@ -48,6 +48,9 @@ from collections import defaultdict, deque
 from pathlib import Path, PurePosixPath
 from typing import Iterable
 from catalog_revisions import read_meta as read_catalog_meta, update_candidate_revisions
+from security_endpoint_inventory import endpoint_candidates, endpoint_findings
+from security_hash_consensus import refresh_cross_source_hash_findings
+from security_path_access import external_hard_coded_paths
 
 
 SCANNER_VERSION = "2.0.0"
@@ -85,6 +88,7 @@ MAX_MANAGED_CALL_RECORDS_PER_SCAN = 20_000
 MAX_MANAGED_REACHABILITY_RECORDS_PER_SCAN = 20_000
 MAX_PERMISSION_CANDIDATES_PER_SCAN = 4_096
 MAX_SOURCE_FILE_RECORDS_PER_SCAN = 2_048
+MAX_NETWORK_ENDPOINT_RECORDS_PER_SCAN = 1_024
 MAX_CURRENT_DEPENDENCY_ROWS = 2_000_000
 MAX_ADVISORIES = 100_000
 MAX_ADVISORY_MATCHES = 250_000
@@ -105,6 +109,7 @@ INTELLIGENCE_LIST_LIMITS = {
     "managedReachability": MAX_MANAGED_REACHABILITY_RECORDS_PER_SCAN,
     "permissionCandidates": MAX_PERMISSION_CANDIDATES_PER_SCAN,
     "sourceFiles": MAX_SOURCE_FILE_RECORDS_PER_SCAN,
+    "networkEndpoints": MAX_NETWORK_ENDPOINT_RECORDS_PER_SCAN,
 }
 
 PLATFORM_ASSEMBLY_PREFIXES = ("system.", "microsoft.win32.")
@@ -126,6 +131,7 @@ RULES = (
     Rule("network.http", "informational", "network", "Network access", "References HTTP/network client APIs.", "Network access", ("System.Net.Http.HttpClient", "WebRequest", "HttpWebRequest", "DownloadString", "DownloadData", "DownloadFile")),
     Rule("network.socket", "caution", "network", "Raw socket access", "References TCP/UDP/socket APIs that can open arbitrary network connections.", "Raw sockets", ("System.Net.Sockets", "TcpClient", "UdpClient", "Socket.Connect", "SocketAsyncEventArgs")),
     Rule("filesystem.write", "informational", "filesystem", "Filesystem write access", "References APIs commonly used to create, modify, move, or delete files.", "Filesystem write", ("WriteAllText", "WriteAllBytes", "FileStream", "FileMode.Create", "File.Delete", "File.Move", "Directory.CreateDirectory", "Directory.Delete")),
+    Rule("filesystem.external-path", "caution", "filesystem", "Hard-coded external file path", "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.", "Hard-coded external file access", ()),
     Rule("process.launch", "caution", "process", "Process execution", "References APIs that can launch external programs or shell commands.", "Process execution", ("System.Diagnostics.Process", "Process.Start", "ProcessStartInfo", "CreateProcess", "ShellExecute")),
     Rule("shell.powershell", "high", "process", "Shell or PowerShell invocation", "Contains indicators for invoking command shells or PowerShell.", "Shell/PowerShell", ("powershell.exe", "pwsh.exe", "cmd.exe", "-EncodedCommand", "System.Management.Automation")),
     Rule("registry.access", "caution", "system", "Windows Registry access", "References Windows Registry APIs.", "Registry access", ("Microsoft.Win32.Registry", "RegistryKey", "RegOpenKey", "RegSetValue")),
@@ -1311,6 +1317,20 @@ def add_rule_hits(text: str, evidence_label: str, hits: dict[str, list[str]]) ->
                 existing.append(evidence)
 
 
+def add_external_path_hits(text: str, evidence_label: str, hits: dict[str, list[str]]) -> None:
+    existing = hits["filesystem.external-path"]
+    for path in external_hard_coded_paths(text):
+        evidence = f"{evidence_label}: {path}"
+        if evidence not in existing and len(existing) < 8:
+            existing.append(evidence)
+
+
+def add_network_endpoints(intel: dict, text: str, evidence_label: str) -> None:
+    for endpoint in endpoint_candidates(text, evidence_label):
+        endpoint["origin"] = intel["origin"]
+        _append_intel(intel, "networkEndpoints", endpoint, ("origin", "url"))
+
+
 def empty_dependency_intelligence(origin: str) -> dict:
     return {
         "schema": "omega.plugin-security.dependencies.v1",
@@ -1326,6 +1346,7 @@ def empty_dependency_intelligence(origin: str) -> dict:
         "managedReachability": [],
         "permissionCandidates": [],
         "sourceFiles": [],
+        "networkEndpoints": [],
         "limits": {"truncated": False, "droppedByCollection": {}},
         "coverage": {"total": 0, "known": 0, "analyzed": 0, "notAnalyzed": 0, "binaryOnly": 0, "externalPlugin": 0, "dynamicallyDownloaded": 0,
                      "requirements": {"required": 0, "soft": 0, "optional": 0, "bundled": 0, "observed": 0, "unknown": 0}},
@@ -1515,7 +1536,10 @@ def scan_dependency_json(path: str, text: str, intel: dict) -> None:
 
 
 def scan_source_text(path: str, raw: bytes, text: str, intel: dict, hits: dict[str, list[str]]) -> None:
-    add_rule_hits(text, f"source:{path}" if intel["origin"] == "source" else f"artifact:{path}", hits)
+    evidence_label = f"source:{path}" if intel["origin"] == "source" else f"artifact:{path}"
+    add_rule_hits(text, evidence_label, hits)
+    add_external_path_hits(text, evidence_label, hits)
+    add_network_endpoints(intel, text, evidence_label)
     _append_intel(intel, "sourceFiles", {"origin": intel["origin"], "path": path, "sha256": sha256_bytes(raw), "bytes": len(raw)}, ("origin", "path", "sha256"))
 
     using_re = re.compile(r"(?m)^\s*(?:global\s+)?using\s+(?:static\s+)?(?:(?:[A-Za-z_]\w*)\s*=\s*)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*;")
@@ -1560,6 +1584,7 @@ def finalize_intelligence(intel: dict) -> dict:
             project_hash.update(item["sha256"].encode("ascii"))
             project_hash.update(b"\n")
     intel["sourceFiles"] = source_files
+    intel["networkEndpoints"].sort(key=lambda x: (x["host"], x["url"], x["origin"]))
     intel["imports"].sort(key=lambda x: (x["namespace"].lower(), x["path"].lower()))
     intel["dependencies"].sort(key=lambda x: (x.get("requirement", "observed"), x["kind"], x["name"].lower(), x["version"], x["path"].lower()))
     intel["dalamudServices"].sort(key=lambda x: (x["service"], x["path"].lower()))
@@ -1625,7 +1650,10 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
         "managedMetadataErrors": [],
     }
     if not data.startswith(b"PK"):
-        add_rule_hits(decoded_views(data[:MAX_ENTRY_SCAN_BYTES]), "artifact", hits)
+        text = decoded_views(data[:MAX_ENTRY_SCAN_BYTES])
+        add_rule_hits(text, "artifact", hits)
+        add_external_path_hits(text, "artifact", hits)
+        add_network_endpoints(intel, text, "artifact")
         if data.startswith(b"MZ"):
             metadata["bundledExecutables"].append("artifact")
             managed = None
@@ -1732,7 +1760,10 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
                 text = sample.decode("utf-8", "ignore")
                 scan_source_text(info.filename, sample, text, intel, hits)
             else:
-                add_rule_hits(decoded_views(sample), f"artifact:{info.filename}", hits)
+                text = decoded_views(sample)
+                add_rule_hits(text, f"artifact:{info.filename}", hits)
+                add_external_path_hits(text, f"artifact:{info.filename}", hits)
+                add_network_endpoints(intel, text, f"artifact:{info.filename}")
 
     return metadata
 
@@ -1847,6 +1878,8 @@ def merge_dependency_intelligence(*items: dict) -> dict:
             _append_intel(combined, "permissionCandidates", dict(item), ("origin", "permissionId", "risk", "confidence", "reason"))
         for item in intel.get("sourceFiles") or []:
             _append_intel(combined, "sourceFiles", dict(item), ("origin", "path", "sha256"))
+        for item in intel.get("networkEndpoints") or []:
+            _append_intel(combined, "networkEndpoints", dict(item), ("origin", "url"))
         fp = intel.get("fingerprints") or {}
         if fp.get("sourceArchiveSha256"):
             source_archives.append(str(fp["sourceArchiveSha256"]))
@@ -3660,6 +3693,7 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool) -> dict:
         findings, capabilities = finding_payload(artifact_hits, package_meta)
 
         source_intel = empty_source_intel
+        source_findings: list[dict] = []
         if scan_source and str(row["repo_url"] or ""):
             source_hits: dict[str, list[str]] = defaultdict(list)
             base["source"] = fetch_source(str(row["repo_url"]), token, source_hits)
@@ -3670,11 +3704,16 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool) -> dict:
             base["source"]["capabilities"] = source_capabilities
 
         base["dependencyIntelligence"] = merge_dependency_intelligence(artifact_intel, source_intel)
+        endpoint_results, endpoint_capabilities = endpoint_findings(
+            base["dependencyIntelligence"]["networkEndpoints"],
+            any(finding["ruleId"] in {"network.http", "network.socket", "local.listener"} for finding in findings + source_findings),
+        )
         automation = derive_automation_capabilities(base["dependencyIntelligence"])
         base["automation"] = automation
+        findings.extend(endpoint_results)
         findings.extend(automation["findings"])
         capabilities = sorted(
-            set(capabilities) | {str(item.get("label") or "") for item in automation["capabilities"] if str(item.get("label") or "")},
+            set(capabilities) | set(endpoint_capabilities) | {str(item.get("label") or "") for item in automation["capabilities"] if str(item.get("label") or "")},
             key=str.lower,
         )
         findings.sort(key=lambda f: (-SEVERITY_RANK.get(f["severity"], 0), f["ruleId"]))
@@ -3784,6 +3823,7 @@ def run(args: argparse.Namespace) -> dict:
         summary["reportedPluginRows"] = len(summary["plugins"])
         dependency_graph = refresh_dependency_graph(db, advisories)
         summary["dependencyGraph"] = dependency_graph
+        summary["crossSourceHashConsensus"] = refresh_cross_source_hash_findings(db)
         recreate_runtime_view(db)
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_scanner_version',?)", (SCANNER_VERSION,))
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_scanned_at_utc',?)", (utc_now(),))

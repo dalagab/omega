@@ -201,6 +201,12 @@ internal sealed class SqliteCatalogStore
     {
         var runtimeColumns = RuntimeViewColumns(connection);
         var hasSecurityProjection = runtimeColumns.Contains("security_status");
+        var websiteReadmeProjection = runtimeColumns.Contains("website_readme_excerpt")
+            ? "website_readme_excerpt"
+            : "'' AS website_readme_excerpt";
+        var adultContentProjection = runtimeColumns.Contains("plugin_nsfw")
+            ? "plugin_nsfw"
+            : "0 AS plugin_nsfw";
         var automationLevelProjection = runtimeColumns.Contains("security_automation_level")
             ? "security_automation_level"
             : "'none' AS security_automation_level";
@@ -238,7 +244,7 @@ internal sealed class SqliteCatalogStore
                    download_link_update,download_link_testing,icon_url,image_urls_json,tags_json,
                    category_tags_json,download_count,last_update,is_hide,is_testing_exclusive,
                    dip17_channel,source_name,source_url,source_is_official,website_url,website_title,
-                   website_description,website_image_urls_json,website_enriched,
+                   website_description,{websiteReadmeProjection},website_image_urls_json,website_enriched,{adultContentProjection},
                    {securityProjection}
               FROM runtime_plugin_variants;
             """;
@@ -279,28 +285,30 @@ internal sealed class SqliteCatalogStore
                 OmegaWebsiteUrl = GetString(reader, 28),
                 OmegaWebsiteTitle = GetString(reader, 29),
                 OmegaWebsiteDescription = GetString(reader, 30),
-                OmegaWebsiteImageUrls = ReadStrings(GetString(reader, 31, "[]")),
-                OmegaEnriched = GetBool(reader, 32),
-                SecurityStatus = GetString(reader, 33),
-                SecurityScannedAtUtcText = GetString(reader, 34),
-                SecurityArtifactSha256 = GetString(reader, 35),
-                SecurityScannerVersion = GetString(reader, 36),
-                SecurityHighestSeverity = GetString(reader, 37, "none"),
-                SecurityInformationalCount = GetInt(reader, 38),
-                SecurityCautionCount = GetInt(reader, 39),
-                SecurityHighCount = GetInt(reader, 40),
-                SecurityCriticalCount = GetInt(reader, 41),
-                SecurityCapabilities = ReadStrings(GetString(reader, 42, "[]")),
-                SecurityAutomationLevel = GetString(reader, 43, "none"),
-                SecurityAutomationCapabilities = ReadAutomationCapabilities(GetString(reader, 44, "[]")),
-                SecurityFindings = ReadSecurityFindings(GetString(reader, 45, "[]")),
-                SecurityDependencies = ReadDependencies(GetString(reader, 46, "[]")),
-                SecurityDependencyTotalCount = GetInt(reader, 47),
-                SecuritySourceAvailable = GetBool(reader, 48),
-                SecuritySourceRepository = GetString(reader, 49),
-                SecuritySourceCommit = GetString(reader, 50),
-                SecuritySourceToBinaryVerified = GetBool(reader, 51),
-                SecurityError = GetString(reader, 52),
+                OmegaWebsiteReadmeExcerpt = GetString(reader, 31),
+                OmegaWebsiteImageUrls = ReadStrings(GetString(reader, 32, "[]")),
+                OmegaEnriched = GetBool(reader, 33),
+                OmegaIsAdultContent = GetBool(reader, 34),
+                SecurityStatus = GetString(reader, 35),
+                SecurityScannedAtUtcText = GetString(reader, 36),
+                SecurityArtifactSha256 = GetString(reader, 37),
+                SecurityScannerVersion = GetString(reader, 38),
+                SecurityHighestSeverity = GetString(reader, 39, "none"),
+                SecurityInformationalCount = GetInt(reader, 40),
+                SecurityCautionCount = GetInt(reader, 41),
+                SecurityHighCount = GetInt(reader, 42),
+                SecurityCriticalCount = GetInt(reader, 43),
+                SecurityCapabilities = ReadStrings(GetString(reader, 44, "[]")),
+                SecurityAutomationLevel = GetString(reader, 45, "none"),
+                SecurityAutomationCapabilities = ReadAutomationCapabilities(GetString(reader, 46, "[]")),
+                SecurityFindings = ReadSecurityFindings(GetString(reader, 47, "[]")),
+                SecurityDependencies = ReadDependencies(GetString(reader, 48, "[]")),
+                SecurityDependencyTotalCount = GetInt(reader, 49),
+                SecuritySourceAvailable = GetBool(reader, 50),
+                SecuritySourceRepository = GetString(reader, 51),
+                SecuritySourceCommit = GetString(reader, 52),
+                SecuritySourceToBinaryVerified = GetBool(reader, 53),
+                SecurityError = GetString(reader, 54),
             });
         }
         return result;

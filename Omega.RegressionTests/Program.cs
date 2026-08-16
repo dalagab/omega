@@ -73,6 +73,7 @@ var tests = new (string Name, Action Body)[]
     ("install always chooses a repository and delegates to Dalamud", TestInstallRepositoryChooserContract),
     ("repository providers keep preferred ordering, filtering, and icon identities", TestRepositoryProviderPreferenceContract),
     ("plugin selections, project navigation, uninstall, and update badge stay canonical", TestCanonicalPluginNavigationAndLifecycleContract),
+    ("Library tracks install timing and exposes settings/config backup actions", TestLibraryInstallMetadataConfigActionsContract),
     ("repository HTTP response lifetime stays explicit and stream-bounded", TestRepositoryClientResponseLifetimeContract),
     ("regression runner remains wired into Omega.sln", TestRegressionBuildWiring),
 };

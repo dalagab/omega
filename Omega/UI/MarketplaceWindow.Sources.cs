@@ -359,7 +359,10 @@ internal sealed partial class MarketplaceWindow
 
         try
         {
-            operationMessage = installTask.GetAwaiter().GetResult().Message;
+            var result = installTask.GetAwaiter().GetResult();
+            operationMessage = result.Message;
+            if (result.Outcome == InstallOutcome.Installed && !string.IsNullOrWhiteSpace(installingInternalName))
+                libraryLedger.MarkInstalled(installingInternalName);
         }
         catch (Exception ex)
         {

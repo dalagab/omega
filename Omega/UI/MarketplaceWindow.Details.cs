@@ -45,6 +45,7 @@ internal sealed partial class MarketplaceWindow
         };
 
         query = ApplySecurityFilter(query);
+        query = ApplyContentRatingFilter(query);
 
         if (!string.IsNullOrWhiteSpace(search))
         {

@@ -5,7 +5,8 @@ internal static partial class RegressionCases
     internal static void TestMarketplaceLayoutGeometryContract()
     {
         Equal(6f, MarketplaceLayoutRules.ControlCornerRadius, "normal controls use a compact rounded rectangle rather than capsule geometry");
-        Equal(88f, MarketplaceLayoutRules.LibraryRowHeight, "Library rows retain enough vertical room for three metadata lines");
+        Equal(104f, MarketplaceLayoutRules.LibraryRowHeight, "Library rows retain enough vertical room for four metadata lines and lifecycle actions");
+        Equal(88f, MarketplaceLayoutRules.UpdatesRowHeight, "Updates stay compact because they do not render Library lifecycle metadata");
         Equal(88f, MarketplaceLayoutRules.CollectionRowHeight, "collection rows retain enough vertical room for three metadata lines");
         Equal(36f, MarketplaceLayoutRules.ProductCollectionRowHeight, "Discover collection management rows stay compact and aligned");
         Equal(21f, MarketplaceLayoutRules.ProductCollectionImpactLineHeight, "expanded collection impact lists use predictable line spacing");

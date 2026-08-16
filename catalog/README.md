@@ -51,6 +51,6 @@ The marketplace database carries only current compact security information requi
 
 ## Detailed evidence storage
 
-The evidence database retains append-only scan history and normalized dependency/import/permission/automation evidence, managed assembly metadata, managed symbols, IL call sites, bounded local reachability, dependency graph/version intelligence, lineage, drift, and source/artifact comparisons.
+The evidence database retains append-only scan history and normalized dependency/import/permission/automation evidence, managed assembly metadata, managed symbols, IL call sites, bounded local reachability, dependency graph/version intelligence, public dependency-advisory matches, lineage, drift, and source/artifact comparisons. Bounded static endpoint/path evidence and cross-source artifact-hash findings are retained as review context without asserting runtime behavior.
 
 The compactor bounds redundant report JSON while preserving normalized rows and verifies SQLite integrity, foreign keys, and the full runtime projection. The marketplace projector then creates the physically smaller client database and verifies the same logical runtime projection before publication.

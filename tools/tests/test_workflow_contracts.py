@@ -86,6 +86,16 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("contents: write", text)
         self.assertNotIn("gh release upload", text)
 
+
+    def test_security_scanner_collects_public_advisories_before_dependency_projection(self) -> None:
+        text = self.read("security-scanner.yml")
+        collector = "python tools/catalog/collect_public_advisories.py"
+        scanner = "python tools/catalog/security_scan.py"
+        self.assertIn(collector, text)
+        self.assertIn("--advisories catalog/security-output/public-advisories.json", text)
+        self.assertIn("catalog/security-output/public-advisories.json", text)
+        self.assertLess(text.index(collector), text.rindex(scanner))
+
     def test_compactor_is_only_database_publisher_and_splits_client_from_evidence(self) -> None:
         text = self.read("catalog-compaction.yml")
         self.assert_has(

@@ -45,6 +45,13 @@ internal enum MarketplaceSecurityFilter
     HighOrCritical,
 }
 
+internal enum MarketplaceContentFilter
+{
+    All,
+    ExcludeAdult,
+    AdultOnly,
+}
+
 internal enum MarketplaceSort
 {
     Name,
@@ -86,6 +93,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private readonly DalamudProfileBridge profileBridge;
     private readonly PluginIconCache iconCache;
     private readonly PluginRecencyLedger pluginRecency;
+    private readonly PluginLibraryLedger libraryLedger;
+    private readonly PluginConfigBackupService configBackups;
     private readonly ISharedImmediateTexture? omegaIconTexture;
     private readonly string fallbackIconPath;
     private readonly ISharedImmediateTexture? fallbackIconTexture;
@@ -104,6 +113,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private MarketplaceStatusFilter statusFilter;
     private LibraryRuntimeFilter libraryRuntimeFilter;
     private MarketplaceSecurityFilter securityFilter;
+    private MarketplaceContentFilter contentFilter;
     private MarketplaceSort sort = MarketplaceSort.Name;
     private bool resetStorefrontScroll;
 
@@ -116,6 +126,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private Task<UninstallResult>? uninstallTask;
     private string uninstallingInternalName = string.Empty;
     private string operationMessage = string.Empty;
+    private Task<PluginConfigBackupResult>? configBackupTask;
+    private string backingUpPluginName = string.Empty;
 
     private bool detailsOpen;
     private bool filtersOpen;
@@ -186,6 +198,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private MarketplaceStatusFilter filterStatus;
     private LibraryRuntimeFilter filterLibraryRuntime;
     private MarketplaceSecurityFilter filterSecurity;
+    private MarketplaceContentFilter filterContent;
     private bool filterPreferTesting;
     private MarketplacePlugin[] cachedFilteredPlugins = [];
 
@@ -209,6 +222,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         DalamudProfileBridge profileBridge,
         PluginIconCache iconCache,
         PluginRecencyLedger pluginRecency,
+        PluginLibraryLedger libraryLedger,
+        PluginConfigBackupService configBackups,
         string omegaIconPath,
         string fallbackIconPath,
         string eulaPath)
@@ -222,6 +237,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         this.profileBridge = profileBridge;
         this.iconCache = iconCache;
         this.pluginRecency = pluginRecency;
+        this.libraryLedger = libraryLedger;
+        this.configBackups = configBackups;
         omegaIconTexture = File.Exists(omegaIconPath) ? Plugin.TextureProvider.GetFromFile(omegaIconPath) : null;
         this.fallbackIconPath = fallbackIconPath;
         fallbackIconTexture = File.Exists(fallbackIconPath) ? Plugin.TextureProvider.GetFromFile(fallbackIconPath) : null;
@@ -249,12 +266,14 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         CompleteUninstallTaskIfReady();
         CompleteRepositoryTaskIfReady();
         CompleteCollectionOperationIfReady();
+        CompleteConfigBackupTaskIfReady();
         var versionInfo = Plugin.PluginInterface.GetDalamudVersion();
         var currentApi = Plugin.PluginInterface.Manifest.DalamudApiLevel;
         var installed = Plugin.PluginInterface.InstalledPlugins
             .Where(x => x is not null && !string.IsNullOrWhiteSpace(x.InternalName))
             .GroupBy(x => x.InternalName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        libraryLedger.ObserveInstalled(installed.Keys);
 
         PushOmegaTheme();
 

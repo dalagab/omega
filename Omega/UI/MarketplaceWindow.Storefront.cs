@@ -56,6 +56,8 @@ internal sealed partial class MarketplaceWindow
             count++;
         if (securityFilter != MarketplaceSecurityFilter.All)
             count++;
+        if (contentFilter != MarketplaceContentFilter.All)
+            count++;
         if (sort != MarketplaceSort.Name)
             count++;
         return count;

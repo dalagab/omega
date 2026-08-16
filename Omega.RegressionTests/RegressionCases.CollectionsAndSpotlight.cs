@@ -124,8 +124,10 @@ internal static partial class RegressionCases
         DoesNotContain(window, "DrawLibraryCollectionDropShelf", "Library All renders no collection-folder shelf above the installed list");
         DoesNotContain(library, "DrawCollectionDragHandle", "Library All rows contain no collection-management affordance");
         Contains(library, "DrawUpdatesList", "Updates uses a dedicated update row list");
-        Contains(layout, "public const float LibraryRowHeight = 88f", "the shared Library row-height contract remains 88px");
-        Contains(library, "const float rowHeight = MarketplaceLayoutRules.LibraryRowHeight", "Library and Updates consume the shared tested row-height contract");
+        Contains(layout, "public const float LibraryRowHeight = 104f", "the shared Library row-height contract leaves room for install metadata and actions");
+        Contains(library, "const float rowHeight = MarketplaceLayoutRules.LibraryRowHeight", "Library consumes its expanded metadata row-height contract");
+        Contains(layout, "public const float UpdatesRowHeight = 88f", "Updates keep their existing compact row height");
+        Contains(library, "const float rowHeight = MarketplaceLayoutRules.UpdatesRowHeight", "Updates consume their compact row-height contract");
         Contains(library, "InstalledVersionText(installedPlugin)", "installed rows expose the installed version");
         Contains(library, "installedPlugin.IsLoaded ? \"Loaded\" : \"Not loaded\"", "installed rows expose the runtime load state");
         Contains(library, "BuildInstalledMetadataLine", "installed rows expose source and API compatibility metadata");
@@ -211,7 +213,7 @@ internal static partial class RegressionCases
         Contains(product, "CollectionDisplayName(collection)", "each Discover collection membership is rendered from its own collection identity");
         False(product.Contains("Enhanced from:", StringComparison.Ordinal), "raw enrichment provenance wording must not return to the About section");
         False(product.Contains("DrawDetailsLinks(plugin)", StringComparison.Ordinal), "product pages do not append a detached project/source button row below About");
-        Contains(product, "NSFW", "NSFW-tagged plugins receive a content badge");
+        Contains(product, "18+", "adult-content plugins receive the user-facing 18+ badge");
         Contains(product, "Install", "product page uses Install as the acquisition action");
         False(product.Contains("Share", StringComparison.OrdinalIgnoreCase), "product page does not add a meaningless share control");
         Contains(storefront, "DrawDiscoverList(filtered", "Discover delegates to the result list");
@@ -284,7 +286,7 @@ internal static partial class RegressionCases
 
         Contains(discover, "var screenshotClicked = DrawDiscoverRichCardScreenshot", "Featured screenshots have their own click path");
         Contains(discover, "OpenScreenshotViewer(url)", "Featured screenshots open the larger viewer instead of relying on the card click");
-        Contains(product, "View larger screenshot", "product screenshots advertise the larger viewer");
+        Contains(product, "View larger image", "product project images advertise the larger viewer");
         Contains(product, "OpenScreenshotViewer(url)", "clicking a product screenshot requests the larger viewer");
         Contains(window, "ImGui.OpenPopup(ScreenshotPopupId)", "screenshot clicks open a dedicated popup");
         Contains(window, "DrawScreenshotViewerModal();", "the screenshot popup is drawn every open marketplace frame");

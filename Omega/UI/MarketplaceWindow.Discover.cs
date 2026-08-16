@@ -279,7 +279,8 @@ internal sealed partial class MarketplaceWindow
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         var rowWidth = ImGui.GetContentRegionAvail().X;
-        var start = ImGui.GetCursorScreenPos();
+        var rowMin = ImGui.GetWindowPos();
+        var rowMax = rowMin + ImGui.GetWindowSize();
         var installed = installedPlugin is not null;
         ImGui.SetCursorPos(new Vector2(12f, 18f));
         var artworkMin = ImGui.GetCursorScreenPos();
@@ -310,8 +311,13 @@ internal sealed partial class MarketplaceWindow
         if (artworkClicked || (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left)))
             OpenPluginDetails(plugin);
         if (hovered)
-            ImGui.GetWindowDrawList().AddRect(start, start + new Vector2(ImGui.GetWindowSize().X - 1f, DiscoverListRowHeight - 1f),
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0.18f, 0.54f, 0.54f, 0.58f)), 8f, ImDrawFlags.None, 1.2f);
+            ImGui.GetWindowDrawList().AddRect(
+                rowMin + new Vector2(0.5f, 0.5f),
+                rowMax - new Vector2(0.5f, 0.5f),
+                ImGui.ColorConvertFloat4ToU32(new Vector4(0.18f, 0.54f, 0.54f, 0.58f)),
+                8f,
+                ImDrawFlags.None,
+                1.2f);
 
         ImGui.EndChild();
         ImGui.PopStyleColor(2);
@@ -438,7 +444,7 @@ internal sealed partial class MarketplaceWindow
             var nsfwWidth = 72f;
             var x = official ? rightEdge - 26f - 8f - nsfwWidth : rightEdge - nsfwWidth;
             ImGui.SetCursorPos(new Vector2(Math.Max(0f, x), y + 1f));
-            DrawDiscoverTextBadge("NSFW", new Vector4(0.56f, 0.16f, 0.22f, 0.94f));
+            DrawDiscoverTextBadge("18+", new Vector4(0.56f, 0.16f, 0.22f, 0.94f));
         }
     }
 

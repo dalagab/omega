@@ -203,6 +203,9 @@ internal sealed partial class MarketplaceWindow
         DrawInlineSecurityField();
         ImGui.SameLine(0f, 12f);
 
+        DrawInlineContentRatingField();
+        ImGui.SameLine(0f, 12f);
+
         var preferTesting = configuration.PreferTestingBuilds;
         if (ImGui.Checkbox("Allow testing builds", ref preferTesting))
         {

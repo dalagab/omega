@@ -8,7 +8,8 @@ namespace Dalagab.Omega;
 internal static class MarketplaceLayoutRules
 {
     public const float ControlCornerRadius = 6f;
-    public const float LibraryRowHeight = 88f;
+    public const float LibraryRowHeight = 104f;
+    public const float UpdatesRowHeight = 88f;
     public const float CollectionRowHeight = 88f;
     public const float ProductCollectionRowHeight = 36f;
     public const float ProductCollectionImpactLineHeight = 21f;

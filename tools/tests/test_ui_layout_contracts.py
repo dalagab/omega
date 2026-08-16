@@ -7,7 +7,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 class UiLayoutContractTests(unittest.TestCase):
     def test_shared_layout_rules_guard_row_geometry(self):
         rules = (ROOT / "Omega" / "UI" / "MarketplaceLayoutRules.cs").read_text(encoding="utf-8")
-        self.assertIn("LibraryRowHeight = 88f", rules)
+        self.assertIn("LibraryRowHeight = 104f", rules)
+        self.assertIn("UpdatesRowHeight = 88f", rules)
         self.assertIn("CollectionRowHeight = 88f", rules)
         self.assertIn("ControlCornerRadius = 6f", rules)
         self.assertIn("ProductCollectionRowHeight = 36f", rules)
@@ -22,6 +23,11 @@ class UiLayoutContractTests(unittest.TestCase):
         self.assertIn("DrawToggleSwitch", source)
         self.assertIn("GetPluginDirectControlState", source)
         self.assertIn("DrawRoundedButton", source)
+        self.assertIn("BuildLibraryInstallDateLine", source)
+        self.assertIn("installedPlugin.HasConfigUi", source)
+        self.assertIn("installedPlugin.OpenConfigUi()", source)
+        self.assertIn("configBackups.Backup", source)
+        self.assertIn("FontAwesomeIcon.FileArchive", source)
         self.assertNotIn("DrawPillButton(\n                canOpen ? \"Open\"", source)
 
     def test_collection_rows_do_not_regress_to_short_capsule_layout(self):
@@ -108,6 +114,19 @@ class UiLayoutContractTests(unittest.TestCase):
         self.assertIn("ImGui.SetCursorPos(new Vector2(12f, 18f))", source)
         self.assertNotIn("installed ? 44f : 12f", source)
         self.assertNotIn("var artworkX = installed ?", source)
+
+
+    def test_scraped_project_context_is_bounded_and_filterable_in_discover(self):
+        content_filter = (ROOT / "Omega" / "UI" / "MarketplaceWindow.ContentFilter.cs").read_text(encoding="utf-8")
+        product_readme = (ROOT / "Omega" / "UI" / "MarketplaceWindow.ProductReadme.cs").read_text(encoding="utf-8")
+        product_page = (ROOT / "Omega" / "UI" / "MarketplaceWindow.ProductPage.cs").read_text(encoding="utf-8")
+        model = (ROOT / "Omega" / "Models" / "MarketplacePlugin.cs").read_text(encoding="utf-8")
+        self.assertIn("MarketplaceContentFilter.ExcludeAdult", content_filter)
+        self.assertIn("MarketplaceContentFilter.AdultOnly", content_filter)
+        self.assertIn("DrawProductReadme(content)", product_page)
+        self.assertIn("Project README", product_readme)
+        self.assertIn("OmegaWebsiteReadmeExcerpt", model)
+        self.assertIn("OmegaIsAdultContent", model)
 
     def test_spotlight_security_matches_product_page_package_and_keeps_automation_separate(self):
         spotlight = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Spotlight.cs").read_text(encoding="utf-8")

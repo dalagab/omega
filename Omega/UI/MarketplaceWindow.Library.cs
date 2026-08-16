@@ -140,7 +140,7 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.SameLine(0f, 12f);
         var textStart = ImGui.GetCursorPosX();
-        var textHeight = ImGui.GetTextLineHeightWithSpacing() * 3f;
+        var textHeight = ImGui.GetTextLineHeightWithSpacing() * 4f;
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Shorten(plugin.Name, 42));
@@ -148,6 +148,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextDisabled(Shorten(
             $"{InstalledVersionText(installedPlugin)}  •  {(installedPlugin.IsLoaded ? "Loaded" : "Not loaded")}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}",
             76));
+        ImGui.TextDisabled(BuildLibraryInstallDateLine(plugin.InternalName));
         ImGui.EndGroup();
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
             OpenPluginDetails(plugin);
@@ -155,9 +156,10 @@ internal sealed partial class MarketplaceWindow
             ImGui.SetTooltip(BuildInstalledMetadataLine(plugin, currentApi, currentDalamudVersion));
 
         const float toggleWidth = 44f;
+        const float iconActionSize = 34f;
         const float actionWidth = 92f;
-        const float actionGap = 10f;
-        var actionGroupWidth = toggleWidth + actionGap + actionWidth;
+        const float actionGap = 8f;
+        var actionGroupWidth = toggleWidth + (actionGap * 3f) + (iconActionSize * 2f) + actionWidth;
         ImGui.SameLine();
         var actionsX = Math.Max(
             textStart + 240f,
@@ -177,6 +179,38 @@ internal sealed partial class MarketplaceWindow
                 : control.CanDirectToggle
                     ? $"{(control.DesiredEnabled ? "Disable" : "Enable")} {plugin.Name}"
                     : control.Reason);
+
+        ImGui.SameLine(0f, actionGap);
+        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, iconActionSize));
+        var canOpenSettings = installedPlugin.IsLoaded && installedPlugin.HasConfigUi;
+        if (DrawLibraryActionIcon(
+                FontAwesomeIcon.Cog,
+                $"library-settings-{StableId(plugin.InternalName)}",
+                canOpenSettings ? $"Open {plugin.Name} settings" : "No settings UI is currently exposed by this plugin",
+                canOpenSettings))
+        {
+            try
+            {
+                installedPlugin.OpenConfigUi();
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Debug(ex, "Unable to open config UI for {Plugin}", plugin.InternalName);
+                operationMessage = $"Could not open settings for {plugin.Name}.";
+            }
+        }
+
+        ImGui.SameLine(0f, actionGap);
+        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, iconActionSize));
+        var canStartBackup = configBackupTask is null;
+        if (DrawLibraryActionIcon(
+                FontAwesomeIcon.FileArchive,
+                $"library-backup-{StableId(plugin.InternalName)}",
+                canStartBackup ? $"Back up {plugin.Name} configuration" : $"Backing up {backingUpPluginName}…",
+                canStartBackup))
+        {
+            StartPluginConfigBackup(plugin);
+        }
 
         ImGui.SameLine(0f, actionGap);
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, 32f));
@@ -207,13 +241,88 @@ internal sealed partial class MarketplaceWindow
         ImGui.EndChild();
     }
 
+    private void StartPluginConfigBackup(MarketplacePlugin plugin)
+    {
+        if (configBackupTask is not null)
+            return;
+
+        backingUpPluginName = plugin.Name;
+        operationMessage = $"Backing up {plugin.Name} configuration…";
+        configBackupTask = Task.Run(() => configBackups.Backup(plugin.InternalName, plugin.Name));
+    }
+
+    private void CompleteConfigBackupTaskIfReady()
+    {
+        if (configBackupTask is null || !configBackupTask.IsCompleted)
+            return;
+
+        try
+        {
+            var backup = configBackupTask.GetAwaiter().GetResult();
+            operationMessage = backup.Success && backup.BackupPath is not null
+                ? $"{backup.Message} Saved under Omega/config-backups."
+                : backup.Message;
+        }
+        catch (Exception ex)
+        {
+            operationMessage = $"Config backup failed: {ex.GetBaseException().Message}";
+        }
+        finally
+        {
+            configBackupTask = null;
+            backingUpPluginName = string.Empty;
+        }
+    }
+
+    private string BuildLibraryInstallDateLine(string internalName)
+    {
+        var stamp = libraryLedger.GetInstallStamp(internalName);
+        if (stamp is null)
+            return "Install date unavailable";
+
+        var date = stamp.TimestampUtc.ToLocalTime().ToString("yyyy-MM-dd");
+        return stamp.ExactInstallTime
+            ? $"Installed {date}"
+            : $"Installed before Omega tracking  •  first seen {date}";
+    }
+
+    private static bool DrawLibraryActionIcon(
+        FontAwesomeIcon icon,
+        string id,
+        string tooltip,
+        bool enabled = true)
+    {
+        const float size = 34f;
+        if (!enabled)
+            ImGui.BeginDisabled();
+
+        var clicked = ImGui.Button($"##{id}", new Vector2(size, size));
+        var min = ImGui.GetItemRectMin();
+        var max = ImGui.GetItemRectMax();
+        var hovered = ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled);
+        ImGui.PushFont(UiBuilder.IconFontFixedWidth);
+        var glyph = icon.ToIconString();
+        var glyphSize = ImGui.CalcTextSize(glyph);
+        ImGui.GetWindowDrawList().AddText(
+            min + ((max - min) - glyphSize) * 0.5f,
+            enabled ? ImGui.GetColorU32(ImGuiCol.Text) : ImGui.GetColorU32(ImGuiCol.TextDisabled),
+            glyph);
+        ImGui.PopFont();
+
+        if (!enabled)
+            ImGui.EndDisabled();
+        if (hovered)
+            ImGui.SetTooltip(tooltip);
+        return enabled && clicked;
+    }
+
     private void DrawUpdateRow(
         MarketplacePlugin plugin,
         IExposedPlugin installedPlugin,
         int currentApi,
         Version currentDalamudVersion)
     {
-        const float rowHeight = MarketplaceLayoutRules.LibraryRowHeight;
+        const float rowHeight = MarketplaceLayoutRules.UpdatesRowHeight;
         var rowWidth = Math.Max(420f, ImGui.GetContentRegionAvail().X);
         ImGui.BeginChild($"updates-row-{StableId(plugin.InternalName)}", new Vector2(rowWidth, rowHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);

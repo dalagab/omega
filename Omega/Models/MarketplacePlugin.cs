@@ -67,8 +67,10 @@ public sealed class MarketplacePlugin
     public string OmegaWebsiteUrl { get; init; } = string.Empty;
     public string OmegaWebsiteTitle { get; init; } = string.Empty;
     public string OmegaWebsiteDescription { get; init; } = string.Empty;
+    public string OmegaWebsiteReadmeExcerpt { get; init; } = string.Empty;
     public IReadOnlyList<string> OmegaWebsiteImageUrls { get; init; } = [];
     public bool OmegaEnriched { get; init; }
+    public bool OmegaIsAdultContent { get; init; }
 
     public int HighestKnownApiLevel => new[]
     {
@@ -180,8 +182,10 @@ public sealed class MarketplacePlugin
             OmegaWebsiteUrl = ReadString(element, "OmegaWebsiteUrl"),
             OmegaWebsiteTitle = ReadString(element, "OmegaWebsiteTitle"),
             OmegaWebsiteDescription = ReadString(element, "OmegaWebsiteDescription"),
+            OmegaWebsiteReadmeExcerpt = ReadString(element, "OmegaWebsiteReadmeExcerpt"),
             OmegaWebsiteImageUrls = ReadStrings(element, "OmegaWebsiteImageUrls"),
             OmegaEnriched = ReadBool(element, "OmegaEnriched"),
+            OmegaIsAdultContent = ReadBool(element, "OmegaIsAdultContent"),
         };
     }
 
