@@ -44,7 +44,7 @@ internal sealed partial class MarketplaceWindow
                 true,
                 true,
                 false,
-                $"Definitions integrity anomaly: {SourceLabel(candidate)} and {SourceLabel(baseline)} point to the same artifact SHA-256 " +
+                $"Definitions integrity anomaly: {SourceLabel(candidate)} and {SourceLabel(baseline)} point to the same plugin package SHA-256 " +
                 $"({ShortArtifactHash(candidateHash)}), but their projected security reports differ. Identical package bytes should have one canonical security result.");
         }
 
@@ -78,7 +78,7 @@ internal sealed partial class MarketplaceWindow
                 true,
                 false,
                 false,
-                $"Security report differs from the preferred baseline {SourceLabel(baseline)}, but one or both artifact hashes are unavailable. " +
+                $"Security report differs from the preferred baseline {SourceLabel(baseline)}, but one or both plugin package hashes are unavailable. " +
                 BuildBaselineRiskSummary(candidate, baseline));
         }
 

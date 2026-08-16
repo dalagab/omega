@@ -72,7 +72,7 @@ var tests = new (string Name, Action Body)[]
     ("security-enriched catalog compaction preserves history and runtime projection", TestCatalogCompactionWorkflowContract),
     ("install always chooses a repository and delegates to Dalamud", TestInstallRepositoryChooserContract),
     ("repository providers keep preferred ordering, filtering, and icon identities", TestRepositoryProviderPreferenceContract),
-    ("plugin update chronology follows the preferred package baseline", TestPreferredPackageUpdateChronology),
+    ("plugin update chronology supports explicit repository migration", TestPreferredPackageUpdateChronology),
     ("plugin documentation, changelog history, and release notes stay available", TestPluginDocumentationAndReleaseChangelogContract),
     ("plugin selections, project navigation, uninstall, and update badge stay canonical", TestCanonicalPluginNavigationAndLifecycleContract),
     ("Library tracks install timing and exposes settings/config backup actions", TestLibraryInstallMetadataConfigActionsContract),

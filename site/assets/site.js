@@ -10,6 +10,18 @@
     });
   }
 
+  for (const slot of document.querySelectorAll('[data-screenshot-slot]')) {
+    const filename = slot.getAttribute('data-screenshot-slot');
+    const alt = slot.getAttribute('data-alt') || '';
+    const image = new Image();
+    image.src = `assets/screenshots/${filename}`;
+    image.alt = alt;
+    image.className = filename === 'dalamud-custom-repo.png'
+      ? 'block h-full w-full object-contain p-8'
+      : 'block h-full w-full object-cover object-top';
+    image.addEventListener('load', () => slot.replaceChildren(image));
+  }
+
   for (const button of document.querySelectorAll('[data-copy]')) {
     button.addEventListener('click', async () => {
       const selector = button.getAttribute('data-copy');

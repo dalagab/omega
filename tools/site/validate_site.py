@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parents[2]
 SITE = ROOT / "_site"
-HTML_FILES = ("index.html", "features.html", "install.html", "security.html", "faq.html", "404.html")
+HTML_FILES = ("index.html", "features.html", "install.html", "security.html", "faq.html", "about.html", "404.html")
 ATTR_RE = re.compile(r'''(?:href|src)=["']([^"']+)["']''', re.I)
 
 def local_target(page: Path, value: str) -> Path | None:

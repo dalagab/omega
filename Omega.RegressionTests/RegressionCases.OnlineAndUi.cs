@@ -157,7 +157,7 @@ internal static partial class RegressionCases
         Contains(ui, "(versionAvailable - versionButtonSize.X) * 0.5f", "version footer is centered in the application rail");
         Contains(ui, "About Omega", "version footer opens the product-focused About popup");
         Contains(ui, "Every plugin. One orbit.", "About uses the Omega product tagline");
-        False(ui.Contains("Definitions Revision", StringComparison.Ordinal), "About no longer exposes Definitions revision identity");
+        Contains(ui, "DrawAboutVersionAndDefinitions", "About shows a concise Version row and explanatory Definitions information");
         Contains(ui, "Check for updates", "Settings starts with an update check action");
         Contains(ui, "View EULA", "Settings labels the agreement simply as EULA");
         False(ui.Contains("View EULA / Risk Disclosure", StringComparison.Ordinal), "Settings does not relabel EULA as a risk disclosure");

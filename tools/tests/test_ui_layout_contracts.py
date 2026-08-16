@@ -83,7 +83,7 @@ class UiLayoutContractTests(unittest.TestCase):
         )
         self.assertLess(
             product_page.index("DrawProductDependencies(plugin, installed)"),
-            product_page.index("DrawProductSourcePackages(plugin, currentApi, currentDalamudVersion)"),
+            product_page.index("DrawProductSourcePackages(plugin, sourcePackages, currentApi, currentDalamudVersion)"),
         )
 
     def test_repository_chooser_selection_and_provider_presentation_contract(self):
@@ -110,14 +110,18 @@ class UiLayoutContractTests(unittest.TestCase):
         self.assertNotIn('"Large list"', presentation)
         self.assertIn("DrawRepositoryName", presentation)
 
-    def test_discover_installed_check_overlays_artwork_without_shifting_layout(self):
-        source = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Discover.cs").read_text(encoding="utf-8")
-        self.assertIn("DrawDiscoverInstalledMarker(artworkMin", source)
-        self.assertIn("Installed state is an artwork overlay, never part of row/card geometry", source)
-        self.assertIn("ImGui.SetCursorPos(new Vector2(12f, 12f))", source)
-        self.assertIn("ImGui.SetCursorPos(new Vector2(12f, 18f))", source)
-        self.assertNotIn("installed ? 44f : 12f", source)
-        self.assertNotIn("var artworkX = installed ?", source)
+    def test_discover_installed_check_is_composited_above_artwork_without_shifting_layout(self):
+        discover = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Discover.cs").read_text(encoding="utf-8")
+        artwork = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Artwork.cs").read_text(encoding="utf-8")
+        self.assertIn("showInstalledMarker: installed", discover)
+        self.assertIn("showInstalledMarker && installedPlugin is not null", artwork)
+        self.assertIn("DrawDiscoverInstalledMarker(overlayMin", artwork)
+        self.assertIn("inside the artwork child", artwork)
+        self.assertIn("guaranteed to render above", discover)
+        self.assertIn("ImGui.SetCursorPos(new Vector2(12f, 12f))", discover)
+        self.assertIn("ImGui.SetCursorPos(new Vector2(12f, 18f))", discover)
+        self.assertNotIn("installed ? 44f : 12f", discover)
+        self.assertNotIn("var artworkX = installed ?", discover)
 
 
     def test_scraped_project_context_is_bounded_and_filterable_in_discover(self):
@@ -170,6 +174,17 @@ class UiLayoutContractTests(unittest.TestCase):
         self.assertIn("definitionsAttention: updates.DefinitionsUpdateAvailable", chrome)
         self.assertIn('var mark = "!"', chrome)
         self.assertIn("CheckInterval = TimeSpan.FromHours(6)", self_update)
+
+
+    def test_about_keeps_identity_fixed_and_scrolls_lower_copy(self):
+        source = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Security.cs").read_text(encoding="utf-8")
+        self.assertIn('ImGui.BeginChild("omega-about-scrollable-body", Vector2.Zero, false)', source)
+        self.assertIn("ImGuiStyleVar.WindowPadding", source)
+        self.assertLess(source.index('DrawAboutVersionAndDefinitions();'), source.index('ImGui.BeginChild("omega-about-scrollable-body"'))
+        self.assertIn("const float leftInset = 12f", source)
+        self.assertIn("Definitions are Omega's independently updated marketplace data", source)
+        self.assertNotIn("The installed Omega application release", source)
+        self.assertIn("DrawAboutWrappedBullet", source)
 
     def test_repository_source_security_divergence_is_visible(self):
         compare = (ROOT / "Omega" / "UI" / "MarketplaceWindow.SourceSecurityComparison.cs").read_text(encoding="utf-8")

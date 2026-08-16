@@ -199,7 +199,13 @@ internal static partial class RegressionCases
         Contains(about, "Every plugin. One orbit.", "About leads with Omega's product tagline");
         Contains(about, "/omega   /omg", "About advertises both commands that open Omega");
         Contains(about, "Find more. Know more. Install with confidence.", "About sells the core discovery and trust workflow");
-        DoesNotContain(about, "Definitions Revision", "About does not expose internal Definitions identity");
+        Contains(about, "DrawAboutVersionAndDefinitions", "About presents the application version and Definitions as separate moving parts");
+        DoesNotContain(about, "The installed Omega application release", "About keeps Version concise instead of explaining the obvious application version label");
+        Contains(about, "Definitions are Omega's independently updated marketplace data", "About explains what Definitions contain and that they update independently");
+        Contains(about, "omega-about-scrollable-body", "About keeps the identity and Definitions fixed while lower product/help content can scroll");
+        Contains(about, "const float leftInset = 12f", "About identity hero is aligned toward the content edge instead of being centered in the modal");
+        Contains(about, "DrawAboutWrappedBullet", "About wraps long lower-section bullet copy instead of allowing horizontal clipping");
+        Contains(about, "catalog.CatalogRevision", "About shows the currently loaded Definitions revision when available");
         DoesNotContain(about, "Security Revision", "About does not expose internal security revision identity");
         DoesNotContain(about, "Evidence Revision", "About does not expose server-side evidence identity");
         DoesNotContain(about, "Definitions changelog entries", "About does not expose internal changelog counts");
@@ -237,7 +243,7 @@ internal static partial class RegressionCases
         Contains(productPage, "DrawProductDependencies(plugin, installed)", "product page always includes the dependency view");
         True(
             productPage.IndexOf("DrawProductDependencies(plugin, installed)", StringComparison.Ordinal) <
-            productPage.IndexOf("DrawProductSourcePackages(plugin, currentApi, currentDalamudVersion)", StringComparison.Ordinal),
+            productPage.IndexOf("DrawProductSourcePackages(plugin, sourcePackages, currentApi, currentDalamudVersion)", StringComparison.Ordinal),
             "Dependencies render before package provenance so the dependency view is not buried below package details");
 
         var packagesUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SourcePackages.cs"));
@@ -258,6 +264,10 @@ internal static partial class RegressionCases
         Contains(packagesUi, "RepositoryProviderRules.SortPriority", "repository references follow shared preferred-provider ordering");
         Contains(packagesUi, "baselineDeviation", "same-version packages with a different artifact hash are marked against the green baseline");
         Contains(packagesUi, "0.30f, 0.07f, 0.08f", "artifact deviations receive the red package-header treatment");
+        Contains(packagesUi, "Plugin differs from the preferred package baseline", "package divergence uses plugin terminology in the user-facing warning");
+        Contains(packagesUi, "product-package-baseline-warning", "package divergence is promoted to a red warning panel at the top of the product page");
+        Contains(packagesUi, "FontAwesomeIcon.ExclamationTriangle", "the promoted package divergence warning uses an exclamation icon");
+        Contains(packagesUi, "Plugin package SHA-256", "package identity metadata avoids user-facing artifact terminology");
         var sourceComparisonUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SourceSecurityComparison.cs"));
         Contains(sourceComparisonUi, "sameKnownArtifact", "source comparison uses exact artifact SHA identity before comparing reports");
         Contains(sourceComparisonUi, "Definitions integrity anomaly", "identical artifact hashes with different security results are treated as a data integrity fault");

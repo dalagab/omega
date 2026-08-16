@@ -14,6 +14,27 @@ internal enum InstallOutcome
 
 internal sealed record InstallResult(InstallOutcome Outcome, string Message);
 
+internal enum UpdateOutcome
+{
+    Updated,
+    AlreadyCurrent,
+    NotInstalled,
+    Incompatible,
+    RepositoryIntegrationRequired,
+    DevPluginBlocked,
+    Failed,
+}
+
+internal sealed record UpdateResult(
+    UpdateOutcome Outcome,
+    string Message,
+    string PreviousSourceUrl = "",
+    string NewSourceUrl = "",
+    bool Migrated = false)
+{
+    public bool Success => Outcome is UpdateOutcome.Updated or UpdateOutcome.AlreadyCurrent;
+}
+
 internal enum UninstallOutcome
 {
     Uninstalled,
@@ -69,6 +90,79 @@ internal sealed class DalamudInstallerBridge
             return new InstallResult(
                 InstallOutcome.Failed,
                 $"Omega could not install {plugin.Name} through the current Dalamud installation service: {ex.GetBaseException().Message}");
+        }
+    }
+
+    public async Task<UpdateResult> UpdateAsync(
+        MarketplacePlugin plugin,
+        bool allowTesting,
+        CancellationToken cancellationToken = default)
+    {
+        var exposed = pluginInterface.InstalledPlugins.FirstOrDefault(x =>
+            x.InternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase));
+        if (exposed is null)
+            return new UpdateResult(UpdateOutcome.NotInstalled, $"{plugin.Name} is no longer installed.");
+        if (exposed.IsDev)
+        {
+            return new UpdateResult(
+                UpdateOutcome.DevPluginBlocked,
+                $"{plugin.Name} is a developer plugin and cannot be updated through the marketplace lifecycle.");
+        }
+
+        var installedVersion = exposed.Version;
+        if (installedVersion is null)
+            return new UpdateResult(UpdateOutcome.Failed, $"{plugin.Name} does not currently expose a stable installed version.");
+
+        var dalamudVersion = pluginInterface.GetDalamudVersion().Version;
+        var currentApi = pluginInterface.Manifest.DalamudApiLevel;
+        if (plugin.MinimumDalamudVersion is not null && plugin.MinimumDalamudVersion > dalamudVersion)
+            return new UpdateResult(UpdateOutcome.Incompatible, $"Requires Dalamud {plugin.MinimumDalamudVersion} or newer.");
+        if (!plugin.HasCurrentApiBuild(currentApi, allowTesting, out var useTesting))
+            return new UpdateResult(UpdateOutcome.Incompatible, $"No updateable API {currentApi} build is advertised by this repository entry.");
+
+        var targetVersion = useTesting
+            ? plugin.TestingAssemblyVersion ?? plugin.AssemblyVersion
+            : plugin.AssemblyVersion;
+        if (targetVersion <= installedVersion)
+        {
+            return new UpdateResult(
+                UpdateOutcome.AlreadyCurrent,
+                $"{plugin.Name} is already at v{installedVersion} or newer.",
+                exposed.Manifest.InstalledFromUrl ?? string.Empty,
+                plugin.SourceUrl);
+        }
+
+        if (!plugin.SourceIsOfficial && !IsRepositoryRegisteredWithDalamud(plugin.SourceUrl))
+        {
+            return new UpdateResult(
+                UpdateOutcome.RepositoryIntegrationRequired,
+                $"The selected repository is not currently available to Dalamud, so {plugin.Name} could not be updated.",
+                exposed.Manifest.InstalledFromUrl ?? string.Empty,
+                plugin.SourceUrl);
+        }
+
+        var previousSource = exposed.Manifest.InstalledFromUrl ?? string.Empty;
+        try
+        {
+            await UpdateThroughDalamudInternalsAsync(plugin, useTesting, cancellationToken).ConfigureAwait(false);
+            var moved = !PluginUpdateRules.IsSamePublishingSource(previousSource, plugin.SourceUrl, plugin.SourceIsOfficial);
+            return new UpdateResult(
+                UpdateOutcome.Updated,
+                moved
+                    ? $"Updated {plugin.Name} to v{targetVersion} and migrated it to {plugin.SourceName}."
+                    : $"Updated {plugin.Name} to v{targetVersion}.",
+                previousSource,
+                plugin.SourceUrl,
+                Migrated: moved);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Dalamud internal update bridge failed for {Plugin} from {Repository}", plugin.InternalName, plugin.SourceUrl);
+            return new UpdateResult(
+                UpdateOutcome.Failed,
+                $"Omega could not update {plugin.Name} through the current Dalamud lifecycle service: {ex.GetBaseException().Message}",
+                previousSource,
+                plugin.SourceUrl);
         }
     }
 
@@ -180,7 +274,73 @@ internal sealed class DalamudInstallerBridge
         var loadReasonType = RequireType(dalamudAssembly, "Dalamud.Plugin.PluginLoadReason");
 
         var pluginManager = GetInternalService(serviceOpenType, pluginManagerType);
-        var remoteManifest = Activator.CreateInstance(remoteManifestType, nonPublic: true) ?? throw new InvalidOperationException("Could not construct Dalamud remote manifest.");
+        var remoteManifest = CreateRemoteManifest(plugin, pluginManager, remoteManifestType, pluginRepositoryType);
+        EnsureManifestEligible(pluginManager, pluginManagerType, remoteManifest);
+
+        var installMethod = pluginManagerType.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .Where(x => x.Name == "InstallPluginAsync")
+            .OrderBy(x => x.GetParameters().Length)
+            .FirstOrDefault(x => x.GetParameters().Length is 3 or 4)
+            ?? throw new MissingMethodException("Dalamud PluginManager.InstallPluginAsync was not found.");
+        var installerReason = Enum.Parse(loadReasonType, "Installer");
+        var installArguments = installMethod.GetParameters().Length == 4
+            ? new object?[] { remoteManifest, useTesting, installerReason, null }
+            : new object?[] { remoteManifest, useTesting, installerReason };
+        var task = installMethod.Invoke(pluginManager, installArguments) as Task
+            ?? throw new InvalidOperationException("Dalamud install invocation did not return a Task.");
+
+        await task.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task UpdateThroughDalamudInternalsAsync(MarketplacePlugin plugin, bool useTesting, CancellationToken cancellationToken)
+    {
+        var dalamudAssembly = typeof(IDalamudPluginInterface).Assembly;
+        var pluginManagerType = RequireType(dalamudAssembly, "Dalamud.Plugin.Internal.PluginManager");
+        var remoteManifestType = RequireType(dalamudAssembly, "Dalamud.Plugin.Internal.Types.Manifest.RemotePluginManifest");
+        var pluginRepositoryType = RequireType(dalamudAssembly, "Dalamud.Plugin.Internal.Types.PluginRepository");
+        var availableUpdateType = RequireType(dalamudAssembly, "Dalamud.Plugin.Internal.Types.AvailablePluginUpdate");
+        var serviceOpenType = RequireType(dalamudAssembly, "Dalamud.Service`1");
+
+        var pluginManager = GetInternalService(serviceOpenType, pluginManagerType);
+        var localPlugin = FindInstalledLocalPlugin(pluginManager, pluginManagerType, plugin.InternalName)
+            ?? throw new InvalidOperationException("The installed plugin disappeared before Dalamud could update it.");
+        var remoteManifest = CreateRemoteManifest(plugin, pluginManager, remoteManifestType, pluginRepositoryType);
+        EnsureManifestEligible(pluginManager, pluginManagerType, remoteManifest);
+
+        var updateMetadata = Activator.CreateInstance(
+            availableUpdateType,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            args: [localPlugin, remoteManifest, useTesting],
+            culture: null)
+            ?? throw new InvalidOperationException("Could not construct Dalamud update metadata.");
+
+        var updateMethod = pluginManagerType.GetMethod(
+            "UpdateSinglePluginAsync",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: [availableUpdateType, typeof(bool), typeof(bool)],
+            modifiers: null)
+            ?? throw new MissingMethodException("Dalamud PluginManager.UpdateSinglePluginAsync was not found.");
+        var task = updateMethod.Invoke(pluginManager, [updateMetadata, true, false]) as Task
+            ?? throw new InvalidOperationException("Dalamud update invocation did not return a Task.");
+
+        await task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var result = task.GetType().GetProperty("Result", BindingFlags.Instance | BindingFlags.Public)?.GetValue(task)
+            ?? throw new InvalidOperationException("Dalamud update invocation completed without a result.");
+        var status = result.GetType().GetProperty("Status", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(result)?.ToString();
+        if (!string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Dalamud update returned {status ?? "an unknown status"}.");
+    }
+
+    private static object CreateRemoteManifest(
+        MarketplacePlugin plugin,
+        object pluginManager,
+        Type remoteManifestType,
+        Type pluginRepositoryType)
+    {
+        var remoteManifest = Activator.CreateInstance(remoteManifestType, nonPublic: true)
+            ?? throw new InvalidOperationException("Could not construct Dalamud remote manifest.");
 
         Set(remoteManifest, "Author", plugin.Author);
         Set(remoteManifest, "Name", plugin.Name);
@@ -210,26 +370,35 @@ internal sealed class DalamudInstallerBridge
 
         var sourceRepo = FindRepository(pluginManager, pluginRepositoryType, plugin.SourceUrl);
         Set(remoteManifest, "SourceRepo", sourceRepo);
+        return remoteManifest;
+    }
 
+    private static void EnsureManifestEligible(object pluginManager, Type pluginManagerType, object remoteManifest)
+    {
         var eligibleMethod = pluginManagerType.GetMethod("IsManifestEligible", BindingFlags.Instance | BindingFlags.Public)
             ?? throw new MissingMethodException("Dalamud PluginManager.IsManifestEligible was not found.");
         var eligible = (bool)(eligibleMethod.Invoke(pluginManager, [remoteManifest]) ?? false);
         if (!eligible)
             throw new InvalidOperationException("Dalamud rejected this repository manifest as ineligible.");
+    }
 
-        var installMethod = pluginManagerType.GetMethods(BindingFlags.Instance | BindingFlags.Public)
-            .Where(x => x.Name == "InstallPluginAsync")
-            .OrderBy(x => x.GetParameters().Length)
-            .FirstOrDefault(x => x.GetParameters().Length is 3 or 4)
-            ?? throw new MissingMethodException("Dalamud PluginManager.InstallPluginAsync was not found.");
-        var installerReason = Enum.Parse(loadReasonType, "Installer");
-        var installArguments = installMethod.GetParameters().Length == 4
-            ? new object?[] { remoteManifest, useTesting, installerReason, null }
-            : new object?[] { remoteManifest, useTesting, installerReason };
-        var task = installMethod.Invoke(pluginManager, installArguments) as Task
-            ?? throw new InvalidOperationException("Dalamud install invocation did not return a Task.");
+    private static object? FindInstalledLocalPlugin(object pluginManager, Type pluginManagerType, string internalName)
+    {
+        var installedProperty = pluginManagerType.GetProperty("InstalledPlugins", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException("Dalamud PluginManager.InstalledPlugins was not found.");
+        if (installedProperty.GetValue(pluginManager) is not System.Collections.IEnumerable installedPlugins)
+            throw new InvalidOperationException("Dalamud PluginManager.InstalledPlugins is not enumerable.");
 
-        await task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var candidate in installedPlugins)
+        {
+            if (candidate is null)
+                continue;
+            var candidateName = candidate.GetType().GetProperty("InternalName", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(candidate) as string;
+            if (internalName.Equals(candidateName, StringComparison.OrdinalIgnoreCase))
+                return candidate;
+        }
+
+        return null;
     }
 
     private static bool IsRepositoryRegisteredWithDalamud(string sourceUrl)

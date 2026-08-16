@@ -242,7 +242,7 @@ internal sealed partial class MarketplaceWindow
     {
         if (string.IsNullOrWhiteSpace(operationMessage))
             return false;
-        if (installTask is not null || uninstallTask is not null || repositoryTask is not null ||
+        if (installTask is not null || updateTask is not null || uninstallTask is not null || repositoryTask is not null ||
             collectionOperationTask is not null || configBackupTask is not null || updates.IsRefreshing || selfUpdates.IsChecking)
             return true;
 

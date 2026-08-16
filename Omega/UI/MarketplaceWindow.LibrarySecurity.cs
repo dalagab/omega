@@ -55,6 +55,8 @@ internal sealed partial class MarketplaceWindow
                                          SecuritySeverityRank(x.SecurityVariant.SecurityHighestSeverity) == SecuritySeverityRank("caution"));
         var unknown = entries.Length - completed;
 
+        DrawSecurityDisclaimerPanel();
+        ImGui.Spacing();
         DrawLibrarySecuritySummary(entries.Length, completed, elevated, caution, unknown);
         ImGui.Spacing();
         ImGui.TextDisabled("Security results are matched to the installed repository package where possible. Omega does not execute plugin code for this view.");
@@ -113,7 +115,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextUnformatted(Shorten(entry.Listing.Name, 44));
         ImGui.TextDisabled($"{InstalledVersionText(entry.InstalledPlugin)}  •  {InstalledSecuritySourceLabel(entry.SecurityVariant, entry.InstalledPlugin)}");
         ImGui.TextDisabled(BuildEnvironmentSecurityIssueLine(entry.SecurityVariant));
-        ImGui.TextDisabled(BuildEnvironmentArtifactIdentityLine(entry.SecurityVariant));
+        ImGui.TextDisabled(BuildEnvironmentPluginIdentityLine(entry.SecurityVariant));
         ImGui.EndGroup();
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
             OpenPluginDetails(entry.SecurityVariant);
@@ -170,11 +172,11 @@ internal sealed partial class MarketplaceWindow
         return "Installed source unknown";
     }
 
-    private string BuildEnvironmentArtifactIdentityLine(MarketplacePlugin plugin)
+    private string BuildEnvironmentPluginIdentityLine(MarketplacePlugin plugin)
     {
         var artifactHash = NormalizeArtifactHash(plugin.SecurityArtifactSha256);
         if (string.IsNullOrWhiteSpace(artifactHash))
-            return "Artifact identity not yet published";
+            return "Plugin identity not yet published";
 
         var variants = catalog.GetVariants(plugin.InternalName);
         var identical = variants.Count(x =>
@@ -185,10 +187,10 @@ internal sealed partial class MarketplaceWindow
         var shortHash = artifactHash.Length > 12 ? artifactHash[..12] : artifactHash;
 
         if (!string.IsNullOrWhiteSpace(baselineHash) && !baselineHash.Equals(artifactHash, StringComparison.OrdinalIgnoreCase))
-            return $"Artifact {shortHash}…  •  differs from preferred package";
+            return $"Plugin {shortHash}…  •  differs from preferred package";
         if (identical > 1)
-            return $"Artifact {shortHash}…  •  scan shared by {identical} identical packages";
-        return $"Artifact {shortHash}…  •  exact package security identity";
+            return $"Plugin {shortHash}…  •  scan shared by {identical} identical packages";
+        return $"Plugin {shortHash}…  •  exact package security identity";
     }
 
     private static string BuildEnvironmentSecurityIssueLine(MarketplacePlugin plugin)

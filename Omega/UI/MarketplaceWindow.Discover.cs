@@ -196,12 +196,9 @@ internal sealed partial class MarketplaceWindow
     {
         var installed = installedPlugin is not null;
         ImGui.SetCursorPos(new Vector2(12f, 12f));
-        var artworkMin = ImGui.GetCursorScreenPos();
         var artworkClicked = DrawPluginArtwork(
             plugin, installedPlugin, 46f, 46f, currentApi, currentDalamudVersion,
-            queueIfVisible: true, showOverlays: false);
-        if (installed)
-            DrawDiscoverInstalledMarker(artworkMin, 46f);
+            queueIfVisible: true, showOverlays: false, showInstalledMarker: installed);
         ImGui.SameLine(0f, 10f);
         ImGui.BeginGroup();
         DrawDiscoverPluginTitle(Shorten(plugin.Name, 32), installed);
@@ -282,12 +279,9 @@ internal sealed partial class MarketplaceWindow
         var rowMax = rowMin + ImGui.GetWindowSize();
         var installed = installedPlugin is not null;
         ImGui.SetCursorPos(new Vector2(12f, 18f));
-        var artworkMin = ImGui.GetCursorScreenPos();
         var artworkClicked = DrawPluginArtwork(
             plugin, installedPlugin, DiscoverListIconSize, DiscoverListIconSize, currentApi, currentDalamudVersion,
-            queueIfVisible: true, showOverlays: false);
-        if (installed)
-            DrawDiscoverInstalledMarker(artworkMin, DiscoverListIconSize);
+            queueIfVisible: true, showOverlays: false, showInstalledMarker: installed);
         ImGui.SameLine(0f, 16f);
         ImGui.BeginGroup();
         ImGui.SetCursorPosY(18f);
@@ -620,16 +614,20 @@ internal sealed partial class MarketplaceWindow
 
     private static void DrawDiscoverInstalledMarker(Vector2 artworkMin, float artworkSize)
     {
-        // Installed state is an artwork overlay, never part of row/card geometry. This keeps
-        // installed and uninstalled plugin icons aligned on the same X coordinate.
+        // Installed state is an artwork overlay, never part of row/card geometry. This helper
+        // is called from inside the artwork child so the marker is guaranteed to render above
+        // the plugin image while installed and uninstalled icons remain identically aligned.
         var size = Math.Clamp(artworkSize * 0.32f, 18f, 24f);
         var min = artworkMin + new Vector2(3f, 3f);
         var center = min + new Vector2(size * 0.5f, size * 0.5f);
         var draw = ImGui.GetWindowDrawList();
+        var markerBorder = ImGui.ColorConvertFloat4ToU32(new Vector4(0.025f, 0.030f, 0.038f, 0.98f));
         var installedGreen = ImGui.ColorConvertFloat4ToU32(new Vector4(0.20f, 0.72f, 0.42f, 0.98f));
         var checkColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.97f, 1.00f, 0.98f, 1f));
 
-        draw.AddCircleFilled(center, size * 0.46f, installedGreen, 24);
+        // The dark rim keeps the installed check legible on bright or green plugin artwork.
+        draw.AddCircleFilled(center, size * 0.52f, markerBorder, 24);
+        draw.AddCircleFilled(center, size * 0.44f, installedGreen, 24);
         var a = min + new Vector2(size * 0.25f, size * 0.51f);
         var b = min + new Vector2(size * 0.43f, size * 0.68f);
         var c = min + new Vector2(size * 0.77f, size * 0.32f);

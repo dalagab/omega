@@ -34,12 +34,33 @@ internal sealed class PluginInstallCoordinator
     {
         if (!plugin.SourceIsOfficial)
         {
-            var ready = await EnsureRepositoryReadyAsync(plugin, source, cancellationToken).ConfigureAwait(false);
-            if (ready is not null)
-                return ready;
+            var error = await EnsureRepositoryReadyAsync(plugin, source, cancellationToken).ConfigureAwait(false);
+            if (error is not null)
+                return FailedInstall(error);
         }
 
         return await installer.InstallAsync(plugin, allowTesting, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Updates one installed plugin through Dalamud. If the selected package is published from a
+    /// different repository, the new source is prepared first and Dalamud performs the replacement
+    /// as a normal in-place update, which migrates the installed source without touching old repos.
+    /// </summary>
+    public async Task<UpdateResult> UpdateAsync(
+        MarketplacePlugin plugin,
+        RepositorySource? source,
+        bool allowTesting,
+        CancellationToken cancellationToken = default)
+    {
+        if (!plugin.SourceIsOfficial)
+        {
+            var error = await EnsureRepositoryReadyAsync(plugin, source, cancellationToken).ConfigureAwait(false);
+            if (error is not null)
+                return FailedUpdate(error, plugin);
+        }
+
+        return await installer.UpdateAsync(plugin, allowTesting, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -50,21 +71,21 @@ internal sealed class PluginInstallCoordinator
         CancellationToken cancellationToken = default)
         => installer.UninstallAsync(internalName, cancellationToken);
 
-    private async Task<InstallResult?> EnsureRepositoryReadyAsync(
+    private async Task<string?> EnsureRepositoryReadyAsync(
         MarketplacePlugin plugin,
         RepositorySource? source,
         CancellationToken cancellationToken)
     {
         if (source is null)
         {
-            return Failed(
+            return
                 $"Omega does not have a local source definition for {plugin.SourceName}. " +
-                "Reload the catalog or add the repository before installing.");
+                "Reload the catalog or add the repository before continuing.";
         }
 
         var state = repositories.GetState(source.Url);
         if (!state.Available)
-            return Failed(state.Message);
+            return state.Message;
 
         if (state.Present && !state.Enabled)
         {
@@ -72,7 +93,7 @@ internal sealed class PluginInstallCoordinator
                 ? await repositories.SetManagedEnabledAsync(source.Url, true, cancellationToken).ConfigureAwait(false)
                 : await repositories.EnableExistingForExplicitInstallAsync(source.Url, cancellationToken).ConfigureAwait(false);
             if (!enabled.Success)
-                return Failed(enabled.Message);
+                return enabled.Message;
 
             source.IntegrateWithDalamud = true;
             configuration.Save();
@@ -84,7 +105,7 @@ internal sealed class PluginInstallCoordinator
 
         var integrated = await repositories.EnsureIntegratedAsync(source.Url, true, cancellationToken).ConfigureAwait(false);
         if (!integrated.Success)
-            return Failed(integrated.Message);
+            return integrated.Message;
 
         source.IntegrateWithDalamud = true;
         source.DalamudManagedByOmega = integrated.OwnedByOmega;
@@ -92,6 +113,9 @@ internal sealed class PluginInstallCoordinator
         return null;
     }
 
-    private static InstallResult Failed(string message)
+    private static InstallResult FailedInstall(string message)
         => new(InstallOutcome.Failed, message);
+
+    private static UpdateResult FailedUpdate(string message, MarketplacePlugin plugin)
+        => new(UpdateOutcome.Failed, message, NewSourceUrl: plugin.SourceUrl);
 }

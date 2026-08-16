@@ -2,6 +2,62 @@
 
 Omega follows semantic product versions. Release entries here are consumed by the GitHub release workflow so the same human-readable notes are published with each immutable release.
 
+## [0.8.63] - 2026-08-16
+
+### Changed
+- Integrated the revised public **Features** page from the supplied Pages handoff without replacing the rest of the already-integrated 0.8.62 site.
+- Reframed the Features page around Omega's shared product story: broader in-game discovery, visible provenance, security context, and the boundary that **Omega finds it; Dalamud installs it**.
+- Updated the public-site regression contract to lock the revised Features narrative and provenance screenshot into future builds.
+
+## [0.8.62] - 2026-08-16
+
+### Changed
+- Integrated the supplied GitHub Pages refresh across Overview, Features, Install, Security, FAQ, and 404 pages, plus the new About page.
+- Added the supplied in-game screenshots for the home view, repository setup, provenance/source comparison, and installed-plugin security context.
+- Updated the public-site navigation, responsive presentation, and site validation contracts while preserving the rule that plugin discovery remains in game rather than exposing a browsable web catalog.
+
+## [0.8.61] - 2026-08-16
+
+### Fixed
+- Restored the newer source-discovery and security-review workflow that was accidentally overwritten by the 0.8.57 source-recovery overlay.
+- Human-reviewed public-source overrides again use stable plugin/source identities rather than build-local SQLite variant row IDs, so catalog rebuilds do not detach reviewed source mappings.
+- Source follow-up generation is again deduplicated per stable plugin/feed identity, distinguishes retryable/transient source failures from actionable missing-source cases, and carries the stable override identity through GitHub issue replies.
+- Source-submission validation again uses the hardened bounded/public-URL checks and structured override document from the known-good 0.8.56 pipeline.
+- Preserves all 0.8.59 direct-update/repository-migration behavior and the 0.8.60 Discover installed-marker overlay fix.
+
+## [0.8.60] - 2026-08-16
+
+### Fixed
+- Discover now composites the green installed check inside the plugin artwork child after the image is drawn, preventing the plugin icon from covering the installed-state marker.
+- Installed markers retain identical card/list geometry and gain a dark contrast rim so they remain readable on bright or similarly colored plugin artwork.
+
+## [0.8.59] - 2026-08-16
+
+### Added
+- Omega now detects a newer compatible release that has moved to another known repository and offers an explicit **Migrate & update** confirmation showing the installed source, destination source, version change, and any package/security difference.
+- Repository migration prepares the destination source automatically when needed while deliberately leaving the old repository in place for any other plugins that may still use it.
+
+### Fixed
+- **Update** now executes the selected plugin update through Dalamud's real plugin-update lifecycle instead of only opening Dalamud's Updateable Plugins page.
+- Same-repository updates remain preferred, while a cross-repository package is considered a migration only when both its version and release chronology prove it is newer.
+- Dalamud's `OFFICIAL` installed-source marker is recognized as the same publishing lineage as the live official repository, preventing official updates from being misclassified as migrations.
+
+## [0.8.58] - 2026-08-16
+
+### Changed
+- About now keeps the Omega identity and Version/Definitions summary fixed while the lower product/help section scrolls independently.
+- The large Omega artwork is aligned toward the content edge instead of centering the entire hero block, fixing the visual mismatch with the sections below it.
+- Version remains visible as a concise value without redundant explanatory prose; Definitions retains a wrapped explanation of what the independently updated data package contains.
+- Long About bullets now wrap inside the modal instead of clipping past the right edge.
+
+## [0.8.57] - 2026-08-16
+
+### Changed
+- A package that differs from Omega's preferred package baseline now raises a prominent red **Plugin differs from the preferred package baseline** warning at the top of the plugin page instead of leaving that signal buried inside an expanded package row.
+- Library Security now opens with a prominent red warning explaining that static analysis reports observed capabilities and that no findings do not prove a plugin is safe.
+- User-facing package/security identity text now says **Plugin** or **Plugin package** instead of **Artifact** while retaining the exact SHA-256 context.
+- About once again explains the installed Omega **Version** and the independently updated **Definitions** data package, including the loaded Definitions revision when available.
+
 ## [0.8.56] - 2026-08-16
 
 ### Added

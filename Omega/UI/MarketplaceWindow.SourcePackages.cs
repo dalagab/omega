@@ -35,9 +35,63 @@ internal sealed partial class MarketplaceWindow
         bool Official,
         MarketplacePlugin Variant);
 
-    private void DrawProductSourcePackages(MarketplacePlugin plugin, int currentApi, Version currentDalamudVersion)
+    private void DrawProductPackageBaselineWarning(
+        MarketplacePlugin plugin,
+        IReadOnlyList<ProductSourcePackage> packages,
+        int currentApi,
+        Version currentDalamudVersion)
     {
-        var packages = BuildProductSourcePackages(plugin, currentApi, currentDalamudVersion);
+        if (!TryFindProductPackageBaselineDeviation(plugin, packages, currentApi, currentDalamudVersion))
+            return;
+
+        const string warning = "Plugin differs from the preferred package baseline";
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.24f, 0.035f, 0.045f, 0.90f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.82f, 0.16f, 0.20f, 0.94f));
+        ImGui.BeginChild("product-package-baseline-warning", new Vector2(0f, 78f), true,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.SetCursorPosY(14f);
+        DrawPluginFontAwesomeRiskIcon(
+            FontAwesomeIcon.ExclamationTriangle,
+            new Vector4(0.98f, 0.28f, 0.31f, 1f),
+            warning,
+            26f);
+        ImGui.SameLine(0f, 10f);
+        ImGui.BeginGroup();
+        ImGui.TextUnformatted(warning);
+        ImGui.PushTextWrapPos(ImGui.GetWindowContentRegionMax().X - 12f);
+        ImGui.TextDisabled("At least one repository publishes different plugin package bytes for the same version and API. Review Packages & repositories before installing or updating from that source.");
+        ImGui.PopTextWrapPos();
+        ImGui.EndGroup();
+        ImGui.EndChild();
+        ImGui.PopStyleColor(2);
+        ImGui.Spacing();
+    }
+
+    private bool TryFindProductPackageBaselineDeviation(
+        MarketplacePlugin plugin,
+        IReadOnlyList<ProductSourcePackage> packages,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
+        var preferredIdentity = ResolvePreferredInstallPackageIdentity(plugin, packages, currentApi, currentDalamudVersion);
+        var preferredPackage = packages.FirstOrDefault(x => x.Identity.Equals(preferredIdentity, StringComparison.OrdinalIgnoreCase));
+        if (preferredPackage is null || string.IsNullOrWhiteSpace(preferredPackage.Sha256))
+            return false;
+
+        return packages.Any(package =>
+            !package.Identity.Equals(preferredIdentity, StringComparison.OrdinalIgnoreCase) &&
+            package.ApiLevel == preferredPackage.ApiLevel &&
+            package.Version.Equals(preferredPackage.Version, StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(package.Sha256) &&
+            !package.Sha256.Equals(preferredPackage.Sha256, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void DrawProductSourcePackages(
+        MarketplacePlugin plugin,
+        IReadOnlyList<ProductSourcePackage> packages,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
         if (packages.Count == 0)
             return;
 
@@ -265,7 +319,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.Indent(12f);
         if (baselineDeviation)
         {
-            ImGui.TextColored(new Vector4(0.94f, 0.28f, 0.26f, 1f), "Artifact differs from the preferred package baseline");
+            ImGui.TextColored(new Vector4(0.94f, 0.28f, 0.26f, 1f), "Plugin differs from the preferred package baseline");
             ImGui.Spacing();
         }
         ImGui.TextDisabled(package.ApiLevel > 0 ? $"API: {package.ApiLevel}" : "API: unknown");
@@ -280,13 +334,13 @@ internal sealed partial class MarketplaceWindow
         if (!string.IsNullOrWhiteSpace(package.Sha256))
         {
             var shortHash = package.Sha256.Length > 16 ? package.Sha256[..16] + "…" : package.Sha256;
-            ImGui.TextDisabled($"Artifact SHA-256: {shortHash}");
+            ImGui.TextDisabled($"Plugin package SHA-256: {shortHash}");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(package.Sha256);
         }
         else
         {
-            ImGui.TextDisabled("Artifact hash: not available from the current scan");
+            ImGui.TextDisabled("Plugin package hash: not available from the current scan");
         }
 
         if (!string.IsNullOrWhiteSpace(package.DownloadUrl))

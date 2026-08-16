@@ -44,8 +44,14 @@ internal static class PluginUpdateRules
     public static bool IsSamePublishingSource(string? installedSourceUrl, string? candidateSourceUrl, bool candidateOfficial)
     {
         var installed = NormalizeSource(installedSourceUrl);
+        if (candidateOfficial &&
+            (string.IsNullOrWhiteSpace(installed) || installed.Equals("OFFICIAL", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
         if (string.IsNullOrWhiteSpace(installed))
-            return candidateOfficial;
+            return false;
         return installed.Equals(NormalizeSource(candidateSourceUrl), StringComparison.OrdinalIgnoreCase);
     }
 

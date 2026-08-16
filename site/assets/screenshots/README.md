@@ -1,28 +1,21 @@
-# Optional Omega screenshots
+# Omega UI screenshots
 
-The site is complete without these files; it shows deliberate styled placeholders until real captures are added.
+The public site uses these PNGs directly from this directory.
 
-For the polished public site, capture these PNGs from the current Omega build:
-
-1. `product-provenance.png`
-   - Selected plugin product page.
-   - Show the project/source/provenance area.
-   - Crop tightly enough that the image demonstrates the UI rather than publishing a readable catalog list.
-
-2. `security-findings.png`
-   - Security section of a selected plugin.
-   - Include the capability summary and the expandable “why these findings were reported” evidence area.
-   - Do not imply the plugin shown is malicious; choose a normal example with understandable signals.
-
-3. `dalamud-custom-repo.png`
-   - `/xlsettings` → Experimental → Custom Plugin Repositories.
-   - Show the Omega repository URL entered and enabled.
-   - Blur/crop unrelated personal or repository entries if present.
-
-4. `omega-home.png` (optional)
+1. `omega-home.png`
    - Omega Spotlight or Discover landing view.
-   - Use primarily for atmosphere/product recognition, not as a web-browsable catalog substitute.
+   - Used on the homepage to show the in-game marketplace.
 
-Recommended capture size: 1600×900 or larger, PNG, no chat logs or character/account-identifying overlays.
+2. `product-provenance.png`
+   - A selected plugin product page with project, source, and provenance information.
+   - Used in the Features page provenance section.
 
-After adding one of the named PNGs, rerun `python tools/site/build_site.py`; the build automatically replaces the matching placeholder with the screenshot.
+3. `installed-plugin-context.png`
+   - A selected plugin's repositories and Security details, including capability and finding evidence.
+   - Used on the Security page.
+
+4. `dalamud-custom-repo.png`
+   - The Omega PluginMaster URL entered in Dalamud's Custom Plugin Repositories settings.
+   - Not displayed yet because the current capture is a narrow URL strip. Capture the full settings screen to add it to the Install page.
+
+Capture at 1600x900 or larger where possible, as PNG. Remove chat logs and character or account-identifying overlays. Keep the focus on one plugin or one UI area rather than publishing a web-browsable catalog.

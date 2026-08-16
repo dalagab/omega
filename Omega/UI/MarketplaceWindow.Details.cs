@@ -139,26 +139,9 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        var installedVersion = installedPlugin.Version;
-        if (installedVersion is null)
-            return null;
-
-        // The green preferred package is Omega's update authority. Do not compare unrelated
-        // repository/fork version schemes and accidentally treat an API-shaped version as newer.
-        var candidate = GetInstallCandidates(internalName, currentApi, currentDalamudVersion).FirstOrDefault();
+        var candidate = GetAvailableUpdateCandidate(internalName, installedPlugin, currentApi, currentDalamudVersion);
         if (candidate is null ||
             !candidate.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out var useTesting))
-        {
-            return null;
-        }
-
-        var installedLastUpdate = ResolveInstalledLastUpdate(internalName, installedPlugin, installedVersion);
-        if (!PluginUpdateRules.IsUpdateCandidate(
-                installedVersion,
-                installedPlugin.Manifest.InstalledFromUrl,
-                installedLastUpdate,
-                candidate,
-                useTesting))
         {
             return null;
         }
@@ -167,6 +150,71 @@ internal sealed partial class MarketplaceWindow
             ? candidate.TestingAssemblyVersion ?? candidate.AssemblyVersion
             : candidate.AssemblyVersion;
     }
+
+    private MarketplacePlugin? GetAvailableUpdateCandidate(
+        string internalName,
+        IExposedPlugin installedPlugin,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
+        var installedVersion = installedPlugin.Version;
+        if (installedVersion is null)
+            return null;
+
+        var candidates = GetInstallCandidates(internalName, currentApi, currentDalamudVersion);
+        if (candidates.Count == 0)
+            return null;
+
+        var installedLastUpdate = ResolveInstalledLastUpdate(internalName, installedPlugin, installedVersion);
+        var valid = candidates
+            .Select(candidate =>
+            {
+                var compatible = candidate.HasCurrentApiBuild(
+                    currentApi,
+                    configuration.PreferTestingBuilds,
+                    out var useTesting);
+                var offered = useTesting
+                    ? candidate.TestingAssemblyVersion ?? candidate.AssemblyVersion
+                    : candidate.AssemblyVersion;
+                var isUpdate = compatible && PluginUpdateRules.IsUpdateCandidate(
+                    installedVersion,
+                    installedPlugin.Manifest.InstalledFromUrl,
+                    installedLastUpdate,
+                    candidate,
+                    useTesting);
+                return new { Candidate = candidate, Offered = offered, IsUpdate = isUpdate };
+            })
+            .Where(x => x.IsUpdate)
+            .ToArray();
+        if (valid.Length == 0)
+            return null;
+
+        // Prefer an update from the currently installed publishing lineage. If that lineage stopped
+        // publishing, permit a newer package from another known repository as a migration candidate.
+        // Cross-repository version numbers alone are never enough: PluginUpdateRules also requires
+        // manifest chronology, and the UI asks the user before moving repositories.
+        var sameSource = valid
+            .Where(x => PluginUpdateRules.IsSamePublishingSource(
+                installedPlugin.Manifest.InstalledFromUrl,
+                x.Candidate.SourceUrl,
+                x.Candidate.SourceIsOfficial))
+            .OrderByDescending(x => x.Offered)
+            .FirstOrDefault();
+        if (sameSource is not null)
+            return sameSource.Candidate;
+
+        return valid
+            .OrderByDescending(x => PluginUpdateRules.NormalizeUnix(x.Candidate.LastUpdate))
+            .ThenByDescending(x => x.Offered)
+            .Select(x => x.Candidate)
+            .FirstOrDefault();
+    }
+
+    private static bool IsRepositoryMigration(IExposedPlugin installedPlugin, MarketplacePlugin updateCandidate)
+        => !PluginUpdateRules.IsSamePublishingSource(
+            installedPlugin.Manifest.InstalledFromUrl,
+            updateCandidate.SourceUrl,
+            updateCandidate.SourceIsOfficial);
 
     private long ResolveInstalledLastUpdate(string internalName, IExposedPlugin installedPlugin, Version installedVersion)
     {

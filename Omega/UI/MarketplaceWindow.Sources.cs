@@ -164,7 +164,7 @@ internal sealed partial class MarketplaceWindow
         {
             ImGui.TextColored(new Vector4(0.96f, 0.30f, 0.24f, 1f), "Review");
             if (ImGui.IsItemHovered())
-                SetReadableTooltip("This repository has at least one package whose artifact SHA-256 differs from Omega's stable-provider package for the same plugin version. Review its source/package differences before installing or updating from it.");
+                SetReadableTooltip("This repository has at least one package whose plugin package SHA-256 differs from Omega's stable-provider package for the same plugin version. Review its source/package differences before installing or updating from it.");
         }
         else if (!source.Enabled)
         {

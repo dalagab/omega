@@ -128,6 +128,10 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private string pendingInstallSourceUrl = string.Empty;
     private Task<InstallResult>? installTask;
     private string installingInternalName = string.Empty;
+    private MarketplacePlugin? pendingUpdate;
+    private string pendingUpdatePreviousSourceUrl = string.Empty;
+    private Task<UpdateResult>? updateTask;
+    private string updatingInternalName = string.Empty;
     private MarketplacePlugin? pendingUninstall;
     private Task<UninstallResult>? uninstallTask;
     private string uninstallingInternalName = string.Empty;
@@ -146,9 +150,11 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private bool settingsOpen;
     private bool aboutOpen;
     private bool installPopupOpen;
+    private bool updateMigrationPopupOpen;
     private bool uninstallPopupOpen;
     private bool addSourceOpen;
     private bool requestInstallPopup;
+    private bool requestUpdateMigrationPopup;
     private bool requestUninstallPopup;
     private bool requestSettingsPopup;
     private bool requestAboutPopup;
@@ -278,6 +284,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     public override void Draw()
     {
         CompleteInstallTaskIfReady();
+        CompleteUpdateTaskIfReady();
         CompleteUninstallTaskIfReady();
         CompleteRepositoryTaskIfReady();
         CompleteCollectionOperationIfReady();
@@ -342,6 +349,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
 
         OpenRequestedPopups();
         DrawInstallModal(currentApi, versionInfo.Version);
+        DrawUpdateMigrationModal(currentApi, versionInfo.Version);
         DrawUninstallModal();
         DrawSettingsModal();
         DrawAboutModal();
@@ -361,6 +369,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         {
             ImGui.OpenPopup("Choose repository###DalagabOmegaInstall");
             requestInstallPopup = false;
+        }
+
+        if (requestUpdateMigrationPopup)
+        {
+            ImGui.OpenPopup("Move plugin repository###DalagabOmegaUpdateMigration");
+            requestUpdateMigrationPopup = false;
         }
 
         if (requestUninstallPopup)

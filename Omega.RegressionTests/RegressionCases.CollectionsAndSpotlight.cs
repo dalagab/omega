@@ -136,7 +136,7 @@ internal static partial class RegressionCases
         Contains(library, "→ v{offered}", "update rows expose installed-to-available version progression");
         Contains(library, "configuration.PreferTestingBuilds", "row compatibility honors the testing-build preference");
         Contains(library, "FontAwesomeIcon.SyncAlt", "Updates use a compact update icon instead of a text button");
-        Contains(library, "PluginInstallerOpenKind.UpdateablePlugins", "Update action delegates to Dalamud's update surface");
+        Contains(library, "OpenUpdateOrMigration", "Update action performs the selected update or opens repository-migration confirmation");
         Contains(ui, "MarketplaceStatusFilter.Installable", "Discover Status filter preserves Installable grouping");
         Contains(ui, "MarketplaceStatusFilter.OutdatedApi", "Discover Status filter preserves Outdated API grouping");
         Contains(ui, "##filter-status", "status grouping is panel-local inside expanded Filters");
@@ -255,7 +255,10 @@ internal static partial class RegressionCases
         Contains(security, "0.20f, 0.72f, 0.42f", "no-finding scan icon uses the green success color");
         Contains(security, "0.94f, 0.58f, 0.12f", "medium scan results use the amber warning glyph");
         Contains(security, "0.92f, 0.12f, 0.15f", "critical scan results use the red warning glyph");
-        Contains(discover, "DrawDiscoverInstalledMarker(artworkMin", "installed Discover entries draw their marker directly over the plugin artwork");
+        Contains(discover, "showInstalledMarker: installed", "Discover asks the artwork child to render installed state in its visible overlay layer");
+        Contains(artwork, "showInstalledMarker && installedPlugin is not null", "artwork renders installed state only when explicitly requested and actually installed");
+        Contains(artwork, "DrawDiscoverInstalledMarker(overlayMin", "installed marker is drawn from inside the artwork child after the plugin image");
+        Contains(artwork, "inside the artwork child", "installed marker layering is documented so it cannot regress behind the image");
         Contains(discover, "Installed state is an artwork overlay, never part of row/card geometry", "installed state is explicitly layout-neutral");
         Contains(discover, "ImGui.SetCursorPos(new Vector2(12f, 12f))", "rich-card artwork keeps the same X position whether installed or not");
         Contains(discover, "ImGui.SetCursorPos(new Vector2(12f, 18f))", "list artwork keeps the same X position whether installed or not");

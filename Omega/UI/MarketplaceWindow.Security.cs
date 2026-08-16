@@ -81,7 +81,7 @@ internal sealed partial class MarketplaceWindow
             return;
 
         var keepOpen = aboutOpen;
-        ImGui.SetNextWindowSize(new Vector2(620f, 420f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(new Vector2(660f, 570f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal(AboutPopupId, ref keepOpen, ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse))
         {
             aboutOpen = keepOpen;
@@ -100,7 +100,20 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Spacing();
+        DrawAboutVersionAndDefinitions();
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        // Keep identity and Definitions visible while the longer product/help copy below can scroll.
+        // Remove the child's extra horizontal padding so the lower copy stays on the same left edge
+        // as Version/Definitions instead of drifting inward a second time.
+        var aboutScrollPadding = ImGui.GetStyle().WindowPadding;
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0f, aboutScrollPadding.Y));
+        ImGui.BeginChild("omega-about-scrollable-body", Vector2.Zero, false);
         DrawAboutProductPitch();
+        ImGui.EndChild();
+        ImGui.PopStyleVar();
 
         aboutOpen = keepOpen && aboutOpen;
         ImGui.EndPopup();
@@ -111,8 +124,10 @@ internal sealed partial class MarketplaceWindow
     {
         const float iconSize = 112f;
         var available = ImGui.GetContentRegionAvail().X;
-        var heroWidth = Math.Min(470f, available);
-        var startX = ImGui.GetCursorPosX() + Math.Max(0f, (available - heroWidth) * 0.5f);
+        const float leftInset = 12f;
+        const float rightInset = 12f;
+        var heroWidth = Math.Max(0f, available - leftInset - rightInset);
+        var startX = ImGui.GetCursorPosX() + leftInset;
         var startY = ImGui.GetCursorPosY();
 
         ImGui.SetCursorPos(new Vector2(startX, startY));
@@ -144,12 +159,31 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextDisabled($"Version {BuildInfo.Version} · Dalagab Group");
         ImGui.Spacing();
         ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), "Every plugin. One orbit.");
-        ImGui.PushTextWrapPos(startX + heroWidth);
+        ImGui.PushTextWrapPos(startX + heroWidth - 4f);
         ImGui.TextWrapped("Discover the wider Dalamud plugin ecosystem in one marketplace — then choose the source you trust.");
         ImGui.PopTextWrapPos();
         ImGui.EndGroup();
 
         ImGui.SetCursorPosY(startY + iconSize);
+    }
+
+    private void DrawAboutVersionAndDefinitions()
+    {
+        var revision = string.IsNullOrWhiteSpace(catalog.CatalogRevision)
+            ? (catalog.HasLoaded ? "Loaded revision unavailable" : "Not loaded")
+            : catalog.CatalogRevision;
+
+        ImGui.TextUnformatted("Version");
+        ImGui.SameLine(0f, 10f);
+        ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), BuildInfo.Version);
+
+        ImGui.Spacing();
+        ImGui.TextUnformatted("Definitions");
+        ImGui.SameLine(0f, 10f);
+        ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), revision);
+        ImGui.PushTextWrapPos(0f);
+        ImGui.TextDisabled("Definitions are Omega's independently updated marketplace data: plugin listings, repositories, compatibility, dependencies, and security summaries. They can update without changing the Omega application version.");
+        ImGui.PopTextWrapPos();
     }
 
     private static void DrawAboutProductPitch()
@@ -163,10 +197,19 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         ImGui.TextUnformatted("Find more. Know more. Install with confidence.");
         ImGui.Spacing();
-        ImGui.BulletText("Spotlight and Discover bring official and community plugins into one searchable storefront.");
-        ImGui.BulletText("Compare repositories, compatibility, packages and security findings before you choose a source.");
-        ImGui.BulletText("Keep installed plugins, collections and available updates together in Library.");
-        ImGui.BulletText("When you install, update or remove something, Dalamud remains in control of the plugin lifecycle.");
+        DrawAboutWrappedBullet("Spotlight and Discover bring official and community plugins into one searchable storefront.");
+        DrawAboutWrappedBullet("Compare repositories, compatibility, packages and security findings before you choose a source.");
+        DrawAboutWrappedBullet("Keep installed plugins, collections and available updates together in Library.");
+        DrawAboutWrappedBullet("When you install, update or remove something, Dalamud remains in control of the plugin lifecycle.");
+    }
+
+    private static void DrawAboutWrappedBullet(string text)
+    {
+        ImGui.Bullet();
+        ImGui.SameLine();
+        ImGui.PushTextWrapPos(0f);
+        ImGui.TextWrapped(text);
+        ImGui.PopTextWrapPos();
     }
 
 }

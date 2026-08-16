@@ -41,7 +41,8 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion,
         bool queueIfVisible = true,
-        bool showOverlays = true)
+        bool showOverlays = true,
+        bool showInstalledMarker = false)
     {
         var startX = ImGui.GetCursorPosX();
         ImGui.SetCursorPosX(startX + Math.Max(0f, (layoutWidth - iconSize) * 0.5f));
@@ -54,6 +55,13 @@ internal sealed partial class MarketplaceWindow
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         var clicked = DrawArtworkImage(plugin, iconSize, queueIfVisible, ref overlayMin, ref overlaySize);
+
+        // Discover can request only the installed-state marker while suppressing the normal
+        // artwork action/API overlays. Drawing it here, inside the artwork child, guarantees
+        // the marker is composited after the image instead of ending up behind the child window.
+        if (showInstalledMarker && installedPlugin is not null)
+            DrawDiscoverInstalledMarker(overlayMin, Math.Min(overlaySize.X, overlaySize.Y));
+
         var overlayConsumed = showOverlays &&
                               DrawArtworkTopLayer(plugin, installedPlugin, overlayMin, overlaySize, currentApi, currentDalamudVersion);
 

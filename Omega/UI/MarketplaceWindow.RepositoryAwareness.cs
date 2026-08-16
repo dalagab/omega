@@ -127,7 +127,7 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.TextColored(new Vector4(0.96f, 0.36f, 0.28f, 1f), "Omega found repository package divergence in sources currently used by this Dalamud installation.");
-        ImGui.TextWrapped("This does not prove a repository is malicious. It means at least one package with the same plugin version differs from Omega's stable-provider artifact baseline, so the source deserves review before further installs or updates.");
+        ImGui.TextWrapped("This does not prove a repository is malicious. It means at least one package with the same plugin version differs from Omega's stable-provider plugin package baseline, so the source deserves review before further installs or updates.");
         ImGui.Spacing();
 
         if (ImGui.BeginTable("repository-risk-table", 3, ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.RowBg, new Vector2(0f, 235f)))

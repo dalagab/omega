@@ -32,12 +32,14 @@ internal sealed partial class MarketplaceWindow
         selectedPlugin = plugin;
         installed.TryGetValue(plugin.InternalName, out var installedPlugin);
         var content = MarketplacePresentationRules.Choose(plugin, catalog.GetPresentationVariants(plugin.InternalName));
+        var sourcePackages = BuildProductSourcePackages(plugin, currentApi, currentDalamudVersion);
 
         if (ShouldDrawOperationStatus())
         {
             ImGui.TextWrapped(operationMessage);
             ImGui.Spacing();
         }
+        DrawProductPackageBaselineWarning(plugin, sourcePackages, currentApi, currentDalamudVersion);
         DrawProductHero(plugin, content, installedPlugin, currentApi, currentDalamudVersion);
         DrawProductCollectionMembership(plugin, installedPlugin);
         DrawProductScreenshots(content);
@@ -46,7 +48,7 @@ internal sealed partial class MarketplaceWindow
         DrawProductChangelog(plugin);
         DrawProductReadme(content);
         DrawProductDependencies(plugin, installed);
-        DrawProductSourcePackages(plugin, currentApi, currentDalamudVersion);
+        DrawProductSourcePackages(plugin, sourcePackages, currentApi, currentDalamudVersion);
         DrawProductSecurity(plugin);
     }
 
@@ -351,14 +353,25 @@ internal sealed partial class MarketplaceWindow
     {
         if (installedPlugin is not null)
         {
+            var updateCandidate = GetAvailableUpdateCandidate(
+                plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
             var offeredUpdate = GetAvailableUpdateVersion(
                 plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
-            if (offeredUpdate is not null)
+            if (offeredUpdate is not null && updateCandidate is not null)
             {
-                if (DrawProductActionButton("Update", $"product-update-{plugin.InternalName}", enabled: true, accent: true))
-                    Plugin.PluginInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.UpdateablePlugins, plugin.Name);
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip($"Update to v{offeredUpdate} through Dalamud");
+                var migration = IsRepositoryMigration(installedPlugin, updateCandidate);
+                var updateBusy = updateTask is not null;
+                var label = updatingInternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase)
+                    ? "Updating…"
+                    : migration ? "Migrate & update" : "Update";
+                if (DrawProductActionButton(label, $"product-update-{plugin.InternalName}", enabled: !updateBusy, accent: true))
+                    OpenUpdateOrMigration(plugin, installedPlugin, currentApi, currentDalamudVersion);
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                {
+                    ImGui.SetTooltip(migration
+                        ? $"Move from the installed repository to {updateCandidate.SourceName} and update to v{offeredUpdate}"
+                        : $"Update to v{offeredUpdate} through Dalamud");
+                }
             }
             else if (installedPlugin.HasMainUi && installedPlugin.IsLoaded)
             {

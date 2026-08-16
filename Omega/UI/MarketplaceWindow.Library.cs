@@ -537,7 +537,9 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.SameLine(0f, 12f);
         var textStart = ImGui.GetCursorPosX();
+        var updateVariant = GetAvailableUpdateCandidate(plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
         var offered = GetAvailableUpdateVersion(plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
+        var migration = updateVariant is not null && IsRepositoryMigration(installedPlugin, updateVariant);
         var textHeight = ImGui.GetTextLineHeightWithSpacing() * 3f;
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
         ImGui.BeginGroup();
@@ -551,8 +553,8 @@ internal sealed partial class MarketplaceWindow
         }
         else
         {
-            var updateVariant = GetInstallCandidates(plugin.InternalName, currentApi, currentDalamudVersion).FirstOrDefault() ?? plugin;
-            ImGui.TextDisabled($"{InstalledVersionText(installedPlugin)} → v{offered}");
+            updateVariant ??= plugin;
+            ImGui.TextDisabled($"{InstalledVersionText(installedPlugin)} → v{offered}{(migration ? "  •  repository move" : string.Empty)}");
             if (BuildChangelogEntries(updateVariant).Count > 0)
             {
                 ImGui.SameLine(0f, 5f);
@@ -572,28 +574,38 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetCursorPos(new Vector2(
             Math.Max(textStart + 240f, MarketplaceLayoutRules.RightAlignedX(ImGui.GetWindowContentRegionMax().X, actionSize)),
             MarketplaceLayoutRules.CenterY(rowHeight, actionSize)));
-        if (DrawUpdateActionIcon($"update-action-{StableId(plugin.InternalName)}"))
-            Plugin.PluginInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.UpdateablePlugins, plugin.Name);
+        var canUpdate = updateVariant is not null && updateTask is null;
+        var actionTooltip = migration && updateVariant is not null
+            ? $"Migrate to {updateVariant.SourceName} and update through Dalamud"
+            : "Update through Dalamud";
+        if (DrawUpdateActionIcon($"update-action-{StableId(plugin.InternalName)}", canUpdate, actionTooltip))
+            OpenUpdateOrMigration(plugin, installedPlugin, currentApi, currentDalamudVersion);
 
         ImGui.EndChild();
     }
 
-    private static bool DrawUpdateActionIcon(string id)
+    private static bool DrawUpdateActionIcon(string id, bool enabled, string tooltip)
     {
         const float size = 38f;
         const float rounding = 6f;
         var min = ImGui.GetCursorScreenPos();
+        if (!enabled)
+            ImGui.BeginDisabled();
         ImGui.InvisibleButton($"##{id}", new Vector2(size, size));
-        var hovered = ImGui.IsItemHovered();
-        var held = ImGui.IsItemActive();
-        var clicked = ImGui.IsItemClicked();
+        var hovered = ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled);
+        var held = enabled && ImGui.IsItemActive();
+        var clicked = enabled && ImGui.IsItemClicked();
+        if (!enabled)
+            ImGui.EndDisabled();
         var draw = ImGui.GetWindowDrawList();
 
-        var background = ImGui.ColorConvertFloat4ToU32(held
-            ? new Vector4(0.02f, 0.34f, 0.36f, 1f)
-            : hovered
-                ? new Vector4(0.03f, 0.50f, 0.51f, 1f)
-                : new Vector4(0.02f, 0.40f, 0.42f, 0.96f));
+        var background = ImGui.ColorConvertFloat4ToU32(!enabled
+            ? new Vector4(0.07f, 0.09f, 0.11f, 0.72f)
+            : held
+                ? new Vector4(0.02f, 0.34f, 0.36f, 1f)
+                : hovered
+                    ? new Vector4(0.03f, 0.50f, 0.51f, 1f)
+                    : new Vector4(0.02f, 0.40f, 0.42f, 0.96f));
         draw.AddRectFilled(min, min + new Vector2(size, size), background, rounding);
 
         ImGui.PushFont(UiBuilder.IconFontFixedWidth);
@@ -601,12 +613,12 @@ internal sealed partial class MarketplaceWindow
         var glyphSize = ImGui.CalcTextSize(glyph);
         draw.AddText(
             min + new Vector2((size - glyphSize.X) * 0.5f, (size - glyphSize.Y) * 0.5f),
-            ImGui.GetColorU32(ImGuiCol.Text),
+            ImGui.GetColorU32(enabled ? ImGuiCol.Text : ImGuiCol.TextDisabled),
             glyph);
         ImGui.PopFont();
 
         if (hovered)
-            ImGui.SetTooltip("Update through Dalamud");
+            ImGui.SetTooltip(enabled ? tooltip : "Another plugin update is already in progress");
         return clicked;
     }
 

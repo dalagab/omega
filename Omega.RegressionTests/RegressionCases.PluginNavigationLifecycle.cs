@@ -19,6 +19,13 @@ internal static partial class RegressionCases
                 useTesting: false),
             "same-source monotonic versions remain ordinary updates");
 
+        True(
+            PluginUpdateRules.IsSamePublishingSource(
+                "OFFICIAL",
+                "https://kamori.goats.dev/Plugin/PluginMaster",
+                candidateOfficial: true),
+            "Dalamud's OFFICIAL installed-source sentinel remains the same publishing lineage as the live official catalog URL");
+
         var apiShapedOlderMirror = new MarketplacePlugin
         {
             AssemblyVersionText = "15.0.0.0",
@@ -81,8 +88,11 @@ internal static partial class RegressionCases
 
         var details = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Details.cs"));
         var packages = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SourcePackages.cs"));
-        Contains(details, "GetInstallCandidates(internalName, currentApi, currentDalamudVersion).FirstOrDefault()", "Updates use the same green preferred package baseline as product presentation");
+        Contains(details, "var candidates = GetInstallCandidates(internalName, currentApi, currentDalamudVersion)", "Updates consider every enabled compatible package instead of only the first repository");
         Contains(details, "PluginUpdateRules.IsUpdateCandidate", "Updates use chronology-aware cross-source comparison");
+        Contains(details, "var sameSource = valid", "ordinary same-repository updates remain preferred over repository migration");
+        Contains(details, "OrderByDescending(x => PluginUpdateRules.NormalizeUnix(x.Candidate.LastUpdate))", "when the installed repository stops publishing, the newest chronologically proven repository migration is selected");
+        Contains(details, "the UI asks the user before moving repositories", "cross-repository update candidates remain explicit user-approved migrations");
         Contains(details, "installedPlugin.Manifest.LastUpdate", "installed release chronology comes from Dalamud's persisted local manifest when available");
         DoesNotContain(details, "foreach (var variant in catalog.GetMainVariants(internalName, currentApi))", "Updates no longer pick the numerically largest version from arbitrary repositories");
         Contains(packages, ".OrderByDescending(x => x.Identity.Equals(preferredIdentity", "the green preferred package is listed before historical package lines");
@@ -104,6 +114,7 @@ internal static partial class RegressionCases
         var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
         var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginInstallCoordinator.cs"));
         var installer = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudInstallerBridge.cs"));
+        var update = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Update.cs"));
         var pluginEntry = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
 
         Contains(pluginEntry, "CommandName = \"/omega\"", "Omega keeps the canonical /omega command");
@@ -135,8 +146,19 @@ internal static partial class RegressionCases
         False(popups.Contains("Known sources###DalagabOmegaKnownSources", StringComparison.Ordinal), "obsolete source-copy popup is removed");
 
         Contains(product, "GetAvailableUpdateVersion", "Discover product pages detect newer compatible installed-plugin versions");
-        Contains(product, "DrawProductActionButton(\"Update\"", "installed Discover products replace Installed/Open with Update when an update exists");
-        Contains(product, "PluginInstallerOpenKind.UpdateablePlugins", "Discover product Update delegates to Dalamud's update surface");
+        Contains(product, "OpenUpdateOrMigration", "installed Discover products execute Omega's selected update lifecycle instead of only opening Dalamud's installer page");
+        DoesNotContain(product, "OpenPluginInstallerTo(PluginInstallerOpenKind.UpdateablePlugins", "product Update no longer stops at the passive Dalamud update list");
+        Contains(library, "OpenUpdateOrMigration", "Updates rows execute the selected update lifecycle directly");
+        DoesNotContain(library, "OpenPluginInstallerTo(PluginInstallerOpenKind.UpdateablePlugins", "Updates rows no longer stop at the passive Dalamud update list");
+        Contains(coordinator, "installer.UpdateAsync", "update coordinator delegates the final replacement to Dalamud");
+        Contains(coordinator, "EnsureRepositoryReadyAsync", "updates prepare a migrated destination repository before delegating to Dalamud");
+        Contains(installer, "UpdateSinglePluginAsync", "Omega invokes Dalamud's actual single-plugin update lifecycle");
+        Contains(installer, "AvailablePluginUpdate", "Omega constructs Dalamud update metadata for the selected repository package");
+        Contains(installer, "CreateRemoteManifest", "install and update share the same repository-backed manifest construction");
+        Contains(update, "Plugin moved repository", "repository migrations are explained in a dedicated confirmation panel");
+        Contains(update, "Migrate & update", "repository migrations require an explicit user action");
+        Contains(update, "The old repository is not removed", "migration assistance does not break other plugins that may still use the old source");
+        Contains(update, "CompareRepositorySecurity", "migration confirmation surfaces package/security differences between old and new repositories");
         Contains(product, "OpenUninstallConfirmation(plugin)", "installed product pages expose uninstall");
         Contains(popups, "Uninstall plugin###DalagabOmegaUninstall", "uninstall is explicitly confirmed");
         Contains(coordinator, "installer.UninstallAsync", "uninstall coordinator delegates lifecycle work");
@@ -210,8 +232,11 @@ internal static partial class RegressionCases
         Contains(security, "ResolveInstalledSecurityVariant", "environment scan matches installed plugins to repository-specific scan results");
         Contains(security, "installedPlugin.Manifest.InstalledFromUrl", "third-party environment scans prefer the actual installed repository URL");
         Contains(security, "Security scan not yet available", "installed plugins without evidence remain visible rather than disappearing");
-        Contains(security, "BuildEnvironmentArtifactIdentityLine", "Library security rows explain the artifact identity backing each scan");
+        Contains(security, "BuildEnvironmentPluginIdentityLine", "Library security rows describe the plugin identity backing each scan without user-facing artifact terminology");
         Contains(security, "scan shared by", "identical package hashes disclose when one canonical scan is shared by mirrors");
+        Contains(security, "DrawSecurityDisclaimerPanel", "Library security begins with the prominent static-analysis warning panel");
+        Contains(security, "Plugin identity not yet published", "Library security uses plugin terminology for the identity line");
+        DoesNotContain(security, "Artifact identity not yet published", "Library security no longer labels the plugin as an artifact");
         var securityVisual = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
         Contains(securityVisual, "SecuritySeverityRank", "Library security posture uses an explicit shared severity ordering helper");
         Contains(securityVisual, "\"critical\" => 4", "Library security severity ordering keeps critical above lower findings");
@@ -292,7 +317,7 @@ internal static partial class RegressionCases
         Contains(usage, "command prefix", "usage extraction recognizes command metadata such as Questionable's command prefix");
         Contains(store, "ReadPluginChangelogHistory", "Definitions retains and loads historical plugin changelogs from historical variants");
         Contains(store, "WHERE TRIM(v.changelog)<>''", "empty changelog records are not projected into client history");
-        Contains(changelog, "## [0.8.56]", "repository changelog has an entry for the current release");
+        Contains(changelog, "## [0.8.63]", "repository changelog has an entry for the current release");
         Contains(release, "extract_changelog.py", "release workflow consumes repository CHANGELOG.md");
         Contains(release, "--notes-file release-notes.md", "GitHub Releases receive curated project release notes");
     }

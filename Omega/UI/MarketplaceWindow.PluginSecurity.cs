@@ -239,6 +239,28 @@ internal sealed partial class MarketplaceWindow
             _ => "None detected",
         };
 
+    private static void DrawSecurityDisclaimerPanel()
+    {
+        const string warning = "Static analysis reports observed capabilities and indicators. No findings is not proof that a plugin is safe.";
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.24f, 0.035f, 0.045f, 0.88f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.82f, 0.16f, 0.20f, 0.92f));
+        ImGui.BeginChild("omega-security-disclaimer-panel", new Vector2(0f, 66f), true,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.SetCursorPosY(18f);
+        DrawPluginFontAwesomeRiskIcon(
+            FontAwesomeIcon.ExclamationTriangle,
+            new Vector4(0.98f, 0.28f, 0.31f, 1f),
+            warning,
+            24f);
+        ImGui.SameLine(0f, 10f);
+        ImGui.SetCursorPosY(16f);
+        ImGui.PushTextWrapPos(ImGui.GetWindowContentRegionMax().X - 12f);
+        ImGui.TextWrapped(warning);
+        ImGui.PopTextWrapPos();
+        ImGui.EndChild();
+        ImGui.PopStyleColor(2);
+    }
+
     private static void DrawSecurityDisclaimer()
     {
         ImGui.Spacing();
