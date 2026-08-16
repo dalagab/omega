@@ -82,7 +82,7 @@ internal static partial class RegressionCases
         Contains(release, "Omega.zip", "stable Dalamud release asset is published under the PluginMaster name");
         Contains(release, "omega-latest", "release workflow refreshes the stable repository endpoint");
         Contains(release, "actions/attest@v4", "release artifact receives GitHub build-provenance attestation");
-        Contains(release, "$expectedAssemblyVersion = "$tagVersion.0"", "three-part release tags map to four-part CLR/Dalamud assembly versions");
+        Contains(release, "$expectedAssemblyVersion = \"$tagVersion.0\"", "three-part release tags map to four-part CLR/Dalamud assembly versions");
         Contains(release, "Distributed plugin version $distributedVersion does not match repo version $repoVersion", "release refuses to publish a package/repository version mismatch");
 
         var codeql = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "codeql.yml"));

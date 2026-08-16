@@ -94,7 +94,7 @@ The repository manifest in [`repository/pluginmaster.json`](repository/pluginmas
 
 ### Publishing a new Omega version
 
-[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a three-part version tag matching the project metadata, for example `v0.8.38`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
+[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a three-part version tag matching the project metadata, for example `v0.8.39`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
 
 ## Exactly what the installer changes
 
@@ -202,7 +202,7 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Release metadata
 
-- Omega version: `0.8.38`
+- Omega version: `0.8.39`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`
