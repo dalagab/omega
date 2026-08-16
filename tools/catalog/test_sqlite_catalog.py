@@ -102,7 +102,7 @@ def main() -> int:
         raw_manifest = json.loads(query(db1, "select raw_manifest_json from plugin_variants where source_entry_key like 'exampleplugin|1.0.0.0|15|%'")[0])
         assert raw_manifest["CustomFutureField"] == "preserved"
         preferred, presentation = query(db1, "select preferred_variant_id,presentation_variant_id from presentation")
-        assert preferred != presentation, "official install source and richer presentation source should be independently selectable"
+        assert preferred == presentation, "preferred package baseline must also own product presentation metadata"
 
         # Second run: official source and website transiently fail. Seed must retain both last-known-good records.
         failed_enriched = tmp / "failed-enriched.json"

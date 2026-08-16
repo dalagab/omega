@@ -98,7 +98,7 @@ internal sealed partial class MarketplaceWindow
         else
         {
             foreach (var candidate in candidates)
-                DrawInstallSourceChoice(candidate, currentApi);
+                DrawInstallSourceChoice(candidate, currentApi, currentDalamudVersion);
         }
 
         ImGui.Separator();
@@ -108,7 +108,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.EndPopup();
     }
 
-    private void DrawInstallSourceChoice(MarketplacePlugin candidate, int currentApi)
+    private void DrawInstallSourceChoice(MarketplacePlugin candidate, int currentApi, Version currentDalamudVersion)
     {
         var selected = NormalizeUrl(candidate.SourceUrl)
             .Equals(NormalizeUrl(pendingInstallSourceUrl), StringComparison.OrdinalIgnoreCase);
@@ -118,6 +118,8 @@ internal sealed partial class MarketplaceWindow
         var api = testing ? candidate.TestingDalamudApiLevel ?? candidate.DalamudApiLevel : candidate.DalamudApiLevel;
         var sourceState = DescribeInstallSourceState(candidate);
         var alreadyPresent = IsInstallRepositoryPresent(candidate);
+        var baseline = GetInstallCandidates(candidate.InternalName, currentApi, currentDalamudVersion).FirstOrDefault() ?? candidate;
+        var sourceComparison = CompareRepositorySecurity(candidate, baseline);
 
         ImGui.PushID($"install-source-{StableId(candidate.SourceUrl)}");
         var rowStart = ImGui.GetCursorPos();
@@ -133,7 +135,12 @@ internal sealed partial class MarketplaceWindow
         var rowEnd = ImGui.GetCursorPos();
 
         ImGui.SetCursorPos(rowStart + new Vector2(10f, 8f));
+        if (sourceComparison.Worse)
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.94f, 0.28f, 0.26f, 1f));
         DrawRepositoryName(Shorten(candidate.SourceName, 46), candidate.SourceUrl, candidate.SourceIsOfficial, currentApi);
+        if (sourceComparison.Worse)
+            ImGui.PopStyleColor();
+        DrawRepositorySecurityDifferenceIndicator(sourceComparison);
 
         if (alreadyPresent)
             DrawInstallRepositoryPresentMarker(rowStart, rowWidth, candidate.SourceIsOfficial);
@@ -141,7 +148,10 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetCursorPos(rowStart + new Vector2(10f, 33f));
         ImGui.TextDisabled($"Version {version}  •  API {api}");
         ImGui.SetCursorPos(rowStart + new Vector2(10f, 55f));
-        ImGui.TextDisabled(sourceState);
+        if (sourceComparison.Worse)
+            ImGui.TextColored(new Vector4(0.94f, 0.28f, 0.26f, 1f), sourceState);
+        else
+            ImGui.TextDisabled(sourceState);
         ImGui.SetCursorPos(rowStart + new Vector2(10f, 76f));
         ImGui.TextDisabled(Shorten(candidate.SourceUrl, 88));
         if (ImGui.IsItemHovered())

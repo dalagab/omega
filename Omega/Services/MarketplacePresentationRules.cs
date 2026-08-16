@@ -10,9 +10,8 @@ internal sealed record MarketplacePresentationContent(
     int RichnessScore);
 
 /// <summary>
-/// Chooses presentation-only metadata with official-source precedence. When Dalamud official
-/// metadata exists it owns the product presentation as well as installation identity; richer
-/// community presentation is used only when no official variant exists.
+/// Chooses presentation-only metadata from the exact package baseline selected by Omega.
+/// Metadata, security state and the green preferred package therefore describe one source/artifact.
 /// </summary>
 internal static class MarketplacePresentationRules
 {
@@ -20,34 +19,22 @@ internal static class MarketplacePresentationRules
         MarketplacePlugin plugin,
         IEnumerable<MarketplacePlugin> variants)
     {
-        var candidates = new[] { plugin }
-            .Concat(variants)
-            .Where(x => x.InternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase))
-            .GroupBy(Identity, StringComparer.OrdinalIgnoreCase)
-            .Select(x => x.OrderByDescending(RichnessScore).First())
-            .ToArray();
-
-        var officialCandidates = candidates.Where(x => x.SourceIsOfficial).ToArray();
-        var presentationPool = officialCandidates.Length > 0 ? officialCandidates : candidates;
-        var richest = presentationPool
-            .OrderByDescending(x => PresentationImages(x).Count)
-            .ThenByDescending(RichnessScore)
-            .ThenByDescending(x => x.AssemblyVersion)
-            .FirstOrDefault() ?? plugin;
-
-        var images = PresentationImages(richest);
-        var summary = ChooseSummary(richest);
-        var description = ChooseDescription(richest);
-        var readme = richest.OmegaWebsiteReadmeExcerpt.Trim();
-        var enhanced = candidates.Any(x => x.OmegaEnriched);
+        // The selected/default variant is Omega's package baseline. Product metadata must come
+        // from that same package source so the green package row, security summary and product
+        // identity cannot silently describe different repository artifacts.
+        _ = variants;
+        var images = PresentationImages(plugin);
+        var summary = ChooseSummary(plugin);
+        var description = ChooseDescription(plugin);
+        var readme = plugin.OmegaWebsiteReadmeExcerpt.Trim();
         return new MarketplacePresentationContent(
-            richest,
+            plugin,
             images,
             summary,
             description,
             readme,
-            enhanced,
-            RichnessScore(richest));
+            plugin.OmegaEnriched,
+            RichnessScore(plugin));
     }
 
     public static IReadOnlyList<string> PresentationImages(MarketplacePlugin plugin)

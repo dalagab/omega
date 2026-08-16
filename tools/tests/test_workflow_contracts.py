@@ -286,6 +286,14 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn('$expectedAssemblyVersion = "$tagVersion.0"', text)
         self.assertIn('Distributed plugin version $distributedVersion does not match repo version $repoVersion', text)
 
+    def test_release_package_contains_private_sqlite_runtime(self) -> None:
+        text = self.read("release.yml")
+        self.assertIn("e_sqlite3.dll", text)
+        self.assertIn("SQLitePCLRaw.provider.e_sqlite3.dll", text)
+        self.assertIn("Build output is missing the bundled e_sqlite3.dll runtime.", text)
+        self.assertIn("Compress-Archive -Path (Join-Path $extract '*')", text)
+        self.assertNotIn("SQLitePCLRaw.provider.winsqlite3", text)
+
     def test_workflows_do_not_embed_large_python_heredocs(self) -> None:
         for name in ("catalog-builder.yml", "security-scanner.yml", "catalog-compaction.yml"):
             text = self.read(name)

@@ -18,6 +18,7 @@ internal enum MarketplaceView
 internal enum LibrarySection
 {
     All,
+    Security,
     Collections,
 }
 
@@ -95,6 +96,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private readonly PluginRecencyLedger pluginRecency;
     private readonly PluginLibraryLedger libraryLedger;
     private readonly PluginConfigBackupService configBackups;
+    private readonly OmegaSelfUpdateService selfUpdates;
     private readonly ISharedImmediateTexture? omegaIconTexture;
     private readonly string fallbackIconPath;
     private readonly ISharedImmediateTexture? fallbackIconTexture;
@@ -118,6 +120,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private bool resetStorefrontScroll;
 
     private MarketplacePlugin? selectedPlugin;
+    private MarketplaceView detailsReturnView = MarketplaceView.Discover;
+    private LibrarySection detailsReturnLibrarySection = LibrarySection.All;
     private MarketplacePlugin? pendingInstall;
     private string pendingInstallSourceUrl = string.Empty;
     private Task<InstallResult>? installTask;
@@ -224,6 +228,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         PluginRecencyLedger pluginRecency,
         PluginLibraryLedger libraryLedger,
         PluginConfigBackupService configBackups,
+        OmegaSelfUpdateService selfUpdates,
         string omegaIconPath,
         string fallbackIconPath,
         string eulaPath)
@@ -239,6 +244,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         this.pluginRecency = pluginRecency;
         this.libraryLedger = libraryLedger;
         this.configBackups = configBackups;
+        this.selfUpdates = selfUpdates;
         omegaIconTexture = File.Exists(omegaIconPath) ? Plugin.TextureProvider.GetFromFile(omegaIconPath) : null;
         this.fallbackIconPath = fallbackIconPath;
         fallbackIconTexture = File.Exists(fallbackIconPath) ? Plugin.TextureProvider.GetFromFile(fallbackIconPath) : null;

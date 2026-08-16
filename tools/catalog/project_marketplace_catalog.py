@@ -20,7 +20,9 @@ import tempfile
 import zipfile
 from typing import Any
 
-PROJECTOR_VERSION = "1.1.0"
+from source_stability import stable_source_priority
+
+PROJECTOR_VERSION = "1.2.0"
 MARKETPLACE_DB_FILENAME = "omega-marketplace.sqlite"
 MARKETPLACE_BUNDLE_FILENAME = "omega-marketplace.sqlite.zip"
 CLIENT_INTERNAL_DB_FILENAME = "omega-catalog.sqlite"
@@ -30,6 +32,17 @@ MARKETPLACE_DESCRIPTOR_FILENAME = "catalog.json"
 MARKETPLACE_SCHEMA = "omega.catalog.sqlite.v1"
 EVIDENCE_SCHEMA = "omega.security-evidence.sqlite.v1"
 DEPENDENCY_SUMMARY_LIMIT = 30
+
+# The projector is allowed to canonicalize user-facing security fields by exact artifact hash.
+# Non-security runtime metadata must remain byte-for-byte equivalent to the evidence database.
+ARTIFACT_CANONICAL_RUNTIME_COLUMNS = {
+    "security_status", "security_scanned_at_utc", "security_scanner_version", "security_highest_severity",
+    "security_informational_count", "security_caution_count", "security_high_count", "security_critical_count",
+    "security_capabilities_json", "security_automation_level", "security_automation_capabilities_json",
+    "security_findings_json", "security_dependencies_json", "security_dependency_total_count",
+    "security_source_available", "security_source_repository", "security_source_commit",
+    "security_source_to_binary_verified", "security_error",
+}
 
 DETAILED_SECURITY_TABLES = (
     "plugin_security_scans",
@@ -359,7 +372,102 @@ def create_marketplace_security_current(db: sqlite3.Connection) -> None:
             "UPDATE marketplace_security_current SET dependencies_json=?,dependency_total_count=? WHERE variant_id=?",
             (encoded, total_count, variant_id),
         )
+    canonicalize_marketplace_security_by_artifact(db)
+    validate_artifact_security_consistency(db)
 
+
+
+def canonicalize_marketplace_security_by_artifact(db: sqlite3.Connection) -> dict[str, int]:
+    """Make one exact artifact hash produce one user-facing security report.
+
+    Detailed source evidence remains untouched in the server-side tables. Only the compact client
+    projection is canonicalized, using stable provider priority when several repositories mirror
+    the same package bytes.
+    """
+    rows = db.execute("""
+        SELECT m.variant_id,m.assembly_version,m.artifact_sha256,
+               p.internal_name,s.name AS source_name,s.url AS source_url,s.is_official
+          FROM marketplace_security_current m
+          JOIN plugin_variants v ON v.variant_id=m.variant_id
+          JOIN plugins p ON p.plugin_id=v.plugin_id
+          JOIN sources s ON s.source_id=v.source_id
+         WHERE m.status='complete' AND m.artifact_sha256<>''
+         ORDER BY p.internal_name COLLATE NOCASE,m.assembly_version COLLATE NOCASE,m.artifact_sha256,m.variant_id
+    """).fetchall()
+    groups: dict[tuple[str, str, str], list[sqlite3.Row]] = {}
+    for row in rows:
+        key = (
+            str(row["internal_name"] or "").casefold(),
+            str(row["assembly_version"] or "").casefold(),
+            str(row["artifact_sha256"] or "").casefold(),
+        )
+        groups.setdefault(key, []).append(row)
+
+    fields = (
+        "scan_id", "scanner_version", "status", "scanned_at_utc", "highest_severity",
+        "informational_count", "caution_count", "high_count", "critical_count", "capabilities_json",
+        "automation_level", "automation_capabilities_json", "findings_json", "dependencies_json",
+        "dependency_total_count", "source_available", "source_repository", "source_commit",
+        "source_to_binary_verified", "error",
+    )
+    updated = 0
+    mirrored_groups = 0
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        mirrored_groups += 1
+        canonical = min(
+            members,
+            key=lambda row: (
+                stable_source_priority(row["source_name"], row["source_url"], bool(row["is_official"]))
+                if stable_source_priority(row["source_name"], row["source_url"], bool(row["is_official"])) is not None
+                else 1_000,
+                str(row["source_name"] or "").casefold(),
+                int(row["variant_id"]),
+            ),
+        )
+        source = db.execute(
+            f"SELECT {','.join(fields)} FROM marketplace_security_current WHERE variant_id=?",
+            (int(canonical["variant_id"]),),
+        ).fetchone()
+        if source is None:
+            continue
+        assignments = ",".join(f"{field}=?" for field in fields)
+        values = tuple(source[index] for index in range(len(fields)))
+        for member in members:
+            variant_id = int(member["variant_id"])
+            if variant_id == int(canonical["variant_id"]):
+                continue
+            db.execute(
+                f"UPDATE marketplace_security_current SET {assignments} WHERE variant_id=?",
+                (*values, variant_id),
+            )
+            updated += 1
+    return {"mirroredArtifactGroups": mirrored_groups, "canonicalizedVariants": updated}
+
+
+def validate_artifact_security_consistency(db: sqlite3.Connection) -> None:
+    rows = db.execute("""
+        SELECT p.internal_name,m.assembly_version,m.artifact_sha256,
+               COUNT(DISTINCT (
+                   m.status || '|' || m.highest_severity || '|' || m.informational_count || '|' ||
+                   m.caution_count || '|' || m.high_count || '|' || m.critical_count || '|' ||
+                   m.capabilities_json || '|' || m.automation_level || '|' || m.automation_capabilities_json || '|' ||
+                   m.findings_json || '|' || m.dependencies_json || '|' || m.dependency_total_count
+               )) AS signatures
+          FROM marketplace_security_current m
+          JOIN plugin_variants v ON v.variant_id=m.variant_id
+          JOIN plugins p ON p.plugin_id=v.plugin_id
+         WHERE m.status='complete' AND m.artifact_sha256<>''
+         GROUP BY p.internal_name COLLATE NOCASE,m.assembly_version COLLATE NOCASE,m.artifact_sha256 COLLATE NOCASE
+        HAVING signatures<>1
+    """).fetchall()
+    if rows:
+        first = rows[0]
+        raise RuntimeError(
+            "marketplace artifact security canonicalization failed for "
+            f"{first[0]} {first[1]} {str(first[2])[:16]}: {first[3]} result signatures"
+        )
 
 def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
     db.execute("DROP VIEW IF EXISTS runtime_plugin_variants")
@@ -415,7 +523,7 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
             before_integrity = db.execute("PRAGMA integrity_check").fetchone()
             if before_integrity is None or str(before_integrity[0]).lower() != "ok":
                 raise RuntimeError(f"evidence database integrity check failed: {before_integrity}")
-            before_runtime = runtime_projection_digest(db, {"security_dependencies_json", "security_dependency_total_count"})
+            before_runtime = runtime_projection_digest(db, ARTIFACT_CANONICAL_RUNTIME_COLUMNS)
             current_rows = int(db.execute("SELECT COUNT(*) FROM plugin_security_current").fetchone()[0])
             db.execute("PRAGMA foreign_keys=OFF")
             db.execute("BEGIN IMMEDIATE")
@@ -428,9 +536,9 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('marketplace_projector_version',?)", (PROJECTOR_VERSION,))
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('detailed_security_evidence_included','0')")
             db.commit()
-            after_runtime = runtime_projection_digest(db, {"security_dependencies_json", "security_dependency_total_count"})
+            after_runtime = runtime_projection_digest(db, ARTIFACT_CANONICAL_RUNTIME_COLUMNS)
             if after_runtime != before_runtime:
-                raise RuntimeError("marketplace projection changed runtime_plugin_variants")
+                raise RuntimeError("marketplace projection changed non-security runtime_plugin_variants metadata")
             projected_rows = int(db.execute("SELECT COUNT(*) FROM marketplace_security_current").fetchone()[0])
             if projected_rows != current_rows:
                 raise RuntimeError("marketplace projection changed current security row count")
@@ -457,7 +565,7 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
         evidence_revision = read_meta(check, "evidence_revision")
         return {
             "integrity": "ok",
-            "runtimeProjectionSha256": runtime_projection_digest(check, {"security_dependencies_json", "security_dependency_total_count"}),
+            "runtimeProjectionSha256": runtime_projection_digest(check, ARTIFACT_CANONICAL_RUNTIME_COLUMNS),
             "runtimeProjectionWithDependenciesSha256": runtime_projection_digest(check),
             "securityRows": int(check.execute("SELECT COUNT(*) FROM marketplace_security_current").fetchone()[0]),
             "dependencySummaryRows": int(check.execute("SELECT COUNT(*) FROM marketplace_security_current WHERE dependency_total_count>0").fetchone()[0]),

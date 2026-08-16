@@ -25,6 +25,7 @@ import security_endpoint_inventory
 import security_scan
 import security_hash_consensus
 import source_resolution
+import source_stability
 import source_scan_followups
 import process_source_submission
 
@@ -386,24 +387,49 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertEqual("network.endpoint.dynamic-or-undetermined", findings[0]["ruleId"])
         self.assertEqual(["Network destination undetermined"], capabilities)
 
-    def test_cross_source_hash_consensus_marks_an_unshared_artifact(self) -> None:
+    def test_cross_source_hash_consensus_uses_named_stable_baseline(self) -> None:
         with closing(sqlite3.connect(":memory:")) as db:
             db.row_factory = sqlite3.Row
             db.executescript(build_sqlite_catalog.SCHEMA_SQL)
             security_scan.ensure_schema(db)
             db.execute("INSERT INTO plugins(plugin_id,internal_name,canonical_name,first_seen_utc,last_seen_utc,active) VALUES(1,'Fixture','Fixture','','',1)")
-            for source_id in range(1, 4):
-                db.execute("INSERT INTO sources(source_id,url,name) VALUES(?,?,?)", (source_id, f"https://example.invalid/{source_id}.json", f"Source {source_id}"))
+            sources = (
+                (1, "https://puni.sh/Fixture", "Puni.sh Fixture"),
+                (2, "https://mirror.invalid/repo.json", "Mirror"),
+                (3, "https://outlier.invalid/repo.json", "Outlier"),
+            )
+            for source_id, source_url, source_name in sources:
+                db.execute("INSERT INTO sources(source_id,url,name) VALUES(?,?,?)", (source_id, source_url, source_name))
                 db.execute("INSERT INTO plugin_variants(variant_id,plugin_id,source_id,source_entry_key,assembly_version,first_seen_utc,last_seen_utc,active) VALUES(?,?,?,?,?,?,?,1)", (source_id, 1, source_id, f"Fixture-{source_id}", "1.0.0", "", ""))
             report = json.dumps({"findings": [], "capabilities": []})
             for variant_id, artifact_hash in ((1, "a" * 64), (2, "a" * 64), (3, "b" * 64)):
                 db.execute("INSERT INTO plugin_security_scans(scan_id,plugin_id,variant_id,source_id,assembly_version,artifact_sha256,status,report_json) VALUES(?,?,?,?,?,?,?,?)", (variant_id, 1, variant_id, variant_id, "1.0.0", artifact_hash, "complete", report))
                 db.execute("INSERT INTO plugin_security_current(variant_id,scan_id,assembly_version,artifact_sha256,status,report_json) VALUES(?,?,?,?,?,?)", (variant_id, variant_id, "1.0.0", artifact_hash, "complete", report))
             summary = security_hash_consensus.refresh_cross_source_hash_findings(db)
+            baseline = db.execute("SELECT highest_severity,findings_json FROM plugin_security_current WHERE variant_id=1").fetchone()
+            mirror = db.execute("SELECT highest_severity,findings_json FROM plugin_security_current WHERE variant_id=2").fetchone()
             outlier = db.execute("SELECT highest_severity,findings_json FROM plugin_security_current WHERE variant_id=3").fetchone()
+            db.execute("UPDATE plugin_security_current SET artifact_sha256=? WHERE variant_id=3", ("a" * 64,))
+            security_hash_consensus.canonicalize_current_security_by_artifact(db)
+            security_hash_consensus.refresh_cross_source_hash_findings(db)
+            resolved = db.execute("SELECT findings_json,capabilities_json FROM plugin_security_current WHERE variant_id=3").fetchone()
         self.assertEqual(1, summary["groupsWithMismatches"])
+        self.assertEqual(1, summary["stableBaselineGroups"])
+        self.assertEqual("none", baseline["highest_severity"])
+        self.assertEqual("none", mirror["highest_severity"])
+        self.assertNotIn("artifact.cross-source-hash-mismatch", baseline["findings_json"])
+        self.assertNotIn("artifact.cross-source-hash-mismatch", mirror["findings_json"])
         self.assertEqual("high", outlier["highest_severity"])
-        self.assertIn("artifact.cross-source-hash-mismatch", outlier["findings_json"])
+        self.assertIn("Artifact differs from stable package baseline", outlier["findings_json"])
+        self.assertNotIn("artifact.cross-source-hash-mismatch", resolved["findings_json"])
+        self.assertNotIn("Cross-source hash comparison", resolved["capabilities_json"])
+
+    def test_stable_source_classification_is_explicit_not_catalog_size_based(self) -> None:
+        self.assertEqual("Dalamud", source_stability.classify_stable_source("Dalamud official", "", True).label)
+        self.assertEqual("Puni.sh", source_stability.classify_stable_source("Puni.sh", "https://puni.sh/repository", False).label)
+        self.assertEqual("NightmareXIV", source_stability.classify_stable_source("NightmareXIV", "https://github.com/NightmareXIV/repo", False).label)
+        self.assertEqual("Combat Reborn", source_stability.classify_stable_source("Combat Reborn", "https://github.com/FFXIV-CombatReborn/CombatRebornRepo", False).label)
+        self.assertIsNone(source_stability.classify_stable_source("Huge community repo", "https://example.invalid/huge.json", False))
 
     def test_public_advisory_collector_normalizes_osv_matches_for_observed_nuget_versions(self) -> None:
         with tempfile.TemporaryDirectory() as td:

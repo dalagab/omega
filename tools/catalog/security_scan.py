@@ -49,7 +49,7 @@ from pathlib import Path, PurePosixPath
 from typing import Iterable
 from catalog_revisions import read_meta as read_catalog_meta, update_candidate_revisions
 from security_endpoint_inventory import endpoint_candidates, endpoint_findings
-from security_hash_consensus import refresh_cross_source_hash_findings
+from security_hash_consensus import canonicalize_current_security_by_artifact, refresh_cross_source_hash_findings
 from security_path_access import external_hard_coded_paths
 from source_resolution import source_candidates, source_override_key
 
@@ -3864,6 +3864,7 @@ def run(args: argparse.Namespace) -> dict:
         summary["reportedPluginRows"] = len(summary["plugins"])
         dependency_graph = refresh_dependency_graph(db, advisories)
         summary["dependencyGraph"] = dependency_graph
+        summary["artifactSecurityCanonicalization"] = canonicalize_current_security_by_artifact(db)
         summary["crossSourceHashConsensus"] = refresh_cross_source_hash_findings(db)
         recreate_runtime_view(db)
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_scanner_version',?)", (SCANNER_VERSION,))

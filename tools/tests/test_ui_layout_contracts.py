@@ -146,5 +146,42 @@ class UiLayoutContractTests(unittest.TestCase):
 
 
 
+    def test_library_security_scan_backup_navigation_and_update_attention(self):
+        library = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Library.cs").read_text(encoding="utf-8")
+        environment = (ROOT / "Omega" / "UI" / "MarketplaceWindow.LibrarySecurity.cs").read_text(encoding="utf-8")
+        appbar = (ROOT / "Omega" / "UI" / "MarketplaceWindow.AppBar.cs").read_text(encoding="utf-8")
+        artwork = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Artwork.cs").read_text(encoding="utf-8")
+        chrome = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Chrome.cs").read_text(encoding="utf-8")
+        backups = (ROOT / "Omega" / "Services" / "PluginConfigBackupService.cs").read_text(encoding="utf-8")
+        self_update = (ROOT / "Omega" / "Services" / "OmegaSelfUpdateService.cs").read_text(encoding="utf-8")
+
+        self.assertIn("library-tab-security", library)
+        self.assertIn("Installed environment", environment)
+        self.assertIn("installedPlugin.Manifest.InstalledFromUrl", environment)
+        self.assertIn("detailsReturnView = activeView", artwork)
+        self.assertIn("activeView = detailsReturnView", appbar)
+        self.assertIn("librarySection = detailsReturnLibrarySection", appbar)
+        self.assertIn("Path.GetTempPath()", backups)
+        self.assertIn("RevealBackupInExplorer", library)
+        self.assertIn("definitionsAttention: updates.DefinitionsUpdateAvailable", chrome)
+        self.assertIn('var mark = "!"', chrome)
+        self.assertIn("CheckInterval = TimeSpan.FromHours(6)", self_update)
+
+    def test_repository_source_security_divergence_is_visible(self):
+        compare = (ROOT / "Omega" / "UI" / "MarketplaceWindow.SourceSecurityComparison.cs").read_text(encoding="utf-8")
+        packages = (ROOT / "Omega" / "UI" / "MarketplaceWindow.SourcePackages.cs").read_text(encoding="utf-8")
+        install = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Install.cs").read_text(encoding="utf-8")
+        self.assertIn("CompareRepositorySecurity", compare)
+        self.assertIn("sameKnownArtifact", compare)
+        self.assertIn("SecurityArtifactSha256", compare)
+        self.assertIn("Definitions integrity anomaly", compare)
+        self.assertIn("Package differs from the preferred baseline", compare)
+        self.assertIn("baselineDeviation", packages)
+        self.assertIn("repository.SecurityComparison.Worse", packages)
+        self.assertIn("DrawRepositorySecurityDifferenceIndicator", packages)
+        self.assertIn("sourceComparison.Worse", install)
+
+
+
 if __name__ == "__main__":
     unittest.main()

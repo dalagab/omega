@@ -41,6 +41,20 @@ internal sealed partial class MarketplaceWindow
         return ResolveCompletedSecurityVisual(plugin.SecurityHighestSeverity);
     }
 
+    /// <summary>
+    /// Orders the normalized security severities used by Library posture sorting.
+    /// Keep aliases aligned with ResolveCompletedSecurityVisual so the summary and badge cannot disagree.
+    /// </summary>
+    private static int SecuritySeverityRank(string? severity)
+        => (severity ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "critical" => 4,
+            "high" => 3,
+            "caution" or "medium" => 2,
+            "informational" or "low" => 1,
+            _ => 0,
+        };
+
     private static PluginSecurityVisual ResolveCompletedSecurityVisual(string severity)
     {
         var normalized = (severity ?? string.Empty).Trim().ToLowerInvariant();

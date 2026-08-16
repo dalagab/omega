@@ -32,6 +32,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly MarketplaceWindow marketplaceWindow;
     private readonly DalamudSystemMenuBridge systemMenuBridge;
     private readonly DailyCatalogUpdateService dailyCatalogUpdate;
+    private readonly OmegaSelfUpdateService selfUpdates;
     private readonly IReadOnlyTitleScreenMenuEntry? titleScreenEntry;
 
     public Configuration Configuration { get; }
@@ -59,9 +60,8 @@ public sealed class Plugin : IDalamudPlugin
         pluginRecency = new PluginRecencyLedger(PluginInterface.ConfigDirectory.FullName);
         libraryLedger = new PluginLibraryLedger(PluginInterface.ConfigDirectory.FullName);
         libraryLedger.ObserveInstalled(PluginInterface.InstalledPlugins.Select(x => x.InternalName));
-        configBackups = new PluginConfigBackupService(
-            PluginInterface.ConfigDirectory.FullName,
-            PluginInterface.ConfigFile.FullName);
+        configBackups = new PluginConfigBackupService(PluginInterface.ConfigFile.FullName);
+        selfUpdates = new OmegaSelfUpdateService(Configuration);
         var repositoryBridge = new DalamudRepositoryBridge();
         var profileBridge = new DalamudProfileBridge();
         marketplaceWindow = CreateMarketplaceWindow(assemblyDirectory, repositoryBridge, profileBridge);
@@ -139,6 +139,7 @@ public sealed class Plugin : IDalamudPlugin
             pluginRecency,
             libraryLedger,
             configBackups,
+            selfUpdates,
             Path.Combine(assemblyDirectory, "icon.png"),
             Path.Combine(assemblyDirectory, "company-fallback.png"),
             Path.Combine(assemblyDirectory, "EULA.md"));
@@ -162,6 +163,7 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         dailyCatalogUpdate.Dispose();
+        selfUpdates.Dispose();
         catalogUpdates.Dispose();
         systemMenuBridge.Dispose();
 
@@ -227,5 +229,6 @@ public sealed class Plugin : IDalamudPlugin
         RefreshDefaultCatalog();
         marketplaceWindow.IsOpen = true;
         dailyCatalogUpdate.TriggerIfDue();
+        selfUpdates.TriggerIfDue();
     }
 }

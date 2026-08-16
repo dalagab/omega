@@ -137,9 +137,10 @@ internal sealed class SqliteCatalogStore
         if (Interlocked.Exchange(ref sqliteInitialized, 1) != 0)
             return;
 
-        // FFXIV/Dalamud is a Windows application. Using the Windows-provided SQLite library avoids
-        // shipping an unmanaged database DLL inside the plugin package.
-        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_winsqlite3());
+        // Omega ships the e_sqlite3 native runtime with the plugin package. This avoids depending on
+        // the host Windows installation for winsqlite3.dll and also works when FFXIV/Dalamud runs
+        // through Wine/Proton. The bundle owns provider initialization for this packaged runtime.
+        SQLitePCL.Batteries_V2.Init();
     }
 
     private static SqliteConnection OpenReadOnly(string path)

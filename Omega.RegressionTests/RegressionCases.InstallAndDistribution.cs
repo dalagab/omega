@@ -52,7 +52,9 @@ internal static partial class RegressionCases
         Contains(ui, "OpenAbout()", "clicking the footer version opens About");
         Contains(ui, "DrawDefinitionsUpdateBanner();", "Updates page renders a Definitions update notice at its content header");
         Contains(ui, "Definitions update available", "pending Definitions state is clearly named for the user");
-        Contains(ui, "counts.Updates + definitionsUpdateCount", "Definitions updates participate in the Updates navigation badge");
+        Contains(ui, "counts.Updates + applicationUpdateCount + definitionsUpdateCount", "Updates destination count includes plugin, Omega and Definitions updates");
+        Contains(ui, "notificationCount: counts.Updates + applicationUpdateCount", "Definitions updates do not inflate the red numeric badge");
+        Contains(ui, "definitionsAttention: updates.DefinitionsUpdateAvailable", "Definitions updates use the dedicated blue exclamation marker");
         Contains(ui, "panel-filters-{activeView}", "Filters control belongs to the active content panel");
         Contains(ui, "var triangle = filtersOpen ? \"▲\" : \"▼\"", "Filters control exposes its open/closed state with a triangle");
         Contains(ui, "ImGuiStyleVar.FrameRounding, 4f", "Filters control uses a compact square-cornered Store-style shape");
@@ -173,6 +175,11 @@ internal static partial class RegressionCases
             "recognized preferred providers retain icon identities");
         False(RepositoryProviderRules.Classify("Big community repository", "https://example.invalid/repo.json", false, RepositoryProviderRules.LargeRepositoryPluginThreshold).Label.Contains("large", StringComparison.OrdinalIgnoreCase),
             "broad repository priority is not exposed as a Large list badge");
+        True(RepositoryProviderRules.IsStableProvider("Dalamud official", "", true), "Dalamud can establish the package/security baseline");
+        True(RepositoryProviderRules.IsStableProvider("Puni.sh", "https://puni.sh/repository", false), "Puni.sh can establish the package/security baseline");
+        True(RepositoryProviderRules.IsStableProvider("NightmareXIV", "https://github.com/NightmareXIV/repo", false), "NightmareXIV can establish the package/security baseline");
+        True(RepositoryProviderRules.IsStableProvider("Combat Reborn", "https://github.com/FFXIV-CombatReborn/CombatRebornRepo", false), "Combat Reborn can establish the package/security baseline");
+        False(RepositoryProviderRules.IsStableProvider("Large community repository", "https://example.invalid/repo.json", false), "catalog size alone never makes a source a security baseline provider");
     }
 
     internal static void TestCatalogFirstRunLoadingContract()

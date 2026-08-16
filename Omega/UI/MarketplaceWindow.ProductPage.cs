@@ -26,14 +26,18 @@ internal sealed partial class MarketplaceWindow
         if (!detailsOpen || selectedPlugin is null)
             return;
 
-        var plugin = ResolveSelectedVariant(selectedPlugin);
+        // The product page is anchored to the same preferred package shown in green below.
+        // Metadata, dependency summaries and the security report therefore describe one baseline artifact.
+        var plugin = ResolveProductBaselineVariant(selectedPlugin, currentApi, currentDalamudVersion);
         selectedPlugin = plugin;
         installed.TryGetValue(plugin.InternalName, out var installedPlugin);
         var content = MarketplacePresentationRules.Choose(plugin, catalog.GetPresentationVariants(plugin.InternalName));
 
-        if (!string.IsNullOrWhiteSpace(operationMessage))
+        if (ShouldDrawOperationStatus())
+        {
             ImGui.TextWrapped(operationMessage);
-        ImGui.Spacing();
+            ImGui.Spacing();
+        }
         DrawProductHero(plugin, content, installedPlugin, currentApi, currentDalamudVersion);
         DrawProductCollectionMembership(plugin, installedPlugin);
         DrawProductScreenshots(content);

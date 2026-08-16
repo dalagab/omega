@@ -355,6 +355,11 @@ internal sealed partial class MarketplaceWindow
 
     private void OpenPluginDetails(MarketplacePlugin plugin)
     {
+        if (!detailsOpen)
+        {
+            detailsReturnView = activeView;
+            detailsReturnLibrarySection = librarySection;
+        }
         activeView = MarketplaceView.Discover;
         // Every fresh selection starts from the same deterministic default variant used by
         // marketplace cards. A user can still switch repository explicitly on the product page.
@@ -393,11 +398,11 @@ internal sealed partial class MarketplaceWindow
             return plugin;
 
         return variants
-                   .Where(x => x.SourceIsOfficial)
-                   .OrderByDescending(x => x.AssemblyVersion)
-                   .ThenByDescending(x => x.HighestKnownApiLevel)
-                   .FirstOrDefault()
-               ?? variants[0];
+            .OrderBy(x => RepositoryProviderRules.SecurityBaselinePriority(x.SourceName, x.SourceUrl, x.SourceIsOfficial))
+            .ThenByDescending(x => x.AssemblyVersion)
+            .ThenByDescending(x => x.HighestKnownApiLevel)
+            .ThenBy(x => x.SourceName, StringComparer.OrdinalIgnoreCase)
+            .First();
     }
 
     private string StableId(string value)

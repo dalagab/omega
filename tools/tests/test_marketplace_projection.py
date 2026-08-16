@@ -34,7 +34,7 @@ class MarketplaceProjectionTests(unittest.TestCase):
                 db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('evidence_revision','ev-v1-0123456789abcdef')")
                 db.commit()
                 before = project_marketplace_catalog.runtime_projection_digest(
-                    db, {"security_dependencies_json", "security_dependency_total_count"})
+                    db, project_marketplace_catalog.ARTIFACT_CANONICAL_RUNTIME_COLUMNS)
             out = root / "marketplace.sqlite"
             projected = project_marketplace_catalog.project_database(evidence, out)
             self.assertEqual(before, projected["runtimeProjectionSha256"])
@@ -54,6 +54,51 @@ class MarketplaceProjectionTests(unittest.TestCase):
                 self.assertLessEqual(len(dependencies), project_marketplace_catalog.DEPENDENCY_SUMMARY_LIMIT)
                 self.assertEqual("marketplace", dict(db.execute("SELECT key,value FROM catalog_meta"))["database_role"])
 
+
+
+    def test_same_artifact_hash_projects_one_canonical_security_result(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-marketplace-artifact-canonical-") as td:
+            root = Path(td)
+            evidence = root / "evidence.sqlite"
+            compact_sqlite_catalog.build_self_test_database(evidence)
+            with closing(sqlite3.connect(evidence)) as db:
+                db.execute("UPDATE sources SET name='Puni.sh Fixture',url='https://puni.sh/fixture' WHERE source_id=1")
+                baseline_findings = json.dumps([{"ruleId": "baseline", "severity": "caution"}], separators=(",", ":"))
+                db.execute("UPDATE plugin_security_current SET artifact_sha256=?,highest_severity='caution',caution_count=1,high_count=0,findings_json=? WHERE variant_id=1", ("a" * 64, baseline_findings))
+                db.execute("UPDATE plugin_security_scans SET artifact_sha256=? WHERE scan_id=1", ("a" * 64,))
+                db.execute("UPDATE plugin_security_dependencies SET kind='external-plugin',name='BaselineDependency',requirement='required' WHERE scan_id=1")
+                db.execute("INSERT INTO sources(source_id,url,name,is_official) VALUES(2,'https://mirror.invalid/repo.json','Mirror',0)")
+                db.execute("""INSERT INTO plugin_variants(
+                    variant_id,plugin_id,source_id,source_entry_key,name,author,assembly_version,dalamud_api_level,
+                    download_link_install,first_seen_utc,last_seen_utc,active)
+                    VALUES(2,1,2,'Fixture-Mirror','Fixture','Mirror author','1.0',15,'https://mirror.invalid/plugin.zip','','',1)""")
+                report = json.dumps({"findings": [{"ruleId": "mirror-only", "severity": "high"}], "capabilities": ["Mirror only"]}, separators=(",", ":"))
+                db.execute("""INSERT INTO plugin_security_scans(
+                    scan_id,plugin_id,variant_id,source_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,scanned_at_utc,
+                    highest_severity,informational_count,caution_count,high_count,critical_count,capabilities_json,source_available,source_repository,source_commit,
+                    source_to_binary_verified,report_json,error)
+                    VALUES(2,1,2,2,'1.0','stable','https://mirror.invalid/plugin.zip',?,'2.0.0','complete','2026-01-02T00:00:00Z',
+                           'high',0,0,1,0,'["Mirror only"]',0,'','',0,?, '')""", ("a" * 64, report))
+                db.execute("""INSERT INTO plugin_security_current(
+                    variant_id,scan_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,scanned_at_utc,highest_severity,
+                    informational_count,caution_count,high_count,critical_count,capabilities_json,findings_json,source_available,source_repository,source_commit,
+                    source_to_binary_verified,report_json,error)
+                    VALUES(2,2,'1.0','stable','https://mirror.invalid/plugin.zip',?,'2.0.0','complete','2026-01-02T00:00:00Z','high',
+                           0,0,1,0,?, ?,0,'','',0,?, '')""", ("a" * 64, json.dumps(["Mirror only"]), json.dumps([{"ruleId": "mirror-only", "severity": "high"}], separators=(",", ":")), report))
+                db.execute("INSERT INTO plugin_security_dependencies(scan_id,origin,kind,name,version,status,requirement,evidence_json) VALUES(2,'artifact','external-plugin','MirrorDependency','1.0','known','required','[]')")
+                db.commit()
+            out = root / "marketplace.sqlite"
+            project_marketplace_catalog.project_database(evidence, out)
+            with closing(sqlite3.connect(out)) as db:
+                rows = db.execute("""SELECT source_name,security_artifact_sha256,security_highest_severity,security_caution_count,security_high_count,
+                                            security_capabilities_json,security_findings_json,security_dependencies_json
+                                       FROM runtime_plugin_variants WHERE internal_name='Fixture' ORDER BY source_name""").fetchall()
+                self.assertEqual(2, len(rows))
+                signatures = {tuple(row[1:]) for row in rows}
+                self.assertEqual(1, len(signatures), "same artifact SHA must project one canonical security result")
+                self.assertEqual("caution", rows[0][2])
+                dependencies = json.loads(rows[0][7])
+                self.assertEqual(["BaselineDependency"], [item["name"] for item in dependencies])
 
     def test_dependency_summary_preserves_resolution_type_and_warning_without_forensic_tables(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-marketplace-dependencies-") as td:

@@ -10,7 +10,7 @@ internal sealed record MarketplaceCatalogProjection(
 /// </summary>
 internal static class MarketplaceCatalogRules
 {
-    public static MarketplaceCatalogProjection Project(IEnumerable<MarketplacePlugin> candidates)
+    public static MarketplaceCatalogProjection Project(IEnumerable<MarketplacePlugin> candidates, int preferredApi = 0)
     {
         var visibleVariants = candidates
             .Where(x => !x.IsHide)
@@ -20,7 +20,7 @@ internal static class MarketplaceCatalogRules
 
         var merged = visibleVariants
             .GroupBy(x => x.InternalName, StringComparer.OrdinalIgnoreCase)
-            .Select(ChoosePresentationVariant)
+            .Select(group => ChoosePresentationVariant(group, preferredApi))
             .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -55,10 +55,18 @@ internal static class MarketplaceCatalogRules
         return stableApis.DefaultIfEmpty(0).Max();
     }
 
-    private static MarketplacePlugin ChoosePresentationVariant(IEnumerable<MarketplacePlugin> group)
-        => group
-            .OrderByDescending(x => x.SourceIsOfficial)
+    private static MarketplacePlugin ChoosePresentationVariant(IEnumerable<MarketplacePlugin> group, int preferredApi)
+    {
+        var variants = group.ToArray();
+        var currentApi = preferredApi > 0
+            ? variants.Where(x => x.DalamudApiLevel == preferredApi).ToArray()
+            : Array.Empty<MarketplacePlugin>();
+        var pool = currentApi.Length > 0 ? currentApi : variants;
+        return pool
+            .OrderBy(x => RepositoryProviderRules.SecurityBaselinePriority(x.SourceName, x.SourceUrl, x.SourceIsOfficial))
             .ThenByDescending(x => x.AssemblyVersion)
+            .ThenByDescending(x => x.HighestKnownApiLevel)
             .ThenBy(x => x.SourceName, StringComparer.OrdinalIgnoreCase)
             .First();
+    }
 }

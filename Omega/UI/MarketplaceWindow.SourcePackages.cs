@@ -6,7 +6,11 @@ namespace Dalagab.Omega;
 
 internal sealed partial class MarketplaceWindow
 {
-    private sealed record ProductPackageRepository(string Name, string Url, bool Official);
+    private sealed record ProductPackageRepository(
+        string Name,
+        string Url,
+        bool Official,
+        RepositorySecurityComparison SecurityComparison);
 
     private sealed record ProductSourcePackage(
         string Identity,
@@ -26,11 +30,12 @@ internal sealed partial class MarketplaceWindow
         string Sha256,
         string SourceName,
         string SourceUrl,
-        bool Official);
+        bool Official,
+        MarketplacePlugin Variant);
 
     private void DrawProductSourcePackages(MarketplacePlugin plugin, int currentApi, Version currentDalamudVersion)
     {
-        var packages = BuildProductSourcePackages(plugin, currentApi);
+        var packages = BuildProductSourcePackages(plugin, currentApi, currentDalamudVersion);
         if (packages.Count == 0)
             return;
 
@@ -38,16 +43,23 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.Indent(14f);
         var preferredIdentity = ResolvePreferredInstallPackageIdentity(plugin, packages, currentApi, currentDalamudVersion);
+        var preferredPackage = packages.FirstOrDefault(x => x.Identity.Equals(preferredIdentity, StringComparison.OrdinalIgnoreCase));
         foreach (var package in packages)
-            DrawProductSourcePackage(
-                package,
-                currentApi,
-                package.Identity.Equals(preferredIdentity, StringComparison.OrdinalIgnoreCase));
+        {
+            var preferredInstall = package.Identity.Equals(preferredIdentity, StringComparison.OrdinalIgnoreCase);
+            var baselineDeviation = preferredPackage is not null && !preferredInstall &&
+                                    package.ApiLevel == preferredPackage.ApiLevel &&
+                                    package.Version.Equals(preferredPackage.Version, StringComparison.OrdinalIgnoreCase) &&
+                                    !string.IsNullOrWhiteSpace(package.Sha256) &&
+                                    !string.IsNullOrWhiteSpace(preferredPackage.Sha256) &&
+                                    !package.Sha256.Equals(preferredPackage.Sha256, StringComparison.OrdinalIgnoreCase);
+            DrawProductSourcePackage(package, currentApi, preferredInstall, baselineDeviation);
+        }
 
         ImGui.Unindent(14f);
     }
 
-    private IReadOnlyList<ProductSourcePackage> BuildProductSourcePackages(MarketplacePlugin plugin, int currentApi)
+    private IReadOnlyList<ProductSourcePackage> BuildProductSourcePackages(MarketplacePlugin plugin, int currentApi, Version currentDalamudVersion)
     {
         var variants = new[] { plugin }
             .Concat(catalog.GetPresentationVariants(plugin.InternalName))
@@ -58,6 +70,7 @@ internal sealed partial class MarketplaceWindow
             .Select(x => x.First())
             .ToArray();
 
+        var baseline = ResolveProductBaselineVariant(plugin, currentApi, currentDalamudVersion);
         var candidates = new List<ProductPackageCandidate>();
         foreach (var variant in variants)
         {
@@ -118,7 +131,8 @@ internal sealed partial class MarketplaceWindow
                     .Select(x => new ProductPackageRepository(
                         string.IsNullOrWhiteSpace(x.SourceName) ? "Unnamed repository" : x.SourceName,
                         x.SourceUrl,
-                        x.Official))
+                        x.Official,
+                        CompareRepositorySecurity(x.Variant, baseline)))
                     .ToArray();
                 var isTestingOnly = ordered.All(x => x.IsTesting);
                 var version = ordered.Select(x => x.Version).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? "—";
@@ -162,7 +176,8 @@ internal sealed partial class MarketplaceWindow
             normalizedSha,
             variant.SourceName,
             variant.SourceUrl,
-            variant.SourceIsOfficial);
+            variant.SourceIsOfficial,
+            variant);
     }
 
     private static string NormalizePackageUrl(string? value)
@@ -188,7 +203,7 @@ internal sealed partial class MarketplaceWindow
                 .Equals(NormalizeUrl(preferred.SourceUrl), StringComparison.OrdinalIgnoreCase)))?.Identity ?? string.Empty;
     }
 
-    private void DrawProductSourcePackage(ProductSourcePackage package, int currentApi, bool preferredInstall)
+    private void DrawProductSourcePackage(ProductSourcePackage package, int currentApi, bool preferredInstall, bool baselineDeviation)
     {
         var versionText = string.IsNullOrWhiteSpace(package.Version) ? "Version unknown" : $"v{package.Version}";
         var repoText = $"{package.Repositories.Count} repositor{(package.Repositories.Count == 1 ? "y" : "ies")}";
@@ -208,6 +223,12 @@ internal sealed partial class MarketplaceWindow
             ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.09f, 0.31f, 0.17f, 0.88f));
             ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.10f, 0.35f, 0.19f, 0.94f));
         }
+        else if (baselineDeviation)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.30f, 0.07f, 0.08f, 0.76f));
+            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.38f, 0.09f, 0.10f, 0.88f));
+            ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.43f, 0.10f, 0.11f, 0.94f));
+        }
         else
         {
             ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.08f, 0.09f, 0.11f, 0.72f));
@@ -223,11 +244,18 @@ internal sealed partial class MarketplaceWindow
 
         if (package.IsTestingOnly)
             DrawProductTestingPackageIcon(headerMin, headerMax);
+        else if (baselineDeviation)
+            DrawProductBaselineDeviationIcon(headerMin, headerMax);
 
         if (!open)
             return;
 
         ImGui.Indent(12f);
+        if (baselineDeviation)
+        {
+            ImGui.TextColored(new Vector4(0.94f, 0.28f, 0.26f, 1f), "Artifact differs from the preferred package baseline");
+            ImGui.Spacing();
+        }
         ImGui.TextDisabled(package.ApiLevel > 0 ? $"API: {package.ApiLevel}" : "API: unknown");
 
         if (!string.IsNullOrWhiteSpace(package.Sha256))
@@ -253,15 +281,29 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextUnformatted("Repository manifests pointing to this package");
         foreach (var repository in package.Repositories)
         {
+            if (repository.SecurityComparison.Worse)
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.94f, 0.28f, 0.26f, 1f));
             DrawRepositoryName(repository.Name, repository.Url, repository.Official, currentApi);
+            if (repository.SecurityComparison.Worse)
+                ImGui.PopStyleColor();
             if (ImGui.IsItemHovered() && !string.IsNullOrWhiteSpace(repository.Url))
-                ImGui.SetTooltip(repository.Url);
+                ImGui.SetTooltip(repository.SecurityComparison.Different
+                    ? repository.SecurityComparison.Tooltip
+                    : repository.Url);
+
+            DrawRepositorySecurityDifferenceIndicator(repository.SecurityComparison);
+
             if (!string.IsNullOrWhiteSpace(repository.Url))
             {
                 ImGui.SameLine(0f, 8f);
-                ImGui.TextDisabled(PackageLocationLabel(repository.Url));
+                if (repository.SecurityComparison.Worse)
+                    ImGui.TextColored(new Vector4(0.94f, 0.28f, 0.26f, 1f), PackageLocationLabel(repository.Url));
+                else
+                    ImGui.TextDisabled(PackageLocationLabel(repository.Url));
                 if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip(repository.Url);
+                    ImGui.SetTooltip(repository.SecurityComparison.Different
+                        ? repository.SecurityComparison.Tooltip
+                        : repository.Url);
             }
         }
         ImGui.Unindent(12f);
@@ -279,6 +321,19 @@ internal sealed partial class MarketplaceWindow
             headerMax.X - glyphSize.X - 10f,
             headerMin.Y + Math.Max(0f, (headerMax.Y - headerMin.Y - glyphSize.Y) * 0.5f));
         draw.AddText(iconPosition, 0xFFE3D36Bu, glyph);
+        ImGui.PopFont();
+    }
+
+    private static void DrawProductBaselineDeviationIcon(Vector2 headerMin, Vector2 headerMax)
+    {
+        var draw = ImGui.GetWindowDrawList();
+        ImGui.PushFont(UiBuilder.IconFontFixedWidth);
+        var glyph = FontAwesomeIcon.ExclamationTriangle.ToIconString();
+        var glyphSize = ImGui.CalcTextSize(glyph);
+        var iconPosition = new Vector2(
+            headerMax.X - glyphSize.X - 10f,
+            headerMin.Y + Math.Max(0f, (headerMax.Y - headerMin.Y - glyphSize.Y) * 0.5f));
+        draw.AddText(iconPosition, 0xFF4444EEu, glyph);
         ImGui.PopFont();
     }
 

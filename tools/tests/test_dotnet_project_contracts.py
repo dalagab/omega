@@ -60,6 +60,24 @@ class DotNetProjectContractTests(unittest.TestCase):
         self.assertNotIn('workflow.IndexOf("\\n  publish_marketplace:', text)
         self.assertNotIn('workflow.IndexOf("\\n  publish_evidence:', text)
 
+    def test_plugin_sqlite_runtime_is_self_contained_for_wine(self) -> None:
+        project_path = common.ROOT / "Omega" / "DalagabOmega.csproj"
+        project_text = project_path.read_text(encoding="utf-8")
+        self.assertIn('PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12"', project_text)
+        self.assertIn('PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" GeneratePathProperty="true"', project_text)
+        self.assertIn('CopyOmegaSqliteNativeToPluginDirectory', project_text)
+        self.assertIn(r'runtimes\win-x64\native\e_sqlite3.dll', project_text)
+        self.assertIn('DestinationFolder="$(TargetDir)"', project_text)
+        self.assertNotIn("SQLitePCLRaw.provider.winsqlite3", project_text)
+
+        store = (common.ROOT / "Omega" / "Services" / "SqliteCatalogStore.cs").read_text(encoding="utf-8")
+        self.assertIn("SQLitePCL.Batteries_V2.Init();", store)
+        self.assertNotIn("SQLite3Provider_winsqlite3", store)
+
+        regressions = (common.ROOT / "Omega.RegressionTests" / "Omega.RegressionTests.csproj").read_text(encoding="utf-8")
+        self.assertIn('PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12"', regressions)
+        self.assertNotIn("SQLitePCLRaw.provider.winsqlite3", regressions)
+
 
 if __name__ == "__main__":
     unittest.main()

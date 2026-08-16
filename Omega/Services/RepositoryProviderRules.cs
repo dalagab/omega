@@ -19,8 +19,9 @@ internal sealed record RepositoryProviderPresentation(
 /// <summary>
 /// Gives repositories a stable provider tier for ordering and presentation. Explicitly recognized
 /// publishers are preferred first; broad community repositories are then promoted by current
-/// catalog size without exposing a "large list" label in the UI. Provider preference is a source
-/// selection heuristic only and is intentionally separate from Omega's security scan results.
+/// catalog size without exposing a "large list" label in the UI. Dalamud, Puni.sh, NightmareXIV
+/// and Combat Reborn may establish the canonical package/security baseline. This provenance tier
+/// never lowers, hides, or overrides findings produced for the selected artifact.
 /// </summary>
 internal static class RepositoryProviderRules
 {
@@ -101,6 +102,23 @@ internal static class RepositoryProviderRules
 
     public static int SortPriority(string? sourceName, string? sourceUrl, bool official, int pluginCount = 0)
         => Classify(sourceName, sourceUrl, official, pluginCount).Priority;
+
+    /// <summary>
+    /// Returns whether this repository may establish Omega's canonical package/security baseline.
+    /// This is provenance stability only; it does not lower or override static-analysis findings.
+    /// </summary>
+    public static bool IsStableProvider(string? sourceName, string? sourceUrl, bool official)
+        => Classify(sourceName, sourceUrl, official).Kind is
+            RepositoryProviderKind.Dalamud or
+            RepositoryProviderKind.PuniSh or
+            RepositoryProviderKind.NightmareXiv or
+            RepositoryProviderKind.CombatReborn;
+
+    public static int SecurityBaselinePriority(string? sourceName, string? sourceUrl, bool official)
+    {
+        var provider = Classify(sourceName, sourceUrl, official);
+        return IsStableProvider(sourceName, sourceUrl, official) ? provider.Priority : int.MaxValue;
+    }
 
     private static bool Contains(string haystack, string needle)
         => haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);

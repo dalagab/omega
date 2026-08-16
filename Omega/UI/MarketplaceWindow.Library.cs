@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
@@ -13,6 +14,9 @@ internal sealed partial class MarketplaceWindow
     private bool ShowingLibraryCollections
         => activeView == MarketplaceView.Library && librarySection == LibrarySection.Collections;
 
+    private bool ShowingLibrarySecurity
+        => activeView == MarketplaceView.Library && librarySection == LibrarySection.Security;
+
     private void DrawLibraryTabs(int installedCount)
     {
         RefreshCollectionsIfNeeded();
@@ -24,6 +28,16 @@ internal sealed partial class MarketplaceWindow
                 active: librarySection == LibrarySection.All))
         {
             SetLibrarySection(LibrarySection.All);
+        }
+
+        ImGui.SameLine(0f, 8f);
+        if (DrawRoundedButton(
+                "Security scan",
+                "library-tab-security",
+                new Vector2(126f, 32f),
+                active: librarySection == LibrarySection.Security))
+        {
+            SetLibrarySection(LibrarySection.Security);
         }
 
         ImGui.SameLine(0f, 8f);
@@ -58,7 +72,7 @@ internal sealed partial class MarketplaceWindow
         {
             MarketplaceView.Spotlight => false,
             MarketplaceView.Discover when detailsOpen => false,
-            MarketplaceView.Library when librarySection == LibrarySection.Collections => false,
+            MarketplaceView.Library when librarySection is LibrarySection.Collections or LibrarySection.Security => false,
             _ => true,
         };
 
@@ -259,9 +273,15 @@ internal sealed partial class MarketplaceWindow
         try
         {
             var backup = configBackupTask.GetAwaiter().GetResult();
-            operationMessage = backup.Success && backup.BackupPath is not null
-                ? $"{backup.Message} Saved under Omega/config-backups."
-                : backup.Message;
+            if (backup.Success && backup.BackupPath is not null)
+            {
+                operationMessage = string.Empty;
+                RevealBackupInExplorer(backup.BackupPath, backup.BackupDirectory);
+            }
+            else
+            {
+                operationMessage = backup.Message;
+            }
         }
         catch (Exception ex)
         {
@@ -271,6 +291,32 @@ internal sealed partial class MarketplaceWindow
         {
             configBackupTask = null;
             backingUpPluginName = string.Empty;
+        }
+    }
+
+    private static void RevealBackupInExplorer(string backupPath, string? backupDirectory)
+    {
+        try
+        {
+            var fullPath = Path.GetFullPath(backupPath);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{fullPath}\"",
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Debug(ex, "Omega could not reveal config backup in Explorer; directory={Directory}", backupDirectory ?? string.Empty);
+            if (!string.IsNullOrWhiteSpace(backupDirectory))
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo(backupDirectory) { UseShellExecute = true });
+                }
+                catch { }
+            }
         }
     }
 

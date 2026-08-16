@@ -191,7 +191,7 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
         if (!string.IsNullOrWhiteSpace(sourceKey) && !sourceKey.Equals("All sources", StringComparison.OrdinalIgnoreCase))
             visible = visible.Where(x => x.SourceName.Equals(sourceKey, StringComparison.OrdinalIgnoreCase));
 
-        var projection = MarketplaceCatalogRules.Project(visible);
+        var projection = MarketplaceCatalogRules.Project(visible, currentApi);
         mainProjectionCache[cacheKey] = projection;
         return projection;
     }

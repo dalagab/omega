@@ -10,11 +10,11 @@ Project site: https://github.com/dalagab/omega
 
 - **Spotlight** with five editorial plugin picks, each using a subdued card tint derived from that plugin's own logo palette, plus neutral latest-additions and latest-updates shelves.
 - **Discover** with screenshot-rich Microsoft Store-style cards first, a compact fallback list for metadata-only plugins, full plugin product pages, global search, authors, repositories, categories, and searchable tags.
-- **Library** has two explicit views: **All** is a clean filtered list of installed plugins with local install timing, one-click plugin settings when exposed by Dalamud, and user-requested ZIP backups of the selected plugin's configuration; **Collections** is the Dalamud-owned folder/profile manager, with additive multi-collection membership managed inside each opened folder.
-- **Updates** for installed plugins where a newer compatible package is available, with a compact numeric notification badge when updates are waiting.
+- **Library** has three explicit views: **All** is a clean filtered list of installed plugins with local install timing, one-click plugin settings when exposed by Dalamud, and user-requested ZIP backups written to the Windows temporary directory and revealed in Explorer; **Security scan** summarizes the current installed environment from repository/package-specific Omega security results; **Collections** is the Dalamud-owned folder/profile manager, with additive multi-collection membership managed inside each opened folder.
+- **Updates** combines installed-plugin updates with periodic Omega application-version checks and durable Definitions-update state. Plugin/app update counts remain separate from the blue Definitions attention marker on the Downloads rail icon.
 - **Settings** for source visibility, user-added repositories, catalog refresh, and access to the EULA/risk disclosure.
 - Official/default Dalamud plugins alongside community repositories.
-- Repository-choice installation when the same plugin is available from multiple sources, plus a known-sources popup for provenance/copying.
+- Repository-choice installation when the same plugin is available from multiple sources; when scanned source packages disagree, Omega highlights a worse report in red and explains the difference before installation.
 - One hash-checked SQLite catalog built and enriched online, with the last-known-good local database retained when offline.
 - Stale-repository suppression and API compatibility handling.
 
@@ -24,7 +24,7 @@ Omega does **not** replace Dalamud's plugin lifecycle. Installation, updates, an
 
 Omega consumes the standard Dalamud manifest fields `IconUrl` and `ImageUrls`. `ImageUrls` is shown as the Screenshots section on the Discover product page, and screenshots can be clicked to open a larger in-game viewer, so repository authors do not need an Omega-specific screenshot field. See [`examples/pluginmaster.json`](examples/pluginmaster.json).
 
-The scheduled SQLite catalog workflow may also shallow-index the public project page already declared by a plugin. Standard page descriptions, a bounded README excerpt, and useful project images are cached and added as presentation-only Omega metadata. Discord join/widget banners are classified separately instead of being presented as product artwork, and explicit 18+ markers from declared tags or public project text feed the marketplace content-rating badge/filter. Listings enriched from a public project page receive a **star**; the star means richer indexed presentation data, not endorsement or security review. When repository variants disagree, official Dalamud metadata owns the listing and product presentation whenever an official variant exists; the richest community presentation is used only when no official variant exists. Installation still remains delegated to Dalamud.
+The scheduled SQLite catalog workflow may also shallow-index the public project page already declared by a plugin. Standard page descriptions, a bounded README excerpt, and useful project images are cached and added as presentation-only Omega metadata. Discord join/widget banners are classified separately instead of being presented as product artwork, and explicit 18+ markers from declared tags or public project text feed the marketplace content-rating badge/filter. Listings enriched from a public project page receive a **star**; the star means richer indexed presentation data, not endorsement or security review. When repository variants disagree, Omega anchors product metadata and the user-facing security summary to the same preferred package shown in green. Dalamud, Puni.sh, NightmareXIV, and Combat Reborn are stable baseline providers (in that order when more than one publishes the same compatible version); this is a provenance rule, not a security waiver. Mirrors with the same artifact SHA-256 share one canonical security result, while same-version packages with different hashes are called out as artifact deviations. Installation still remains delegated to Dalamud.
 
 ## Important third-party plugin warning
 
@@ -94,7 +94,7 @@ The repository manifest in [`repository/pluginmaster.json`](repository/pluginmas
 
 ### Publishing a new Omega version
 
-[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a three-part version tag matching the project metadata, for example `v0.8.44`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
+[`release.yml`](.github/workflows/release.yml) publishes tagged releases. Push a three-part version tag matching the project metadata, for example `v0.8.49`, or manually dispatch the workflow against an existing matching tag. The workflow downloads the current Dalamud runtime, builds `Omega.sln` in Release mode (including the regression suite), locates the `Dalamud.NET.Sdk` `latest.zip`, verifies required plugin files, publishes it as `Omega.zip`, writes a SHA-256 sidecar, creates/updates the versioned release, refreshes the stable `omega-latest` assets, and creates a GitHub build-provenance attestation.
 
 ## Exactly what the installer changes
 
@@ -204,7 +204,7 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Release metadata
 
-- Omega version: `0.8.44`
+- Omega version: `0.8.49`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`

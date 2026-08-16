@@ -20,6 +20,10 @@ internal sealed partial class MarketplaceWindow
         ImGui.SameLine();
         DrawSettingsEulaShortcut();
 
+        if (selfUpdates.UpdateAvailable)
+        {
+            ImGui.TextColored(new Vector4(0.35f, 0.64f, 0.92f, 1f), $"Omega {selfUpdates.AvailableDisplayVersion} is available — open Updates to install through Dalamud.");
+        }
         if (updates.DefinitionsUpdateAvailable)
         {
             ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), "Definitions update available — open Updates to apply it.");
@@ -40,28 +44,29 @@ internal sealed partial class MarketplaceWindow
         if (updates.IsRefreshing)
             return;
         InvalidateSourceCaches();
-        operationMessage = "Checking for plugin and Definitions updates…";
+        operationMessage = "Checking for Omega, plugin and Definitions updates…";
         _ = CheckForUpdatesFromUiAsync();
     }
 
     private async Task CheckForUpdatesFromUiAsync()
     {
-        await updates.CheckForUpdatesAsync().ConfigureAwait(false);
-        operationMessage = updates.DefinitionsUpdateAvailable
-            ? "Definitions update available. Open Updates to review it."
-            : string.IsNullOrWhiteSpace(updates.LastOnlineError)
-                ? "Update check complete."
-                : $"Update check completed with an online Definitions error: {updates.LastOnlineError}";
+        await Task.WhenAll(updates.CheckForUpdatesAsync(), selfUpdates.CheckNowAsync()).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(updates.LastOnlineError))
+            operationMessage = $"Update check completed with an online Definitions error: {updates.LastOnlineError}";
+        else if (!string.IsNullOrWhiteSpace(selfUpdates.LastError))
+            operationMessage = $"Omega update check failed: {selfUpdates.LastError}";
+        else
+            operationMessage = string.Empty;
     }
 
     private async Task ApplyDefinitionsUpdateFromUiAsync()
     {
         await updates.ApplyDefinitionsUpdateAsync().ConfigureAwait(false);
-        operationMessage = !updates.DefinitionsUpdateAvailable && string.IsNullOrWhiteSpace(updates.LastOnlineError)
-            ? "Definitions updated."
-            : string.IsNullOrWhiteSpace(updates.LastOnlineError)
+        operationMessage = !string.IsNullOrWhiteSpace(updates.LastOnlineError)
+            ? $"Definitions update failed: {updates.LastOnlineError}"
+            : updates.DefinitionsUpdateAvailable
                 ? "Definitions update is still pending."
-                : $"Definitions update failed: {updates.LastOnlineError}";
+                : string.Empty;
     }
 
     private void OpenAbout()

@@ -78,7 +78,7 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        if (activeView == MarketplaceView.Spotlight || ShowingLibraryCollections)
+        if (activeView == MarketplaceView.Spotlight || ShowingLibraryCollections || ShowingLibrarySecurity)
         {
             detailsOpen = false;
             selectedPlugin = null;
@@ -135,6 +135,12 @@ internal sealed partial class MarketplaceWindow
         if (ShowingLibraryCollections)
         {
             DrawCollectionsPage(installed, currentApi, currentDalamudVersion);
+            return;
+        }
+
+        if (ShowingLibrarySecurity)
+        {
+            DrawLibrarySecurityEnvironment(installed, currentApi, currentDalamudVersion);
             return;
         }
 

@@ -256,6 +256,17 @@ internal static partial class RegressionCases
         Contains(packagesUi, "0.08f, 0.09f, 0.11f", "non-installable historical packages use neutral headers");
         DoesNotContain(packagesUi, "package.Channels", "package headers do not expose Stable or Testing wording");
         Contains(packagesUi, "RepositoryProviderRules.SortPriority", "repository references follow shared preferred-provider ordering");
+        Contains(packagesUi, "baselineDeviation", "same-version packages with a different artifact hash are marked against the green baseline");
+        Contains(packagesUi, "0.30f, 0.07f, 0.08f", "artifact deviations receive the red package-header treatment");
+        var sourceComparisonUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SourceSecurityComparison.cs"));
+        Contains(sourceComparisonUi, "sameKnownArtifact", "source comparison uses exact artifact SHA identity before comparing reports");
+        Contains(sourceComparisonUi, "Definitions integrity anomaly", "identical artifact hashes with different security results are treated as a data integrity fault");
+        Contains(sourceComparisonUi, "Package differs from the preferred baseline", "different artifact hashes are explicitly compared against the green package baseline");
+        var productPageSource = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
+        Contains(productPageSource, "ResolveProductBaselineVariant", "product metadata and security are anchored to the green preferred package");
+        var projector = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "project_marketplace_catalog.py"));
+        Contains(projector, "canonicalize_marketplace_security_by_artifact", "client security summaries are canonicalized by exact artifact hash");
+        Contains(projector, "validate_artifact_security_consistency", "projection fails if identical artifact hashes retain different security summaries");
 
         var discoverUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
         var securityUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
@@ -288,7 +299,7 @@ internal static partial class RegressionCases
         Contains(compactor, "securityRevision", "compactor writes the security revision into the production descriptor");
         Contains(compactor, "changelogEntryCount", "descriptor exposes embedded changelog size for troubleshooting");
         var projector = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "project_marketplace_catalog.py"));
-        Contains(projector, "PROJECTOR_VERSION = \"1.1.0\"", "marketplace projector version is explicit");
+        Contains(projector, "PROJECTOR_VERSION = \"1.2.0\"", "marketplace projector version is explicit");
         Contains(projector, "marketplace_security_current", "client database retains only compact current security summaries");
         Contains(projector, "DEPENDENCY_SUMMARY_LIMIT = 30", "Definitions dependency projection remains bounded per plugin variant");
         Contains(projector, "build_dependency_summaries", "projector derives compact dependencies from detailed server-side evidence before dropping it");

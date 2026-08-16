@@ -33,6 +33,7 @@ from typing import Any, Iterable
 
 from catalog_revisions import compute_catalog_base_revision, ensure_revision_schema, read_meta, write_meta
 from catalog_presentation import is_adult_content, split_project_image_urls
+from source_stability import stable_source_priority
 
 SCHEMA_VERSION = 1
 SCHEMA_NAME = "omega.catalog.sqlite.v1"
@@ -782,14 +783,22 @@ def recompute_presentation(db: sqlite3.Connection, now: str) -> None:
             punch = str(v["punchline"] or "")
             return len(images) * 10000 + min(1200, len(desc) + len(web)) + min(300, len(punch)) + (800 if v["website_ok"] else 0) + (100 if v["icon_url"] else 0) + (50 if v["repo_url"] else 0)
 
-        presentation_variant = max(
-            variants,
-            key=lambda v: (len(image_list(v)), richness(v), int(v["is_official"] or 0), int(v["dalamud_api_level"] or 0), version_key(str(v["assembly_version"] or ""))),
-        )
-        preferred_variant = max(
-            variants,
-            key=lambda v: (int(v["is_official"] or 0), int(v["dalamud_api_level"] or 0), version_key(str(v["assembly_version"] or "")), richness(v)),
-        )
+        def baseline_key(v: sqlite3.Row) -> tuple[Any, ...]:
+            stable_priority = stable_source_priority(v["source_name"], v["source_url"], bool(v["is_official"]))
+            provider_priority = stable_priority if stable_priority is not None else 1_000
+            version = version_key(str(v["assembly_version"] or ""))
+            return (
+                provider_priority,
+                -int(v["dalamud_api_level"] or 0),
+                tuple(-part for part in version),
+                -richness(v),
+                str(v["source_name"] or "").casefold(),
+            )
+
+        # One repository package owns the user-facing product identity. Stable providers establish
+        # the baseline in the same order as the client: Dalamud, Puni.sh, NightmareXIV, Combat Reborn.
+        preferred_variant = min(variants, key=baseline_key)
+        presentation_variant = preferred_variant
         images = image_list(presentation_variant)
         native_desc = str(presentation_variant["description"] or "").strip()
         web_desc = str(presentation_variant["website_description"] or "").strip()

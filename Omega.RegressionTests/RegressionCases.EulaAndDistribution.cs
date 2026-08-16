@@ -84,6 +84,17 @@ internal static partial class RegressionCases
         Contains(release, "actions/attest@v4", "release artifact receives GitHub build-provenance attestation");
         Contains(release, "$expectedAssemblyVersion = \"$tagVersion.0\"", "three-part release tags map to four-part CLR/Dalamud assembly versions");
         Contains(release, "Distributed plugin version $distributedVersion does not match repo version $repoVersion", "release refuses to publish a package/repository version mismatch");
+        Contains(release, "e_sqlite3.dll", "release package explicitly carries Omega's private SQLite native runtime");
+        Contains(release, "SQLitePCLRaw.provider.e_sqlite3.dll", "release verifies the matching e_sqlite3 managed provider is present");
+
+        var productProjectText = File.ReadAllText(Path.Combine(Root, "Omega", "DalagabOmega.csproj"));
+        Contains(productProjectText, "SQLitePCLRaw.bundle_e_sqlite3", "production SQLite uses the bundled native e_sqlite3 runtime");
+        Contains(productProjectText, "CopyOmegaSqliteNativeToPluginDirectory", "build places the native SQLite runtime beside the plugin assembly");
+        Contains(productProjectText, @"runtimes\win-x64\native\e_sqlite3.dll", "build selects the Windows x64 SQLite binary used by FFXIV/Dalamud under Windows or Wine");
+        DoesNotContain(productProjectText, "SQLitePCLRaw.provider.winsqlite3", "production SQLite must not depend on Windows' optional winsqlite3 system DLL");
+        var sqliteStore = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "SqliteCatalogStore.cs"));
+        Contains(sqliteStore, "SQLitePCL.Batteries_V2.Init()", "SQLite bundle provider initialization is explicit and portable under Wine");
+        DoesNotContain(sqliteStore, "SQLite3Provider_winsqlite3", "runtime code cannot regress to the host winsqlite3 provider");
 
         var codeql = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "codeql.yml"));
         Contains(codeql, "github/codeql-action/init@v4", "CodeQL advanced workflow is configured");

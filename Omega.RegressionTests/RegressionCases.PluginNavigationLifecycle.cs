@@ -24,9 +24,10 @@ internal static partial class RegressionCases
         Contains(pluginEntry, "CommandManager.RemoveHandler(CommandAlias)", "the /omg alias is removed cleanly on plugin disposal");
         Contains(artwork, "activeView = MarketplaceView.Discover", "canonical plugin selection always enters Discover");
         Contains(artwork, "selectedVariantSource.Remove(plugin.InternalName)", "a fresh plugin selection clears stale repository overrides");
-        Contains(artwork, ".Where(x => x.SourceIsOfficial)", "fresh product navigation prefers official Dalamud metadata whenever it exists");
+        Contains(artwork, "RepositoryProviderRules.SecurityBaselinePriority", "fresh product navigation uses the stable-provider package baseline ranking");
+        DoesNotContain(artwork, ".Where(x => x.SourceIsOfficial)", "fresh product navigation no longer hard-codes an official-only metadata preference");
         Contains(artwork, "selectedPlugin = ResolveDefaultVariant(plugin)", "fresh plugin selection starts from the canonical default repository variant");
-        Contains(product, "var plugin = ResolveSelectedVariant(selectedPlugin)", "product-page rendering resolves any explicit repository selection before use");
+        Contains(product, "ResolveProductBaselineVariant(selectedPlugin, currentApi, currentDalamudVersion)", "product-page rendering stays anchored to the preferred stable package baseline");
         Contains(discover, "OpenPluginDetails(plugin)", "Discover selections use canonical product navigation");
         Contains(library, "OpenPluginDetails(plugin)", "Library and Updates selections use canonical product navigation");
         Contains(spotlight, "OpenPluginDetails(plugin)", "Spotlight selections use canonical product navigation");
@@ -90,9 +91,78 @@ internal static partial class RegressionCases
         Contains(backups, "Path.Combine(pluginConfigRoot, $\"{internalName}.json\")", "config backup includes Dalamud's canonical per-plugin JSON file");
         Contains(backups, "Path.Combine(pluginConfigRoot, internalName)", "config backup includes the plugin's auxiliary config directory");
         Contains(backups, "ZipFile.Open", "plugin configuration backups are packaged as portable ZIP archives");
+        Contains(backups, "Path.GetTempPath()", "config backups are temporary rather than persistent Omega state");
+        Contains(library, "RevealBackupInExplorer", "successful config backups immediately reveal the generated archive");
+        Contains(library, "explorer.exe", "Windows Explorer is used to show the backup location after creation");
         Contains(pluginEntry, "PluginInterface.ActivePluginsChanged += OnActivePluginsChanged", "Omega observes plugin lifecycle changes even when the Library is closed");
         Contains(pluginEntry, "PluginInterface.ActivePluginsChanged -= OnActivePluginsChanged", "plugin lifecycle tracking unsubscribes cleanly");
         Contains(sources, "libraryLedger.MarkInstalled(installingInternalName)", "successful Omega installs record an exact local install timestamp");
+    }
+
+    internal static void TestLibrarySecurityEnvironmentAndReturnNavigationContract()
+    {
+        var window = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.cs"));
+        var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
+        var security = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.LibrarySecurity.cs"));
+        var artwork = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Artwork.cs"));
+        var appBar = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.AppBar.cs"));
+
+        Contains(window, "Security,", "Library owns a dedicated installed-environment security section");
+        Contains(library, "library-tab-security", "Library exposes the security scan as an in-panel destination");
+        Contains(security, "Installed environment", "security scan summarizes the current installed environment");
+        Contains(security, "ResolveInstalledSecurityVariant", "environment scan matches installed plugins to repository-specific scan results");
+        Contains(security, "installedPlugin.Manifest.InstalledFromUrl", "third-party environment scans prefer the actual installed repository URL");
+        Contains(security, "Security scan not yet available", "installed plugins without evidence remain visible rather than disappearing");
+        var securityVisual = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
+        Contains(securityVisual, "SecuritySeverityRank", "Library security posture uses an explicit shared severity ordering helper");
+        Contains(securityVisual, "\"critical\" => 4", "Library security severity ordering keeps critical above lower findings");
+        Contains(security, "OpenPluginDetails(entry.SecurityVariant)", "environment scan rows remain actionable into the product security page");
+        Contains(artwork, "detailsReturnView = activeView", "opening a product remembers the originating marketplace surface");
+        Contains(artwork, "detailsReturnLibrarySection = librarySection", "opening from Library remembers the exact Library section");
+        Contains(appBar, "activeView = detailsReturnView", "product Back returns to the original marketplace surface");
+        Contains(appBar, "librarySection = detailsReturnLibrarySection", "product Back restores Library instead of incorrectly landing in Discover");
+    }
+
+    internal static void TestUpdatePersistenceSelfCheckAndRailAttentionContract()
+    {
+        var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
+        var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CatalogUpdateCoordinator.cs"));
+        var state = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OnlineCatalogClient.cs"));
+        var selfUpdate = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OmegaSelfUpdateService.cs"));
+        var config = File.ReadAllText(Path.Combine(Root, "Omega", "Configuration.cs"));
+
+        Contains(state, "AvailableCatalogSha256", "pending Definitions hash is persisted outside the in-memory coordinator");
+        Contains(state, "AvailableCatalogRevision", "pending Definitions revision is persisted across game restarts");
+        Contains(coordinator, "state.AvailableCatalogSha256", "coordinator rehydrates pending Definitions state at startup");
+        Contains(chrome, "definitionsAttention: updates.DefinitionsUpdateAvailable", "Downloads rail receives a dedicated Definitions attention state");
+        Contains(chrome, "0.12f, 0.48f, 0.86f", "Definitions attention marker is blue");
+        Contains(chrome, "var mark = \"!\"", "Definitions attention marker contains an exclamation point");
+        Contains(selfUpdate, "CheckInterval = TimeSpan.FromHours(6)", "Omega application updates are checked on an interval");
+        Contains(selfUpdate, "RepositoryManifestUrl", "application update checks use Omega's public Dalamud repository manifest");
+        Contains(selfUpdate, "MaximumManifestBytes", "application update checks bound remote manifest size");
+        Contains(config, "LastApplicationUpdateCheckUtc", "application update cadence survives restarts");
+        Contains(config, "AvailableApplicationVersion", "detected Omega application update state survives restarts");
+        Contains(chrome, "Open Dalamud updates", "Omega application updates remain delegated to Dalamud");
+        Contains(chrome, "ShouldDrawOperationStatus", "top-level operation status has an explicit transient/error policy");
+        Contains(chrome, "message.Contains(\"failed\"", "completed success messages do not remain as a permanent status line");
+    }
+
+    internal static void TestRepositorySecurityDifferencePresentationContract()
+    {
+        var comparison = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SourceSecurityComparison.cs"));
+        var packages = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SourcePackages.cs"));
+        var install = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Install.cs"));
+
+        Contains(comparison, "CompareRepositorySecurity", "repository packages compare their exact security reports across sources");
+        Contains(comparison, "sameKnownArtifact", "identical artifact hashes are treated as one canonical package identity");
+        Contains(comparison, "Definitions integrity anomaly", "same-hash security disagreement is treated as Definitions corruption rather than a repository risk difference");
+        Contains(comparison, "differentKnownArtifact", "packages whose hashes differ from the preferred baseline are explicitly flagged");
+        Contains(comparison, "SecurityArtifactSha256", "source divergence can explain differing scanned package artifacts");
+        Contains(comparison, "FontAwesomeIcon.ExclamationTriangle", "worse source reports receive an explicit warning icon");
+        Contains(packages, "repository.SecurityComparison.Worse", "worse repository lines receive dedicated source-list styling");
+        Contains(packages, "0.94f, 0.28f, 0.26f", "worse repository source lines are red");
+        Contains(packages, "DrawRepositorySecurityDifferenceIndicator", "source list shows the report-difference explanation icon");
+        Contains(install, "sourceComparison.Worse", "repository chooser carries the same source security warning forward to installation");
     }
 
     internal static void TestRepositoryClientResponseLifetimeContract()

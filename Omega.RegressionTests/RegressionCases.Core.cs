@@ -71,13 +71,13 @@ internal static partial class RegressionCases
         };
 
         var content = MarketplacePresentationRules.Choose(sparse, [sparse, rich]);
-        Equal("Official", content.Variant.SourceName, "official repository metadata owns presentation whenever it exists");
-        Equal(1, content.Images.Count, "official presentation does not silently borrow screenshots from a community mirror");
-        True(content.IsEnhanced, "Omega can still indicate that richer indexed metadata exists without replacing official presentation");
+        Equal("Official", content.Variant.SourceName, "the selected baseline source owns product presentation");
+        Equal(1, content.Images.Count, "baseline presentation does not silently borrow screenshots from another repository");
+        False(content.IsEnhanced, "enrichment state follows the baseline source rather than an unrelated mirror");
 
-        var communityOnly = MarketplacePresentationRules.Choose(rich, [rich]);
-        Equal("Community rich source", communityOnly.Variant.SourceName, "rich community presentation remains available when no official source exists");
-        Equal(4, communityOnly.Images.Count, "community-only presentation keeps its complete screenshot set");
+        var communityOnly = MarketplacePresentationRules.Choose(rich, [sparse, rich]);
+        Equal("Community rich source", communityOnly.Variant.SourceName, "an explicitly selected community baseline keeps its own metadata");
+        Equal(4, communityOnly.Images.Count, "selected baseline presentation keeps its complete screenshot set");
     }
 
     internal static void TestManifestParserWrappers()

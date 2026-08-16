@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing release tag to publish, for example v0.8.44"
+        description: "Existing release tag to publish, for example v0.8.52"
         required: true
         type: string
 
@@ -31,7 +31,7 @@ jobs:
         shell: pwsh
         run: |
           $tag = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ inputs.tag }}' } else { '${{ github.ref_name }}' }
-          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') { throw "Release tag '$tag' must look like v0.8.44" }
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') { throw "Release tag '$tag' must look like v0.8.52" }
           "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "version=$($Matches.version)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
@@ -86,13 +86,28 @@ jobs:
             Sort-Object LastWriteTimeUtc -Descending |
             Select-Object -First 1
           if ($null -eq $candidate) { throw 'Dalamud.NET.Sdk did not produce latest.zip under Omega/bin.' }
-          Copy-Item $candidate.FullName 'Omega.zip' -Force
           $extract = Join-Path $env:RUNNER_TEMP 'omega-package-check'
           if (Test-Path $extract) { Remove-Item $extract -Recurse -Force }
-          Expand-Archive 'Omega.zip' -DestinationPath $extract -Force
-          foreach ($required in @('DalagabOmega.dll','DalagabOmega.json','omega-catalog.sqlite.zip')) {
+          Expand-Archive $candidate.FullName -DestinationPath $extract -Force
+
+          # Dalamud plugins execute as Windows x64 binaries even when XIVLauncher itself is hosted by
+          # Wine/Proton. Keep e_sqlite3 beside the plugin assembly so DllImport never relies on a host
+          # winsqlite3.dll implementation being present.
+          $nativeSqlite = Get-ChildItem -Path 'Omega/bin' -Filter 'e_sqlite3.dll' -Recurse -File |
+            Where-Object { $_.FullName -match '[\\/]win-x64[\\/]' -or $_.DirectoryName -eq (Split-Path $candidate.FullName) } |
+            Select-Object -First 1
+          if ($null -eq $nativeSqlite) {
+            $nativeSqlite = Get-ChildItem -Path 'Omega/bin' -Filter 'e_sqlite3.dll' -Recurse -File | Select-Object -First 1
+          }
+          if ($null -eq $nativeSqlite) { throw 'Build output is missing the bundled e_sqlite3.dll runtime.' }
+          Copy-Item $nativeSqlite.FullName (Join-Path $extract 'e_sqlite3.dll') -Force
+
+          foreach ($required in @('DalagabOmega.dll','DalagabOmega.json','omega-catalog.sqlite.zip','Microsoft.Data.Sqlite.dll','SQLitePCLRaw.core.dll','SQLitePCLRaw.provider.e_sqlite3.dll','e_sqlite3.dll')) {
             if (-not (Get-ChildItem $extract -Filter $required -Recurse -File)) { throw "Omega.zip is missing $required" }
           }
+
+          if (Test-Path 'Omega.zip') { Remove-Item 'Omega.zip' -Force }
+          Compress-Archive -Path (Join-Path $extract '*') -DestinationPath 'Omega.zip' -CompressionLevel Optimal
           $packagedManifestPath = (Get-ChildItem $extract -Filter 'DalagabOmega.json' -Recurse -File | Select-Object -First 1).FullName
           $packagedManifest = Get-Content $packagedManifestPath -Raw | ConvertFrom-Json
           $repoManifest = Get-Content 'repository/pluginmaster.json' -Raw | ConvertFrom-Json

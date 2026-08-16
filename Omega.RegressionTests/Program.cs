@@ -13,7 +13,7 @@ var tests = new (string Name, Action Body)[]
 {
     ("manifest parser accepts community JSON variants", TestManifestParserCommunityTolerance),
     ("manifest parser accepts wrapper objects", TestManifestParserWrappers),
-    ("official presentation wins when available, rich community presentation fills gaps", TestPresentationRichnessSelection),
+    ("preferred package baseline owns product presentation", TestPresentationRichnessSelection),
     ("manifest parser rejects unsupported root shapes", TestManifestParserRejectsInvalidShape),
     ("manifest parser skips entries without plugin identity", TestManifestParserSkipsInvalidEntries),
     ("stable API compatibility is preserved", TestStableApiCompatibility),
@@ -37,7 +37,7 @@ var tests = new (string Name, Action Body)[]
     ("pre-login manifest requirements stay enabled", TestPreLoginManifest),
     ("title icon remains 64x64 PNG", TestTitleIcon),
     ("API-15 native menu hook typing stays explicit", TestSystemMenuHookTyping),
-    ("startup network access remains user-triggered", TestManualReloadContract),
+    ("startup catalog fanout stays bounded while app updates poll separately", TestManualReloadContract),
     ("storefront regression guards stay intact", TestStorefrontContract),
     ("spotlight and repository filtering remain visible", TestSpotlightAndRepositoryFilter),
     ("Settings source manager remains a checkbox table with stale status", TestSourceTableContract),
@@ -74,6 +74,9 @@ var tests = new (string Name, Action Body)[]
     ("repository providers keep preferred ordering, filtering, and icon identities", TestRepositoryProviderPreferenceContract),
     ("plugin selections, project navigation, uninstall, and update badge stay canonical", TestCanonicalPluginNavigationAndLifecycleContract),
     ("Library tracks install timing and exposes settings/config backup actions", TestLibraryInstallMetadataConfigActionsContract),
+    ("Library security scan and product Back preserve environment context", TestLibrarySecurityEnvironmentAndReturnNavigationContract),
+    ("Definitions persistence, Omega update cadence, and rail attention stay durable", TestUpdatePersistenceSelfCheckAndRailAttentionContract),
+    ("repository source security differences stay visible before installation", TestRepositorySecurityDifferencePresentationContract),
     ("repository HTTP response lifetime stays explicit and stream-bounded", TestRepositoryClientResponseLifetimeContract),
     ("regression runner remains wired into Omega.sln", TestRegressionBuildWiring),
 };

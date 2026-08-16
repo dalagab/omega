@@ -2,23 +2,30 @@ using System.IO.Compression;
 
 namespace Dalagab.Omega;
 
-internal sealed record PluginConfigBackupResult(bool Success, string Message, string? BackupPath = null);
+internal sealed record PluginConfigBackupResult(
+    bool Success,
+    string Message,
+    string? BackupPath = null,
+    string? BackupDirectory = null);
 
 /// <summary>
 /// Creates user-requested ZIP backups of a plugin's Dalamud-managed JSON configuration and
-/// auxiliary configuration directory without interpreting or modifying plugin data.
+/// auxiliary configuration directory without interpreting or modifying plugin data. Backups are
+/// intentionally temporary and are written below the operating-system temp directory.
 /// </summary>
 internal sealed class PluginConfigBackupService
 {
     private readonly string pluginConfigRoot;
     private readonly string backupRoot;
 
-    public PluginConfigBackupService(string omegaConfigDirectory, string omegaConfigFilePath)
+    public PluginConfigBackupService(string omegaConfigFilePath)
     {
         pluginConfigRoot = Path.GetDirectoryName(omegaConfigFilePath)
             ?? throw new InvalidOperationException("Dalamud plugin configuration root is unavailable.");
-        backupRoot = Path.Combine(omegaConfigDirectory, "config-backups");
+        backupRoot = Path.Combine(Path.GetTempPath(), "Dalagab", "Omega", "config-backups");
     }
+
+    public string BackupRoot => backupRoot;
 
     public PluginConfigBackupResult Backup(string internalName, string displayName, DateTimeOffset? timestampUtc = null)
     {
@@ -51,9 +58,6 @@ internal sealed class PluginConfigBackupService
                 {
                     foreach (var file in Directory.EnumerateFiles(configDirectory, "*", SearchOption.AllDirectories))
                     {
-                        if (IsInsideBackupRoot(file))
-                            continue;
-
                         var relative = Path.GetRelativePath(configDirectory, file);
                         archive.CreateEntryFromFile(file, $"config-directory/{relative.Replace('\\', '/')}", CompressionLevel.Optimal);
                         fileCount++;
@@ -65,21 +69,14 @@ internal sealed class PluginConfigBackupService
             return new PluginConfigBackupResult(
                 true,
                 $"Backed up {displayName} configuration ({fileCount} file{(fileCount == 1 ? string.Empty : "s")}).",
-                destination);
+                destination,
+                backupRoot);
         }
         catch (Exception ex)
         {
             Plugin.Log.Warning(ex, "Omega could not back up configuration for {Plugin}", internalName);
             return new PluginConfigBackupResult(false, $"Could not back up {displayName}: {ex.GetBaseException().Message}");
         }
-    }
-
-    private bool IsInsideBackupRoot(string file)
-    {
-        var fullFile = Path.GetFullPath(file);
-        var fullRoot = Path.GetFullPath(backupRoot)
-            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        return fullFile.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string UniqueDestination(string path)

@@ -70,11 +70,18 @@ internal sealed partial class MarketplaceWindow
 
         var x = Math.Max(72f, searchX - AppBarControlSize - 10f);
         ImGui.SetCursorPos(new Vector2(x, 5f));
-        if (!DrawApplicationIconButton(FontAwesomeIcon.ArrowLeft, "discover-product-back", "Back to Discover", false))
+        var returnLabel = detailsReturnView == MarketplaceView.Library
+            ? detailsReturnLibrarySection == LibrarySection.Security ? "Back to Library security scan" : "Back to Library"
+            : $"Back to {ViewTitle(detailsReturnView)}";
+        if (!DrawApplicationIconButton(FontAwesomeIcon.ArrowLeft, "discover-product-back", returnLabel, false))
             return;
 
         detailsOpen = false;
         selectedPlugin = null;
+        activeView = detailsReturnView;
+        if (activeView == MarketplaceView.Library)
+            librarySection = detailsReturnLibrarySection;
+        resetStorefrontScroll = false;
         resetDiscoverListScroll = false;
     }
 

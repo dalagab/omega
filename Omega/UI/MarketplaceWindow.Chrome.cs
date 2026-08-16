@@ -69,12 +69,14 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.Spacing();
         var definitionsUpdateCount = updates.DefinitionsUpdateAvailable ? 1 : 0;
+        var applicationUpdateCount = selfUpdates.UpdateAvailable ? 1 : 0;
         DrawSidebarUtilityIcon(
             MarketplaceView.Updates,
             FontAwesomeIcon.Download,
             "Updates",
-            counts.Updates + definitionsUpdateCount,
-            notificationCount: counts.Updates + definitionsUpdateCount);
+            counts.Updates + applicationUpdateCount + definitionsUpdateCount,
+            notificationCount: counts.Updates + applicationUpdateCount,
+            definitionsAttention: updates.DefinitionsUpdateAvailable);
         DrawSidebarUtilityIcon(MarketplaceView.Library, FontAwesomeIcon.List, "Library", counts.Installed);
 
         ImGui.Spacing();
@@ -96,10 +98,18 @@ internal sealed partial class MarketplaceWindow
             OpenAbout();
     }
 
-    private void DrawSidebarUtilityIcon(MarketplaceView view, FontAwesomeIcon icon, string label, int count, int notificationCount = 0)
+    private void DrawSidebarUtilityIcon(
+        MarketplaceView view,
+        FontAwesomeIcon icon,
+        string label,
+        int count,
+        int notificationCount = 0,
+        bool definitionsAttention = false)
     {
         var tooltip = count > 0 ? $"{label} ({count})" : label;
-        if (!DrawSidebarIcon(icon, $"sidebar-utility-{view}", tooltip, activeView == view, notificationCount))
+        if (definitionsAttention)
+            tooltip += " — Definitions update available";
+        if (!DrawSidebarIcon(icon, $"sidebar-utility-{view}", tooltip, activeView == view, notificationCount, definitionsAttention))
             return;
 
         if (activeView != view)
@@ -133,7 +143,13 @@ internal sealed partial class MarketplaceWindow
         resetStorefrontScroll = true;
     }
 
-    private static bool DrawSidebarIcon(FontAwesomeIcon icon, string id, string tooltip, bool active, int notificationCount = 0)
+    private static bool DrawSidebarIcon(
+        FontAwesomeIcon icon,
+        string id,
+        string tooltip,
+        bool active,
+        int notificationCount = 0,
+        bool definitionsAttention = false)
     {
         const float size = 42f;
         const float rounding = 6f;
@@ -168,6 +184,20 @@ internal sealed partial class MarketplaceWindow
         draw.AddText(glyphPosition, glyphColor, glyph);
         ImGui.PopFont();
 
+        if (definitionsAttention)
+        {
+            // Definitions availability is deliberately distinct from plugin/app updates: a blue
+            // exclamation circle sits on the upper-left of the Downloads rail icon and survives
+            // restarts through CatalogUpdateCoordinator's persisted online state.
+            var center = screen + new Vector2(4f, 5f);
+            const float radius = 8f;
+            draw.AddCircleFilled(center, radius, ImGui.ColorConvertFloat4ToU32(new Vector4(0.12f, 0.48f, 0.86f, 0.98f)), 20);
+            draw.AddCircle(center, radius, ImGui.ColorConvertFloat4ToU32(new Vector4(0.38f, 0.70f, 1f, 0.96f)), 20, 1f);
+            var mark = "!";
+            var markSize = ImGui.CalcTextSize(mark);
+            draw.AddText(center - (markSize * 0.5f), 0xFFFFFFFF, mark);
+        }
+
         if (notificationCount > 0)
         {
             var countText = notificationCount > 99 ? "99+" : notificationCount.ToString();
@@ -196,11 +226,49 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextUnformatted(ViewTitle(activeView));
 
         if (activeView == MarketplaceView.Updates)
+        {
+            DrawApplicationUpdateBanner();
             DrawDefinitionsUpdateBanner();
+        }
 
-        if (!string.IsNullOrWhiteSpace(operationMessage))
+        if (ShouldDrawOperationStatus())
             ImGui.TextWrapped(operationMessage);
 
+        ImGui.Spacing();
+    }
+
+    private bool ShouldDrawOperationStatus()
+    {
+        if (string.IsNullOrWhiteSpace(operationMessage))
+            return false;
+        if (installTask is not null || uninstallTask is not null || repositoryTask is not null ||
+            collectionOperationTask is not null || configBackupTask is not null || updates.IsRefreshing || selfUpdates.IsChecking)
+            return true;
+
+        var message = operationMessage.ToLowerInvariant();
+        return message.Contains("failed", StringComparison.Ordinal) ||
+               message.Contains("error", StringComparison.Ordinal) ||
+               message.Contains("could not", StringComparison.Ordinal) ||
+               message.Contains("unavailable", StringComparison.Ordinal);
+    }
+
+    private void DrawApplicationUpdateBanner()
+    {
+        if (!selfUpdates.UpdateAvailable)
+            return;
+
+        ImGui.Spacing();
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.035f, 0.09f, 0.18f, 0.76f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.12f, 0.42f, 0.78f, 0.78f));
+        ImGui.BeginChild("omega-application-update-banner", new Vector2(0f, 72f), true,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.TextUnformatted($"Omega {selfUpdates.AvailableDisplayVersion} is available");
+        ImGui.TextDisabled($"You are running Omega {BuildInfo.Version}. Dalamud remains the update authority.");
+        ImGui.SameLine(Math.Max(340f, ImGui.GetWindowWidth() - 190f));
+        if (ImGui.Button("Open Dalamud updates"))
+            Plugin.PluginInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.UpdateablePlugins, "Omega");
+        ImGui.EndChild();
+        ImGui.PopStyleColor(2);
         ImGui.Spacing();
     }
 

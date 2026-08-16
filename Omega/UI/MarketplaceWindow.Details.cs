@@ -195,6 +195,13 @@ internal sealed partial class MarketplaceWindow
             .ToArray();
     }
 
+    private MarketplacePlugin ResolveProductBaselineVariant(
+        MarketplacePlugin plugin,
+        int currentApi,
+        Version currentDalamudVersion)
+        => GetInstallCandidates(plugin.InternalName, currentApi, currentDalamudVersion).FirstOrDefault()
+           ?? ResolveDefaultVariant(plugin);
+
     private bool IsSourceEnabledInOmega(MarketplacePlugin plugin)
     {
         if (plugin.SourceIsOfficial)

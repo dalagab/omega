@@ -109,7 +109,9 @@ internal static partial class RegressionCases
         Contains(chrome, "DrawSidebarUtilityIcon(", "lower icon-rail destinations use the utility navigation renderer");
         Contains(chrome, "MarketplaceView.Updates,", "Updates remains a lower icon-rail utility destination");
         Contains(chrome, "FontAwesomeIcon.Download", "Updates keeps its download icon in the lower utility rail");
-        Contains(chrome, "counts.Updates + definitionsUpdateCount", "Updates badge includes both plugin and Definitions updates");
+        Contains(chrome, "counts.Updates + applicationUpdateCount + definitionsUpdateCount", "Updates destination count includes plugin, Omega and Definitions updates");
+        Contains(chrome, "notificationCount: counts.Updates + applicationUpdateCount", "red numeric badge excludes Definitions attention");
+        Contains(chrome, "definitionsAttention: updates.DefinitionsUpdateAvailable", "Definitions update uses its separate blue exclamation attention marker");
         Contains(chrome, "MarketplaceView.Library,", "Library remains a lower icon-rail utility destination");
         Contains(chrome, "FontAwesomeIcon.List", "Library keeps its list icon in the lower utility rail");
         False(ui.Contains("DrawSidebarView(MarketplaceView.Installed", StringComparison.Ordinal), "Installed is no longer a permanent sidebar destination");
