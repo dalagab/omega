@@ -15,6 +15,7 @@ import common  # noqa: F401
 import build_sqlite_catalog
 import catalog_presentation
 import collect_sources
+import create_source_followup_issues
 import collect_public_advisories
 import compact_sqlite_catalog
 import enrich_metadata
@@ -23,6 +24,9 @@ import scrape_websites_incremental
 import security_endpoint_inventory
 import security_scan
 import security_hash_consensus
+import source_resolution
+import source_scan_followups
+import process_source_submission
 
 
 class CatalogPythonUnitTests(unittest.TestCase):
@@ -44,6 +48,175 @@ class CatalogPythonUnitTests(unittest.TestCase):
         with mock.patch.object(collect_sources, "http_get", return_value=html):
             rows = collect_sources.collect_punish_publisher_urls()
         self.assertEqual(["puni.sh-studio", "alpha", "beta"], [row["provider"] for row in rows])
+
+    def test_validated_community_sources_join_discovery_without_becoming_curated(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            curated = root / "curated.json"
+            community = root / "community.json"
+            curated.write_text(json.dumps([{"id": "curated", "name": "Curated", "url": "https://curated.invalid/repo.json"}]), encoding="utf-8")
+            community.write_text(json.dumps([{"id": "community", "name": "Community", "url": "https://community.invalid/repo.json", "enabledByDefault": False}]), encoding="utf-8")
+            with mock.patch.object(collect_sources, "collect_punish_publisher_urls", return_value=[]), mock.patch.dict("os.environ", {}, clear=True):
+                result = collect_sources.collect(False, str(curated), str(community))
+        self.assertEqual(1, result["metadata"]["sourceCounts"]["curated"])
+        self.assertEqual(1, result["metadata"]["sourceCounts"]["community"])
+        by_url = {row["url"]: row for row in result["sources"]}
+        self.assertEqual("community", by_url["https://community.invalid/repo.json"]["kind"])
+        self.assertEqual("community-sources.json", by_url["https://community.invalid/repo.json"]["discoveredBy"])
+
+    def test_builder_preserves_community_source_default_disabled_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            db = build_sqlite_catalog.reset_database(Path(td) / "catalog.sqlite")
+            try:
+                definitions = build_sqlite_catalog.source_definition_map([
+                    {"id": "community-x", "name": "Community X", "url": "https://community.invalid/repo.json", "enabledByDefault": False, "integrateWithDalamudByDefault": False}
+                ])
+                build_sqlite_catalog.upsert_sources(
+                    db,
+                    {"sources": [{"url": "https://community.invalid/repo.json", "provider": "Community X", "kind": "community", "discoveredBy": "community-sources.json"}]},
+                    definitions,
+                    "2026-08-16T00:00:00Z",
+                )
+                row = db.execute("SELECT enabled_by_default,integrate_with_dalamud,kind,discovered_by FROM sources WHERE url=?", ("https://community.invalid/repo.json",)).fetchone()
+            finally:
+                db.close()
+        self.assertEqual((0, 0, "community", "community-sources.json"), tuple(row))
+
+    def test_source_resolution_derives_github_repository_and_stable_override_key(self) -> None:
+        candidates = source_resolution.source_candidates(
+            "",
+            "https://github.com/example/Plugin/releases/download/v1.0.0/Plugin.zip",
+            "https://raw.githubusercontent.com/example/Plugin/main/repo.json",
+        )
+        self.assertEqual(["https://github.com/example/Plugin"], candidates)
+        self.assertEqual("", source_resolution.github_repository_url("https://downloads.example.invalid/Plugin.zip"))
+        first = source_resolution.source_override_key("Plugin", "https://example.invalid/feed.json")
+        second = source_resolution.source_override_key("plugin", "https://example.invalid/feed.json")
+        self.assertEqual(first, second)
+        self.assertTrue(first.startswith("src-"))
+
+    def test_source_followup_issue_keys_are_parseable_after_gap_resolution(self) -> None:
+        self.assertEqual(
+            "omega-source-followup:src-0123456789abcdefabcd",
+            create_source_followup_issues.followup_key("<!-- omega-source-followup:src-0123456789abcdefabcd -->"),
+        )
+        self.assertEqual("", create_source_followup_issues.followup_key("ordinary issue"))
+
+    def test_source_followups_exclude_404_and_mark_transient_failures_non_actionable(self) -> None:
+        self.assertTrue(source_scan_followups.is_not_found("HTTP Error 404: Not Found"))
+        self.assertFalse(source_scan_followups.is_not_found("HTTP Error 429: Too Many Requests"))
+        self.assertFalse(source_scan_followups.is_not_found("first: HTTP Error 404; second: HTTP Error 500"))
+        self.assertTrue(source_scan_followups.is_retryable("HTTP Error 429: Too Many Requests"))
+        self.assertTrue(source_scan_followups.is_retryable("The read operation timed out"))
+        self.assertFalse(source_scan_followups.is_retryable("No GitHub source candidate could be derived"))
+
+    def test_source_followup_projection_deduplicates_plugin_source_pairs_and_retains_transient_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            database = Path(td) / "evidence.sqlite"
+            with closing(sqlite3.connect(database)) as db:
+                db.executescript("""
+                    CREATE TABLE plugins(plugin_id INTEGER PRIMARY KEY, internal_name TEXT);
+                    CREATE TABLE sources(source_id INTEGER PRIMARY KEY, name TEXT, url TEXT);
+                    CREATE TABLE plugin_variants(variant_id INTEGER PRIMARY KEY, plugin_id INTEGER, source_id INTEGER, name TEXT);
+                    CREATE TABLE plugin_security_current(variant_id INTEGER PRIMARY KEY, status TEXT, source_available INTEGER, artifact_url TEXT, report_json TEXT);
+                """)
+                db.execute("INSERT INTO plugins VALUES(1,'Example')")
+                db.execute("INSERT INTO sources VALUES(1,'Repo','https://example.invalid/repo.json')")
+                db.execute("INSERT INTO plugin_variants VALUES(10,1,1,'Example')")
+                db.execute("INSERT INTO plugin_variants VALUES(11,1,1,'Example')")
+                db.execute("INSERT INTO plugin_security_current VALUES(10,'complete',0,'https://example.invalid/a.zip',?)", (json.dumps({"source":{"error":"No GitHub source candidate could be derived","candidates":[]}}),))
+                db.execute("INSERT INTO plugin_security_current VALUES(11,'complete',0,'https://example.invalid/b.zip',?)", (json.dumps({"source":{"error":"HTTP Error 429: Too Many Requests","candidates":["https://github.com/example/Example"]}}),))
+                db.commit()
+            document = source_scan_followups.followups(database)
+        self.assertEqual(1, document["count"])
+        self.assertEqual(1, document["actionableCount"])
+        self.assertTrue(document["followups"][0]["actionable"])
+        self.assertTrue(document["followups"][0]["overrideKey"].startswith("src-"))
+
+    def test_source_candidate_failover_does_not_mix_partial_evidence_from_failed_repository(self) -> None:
+        calls = []
+        def fake_fetch(url, _token, hits):
+            calls.append(url)
+            if len(calls) == 1:
+                hits["network.http"].append("failed-candidate")
+                return {"available": False, "error": "HTTP Error 500", "dependencyIntelligence": security_scan.empty_dependency_intelligence("source")}
+            hits["filesystem.write"].append("successful-candidate")
+            return {"available": True, "error": "", "dependencyIntelligence": security_scan.empty_dependency_intelligence("source")}
+        hits = defaultdict(list)
+        with mock.patch.object(security_scan, "_fetch_source_candidate", side_effect=fake_fetch):
+            result = security_scan.fetch_source(["https://github.com/example/first", "https://github.com/example/second"], "", hits)
+        self.assertTrue(result["available"])
+        self.assertNotIn("failed-candidate", hits["network.http"])
+        self.assertIn("successful-candidate", hits["filesystem.write"])
+
+    def test_scanner_loads_only_validated_stable_github_source_overrides(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "source-overrides.json"
+            path.write_text(json.dumps({
+                "schema": "omega.source-overrides.v1",
+                "overrides": {
+                    "src-0123456789abcdefabcd": "https://github.com/example/Plugin/releases/tag/v1",
+                    "42": "https://github.com/example/WrongKey",
+                    "src-bad": "https://example.invalid/repo",
+                },
+            }), encoding="utf-8")
+            overrides = security_scan.load_source_overrides(path)
+        self.assertEqual({"src-0123456789abcdefabcd": "https://github.com/example/Plugin"}, overrides)
+
+    def test_source_submission_accepts_only_public_https_urls_and_valid_pluginmaster_feeds(self) -> None:
+        with mock.patch.object(process_source_submission.socket, "getaddrinfo", return_value=[(None, None, None, None, ("8.8.8.8", 443))]), tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "community-sources.json"
+            overrides = Path(td) / "source-overrides.json"
+            payload = {"issue": {"title": "Source submission: example", "body": "https://example.invalid/repo.json"}}
+            with mock.patch.object(process_source_submission.enrich_metadata, "fetch_source", return_value={"ok": True, "pluginCount": 2}) as fetch:
+                outcome = process_source_submission.process(payload, path, overrides)
+                fetch.assert_called_once()
+                self.assertEqual(16 * 1024 * 1024, fetch.call_args.kwargs["max_bytes"])
+                self.assertIs(process_source_submission.public_https_url, fetch.call_args.kwargs["url_validator"])
+            saved = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual("accepted", outcome["status"])
+        self.assertEqual("https://example.invalid/repo.json", outcome["url"])
+        self.assertFalse(saved[0]["enabledByDefault"])
+
+    def test_source_submission_rejects_unbounded_plugin_counts(self) -> None:
+        with mock.patch.object(process_source_submission.socket, "getaddrinfo", return_value=[(None, None, None, None, ("8.8.8.8", 443))]), tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            payload = {"issue": {"title": "Source submission: oversized", "body": "https://example.invalid/repo.json"}}
+            with mock.patch.object(process_source_submission.enrich_metadata, "fetch_source", return_value={"ok": True, "pluginCount": process_source_submission.MAX_SUBMITTED_PLUGINS + 1}):
+                outcome = process_source_submission.process(payload, root / "community-sources.json", root / "source-overrides.json")
+            self.assertEqual("rejected", outcome["status"])
+            self.assertFalse((root / "community-sources.json").exists())
+
+    def test_submission_url_policy_rejects_private_redirect_targets_before_following(self) -> None:
+        handler = enrich_metadata._ValidatingRedirectHandler(lambda url: url == "https://public.example/repo.json")
+        request = enrich_metadata.urllib.request.Request("https://public.example/repo.json")
+        with self.assertRaises(enrich_metadata.urllib.error.HTTPError):
+            handler.redirect_request(request, None, 302, "Found", {}, "https://127.0.0.1/private.json")
+
+    def test_source_followup_reply_persists_stable_plugin_source_override(self) -> None:
+        with mock.patch.object(process_source_submission.socket, "getaddrinfo", return_value=[(None, None, None, None, ("8.8.8.8", 443))]), mock.patch.object(process_source_submission, "github_repository_is_public", return_value=True), tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            key = "src-0123456789abcdefabcd"
+            outcome = process_source_submission.process(
+                {"issue": {"title": "Source needed: Example", "body": f"<!-- omega-source-submission -->\n<!-- omega-source-followup:{key} -->\n<!-- omega-source-internal:ExamplePlugin -->"}, "comment": {"body": "https://github.com/example/Plugin"}},
+                root / "community-sources.json",
+                root / "source-overrides.json",
+            )
+            document = json.loads((root / "source-overrides.json").read_text(encoding="utf-8"))
+        self.assertEqual("accepted-override", outcome["status"])
+        self.assertEqual("ExamplePlugin", outcome["internalName"])
+        self.assertEqual("https://github.com/example/Plugin", document["overrides"][key])
+
+    def test_pluginmaster_fetch_is_bounded(self) -> None:
+        class FakeResponse:
+            status = 200
+            headers = {}
+            def __enter__(self): return self
+            def __exit__(self, *_args): return False
+            def read(self, _count=-1): return b"x" * 9
+        with mock.patch.object(enrich_metadata.urllib.request, "urlopen", return_value=FakeResponse()):
+            with self.assertRaisesRegex(ValueError, "exceeds 8 bytes"):
+                enrich_metadata.http_get("https://example.invalid/repo.json", max_bytes=8)
 
     def test_enrichment_accepts_nested_pluginmaster_and_preserves_raw_manifest(self) -> None:
         raw = {

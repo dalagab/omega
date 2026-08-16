@@ -51,9 +51,10 @@ from catalog_revisions import read_meta as read_catalog_meta, update_candidate_r
 from security_endpoint_inventory import endpoint_candidates, endpoint_findings
 from security_hash_consensus import refresh_cross_source_hash_findings
 from security_path_access import external_hard_coded_paths
+from source_resolution import source_candidates, source_override_key
 
 
-SCANNER_VERSION = "2.0.0"
+SCANNER_VERSION = "2.1.0"
 SECURITY_LEDGER_SCHEMA = "omega.security-scan-ledger.v1"
 MAX_ARTIFACT_BYTES = 256 * 1024 * 1024
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
@@ -1781,7 +1782,7 @@ def github_repo_parts(url: str) -> tuple[str, str] | None:
     return parts[0], repo
 
 
-def fetch_source(repo_url: str, token: str, hits: dict[str, list[str]]) -> dict:
+def _fetch_source_candidate(repo_url: str, token: str, hits: dict[str, list[str]]) -> dict:
     parts = github_repo_parts(repo_url)
     intel = empty_dependency_intelligence("source")
     if parts is None:
@@ -1846,6 +1847,34 @@ def fetch_source(repo_url: str, token: str, hits: dict[str, list[str]]) -> dict:
             "available": False, "repository": repo_url, "commit": "", "branch": "", "treeSha256": "",
             "filesScanned": 0, "dependencyIntelligence": intel, "error": str(exc)[:500],
         }
+
+
+def fetch_source(candidate_urls: list[str], token: str, hits: dict[str, list[str]]) -> dict:
+    """Try metadata-derived public GitHub repositories in deterministic priority order."""
+    intel = empty_dependency_intelligence("source")
+    if not candidate_urls:
+        return {
+            "available": False, "repository": "", "commit": "", "branch": "", "treeSha256": "",
+            "filesScanned": 0, "dependencyIntelligence": finalize_intelligence(intel), "candidates": [],
+            "error": "No supported GitHub repository URL",
+        }
+    failures: list[str] = []
+    last: dict | None = None
+    for candidate in candidate_urls:
+        candidate_hits: dict[str, list[str]] = defaultdict(list)
+        result = _fetch_source_candidate(candidate, token, candidate_hits)
+        result["candidates"] = list(candidate_urls)
+        if result["available"]:
+            for rule_id, evidence in candidate_hits.items():
+                for item in evidence:
+                    if item not in hits[rule_id]:
+                        hits[rule_id].append(item)
+            return result
+        failures.append(f"{candidate}: {result.get('error') or 'unavailable'}")
+        last = result
+    assert last is not None
+    last["error"] = "; ".join(failures)[:1000]
+    return last
 
 
 def merge_dependency_intelligence(*items: dict) -> dict:
@@ -3438,7 +3467,7 @@ def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: s
     rows = db.execute("""
         SELECT v.variant_id,v.plugin_id,v.source_id,p.internal_name,v.name,v.author,v.assembly_version,
                v.testing_assembly_version,v.download_link_install,v.download_link_testing,v.repo_url,
-               s.name AS source_name,sc.status AS current_status,sc.scanned_at_utc AS current_scanned_at_utc,
+               s.name AS source_name,s.url AS source_url,s.source_repo_url,sc.status AS current_status,sc.scanned_at_utc AS current_scanned_at_utc,
                sc.scanner_version AS current_scanner_version,sc.artifact_url AS current_artifact_url,
                sc.assembly_version AS current_assembly_version
           FROM plugin_variants v
@@ -3653,7 +3682,7 @@ def save_scan(db: sqlite3.Connection, row: sqlite3.Row, result: dict) -> int:
     return scan_id
 
 
-def scan_row(row: sqlite3.Row, token: str, scan_source: bool) -> dict:
+def scan_row(row: sqlite3.Row, token: str, scan_source: bool, source_override: str = "") -> dict:
     channel, version, url = choose_artifact(row)
     scanned_at = utc_now()
     empty_source_intel = empty_dependency_intelligence("source")
@@ -3675,7 +3704,8 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool) -> dict:
         "dependencyIntelligence": empty_dependency_intelligence("combined"),
         "source": {
             "available": False, "repository": str(row["repo_url"] or ""), "commit": "", "branch": "", "treeSha256": "",
-            "filesScanned": 0, "sourceToBinaryVerified": False, "dependencyIntelligence": empty_source_intel, "error": "",
+            "filesScanned": 0, "sourceToBinaryVerified": False, "dependencyIntelligence": empty_source_intel,
+            "candidates": [], "error": "",
         },
         "package": {},
         "error": "",
@@ -3694,14 +3724,23 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool) -> dict:
 
         source_intel = empty_source_intel
         source_findings: list[dict] = []
-        if scan_source and str(row["repo_url"] or ""):
+        candidates = source_candidates(
+            source_override,
+            str(row["repo_url"] or ""),
+            str(row["download_link_install"] or ""),
+            str(row["download_link_testing"] or ""),
+        )
+        base["source"]["candidates"] = candidates
+        if scan_source and candidates:
             source_hits: dict[str, list[str]] = defaultdict(list)
-            base["source"] = fetch_source(str(row["repo_url"]), token, source_hits)
+            base["source"] = fetch_source(candidates, token, source_hits)
             base["source"]["sourceToBinaryVerified"] = False
             source_intel = base["source"].get("dependencyIntelligence") or empty_source_intel
             source_findings, source_capabilities = finding_payload(source_hits, {})
             base["source"]["findings"] = source_findings
             base["source"]["capabilities"] = source_capabilities
+        elif scan_source:
+            base["source"]["error"] = "No GitHub source candidate could be derived from plugin metadata or download links"
 
         base["dependencyIntelligence"] = merge_dependency_intelligence(artifact_intel, source_intel)
         endpoint_results, endpoint_capabilities = endpoint_findings(
@@ -3760,6 +3799,7 @@ def run(args: argparse.Namespace) -> dict:
     token = os.environ.get("GITHUB_TOKEN", "")
     names = {x.strip().lower() for x in args.internal_names.split(",") if x.strip()}
     advisories = load_advisories(args.advisories)
+    source_overrides = load_source_overrides(Path(args.source_overrides) if args.source_overrides else None)
     summary = {
         "schema": "omega.plugin-security.batch.v1", "scannerVersion": SCANNER_VERSION, "startedAtUtc": utc_now(),
         "selected": 0, "completed": 0, "failed": 0, "plugins": [],
@@ -3781,7 +3821,8 @@ def run(args: argparse.Namespace) -> dict:
                 break
             print(f"[{index}/{len(rows)}] scanning {row['internal_name']} from {row['source_name']}", flush=True)
             scan_started = time.monotonic()
-            result = scan_row(row, token, not args.skip_source)
+            override_key = source_override_key(str(row["internal_name"] or ""), str(row["source_url"] or ""))
+            result = scan_row(row, token, not args.skip_source, source_overrides.get(override_key, ""))
             db.execute("SAVEPOINT omega_scan_persist")
             try:
                 save_scan(db, row, result)
@@ -3868,6 +3909,27 @@ def run(args: argparse.Namespace) -> dict:
         update_descriptor(db_path, Path(args.bundle), Path(args.descriptor))
     return summary
 
+
+
+def load_source_overrides(path: Path | None) -> dict[str, str]:
+    """Load only canonical GitHub repository overrides from the validated map."""
+    if path is None or not path.exists():
+        return {}
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(document, dict):
+        return {}
+    raw = document.get("overrides") if document.get("schema") == "omega.source-overrides.v1" else document
+    if not isinstance(raw, dict):
+        return {}
+    overrides: dict[str, str] = {}
+    for key, value in raw.items():
+        candidates = source_candidates(str(value or ""))
+        if candidates and str(key).startswith("src-"):
+            overrides[str(key)] = candidates[0]
+    return overrides
 
 
 def _build_self_test_managed_pe() -> bytes:
@@ -4441,6 +4503,7 @@ def main() -> int:
     parser.add_argument("--rescan-after-hours", type=int, default=168)
     parser.add_argument("--internal-names", default="")
     parser.add_argument("--advisories", default="", help="Optional local JSON advisory document; no advisory data is fetched by the scanner")
+    parser.add_argument("--source-overrides", default="sources/source-overrides.json", help="Optional validated plugin/source-to-GitHub-source override map")
     parser.add_argument("--skip-source", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--hardening-self-test", action="store_true")

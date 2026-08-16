@@ -5,7 +5,7 @@ internal static partial class RegressionCases
     internal static void TestPluginSecurityIntelligenceContract()
     {
         var scanner = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "security_scan.py"));
-        Contains(scanner, "SCANNER_VERSION = \"2.0.0\"", "scanner version is explicit so stale scans can be refreshed");
+        Contains(scanner, "SCANNER_VERSION = \"2.1.0\"", "scanner version is explicit so stale scans can be refreshed");
         Contains(scanner, "Only HTTPS downloads are scanned", "scanner refuses insecure artifact transports");
         Contains(scanner, "MAX_ARTIFACT_BYTES", "artifact downloads are bounded");
         Contains(scanner, "MAX_ARTIFACT_BYTES = 256 * 1024 * 1024", "artifact download ceiling accommodates large production plugin packages while remaining bounded");
@@ -17,6 +17,9 @@ internal static partial class RegressionCases
         Contains(scanner, "never", "scanner documents its no-execution trust boundary");
         Contains(scanner, "compound.network-execute", "compound network/process risk is surfaced");
         Contains(scanner, "sourceToBinaryVerified", "source inspection does not imply source-to-binary verification");
+        Contains(scanner, "source_candidates(", "source scanning derives GitHub repositories from more than RepoUrl");
+        Contains(scanner, "source_override_key(", "human-reviewed source overrides use stable plugin/source identities instead of SQLite row ids");
+        Contains(scanner, "sources/source-overrides.json", "validated public-source overrides remain a repository-side scanner input");
         Contains(scanner, "plugin_security_current", "scanner persists the current result per exact catalog variant");
         Contains(scanner, "plugin_security_automation_capabilities", "scanner persists structured character/menu automation evidence");
         Contains(scanner, "derive_automation_capabilities", "scanner derives bounded user-facing automation classifications");

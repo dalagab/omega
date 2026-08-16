@@ -162,7 +162,9 @@ def collect_punish_publisher_urls() -> list[dict]:
     return out
 
 
-def collect_curated_file(path: str | None) -> list[dict]:
+def collect_curated_file(
+    path: str | None, *, discovered_by: str = "curated-sources.json", kind: str = "aggregator"
+) -> list[dict]:
     if not path:
         return []
     try:
@@ -180,8 +182,8 @@ def collect_curated_file(path: str | None) -> list[dict]:
         out.append({
             "url": url,
             "provider": str(item.get("name") or item.get("id") or urllib.parse.urlparse(url).netloc),
-            "kind": "aggregator",
-            "discoveredBy": "curated-sources.json",
+            "kind": kind,
+            "discoveredBy": discovered_by,
             "sourceRepoUrl": str(item.get("sourceRepoUrl") or ""),
         })
     return out
@@ -263,7 +265,7 @@ def collect_github_search_urls(token: str, max_pages: int = 5, per_page: int = 1
 # Orchestration
 # ---------------------------------------------------------------------------
 
-def collect(verbose: bool = True, curated_path: str | None = None) -> dict:
+def collect(verbose: bool = True, curated_path: str | None = None, community_path: str | None = None) -> dict:
     def log(msg: str) -> None:
         if verbose:
             print(msg, file=sys.stderr)
@@ -280,9 +282,12 @@ def collect(verbose: bool = True, curated_path: str | None = None) -> dict:
         log(f"      Puni.sh discovery unavailable: {type(exc).__name__}: {exc}")
     log(f"      got {len(punish)} puni.sh URL(s)")
 
-    log("[2/3] Loading curated aggregator URLs ...")
+    log("[2/3] Loading curated and validated community source URLs ...")
     curated = collect_curated_file(curated_path) or collect_curated_urls()
-    log(f"      got {len(curated)} curated URL(s)")
+    community = collect_curated_file(
+        community_path, discovered_by="community-sources.json", kind="community"
+    )
+    log(f"      got {len(curated)} curated and {len(community)} community URL(s)")
 
     if github_enabled:
         log("[3/3] Searching GitHub for 'DalamudApiLevel' in .json files ...")
@@ -292,7 +297,7 @@ def collect(verbose: bool = True, curated_path: str | None = None) -> dict:
         log("[3/3] Skipping GitHub code search (no GITHUB_TOKEN in env)")
         github = []
 
-    sources = curated + punish + github  # curated first (authoritative order)
+    sources = curated + community + punish + github  # curated first (authoritative order)
 
     # Dedup by URL
     seen_url: set[str] = set()
@@ -312,6 +317,7 @@ def collect(verbose: bool = True, curated_path: str | None = None) -> dict:
             "githubSearchEnabled": github_enabled,
             "sourceCounts": {
                 "curated": len(curated),
+                "community": len(community),
                 "punish": len(punish),
                 "githubSearch": len(github),
                 "deduplicated": len(sources),
@@ -327,9 +333,10 @@ def main() -> int:
                     help="Output JSON file (use '-' for stdout; default: %(default)s)")
     ap.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
     ap.add_argument("--curated", default="sources/curated-sources.json", help="Human-maintained curated source list")
+    ap.add_argument("--community", default="sources/community-sources.json", help="Validated community-submitted source list")
     args = ap.parse_args()
 
-    data = collect(verbose=not args.quiet, curated_path=args.curated)
+    data = collect(verbose=not args.quiet, curated_path=args.curated, community_path=args.community)
     text = json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False)
 
     if args.output == "-":
@@ -343,7 +350,7 @@ def main() -> int:
         print(
             f"\nWrote {args.output}: "
             f"{counts['deduplicated']} source(s) — "
-            f"{counts['curated']} curated, {counts['punish']} puni.sh, {counts['githubSearch']} github-search"
+            f"{counts['curated']} curated, {counts['community']} community, {counts['punish']} puni.sh, {counts['githubSearch']} github-search"
         )
     return 0
 

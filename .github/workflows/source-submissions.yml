@@ -1,0 +1,196 @@
+name: Omega source submissions
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: "Public HTTPS Dalamud PluginMaster source URL"
+        required: true
+        type: string
+
+concurrency:
+  group: omega-source-submission-${{ github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.actor != 'github-actions[bot]' &&
+       (startsWith(github.event.issue.title, 'Source submission:') ||
+        contains(github.event.issue.body, 'omega-source-submission')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      status: ${{ steps.outcome.outputs.status }}
+      trusted: ${{ steps.trust.outputs.trusted }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch || github.ref_name }}
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - id: trust
+        name: Classify whether this event may persist source metadata
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_ASSOCIATION: ${{ github.event.issue.author_association || '' }}
+          COMMENT_ASSOCIATION: ${{ github.event.comment.author_association || '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          trusted=false
+          association="$ISSUE_ASSOCIATION"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            trusted=true
+          elif [ "$EVENT_NAME" = "issue_comment" ]; then
+            association="$COMMENT_ASSOCIATION"
+          fi
+          case "$association" in
+            OWNER|MEMBER|COLLABORATOR) trusted=true ;;
+          esac
+          printf 'trusted=%s\n' "$trusted" >> "$GITHUB_OUTPUT"
+      - name: Validate submitted source data
+        env:
+          SUBMITTED_SOURCE_URL: ${{ inputs.source_url || '' }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          python tools/catalog/process_source_submission.py
+          --event "$GITHUB_EVENT_PATH"
+          --sources sources/community-sources.json
+          --overrides sources/source-overrides.json
+          --result source-submission-result.json
+          --url "$SUBMITTED_SOURCE_URL"
+      - id: outcome
+        name: Read validation outcome
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(jq -r .status source-submission-result.json)"
+          printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+      - name: Comment when validated metadata needs maintainer approval
+        if: ${{ github.event_name != 'workflow_dispatch' && steps.trust.outputs.trusted != 'true' && (steps.outcome.outputs.status == 'accepted' || steps.outcome.outputs.status == 'accepted-override') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(jq -r .status source-submission-result.json)"
+          if [ "$status" = "accepted-override" ]; then
+            printf 'Omega validated this public source repository, but community replies cannot modify security source mappings directly. A repository maintainer must repeat the repository URL in a reply to approve and persist it.\n' > comment.md
+          else
+            printf 'Omega validated this PluginMaster source. A repository maintainer must reply on this issue to approve and persist the source before the catalog pipeline is queued.\n' > comment.md
+          fi
+          gh issue comment "$ISSUE_NUMBER" --body-file comment.md
+      - name: Comment when no repository change will be made
+        if: ${{ github.event_name != 'workflow_dispatch' && steps.outcome.outputs.status != 'accepted' && steps.outcome.outputs.status != 'accepted-override' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(jq -r .status source-submission-result.json)"
+          case "$status" in
+            rejected)
+              printf 'Omega could not validate the supplied URL as a readable public Dalamud PluginMaster source. Please provide a direct public HTTPS feed URL.\n' > comment.md
+              ;;
+            needs-url)
+              jq -r .message source-submission-result.json > comment.md
+              ;;
+            already-added)
+              jq -r .message source-submission-result.json > comment.md
+              ;;
+            *)
+              exit 0
+              ;;
+          esac
+          gh issue comment "$ISSUE_NUMBER" --body-file comment.md
+
+  persist:
+    needs: validate
+    if: ${{ needs.validate.outputs.trusted == 'true' && (needs.validate.outputs.status == 'accepted' || needs.validate.outputs.status == 'accepted-override') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      actions: write
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch || github.ref_name }}
+          persist-credentials: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Revalidate and materialize the accepted source change
+        env:
+          SUBMITTED_SOURCE_URL: ${{ inputs.source_url || '' }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          python tools/catalog/process_source_submission.py
+          --event "$GITHUB_EVENT_PATH"
+          --sources sources/community-sources.json
+          --overrides sources/source-overrides.json
+          --result source-submission-result.json
+          --url "$SUBMITTED_SOURCE_URL"
+      - name: Commit only validated source metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(jq -r .status source-submission-result.json)"
+          if [ "$status" != "accepted" ] && [ "$status" != "accepted-override" ]; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- sources/community-sources.json sources/source-overrides.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "catalog: persist validated source metadata [skip ci]"
+          branch="${{ github.event.repository.default_branch || github.ref_name }}"
+          git pull --rebase origin "$branch"
+          git push origin "HEAD:$branch"
+      - name: Queue the minimum required processing chain
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(jq -r .status source-submission-result.json)"
+          branch="${{ github.event.repository.default_branch || github.ref_name }}"
+          if [ "$status" = "accepted" ]; then
+            gh workflow run catalog-builder.yml --ref "$branch"
+          elif [ "$status" = "accepted-override" ]; then
+            internal="$(jq -r '.internalName // ""' source-submission-result.json)"
+            if [ -n "$internal" ]; then
+              gh workflow run security-scanner.yml --ref "$branch" --field internal_names="$internal"
+            else
+              gh workflow run security-scanner.yml --ref "$branch"
+            fi
+          fi
+      - name: Confirm accepted source change
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(jq -r .status source-submission-result.json)"
+          if [ "$status" = "accepted" ]; then
+            printf 'Omega accepted this PluginMaster source. The catalog builder and normal security pipeline have been queued.\n' > comment.md
+          elif [ "$status" = "accepted-override" ]; then
+            printf 'Omega accepted this public source-repository override and queued a targeted security rescan.\n' > comment.md
+          else
+            exit 0
+          fi
+          gh issue comment "$ISSUE_NUMBER" --body-file comment.md

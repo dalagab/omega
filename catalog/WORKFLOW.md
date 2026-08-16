@@ -12,6 +12,8 @@ The game client does not crawl public plugin repositories and does not download 
 JSON is intentionally retained where it is useful to humans and automation:
 
 - `sources/curated-sources.json` — human-maintained authoritative/preseed source list.
+- `sources/community-sources.json` — automatically validated public PluginMaster submissions; these are stored disabled by default.
+- `sources/source-overrides.json` — reviewed plugin/source-to-GitHub source mappings used only by repository-side static analysis.
 - workflow artifacts `raw-sources.json`, `enriched-sources.json`, and `website-enrichment.json` — inspectable build inputs.
 - `catalog/catalog-endpoint.json` — tiny client pointer to the marketplace release descriptor.
 - `catalog/latest-report.json` — human-readable catalog build summary.
@@ -39,19 +41,25 @@ This database can be substantially larger because it is repository infrastructur
 The catalog builder runs daily, can be dispatched manually, and also starts on `main` whenever `tools/catalog/**`, `sources/**`, `catalog/bootstrap/**`, or any of the catalog-builder/security-scanner/catalog-compaction workflow definitions change. Scanner and compactor push triggers are intentionally not duplicated: they run from the builder/scanner `workflow_run` chain. This means a change to any database collection, normalization, schema, migration, security, compaction, or projection implementation reprocesses the existing state from the beginning instead of relying on an operator to remember a follow-up Action.
 
 1. **Preflight** — run deterministic Python/workflow regressions plus the catalog/projector self-tests.
-2. **Collect** — `collect_sources.py` combines curated sources, the current Puni.sh repository directory, and bounded GitHub source discovery.
+2. **Collect** — `collect_sources.py` combines curated sources, validated community submissions, the current Puni.sh repository directory, and bounded GitHub source discovery.
 3. **Enrich manifests** — `enrich_metadata.py` uses the previous small marketplace database as an HTTP/cache seed and preserves previous good rows across transient failures. PluginMaster feeds may use trailing commas before `]`/`}`; that narrow community-format extension is accepted without relaxing other malformed JSON.
 4. **Enrich websites** — `scrape_websites_incremental.py` reuses fresh successful enrichment and refreshes only new/stale project pages.
 5. **Build authoritative catalog state** — `build_sqlite_catalog.py` imports the intermediate documents into the previous full evidence database when available, preserving scanner history while refreshing marketplace/source data. On the first split migration it can consume the legacy `catalog-latest/omega-catalog.sqlite.zip` database.
 6. **Hand off builder artifact** — the builder uploads `omega-sqlite-catalog`. It does not publish either production database.
 7. **Public advisory collection** — `collect_public_advisories.py` reads only NuGet package/version pairs already observed in the evidence database, queries OSV in bounded batches, and writes an inspectable advisory input. It reports publicly known security risks in dependencies; it does not judge plugin intent or safety.
-8. **Security enrichment** — `security-scanner.yml` consumes the exact builder artifact and public-advisory input, statically scans new/changed/due variants, writes normalized evidence, derives current security and automation summaries, updates candidate semantic revisions, and emits `omega-security-catalog`. The scanner has read-only repository permission and publishes no release assets.
+8. **Security enrichment** — `security-scanner.yml` consumes the exact builder artifact and public-advisory input, statically scans new/changed/due variants, derives public GitHub source candidates from manifest/package metadata plus reviewed stable overrides, writes normalized evidence, derives current security and automation summaries, updates candidate semantic revisions, and emits `omega-security-catalog`. Repository contents remain read-only; the scanner has issue-write permission only for bounded source-coverage follow-ups and publishes no release assets.
 9. **Compact evidence** — `compact_sqlite_catalog.py` applies additive schema migrations, bounds redundant report JSON, preserves normalized history/evidence, runs `ANALYZE`/`VACUUM INTO`, and validates integrity, foreign keys, and the full runtime projection.
 10. **Project marketplace database** — `project_marketplace_catalog.py` creates a new small SQLite database, retains only the compact current security projection needed by Omega, derives a bounded dependency summary from current dependency/resolution/issue/advisory evidence before physically removing the detailed scanner tables, and verifies that the pre-existing runtime projection is unchanged apart from the new bounded dependency fields.
 11. **Resolve publication** — `publication_decision.py` compares semantic and representation revisions with the previously published state. Timestamp-only scans do not force database publication.
 12. **Publish evidence when required** — the detailed evidence bundle is published to `security-evidence-latest` and verified remotely.
 13. **Publish marketplace when required** — Catalog Revision, Evidence Revision, or marketplace representation changes can require the small client database to advance. If Evidence Revision must advance, marketplace publication waits for successful evidence publication first. The small client bundle is then published to `catalog-latest` and verified remotely.
 14. **No-change scan** — when neither database needs replacement, only `security-scan-ledger.json` may advance on the evidence release so scan freshness is retained without causing a client download.
+
+## Community source submissions and source-coverage follow-ups
+
+The issue-form workflow is intentionally split into two jobs. The validation job has read-only repository contents and runs the same PluginMaster parser as catalog ingestion with response-size, plugin-count, public-address, and redirect-target bounds. A community-authored issue or reply can be validated but cannot write repository metadata. Only workflow dispatches or events associated with an OWNER, MEMBER, or COLLABORATOR may enter the second job, which revalidates from a fresh checkout before changing the two bounded source metadata files. Accepted new feeds queue the catalog builder; accepted source-repository overrides queue a targeted scanner run for that plugin.
+
+Source follow-up issues use a stable hash of the plugin InternalName plus PluginMaster feed URL, not a SQLite row ID, so a clean database rebuild cannot redirect an override to the wrong plugin. Pure 404 source attempts are not turned into follow-up work. Transient rate-limit/server/timeout failures remain in the workflow artifact for diagnostics but are marked non-actionable and do not create issue spam. Issue creation is capped per scanner run and is non-blocking: GitHub issue availability cannot prevent the evidence database from reaching validation/compaction.
 
 ## Workflow and Python regression testing
 
@@ -93,7 +101,7 @@ If the network or candidate marketplace DB fails validation, the existing local 
 
 ## Static automation intelligence
 
-Scanner 2.0 derives bounded automation capability summaries from managed call-site, local reachability, source/import, dependency, and known IPC evidence. Current capability families include:
+Scanner 2.1 derives bounded automation capability summaries from managed call-site, local reachability, source/import, dependency, and known IPC evidence. Current capability families include:
 
 - game UI callbacks and menu manipulation;
 - synthetic game UI clicks;
@@ -127,6 +135,8 @@ The builder still accepts inspectable intermediate documents for recovery/testin
 
 ```bash
 python tools/catalog/build_sqlite_catalog.py \
+  --curated sources/curated-sources.json \
+  --community sources/community-sources.json \
   --raw-sources catalog/raw-sources.json \
   --enriched-sources catalog/enriched-sources.json \
   --website-enrichment catalog/website-enrichment.json \

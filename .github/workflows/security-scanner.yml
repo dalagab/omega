@@ -44,6 +44,7 @@ jobs:
     permissions:
       actions: read
       contents: read
+      issues: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -102,6 +103,21 @@ jobs:
           --rescan-after-hours ${{ inputs.rescan_after_hours || '168' }}
           --internal-names "${{ inputs.internal_names || '' }}"
           --advisories catalog/security-output/public-advisories.json
+          --source-overrides sources/source-overrides.json
+      - name: Project public-source coverage follow-ups
+        run: >-
+          python tools/catalog/source_scan_followups.py
+          --database catalog/security-output/omega-catalog.sqlite
+          --output catalog/security-output/source-scan-followups.json
+      - name: Reconcile actionable source follow-up issues
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/catalog/create_source_followup_issues.py
+          --input catalog/security-output/source-scan-followups.json
+          --repository ${{ github.repository }}
+          --max-new 25
       - name: Validate security and dependency intelligence database and hashes
         run: python tools/catalog/validate_security_catalog.py --root catalog/security-output
       - uses: actions/upload-artifact@v7
@@ -115,4 +131,5 @@ jobs:
             catalog/security-output/security-report.json
             catalog/security-output/security-scan-ledger.json
             catalog/security-output/public-advisories.json
+            catalog/security-output/source-scan-followups.json
           retention-days: 30

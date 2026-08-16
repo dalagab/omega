@@ -75,17 +75,60 @@ class WorkflowContractTests(unittest.TestCase):
             "github.event.workflow_run.conclusion == 'success'",
             "actions: read",
             "contents: read",
+            "issues: write",
             "--name omega-sqlite-catalog",
             "security-evidence-latest",
             "omega-security-evidence.sqlite.zip",
             "python tools/catalog/validate_security_catalog.py --root catalog/security-output",
             "name: omega-security-catalog",
             "--ledger catalog/security-output/security-scan-ledger.json",
+            "--source-overrides sources/source-overrides.json",
+            "source-scan-followups.json",
+            "tools/catalog/create_source_followup_issues.py",
+            "continue-on-error: true",
             "security-scan-ledger.json",
         )
         self.assertNotIn("contents: write", text)
         self.assertNotIn("gh release upload", text)
 
+
+    def test_source_submission_workflow_validates_before_privileged_persistence_and_restarts_minimum_chain(self) -> None:
+        text = self.read("source-submissions.yml")
+        self.assert_has(
+            text,
+            "name: Omega source submissions",
+            "issues:",
+            "issue_comment:",
+            "workflow_dispatch:",
+            "tools/catalog/process_source_submission.py",
+            "sources/community-sources.json",
+            "sources/source-overrides.json",
+            "persist-credentials: false",
+            "needs: validate",
+            "trusted: ${{ steps.trust.outputs.trusted }}",
+            "OWNER|MEMBER|COLLABORATOR",
+            "needs.validate.outputs.trusted == 'true'",
+            "maintainer approval",
+            "contents: write",
+            "actions: write",
+            "gh workflow run catalog-builder.yml",
+            "gh workflow run security-scanner.yml",
+            'internal_names="$internal"',
+        )
+        validate_start = text.index("  validate:")
+        persist_start = text.index("\n  persist:\n")
+        validate_block = text[validate_start:persist_start]
+        persist_block = text[persist_start:]
+        self.assertIn("contents: read", validate_block)
+        self.assertNotIn("contents: write", validate_block)
+        self.assertIn("contents: write", persist_block)
+        self.assertIn("needs.validate.outputs.trusted == 'true'", persist_block)
+        self.assertIn("Revalidate and materialize the accepted source change", persist_block)
+
+    def test_catalog_builder_ingests_community_source_metadata_explicitly(self) -> None:
+        text = self.read("catalog-builder.yml")
+        self.assertIn("--community sources/community-sources.json", text)
+        self.assertGreaterEqual(text.count("--community sources/community-sources.json"), 2)
 
     def test_security_scanner_collects_public_advisories_before_dependency_projection(self) -> None:
         text = self.read("security-scanner.yml")
@@ -195,6 +238,7 @@ class WorkflowContractTests(unittest.TestCase):
 
     def test_repository_regression_workflow_covers_python_and_dotnet(self) -> None:
         text = self.read("regression-tests.yml")
+        self.assertIn('- "sources/**"', text)
         self.assert_has(
             text,
             "name: Omega repository regression tests",

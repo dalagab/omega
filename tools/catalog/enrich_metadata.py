@@ -48,6 +48,20 @@ USER_AGENT = (
 
 # Basic manifest completeness criteria. This is not Omega's UI star.
 METADATA_CRITERIA = ("punchline", "description", "repoUrl", "assemblyVersion")
+DEFAULT_MAX_SOURCE_BYTES = 64 * 1024 * 1024
+
+
+class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Reject redirect targets before urllib opens them when a validator is supplied."""
+
+    def __init__(self, validator):
+        super().__init__()
+        self.validator = validator
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not self.validator(newurl):
+            raise urllib.error.HTTPError(newurl, code, "Redirect target rejected by URL policy", headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 # ---------------------------------------------------------------------------
@@ -75,17 +89,30 @@ def load_source_cache(path: str | None) -> dict[str, dict]:
     return out
 
 
-def http_get(url: str, timeout: float = 20.0, conditional: dict | None = None) -> tuple[int, bytes, dict[str, str]]:
+def http_get(
+    url: str,
+    timeout: float = 20.0,
+    conditional: dict | None = None,
+    max_bytes: int = DEFAULT_MAX_SOURCE_BYTES,
+    url_validator=None,
+) -> tuple[int, bytes, dict[str, str]]:
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json, */*;q=0.8"}
     conditional = conditional or {}
     if conditional.get("etag"):
         headers["If-None-Match"] = str(conditional["etag"])
     if conditional.get("last_modified"):
         headers["If-Modified-Since"] = str(conditional["last_modified"])
+    if url_validator is not None and not url_validator(url):
+        raise ValueError("Source URL rejected by URL policy")
     req = urllib.request.Request(url, headers=headers)
+    opener = urllib.request.build_opener(_ValidatingRedirectHandler(url_validator)) if url_validator is not None else None
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return int(resp.status), resp.read(), {k.lower(): v for k, v in resp.headers.items()}
+        response = opener.open(req, timeout=timeout) if opener is not None else urllib.request.urlopen(req, timeout=timeout)
+        with response as resp:
+            body = resp.read(max_bytes + 1)
+            if len(body) > max_bytes:
+                raise ValueError(f"PluginMaster response exceeds {max_bytes} bytes")
+            return int(resp.status), body, {k.lower(): v for k, v in resp.headers.items()}
     except urllib.error.HTTPError as exc:
         if exc.code == 304:
             return 304, b"", {k.lower(): v for k, v in exc.headers.items()}
@@ -163,13 +190,21 @@ def _extract_plugin_list(data):
                 return nested
     return None
 
-def fetch_source(source: dict, cache: dict[str, dict] | None = None, timeout: float = 20.0) -> dict:
+def fetch_source(
+    source: dict,
+    cache: dict[str, dict] | None = None,
+    timeout: float = 20.0,
+    max_bytes: int = DEFAULT_MAX_SOURCE_BYTES,
+    url_validator=None,
+) -> dict:
     """Fetch one URL with conditional headers when a previous SQLite state exists."""
     url = source["url"]
     cached = (cache or {}).get(normalize_url(url).lower(), {})
     try:
-        status, body, headers = http_get(url, timeout=timeout, conditional=cached)
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
+        status, body, headers = http_get(
+            url, timeout=timeout, conditional=cached, max_bytes=max_bytes, url_validator=url_validator
+        )
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError) as exc:
         return _record(source, ok=False, error=f"{type(exc).__name__}: {exc}")
     etag = headers.get("etag") or str(cached.get("etag") or "")
     last_modified = headers.get("last-modified") or str(cached.get("last_modified") or "")
