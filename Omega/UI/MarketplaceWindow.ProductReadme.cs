@@ -14,7 +14,7 @@ internal sealed partial class MarketplaceWindow
         DrawProductSectionHeading("Project README");
         ImGui.Indent(14f);
         ImGui.TextDisabled("Fetched from the project's public repository. Markdown and common embedded HTML are rendered as presentation text.");
-        ImGui.Dummy(new Vector2(1f, 5f));
+        ImGui.Dummy(new Vector2(Ui(1f), Ui(5f)));
 
         var blocks = MarketplaceReadmeMarkup.Parse(readme);
         for (var index = 0; index < blocks.Count; index++)
@@ -25,15 +25,15 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawProductReadmeBlock(MarketplaceReadmeBlock block, int index)
     {
-        var wrap = ImGui.GetCursorPosX() + Math.Max(320f, Math.Min(940f, ImGui.GetContentRegionAvail().X));
+        var wrap = ImGui.GetCursorPosX() + Math.Max(Ui(320f), Math.Min(Ui(940f), ImGui.GetContentRegionAvail().X));
         switch (block.Kind)
         {
             case MarketplaceReadmeBlockKind.Heading:
-                ImGui.Dummy(new Vector2(1f, block.Level <= 2 ? 8f : 4f));
+                ImGui.Dummy(new Vector2(Ui(1f), Ui(block.Level <= 2 ? 8f : 4f)));
                 ImGui.TextUnformatted(block.Text);
                 if (block.Level <= 2)
                     ImGui.Separator();
-                ImGui.Dummy(new Vector2(1f, 3f));
+                ImGui.Dummy(new Vector2(Ui(1f), Ui(3f)));
                 break;
             case MarketplaceReadmeBlockKind.Bullet:
                 ImGui.Bullet();
@@ -57,21 +57,21 @@ internal sealed partial class MarketplaceWindow
             case MarketplaceReadmeBlockKind.Code:
                 ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.025f, 0.030f, 0.038f, 0.88f));
                 var codeLines = Math.Clamp(block.Text.Count(ch => ch == '\n') + 1, 1, 14);
-                ImGui.BeginChild($"readme-code-{index}-{StableId(block.Text)}", new Vector2(Math.Min(940f, ImGui.GetContentRegionAvail().X), 12f + (codeLines * ImGui.GetTextLineHeightWithSpacing())), true, ImGuiWindowFlags.HorizontalScrollbar);
+                ImGui.BeginChild($"readme-code-{index}-{StableId(block.Text)}", new Vector2(Math.Min(Ui(940f), ImGui.GetContentRegionAvail().X), Ui(12f) + (codeLines * ImGui.GetTextLineHeightWithSpacing())), true, ImGuiWindowFlags.HorizontalScrollbar);
                 ImGui.TextUnformatted(block.Text);
                 ImGui.EndChild();
                 ImGui.PopStyleColor();
-                ImGui.Dummy(new Vector2(1f, 4f));
+                ImGui.Dummy(new Vector2(Ui(1f), Ui(4f)));
                 break;
             case MarketplaceReadmeBlockKind.Rule:
                 ImGui.Separator();
-                ImGui.Dummy(new Vector2(1f, 4f));
+                ImGui.Dummy(new Vector2(Ui(1f), Ui(4f)));
                 break;
             default:
                 ImGui.PushTextWrapPos(wrap);
                 ImGui.TextWrapped(block.Text);
                 ImGui.PopTextWrapPos();
-                ImGui.Dummy(new Vector2(1f, 4f));
+                ImGui.Dummy(new Vector2(Ui(1f), Ui(4f)));
                 break;
         }
     }

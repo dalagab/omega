@@ -16,15 +16,15 @@ internal sealed partial class MarketplaceWindow
         var activeFilters = CountActiveMarketplaceFilters();
         var label = activeFilters == 0 ? "Filters" : $"Filters ({activeFilters})";
         var triangle = filtersOpen ? "▲" : "▼";
-        var buttonWidth = activeFilters == 0 ? 98f : 118f;
+        var buttonWidth = Ui(activeFilters == 0 ? 98f : 118f);
         var contentStartX = ImGui.GetCursorPosX();
         var contentWidth = ImGui.GetContentRegionAvail().X;
         ImGui.SetCursorPosX(contentStartX + Math.Max(0f, contentWidth - buttonWidth));
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Ui(4f));
         var openStylePushed = filtersOpen;
         if (openStylePushed)
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.04f, 0.32f, 0.34f, 0.94f));
-        if (ImGui.Button($"{label}  {triangle}##panel-filters-{activeView}", new Vector2(buttonWidth, 30f)))
+        if (ImGui.Button($"{label}  {triangle}##panel-filters-{activeView}", new Vector2(buttonWidth, Ui(30f))))
             filtersOpen = !filtersOpen;
         if (openStylePushed)
             ImGui.PopStyleColor();
@@ -87,7 +87,7 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        if (activeView == MarketplaceView.Spotlight || ShowingLibraryCollections || ShowingLibrarySecurity)
+        if (activeView == MarketplaceView.Spotlight || ShowingLibraryCollections || ShowingLibrarySigmascope)
         {
             detailsOpen = false;
             selectedPlugin = null;
@@ -108,20 +108,20 @@ internal sealed partial class MarketplaceWindow
         }
 
         var available = ImGui.GetContentRegionAvail();
-        if (available.X < 760f)
+        if (available.X < Ui(760f))
         {
             DrawPluginDetailsPanel(installed, currentApi, currentDalamudVersion);
             return;
         }
 
-        var detailsWidth = Math.Clamp(available.X * 0.34f, 320f, 390f);
-        var shelfWidth = Math.Max(320f, available.X - detailsWidth - 14f);
+        var detailsWidth = Math.Clamp(available.X * 0.34f, Ui(300f), Ui(390f));
+        var shelfWidth = Math.Max(Ui(300f), available.X - detailsWidth - Ui(14f));
 
         ImGui.BeginChild("omega-plugin-shelf", new Vector2(shelfWidth, 0f), false);
         DrawStorefront(installed, currentApi, currentDalamudVersion);
         ImGui.EndChild();
 
-        ImGui.SameLine(0f, 14f);
+        ImGui.SameLine(0f, Ui(14f));
         ImGui.BeginChild("omega-plugin-details", Vector2.Zero, false);
         DrawPluginDetailsPanel(installed, currentApi, currentDalamudVersion);
         ImGui.EndChild();
@@ -147,9 +147,9 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        if (ShowingLibrarySecurity)
+        if (ShowingLibrarySigmascope)
         {
-            DrawLibrarySecurityEnvironment(installed, currentApi, currentDalamudVersion);
+            DrawLibrarySigmascopeEnvironment(installed, currentApi, currentDalamudVersion);
             return;
         }
 
@@ -179,7 +179,7 @@ internal sealed partial class MarketplaceWindow
             ImGui.Text(activeView == MarketplaceView.Updates
                 ? "All installed plugins are current in Omega's Definitions."
                 : "No plugins match this shelf.");
-            if (DrawPillButton("Reset filters", "empty-reset-filters", new Vector2(132f, 32f), false))
+            if (DrawPillButton("Reset filters", "empty-reset-filters", Ui(132f, 32f), false))
             {
                 ResetFilters();
                 resetStorefrontScroll = true;

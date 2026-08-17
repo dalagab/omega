@@ -45,6 +45,7 @@ from security_evidence_v2 import (  # noqa: E402
     LARGE_DATASETS,
     NUGET_KINDS,
     SCHEMA,
+    TRANSPORT_REPORT_SCHEMA,
     JsonlGzipChunkWriter,
     atomic_write_bytes,
     canonical_json_bytes,
@@ -58,6 +59,7 @@ from security_evidence_v2 import (  # noqa: E402
     sha256_file,
     table_columns,
     table_exists,
+    transport_security_row,
     write_record_dataset,
 )
 
@@ -239,6 +241,8 @@ def _export_analysis(
             "formatVersion": FORMAT_VERSION,
             "analysisId": analysis_id,
             "artifactSha256": artifact_group,
+            "engineName": "Sigmascope",
+            "engineVersion": str(scan.get("scanner_version") or ""),
             "scannerVersion": str(scan.get("scanner_version") or ""),
             "datasets": datasets,
         }
@@ -449,7 +453,7 @@ def migrate(
         completed = state["completedVariants"]
 
         for position, current_row in enumerate(current_rows, start=1):
-            current = normalize_row(current_row)
+            current = transport_security_row(normalize_row(current_row))
             variant_id = int(current["variant_id"])
             scan_id = int(current["scan_id"])
             key = str(variant_id)
@@ -461,7 +465,12 @@ def migrate(
                 analysis_path = str(payload.get("analysis", {}).get("path") or "")
                 derived_evidence = payload.get("derivedEvidence") or {}
                 has_bounded_derived = all(name in derived_evidence for name in DERIVED_DATASETS)
-                if analysis_id and (output / analysis_path / "manifest.json").is_file() and has_bounded_derived:
+                has_bounded_reports = all(
+                    not isinstance((payload.get(field) or {}).get("report_json"), dict)
+                    or str(((payload.get(field) or {}).get("report_json") or {}).get("schema") or "") == TRANSPORT_REPORT_SCHEMA
+                    for field in ("scan", "current")
+                )
+                if analysis_id and (output / analysis_path / "manifest.json").is_file() and has_bounded_derived and has_bounded_reports:
                     analysis_paths[analysis_id] = analysis_path
                     artifact_sha = str(current.get("artifact_sha256") or "").strip().lower() or "unknown"
                     bucket = artifact_map.setdefault(artifact_sha, {"artifactSha256": artifact_sha, "analyses": {}, "variants": []})
@@ -474,7 +483,7 @@ def migrate(
             scan_row = db.execute("SELECT * FROM plugin_security_scans WHERE scan_id=?", (scan_id,)).fetchone()
             if scan_row is None:
                 raise RuntimeError(f"current variant {variant_id} references missing scan {scan_id}")
-            scan = normalize_row(scan_row)
+            scan = transport_security_row(normalize_row(scan_row))
             plugin_id = int(scan["plugin_id"])
             source_id = int(scan["source_id"])
             plugin = _fetch_row(db, "plugins", "plugin_id", plugin_id)
@@ -563,8 +572,11 @@ def migrate(
             "formatVersion": FORMAT_VERSION,
             "generatedAtUtc": utc_now(),
             "migrationMode": "current-state" if variant_ids is None else "incremental-subset",
+            "engine": {"name": "Sigmascope", "version": str(signature.get("scannerVersion") or "")},
             "source": {
                 **signature,
+                "engineName": "Sigmascope",
+                "engineVersion": str(signature.get("scannerVersion") or ""),
                 "databaseFilename": database.name,
                 "databaseBytes": database.stat().st_size,
             },

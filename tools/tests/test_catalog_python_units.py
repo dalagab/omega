@@ -25,11 +25,11 @@ import enrich_metadata
 import scrape_websites
 import scrape_websites_incremental
 import security_endpoint_inventory
-import security_scan
+import sigmascope
 import security_hash_consensus
 import source_resolution
 import source_stability
-import source_scan_followups
+import sigmascope_source_followups
 import process_source_submission
 
 
@@ -118,12 +118,12 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertEqual("", create_source_followup_issues.followup_key("ordinary issue"))
 
     def test_source_followups_exclude_404_and_mark_transient_failures_non_actionable(self) -> None:
-        self.assertTrue(source_scan_followups.is_not_found("HTTP Error 404: Not Found"))
-        self.assertFalse(source_scan_followups.is_not_found("HTTP Error 429: Too Many Requests"))
-        self.assertFalse(source_scan_followups.is_not_found("first: HTTP Error 404; second: HTTP Error 500"))
-        self.assertTrue(source_scan_followups.is_retryable("HTTP Error 429: Too Many Requests"))
-        self.assertTrue(source_scan_followups.is_retryable("The read operation timed out"))
-        self.assertFalse(source_scan_followups.is_retryable("No GitHub source candidate could be derived"))
+        self.assertTrue(sigmascope_source_followups.is_not_found("HTTP Error 404: Not Found"))
+        self.assertFalse(sigmascope_source_followups.is_not_found("HTTP Error 429: Too Many Requests"))
+        self.assertFalse(sigmascope_source_followups.is_not_found("first: HTTP Error 404; second: HTTP Error 500"))
+        self.assertTrue(sigmascope_source_followups.is_retryable("HTTP Error 429: Too Many Requests"))
+        self.assertTrue(sigmascope_source_followups.is_retryable("The read operation timed out"))
+        self.assertFalse(sigmascope_source_followups.is_retryable("No GitHub source candidate could be derived"))
 
     def test_source_followup_projection_deduplicates_plugin_source_pairs_and_retains_transient_diagnostics(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -144,7 +144,7 @@ class CatalogPythonUnitTests(unittest.TestCase):
                 db.execute("INSERT INTO plugin_security_current VALUES(11,'complete',0,'https://example.invalid/b.zip',?)", (json.dumps({"source":{"error":"HTTP Error 429: Too Many Requests","candidates":["https://github.com/example/Example"]}}),))
                 db.execute("INSERT INTO plugin_security_current VALUES(12,'complete',1,'https://example.invalid/c.zip',?)", (json.dumps({"source":{"error":"","candidates":["https://github.com/example/Example"]}}),))
                 db.commit()
-            document = source_scan_followups.followups(database)
+            document = sigmascope_source_followups.followups(database)
         self.assertEqual(1, document["count"])
         self.assertEqual(1, document["actionableCount"])
         self.assertTrue(document["followups"][0]["actionable"])
@@ -178,12 +178,12 @@ class CatalogPythonUnitTests(unittest.TestCase):
             calls.append(url)
             if len(calls) == 1:
                 hits["network.http"].append("failed-candidate")
-                return {"available": False, "error": "HTTP Error 500", "dependencyIntelligence": security_scan.empty_dependency_intelligence("source")}
+                return {"available": False, "error": "HTTP Error 500", "dependencyIntelligence": sigmascope.empty_dependency_intelligence("source")}
             hits["filesystem.write"].append("successful-candidate")
-            return {"available": True, "error": "", "dependencyIntelligence": security_scan.empty_dependency_intelligence("source")}
+            return {"available": True, "error": "", "dependencyIntelligence": sigmascope.empty_dependency_intelligence("source")}
         hits = defaultdict(list)
-        with mock.patch.object(security_scan, "_fetch_source_candidate", side_effect=fake_fetch):
-            result = security_scan.fetch_source(["https://github.com/example/first", "https://github.com/example/second"], "", hits)
+        with mock.patch.object(sigmascope, "_fetch_source_candidate", side_effect=fake_fetch):
+            result = sigmascope.fetch_source(["https://github.com/example/first", "https://github.com/example/second"], "", hits)
         self.assertTrue(result["available"])
         self.assertNotIn("failed-candidate", hits["network.http"])
         self.assertIn("successful-candidate", hits["filesystem.write"])
@@ -210,8 +210,8 @@ class CatalogPythonUnitTests(unittest.TestCase):
                 return values[path]
 
         hits = defaultdict(list)
-        with mock.patch.object(security_scan, "PublicGitSource", return_value=FakeRepository()):
-            result = security_scan.fetch_source(["https://git.example.test/team/plugin"], "", hits, "HonseFarm.Client", "HonseFarm.Client")
+        with mock.patch.object(sigmascope, "PublicGitSource", return_value=FakeRepository()):
+            result = sigmascope.fetch_source(["https://git.example.test/team/plugin"], "", hits, "HonseFarm.Client", "HonseFarm.Client")
         self.assertTrue(result["available"])
         self.assertEqual("https://git.example.test/team/plugin", result["repository"])
         self.assertEqual("abc123", result["commit"])
@@ -250,7 +250,7 @@ class CatalogPythonUnitTests(unittest.TestCase):
             ''',
             "src/HonseFarm.Shared/HonseFarm.Shared.csproj": '<Project Sdk="Microsoft.NET.Sdk" />',
         }
-        scope = security_scan.select_plugin_source_scope(paths, descriptors, "HonseFarm", "Honse Farm")
+        scope = sigmascope.select_plugin_source_scope(paths, descriptors, "HonseFarm", "Honse Farm")
         self.assertEqual("plugin-build-graph", scope["mode"])
         self.assertEqual("src/HonseFarm.Client/HonseFarm.Client.csproj", scope["primaryProject"])
         self.assertEqual(
@@ -270,7 +270,7 @@ class CatalogPythonUnitTests(unittest.TestCase):
         descriptors = {
             "src/HonseFarm.Server/HonseFarm.Server.csproj": '<Project Sdk="Microsoft.NET.Sdk.Web" />',
         }
-        scope = security_scan.select_plugin_source_scope(paths, descriptors, "HonseFarm", "Honse Farm")
+        scope = sigmascope.select_plugin_source_scope(paths, descriptors, "HonseFarm", "Honse Farm")
         self.assertEqual("repository-context-only", scope["mode"])
         self.assertEqual("", scope["primaryProject"])
         self.assertEqual([], scope["criticalPaths"])
@@ -287,7 +287,7 @@ class CatalogPythonUnitTests(unittest.TestCase):
                     "src-bad": "https://example.invalid/repo",
                 },
             }), encoding="utf-8")
-            overrides = security_scan.load_source_overrides(path)
+            overrides = sigmascope.load_source_overrides(path)
         self.assertEqual({"src-0123456789abcdefabcd": "https://github.com/example/Plugin"}, overrides)
 
     def test_source_submission_accepts_only_public_https_urls_and_valid_pluginmaster_feeds(self) -> None:
@@ -482,7 +482,8 @@ class CatalogPythonUnitTests(unittest.TestCase):
         project = {"name": "Fixture", "default_branch": "main", "stargazers_count": 0, "forks_count": 0}
         readme = "# Fixture\n![Preview](images/preview.png)\n" + ("x" * 6000)
         encoded = base64.b64encode(readme.encode("utf-8")).decode("ascii")
-        with mock.patch.object(scrape_websites, "github_get", side_effect=[project, {"encoding": "base64", "content": encoded}]):
+        with mock.patch.object(scrape_websites, "fetch_github_omega_index", return_value={}), \
+                mock.patch.object(scrape_websites, "github_get", side_effect=[project, {"encoding": "base64", "content": encoded}]):
             record = scrape_websites.scrape_github_repo(("example", "fixture"), token=None)
         self.assertEqual(readme, record["readmeExcerpt"])
         self.assertEqual(
@@ -498,7 +499,8 @@ class CatalogPythonUnitTests(unittest.TestCase):
         )
         project = {"name": "Fixture", "default_branch": "main", "stargazers_count": 0, "forks_count": 0}
         encoded = base64.b64encode(readme.encode("utf-8")).decode("ascii")
-        with mock.patch.object(scrape_websites, "github_get", side_effect=[project, {"encoding": "base64", "content": encoded}]):
+        with mock.patch.object(scrape_websites, "fetch_github_omega_index", return_value={}), \
+                mock.patch.object(scrape_websites, "github_get", side_effect=[project, {"encoding": "base64", "content": encoded}]):
             record = scrape_websites.scrape_github_repo(("example", "fixture"), token=None)
         self.assertEqual(scrape_websites.MAX_IMAGES, len(record["imageUrls"]))
         self.assertEqual([widget], record["discordJoinImageUrls"])
@@ -517,11 +519,11 @@ class CatalogPythonUnitTests(unittest.TestCase):
 
     def test_scanner_reports_hard_coded_external_paths_only_with_filesystem_api_evidence(self) -> None:
         hits = defaultdict(list)
-        intel = security_scan.empty_dependency_intelligence("source")
-        security_scan.scan_source_text("Plugin.cs", b"", 'File.ReadAllText(@"C:\\Users\\Example\\secret.txt");', intel, hits)
+        intel = sigmascope.empty_dependency_intelligence("source")
+        sigmascope.scan_source_text("Plugin.cs", b"", 'File.ReadAllText(@"C:\\Users\\Example\\secret.txt");', intel, hits)
         self.assertIn("filesystem.external-path", hits)
         self.assertIn("C:\\Users\\Example\\secret.txt", hits["filesystem.external-path"][0])
-        self.assertEqual([], security_scan.external_hard_coded_paths('var path = @"C:\\Users\\Example\\secret.txt";'))
+        self.assertEqual([], sigmascope.external_hard_coded_paths('var path = @"C:\\Users\\Example\\secret.txt";'))
 
     def test_endpoint_inventory_classifies_hosts_and_redacts_url_queries(self) -> None:
         endpoints = security_endpoint_inventory.endpoint_candidates(
@@ -577,8 +579,8 @@ class CatalogPythonUnitTests(unittest.TestCase):
             archive.writestr("Microsoft.IdentityModel.Logging.dll", b"MZ System.Net.Http.HttpClient https://aka.ms/IdentityModel/SecurityArtifactLogging")
             archive.writestr("Plugin.cs", 'System.Net.Http.HttpClient client; var endpoint = "https://api.example.test/plugin";')
         hits = defaultdict(list)
-        intel = security_scan.empty_dependency_intelligence("artifact")
-        security_scan.scan_archive(payload.getvalue(), hits, intel)
+        intel = sigmascope.empty_dependency_intelligence("artifact")
+        sigmascope.scan_archive(payload.getvalue(), hits, intel)
         endpoints = {item["url"] for item in intel["networkEndpoints"]}
         self.assertIn("https://api.example.test/plugin", endpoints)
         self.assertNotIn("https://aka.ms/IdentityModel/SecurityArtifactLogging", endpoints)
@@ -587,7 +589,7 @@ class CatalogPythonUnitTests(unittest.TestCase):
         with closing(sqlite3.connect(":memory:")) as db:
             db.row_factory = sqlite3.Row
             db.executescript(build_sqlite_catalog.SCHEMA_SQL)
-            security_scan.ensure_schema(db)
+            sigmascope.ensure_schema(db)
             db.execute("INSERT INTO plugins(plugin_id,internal_name,canonical_name,first_seen_utc,last_seen_utc,active) VALUES(1,'Fixture','Fixture','','',1)")
             sources = (
                 (1, "https://puni.sh/Fixture", "Puni.sh Fixture"),
@@ -880,20 +882,20 @@ class CatalogPythonUnitTests(unittest.TestCase):
 
     def test_version_helpers_remain_conservative(self) -> None:
         self.assertGreater(build_sqlite_catalog.version_key("1.10.0"), build_sqlite_catalog.version_key("1.9.9"))
-        self.assertTrue(security_scan.version_satisfies("2.5.0", ">=2.0 <3.0"))
-        self.assertFalse(security_scan.version_satisfies("3.0.0", ">=2.0 <3.0"))
-        self.assertIsNone(security_scan.version_satisfies("2.0.0", "banana"))
+        self.assertTrue(sigmascope.version_satisfies("2.5.0", ">=2.0 <3.0"))
+        self.assertFalse(sigmascope.version_satisfies("3.0.0", ">=2.0 <3.0"))
+        self.assertIsNone(sigmascope.version_satisfies("2.0.0", "banana"))
 
     def test_archive_path_normalization_rejects_escape(self) -> None:
-        self.assertEqual("folder/plugin.dll", security_scan.normalized_archive_member_name("folder\\plugin.dll"))
-        self.assertFalse(security_scan.safe_member_name("../escape.dll"))
-        self.assertFalse(security_scan.safe_member_name("C:\\escape.dll"))
-        self.assertTrue(security_scan.safe_member_name("folder/plugin.dll"))
+        self.assertEqual("folder/plugin.dll", sigmascope.normalized_archive_member_name("folder\\plugin.dll"))
+        self.assertFalse(sigmascope.safe_member_name("../escape.dll"))
+        self.assertFalse(sigmascope.safe_member_name("C:\\escape.dll"))
+        self.assertTrue(sigmascope.safe_member_name("folder/plugin.dll"))
 
     def test_security_resource_ceilings_cover_current_production_cases(self) -> None:
-        self.assertGreaterEqual(security_scan.MAX_ARTIFACT_BYTES, 156_649_087)
-        self.assertGreaterEqual(security_scan.MAX_ARCHIVE_ENTRIES, 2_342)
-        self.assertGreater(security_scan.MAX_ARCHIVE_UNCOMPRESSED, security_scan.MAX_ARTIFACT_BYTES)
+        self.assertGreaterEqual(sigmascope.MAX_ARTIFACT_BYTES, 156_649_087)
+        self.assertGreaterEqual(sigmascope.MAX_ARCHIVE_ENTRIES, 2_342)
+        self.assertGreater(sigmascope.MAX_ARCHIVE_UNCOMPRESSED, sigmascope.MAX_ARTIFACT_BYTES)
 
 
     def test_builder_handoff_compression_is_bounded_for_large_evidence_seed(self) -> None:
@@ -909,15 +911,15 @@ class CatalogPythonUnitTests(unittest.TestCase):
         now = dt.datetime(2026, 8, 15, 12, 0, tzinfo=dt.timezone.utc)
         entry = {
             "status": "complete",
-            "scannerVersion": security_scan.SCANNER_VERSION,
+            "scannerVersion": sigmascope.SCANNER_VERSION,
             "lastValidatedAtUtc": "2026-08-15T11:00:00Z",
             "assemblyVersion": "1.2.3.4",
             "artifactUrl": "https://example.invalid/plugin.zip",
         }
-        self.assertTrue(security_scan.ledger_entry_is_fresh(entry, "1.2.3.4", "https://example.invalid/plugin.zip", now, 168))
-        self.assertFalse(security_scan.ledger_entry_is_fresh(entry, "1.2.3.5", "https://example.invalid/plugin.zip", now, 168))
+        self.assertTrue(sigmascope.ledger_entry_is_fresh(entry, "1.2.3.4", "https://example.invalid/plugin.zip", now, 168))
+        self.assertFalse(sigmascope.ledger_entry_is_fresh(entry, "1.2.3.5", "https://example.invalid/plugin.zip", now, 168))
         stale = dict(entry, lastValidatedAtUtc="2026-08-01T00:00:00Z")
-        self.assertFalse(security_scan.ledger_entry_is_fresh(stale, "1.2.3.4", "https://example.invalid/plugin.zip", now, 168))
+        self.assertFalse(sigmascope.ledger_entry_is_fresh(stale, "1.2.3.4", "https://example.invalid/plugin.zip", now, 168))
 
 
 if __name__ == "__main__":

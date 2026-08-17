@@ -39,8 +39,8 @@ internal static partial class RegressionCases
         Contains(product, "var canToggleHere = control.CanDirectToggle", "named collection ownership disables direct state changes without hiding the switch");
         Contains(product, "ImGui.TextUnformatted(\"Collections\")", "collection membership uses a normal high-contrast section label");
         Contains(product, "if (memberships.Length > 0)", "the Collections subsection is conditional on real named membership");
-        Contains(product, "return 68f", "plugins without named memberships keep a compact state-only panel");
-        Contains(product, "var panelWidth = Math.Max(320f, ImGui.GetContentRegionAvail().X)", "state and collection ownership use the full available product width");
+        Contains(product, "return Ui(68f)", "plugins without named memberships keep a compact state-only panel");
+        Contains(product, "var panelWidth = Math.Max(Ui(1f), ImGui.GetContentRegionAvail().X)", "state and collection ownership use the full available product width");
         DoesNotContain(product, "Managed by collection", "redundant collection-management copy stays removed");
         DoesNotContain(product, "Direct toggle unavailable", "Discover does not repeat the unavailable-direct-toggle label");
         DoesNotContain(product, "ImGui.TextWrapped(control.Reason)", "Discover does not add a redundant collection-management explanation paragraph");

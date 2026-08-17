@@ -35,8 +35,8 @@ internal sealed partial class MarketplaceWindow
         }
 
         var label = candidates.Count > 1 ? $"Install  •  {candidates.Count} repositories" : "Install";
-        var width = Math.Min(260f, Math.Max(130f, ImGui.CalcTextSize(label).X + 36f));
-        if (DrawPillButton(label, $"details-install-{plugin.InternalName}", new Vector2(width, 36f), true))
+        var width = Math.Min(Ui(260f), Math.Max(Ui(130f), ImGui.CalcTextSize(label).X + Ui(36f)));
+        if (DrawPillButton(label, $"details-install-{plugin.InternalName}", new Vector2(width, Ui(36f)), true))
             OpenInstallChooser(plugin);
     }
 
@@ -51,7 +51,7 @@ internal sealed partial class MarketplaceWindow
             return;
 
         var keepOpen = installPopupOpen;
-        ImGui.SetNextWindowSize(new Vector2(600f, 0f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(UiModalSize(600f, 0f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal("Choose repository###DalagabOmegaInstall", ref keepOpen,
                 ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize))
         {
@@ -78,8 +78,8 @@ internal sealed partial class MarketplaceWindow
         var headingY = ImGui.GetCursorPosY();
         ImGui.Text($"Install {plugin.Name}");
 
-        const float installButtonHeight = 30f;
-        var installButtonWidth = selectedNeedsRiskReview ? 108f : 88f;
+        var installButtonHeight = Ui(30f);
+        var installButtonWidth = Ui(selectedNeedsRiskReview ? 108f : 88f);
         var actionX = ImGui.GetCursorPosX() + Math.Max(0f, ImGui.GetContentRegionAvail().X - installButtonWidth);
         ImGui.SetCursorPos(new Vector2(actionX, headingY));
         var actionLabel = selectedNeedsRiskReview ? "Review risk" : "Install";
@@ -96,7 +96,7 @@ internal sealed partial class MarketplaceWindow
         if (!canAct)
             ImGui.EndDisabled();
 
-        ImGui.SetCursorPosY(headingY + installButtonHeight + 4f);
+        ImGui.SetCursorPosY(headingY + installButtonHeight + Ui(4f));
         ImGui.TextDisabled("Choose which repository to use for this installation.");
         ImGui.Separator();
 
@@ -147,21 +147,21 @@ internal sealed partial class MarketplaceWindow
         if (missing.Length == 0)
             return false;
 
-        var height = 86f + (missing.Length * 28f);
+        var height = Ui(86f + (missing.Length * 28f));
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.24f, 0.035f, 0.045f, 0.90f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.82f, 0.16f, 0.20f, 0.94f));
         ImGui.BeginChild("install-required-provider-warning", new Vector2(0f, height), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        ImGui.SetCursorPosY(12f);
+        ImGui.SetCursorPosY(Ui(12f));
         DrawPluginFontAwesomeRiskIcon(
             FontAwesomeIcon.ExclamationTriangle,
             new Vector4(0.98f, 0.28f, 0.31f, 1f),
             "High-confidence required IPC provider is not installed",
-            24f);
-        ImGui.SameLine(0f, 10f);
+            Ui(24f));
+        ImGui.SameLine(0f, Ui(10f));
         ImGui.BeginGroup();
         ImGui.TextUnformatted(missing.Length == 1 ? "Required provider not installed" : "Required providers not installed");
-        ImGui.PushTextWrapPos(ImGui.GetWindowContentRegionMax().X - 12f);
+        ImGui.PushTextWrapPos(ImGui.GetWindowContentRegionMax().X - Ui(12f));
         ImGui.TextDisabled("Static analysis indicates that core plugin functionality depends on the IPC provider below. Omega will not install it automatically.");
         ImGui.PopTextWrapPos();
         ImGui.EndGroup();
@@ -169,7 +169,7 @@ internal sealed partial class MarketplaceWindow
         foreach (var dependency in missing)
         {
             var providerName = string.IsNullOrWhiteSpace(dependency.TargetInternalName) ? dependency.Name : dependency.TargetInternalName;
-            ImGui.SetCursorPosX(14f);
+            ImGui.SetCursorPosX(Ui(14f));
             ImGui.TextColored(new Vector4(0.98f, 0.46f, 0.42f, 1f), $"• {providerName}");
             var target = string.IsNullOrWhiteSpace(dependency.TargetInternalName)
                 ? null
@@ -230,13 +230,13 @@ internal sealed partial class MarketplaceWindow
                 "##choice",
                 selected,
                 ImGuiSelectableFlags.DontClosePopups,
-                new Vector2(rowWidth, MarketplaceLayoutRules.InstallSourceRowHeight)))
+                new Vector2(rowWidth, Ui(MarketplaceLayoutRules.InstallSourceRowHeight))))
         {
             pendingInstallSourceUrl = candidate.SourceUrl;
         }
         var rowEnd = ImGui.GetCursorPos();
 
-        ImGui.SetCursorPos(rowStart + new Vector2(10f, 8f));
+        ImGui.SetCursorPos(rowStart + Ui(10f, 8f));
         if (sourceComparison.Worse || needsReview)
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.94f, 0.28f, 0.26f, 1f));
         else if (repositoryAcknowledged)
@@ -249,16 +249,16 @@ internal sealed partial class MarketplaceWindow
         if (alreadyPresent)
             DrawInstallRepositoryPresentMarker(rowStart, rowWidth, candidate.SourceIsOfficial);
 
-        ImGui.SetCursorPos(rowStart + new Vector2(10f, 33f));
+        ImGui.SetCursorPos(rowStart + Ui(10f, 33f));
         ImGui.TextDisabled($"Version {version}  •  API {api}");
-        ImGui.SetCursorPos(rowStart + new Vector2(10f, 55f));
+        ImGui.SetCursorPos(rowStart + Ui(10f, 55f));
         if (sourceComparison.Worse || needsReview)
             ImGui.TextColored(new Vector4(0.94f, 0.28f, 0.26f, 1f), sourceState);
         else if (repositoryAcknowledged)
             ImGui.TextColored(new Vector4(0.95f, 0.64f, 0.20f, 1f), sourceState);
         else
             ImGui.TextDisabled(sourceState);
-        ImGui.SetCursorPos(rowStart + new Vector2(10f, 76f));
+        ImGui.SetCursorPos(rowStart + Ui(10f, 76f));
         ImGui.TextDisabled(Shorten(candidate.SourceUrl, 88));
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(candidate.SourceUrl);
@@ -270,7 +270,7 @@ internal sealed partial class MarketplaceWindow
 
     private static void DrawInstallRepositoryPresentMarker(Vector2 rowStart, float rowWidth, bool official)
     {
-        ImGui.SetCursorPos(rowStart + new Vector2(Math.Max(10f, rowWidth - 30f), 10f));
+        ImGui.SetCursorPos(rowStart + new Vector2(Math.Max(Ui(10f), rowWidth - Ui(30f)), Ui(10f)));
         ImGui.PushFont(UiBuilder.IconFontFixedWidth);
         ImGui.TextColored(new Vector4(0.28f, 0.80f, 0.48f, 1f), FontAwesomeIcon.Check.ToIconString());
         ImGui.PopFont();

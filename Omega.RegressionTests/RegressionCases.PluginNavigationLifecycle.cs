@@ -175,15 +175,15 @@ internal static partial class RegressionCases
 
         Contains(chrome, "notificationCount: counts.Updates", "Updates badge receives the actual pending-update count");
         Contains(chrome, "notificationCount > 99 ? \"99+\" : notificationCount.ToString()", "Updates badge remains compact while preserving useful counts");
-        Contains(chrome, "const float badgeHeight = 15f", "Updates badge stays compact on the icon rail");
+        Contains(chrome, "var badgeHeight = Ui(15f)", "Updates badge stays compact on the icon rail");
         Contains(chrome, "0.50f, 0.10f, 0.13f, 0.94f", "Updates counter uses a subdued red rather than alarm-bright red");
         Contains(discover, "queueIfVisible: true", "visible Discover cards queue their real plugin icons");
         Contains(discover, "showOverlays: false", "Discover card identity icons remain clean and overlay-free");
         Contains(discover, "var cardMin = ImGui.GetWindowPos();", "rich Discover hover outline anchors to the child window rather than padded content");
-        Contains(discover, "cardMax - new Vector2(0.5f, 0.5f)", "rich Discover hover outline remains aligned to the card bounds");
+        Contains(discover, "cardMax - Ui(0.5f, 0.5f)", "rich Discover hover outline remains aligned to the card bounds");
         Contains(discover, "var rowMin = ImGui.GetWindowPos();", "fallback Discover hover outline anchors to the row child window rather than its padded content cursor");
         Contains(discover, "var rowMax = rowMin + ImGui.GetWindowSize();", "fallback Discover hover outline uses the actual row bounds");
-        Contains(discover, "rowMax - new Vector2(0.5f, 0.5f)", "fallback Discover hover outline remains fully inside the child clip rectangle");
+        Contains(discover, "rowMax - Ui(0.5f, 0.5f)", "fallback Discover hover outline remains fully inside the child clip rectangle with scale-aware inset");
         False(discover.Contains("AddRect(start, start + new Vector2(ImGui.GetWindowSize().X - 1f, DiscoverListRowHeight - 1f)", StringComparison.Ordinal), "fallback Discover hover outline must not mix a padded content origin with full child-window dimensions");
     }
 
@@ -227,25 +227,25 @@ internal static partial class RegressionCases
     {
         var window = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.cs"));
         var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
-        var security = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.LibrarySecurity.cs"));
+        var security = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.LibrarySigmascope.cs"));
         var artwork = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Artwork.cs"));
         var appBar = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.AppBar.cs"));
 
-        Contains(window, "Security,", "Library owns a dedicated installed-environment security section");
-        Contains(library, "library-tab-security", "Library exposes the security scan as an in-panel destination");
-        Contains(security, "Installed environment", "security scan summarizes the current installed environment");
-        Contains(security, "ResolveInstalledSecurityVariant", "environment scan matches installed plugins to repository-specific scan results");
-        Contains(security, "installedPlugin.Manifest.InstalledFromUrl", "third-party environment scans prefer the actual installed repository URL");
-        Contains(security, "Security scan not yet available", "installed plugins without evidence remain visible rather than disappearing");
-        Contains(security, "BuildEnvironmentPluginIdentityLine", "Library security rows describe the plugin identity backing each scan without user-facing artifact terminology");
-        Contains(security, "scan shared by", "identical package hashes disclose when one canonical scan is shared by mirrors");
-        Contains(security, "DrawSecurityDisclaimerPanel", "Library security begins with the prominent static-analysis warning panel");
-        Contains(security, "Plugin identity not yet published", "Library security uses plugin terminology for the identity line");
-        DoesNotContain(security, "Artifact identity not yet published", "Library security no longer labels the plugin as an artifact");
-        var securityVisual = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
-        Contains(securityVisual, "SecuritySeverityRank", "Library security posture uses an explicit shared severity ordering helper");
-        Contains(securityVisual, "\"critical\" => 4", "Library security severity ordering keeps critical above lower findings");
-        Contains(security, "OpenPluginDetails(entry.SecurityVariant)", "environment scan rows remain actionable into the product security page");
+        Contains(window, "Sigmascope,", "Library owns a dedicated installed-environment Sigmascope section");
+        Contains(library, "library-tab-sigmascope", "Library exposes Sigmascope as an in-panel destination");
+        Contains(security, "Sigmascope · Installed environment", "Sigmascope summarizes the current installed environment");
+        Contains(security, "ResolveInstalledSigmascopeVariant", "environment analysis matches installed plugins to repository-specific Sigmascope results");
+        Contains(security, "installedPlugin.Manifest.InstalledFromUrl", "third-party Sigmascope environment analysis prefers the actual installed repository URL");
+        Contains(security, "Sigmascope analysis not yet available", "installed plugins without evidence remain visible rather than disappearing");
+        Contains(security, "BuildEnvironmentPluginIdentityLine", "Library Sigmascope rows describe the plugin identity backing each analysis without user-facing artifact terminology");
+        Contains(security, "Sigmascope evidence shared by", "identical package hashes disclose when one canonical Sigmascope analysis is shared by mirrors");
+        Contains(security, "DrawSigmascopeDisclaimerPanel", "Library Sigmascope begins with the prominent evidence-analysis warning panel");
+        Contains(security, "Plugin identity not yet published", "Library Sigmascope uses plugin terminology for the identity line");
+        DoesNotContain(security, "Artifact identity not yet published", "Library Sigmascope no longer labels the plugin as an artifact");
+        var securityVisual = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sigmascope.cs"));
+        Contains(securityVisual, "SecuritySeverityRank", "Library Sigmascope posture uses an explicit shared severity ordering helper");
+        Contains(securityVisual, "\"critical\" => 4", "Library Sigmascope severity ordering keeps critical above lower findings");
+        Contains(security, "OpenPluginDetails(entry.SecurityVariant)", "environment Sigmascope rows remain actionable into the product evidence page");
         Contains(artwork, "detailsReturnView = activeView", "opening a product remembers the originating marketplace surface");
         Contains(artwork, "detailsReturnLibrarySection = librarySection", "opening from Library remembers the exact Library section");
         Contains(appBar, "activeView = detailsReturnView", "product Back returns to the original marketplace surface");
@@ -322,9 +322,11 @@ internal static partial class RegressionCases
         Contains(usage, "command prefix", "usage extraction recognizes command metadata such as Questionable's command prefix");
         Contains(store, "ReadPluginChangelogHistory", "Definitions retains and loads historical plugin changelogs from historical variants");
         Contains(store, "WHERE TRIM(v.changelog)<>''", "empty changelog records are not projected into client history");
-        Contains(changelog, "## [0.8.78]", "repository changelog has an entry for the current release");
+        Contains(changelog, "## [Unreleased]", "development changelog work remains versionless until a GitHub release tag is cut");
+        Contains(changelog, "<sub>work build:", "versionless changelog work retains a small responsible-build marker");
         Contains(changelog, "Availability", "release notes can explain when Definitions-backed features become visible");
         Contains(release, "extract_changelog.py", "release workflow consumes repository CHANGELOG.md");
+        Contains(release, "finalize_changelog.py", "tag publication can roll pending changelog work into the released version safely");
         Contains(release, "--notes-file release-notes.md", "GitHub Releases receive curated project release notes");
     }
     internal static void TestRepositoryAwarenessAuthorsAndSpotlightPolishContract()

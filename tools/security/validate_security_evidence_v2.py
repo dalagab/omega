@@ -41,6 +41,7 @@ from security_evidence_v2 import (  # noqa: E402
     sha256_file,
     table_columns,
     table_exists,
+    transport_security_row,
     verify_file_entry,
 )
 
@@ -210,7 +211,7 @@ def validate(database: Path, evidence: Path, *, quick: bool = False) -> dict[str
             errors.append(f"current variant count differs: v1={len(current_rows)}, v2={(index.get('counts') or {}).get('currentVariants')}")
 
         for current_row in current_rows:
-            current = normalize_row(current_row)
+            current = transport_security_row(normalize_row(current_row))
             variant_id = int(current["variant_id"])
             scan_id = int(current["scan_id"])
             variant_path = evidence / "variants" / f"{variant_id // 1000:04d}" / f"{variant_id}.json"
@@ -224,7 +225,7 @@ def validate(database: Path, evidence: Path, *, quick: bool = False) -> dict[str
             if scan_row is None:
                 errors.append(f"variant {variant_id}: v1 current scan {scan_id} is missing")
                 continue
-            scan = normalize_row(scan_row)
+            scan = transport_security_row(normalize_row(scan_row))
             _compare_exact(f"variant {variant_id} scan", scan, payload.get("scan"), errors)
             plugin = normalize_row(db.execute("SELECT * FROM plugins WHERE plugin_id=?", (scan["plugin_id"],)).fetchone())
             variant = normalize_row(db.execute("SELECT * FROM plugin_variants WHERE variant_id=?", (variant_id,)).fetchone())

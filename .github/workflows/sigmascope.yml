@@ -1,4 +1,4 @@
-name: Omega plugin security scanner
+name: Omega Sigmascope
 
 on:
   workflow_run:
@@ -7,12 +7,12 @@ on:
     types:
       - completed
   schedule:
-    # Independent bounded revalidation between catalog-driven scans.
+    # Independent bounded Sigmascope revalidation between catalog-driven examinations.
     - cron: "47 3,15 * * *"
   workflow_dispatch:
     inputs:
       max_scans:
-        description: "Maximum plugin variants to scan in this run"
+        description: "Maximum plugin variants for Sigmascope to examine in this run"
         type: string
         required: false
         default: "60"
@@ -22,7 +22,7 @@ on:
         required: false
         default: "168"
       max_batch_seconds:
-        description: "Wall-clock budget for starting new plugin scans (0 disables)"
+        description: "Wall-clock budget for starting new Sigmascope examinations (0 disables)"
         type: string
         required: false
         default: "4200"
@@ -33,12 +33,12 @@ on:
         default: ""
 
 concurrency:
-  group: omega-security-scan
+  group: omega-sigmascope
   cancel-in-progress: false
 
 jobs:
   scan:
-    name: Stage, audit and publish Security Evidence v2
+    name: Stage, audit and publish Sigmascope Security Evidence v2
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -63,12 +63,12 @@ jobs:
           python-version: "3.13"
       - name: Run repository Python regression suite
         run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
-      - name: Self-test scanner semantics and automation capability detection
-        run: python tools/catalog/security_scan.py --self-test
-      - name: Run scanner hardening and deterministic projection tests
-        run: python tools/catalog/security_scan.py --hardening-self-test
-      - name: Self-test production Security Evidence v2 orchestration
-        run: python tools/security/production_security_v2_pipeline.py --self-test
+      - name: Self-test Sigmascope semantics and automation capability detection
+        run: python tools/catalog/sigmascope.py --self-test
+      - name: Run Sigmascope hardening and deterministic projection tests
+        run: python tools/catalog/sigmascope.py --hardening-self-test
+      - name: Self-test production Sigmascope Security Evidence v2 orchestration
+        run: python tools/security/production_sigmascope_v2_pipeline.py --self-test
       - name: Download current catalog identities and previous client descriptor
         shell: bash
         env:
@@ -92,12 +92,12 @@ jobs:
           test -f catalog/security-input/catalog.json
           test -f catalog/security-v2-current/index.json
           test -f catalog/security-v2-current/validation-report.json
-      - name: Stage bounded v2 scan, refresh OSV/IPC/dependencies, and build marketplace candidate
+      - name: Stage bounded Sigmascope v2 examination, refresh OSV/IPC/dependencies, and build marketplace candidate
         id: v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
-          python tools/security/production_security_v2_pipeline.py
+          python tools/security/production_sigmascope_v2_pipeline.py
           --base-database catalog/security-input/omega-catalog.sqlite
           --descriptor catalog/security-input/catalog.json
           --current-evidence catalog/security-v2-current
@@ -126,16 +126,16 @@ jobs:
             --json > catalog/security-v2-work/security-developer-audit.json
       - name: Project public-source coverage follow-ups
         run: >-
-          python tools/catalog/source_scan_followups.py
+          python tools/catalog/sigmascope_source_followups.py
           --database catalog/security-v2-work/omega-security-v2-working.sqlite
-          --output catalog/security-v2-work/source-scan-followups.json
+          --output catalog/security-v2-work/sigmascope-source-followups.json
       - name: Reconcile actionable source follow-up issues
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           python tools/catalog/create_source_followup_issues.py
-          --input catalog/security-v2-work/source-scan-followups.json
+          --input catalog/security-v2-work/sigmascope-source-followups.json
           --repository ${{ github.repository }}
           --max-new 25
       - name: Publish validated Security Evidence v2 snapshot atomically
@@ -163,7 +163,7 @@ jobs:
           set -euo pipefail
           if ! gh release view catalog-latest --repo "$GH_REPO" >/dev/null 2>&1; then
             gh release create catalog-latest --repo "$GH_REPO" --title "Omega marketplace database" \
-              --notes "Small Omega client marketplace catalog. Detailed security evidence is stored on the security-evidence-v2 snapshot branch."
+              --notes "Small Omega client marketplace catalog. Detailed Sigmascope evidence is stored on the security-evidence-v2 snapshot branch."
           fi
           assets=(
             catalog/publication-output/omega-marketplace.sqlite.zip
@@ -178,11 +178,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: omega-security-v2-diagnostics
+          name: omega-sigmascope-v2-diagnostics
           path: |
             # Keep the production batch summary explicit: C# release contracts
             # require this audit artifact not to depend on a broad diagnostics glob.
-            catalog/security-v2-work/production-security-v2-report.json
+            catalog/security-v2-work/production-sigmascope-v2-report.json
             catalog/security-v2-work/*.json
             catalog/security-v2-candidate/index.json
             catalog/security-v2-candidate/validation-report.json

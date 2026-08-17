@@ -14,8 +14,8 @@ internal sealed partial class MarketplaceWindow
     private bool ShowingLibraryCollections
         => activeView == MarketplaceView.Library && librarySection == LibrarySection.Collections;
 
-    private bool ShowingLibrarySecurity
-        => activeView == MarketplaceView.Library && librarySection == LibrarySection.Security;
+    private bool ShowingLibrarySigmascope
+        => activeView == MarketplaceView.Library && librarySection == LibrarySection.Sigmascope;
 
     private void DrawLibraryTabs(int installedCount)
     {
@@ -24,7 +24,7 @@ internal sealed partial class MarketplaceWindow
         if (DrawRoundedButton(
                 $"All   {installedCount}",
                 "library-tab-all",
-                new Vector2(96f, 32f),
+                Ui(96f, 32f),
                 active: librarySection == LibrarySection.All))
         {
             SetLibrarySection(LibrarySection.All);
@@ -32,25 +32,25 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.SameLine(0f, 8f);
         if (DrawRoundedButton(
-                "Security scan",
-                "library-tab-security",
-                new Vector2(126f, 32f),
-                active: librarySection == LibrarySection.Security))
+                SigmascopeInfo.Name,
+                "library-tab-sigmascope",
+                Ui(126f, 32f),
+                active: librarySection == LibrarySection.Sigmascope))
         {
-            SetLibrarySection(LibrarySection.Security);
+            SetLibrarySection(LibrarySection.Sigmascope);
         }
 
         ImGui.SameLine(0f, 8f);
         if (DrawRoundedButton(
                 $"Collections   {collectionSnapshot.Length}",
                 "library-tab-collections",
-                new Vector2(142f, 32f),
+                Ui(142f, 32f),
                 active: librarySection == LibrarySection.Collections))
         {
             SetLibrarySection(LibrarySection.Collections);
         }
 
-        const float importWidth = 152f;
+        var importWidth = Ui(152f);
         var rightEdge = ImGui.GetWindowContentRegionMax().X;
         ImGui.SameLine();
         ImGui.SetCursorPosX(Math.Max(ImGui.GetCursorPosX() + 12f, rightEdge - importWidth));
@@ -91,7 +91,7 @@ internal sealed partial class MarketplaceWindow
         {
             MarketplaceView.Spotlight => false,
             MarketplaceView.Discover when detailsOpen => false,
-            MarketplaceView.Library when librarySection is LibrarySection.Collections or LibrarySection.Security => false,
+            MarketplaceView.Library when librarySection is LibrarySection.Collections or LibrarySection.Sigmascope => false,
             _ => true,
         };
 
@@ -157,21 +157,21 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        const float rowHeight = MarketplaceLayoutRules.LibraryRowHeight;
-        var rowWidth = Math.Max(420f, ImGui.GetContentRegionAvail().X);
+        var rowHeight = Ui(MarketplaceLayoutRules.LibraryRowHeight);
+        var rowWidth = Math.Max(Ui(420f), ImGui.GetContentRegionAvail().X);
         ImGui.BeginChild($"library-row-{StableId(plugin.InternalName)}", new Vector2(rowWidth, rowHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         // Library > All is deliberately a pure installed-plugin list. Collection membership
         // is managed only from Library > Collections.
-        var artworkY = MarketplaceLayoutRules.CenterY(rowHeight, 54f);
+        var artworkY = MarketplaceLayoutRules.CenterY(rowHeight, Ui(54f));
         ImGui.SetCursorPosY(artworkY);
         var artworkClicked = DrawPluginArtwork(
-            plugin, installedPlugin, 54f, 54f, currentApi, currentDalamudVersion, showOverlays: false);
+            plugin, installedPlugin, Ui(54f), Ui(54f), currentApi, currentDalamudVersion, showOverlays: false);
         if (artworkClicked)
             OpenPluginDetails(plugin);
 
-        ImGui.SameLine(0f, 12f);
+        ImGui.SameLine(0f, Ui(12f));
         var textStart = ImGui.GetCursorPosX();
         var textHeight = ImGui.GetTextLineHeightWithSpacing() * 4f;
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
@@ -188,22 +188,22 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsItemHovered())
             SetReadableTooltip(BuildInstalledMetadataLine(plugin, installedPlugin, currentApi, currentDalamudVersion));
 
-        const float toggleWidth = 44f;
-        const float iconActionSize = 34f;
-        const float actionWidth = 92f;
-        const float actionGap = 8f;
+        var toggleWidth = Ui(44f);
+        var iconActionSize = Ui(34f);
+        var actionWidth = Ui(92f);
+        var actionGap = Ui(8f);
         var actionGroupWidth = toggleWidth + (actionGap * 3f) + (iconActionSize * 2f) + actionWidth;
         ImGui.SameLine();
         var actionsX = Math.Max(
-            textStart + 240f,
+            textStart + Ui(240f),
             MarketplaceLayoutRules.RightAlignedX(ImGui.GetWindowContentRegionMax().X, actionGroupWidth));
-        ImGui.SetCursorPos(new Vector2(actionsX, MarketplaceLayoutRules.CenterY(rowHeight, 32f)));
+        ImGui.SetCursorPos(new Vector2(actionsX, MarketplaceLayoutRules.CenterY(rowHeight, Ui(32f))));
 
         var control = GetPluginDirectControlState(plugin.InternalName);
         var shownState = control.CanDirectToggle ? control.DesiredEnabled : installedPlugin.IsLoaded;
         var isSelf = plugin.InternalName.Equals(Plugin.PluginInterface.InternalName, StringComparison.OrdinalIgnoreCase);
         var canToggleHere = control.CanDirectToggle && !(isSelf && control.DesiredEnabled);
-        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, 22f));
+        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, Ui(22f)));
         if (DrawToggleSwitch($"library-plugin-state-{StableId(plugin.InternalName)}", shownState, canToggleHere))
             StartDirectPluginStateChange(plugin, control, !control.DesiredEnabled);
         if (ImGui.IsItemHovered())
@@ -246,12 +246,12 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.SameLine(0f, actionGap);
-        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, 32f));
+        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, Ui(32f)));
         var canOpen = installedPlugin.IsLoaded && installedPlugin.HasMainUi;
         if (DrawRoundedButton(
                 canOpen ? "Open" : "Details",
                 $"library-action-{StableId(plugin.InternalName)}",
-                new Vector2(actionWidth, 32f)))
+                new Vector2(actionWidth, Ui(32f))))
         {
             if (canOpen)
             {
@@ -369,7 +369,7 @@ internal sealed partial class MarketplaceWindow
         if (pendingConfigImportInspection is null && configImportTask is null)
             return;
 
-        ImGui.SetNextWindowSize(new Vector2(520f, 0f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(UiModalSize(520f, 0f), ImGuiCond.Appearing);
         var keepOpen = true;
         if (!ImGui.BeginPopupModal(
                 "Import configuration backup###DalagabOmegaConfigImport",
@@ -405,7 +405,7 @@ internal sealed partial class MarketplaceWindow
         {
             ImGui.TextWrapped(configImportResultMessage);
             ImGui.Spacing();
-            if (ImGui.Button("Close", new Vector2(100f, 34f)))
+            if (ImGui.Button("Close", Ui(100f, 34f)))
             {
                 ClearPendingConfigImport();
                 ImGui.CloseCurrentPopup();
@@ -417,7 +417,7 @@ internal sealed partial class MarketplaceWindow
         var importing = configImportTask is not null;
         if (importing)
             ImGui.BeginDisabled();
-        if (ImGui.Button(importing ? "Importing…" : "Import backup", new Vector2(150f, 34f)) && inspection is not null)
+        if (ImGui.Button(importing ? "Importing…" : "Import backup", Ui(150f, 34f)) && inspection is not null)
         {
             importingPluginName = inspection.DisplayName;
             var path = pendingConfigImportPath;
@@ -429,7 +429,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.SameLine(0f, 10f);
         if (importing)
             ImGui.BeginDisabled();
-        if (ImGui.Button("Cancel", new Vector2(100f, 34f)))
+        if (ImGui.Button("Cancel", Ui(100f, 34f)))
         {
             ClearPendingConfigImport();
             ImGui.CloseCurrentPopup();
@@ -494,7 +494,7 @@ internal sealed partial class MarketplaceWindow
         string tooltip,
         bool enabled = true)
     {
-        const float size = 34f;
+        var size = Ui(34f);
         if (!enabled)
             ImGui.BeginDisabled();
 
@@ -524,18 +524,18 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        const float rowHeight = MarketplaceLayoutRules.UpdatesRowHeight;
-        var rowWidth = Math.Max(420f, ImGui.GetContentRegionAvail().X);
+        var rowHeight = Ui(MarketplaceLayoutRules.UpdatesRowHeight);
+        var rowWidth = Math.Max(Ui(420f), ImGui.GetContentRegionAvail().X);
         ImGui.BeginChild($"updates-row-{StableId(plugin.InternalName)}", new Vector2(rowWidth, rowHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, 54f));
+        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, Ui(54f)));
         var artworkClicked = DrawPluginArtwork(
-            plugin, installedPlugin, 54f, 54f, currentApi, currentDalamudVersion, showOverlays: false);
+            plugin, installedPlugin, Ui(54f), Ui(54f), currentApi, currentDalamudVersion, showOverlays: false);
         if (artworkClicked)
             OpenPluginDetails(plugin);
 
-        ImGui.SameLine(0f, 12f);
+        ImGui.SameLine(0f, Ui(12f));
         var textStart = ImGui.GetCursorPosX();
         var updateVariant = GetAvailableUpdateCandidate(plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
         var offered = GetAvailableUpdateVersion(plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
@@ -569,10 +569,10 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsItemHovered())
             SetReadableTooltip(BuildInstalledMetadataLine(plugin, installedPlugin, currentApi, currentDalamudVersion));
 
-        const float actionSize = 38f;
+        var actionSize = Ui(38f);
         ImGui.SameLine();
         ImGui.SetCursorPos(new Vector2(
-            Math.Max(textStart + 240f, MarketplaceLayoutRules.RightAlignedX(ImGui.GetWindowContentRegionMax().X, actionSize)),
+            Math.Max(textStart + Ui(240f), MarketplaceLayoutRules.RightAlignedX(ImGui.GetWindowContentRegionMax().X, actionSize)),
             MarketplaceLayoutRules.CenterY(rowHeight, actionSize)));
         var canUpdate = updateVariant is not null && updateTask is null;
         var actionTooltip = migration && updateVariant is not null
@@ -586,8 +586,8 @@ internal sealed partial class MarketplaceWindow
 
     private static bool DrawUpdateActionIcon(string id, bool enabled, string tooltip)
     {
-        const float size = 38f;
-        const float rounding = 6f;
+        var size = Ui(38f);
+        var rounding = Ui(6f);
         var min = ImGui.GetCursorScreenPos();
         if (!enabled)
             ImGui.BeginDisabled();

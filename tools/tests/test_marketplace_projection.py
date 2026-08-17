@@ -10,7 +10,7 @@ from pathlib import Path
 import common  # noqa: F401
 import compact_sqlite_catalog
 import project_marketplace_catalog
-import security_scan
+import sigmascope
 import validate_marketplace_catalog
 
 
@@ -203,7 +203,7 @@ class MarketplaceProjectionTests(unittest.TestCase):
             compact_sqlite_catalog.build_self_test_database(evidence)
             with closing(sqlite3.connect(evidence)) as db:
                 db.row_factory = sqlite3.Row
-                security_scan.ensure_schema(db)
+                sigmascope.ensure_schema(db)
                 db.execute("UPDATE plugin_security_dependencies SET kind='ipc',name='Omega.Required.Channel',requirement='soft',relationship='required',relationship_confidence='High',relationship_evidence_json=? WHERE dependency_id=1",
                            (json.dumps(["startup path: Initialize", "IPC is invoked directly without an observed availability guard"]),))
                 db.execute("INSERT INTO plugins(plugin_id,internal_name,canonical_name,first_seen_utc,last_seen_utc,active) VALUES(2,'ProviderPlugin','Provider Plugin','','',1)")

@@ -29,7 +29,7 @@ class PipelineHandoffTests(unittest.TestCase):
             subprocess.run(
                 [
                     sys.executable,
-                    str(common.ROOT / "tools/catalog/security_scan.py"),
+                    str(common.ROOT / "tools/catalog/sigmascope.py"),
                     "--database", str(security_root / "omega-catalog.sqlite"),
                     "--bundle", str(security_root / "omega-catalog.sqlite.zip"),
                     "--descriptor", str(security_root / "catalog.json"),

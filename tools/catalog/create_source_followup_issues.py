@@ -26,7 +26,7 @@ def issue_body(item: dict) -> str:
     return f"""<!-- {item['key']} -->
 <!-- omega-source-submission -->
 <!-- omega-source-internal:{item['internalName']} -->
-## Public source needed for scanner coverage
+## Public source needed for Sigmascope coverage
 
 Omega downloaded and statically scanned this plugin artifact, but could not inspect a public source repository for the same plugin/source pair. This is not a claim that the plugin is unsafe.
 
@@ -34,7 +34,7 @@ Omega downloaded and statically scanned this plugin artifact, but could not insp
 - **Catalog source:** {item['catalogSource']}
 - **PluginMaster feed:** {item['catalogSourceUrl']}
 - **Artifact:** {item['artifactUrl']}
-- **Scanner reason:** {item['reason']}
+- **Sigmascope reason:** {item['reason']}
 
 ### Attempted repository candidates
 {candidates}
@@ -73,7 +73,7 @@ def reconcile_issues(document: dict, repository: str, max_new: int = DEFAULT_MAX
         if item.get("actionable", True) and str(item.get("key") or "")
     }
 
-    # A missing row can mean a transient scanner/API failure, a 404, or a source
+    # A missing row can mean a transient Sigmascope/API failure, a 404, or a source
     # gap that was intentionally made non-actionable. Close only when current
     # evidence explicitly confirms the public source was scanned successfully.
     resolved_keys = {
@@ -87,7 +87,7 @@ def reconcile_issues(document: dict, repository: str, max_new: int = DEFAULT_MAX
         number = str(issue.get("number") or "")
         if not number:
             continue
-        gh("issue", "close", number, "--repo", repository, "--comment", "Omega's current scanner evidence successfully inspected a public source repository for this plugin/source pair.")
+        gh("issue", "close", number, "--repo", repository, "--comment", "Omega's current Sigmascope evidence successfully inspected a public source repository for this plugin/source pair.")
         closed += 1
 
     created = 0

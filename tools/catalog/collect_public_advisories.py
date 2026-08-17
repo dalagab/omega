@@ -32,7 +32,7 @@ def observed_nuget_packages(database: Path, max_packages: int) -> list[tuple[str
     with closing(sqlite3.connect(database)) as db:
         tables = {str(row[0]) for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if not {"plugin_security_dependencies", "plugin_security_current"}.issubset(tables):
-            # A brand-new catalog has not been through the scanner yet. The first scan can
+            # A brand-new catalog has not been through Sigmascope yet. The first analysis can
             # proceed without advisory input; the next run will have observed package data.
             return []
         kind_placeholders = ",".join("?" for _ in NUGET_DEPENDENCY_KINDS)

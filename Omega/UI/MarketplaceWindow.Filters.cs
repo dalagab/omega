@@ -11,7 +11,7 @@ internal sealed partial class MarketplaceWindow
 {
     private void DrawTagPickerPopup(int currentApi)
     {
-        ImGui.SetNextWindowSize(new Vector2(500f, 500f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(UiModalSize(500f, 500f), ImGuiCond.Appearing);
         var keepOpen = true;
         if (!ImGui.BeginPopupModal("Tags###DalagabOmegaTags", ref keepOpen, ImGuiWindowFlags.NoTitleBar))
             return;
@@ -36,7 +36,7 @@ internal sealed partial class MarketplaceWindow
             ? $"Popular tags • showing {results.Length:N0}"
             : $"{cachedTagPickerMatchCount:N0} matching tags • showing {results.Length:N0}");
 
-        ImGui.BeginChild("omega-tag-results", new Vector2(0f, 350f), true);
+        ImGui.BeginChild("omega-tag-results", new Vector2(0f, Math.Min(Ui(350f), ImGui.GetMainViewport().WorkSize.Y * 0.55f)), true);
         foreach (var info in results)
         {
             var isSelected = ContainsSelectedTag(info.Name);
@@ -139,7 +139,7 @@ internal sealed partial class MarketplaceWindow
         var filterPlugins = catalog.GetMainProjection(currentApi, selectedSource).Plugins;
         var panelHeight = CalculateInlineFilterPanelHeight();
 
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 4f);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Ui(4f));
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.045f, 0.052f, 0.064f, 0.72f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.16f, 0.20f, 0.24f, 0.52f));
@@ -158,12 +158,19 @@ internal sealed partial class MarketplaceWindow
 
     private float CalculateInlineFilterPanelHeight()
     {
-        // Reserve the complete two-row filter grid and action row. Scale from the actual ImGui
-        // frame height as well as keeping a sane minimum so higher UI/font scales cannot clip it.
-        var discoverOrLibrary = activeView is MarketplaceView.Discover or MarketplaceView.Library;
-        var minimum = discoverOrLibrary ? 264f : 234f;
-        var scaled = ImGui.GetFrameHeightWithSpacing() * (discoverOrLibrary ? 10.5f : 9.2f);
-        return Math.Max(minimum, scaled);
+        // High Dalamud UI scales need fewer columns and therefore more vertical room. Compute the
+        // number of rows from the same responsive-width rule used by the filter tables instead of
+        // assuming the 100% three-column/two-row arrangement.
+        var available = Math.Max(Ui(220f), ImGui.GetContentRegionAvail().X);
+        var gridColumns = ResponsiveColumns(available, 230f, 3, 12f);
+        var gridRows = (int)Math.Ceiling(6f / gridColumns);
+        var actionCount = activeView is MarketplaceView.Discover or MarketplaceView.Library ? 4 : 3;
+        if (CountActiveMarketplaceFilters() > 0)
+            actionCount++;
+        var actionColumns = ResponsiveColumns(available, 190f, 4, 12f);
+        var actionRows = (int)Math.Ceiling(actionCount / (float)actionColumns);
+        var frame = ImGui.GetFrameHeightWithSpacing();
+        return Ui(44f) + (gridRows * frame * 2.15f) + (actionRows * frame * 1.65f);
     }
 
     private void DrawSelectedFilterPills()
@@ -171,7 +178,7 @@ internal sealed partial class MarketplaceWindow
         if (CountActiveMarketplaceFilters() == 0)
             return;
 
-        ImGui.Dummy(new Vector2(1f, 4f));
+        ImGui.Dummy(Ui(1f, 4f));
         ImGui.TextDisabled("Selected:");
         var first = true;
 
@@ -203,13 +210,13 @@ internal sealed partial class MarketplaceWindow
     private void DrawSelectedFilterPill(string label, string id, ref bool first, Action remove)
     {
         var text = $"{label}  ×";
-        var width = Math.Clamp(ImGui.CalcTextSize(text).X + 24f, 78f, 238f);
-        if (!first && ImGui.GetContentRegionAvail().X < width + 8f)
+        var width = Math.Clamp(ImGui.CalcTextSize(text).X + Ui(24f), Ui(78f), Ui(238f));
+        if (!first && ImGui.GetContentRegionAvail().X < width + Ui(8f))
             ImGui.NewLine();
         else
-            ImGui.SameLine(0f, 7f);
+            ImGui.SameLine(0f, Ui(7f));
 
-        if (DrawPillButton(text, $"selected-filter-{StableId(id)}", new Vector2(width, 25f), true))
+        if (DrawPillButton(text, $"selected-filter-{StableId(id)}", new Vector2(width, Ui(25f)), true))
         {
             remove();
             resetStorefrontScroll = true;
@@ -220,7 +227,8 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawInlineFilterGrid(IReadOnlyList<MarketplacePlugin> filterPlugins, int currentApi)
     {
-        if (!ImGui.BeginTable("omega-inline-filter-grid", 3, ImGuiTableFlags.SizingStretchSame | ImGuiTableFlags.PadOuterX))
+        var columns = ResponsiveColumns(ImGui.GetContentRegionAvail().X, 230f, 3, 12f);
+        if (!ImGui.BeginTable("omega-inline-filter-grid", columns, ImGuiTableFlags.SizingStretchSame | ImGuiTableFlags.PadOuterX))
             return;
 
         ImGui.TableNextColumn();
@@ -229,8 +237,6 @@ internal sealed partial class MarketplaceWindow
         DrawInlineRepositoryField(currentApi);
         ImGui.TableNextColumn();
         DrawInlineCategoryField(filterPlugins);
-
-        ImGui.TableNextRow();
         ImGui.TableNextColumn();
         if (activeView is MarketplaceView.Discover or MarketplaceView.Library)
             DrawInlineStatusField();
@@ -246,18 +252,24 @@ internal sealed partial class MarketplaceWindow
     private void DrawInlineFilterActions()
     {
         ImGui.Spacing();
+        var actionCount = activeView is MarketplaceView.Discover or MarketplaceView.Library ? 4 : 3;
+        if (CountActiveMarketplaceFilters() > 0)
+            actionCount++;
+        var columns = ResponsiveColumns(ImGui.GetContentRegionAvail().X, 190f, Math.Min(4, actionCount), 12f);
+        if (!ImGui.BeginTable("omega-inline-filter-actions", columns, ImGuiTableFlags.SizingStretchSame | ImGuiTableFlags.PadOuterX))
+            return;
+
         if (activeView is MarketplaceView.Discover or MarketplaceView.Library)
         {
+            ImGui.TableNextColumn();
             DrawInlineTagField();
-            ImGui.SameLine(0f, 12f);
         }
 
+        ImGui.TableNextColumn();
         DrawInlineSecurityField();
-        ImGui.SameLine(0f, 12f);
-
+        ImGui.TableNextColumn();
         DrawInlineContentRatingField();
-        ImGui.SameLine(0f, 12f);
-
+        ImGui.TableNextColumn();
         var preferTesting = configuration.PreferTestingBuilds;
         if (ImGui.Checkbox("Allow testing builds", ref preferTesting))
         {
@@ -266,14 +278,16 @@ internal sealed partial class MarketplaceWindow
             resetStorefrontScroll = true;
         }
 
-        if (CountActiveMarketplaceFilters() == 0)
-            return;
-
-        ImGui.SameLine(0f, 12f);
-        if (!ImGui.Button("Reset filters"))
-            return;
-        ResetFilters();
-        resetStorefrontScroll = true;
+        if (CountActiveMarketplaceFilters() > 0)
+        {
+            ImGui.TableNextColumn();
+            if (ImGui.Button("Reset filters"))
+            {
+                ResetFilters();
+                resetStorefrontScroll = true;
+            }
+        }
+        ImGui.EndTable();
     }
 
     private void DrawInlineAuthorField(IReadOnlyList<MarketplacePlugin> filterPlugins)
@@ -339,7 +353,7 @@ internal sealed partial class MarketplaceWindow
                 if (!string.IsNullOrWhiteSpace(provider.IconUrl))
                 {
                     DrawRepositoryProviderIcon(provider, 18f);
-                    ImGui.SameLine(0f, 7f);
+                    ImGui.SameLine(0f, Ui(7f));
                 }
             }
         }
@@ -368,9 +382,9 @@ internal sealed partial class MarketplaceWindow
                 $"##repository-filter-{StableId(status.SourceUrl)}",
                 selected,
                 ImGuiSelectableFlags.None,
-                new Vector2(0f, 24f));
+                new Vector2(0f, Ui(24f)));
             var rowEnd = ImGui.GetCursorPos();
-            ImGui.SetCursorPos(rowStart + new Vector2(5f, 3f));
+            ImGui.SetCursorPos(rowStart + Ui(5f, 3f));
             DrawRepositoryName(status.SourceName, status.SourceUrl, official, currentApi);
             ImGui.SetCursorPos(rowEnd);
             if (!clicked)

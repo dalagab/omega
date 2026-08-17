@@ -106,8 +106,8 @@ internal sealed partial class MarketplaceWindow
 
     private static string BuildBaselineRiskSummary(MarketplacePlugin candidate, MarketplacePlugin baseline)
     {
-        var candidateVisual = ResolvePluginSecurityVisual(candidate);
-        var baselineVisual = ResolvePluginSecurityVisual(baseline);
+        var candidateVisual = ResolveSigmascopeVisual(candidate);
+        var baselineVisual = ResolveSigmascopeVisual(baseline);
         return $"Security: {SourceLabel(candidate)} is {candidateVisual.Label.ToLowerInvariant()} " +
                $"({candidate.SecurityCriticalCount} critical, {candidate.SecurityHighCount} high, {candidate.SecurityCautionCount} medium, {candidate.SecurityKnownAdvisoryCount} known OSV risk(s)) versus " +
                $"baseline {baselineVisual.Label.ToLowerInvariant()} ({baseline.SecurityCriticalCount} critical, {baseline.SecurityHighCount} high, {baseline.SecurityCautionCount} medium, {baseline.SecurityKnownAdvisoryCount} known OSV risk(s)).";

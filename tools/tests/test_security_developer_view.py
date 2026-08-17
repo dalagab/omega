@@ -13,13 +13,13 @@ from pathlib import Path
 
 import common  # noqa: F401
 import build_sqlite_catalog
-import security_scan
+import sigmascope
 
 ROOT = Path(__file__).resolve().parents[2]
 SECURITY_TOOLS = ROOT / "tools" / "security"
 if str(SECURITY_TOOLS) not in sys.path:
     sys.path.insert(0, str(SECURITY_TOOLS))
-from evidence_v2_inspector import V2SecurityInspector
+from evidence_v2_inspector import V2SigmascopeInspector
 
 MODULE_PATH = ROOT / "tools" / "security" / "developer_view.py"
 spec = importlib.util.spec_from_file_location("omega_security_developer_view", MODULE_PATH)
@@ -32,7 +32,7 @@ spec.loader.exec_module(view)
 def make_evidence(path: Path) -> None:
     with closing(sqlite3.connect(path)) as db:
         db.executescript(build_sqlite_catalog.SCHEMA_SQL)
-        security_scan.ensure_schema(db)
+        sigmascope.ensure_schema(db)
         now = "2026-08-17T07:00:00Z"
         db.execute("INSERT INTO sources(source_id,url,name,provider,kind) VALUES(1,?,?,?,?)", ("https://example.invalid/repo.json", "Example repo", "Example", "curated"))
         db.execute("INSERT INTO plugins(plugin_id,internal_name,canonical_name,first_seen_utc,last_seen_utc,active) VALUES(1,'FixturePlugin','Fixture Plugin',?,?,1)", (now, now))
@@ -48,7 +48,7 @@ def make_evidence(path: Path) -> None:
                                               high_count,source_available,source_repository,source_commit,report_json)
             VALUES(1,1,1,1,'1.0.0','stable','https://example.invalid/plugin.zip',?,?,'complete',?,'high',1,1,
                    'https://github.com/example/fixture','abc123',?)
-        """, ("a" * 64, security_scan.SCANNER_VERSION, now, json.dumps({
+        """, ("a" * 64, sigmascope.SCANNER_VERSION, now, json.dumps({
             "source": {"scope": {"mode": "plugin-build-graph", "primaryProject": "FixturePlugin.csproj", "contextProjects": ["Server.csproj"]}},
             "package": {"files": ["FixturePlugin.dll"]},
         })))
@@ -58,7 +58,7 @@ def make_evidence(path: Path) -> None:
                                                 source_available,source_repository,source_commit,report_json)
             VALUES(1,1,'1.0.0','stable','https://example.invalid/plugin.zip',?,?,'complete',?,'high',1,'[]',1,
                    'https://github.com/example/fixture','abc123',?)
-        """, ("a" * 64, security_scan.SCANNER_VERSION, now, json.dumps({
+        """, ("a" * 64, sigmascope.SCANNER_VERSION, now, json.dumps({
             "source": {"scope": {"mode": "plugin-build-graph", "primaryProject": "FixturePlugin.csproj", "contextProjects": ["Server.csproj"]}}
         })))
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('public_advisory_source','OSV')")
@@ -125,7 +125,7 @@ class SecurityDeveloperViewTests(unittest.TestCase):
                 "analysis": {"path": "artifacts/aa/analysis"}, "derived": {},
             }), encoding="utf-8")
             (root / "index.json").write_text(json.dumps({"schema": "omega.security-evidence.v2", "formatVersion": 2, "counts": {}, "indexes": {"plugins": {"path": "indexes/plugins.json"}}}), encoding="utf-8")
-            inspector = V2SecurityInspector(root)
+            inspector = V2SigmascopeInspector(root)
             try:
                 self.assertEqual("security-evidence-v2", inspector.summary()["format"])
                 self.assertEqual("Fixture", inspector.list_plugins()[0]["canonical_name"])
@@ -265,7 +265,8 @@ class SecurityDeveloperViewTests(unittest.TestCase):
             inspector = view.SecurityInspector(evidence)
             try:
                 summary = inspector.summary()
-                self.assertEqual(1, summary["counts"]["currentAtScanner"])
+                self.assertEqual(1, summary["counts"]["currentAtSigmascope"])
+                self.assertEqual(summary["counts"]["currentAtSigmascope"], summary["counts"]["currentAtScanner"])
                 self.assertEqual(0, summary["counts"]["legacyCurrent"])
                 self.assertEqual(1, summary["counts"]["observedNugetVersions"])
             finally:

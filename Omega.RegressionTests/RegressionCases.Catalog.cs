@@ -256,8 +256,8 @@ internal static partial class RegressionCases
         Contains(spotlight, "SpotlightCardCount = 5", "Spotlight is laid out as five fixed columns");
         Contains(spotlight, "SpotlightCardMaxWidth", "Spotlight cards remain compact rather than becoming wide cells");
         Contains(spotlight, "DrawSpotlightPitch", "Spotlight cards carry a short promotional pitch");
-        Contains(spotlight, "contentStartY + 112f", "Spotlight artwork/title layout uses fixed vertical anchors");
-        Contains(spotlight, "contentStartY + 166f", "Spotlight separators align across all five promoted cards");
+        Contains(spotlight, "contentStartY + Ui(112f)", "Spotlight artwork/title layout uses fixed vertical anchors");
+        Contains(spotlight, "contentStartY + Ui(166f)", "Spotlight separators align across all five promoted cards");
         Contains(spotlight, "OpenSpotlightPluginInDiscover", "selecting a Spotlight card opens Discover with the plugin selected");
         False(spotlight.Contains("DrawSpotlightActionRow", StringComparison.Ordinal), "Spotlight must not carry install/status action rows");
         False(spotlight.Contains("spotlight-install-", StringComparison.Ordinal), "Spotlight must not expose direct install controls");
@@ -303,7 +303,7 @@ internal static partial class RegressionCases
         Contains(ui, "source-enabled-", "repository enable checkbox");
         Contains(ui, "\"Stale\"", "stale repository status");
         Contains(ui, "catalog.LoadCached(configuration.Repositories)", "deselecting a repository immediately rebuilds local catalog");
-        Contains(ui, "ImGui.BeginTable(\"omega-source-table\", 5, ImGuiTableFlags.None, new Vector2(860f, addSourceOpen ? 230f : 360f), 0f)", "API-15 BeginTable overload includes flags and shrinks while add-source tools are open");
+        Contains(ui, "ImGui.BeginTable(\"omega-source-table\", 5, ImGuiTableFlags.None, new Vector2(Math.Min(Ui(860f), ImGui.GetContentRegionAvail().X), Ui(addSourceOpen ? 230f : 360f)), 0f)", "API-15 BeginTable overload includes flags and shrinks while add-source tools are open");
         False(ui.Contains("[Curated (", StringComparison.Ordinal), "selected Curated tab must not use decorative brackets");
         var addTools = ui.IndexOf("DrawAddSourceTools();", StringComparison.Ordinal);
         var sourceTable = ui.IndexOf("DrawSourcesTable(shownSources, statuses);", StringComparison.Ordinal);

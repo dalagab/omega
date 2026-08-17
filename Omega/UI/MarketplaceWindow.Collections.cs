@@ -88,10 +88,10 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        const float tileWidth = 166f;
-        const float gap = 18f;
+        var tileWidth = Ui(166f);
+        var gap = Ui(18f);
         var available = ImGui.GetContentRegionAvail().X;
-        var columns = Math.Max(1, (int)Math.Floor((available + gap) / (tileWidth + gap)));
+        var columns = ResponsiveColumns(available, 166f, Math.Max(1, collectionSnapshot.Length), 18f);
         for (var index = 0; index < collectionSnapshot.Length; index++)
         {
             DrawCollectionFolder(collectionSnapshot[index], tileWidth);
@@ -106,7 +106,7 @@ internal sealed partial class MarketplaceWindow
     {
         ImGui.BeginGroup();
         var startX = ImGui.GetCursorPosX();
-        var folderSize = new Vector2(width, 92f);
+        var folderSize = new Vector2(width, Ui(92f));
         var screen = ImGui.GetCursorScreenPos();
         ImGui.InvisibleButton($"##collection-folder-{collection.Id}", folderSize);
         var hovered = ImGui.IsItemHovered();
@@ -123,7 +123,7 @@ internal sealed partial class MarketplaceWindow
         DrawCenteredTileText($"{collection.Plugins.Count} plugin{(collection.Plugins.Count == 1 ? string.Empty : "s")}", width, true);
         DrawCollectionToggle(collection, width);
         ImGui.SetCursorPosX(startX);
-        ImGui.Dummy(new Vector2(width, 1f));
+        ImGui.Dummy(new Vector2(width, Ui(1f)));
         ImGui.EndGroup();
     }
 
@@ -134,9 +134,9 @@ internal sealed partial class MarketplaceWindow
         bool hovered)
     {
         var draw = ImGui.GetWindowDrawList();
-        var bodyMin = min + new Vector2(6f, 22f);
-        var bodyMax = min + new Vector2(size.X - 6f, size.Y - 6f);
-        var tabMax = min + new Vector2(Math.Min(size.X * 0.48f, 78f), 30f);
+        var bodyMin = min + Ui(6f, 22f);
+        var bodyMax = min + new Vector2(size.X - Ui(6f), size.Y - Ui(6f));
+        var tabMax = min + new Vector2(Math.Min(size.X * 0.48f, Ui(78f)), Ui(30f));
         var baseColor = enabled
             ? new Vector4(0.16f, 0.58f, 0.62f, hovered ? 1f : 0.92f)
             : new Vector4(0.20f, 0.24f, 0.30f, hovered ? 0.95f : 0.78f);
@@ -144,9 +144,9 @@ internal sealed partial class MarketplaceWindow
             ? new Vector4(0.24f, 0.84f, 0.78f, 0.95f)
             : new Vector4(0.38f, 0.43f, 0.50f, 0.72f);
 
-        draw.AddRectFilled(min + new Vector2(12f, 10f), tabMax, ImGui.ColorConvertFloat4ToU32(baseColor), 7f);
-        draw.AddRectFilled(bodyMin, bodyMax, ImGui.ColorConvertFloat4ToU32(baseColor), 10f);
-        draw.AddRect(bodyMin, bodyMax, ImGui.ColorConvertFloat4ToU32(edgeColor), 10f, ImDrawFlags.None, 1.4f);
+        draw.AddRectFilled(min + Ui(12f, 10f), tabMax, ImGui.ColorConvertFloat4ToU32(baseColor), Ui(7f));
+        draw.AddRectFilled(bodyMin, bodyMax, ImGui.ColorConvertFloat4ToU32(baseColor), Ui(10f));
+        draw.AddRect(bodyMin, bodyMax, ImGui.ColorConvertFloat4ToU32(edgeColor), Ui(10f), ImDrawFlags.None, Ui(1.4f));
     }
 
     private void DrawCollectionToggle(DalamudPluginCollection collection, float width)
@@ -162,7 +162,7 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        const float switchWidth = 44f;
+        var switchWidth = Ui(44f);
         ImGui.SetCursorPosX(startX + Math.Max(0f, (width - switchWidth) * 0.5f));
         if (DrawToggleSwitch($"collection-toggle-{collection.Id}", collection.IsEnabled))
             StartCollectionToggle(collection, !collection.IsEnabled);
@@ -193,18 +193,18 @@ internal sealed partial class MarketplaceWindow
         if (DrawApplicationIconButton(FontAwesomeIcon.ArrowLeft, "collections-back", "Back to collection folders", false))
             openCollectionId = null;
 
-        ImGui.SameLine(0f, 10f);
-        ImGui.SetCursorPosY(headerY + MarketplaceLayoutRules.CenterY(32f, ImGui.GetTextLineHeight()));
+        ImGui.SameLine(0f, Ui(10f));
+        ImGui.SetCursorPosY(headerY + MarketplaceLayoutRules.CenterY(Ui(32f), ImGui.GetTextLineHeight()));
         ImGui.TextDisabled("Library / Collections /");
-        ImGui.SameLine(0f, 6f);
+        ImGui.SameLine(0f, Ui(6f));
         ImGui.TextUnformatted(CollectionDisplayName(collection));
 
-        ImGui.SetCursorPosY(headerY + 38f);
+        ImGui.SetCursorPosY(headerY + Ui(38f));
         ImGui.TextDisabled($"{collection.Plugins.Count} plugins in this Dalamud collection");
-        ImGui.SameLine(0f, 14f);
+        ImGui.SameLine(0f, Ui(14f));
         DrawCollectionHeaderToggle(collection);
 
-        ImGui.SetCursorPosY(headerY + 66f);
+        ImGui.SetCursorPosY(headerY + Ui(66f));
         if (collection.IsDefault)
         {
             ImGui.TextDisabled("This is Dalamud's automatic default folder. Plugin state can be changed here, but membership is automatic.");
@@ -216,7 +216,7 @@ internal sealed partial class MarketplaceWindow
             if (DrawRoundedButton(
                     collectionAddPickerOpen ? "Close picker" : "+ Add plugins",
                     $"collection-add-picker-toggle-{collection.Id}",
-                    new Vector2(collectionAddPickerOpen ? 108f : 112f, 30f),
+                    new Vector2(Ui(collectionAddPickerOpen ? 108f : 112f), Ui(30f)),
                     active: collectionAddPickerOpen))
             {
                 collectionAddPickerOpen = !collectionAddPickerOpen;
@@ -243,8 +243,8 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.TextDisabled("Collection active");
-        ImGui.SameLine(0f, 7f);
-        ImGui.SetCursorPosY(ImGui.GetCursorPosY() - 2f);
+        ImGui.SameLine(0f, Ui(7f));
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() - Ui(2f));
         if (DrawToggleSwitch($"collection-header-toggle-{collection.Id}", collection.IsEnabled))
             StartCollectionToggle(collection, !collection.IsEnabled);
         if (ImGui.IsItemHovered())
@@ -256,7 +256,7 @@ internal sealed partial class MarketplaceWindow
         IReadOnlyDictionary<string, IExposedPlugin> installed,
         int currentApi)
     {
-        const float pickerHeight = 220f;
+        var pickerHeight = Ui(220f);
         ImGui.BeginChild(
             $"collection-add-picker-{collection.Id}",
             new Vector2(0f, pickerHeight),
@@ -264,7 +264,7 @@ internal sealed partial class MarketplaceWindow
             ImGuiWindowFlags.NoScrollbar);
 
         ImGui.TextUnformatted("Installed plugins not yet in this collection");
-        ImGui.SetNextItemWidth(Math.Min(360f, Math.Max(180f, ImGui.GetContentRegionAvail().X - 10f)));
+        ImGui.SetNextItemWidth(Math.Min(Ui(360f), Math.Max(Ui(180f), ImGui.GetContentRegionAvail().X - Ui(10f))));
         ImGui.InputTextWithHint(
             $"##collection-add-search-{collection.Id}",
             "Search installed plugins...",
@@ -305,12 +305,12 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextUnformatted(Shorten(plugin.Name, 48));
             ImGui.TextDisabled(Shorten(plugin.InternalName, 58));
 
-            const float addWidth = 64f;
+            var addWidth = Ui(64f);
             ImGui.SameLine();
             ImGui.SetCursorPos(new Vector2(
-                Math.Max(220f, ImGui.GetWindowContentRegionMax().X - addWidth - 10f),
-                startY + 4f));
-            if (DrawRoundedButton("Add", "collection-add-candidate-action", new Vector2(addWidth, 28f)))
+                Math.Max(Ui(220f), ImGui.GetWindowContentRegionMax().X - addWidth - Ui(10f)),
+                startY + Ui(4f)));
+            if (DrawRoundedButton("Add", "collection-add-candidate-action", new Vector2(addWidth, Ui(28f))))
                 StartAddPluginToCollection(collection, plugin.InternalName, plugin.Name);
 
             ImGui.Separator();
@@ -356,18 +356,18 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        const float rowHeight = MarketplaceLayoutRules.CollectionRowHeight;
-        var rowWidth = Math.Max(420f, ImGui.GetContentRegionAvail().X);
+        var rowHeight = Ui(MarketplaceLayoutRules.CollectionRowHeight);
+        var rowWidth = Math.Max(Ui(420f), ImGui.GetContentRegionAvail().X);
         ImGui.BeginChild($"collection-file-{collection.Id}-{StableId(entry.InternalName)}", new Vector2(rowWidth, rowHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, 48f));
+        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, Ui(48f)));
         var artworkClicked = DrawPluginArtwork(
-            plugin, installedPlugin, 48f, 48f, currentApi, currentDalamudVersion, showOverlays: false);
+            plugin, installedPlugin, Ui(48f), Ui(48f), currentApi, currentDalamudVersion, showOverlays: false);
         if (artworkClicked)
             OpenPluginDetails(plugin);
 
-        ImGui.SameLine(0f, 12f);
+        ImGui.SameLine(0f, Ui(12f));
         var textStart = ImGui.GetCursorPosX();
         var textHeight = ImGui.GetTextLineHeightWithSpacing() * 3f;
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
@@ -379,17 +379,17 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
             OpenPluginDetails(plugin);
 
-        const float stateLabelWidth = 62f;
-        const float switchWidth = 44f;
-        const float removeWidth = 78f;
-        const float gap = 8f;
+        var stateLabelWidth = Ui(62f);
+        var switchWidth = Ui(44f);
+        var removeWidth = Ui(78f);
+        var gap = Ui(8f);
         var actionWidth = stateLabelWidth + gap + switchWidth + (collection.IsDefault ? 0f : gap + removeWidth);
         var actionsX = Math.Max(
-            textStart + 270f,
+            textStart + Ui(270f),
             MarketplaceLayoutRules.RightAlignedX(ImGui.GetWindowContentRegionMax().X, actionWidth));
-        var toggleY = MarketplaceLayoutRules.CenterY(rowHeight, 22f);
+        var toggleY = MarketplaceLayoutRules.CenterY(rowHeight, Ui(22f));
 
-        ImGui.SetCursorPos(new Vector2(actionsX, toggleY + MarketplaceLayoutRules.CenterY(22f, ImGui.GetTextLineHeight())));
+        ImGui.SetCursorPos(new Vector2(actionsX, toggleY + MarketplaceLayoutRules.CenterY(Ui(22f), ImGui.GetTextLineHeight())));
         ImGui.TextDisabled(entry.WantsEnabled ? "Enabled" : "Disabled");
         ImGui.SameLine(0f, gap);
         ImGui.SetCursorPosY(toggleY);
@@ -405,11 +405,11 @@ internal sealed partial class MarketplaceWindow
         if (!collection.IsDefault)
         {
             ImGui.SameLine(0f, gap);
-            ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, 30f));
+            ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, Ui(30f)));
             if (DrawRoundedButton(
                     "Remove",
                     $"collection-plugin-remove-{collection.Id}-{StableId(entry.InternalName)}",
-                    new Vector2(removeWidth, 30f)))
+                    new Vector2(removeWidth, Ui(30f))))
             {
                 StartRemovePluginFromCollection(collection, entry, plugin.Name);
             }

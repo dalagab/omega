@@ -29,8 +29,8 @@ internal sealed partial class MarketplaceWindow
 
         var viewport = ImGui.GetMainViewport();
         var preferredSize = new Vector2(
-            Math.Min(1280f, Math.Max(700f, viewport.Size.X * 0.84f)),
-            Math.Min(900f, Math.Max(520f, viewport.Size.Y * 0.84f)));
+            Math.Min(Ui(1280f), Math.Max(Math.Min(Ui(700f), viewport.Size.X * 0.90f), viewport.Size.X * 0.84f)),
+            Math.Min(Ui(900f), Math.Max(Math.Min(Ui(520f), viewport.Size.Y * 0.90f), viewport.Size.Y * 0.84f)));
         ImGui.SetNextWindowSize(preferredSize, ImGuiCond.Appearing);
 
         var keepOpen = true;
@@ -53,8 +53,8 @@ internal sealed partial class MarketplaceWindow
 
         var texture = iconCache.GetOrQueue(selectedScreenshotUrl);
         var imageArea = new Vector2(
-            Math.Max(120f, ImGui.GetContentRegionAvail().X),
-            Math.Max(120f, ImGui.GetContentRegionAvail().Y));
+            Math.Max(Ui(120f), ImGui.GetContentRegionAvail().X),
+            Math.Max(Ui(120f), ImGui.GetContentRegionAvail().Y));
 
         if (texture is null || texture.Size.X <= 0 || texture.Size.Y <= 0)
         {

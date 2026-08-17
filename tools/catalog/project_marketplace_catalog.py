@@ -543,7 +543,7 @@ def _scan_automation_projection(report_json: str) -> tuple[str, str]:
 def backfill_marketplace_security_from_completed_scans(db: sqlite3.Connection) -> dict[str, int]:
     """Recover artifact-based security for variants missing a duplicate current row.
 
-    Security belongs to package bytes, not to a repository-manifest row. The scanner keeps immutable
+    Security belongs to package bytes, not to a repository-manifest row. Sigmascope keeps immutable
     completed scan history, while `plugin_security_current` is only a convenience pointer per
     variant. If that pointer is absent, the client projection recovers the latest proven artifact
     identity for that variant, or reuses a completed scan for the exact same package URL/version.
@@ -767,9 +767,15 @@ def validate_artifact_security_consistency(db: sqlite3.Connection) -> None:
         )
 
 def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
+    website_columns = {str(row[1]).casefold() for row in db.execute("PRAGMA table_info(websites)")}
+    omega_banner_projection = (
+        "CASE WHEN w.ok=1 THEN COALESCE(w.omega_banner_url,'') ELSE '' END AS omega_banner_url"
+        if "omega_banner_url" in website_columns
+        else "'' AS omega_banner_url"
+    )
     db.execute("DROP VIEW IF EXISTS runtime_plugin_variants")
     db.execute(
-        """CREATE VIEW runtime_plugin_variants AS
+        f"""CREATE VIEW runtime_plugin_variants AS
            SELECT
              v.variant_id,p.plugin_id,p.internal_name,v.author,COALESCE(v.authors_json,'[]') AS authors_json,v.name,v.punchline,v.description,v.changelog,
              v.assembly_version,v.testing_assembly_version,v.dalamud_api_level,v.testing_dalamud_api_level,
@@ -780,6 +786,7 @@ def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
              CASE WHEN w.ok=1 THEN COALESCE(w.description,'') ELSE '' END AS website_description,CASE WHEN w.ok=1 THEN COALESCE(w.readme_excerpt,'') ELSE '' END AS website_readme_excerpt,
              CASE WHEN w.ok=1 THEN COALESCE(w.image_urls_json,'[]') ELSE '[]' END AS website_image_urls_json,
              CASE WHEN w.ok=1 THEN COALESCE(w.links_json,'[]') ELSE '[]' END AS website_links_json,
+             {omega_banner_projection},
              CASE WHEN w.website_id IS NOT NULL AND w.ok=1 THEN 1 ELSE 0 END AS website_enriched,
              COALESCE(pr.rich_card,0) AS rich_card,COALESCE(pr.official,0) AS plugin_official,COALESCE(pr.nsfw,0) AS plugin_nsfw,
              COALESCE(pr.richness_score,0) AS richness_score,
@@ -824,7 +831,11 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
             before_integrity = db.execute("PRAGMA integrity_check").fetchone()
             if before_integrity is None or str(before_integrity[0]).lower() != "ok":
                 raise RuntimeError(f"evidence database integrity check failed: {before_integrity}")
-            before_runtime = runtime_projection_digest(db, ARTIFACT_CANONICAL_RUNTIME_COLUMNS)
+            runtime_columns_before = {description[1].casefold() for description in db.execute("PRAGMA table_info(runtime_plugin_variants)")}
+            projection_ignored_columns = set(ARTIFACT_CANONICAL_RUNTIME_COLUMNS)
+            if "omega_banner_url" not in runtime_columns_before:
+                projection_ignored_columns.add("omega_banner_url")
+            before_runtime = runtime_projection_digest(db, projection_ignored_columns)
             current_rows = int(db.execute("SELECT COUNT(*) FROM plugin_security_current").fetchone()[0])
             db.execute("PRAGMA foreign_keys=OFF")
             db.execute("BEGIN IMMEDIATE")
@@ -838,13 +849,18 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
                 # The client marketplace is a current projection, not a historical scrape archive.
                 # Keep old/failed presentation snapshots only in server-side evidence.
                 db.execute("UPDATE websites SET metadata_json='{}'")
+                website_columns = {str(row[1]).casefold() for row in db.execute("PRAGMA table_info(websites)")}
+                if "omega_index_json" in website_columns:
+                    # Preserve the extensible .omega document server-side; the client receives only
+                    # explicitly projected fields such as omega_banner_url until Omega defines them.
+                    db.execute("UPDATE websites SET omega_index_json='{}'")
                 db.execute("UPDATE websites SET title='',description='',homepage='',readme_excerpt='',image_urls_json='[]',links_json='[]' WHERE ok<>1")
             create_marketplace_runtime_view(db)
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('database_role','marketplace')")
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('marketplace_projector_version',?)", (PROJECTOR_VERSION,))
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('detailed_security_evidence_included','0')")
             db.commit()
-            after_runtime = runtime_projection_digest(db, ARTIFACT_CANONICAL_RUNTIME_COLUMNS)
+            after_runtime = runtime_projection_digest(db, projection_ignored_columns)
             if after_runtime != before_runtime:
                 raise RuntimeError("marketplace projection changed non-security runtime_plugin_variants metadata")
             projected_rows = int(db.execute("SELECT COUNT(*) FROM marketplace_security_current").fetchone()[0])

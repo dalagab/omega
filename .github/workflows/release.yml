@@ -152,3 +152,36 @@ jobs:
           }
           gh release upload omega-latest Omega.zip Omega.zip.sha256 --clobber
           gh release edit omega-latest --title 'Omega latest stable (${{ steps.release.outputs.version }})' --notes-file release-notes.md
+      - name: Finalize tagged changelog on default branch
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.release.outputs.tag }}'
+          $version = '${{ steps.release.outputs.version }}'
+          $defaultBranch = '${{ github.event.repository.default_branch }}'
+          if ([string]::IsNullOrWhiteSpace($defaultBranch)) {
+            Write-Warning 'Repository default branch is unavailable; release is published but CHANGELOG.md was not rolled forward.'
+            exit 0
+          }
+
+          $tagCommit = (git rev-list -n 1 $tag).Trim()
+          $remoteLine = (git ls-remote origin "refs/heads/$defaultBranch" | Select-Object -First 1)
+          $remoteHead = if ($remoteLine) { ($remoteLine -split "`t")[0].Trim() } else { '' }
+          if ($remoteHead -ne $tagCommit) {
+            Write-Warning "Default branch '$defaultBranch' moved beyond tagged commit $tagCommit; skipping automatic changelog finalization so post-tag Unreleased work cannot be misassigned."
+            exit 0
+          }
+
+          git checkout -B $defaultBranch $tagCommit
+          $releaseDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')
+          python tools/release/finalize_changelog.py --version $version --date $releaseDate
+          if (-not (git status --porcelain -- CHANGELOG.md)) {
+            Write-Host 'CHANGELOG.md is already finalized for this version.'
+            exit 0
+          }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md
+          git commit -m "Finalize changelog for $tag"
+          git push origin "HEAD:refs/heads/$defaultBranch"
+

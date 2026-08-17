@@ -68,13 +68,13 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         ImGui.TextUnformatted(title);
         ImGui.Spacing();
-        ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, new Vector2(8f, 6f));
+        ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, Ui(8f, 6f));
         if (ImGui.BeginTable(
                 $"product-dependencies-{StableId(title)}",
                 5,
                 ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.RowBg))
         {
-            ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 24f);
+            ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, Ui(24f));
             ImGui.TableSetupColumn("Dependency", ImGuiTableColumnFlags.WidthStretch, 2.3f);
             ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthStretch, 1.1f);
             ImGui.TableSetupColumn("Version", ImGuiTableColumnFlags.WidthStretch, 1.25f);

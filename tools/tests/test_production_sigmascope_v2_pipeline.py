@@ -22,14 +22,15 @@ for item in (SECURITY, CATALOG):
     if str(item) not in sys.path:
         sys.path.insert(0, str(item))
 
-import security_scan
+import sigmascope
 from migrate_security_evidence_v2 import migrate
-from production_security_v2_pipeline import (
+from production_sigmascope_v2_pipeline import (
     _current_rows,
     _restore_last_known_good,
     _semantic_security_revision,
     materialize_current_state,
     run_pipeline,
+    synchronize_candidate,
 )
 from security_evidence_v2 import validate_snapshot
 
@@ -42,7 +43,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
         database = built / "omega-catalog.sqlite"
         with closing(sqlite3.connect(database)) as db:
             db.row_factory = sqlite3.Row
-            security_scan.ensure_schema(db)
+            sigmascope.ensure_schema(db)
             variant = db.execute(
                 """SELECT v.variant_id,v.plugin_id,v.source_id,v.assembly_version
                      FROM plugin_variants v JOIN plugins p ON p.plugin_id=v.plugin_id
@@ -62,7 +63,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                      VALUES(?,?,?,?,?,'stable','https://example.invalid/plugin.zip',?,?,'complete',
                      '2026-08-17T00:00:00Z','caution',0,1,0,0,'[]',1,'https://example.invalid/repo',
                      'abc',1,'{}','')""",
-                (9001, plugin_id, variant_id, source_id, str(variant["assembly_version"] or "1.0.0"), artifact, security_scan.SCANNER_VERSION),
+                (9001, plugin_id, variant_id, source_id, str(variant["assembly_version"] or "1.0.0"), artifact, sigmascope.SCANNER_VERSION),
             )
             db.execute(
                 """INSERT INTO plugin_security_current(
@@ -74,7 +75,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                      VALUES(?,9001,?,'stable','https://example.invalid/plugin.zip',?,?,'complete',
                      '2026-08-17T00:00:00Z','caution',0,1,0,0,'[]','none','[]','[]',1,
                      'https://example.invalid/repo','abc',1,'{}','')""",
-                (variant_id, str(variant["assembly_version"] or "1.0.0"), artifact, security_scan.SCANNER_VERSION),
+                (variant_id, str(variant["assembly_version"] or "1.0.0"), artifact, sigmascope.SCANNER_VERSION),
             )
             db.execute(
                 """INSERT INTO plugin_security_findings(scan_id,rule_id,severity,category,title,description,evidence_json)
@@ -87,7 +88,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                    VALUES(9001,'artifact','nuget-resolved','Example.Package','1.2.3','1.2.3','1.2.3',
                    'Fixture.deps.json','known','required','[]','','','[]')"""
             )
-            db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_scanner_version',?)", (security_scan.SCANNER_VERSION,))
+            db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_scanner_version',?)", (sigmascope.SCANNER_VERSION,))
             db.commit()
         return database, variant_id, plugin_id
 
@@ -113,7 +114,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             base = root / "base.sqlite"
             shutil.copy2(database, base)
             with closing(sqlite3.connect(base)) as db:
-                security_scan.ensure_schema(db)
+                sigmascope.ensure_schema(db)
                 db.execute("PRAGMA foreign_keys=OFF")
                 for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
                     db.execute(f'DELETE FROM "{row[0]}"')
@@ -130,6 +131,45 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 self.assertEqual(dep, ("nuget-resolved", "Example.Package", "1.2.3"))
                 self.assertEqual(db.execute("SELECT scan_id FROM plugin_security_current WHERE variant_id=?", (variant_id,)).fetchone()[0], 9001)
 
+    def test_candidate_synchronization_repairs_legacy_oversized_variant_reports(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-legacy-report-repair-") as td:
+            root = Path(td)
+            database, variant_id, _plugin_id = self.make_catalog_with_security(root)
+            candidate = root / "candidate"
+            migrate(database, candidate, reset=True)
+            variant_path = next((candidate / "variants").rglob("*.json"))
+            payload = json.loads(variant_path.read_text(encoding="utf-8"))
+            legacy = {
+                "opaqueLegacyEvidence": "x" * (18 * 1024 * 1024),
+                "source": {"dependencyIntelligence": {"fingerprints": {"relevantSourceSha256": "c" * 64}}},
+            }
+            payload["scan"]["report_json"] = legacy
+            payload["current"]["report_json"] = legacy
+            variant_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+            self.assertGreater(variant_path.stat().st_size, 32 * 1024 * 1024)
+
+            # Loading an old published branch must not recreate the oversized report
+            # in the disposable SQLite working database either.
+            work_database = root / "materialized.sqlite"
+            materialize_current_state(database, candidate, work_database)
+            with closing(sqlite3.connect(work_database)) as db:
+                report_json = db.execute(
+                    "SELECT report_json FROM plugin_security_current WHERE variant_id=?", (variant_id,)
+                ).fetchone()[0]
+            compact = json.loads(report_json)
+            self.assertEqual(compact["schema"], "omega.security-evidence.scan-summary.v2")
+            self.assertLess(len(report_json.encode("utf-8")), 256 * 1024)
+
+            synchronize_candidate(candidate, database, {variant_id})
+            self.assertLess(variant_path.stat().st_size, 1024 * 1024)
+            repaired = json.loads(variant_path.read_text(encoding="utf-8"))
+            self.assertEqual(repaired["scan"]["report_json"]["schema"], "omega.security-evidence.scan-summary.v2")
+            self.assertEqual(
+                repaired["scan"]["report_json"]["source"]["dependencyIntelligence"]["fingerprints"]["relevantSourceSha256"],
+                "c" * 64,
+            )
+            self.assertNotIn("opaqueLegacyEvidence", variant_path.read_text(encoding="utf-8"))
+
     def test_failed_revalidation_restores_last_known_good_current_pointer(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-retain-") as td:
             root = Path(td)
@@ -141,7 +181,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                     """INSERT INTO plugin_security_scans(scan_id,plugin_id,variant_id,source_id,artifact_sha256,
                        scanner_version,status,scanned_at_utc,report_json,error)
                        VALUES(9002,?,?,?,?,?,'failed','2026-08-17T01:00:00Z','{}','network failure')""",
-                    (plugin_id, variant_id, source_id, "b" * 64, security_scan.SCANNER_VERSION),
+                    (plugin_id, variant_id, source_id, "b" * 64, sigmascope.SCANNER_VERSION),
                 )
                 db.execute(
                     """UPDATE plugin_security_current SET scan_id=9002,artifact_sha256=?,status='failed',error='network failure'
@@ -168,7 +208,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             base = root / "base.sqlite"
             shutil.copy2(database, base)
             with closing(sqlite3.connect(base)) as db:
-                security_scan.ensure_schema(db)
+                sigmascope.ensure_schema(db)
                 db.execute("PRAGMA foreign_keys=OFF")
                 for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
                     db.execute(f'DELETE FROM "{row[0]}"')
@@ -213,7 +253,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 Path(output).write_text(__import__("json").dumps(document, indent=2) + "\n", encoding="utf-8")
                 return document
 
-            with patch("production_security_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=fake_collect):
+            with patch("production_sigmascope_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=fake_collect):
                 result = run_pipeline(args)
 
             self.assertTrue(result["candidate"]["validation"]["ok"], result["candidate"]["validation"] )
@@ -237,7 +277,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="omega-v2-incremental-pipeline-") as td:
             root = Path(td)
             database, variant_id, _plugin_id = self.make_catalog_with_security(root)
-            # The published baseline came from scanner 2.4.0; 2.5.0 must refresh it.
+            # The published baseline came from Sigmascope generation 2.4.0; 2.5.0 must refresh it.
             with closing(sqlite3.connect(database)) as db:
                 db.execute("UPDATE plugin_security_scans SET scanner_version='2.4.0' WHERE scan_id=9001")
                 db.execute("UPDATE plugin_security_current SET scanner_version='2.4.0' WHERE variant_id=?", (variant_id,))
@@ -249,7 +289,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             base = root / "base.sqlite"
             shutil.copy2(database, base)
             with closing(sqlite3.connect(base)) as db:
-                security_scan.ensure_schema(db)
+                sigmascope.ensure_schema(db)
                 db.execute("PRAGMA foreign_keys=OFF")
                 for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
                     db.execute(f'DELETE FROM "{row[0]}"')
@@ -306,8 +346,8 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 Path(output).write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
                 return document
 
-            with patch("security_scan.request_bytes", return_value=(artifact, "https://example.invalid/plugin.zip")), \
-                 patch("production_security_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=fake_collect):
+            with patch("sigmascope.request_bytes", return_value=(artifact, "https://example.invalid/plugin.zip")), \
+                 patch("production_sigmascope_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=fake_collect):
                 result = run_pipeline(args)
 
             self.assertEqual(len(result["successfulVariantIds"]), 1)
@@ -318,7 +358,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             variant_files = list((root / "candidate" / "variants").rglob(f"{successful_variant_id}.json"))
             self.assertEqual(len(variant_files), 1)
             payload = json.loads(variant_files[0].read_text(encoding="utf-8"))
-            self.assertEqual(payload["current"]["scanner_version"], security_scan.SCANNER_VERSION)
+            self.assertEqual(payload["current"]["scanner_version"], sigmascope.SCANNER_VERSION)
             analysis_path = payload["analysis"]["path"]
             dependency_rows = __import__("security_evidence_v2").read_dataset_rows(root / "candidate", analysis_path, "dependencies")
             self.assertTrue(any(row.get("kind") == "nuget-resolved" and row.get("name") == "Example.Package" and row.get("resolved_version") == "9.8.7" for row in dependency_rows))
@@ -333,7 +373,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             base = root / "base.sqlite"
             shutil.copy2(database, base)
             with closing(sqlite3.connect(base)) as db:
-                security_scan.ensure_schema(db)
+                sigmascope.ensure_schema(db)
                 db.execute("PRAGMA foreign_keys=OFF")
                 for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
                     db.execute(f'DELETE FROM "{row[0]}"')
@@ -356,7 +396,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 }
                 Path(output).write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
                 return document
-            with patch("production_security_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=incomplete_collect):
+            with patch("production_sigmascope_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=incomplete_collect):
                 with self.assertRaisesRegex(RuntimeError, "OSV publication gate failed"):
                     run_pipeline(args)
             self.assertFalse((root / "candidate" / "index.json").exists())

@@ -88,6 +88,11 @@ def load_cache(path: Path | None, max_age_hours: float) -> dict[str, dict]:
                 metadata["links"] = json.loads(row["links_json"] or "[]") if "links_json" in row.keys() else metadata.get("links", [])
             except Exception:
                 metadata["links"] = []
+            try:
+                metadata["omegaIndex"] = json.loads(row["omega_index_json"] or "{}") if "omega_index_json" in row.keys() else metadata.get("omegaIndex", {})
+            except Exception:
+                metadata["omegaIndex"] = {}
+            metadata["omegaBannerUrl"] = (row["omega_banner_url"] or "") if "omega_banner_url" in row.keys() else str(metadata.get("omegaBannerUrl") or "")
             out[normalize_url(row["url"]).lower()] = metadata
         db.close()
     except Exception:

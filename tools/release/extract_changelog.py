@@ -1,23 +1,46 @@
 #!/usr/bin/env python3
-"""Extract one Omega release section from CHANGELOG.md for GitHub Releases."""
+"""Extract Omega release notes from CHANGELOG.md.
+
+Development work is accumulated under ``## [Unreleased]``. When a GitHub tag is
+cut, the release workflow asks for that tag's version. If the changelog already
+contains an explicit section for the version it wins; otherwise the pending
+Unreleased section becomes the release notes for that tag.
+"""
 from __future__ import annotations
+
 import argparse
 import re
 from pathlib import Path
 
 
+HEADING = re.compile(r"^##\s+\[([^\]]+)\](?:\s+-\s+[^\n]+)?\s*$", re.M | re.I)
+
+
+def extract_section(text: str, name: str) -> str:
+    wanted = name.strip().casefold()
+    matches = list(HEADING.finditer(text))
+    for index, match in enumerate(matches):
+        if match.group(1).strip().casefold() != wanted:
+            continue
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        body = text[start:end].strip()
+        if not body:
+            raise ValueError(f"CHANGELOG.md section for {name} is empty")
+        return body + "\n"
+    raise ValueError(f"CHANGELOG.md has no section for {name}")
+
+
 def extract(text: str, version: str) -> str:
-    pattern = re.compile(rf"^##\s+\[{re.escape(version)}\](?:\s+-\s+[^\n]+)?\s*$", re.M)
-    match = pattern.search(text)
-    if not match:
-        raise ValueError(f"CHANGELOG.md has no release section for {version}")
-    start = match.end()
-    next_heading = re.search(r"^##\s+", text[start:], re.M)
-    end = start + next_heading.start() if next_heading else len(text)
-    body = text[start:end].strip()
-    if not body:
-        raise ValueError(f"CHANGELOG.md release section for {version} is empty")
-    return body + "\n"
+    try:
+        return extract_section(text, version)
+    except ValueError as version_error:
+        try:
+            return extract_section(text, "Unreleased")
+        except ValueError:
+            raise ValueError(
+                f"CHANGELOG.md has no release section for {version} and no Unreleased work"
+            ) from version_error
 
 
 def main() -> int:

@@ -114,7 +114,7 @@ internal static partial class RegressionCases
         var settingsUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
         Contains(settingsUi, "DrawSettingsHeader", "Settings keeps a shared user-facing header");
         False(settingsUi.Contains("Project security", StringComparison.Ordinal), "developer security workflow status stays out of in-game Settings");
-        False(settingsUi.Contains("CodeQL", StringComparison.Ordinal), "repository scanner names stay out of in-game Settings");
+        False(settingsUi.Contains("CodeQL", StringComparison.Ordinal), "repository analysis-tool names stay out of in-game Settings");
         False(settingsUi.Contains("Runtime catalog", StringComparison.Ordinal), "catalog implementation state stays out of in-game Settings");
         False(settingsUi.Contains("GitHub Security", StringComparison.Ordinal), "developer security links stay out of in-game Settings");
 
@@ -122,12 +122,12 @@ internal static partial class RegressionCases
         Contains(sourcesUi, "Choose which plugin sources appear in Omega", "Settings explains sources in user-facing language");
         False(sourcesUi.Contains("SQLite catalog:", StringComparison.Ordinal), "source settings do not expose catalog implementation details");
 
-        var scannerWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "security-scanner.yml"));
-        Contains(scannerWorkflow, "Omega plugin security scanner", "third-party plugin security scanner workflow is configured");
-        Contains(scannerWorkflow, "security-evidence-v2", "security scanner uses the dedicated detailed evidence snapshot branch");
-        Contains(scannerWorkflow, "publish_security_evidence_v2.py", "detailed evidence publication is fail-closed through the v2 publisher");
-        Contains(scannerWorkflow, "gh release upload catalog-latest", "the same validated pipeline publishes only the small client marketplace assets");
-        False(scannerWorkflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "production scanner no longer handles the archived giant v1 evidence bundle");
+        var sigmascopeWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "sigmascope.yml"));
+        Contains(sigmascopeWorkflow, "Omega Sigmascope", "third-party plugin analysis is configured through Sigmascope");
+        Contains(sigmascopeWorkflow, "security-evidence-v2", "Sigmascope uses the dedicated detailed evidence snapshot branch");
+        Contains(sigmascopeWorkflow, "publish_security_evidence_v2.py", "detailed evidence publication is fail-closed through the v2 publisher");
+        Contains(sigmascopeWorkflow, "gh release upload catalog-latest", "the same validated pipeline publishes only the small client marketplace assets");
+        False(sigmascopeWorkflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "production Sigmascope no longer handles the archived giant v1 evidence bundle");
 
         var availability = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Availability.cs"));
         Contains(availability, "ImGuiCol.Text", "unavailable listings replace white primary text");

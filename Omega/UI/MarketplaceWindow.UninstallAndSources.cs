@@ -21,7 +21,7 @@ internal sealed partial class MarketplaceWindow
             return;
 
         var keepOpen = uninstallPopupOpen;
-        ImGui.SetNextWindowSize(new Vector2(520f, 0f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(UiModalSize(520f, 0f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal("Uninstall plugin###DalagabOmegaUninstall", ref keepOpen,
                 ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize))
         {
@@ -47,13 +47,13 @@ internal sealed partial class MarketplaceWindow
                            !plugin.InternalName.Equals(Plugin.PluginInterface.InternalName, StringComparison.OrdinalIgnoreCase);
         if (!canUninstall)
             ImGui.BeginDisabled();
-        if (ImGui.Button("Uninstall", new Vector2(140f, 36f)))
+        if (ImGui.Button("Uninstall", Ui(140f, 36f)))
             StartSelectedUninstall(plugin);
         if (!canUninstall)
             ImGui.EndDisabled();
 
         ImGui.SameLine();
-        if (ImGui.Button("Cancel", new Vector2(110f, 36f)))
+        if (ImGui.Button("Cancel", Ui(110f, 36f)))
             CloseUninstallConfirmation();
 
         uninstallPopupOpen = keepOpen && uninstallPopupOpen;

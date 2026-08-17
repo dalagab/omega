@@ -290,6 +290,8 @@ CREATE TABLE IF NOT EXISTS websites (
     readme_excerpt TEXT NOT NULL DEFAULT '',
     image_urls_json TEXT NOT NULL DEFAULT '[]',
     links_json TEXT NOT NULL DEFAULT '[]',
+    omega_index_json TEXT NOT NULL DEFAULT '{}',
+    omega_banner_url TEXT NOT NULL DEFAULT '',
     metadata_json TEXT NOT NULL DEFAULT '{}',
     last_checked_utc TEXT NOT NULL DEFAULT '',
     last_success_utc TEXT NOT NULL DEFAULT '',
@@ -407,6 +409,10 @@ def reset_database(path: Path) -> sqlite3.Connection:
     website_columns = {row[1] for row in db.execute("PRAGMA table_info(websites)")}
     if "links_json" not in website_columns:
         db.execute("ALTER TABLE websites ADD COLUMN links_json TEXT NOT NULL DEFAULT '[]'")
+    if "omega_index_json" not in website_columns:
+        db.execute("ALTER TABLE websites ADD COLUMN omega_index_json TEXT NOT NULL DEFAULT '{}'")
+    if "omega_banner_url" not in website_columns:
+        db.execute("ALTER TABLE websites ADD COLUMN omega_banner_url TEXT NOT NULL DEFAULT ''")
     security_current_columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_security_current)")}
     if "automation_level" not in security_current_columns:
         db.execute("ALTER TABLE plugin_security_current ADD COLUMN automation_level TEXT NOT NULL DEFAULT 'none'")
@@ -709,14 +715,15 @@ def import_websites(db: sqlite3.Connection, website_doc: Any, now: str) -> None:
             metadata["discordJoinImageUrls"] = discord_join_images
             db.execute(
                 """INSERT INTO websites(url,ok,title,description,homepage,stars,forks,watchers,topics_json,language,license,
-                    default_branch,last_commit_utc,readme_excerpt,image_urls_json,links_json,metadata_json,last_checked_utc,last_success_utc,last_error,failure_count,next_retry_utc)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'',0,'')
+                    default_branch,last_commit_utc,readme_excerpt,image_urls_json,links_json,omega_index_json,omega_banner_url,metadata_json,last_checked_utc,last_success_utc,last_error,failure_count,next_retry_utc)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'',0,'')
                    ON CONFLICT(url) DO UPDATE SET
                     ok=1,title=excluded.title,description=excluded.description,homepage=excluded.homepage,
                     stars=excluded.stars,forks=excluded.forks,watchers=excluded.watchers,topics_json=excluded.topics_json,
                     language=excluded.language,license=excluded.license,default_branch=excluded.default_branch,
                     last_commit_utc=excluded.last_commit_utc,readme_excerpt=excluded.readme_excerpt,
-                    image_urls_json=excluded.image_urls_json,links_json=excluded.links_json,metadata_json=excluded.metadata_json,
+                    image_urls_json=excluded.image_urls_json,links_json=excluded.links_json,
+                    omega_index_json=excluded.omega_index_json,omega_banner_url=excluded.omega_banner_url,metadata_json=excluded.metadata_json,
                     last_checked_utc=excluded.last_checked_utc,last_success_utc=excluded.last_success_utc,
                     last_error='',failure_count=0,next_retry_utc=''""",
                 (
@@ -724,6 +731,8 @@ def import_websites(db: sqlite3.Connection, website_doc: Any, now: str) -> None:
                     rec.get("stars"), rec.get("forks"), rec.get("watchers"), json_text(rec.get("topics") or []),
                     str(rec.get("language") or ""), str(rec.get("license") or ""), str(rec.get("defaultBranch") or ""),
                     str(rec.get("lastCommit") or ""), excerpt, json_text(images), json_text(rec.get("links") or []),
+                    json.dumps(rec.get("omegaIndex") or {}, ensure_ascii=False, separators=(",", ":")),
+                    str(rec.get("omegaBannerUrl") or ""),
                     json.dumps(metadata, ensure_ascii=False, separators=(",", ":")), now, now,
                 ),
             )
@@ -882,6 +891,7 @@ def create_runtime_view(db: sqlite3.Connection) -> None:
              CASE WHEN w.ok=1 THEN COALESCE(w.readme_excerpt,'') ELSE '' END AS website_readme_excerpt,
              CASE WHEN w.ok=1 THEN COALESCE(w.image_urls_json,'[]') ELSE '[]' END AS website_image_urls_json,
              CASE WHEN w.ok=1 THEN COALESCE(w.links_json,'[]') ELSE '[]' END AS website_links_json,
+             CASE WHEN w.ok=1 THEN COALESCE(w.omega_banner_url,'') ELSE '' END AS omega_banner_url,
              CASE WHEN w.website_id IS NOT NULL AND w.ok=1 THEN 1 ELSE 0 END AS website_enriched,
              COALESCE(pr.rich_card,0) AS rich_card,
              COALESCE(pr.official,0) AS plugin_official,

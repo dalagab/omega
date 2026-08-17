@@ -18,7 +18,7 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawInlineSecurityField()
     {
-        ImGui.SetNextItemWidth(190f);
+        ImGui.SetNextItemWidth(Math.Min(Ui(190f), ImGui.GetContentRegionAvail().X));
         if (!ImGui.BeginCombo("##filter-security", SecurityFilterLabel(securityFilter)))
             return;
         foreach (var value in Enum.GetValues<MarketplaceSecurityFilter>())

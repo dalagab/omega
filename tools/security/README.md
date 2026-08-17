@@ -1,4 +1,4 @@
-# Omega Security Developer View
+# Omega Sigmascope Developer View
 
 This is a read-only developer tool for auditing the conclusions in Omega's published security databases.
 
@@ -36,7 +36,7 @@ A `GITHUB_TOKEN` or `GH_TOKEN` environment variable is optional and only used to
 
 ## What can be inspected
 
-The UI exposes current scans per plugin/source variant, static findings and evidence, exact-version OSV matches, dependency resolutions/issues, IPC providers and consumers, required/feature/optional IPC semantics, permission candidates, automation evidence, source build scope, source-to-package comparisons, scan lineage and dependency drift. It also shows how many current rows were produced by the latest scanner generation versus older scanner generations, so zero-count feature cards can be interpreted in the context of incremental rescan coverage. Managed IL/native calls are loaded lazily because they can be large.
+The UI exposes current scans per plugin/source variant, static findings and evidence, exact-version OSV matches, dependency resolutions/issues, IPC providers and consumers, required/feature/optional IPC semantics, permission candidates, automation evidence, source build scope, source-to-package comparisons, scan lineage and dependency drift. It also shows how many current rows were produced by the latest Sigmascope generation versus older Sigmascope generations, so zero-count feature cards can be interpreted in the context of incremental rescan coverage. Managed IL/native calls are loaded lazily because they can be large.
 
 The **Evidence browser** is the normal way to traverse the database: choose a grouped table, page through rows, inspect a row, and follow database relationship links into related tables. Summary cards jump directly to the relevant evidence table, and rows containing a plugin variant ID can jump back into the higher-level plugin conclusion view.
 
@@ -64,7 +64,7 @@ SQL is optional. The browser keeps a collapsed raw SQL console under **Advanced*
 
 Omega's detailed security evidence has outgrown a single SQLite file as a transport format. The **client Definitions database remains SQLite**; only the large server-side forensic evidence is being prepared for migration to a sharded v2 format.
 
-Security Evidence v2 is the production scanner state as of Omega 0.8.80. The migration commands below remain useful for reconstructing/bootstraping a v2 snapshot from the archived v1 SQLite evidence, but routine GitHub Actions scanning now updates `security-evidence-v2` incrementally through a staged, fail-closed pipeline.
+Security Evidence v2 is the production Sigmascope state as of Omega 0.8.80. The migration commands below remain useful for reconstructing/bootstraping a v2 snapshot from the archived v1 SQLite evidence, but routine GitHub Actions scanning now updates `security-evidence-v2` incrementally through a staged, fail-closed pipeline.
 
 ### 1. Download the current v1 evidence, migrate it locally, and validate it
 
@@ -98,7 +98,7 @@ Phase 1 migrates the **current security state**. Historical scans remain preserv
 
 The v2 tree uses:
 
-- `variants/` for per-repository/current-scan identity and derived graph state;
+- `variants/` for per-repository/current-scan identity and derived graph state; variant descriptors carry only a bounded compatibility summary of legacy `report_json` while detailed evidence stays in normalized/sharded datasets;
 - `artifacts/<sha256>/analyses/<analysis-id>/` for content-addressed scan evidence;
 - readable JSON for ordinary findings/dependencies/permissions/automation where bounded;
 - deterministic gzip JSONL shards for large symbols/calls/reachability/import collections;
@@ -144,10 +144,10 @@ python tools/security/publish_security_evidence_v2.py \
 
 Publishing happens from a temporary Git repository and never checks out or rewrites the Omega source tree. The default evidence branch is maintained as a **single snapshot commit** with `--force-with-lease`, so the evidence branch does not build an ever-growing reachable Git history. A push requires a successful **full** parity validation report whose `index.json` SHA-256 matches the snapshot being published. The migration state file and temporary staging data are never published.
 
-The existing `omega-security-evidence.sqlite.zip` remains the archived v1 historical/rollback reference. Production scanning no longer rewrites it. Incremental production updates use `production_security_v2_pipeline.py`, intrinsic snapshot validation, the independent developer audit, and `publish_security_evidence_v2.py` before replacing the `security-evidence-v2` branch snapshot.
+The existing `omega-security-evidence.sqlite.zip` remains the archived v1 historical/rollback reference. Production scanning no longer rewrites it. Incremental production updates use `production_sigmascope_v2_pipeline.py`, intrinsic snapshot validation, the independent developer audit, and `publish_security_evidence_v2.py` before replacing the `security-evidence-v2` branch snapshot.
 
 ### Production v2 update path
 
-The GitHub security workflow performs the production sequence automatically: last-known-good v2 snapshot → disposable working projection → bounded scans → failed-scan rollback to prior current pointers → OSV/dependency/IPC refresh → successful-analysis merge → v2 index rebuild → intrinsic snapshot validation → small marketplace projection → independent audit → atomic v2 snapshot push → client marketplace publication. A failure before the final push leaves the previous published snapshot intact.
+The GitHub Sigmascope workflow performs the production sequence automatically: last-known-good v2 snapshot → disposable working projection → bounded scans → failed-scan rollback to prior current pointers → OSV/dependency/IPC refresh → successful-analysis merge → v2 index rebuild → intrinsic snapshot validation → small marketplace projection → independent audit → atomic v2 snapshot push → client marketplace publication. A failure before the final push leaves the previous published snapshot intact.
 
 `*.deps.json` files inside distributed plugin packages are scanned for exact resolved NuGet package versions (`nuget-resolved`), so OSV coverage no longer depends on project lock/assets files being shipped with the plugin. Publication fails if queryable current NuGet versions exist but the bounded OSV collector does not query the expected package set.

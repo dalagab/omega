@@ -40,7 +40,7 @@ internal static partial class RegressionCases
         False(ui.Contains("content-reload", StringComparison.Ordinal), "general header Reload control is removed");
         False(ui.Contains("sidebar-refresh-sources", StringComparison.Ordinal), "manual source refresh no longer lives beside the navigation rail");
         Contains(ui, "FontAwesomeIcon.Cog", "Settings uses an icon-only navigation button");
-        Contains(ui, "const float rounding = 6f", "icon rail uses small-radius square navigation hit areas");
+        Contains(ui, "var rounding = Ui(6f)", "icon rail uses small-radius square navigation hit areas");
         Contains(ui, "##omega-nav-{id}", "icon rail owns dedicated borderless navigation hit boxes");
         Contains(ui, "no pill background and no border", "resting navigation blends into the sidebar panel");
         False(ui.Contains("DrawPillButton(icon.ToIconString()", StringComparison.Ordinal), "sidebar navigation must not regress to rounded pill buttons");
@@ -57,7 +57,7 @@ internal static partial class RegressionCases
         Contains(ui, "definitionsAttention: updates.DefinitionsUpdateAvailable", "Definitions updates use the dedicated blue exclamation marker");
         Contains(ui, "panel-filters-{activeView}", "Filters control belongs to the active content panel");
         Contains(ui, "var triangle = filtersOpen ? \"▲\" : \"▼\"", "Filters control exposes its open/closed state with a triangle");
-        Contains(ui, "ImGuiStyleVar.FrameRounding, 4f", "Filters control uses a compact square-cornered Store-style shape");
+        Contains(ui, "ImGuiStyleVar.FrameRounding, Ui(4f)", "Filters control uses a compact square-cornered Store-style shape");
         Contains(ui, "var openStylePushed = filtersOpen", "Filters toggle balances its open-state style even when the click closes the panel");
         Contains(ui, "filtersOpen = !filtersOpen", "panel Filters control expands and collapses inline");
         Contains(ui, "contentStartX + Math.Max(0f, contentWidth - buttonWidth)", "Filters button is anchored at the right edge of its owning content panel");
@@ -65,8 +65,10 @@ internal static partial class RegressionCases
         Contains(ui, "DrawInlineMarketplaceFilters(currentApi)", "full filter editor is hidden until Filters is expanded");
         Contains(ui, "DrawSelectedFilterPills()", "active filter pills remain visible while the editor is collapsed");
         Contains(ui, "omega-inline-filters", "expanded filters render in the owning content panel rather than a modal");
-        Contains(filters, "Math.Max(minimum, scaled)", "Discover and Library reserve scale-aware inline filter height for all controls");
-        Contains(filters, "ImGuiStyleVar.ChildRounding, 4f", "expanded filter panel matches the square-cornered Filters control");
+        Contains(filters, "CalculateInlineFilterPanelHeight()", "Discover and Library derive inline filter height from the responsive layout");
+        Contains(filters, "ResponsiveColumns(available, 230f, 3, 12f)", "inline filter height follows the same responsive grid column rule as the controls");
+        Contains(filters, "gridRows * frame * 2.15f", "inline filter height expands with the computed responsive grid row count");
+        Contains(filters, "ImGuiStyleVar.ChildRounding, Ui(4f)", "expanded filter panel matches the scale-aware square-cornered Filters control");
         False(ui.Contains("Filters###DalagabOmegaFilters", StringComparison.Ordinal), "filter popup modal must not return");
         Contains(ui, "omega-application-bar", "window chrome is owned by one shared application top bar");
         Contains(ui, "##omega-application-mark", "application bar keeps a small Omega mark at top-left");
@@ -89,8 +91,8 @@ internal static partial class RegressionCases
         False(minimizeBody.Contains("ImGui.GetWindowPos()", StringComparison.Ordinal), "minimize must not snapshot the application-bar child position as the restore position");
         Contains(ui, "CaptureExpandedWindowState();", "expanded geometry is captured before entering the application-bar child");
         Contains(ui, "expandedWindowSize = ImGui.GetWindowSize();", "expanded size is captured while the top-level Omega window is current");
-        Contains(ui, "if (expandedWindowSize.Y > 96f)", "legacy app-bar-height geometry is detected and repaired");
-        Contains(ui, "expandedWindowSize = DefaultExpandedWindowSize;", "corrupt collapsed geometry falls back to Omega's default expanded size");
+        Contains(ui, "if (expandedWindowSize.Y > Ui(96f))", "legacy app-bar-height geometry is detected and repaired with the current Dalamud scale");
+        Contains(ui, "expandedWindowSize = preferredPhysical;", "corrupt collapsed geometry falls back to Omega's responsive default expanded size");
         Contains(ui, "ImGui.SetWindowSize(expandedWindowSize, ImGuiCond.Always);", "restore reapplies the remembered expanded size");
         False(ui.Contains("minimized-close", StringComparison.Ordinal), "minimized state must not add extra controls beside the icon");
     }
@@ -103,10 +105,10 @@ internal static partial class RegressionCases
         Contains(window, "new(1080f, 840f)", "Omega minimum height reserves enough room for the marketplace shelves and metadata rows");
         Contains(window, "Size = DefaultExpandedWindowSize", "Omega opens at the minimum usable marketplace size on first use");
         Contains(window, "SizeCondition = ImGuiCond.FirstUseEver", "larger user-resized window geometry remains user-owned");
-        Contains(window, "MinimumSize = DefaultExpandedWindowSize", "Omega opens with a minimum usable marketplace size");
+        Contains(window, "MinimumSize = DefaultExpandedWindowSize", "constructor keeps the baseline marketplace minimum before PreDraw applies the viewport-responsive constraint");
         Contains(window, "MaximumSize = new Vector2(float.MaxValue)", "Omega may be resized larger than its minimum");
         Contains(chrome, "SizeConstraints = null;", "minimized icon is exempt from marketplace minimum-size constraints");
-        Contains(chrome, "MinimumSize = DefaultExpandedWindowSize", "expanded mode restores the minimum-size constraint");
+        Contains(chrome, "MinimumSize = responsiveMinimum", "expanded mode restores the minimum-size constraint");
         Contains(chrome, "Flags &= ~(ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize)", "expanded Omega remains movable and resizable");
         False(chrome.Contains("ImGui.SetNextWindowSize(viewport.Size", StringComparison.Ordinal), "expanded Omega must not be forced full-screen");
         False(chrome.Contains("ImGui.SetNextWindowPos(viewport.Pos", StringComparison.Ordinal), "expanded Omega must not be pinned to the viewport origin");

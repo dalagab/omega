@@ -13,9 +13,9 @@ internal sealed partial class MarketplaceWindow
         var height = MathF.Max(0f, available.Y);
         var center = origin + new Vector2(width * 0.5f, height * 0.5f);
 
-        const float radius = 15f;
-        const float dotRadius = 3.5f;
-        const float thickness = 2.25f;
+        var radius = Ui(15f);
+        var dotRadius = Ui(3.5f);
+        var thickness = Ui(2.25f);
         var draw = ImGui.GetWindowDrawList();
         draw.AddCircle(center, radius, ImGui.GetColorU32(ImGuiCol.TextDisabled), 40, thickness);
 

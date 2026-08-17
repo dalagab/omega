@@ -41,7 +41,7 @@ def public_repository_url(value: str) -> str:
     """Return a stable public HTTPS Git repository candidate from metadata.
 
     GitHub forms are canonicalised first. Other public Git hosts retain their
-    host and repository path, allowing the scanner's constrained smart-Git
+    host and repository path, allowing Sigmascope's constrained smart-Git
     fallback to handle GitLab, Gitea, Forgejo, Bitbucket, and self-hosted hosts.
     Artifact and manifest URLs are deliberately excluded.
     """

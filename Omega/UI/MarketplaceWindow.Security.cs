@@ -81,7 +81,7 @@ internal sealed partial class MarketplaceWindow
             return;
 
         var keepOpen = aboutOpen;
-        ImGui.SetNextWindowSize(new Vector2(660f, 570f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(UiModalSize(660f, 570f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal(AboutPopupId, ref keepOpen, ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse))
         {
             aboutOpen = keepOpen;
@@ -122,11 +122,8 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawAboutIdentityHero()
     {
-        const float iconSize = 112f;
-        var available = ImGui.GetContentRegionAvail().X;
-        const float leftInset = 12f;
-        const float rightInset = 12f;
-        var heroWidth = Math.Max(0f, available - leftInset - rightInset);
+        var iconSize = Ui(112f);
+        var leftInset = Ui(12f);
         var startX = ImGui.GetCursorPosX() + leftInset;
         var startY = ImGui.GetCursorPosY();
 
@@ -144,7 +141,7 @@ internal sealed partial class MarketplaceWindow
                 iconMin,
                 iconMin + new Vector2(iconSize, iconSize),
                 ImGui.GetColorU32(ImGuiCol.FrameBg),
-                16f);
+                Ui(16f));
             const string glyph = "Ω";
             var glyphSize = ImGui.CalcTextSize(glyph);
             ImGui.GetWindowDrawList().AddText(
@@ -153,15 +150,12 @@ internal sealed partial class MarketplaceWindow
                 glyph);
         }
 
-        ImGui.SetCursorPos(new Vector2(startX + iconSize + 24f, startY + 12f));
+        ImGui.SetCursorPos(new Vector2(startX + iconSize + Ui(24f), startY + Ui(12f)));
         ImGui.BeginGroup();
         ImGui.TextUnformatted("Omega");
-        ImGui.TextDisabled($"Version {BuildInfo.Version} · Dalagab Group");
+        ImGui.TextDisabled("Dalagab Group");
         ImGui.Spacing();
         ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), "Every plugin. One orbit.");
-        ImGui.PushTextWrapPos(startX + heroWidth - 4f);
-        ImGui.TextWrapped("Discover the wider Dalamud plugin ecosystem in one marketplace — then choose the source you trust.");
-        ImGui.PopTextWrapPos();
         ImGui.EndGroup();
 
         ImGui.SetCursorPosY(startY + iconSize);
@@ -174,20 +168,19 @@ internal sealed partial class MarketplaceWindow
             : catalog.CatalogRevision;
 
         ImGui.TextUnformatted("Version");
-        ImGui.SameLine(0f, 10f);
+        ImGui.SameLine(0f, Ui(10f));
         ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), BuildInfo.Version);
 
         ImGui.Spacing();
         ImGui.TextUnformatted("Definitions");
-        ImGui.SameLine(0f, 10f);
+        ImGui.SameLine(0f, Ui(10f));
         ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), revision);
-        ImGui.PushTextWrapPos(0f);
-        ImGui.TextDisabled("Definitions are Omega's independently updated marketplace data: plugin listings, repositories, compatibility, dependencies, and security summaries. They can update without changing the Omega application version.");
-        ImGui.PopTextWrapPos();
     }
 
-    private static void DrawAboutProductPitch()
+    private void DrawAboutProductPitch()
     {
+        DrawAboutSigmascopeFeature();
+        ImGui.Dummy(Ui(1f, 10f));
         ImGui.TextUnformatted("Open Omega");
         ImGui.Spacing();
         ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), "/omega   /omg");
@@ -197,10 +190,45 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         ImGui.TextUnformatted("Find more. Know more. Install with confidence.");
         ImGui.Spacing();
-        DrawAboutWrappedBullet("Spotlight and Discover bring official and community plugins into one searchable storefront.");
-        DrawAboutWrappedBullet("Compare repositories, compatibility, packages and security findings before you choose a source.");
-        DrawAboutWrappedBullet("Keep installed plugins, collections and available updates together in Library.");
-        DrawAboutWrappedBullet("When you install, update or remove something, Dalamud remains in control of the plugin lifecycle.");
+        DrawAboutWrappedBullet("Find official and community plugins in Spotlight and Discover.");
+        DrawAboutWrappedBullet("Compare sources, compatibility and Sigmascope results before installing.");
+        DrawAboutWrappedBullet("Manage installed plugins, collections and updates in Library.");
+        DrawAboutWrappedBullet("Dalamud stays in control of installation, updates and removal.");
+    }
+
+    private void DrawAboutSigmascopeFeature()
+    {
+        ImGui.TextUnformatted("Sigmascope");
+        ImGui.Dummy(Ui(1f, 7f));
+
+        var texture = sigmascopeBannerTexture?.GetWrapOrDefault();
+        if (texture is null)
+            return;
+
+        const float bannerAspect = 2048f / 1143f;
+        var available = ImGui.GetContentRegionAvail().X;
+        var width = Math.Min(available, Ui(580f));
+        var height = width / bannerAspect;
+        var originalX = ImGui.GetCursorPosX();
+        var left = originalX + Math.Max(0f, (available - width) * 0.5f);
+        var top = ImGui.GetCursorPosY();
+        ImGui.SetCursorPosX(left);
+        var min = ImGui.GetCursorScreenPos();
+        ImGui.Dummy(new Vector2(width, height));
+        ImGui.GetWindowDrawList().AddImage(
+            texture.Handle,
+            min,
+            min + new Vector2(width, height),
+            Vector2.Zero,
+            Vector2.One,
+            ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 0.92f)));
+        ImGui.SetCursorPosX(originalX);
+        ImGui.SetCursorPosY(top + height);
+        ImGui.Dummy(Ui(1f, 8f));
+        ImGui.PushTextWrapPos(0f);
+        ImGui.TextWrapped("Sigmascope is Omega's online scanning engine. It checks what plugins can do and sends the results to Omega in Definitions packages.");
+        ImGui.TextDisabled("Definitions also carry Omega's plugin listings, repositories, compatibility and dependency data.");
+        ImGui.PopTextWrapPos();
     }
 
     private static void DrawAboutWrappedBullet(string text)

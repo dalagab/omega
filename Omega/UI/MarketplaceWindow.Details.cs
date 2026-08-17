@@ -263,7 +263,7 @@ internal sealed partial class MarketplaceWindow
                 v.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out _) &&
                 (v.MinimumDalamudVersion is null || v.MinimumDalamudVersion <= currentDalamudVersion) &&
                 IsSourceEnabledInOmega(v))
-            // Never auto-prefer a package that the scanner already identified as the divergent
+            // Never auto-prefer a package that Sigmascope already identified as the divergent
             // same-version artifact. A repository with known divergence elsewhere is also demoted
             // behind clean alternatives, but remains available for explicit reviewed selection.
             .OrderBy(v => IsPluginPackageArtifactDivergent(v) ? 1 : 0)
@@ -338,7 +338,7 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        if (DrawPillButton("Back", "details-back", new Vector2(70f, 30f), false))
+        if (DrawPillButton("Back", "details-back", Ui(70f, 30f), false))
         {
             detailsOpen = false;
             selectedPlugin = null;
@@ -352,7 +352,7 @@ internal sealed partial class MarketplaceWindow
         DrawPluginArtwork(
             plugin,
             installedPlugin,
-            Math.Min(150f, Math.Max(112f, detailWidth - 40f)),
+            Math.Min(Ui(150f), Math.Max(Ui(112f), detailWidth - Ui(40f))),
             detailWidth,
             currentApi,
             currentDalamudVersion,
@@ -391,7 +391,7 @@ internal sealed partial class MarketplaceWindow
         var apiText = $"API {(variant.HighestKnownApiLevel > 0 ? variant.HighestKnownApiLevel.ToString() : "?")}";
         var label = $"{variant.SourceName}  •  {apiText}";
         var provider = GetRepositoryProvider(variant.SourceName, variant.SourceUrl, variant.SourceIsOfficial, currentApi);
-        var width = Math.Min(available, Math.Max(120f, ImGui.CalcTextSize(label).X + 28f + (!string.IsNullOrWhiteSpace(provider.IconUrl) ? 23f : 0f)));
+        var width = Math.Min(available, Math.Max(Ui(120f), ImGui.CalcTextSize(label).X + Ui(28f) + (!string.IsNullOrWhiteSpace(provider.IconUrl) ? Ui(23f) : 0f)));
         if (used > 0f && used + width > available)
         {
             ImGui.NewLine();
@@ -412,7 +412,7 @@ internal sealed partial class MarketplaceWindow
                 currentApi,
                 apiText,
                 $"variant-{current.InternalName}-{StableId(variant.SourceUrl)}",
-                new Vector2(width, 30f),
+                new Vector2(width, Ui(30f)),
                 active))
         {
             selectedVariantSource[current.InternalName] = variant.SourceUrl;
@@ -466,7 +466,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         var projectUrl = ResolveProjectUrl(plugin);
         if (string.IsNullOrWhiteSpace(projectUrl) ||
-            !DrawPillButton("Project", $"open-project-{plugin.InternalName}", new Vector2(92f, 30f), false))
+            !DrawPillButton("Project", $"open-project-{plugin.InternalName}", Ui(92f, 30f), false))
             return;
 
         try

@@ -17,34 +17,34 @@ internal sealed partial class MarketplaceWindow
     private bool DrawOmegaModalHeader(string title, string id, bool allowClose = true)
     {
         var closeClicked = false;
-        ImGui.BeginChild($"omega-modal-header-{id}", new Vector2(0f, OmegaModalHeaderHeight), false,
+        ImGui.BeginChild($"omega-modal-header-{id}", new Vector2(0f, Ui(OmegaModalHeaderHeight)), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        var iconY = (OmegaModalHeaderHeight - OmegaModalMarkSize) * 0.5f;
-        ImGui.SetCursorPos(new Vector2(2f, iconY));
+        var iconY = (Ui(OmegaModalHeaderHeight) - Ui(OmegaModalMarkSize)) * 0.5f;
+        ImGui.SetCursorPos(new Vector2(Ui(2f), iconY));
         var iconMin = ImGui.GetCursorScreenPos();
-        ImGui.Dummy(new Vector2(OmegaModalMarkSize, OmegaModalMarkSize));
+        ImGui.Dummy(Ui(OmegaModalMarkSize, OmegaModalMarkSize));
         var texture = omegaIconTexture?.GetWrapOrDefault();
         if (texture is not null)
-            ImGui.GetWindowDrawList().AddImage(texture.Handle, iconMin, iconMin + new Vector2(OmegaModalMarkSize, OmegaModalMarkSize));
+            ImGui.GetWindowDrawList().AddImage(texture.Handle, iconMin, iconMin + Ui(OmegaModalMarkSize, OmegaModalMarkSize));
         else
         {
             const string glyph = "Ω";
             var glyphSize = ImGui.CalcTextSize(glyph);
             ImGui.GetWindowDrawList().AddText(
-                iconMin + new Vector2((OmegaModalMarkSize - glyphSize.X) * 0.5f, (OmegaModalMarkSize - glyphSize.Y) * 0.5f),
+                iconMin + new Vector2((Ui(OmegaModalMarkSize) - glyphSize.X) * 0.5f, (Ui(OmegaModalMarkSize) - glyphSize.Y) * 0.5f),
                 ImGui.GetColorU32(ImGuiCol.Text),
                 glyph);
         }
 
-        ImGui.SetCursorPos(new Vector2(OmegaModalMarkSize + 14f, (OmegaModalHeaderHeight - ImGui.GetTextLineHeight()) * 0.5f));
+        ImGui.SetCursorPos(new Vector2(Ui(OmegaModalMarkSize + 14f), (Ui(OmegaModalHeaderHeight) - ImGui.GetTextLineHeight()) * 0.5f));
         ImGui.TextUnformatted(title);
 
         if (allowClose)
         {
             ImGui.SetCursorPos(new Vector2(
-                Math.Max(OmegaModalMarkSize + 120f, ImGui.GetWindowWidth() - AppBarControlSize - 2f),
-                (OmegaModalHeaderHeight - AppBarControlSize) * 0.5f));
+                Math.Max(Ui(OmegaModalMarkSize + 120f), ImGui.GetWindowWidth() - Ui(AppBarControlSize) - Ui(2f)),
+                (Ui(OmegaModalHeaderHeight) - Ui(AppBarControlSize)) * 0.5f));
             closeClicked = DrawApplicationIconButton(FontAwesomeIcon.Times, $"modal-{id}-close", $"Close {title}", true);
         }
 

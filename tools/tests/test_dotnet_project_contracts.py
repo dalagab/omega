@@ -60,6 +60,13 @@ class DotNetProjectContractTests(unittest.TestCase):
         self.assertNotIn('workflow.IndexOf("\\n  publish_marketplace:', text)
         self.assertNotIn('workflow.IndexOf("\\n  publish_evidence:', text)
 
+    def test_spotlight_shelf_regression_uses_declared_source_binding(self) -> None:
+        path = common.ROOT / "Omega.RegressionTests" / "RegressionCases.CollectionsAndSpotlight.cs"
+        text = path.read_text(encoding="utf-8")
+        self.assertIn('var shelves = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SpotlightShelves.cs"));', text)
+        self.assertIn('Contains(shelves, "layout.Columns", "Spotlight cards wrap instead of overflowing at high UI scale");', text)
+        self.assertNotIn('Contains(spotlightShelves, "layout.Columns"', text)
+
     def test_plugin_sqlite_runtime_is_self_contained_for_wine(self) -> None:
         project_path = common.ROOT / "Omega" / "DalagabOmega.csproj"
         project_text = project_path.read_text(encoding="utf-8")
@@ -77,6 +84,49 @@ class DotNetProjectContractTests(unittest.TestCase):
         regressions = (common.ROOT / "Omega.RegressionTests" / "Omega.RegressionTests.csproj").read_text(encoding="utf-8")
         self.assertIn('PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12"', regressions)
         self.assertNotIn("SQLitePCLRaw.provider.winsqlite3", regressions)
+
+
+    def test_windows_regression_literals_follow_responsive_sigmascope_source(self) -> None:
+        catalog = (common.ROOT / "Omega.RegressionTests" / "RegressionCases.Catalog.cs").read_text(encoding="utf-8")
+        collections = (common.ROOT / "Omega.RegressionTests" / "RegressionCases.CollectionsAndSpotlight.cs").read_text(encoding="utf-8")
+        layout = (common.ROOT / "Omega.RegressionTests" / "RegressionCases.Layout.cs").read_text(encoding="utf-8")
+        install = (common.ROOT / "Omega.RegressionTests" / "RegressionCases.InstallAndDistribution.cs").read_text(encoding="utf-8")
+        security = (common.ROOT / "Omega.RegressionTests" / "RegressionCases.SecurityIntelligence.cs").read_text(encoding="utf-8")
+        navigation = (common.ROOT / "Omega.RegressionTests" / "RegressionCases.PluginNavigationLifecycle.cs").read_text(encoding="utf-8")
+        library_sigmascope = (common.ROOT / "Omega" / "UI" / "MarketplaceWindow.LibrarySigmascope.cs").read_text(encoding="utf-8")
+
+        self.assertIn('contentStartY + Ui(166f)', catalog)
+        self.assertIn('contentStartY + Ui(178f)', collections)
+        self.assertIn('var panelWidth = Math.Max(Ui(1f), ImGui.GetContentRegionAvail().X)', layout)
+        self.assertIn('var rowHeight = Ui(MarketplaceLayoutRules.UpdatesRowHeight)', collections)
+        self.assertIn('style.ScrollbarSize + Ui(4f)', collections)
+        self.assertIn('ImGuiStyleVar.FrameRounding, Ui(4f)', install)
+        self.assertIn('ImGuiStyleVar.ChildRounding, Ui(4f)', install)
+        self.assertIn('if (expandedWindowSize.Y > Ui(96f))', install)
+        self.assertIn('expandedWindowSize = preferredPhysical;', install)
+        self.assertIn('MinimumSize = DefaultExpandedWindowSize', install)
+        self.assertIn('production-sigmascope-v2-report.json', security)
+        self.assertIn('cardMax - Ui(0.5f, 0.5f)', navigation)
+        self.assertIn('Sigmascope evidence shared by', library_sigmascope)
+        self.assertIn('ImGui.Dummy(Ui(0f, 6f))', collections)
+        self.assertIn('CalculateInlineFilterPanelHeight()', install)
+        self.assertIn('ResponsiveColumns(available, 230f, 3, 12f)', install)
+        self.assertIn('gridRows * frame * 2.15f', install)
+        self.assertIn('var leftInset = Ui(12f)', security)
+        self.assertIn('rowMax - Ui(0.5f, 0.5f)', navigation)
+
+        self.assertNotIn('contentStartY + 166f', catalog)
+        self.assertNotIn('contentStartY + 178f', collections)
+        self.assertNotIn('style.ScrollbarSize + 4f', collections)
+        self.assertNotIn('production-security-v2-report.json', security)
+        self.assertNotIn('cardMax - new Vector2(0.5f, 0.5f)', navigation)
+        self.assertNotIn('ImGui.Dummy(new Vector2(0f, 6f))', collections)
+        self.assertNotIn('ImGuiStyleVar.ChildRounding, 4f', install)
+        self.assertNotIn('if (expandedWindowSize.Y > 96f)', install)
+        self.assertNotIn('expandedWindowSize = DefaultExpandedWindowSize;', install)
+        self.assertNotIn('Math.Max(minimum, scaled)', install)
+        self.assertNotIn('const float leftInset = 12f', security)
+        self.assertNotIn('rowMax - new Vector2(0.5f, 0.5f)', navigation)
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ Project site: https://github.com/dalagab/omega
 
 - **Spotlight** with five editorial plugin picks, each using a subdued card tint derived from that plugin's own logo palette, plus neutral latest-additions and latest-updates shelves.
 - **Discover** with screenshot-rich Microsoft Store-style cards first, a compact fallback list for metadata-only plugins, full plugin product pages, global search, authors, repositories, categories, and searchable tags.
-- **Library** has three explicit views: **All** is a clean filtered list of installed plugins with local install timing, one-click plugin settings when exposed by Dalamud, and user-requested portable configuration ZIP backups written to the operating-system temporary directory; the Library header can import those backups again for an already-installed plugin after validation and confirmation. **Security scan** summarizes the current installed environment from repository/package-specific Omega security results and identifies the exact artifact SHA-256 behind shared mirror results. **Collections** is the Dalamud-owned folder/profile manager, with additive multi-collection membership managed inside each opened folder.
+- **Library** has three explicit views: **All** is a clean filtered list of installed plugins with local install timing, one-click plugin settings when exposed by Dalamud, and user-requested portable configuration ZIP backups written to the operating-system temporary directory; the Library header can import those backups again for an already-installed plugin after validation and confirmation. **Sigmascope** summarizes the current installed environment from repository/package-specific evidence and identifies the exact artifact SHA-256 behind shared mirror results. **Collections** is the Dalamud-owned folder/profile manager, with additive multi-collection membership managed inside each opened folder.
 - **Updates** performs selected plugin updates through Dalamud, combines them with periodic Omega application-version checks and durable Definitions-update state, and can assist when a newer release has migrated to another repository by showing the source move before updating. Omega probes the lightweight Definitions descriptor hourly while loaded and emits one native Dalamud notification per newly seen Definitions revision; plugin/app update counts remain separate from the blue Definitions attention marker on the Downloads rail icon.
 - **Settings** for source visibility, user-added repositories, catalog refresh, and access to the EULA/risk disclosure.
 - Official/default Dalamud plugins alongside community repositories.
@@ -156,7 +156,7 @@ The solution runs the Omega regression suite as part of the build.
 
 ### Repository regression gates
 
-Repository automation has its own regression layer. [`regression-tests.yml`](.github/workflows/regression-tests.yml) runs deterministic Python unit tests, static workflow-contract tests, offline catalog/security/v2 handoff fixtures, scanner/v2/legacy-compactor self-tests, and the normal Windows/.NET Omega regression suite on relevant pushes and pull requests.
+Repository automation has its own regression layer. [`regression-tests.yml`](.github/workflows/regression-tests.yml) runs deterministic Python unit tests, static workflow-contract tests, offline catalog/security/v2 handoff fixtures, Sigmascope/v2/legacy-compactor self-tests, and the normal Windows/.NET Omega regression suite on relevant pushes and pull requests.
 
 The catalog, security-v2, legacy compatibility, and release workflows also run the Python regression suite before performing network or publication work. Larger SQLite/hash/v2 validation blocks live in importable tested modules rather than embedded workflow snippets, so the same production validation logic is exercised directly by unit tests.
 
@@ -170,13 +170,29 @@ python -m unittest discover -s tools/tests -p 'test_*.py' -v
 
 Omega's central catalog workflow is documented in [`catalog/WORKFLOW.md`](catalog/WORKFLOW.md). GitHub Actions builds the authoritative catalog/evidence state from repository manifests and incremental website enrichment, then projects the small marketplace SQLite database consumed by Omega. The previous database supplies ETag/Last-Modified state and last-known-good website metadata, so unchanged sources can return HTTP 304 and fresh project pages are reused. PluginMaster ingestion accepts the common community trailing-comma extension while still rejecting other malformed JSON.
 
-Any push to `main` that changes `tools/catalog/**`, source definitions, the bootstrap catalog, or one of the database-pipeline workflow files automatically restarts the chain from the catalog builder. The production security workflow then starts from the last-known-good `security-evidence-v2` snapshot, stages a bounded scanner update, validates/audits it, and only then replaces the v2 snapshot and small client marketplace projection. The old SQLite compactor workflow is manual compatibility-only. This deliberately favors correctness over a shorter partial run: changed processing code is exercised against current state without allowing a failed candidate to replace production.
+Any push to `main` that changes `tools/catalog/**`, source definitions, the bootstrap catalog, or one of the database-pipeline workflow files automatically restarts the chain from the catalog builder. The production Sigmascope workflow then starts from the last-known-good `security-evidence-v2` snapshot, stages a bounded Sigmascope update, validates/audits it, and only then replaces the v2 snapshot and small client marketplace projection. The old SQLite compactor workflow is manual compatibility-only. This deliberately favors correctness over a shorter partial run: changed processing code is exercised against current state without allowing a failed candidate to replace production.
 
-Community source intake is repository automation rather than a client-side crawler. The **Add a plugin source** issue form accepts public HTTPS PluginMaster feeds; `source-submissions.yml` validates them with the production manifest parser, a bounded response size, a bounded plugin count, and public-network redirect checks. Community submissions may be automatically validated, but only a workflow dispatch or an OWNER/MEMBER/COLLABORATOR-associated event can enter the privileged persistence job. That job revalidates from a fresh checkout before changing `sources/community-sources.json` or `sources/source-overrides.json`. Community-submitted feeds enter Definitions **disabled by default**. When a scanner artifact has no usable `RepoUrl`, Scanner 2.1 can also derive a GitHub repository from the package URL. Remaining public-source gaps are projected into bounded, deduplicated follow-up issues; an approved public GitHub source reply is stored under a stable plugin/source key in `sources/source-overrides.json` and queues a targeted rescan. Numeric SQLite variant IDs are never used as durable override identities.
+Community source intake is repository automation rather than a client-side crawler. The **Add a plugin source** issue form accepts public HTTPS PluginMaster feeds; `source-submissions.yml` validates them with the production manifest parser, a bounded response size, a bounded plugin count, and public-network redirect checks. Community submissions may be automatically validated, but only a workflow dispatch or an OWNER/MEMBER/COLLABORATOR-associated event can enter the privileged persistence job. That job revalidates from a fresh checkout before changing `sources/community-sources.json` or `sources/source-overrides.json`. Community-submitted feeds enter Definitions **disabled by default**. When a Sigmascope artifact has no usable `RepoUrl`, Sigmascope can also derive a GitHub repository from the package URL. Remaining public-source gaps are projected into bounded, deduplicated follow-up issues; an approved public GitHub source reply is stored under a stable plugin/source key in `sources/source-overrides.json` and queues a targeted Sigmascope re-analysis. Numeric SQLite variant IDs are never used as durable override identities.
 
 **Only the small marketplace database is downloaded and used by Omega.** At runtime Omega first loads the packaged/bootstrap SQLite catalog and the persisted local `omega-catalog.sqlite`. The catalog updater checks the small online descriptor at the `catalog-latest` release, compares the catalog SHA-256, downloads `omega-marketplace.sqlite.zip` only when the marketplace database changed, verifies the bundle/database hashes and SQLite integrity, atomically replaces the local database, then immediately uses that database for marketplace projection, search, source metadata, filters, Spotlight, Library, Updates, and current security summaries and bounded dependency summaries. Detailed forensic evidence lives on the repository-side `security-evidence-v2` snapshot branch and is never downloaded by Omega. The archived `security-evidence-latest` SQLite release remains only as the v1 historical/rollback reference. If the network or validation step fails, the previous local SQLite database stays active.
 
 Marketplace artwork uses a separate bounded local SQLite cache, `omega-image-cache.sqlite`, under Omega's plugin configuration directory. Omega stores the encoded PNG/JPEG/WebP/etc. bytes exactly as downloaded, so already-compressed image formats are not inflated into raw pixels on disk. Icons and screenshots therefore survive plugin/game restarts and are decoded locally on subsequent views. Stale entries are served immediately and conditionally revalidated in the background after seven days. The cache is least-recently-used and capped at 256 MiB / 4096 entries, so image caching does not enlarge the published marketplace database or force every user to download every screenshot.
+
+
+### Optional `.omega/index.json` repository metadata
+
+Plugin developers can add an optional `.omega/index.json` file at the root of their public source repository. Omega treats this as presentation/indexing metadata only; it does not grant the repository any additional execution authority. The format is intentionally extensible so more opt-in presentation fields can be added later without replacing the file.
+
+The first supported key is a product-page banner:
+
+```json
+{
+  "SchemaVersion": 1,
+  "OmegaBannerUrl": "https://example.org/plugin/banner.png"
+}
+```
+
+For GitHub repositories, `OmegaBannerUrl` may also be a repository-relative path such as `images/banner.png`; Definitions resolves it to the repository's default branch. HTTPS URLs are required. A wide **16:9** image is recommended. The banner is drawn only as a subtle background behind the existing translucent product hero panel and is downloaded through Omega's normal bounded artwork cache. Unknown future keys are preserved in server-side enrichment metadata but are not exposed to the client until Omega defines their meaning. Omega's own [`.omega/index.json`](.omega/index.json) is the reference example.
 
 ## Repository security
 
@@ -204,7 +220,7 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Release metadata
 
-- Omega version: `0.8.80`
+- Omega work-build version: `0.8.95`
 - Dalamud API: `15`
 - Assembly/internal identity: `DalagabOmega`
 - Namespace: `Dalagab.Omega`
@@ -213,9 +229,9 @@ FINAL FANTASY XIV, Square Enix, Dalamud, and XIVLauncher are not products of the
 
 ## Plugin security intelligence
 
-Omega's third-party plugin analysis runs entirely in GitHub Actions. The scanner never executes or loads the plugin code it inspects. [`security-scanner.yml`](.github/workflows/security-scanner.yml) starts from the last-known-good `security-evidence-v2` snapshot, scans only new, changed, stale-scanner, or periodically due variants within a bounded batch, and stages all changes away from the published branch. Failed revalidations retain their previous validated current pointer; a broken candidate cannot replace production.
+Omega's third-party plugin analysis runs entirely in GitHub Actions. **Sigmascope never executes or loads the plugin code it inspects.** [`sigmascope.yml`](.github/workflows/sigmascope.yml) starts from the last-known-good `security-evidence-v2` snapshot, examines only new, changed, stale-Sigmascope, or periodically due variants within a bounded batch, and stages all changes away from the published branch. Failed revalidations retain their previous validated current pointer; a broken candidate cannot replace production.
 
-Scanner 2.5.0 records exact artifact SHA-256 values, source provenance when available, dependencies, managed metadata, IL call sites, reachability, permission candidates, static capability evidence, and resolved NuGet identities recovered from packaged `*.deps.json` files when project lock/assets files are absent. It also derives bounded automation classifications for game UI/menu control, synthetic clicks, targeting, character action execution, world/NPC interaction, teleport/travel, movement/navigation, camera control, inventory/vendor/retainer control, native input injection, and known automation-oriented IPC integrations. These are capability findings, not claims that a runtime branch necessarily executes.
+Sigmascope 2.5.0 records exact artifact SHA-256 values, source provenance when available, dependencies, managed metadata, IL call sites, reachability, permission candidates, static capability evidence, and resolved NuGet identities recovered from packaged `*.deps.json` files when project lock/assets files are absent. It also derives bounded automation classifications for game UI/menu control, synthetic clicks, targeting, character action execution, world/NPC interaction, teleport/travel, movement/navigation, camera control, inventory/vendor/retainer control, native input injection, and known automation-oriented IPC integrations. These are capability findings, not claims that a runtime branch necessarily executes.
 
 Security enrichment inventories literal HTTP(S) endpoints without contacting them, strips credentials/query strings/fragments before storage, flags hard-coded filesystem paths outside known FFXIV/Dalamud locations when filesystem API evidence is present, compares artifact hashes for the same plugin version across independent sources, and imports exact-version NuGet vulnerability records from OSV. The production pipeline explicitly reports observed/queryable NuGet versions and fails publication if OSV coverage does not query the expected bounded package set.
 
@@ -224,41 +240,41 @@ Security enrichment inventories literal HTTP(S) endpoints without contacting the
 The production pipeline deliberately separates the client database from detailed evidence:
 
 - **Marketplace database** (`catalog-latest/omega-marketplace.sqlite.zip`) is the only database downloaded by Omega. It contains plugin/source presentation data, current security and automation summaries, bounded plugin-dependency summaries, and semantic revision IDs. It contains no detailed forensic tables.
-- **Security Evidence v2** (`security-evidence-v2` branch) is the authoritative detailed scanner state. Per-variant JSON points to content-addressed artifact analyses; ordinary findings/dependencies/permissions/automation remain bounded JSON, while large managed symbols/calls/reachability use compressed JSONL shards. Small NuGet, IPC, dependency-component, advisory, plugin, and artifact indexes support incremental processing without rebuilding one giant evidence database.
+- **Security Evidence v2** (`security-evidence-v2` branch) is the authoritative detailed Sigmascope state. Per-variant JSON points to content-addressed artifact analyses; ordinary findings/dependencies/permissions/automation remain bounded JSON, while large managed symbols/calls/reachability use compressed JSONL shards. Small NuGet, IPC, dependency-component, advisory, plugin, and artifact indexes support incremental processing without rebuilding one giant evidence database.
 - **Archived v1 evidence** (`security-evidence-latest/omega-security-evidence.sqlite.zip`) is retained as the pre-v2 historical/rollback reference. Production scanning no longer downloads, compacts, or republishes it.
 
-Every production run builds a disposable SQLite working projection from current catalog identities plus the small current v2 evidence needed by the existing scanner/projector. Successful new analyses are merged into a staged v2 tree; unchanged content-addressed analyses are reused. The staged tree must pass intrinsic hash/size/record-digest/pointer validation, OSV coverage gates, marketplace validation, and the independent developer audit before `publish_security_evidence_v2.py` can atomically replace the snapshot branch. The marketplace release is updated only after those gates pass.
+Every production run builds a disposable SQLite working projection from current catalog identities plus the small current v2 evidence needed by the existing Sigmascope/projector. Successful new analyses are merged into a staged v2 tree; unchanged content-addressed analyses are reused. The staged tree must pass intrinsic hash/size/record-digest/pointer validation, OSV coverage gates, marketplace validation, and the independent developer audit before `publish_security_evidence_v2.py` can atomically replace the snapshot branch. The marketplace release is updated only after those gates pass.
 
 
 ### Dependency summaries in Definitions
 
 Omega keeps detailed component evidence in the server-side security evidence database, but the in-game **Dependencies** panel deliberately shows only relationships to other plugins. Definitions projects bounded required/optional plugin relationships and IPC integrations; framework assemblies (including Dalamud itself), NuGet packages, bundled assemblies, native libraries and other implementation components are not presented as plugin dependencies. IPC is directional: channels obtained through `GetIpcProvider` are registered as provider observations, while `GetIpcSubscriber` creates a consumer edge. When exactly one current plugin exposes the same exact channel string, Omega connects the consumer to that provider and makes the provider clickable; ambiguous or unresolved channels remain explicit instead of being guessed from naming conventions. Source-assisted analysis additionally classifies each consumed IPC edge as **required**, **feature**, **optional**, or **unknown**, together with a conservative confidence level. A subscriber call alone never proves a mandatory dependency: high-confidence `required` needs startup/fatal/direct-use evidence, while availability guards and feature/configuration gates support feature or optional classifications. The in-game install chooser warns when a high-confidence required provider is missing and can route the user to the provider, but Omega does not silently install inferred dependencies. Detailed component paths, raw relationship evidence, dependency history, full resolution tables, IPC endpoint/registry evidence and advisory records remain server-side and continue to inform security analysis.
 
-The Discover product page also groups every known repository variant into distinct downloadable **Packages & repositories**. Package identity prefers the scanner's artifact SHA-256 when available and otherwise falls back to the package URL; each group lists the repository manifests that reference it, with official Dalamud sources shown first. This makes mirrors and genuinely different package artifacts visible without duplicating binaries in Definitions. Required plugin dependencies also participate in the marketplace risk indicator: if a required dependency (recursively, within a bounded traversal) has UI/character/gameplay automation capability, the dependent plugin receives the automation/radiation status with a tooltip explaining the dependency path. Optional integrations do not automatically escalate the parent plugin.
+The Discover product page also groups every known repository variant into distinct downloadable **Packages & repositories**. Package identity prefers Sigmascope's artifact SHA-256 when available and otherwise falls back to the package URL; each group lists the repository manifests that reference it, with official Dalamud sources shown first. This makes mirrors and genuinely different package artifacts visible without duplicating binaries in Definitions. Required plugin dependencies also participate in the marketplace risk indicator: if a required dependency (recursively, within a bounded traversal) has UI/character/gameplay automation capability, the dependent plugin receives the automation/radiation status with a tooltip explaining the dependency path. Optional integrations do not automatically escalate the parent plugin.
 
 ### Definitions identity and changelog
 
 Every production marketplace database carries three troubleshooting identifiers:
 
 - **Definitions Revision** (`cat-v1-…`) identifies the logical marketplace plus current security state.
-- **Security Revision** (`sec-<scanner-version>-…`) identifies the current user-facing normalized static-analysis state.
+- **Security Revision** (`sec-<sigmascope-version>-…`) identifies the current user-facing normalized static-analysis state.
 - **Evidence Revision** (`ev-v2-…`) identifies the detailed content-addressed evidence/index state that produced the security summaries.
 
 These are different from `catalogSha256` and `bundleSha256`, which verify exact transport bytes. Transport scan IDs, scan timestamps, branch commit IDs, and compression representation do not by themselves change semantic revisions. A forensic-evidence/index change can advance Evidence Revision without changing the user-facing Security Revision; a meaningful current finding/capability/dependency change advances Security Revision and therefore Catalog Revision.
 
-The marketplace database keeps the bounded revision/changelog information needed by the client. Scanner freshness lives in the v2 current variant records; no separate giant evidence release or scan-ledger publication is required.
+The marketplace database keeps the bounded revision/changelog information needed by the client. Sigmascope freshness lives in the v2 current variant records; no separate giant evidence release or scan-ledger publication is required.
 
 Security findings describe observed static capabilities and risk indicators. They are not a malware verdict, and no findings is not proof that a plugin is safe. Plugin archives are treated as hostile input: downloads, entry counts, total expansion, compression ratio, paths, metadata parsing, graph sizes, and scan time are bounded.
 
 ## Release notes
 
-Project release notes are maintained in [`CHANGELOG.md`](CHANGELOG.md). The release workflow extracts the matching version section and publishes it with the immutable GitHub release and `omega-latest`.
+Project release notes are maintained in [`CHANGELOG.md`](CHANGELOG.md). Development work accumulates under **Unreleased** with a small work-build marker. When a GitHub version tag is cut, the release workflow publishes that pending block as the tagged release notes and, when the tagged commit is still the default-branch tip, automatically rolls it into the new versioned history section before reopening an empty **Unreleased** block.
 
 Omega product pages can also surface collected usage/command information and plugin changelogs from Definitions, so installation, operation, update context, and security provenance stay in one place.
 
 ## Security developer view
 
-Repository developers can inspect the detailed published scanner evidence independently of the in-game client:
+Repository developers can inspect the detailed published Sigmascope evidence independently of the in-game client:
 
 ```bash
 python tools/security/developer_view.py

@@ -25,7 +25,7 @@ class WorkflowContractTests(unittest.TestCase):
             '- "sources/**"',
             '- "catalog/bootstrap/**"',
             '- ".github/workflows/catalog-builder.yml"',
-            '- ".github/workflows/security-scanner.yml"',
+            '- ".github/workflows/sigmascope.yml"',
             '- ".github/workflows/catalog-compaction.yml"',
             "workflow_dispatch:",
             "schedule:",
@@ -44,7 +44,7 @@ class WorkflowContractTests(unittest.TestCase):
 
     def test_database_processing_changes_restart_from_catalog_builder(self) -> None:
         builder = self.read("catalog-builder.yml")
-        security = self.read("security-scanner.yml")
+        security = self.read("sigmascope.yml")
         compactor = self.read("catalog-compaction.yml")
 
         # One broad path owns every current/future catalog-processing module. This is deliberate:
@@ -52,10 +52,10 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn('- "tools/catalog/**"', builder)
         self.assertIn('- "sources/**"', builder)
         self.assertIn('- "catalog/bootstrap/**"', builder)
-        self.assertIn('- ".github/workflows/security-scanner.yml"', builder)
+        self.assertIn('- ".github/workflows/sigmascope.yml"', builder)
         self.assertIn('- ".github/workflows/catalog-compaction.yml"', builder)
 
-        # Security chains from the catalog builder; the retired v1 compactor is manual only.
+        # Sigmascope chains from the catalog builder; the retired v1 compactor is manual only.
         self.assertNotRegex(security, r"(?m)^  push:\s*$")
         self.assertNotRegex(compactor, r"(?m)^  push:\s*$")
         self.assertIn('- "Omega SQLite catalog builder"', security)
@@ -66,10 +66,10 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertGreater(len(catalog_modules), 5, "catalog processing modules should exist under the trigger root")
 
     def test_security_scanner_stages_and_publishes_v2_fail_closed(self) -> None:
-        text = self.read("security-scanner.yml")
+        text = self.read("sigmascope.yml")
         self.assert_has(
             text,
-            "name: Omega plugin security scanner",
+            "name: Omega Sigmascope",
             '- "Omega SQLite catalog builder"',
             "github.event.workflow_run.conclusion == 'success'",
             "actions: read",
@@ -78,7 +78,7 @@ class WorkflowContractTests(unittest.TestCase):
             "ref: security-evidence-v2",
             "path: catalog/security-v2-current",
             "--name omega-sqlite-catalog",
-            "production_security_v2_pipeline.py",
+            "production_sigmascope_v2_pipeline.py",
             "--candidate-evidence catalog/security-v2-candidate",
             "--source-overrides sources/source-overrides.json",
             "validate_marketplace_catalog.py --root catalog/publication-output",
@@ -89,7 +89,7 @@ class WorkflowContractTests(unittest.TestCase):
             "--audit-report",
             "--branch security-evidence-v2",
             "gh release upload catalog-latest",
-            "source-scan-followups.json",
+            "sigmascope-source-followups.json",
             "tools/catalog/create_source_followup_issues.py",
             "continue-on-error: true",
         )
@@ -119,7 +119,7 @@ class WorkflowContractTests(unittest.TestCase):
             "contents: write",
             "actions: write",
             "gh workflow run catalog-builder.yml",
-            "gh workflow run security-scanner.yml",
+            "gh workflow run sigmascope.yml",
             'internal_names="$internal"',
         )
         validate_start = text.index("  validate:")
@@ -138,14 +138,14 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertGreaterEqual(text.count("--community sources/community-sources.json"), 2)
 
     def test_security_scanner_routes_osv_through_the_v2_pipeline(self) -> None:
-        workflow = self.read("security-scanner.yml")
-        pipeline = (common.ROOT / "tools" / "security" / "production_security_v2_pipeline.py").read_text(encoding="utf-8")
-        self.assertIn("production_security_v2_pipeline.py", workflow)
+        workflow = self.read("sigmascope.yml")
+        pipeline = (common.ROOT / "tools" / "security" / "production_sigmascope_v2_pipeline.py").read_text(encoding="utf-8")
+        self.assertIn("production_sigmascope_v2_pipeline.py", workflow)
         self.assertIn("collect_public_advisories.collect", pipeline)
         self.assertIn("nugetPackageVersionPairs", pipeline)
         self.assertIn("OSV publication gate failed", pipeline)
         self.assertIn("max_scans=0", pipeline, "advisory matches must be re-projected without starting another artifact scan")
-        self.assertIn("security-advisory-refresh-report.json", pipeline)
+        self.assertIn("sigmascope-advisory-refresh-report.json", pipeline)
 
 
 
@@ -167,7 +167,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("contents: write", text)
 
     def test_marketplace_publication_follows_v2_snapshot_gate(self) -> None:
-        text = self.read("security-scanner.yml")
+        text = self.read("sigmascope.yml")
         v2_publish = text.index("Publish validated Security Evidence v2 snapshot atomically")
         marketplace = text.index("Publish small client marketplace only after all v2 gates pass")
         self.assertLess(v2_publish, marketplace)
@@ -184,7 +184,7 @@ class WorkflowContractTests(unittest.TestCase):
 
     def test_workflow_chain_names_match_exactly(self) -> None:
         builder = self.read("catalog-builder.yml")
-        security = self.read("security-scanner.yml")
+        security = self.read("sigmascope.yml")
         builder_name = re.search(r"(?m)^name:\s*(.+)$", builder).group(1).strip()
         self.assertIn(builder_name, security)
         self.assertIn("Omega legacy SQLite catalog compactor (disabled)", self.read("catalog-compaction.yml"))
@@ -210,23 +210,23 @@ class WorkflowContractTests(unittest.TestCase):
             "pull_request:",
             "workflow_dispatch:",
             "python -m unittest discover -s tools/tests -p 'test_*.py' -v",
-            "python tools/catalog/security_scan.py --self-test",
-            "python tools/catalog/security_scan.py --hardening-self-test",
+            "python tools/catalog/sigmascope.py --self-test",
+            "python tools/catalog/sigmascope.py --hardening-self-test",
             "python tools/catalog/compact_sqlite_catalog.py --self-test",
             "python tools/catalog/project_marketplace_catalog.py --self-test",
             "dotnet build .\\Omega.sln -c Release",
         )
 
     def test_workflows_do_not_duplicate_tool_version_constants(self) -> None:
-        self.assertNotIn("2.0.0", self.read("security-scanner.yml"))
+        self.assertNotIn("2.0.0", self.read("sigmascope.yml"))
         self.assertNotIn("1.2.0", self.read("catalog-compaction.yml"))
         self.assertNotIn("1.0.0", self.read("catalog-compaction.yml"))
 
     def test_revision_and_v2_publication_tools_are_workflow_inputs(self) -> None:
         builder = self.read("catalog-builder.yml")
-        security = self.read("security-scanner.yml")
+        security = self.read("sigmascope.yml")
         self.assertIn('- "tools/catalog/**"', builder, "all catalog/security processing modules must restart from the builder on push")
-        self.assertIn("production_security_v2_pipeline.py", security)
+        self.assertIn("production_sigmascope_v2_pipeline.py", security)
         self.assertIn("publish_security_evidence_v2.py", security)
         self.assertIn("validate_marketplace_catalog.py", security)
 
@@ -261,7 +261,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("SQLitePCLRaw.provider.winsqlite3", text)
 
     def test_workflows_do_not_embed_large_python_heredocs(self) -> None:
-        for name in ("catalog-builder.yml", "security-scanner.yml", "catalog-compaction.yml"):
+        for name in ("catalog-builder.yml", "sigmascope.yml", "catalog-compaction.yml"):
             text = self.read(name)
             self.assertNotIn("python - <<'PY'", text, f"{name} should call tested Python modules instead of inline Python")
 

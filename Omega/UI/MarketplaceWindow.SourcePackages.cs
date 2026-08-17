@@ -47,18 +47,18 @@ internal sealed partial class MarketplaceWindow
         const string warning = "Plugin differs from the preferred package baseline";
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.24f, 0.035f, 0.045f, 0.90f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.82f, 0.16f, 0.20f, 0.94f));
-        ImGui.BeginChild("product-package-baseline-warning", new Vector2(0f, 78f), true,
+        ImGui.BeginChild("product-package-baseline-warning", new Vector2(0f, Ui(78f)), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        ImGui.SetCursorPosY(14f);
+        ImGui.SetCursorPosY(Ui(14f));
         DrawPluginFontAwesomeRiskIcon(
             FontAwesomeIcon.ExclamationTriangle,
             new Vector4(0.98f, 0.28f, 0.31f, 1f),
             warning,
-            26f);
-        ImGui.SameLine(0f, 10f);
+            Ui(26f));
+        ImGui.SameLine(0f, Ui(10f));
         ImGui.BeginGroup();
         ImGui.TextUnformatted(warning);
-        ImGui.PushTextWrapPos(ImGui.GetWindowContentRegionMax().X - 12f);
+        ImGui.PushTextWrapPos(ImGui.GetWindowContentRegionMax().X - Ui(12f));
         ImGui.TextDisabled("At least one repository publishes different plugin package bytes for the same version and API. Review Packages & repositories before installing or updating from that source.");
         ImGui.PopTextWrapPos();
         ImGui.EndGroup();

@@ -214,6 +214,9 @@ internal sealed class SqliteCatalogStore
         var websiteLinksProjection = runtimeColumns.Contains("website_links_json")
             ? "website_links_json"
             : "'[]' AS website_links_json";
+        var omegaBannerProjection = runtimeColumns.Contains("omega_banner_url")
+            ? "omega_banner_url"
+            : "'' AS omega_banner_url";
         var adultContentProjection = runtimeColumns.Contains("plugin_nsfw")
             ? "plugin_nsfw"
             : "0 AS plugin_nsfw";
@@ -267,7 +270,7 @@ internal sealed class SqliteCatalogStore
                    dip17_channel,source_name,source_url,source_is_official,website_url,website_title,
                    website_description,{websiteReadmeProjection},website_image_urls_json,website_enriched,{adultContentProjection},
                    {securityProjection},
-                   {authorsProjection},{websiteLinksProjection}
+                   {authorsProjection},{websiteLinksProjection},{omegaBannerProjection}
               FROM runtime_plugin_variants;
             """;
         using var reader = command.ExecuteReader();
@@ -314,7 +317,7 @@ internal sealed class SqliteCatalogStore
                 SecurityStatus = GetString(reader, 35),
                 SecurityScannedAtUtcText = GetString(reader, 36),
                 SecurityArtifactSha256 = GetString(reader, 37),
-                SecurityScannerVersion = GetString(reader, 38),
+                SigmascopeVersion = GetString(reader, 38),
                 SecurityHighestSeverity = GetString(reader, 39, "none"),
                 SecurityInformationalCount = GetInt(reader, 40),
                 SecurityCautionCount = GetInt(reader, 41),
@@ -336,6 +339,7 @@ internal sealed class SqliteCatalogStore
                 SecurityError = GetString(reader, 57),
                 Authors = ReadStrings(GetString(reader, 58, "[]")),
                 OmegaProjectLinks = ReadProjectLinks(GetString(reader, 59, "[]")),
+                OmegaBannerUrl = GetString(reader, 60),
             });
         }
         return result;

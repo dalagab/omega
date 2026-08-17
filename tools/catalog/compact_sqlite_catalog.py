@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Compact Omega's published SQLite catalog without changing the runtime projection.
 
-The security scanner deliberately stores detailed evidence in normalized SQLite tables. Older
-scanner versions also embedded that same evidence in large JSON snapshots on both the historical
+Sigmascope deliberately stores detailed evidence in normalized SQLite tables. Older
+Sigmascope generations also embedded that same evidence in large JSON snapshots on both the historical
 scan row and the current row. This utility rewrites those redundant JSON snapshots to bounded
 summaries, preserves append-only scan history and normalized evidence, vacuums the database into a
 new file, rebuilds the transport bundle, updates descriptor hashes, and records an auditable
@@ -201,7 +201,7 @@ def build_compact_summary(row: sqlite3.Row) -> str:
 
 
 def migrate_source_schema(db: sqlite3.Connection) -> None:
-    """Apply additive scanner/runtime schema migrations before validating a legacy evidence database."""
+    """Apply additive Sigmascope/runtime schema migrations before validating a legacy evidence database."""
     security_scan.ensure_schema(db)
     build_sqlite_catalog.create_runtime_view(db)
     db.commit()

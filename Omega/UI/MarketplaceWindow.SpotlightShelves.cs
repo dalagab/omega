@@ -18,11 +18,11 @@ internal sealed partial class MarketplaceWindow
         DrawSpotlightSectionTitle("Spotlight");
         DrawPromotedSpotlightRow(plugins, installed, currentApi, currentDalamudVersion);
 
-        ImGui.Dummy(new Vector2(1f, 16f));
+        ImGui.Dummy(Ui(1f, 16f));
         DrawSpotlightSectionTitle("Latest additions", "Plugins most recently first seen in Omega Definitions. This is catalog discovery time, not necessarily the plugin's original release date.");
         DrawRecencyShelf(GetLatestAdditions(plugins), installed, "latest-additions", currentApi, currentDalamudVersion);
 
-        ImGui.Dummy(new Vector2(1f, 16f));
+        ImGui.Dummy(Ui(1f, 16f));
         DrawSpotlightSectionTitle("Latest updates", "Plugins with the most recent known publication/update timestamp supplied by their preferred package source. Entries without a reliable timestamp are not promoted here.");
         DrawRecencyShelf(GetLatestUpdates(plugins), installed, "latest-updates", currentApi, currentDalamudVersion);
     }
@@ -39,11 +39,13 @@ internal sealed partial class MarketplaceWindow
             .ToArray();
 
         var layout = CalculateSpotlightRowLayout();
-        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + layout.OffsetX);
         for (var index = 0; index < SpotlightCardCount; index++)
         {
-            if (index > 0)
-                ImGui.SameLine(0f, SpotlightCardGap);
+            var column = index % layout.Columns;
+            if (column == 0)
+                ImGui.SetCursorPosX(ImGui.GetCursorPosX() + layout.OffsetX);
+            else
+                ImGui.SameLine(0f, Ui(SpotlightCardGap));
 
             var plugin = promoted[index];
             if (plugin is null)
@@ -81,15 +83,17 @@ internal sealed partial class MarketplaceWindow
         Version currentDalamudVersion)
     {
         var layout = CalculateSpotlightRowLayout();
-        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + layout.OffsetX);
         for (var index = 0; index < SpotlightCardCount; index++)
         {
-            if (index > 0)
-                ImGui.SameLine(0f, SpotlightCardGap);
+            var column = index % layout.Columns;
+            if (column == 0)
+                ImGui.SetCursorPosX(ImGui.GetCursorPosX() + layout.OffsetX);
+            else
+                ImGui.SameLine(0f, Ui(SpotlightCardGap));
 
             if (index >= plugins.Count)
             {
-                ImGui.Dummy(new Vector2(layout.CardWidth, SpotlightShelfCardHeight));
+                ImGui.Dummy(new Vector2(layout.CardWidth, Ui(SpotlightShelfCardHeight)));
                 continue;
             }
 
@@ -111,39 +115,29 @@ internal sealed partial class MarketplaceWindow
             IsListingCurrentlyAvailable(plugin, installedPlugin, currentApi, currentDalamudVersion));
         ImGui.BeginChild(
             $"{shelfId}-{plugin.InternalName}",
-            new Vector2(cardWidth, SpotlightShelfCardHeight),
+            new Vector2(cardWidth, Ui(SpotlightShelfCardHeight)),
             true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
+        var cardMin = ImGui.GetWindowPos();
+        var cardMax = cardMin + ImGui.GetWindowSize();
         var artworkClicked = DrawPluginArtwork(
             plugin,
             null,
-            SpotlightShelfArtworkSize,
+            Ui(SpotlightShelfArtworkSize),
             ImGui.GetContentRegionAvail().X,
             currentApi,
             currentDalamudVersion,
             showOverlays: false);
-
-        // Latest additions/updates use the same exact-package scan icon as the product page.
-        // Automation remains a separate marker rather than replacing scan state.
-        var afterArtwork = ImGui.GetCursorPos();
-        const float statusIconSize = 22f;
-        const float statusIconGap = 7f;
-        var statusHovered = DrawPluginScanAndAutomationIndicators(
-            plugin,
-            Math.Max(statusIconSize, cardWidth - 8f),
-            8f,
-            statusIconSize,
-            statusIconGap);
-        ImGui.SetCursorPos(afterArtwork);
 
         ImGui.Spacing();
         CenterText(Shorten(plugin.Name, 24));
         CenterText(Shorten(string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author, 24), disabled: true);
 
         var clicked = ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
-        if (ImGui.IsWindowHovered() && !statusHovered)
+        if (ImGui.IsWindowHovered())
             SetReadableTooltip("Open in Discover");
+        DrawPluginPanelRibbons(plugin, installedPlugin, currentApi, currentDalamudVersion, cardMin, cardMax);
         ImGui.EndChild();
         PopUnavailableListingStyle(availabilityStyle);
 
@@ -156,7 +150,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextUnformatted(title);
         if (!string.IsNullOrWhiteSpace(explanation))
         {
-            ImGui.SameLine(0f, 7f);
+            ImGui.SameLine(0f, Ui(7f));
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
                 SetReadableTooltip(explanation);
@@ -164,12 +158,17 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
     }
 
-    private static (float CardWidth, float OffsetX) CalculateSpotlightRowLayout()
+    private static (float CardWidth, float OffsetX, int Columns) CalculateSpotlightRowLayout()
     {
-        var availableWidth = ImGui.GetContentRegionAvail().X;
-        var fittedWidth = (availableWidth - (SpotlightCardGap * (SpotlightCardCount - 1))) / SpotlightCardCount;
-        var cardWidth = Math.Clamp(fittedWidth, SpotlightCardMinWidth, SpotlightCardMaxWidth);
-        var rowWidth = (cardWidth * SpotlightCardCount) + (SpotlightCardGap * (SpotlightCardCount - 1));
-        return (cardWidth, Math.Max(0f, (availableWidth - rowWidth) * 0.5f));
+        var availableWidth = Math.Max(Ui(1f), ImGui.GetContentRegionAvail().X);
+        var columns = ResponsiveColumns(availableWidth, SpotlightCardMinWidth, SpotlightCardCount, SpotlightCardGap);
+        var cardWidth = ResponsiveCardWidth(
+            availableWidth,
+            columns,
+            SpotlightCardGap,
+            SpotlightCardMinWidth,
+            SpotlightCardMaxWidth);
+        var rowWidth = (cardWidth * columns) + (Ui(SpotlightCardGap) * (columns - 1));
+        return (cardWidth, Math.Max(0f, (availableWidth - rowWidth) * 0.5f), columns);
     }
 }

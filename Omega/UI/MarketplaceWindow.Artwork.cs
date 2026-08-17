@@ -20,8 +20,8 @@ internal sealed partial class MarketplaceWindow
         var startX = ImGui.GetCursorPosX();
         ImGui.BeginGroup();
 
-        var iconSize = Math.Clamp(width - 16f, 112f, 150f);
-        var tileVisible = ImGui.IsRectVisible(new Vector2(width, iconSize + 54f));
+        var iconSize = Math.Clamp(width - Ui(16f), Ui(112f), Ui(150f));
+        var tileVisible = ImGui.IsRectVisible(new Vector2(width, iconSize + Ui(54f)));
         if (DrawPluginArtwork(selectedVariant, installedPlugin, iconSize, width, currentApi, currentDalamudVersion, tileVisible))
             OpenPluginDetails(selectedVariant);
 
@@ -132,7 +132,7 @@ internal sealed partial class MarketplaceWindow
         var min = ImGui.GetItemRectMin();
         var max = min + new Vector2(iconSize, iconSize);
         var draw = ImGui.GetWindowDrawList();
-        draw.AddRectFilled(min, max, ImGui.GetColorU32(ImGuiCol.FrameBg), 10f);
+        draw.AddRectFilled(min, max, ImGui.GetColorU32(ImGuiCol.FrameBg), Ui(10f));
 
         var text = PluginInitials(plugin);
         var textSize = ImGui.CalcTextSize(text);
@@ -200,9 +200,9 @@ internal sealed partial class MarketplaceWindow
               (plugin.MinimumDalamudVersion is null || plugin.MinimumDalamudVersion <= currentDalamudVersion);
         var text = api > 0 ? api.ToString() : "?";
         var textSize = ImGui.CalcTextSize(text);
-        var badgeHeight = 24f;
-        var badgeWidth = Math.Max(28f, textSize.X + 14f);
-        const float inset = 6f;
+        var badgeHeight = Ui(24f);
+        var badgeWidth = Math.Max(Ui(28f), textSize.X + Ui(14f));
+        var inset = Ui(6f);
         var artworkMax = artworkMin + artworkSize;
         var min = new Vector2(artworkMax.X - badgeWidth - inset, artworkMin.Y + inset);
         var max = min + new Vector2(badgeWidth, badgeHeight);
@@ -242,26 +242,26 @@ internal sealed partial class MarketplaceWindow
                 artworkMin,
                 artworkMax,
                 ImGui.ColorConvertFloat4ToU32(new Vector4(0.13f, 0.86f, 0.77f, 1f)),
-                9f,
+                Ui(9f),
                 ImDrawFlags.None,
-                3f);
-            DrawArtworkLabel("Selected", artworkMin + new Vector2(6f, 6f), new Vector4(0.05f, 0.48f, 0.44f, 0.96f));
+                Ui(3f));
+            DrawArtworkLabel("Selected", artworkMin + Ui(6f, 6f), new Vector4(0.05f, 0.48f, 0.44f, 0.96f));
         }
 
         if (plugin.IsUnmaintained(currentApi))
         {
-            var y = isSelected ? 34f : 6f;
-            DrawArtworkLabel("Unmaintained", artworkMin + new Vector2(6f, y), new Vector4(0.66f, 0.24f, 0.08f, 0.97f));
+            var y = Ui(isSelected ? 34f : 6f);
+            DrawArtworkLabel("Unmaintained", artworkMin + new Vector2(Ui(6f), y), new Vector4(0.66f, 0.24f, 0.08f, 0.97f));
         }
     }
 
     private static void DrawArtworkLabel(string text, Vector2 min, Vector4 color)
     {
         var textSize = ImGui.CalcTextSize(text);
-        var size = new Vector2(textSize.X + 12f, 22f);
+        var size = new Vector2(textSize.X + Ui(12f), Ui(22f));
         var draw = ImGui.GetWindowDrawList();
-        draw.AddRectFilled(min, min + size, ImGui.ColorConvertFloat4ToU32(color), 11f);
-        draw.AddText(min + new Vector2(6f, (22f - textSize.Y) * 0.5f), 0xFFFFFFFF, text);
+        draw.AddRectFilled(min, min + size, ImGui.ColorConvertFloat4ToU32(color), Ui(11f));
+        draw.AddText(min + new Vector2(Ui(6f), (Ui(22f) - textSize.Y) * 0.5f), 0xFFFFFFFF, text);
     }
 
     /// <summary>
@@ -277,9 +277,9 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        const float gap = 6f;
-        const float inset = 7f;
-        var size = Math.Clamp(Math.Min(artworkSize.X, artworkSize.Y) * 0.22f, 24f, 30f);
+        var gap = Ui(6f);
+        var inset = Ui(7f);
+        var size = Math.Clamp(Math.Min(artworkSize.X, artworkSize.Y) * 0.22f, Ui(24f), Ui(30f));
         var canInstall = installedPlugin is null && HasInstallableVariant(plugin.InternalName, currentApi, currentDalamudVersion);
         var actionCount = canInstall ? 2 : 1;
         var artworkMax = artworkMin + artworkSize;

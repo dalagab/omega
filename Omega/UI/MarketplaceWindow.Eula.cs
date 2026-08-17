@@ -68,7 +68,7 @@ internal sealed partial class MarketplaceWindow
     private void DrawEulaModal(bool requiredAcceptance)
     {
         var keepOpen = true;
-        ImGui.SetNextWindowSize(new Vector2(860f, 680f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(UiModalSize(860f, 680f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal(EulaPopupId, ref keepOpen, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoTitleBar))
         {
             if (!keepOpen && !requiredAcceptance)
@@ -92,7 +92,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextDisabled(ProjectGitHubUrl);
         ImGui.Separator();
 
-        var footerHeight = requiredAcceptance ? 78f : 58f;
+        var footerHeight = Ui(requiredAcceptance ? 78f : 58f);
         ImGui.BeginChild("omega-eula-document", new Vector2(0f, -footerHeight), true, ImGuiWindowFlags.AlwaysVerticalScrollbar);
         DrawEulaDocument();
         ImGui.EndChild();
@@ -151,13 +151,13 @@ internal sealed partial class MarketplaceWindow
 
         if (!canAccept)
             ImGui.BeginDisabled();
-        if (ImGui.Button(acceptLabel, new Vector2(150f, 34f)) && canAccept)
+        if (ImGui.Button(acceptLabel, Ui(150f, 34f)) && canAccept)
             AcceptEula();
         if (!canAccept)
             ImGui.EndDisabled();
 
         ImGui.SameLine();
-        if (ImGui.Button("Decline / Close Omega", new Vector2(190f, 34f)))
+        if (ImGui.Button("Decline / Close Omega", Ui(190f, 34f)))
             DeclineEula();
 
         ImGui.SameLine();

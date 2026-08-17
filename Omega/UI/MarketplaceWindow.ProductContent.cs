@@ -28,8 +28,8 @@ internal sealed partial class MarketplaceWindow
         DrawProductSectionHeading("How to use");
         ImGui.Indent(14f);
         ImGui.TextDisabled("Commands, controls and usage information collected from the plugin's own metadata or public project README.");
-        ImGui.Dummy(new Vector2(1f, 5f));
-        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(320f, Math.Min(940f, ImGui.GetContentRegionAvail().X)));
+        ImGui.Dummy(new Vector2(Ui(1f), Ui(5f)));
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(Ui(320f), Math.Min(Ui(940f), ImGui.GetContentRegionAvail().X)));
         ImGui.TextWrapped(usage);
         ImGui.PopTextWrapPos();
         ImGui.Unindent(14f);
@@ -83,10 +83,10 @@ internal sealed partial class MarketplaceWindow
                 ImGui.SameLine(0f, 8f);
                 ImGui.TextDisabled(entry.SourceName);
             }
-            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(300f, Math.Min(900f, ImGui.GetContentRegionAvail().X)));
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(Ui(300f), Math.Min(Ui(900f), ImGui.GetContentRegionAvail().X)));
             ImGui.TextWrapped(entry.Changelog);
             ImGui.PopTextWrapPos();
-            ImGui.Dummy(new Vector2(1f, 7f));
+            ImGui.Dummy(new Vector2(Ui(1f), Ui(7f)));
         }
         if (entries.Count > maximumEntries)
             ImGui.TextDisabled($"{entries.Count - maximumEntries} older changelog entr{(entries.Count - maximumEntries == 1 ? "y" : "ies")} retained in Definitions.");
@@ -98,7 +98,7 @@ internal sealed partial class MarketplaceWindow
         if (entries.Count == 0)
             return false;
 
-        const float size = 20f;
+        var size = Ui(20f);
         if (ImGui.InvisibleButton($"##{id}", new Vector2(size, size)))
             ImGui.OpenPopup($"{id}-popup");
         var min = ImGui.GetItemRectMin();
@@ -110,7 +110,7 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("View update changelog");
 
-        ImGui.SetNextWindowSizeConstraints(new Vector2(420f, 180f), new Vector2(760f, 620f));
+        ImGui.SetNextWindowSizeConstraints(UiModalSize(420f, 180f), UiModalSize(760f, 620f));
         if (ImGui.BeginPopup($"{id}-popup"))
         {
             ImGui.TextUnformatted($"{plugin.Name} changelog");

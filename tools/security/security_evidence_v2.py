@@ -27,6 +27,128 @@ DEFAULT_INLINE_DATASET_BYTES = 4 * 1024 * 1024
 JSON_COLUMNS_SUFFIX = "_json"
 NUGET_KINDS = ("nuget", "nuget-lock", "nuget-resolved")
 
+TRANSPORT_REPORT_SCHEMA = "omega.security-evidence.scan-summary.v2"
+MAX_TRANSPORT_REPORT_BYTES = 256 * 1024
+
+
+def _bounded_text(value: Any, limit: int = 4096) -> str:
+    text = str(value or "")
+    if len(text) <= limit:
+        return text
+    return text[: max(0, limit - 1)] + "…"
+
+
+def _countish_transport(value: Any) -> int:
+    if isinstance(value, (list, tuple, set, dict)):
+        return len(value)
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
+    """Return a bounded summary for legacy ``report_json`` transport.
+
+    The original scanner report duplicates normalized Evidence v2 tables and can be
+    tens of MiB.  Variant descriptors only need the small compatibility fields still
+    consumed by incremental scanning, source follow-ups and legacy projections.  The
+    detailed findings/dependencies/calls/symbols remain in their dedicated v2 datasets.
+    """
+    raw = row.get("report_json")
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = {}
+    report = raw if isinstance(raw, dict) else {}
+
+    source = report.get("source") if isinstance(report.get("source"), dict) else {}
+    source_intel = source.get("dependencyIntelligence") if isinstance(source.get("dependencyIntelligence"), dict) else {}
+    source_fingerprints = source_intel.get("fingerprints") if isinstance(source_intel.get("fingerprints"), dict) else {}
+    package = report.get("package") if isinstance(report.get("package"), dict) else {}
+    automation = report.get("automation") if isinstance(report.get("automation"), dict) else {}
+    intelligence = report.get("dependencyIntelligence") if isinstance(report.get("dependencyIntelligence"), dict) else {}
+    if not intelligence and isinstance(report.get("intelligence"), dict):
+        intelligence = report.get("intelligence")
+
+    capabilities = automation.get("capabilities") if isinstance(automation.get("capabilities"), list) else []
+    compact_caps: list[Any] = []
+    for item in capabilities[:128]:
+        if isinstance(item, dict):
+            compact_caps.append({
+                key: item.get(key)
+                for key in ("id", "capabilityId", "label", "level", "automationLevel", "confidence", "reachable", "indirect")
+                if key in item
+            })
+        elif isinstance(item, (str, int, float, bool)):
+            compact_caps.append(item)
+
+    summary = {
+        "schema": TRANSPORT_REPORT_SCHEMA,
+        "scannerVersion": str(row.get("scanner_version") or report.get("scannerVersion") or ""),
+        "scannedAtUtc": str(row.get("scanned_at_utc") or report.get("scannedAtUtc") or ""),
+        "status": str(row.get("status") or report.get("status") or ""),
+        "highestSeverity": str(row.get("highest_severity") or report.get("highestSeverity") or "none"),
+        "counts": {
+            "informational": int(row.get("informational_count") or 0),
+            "caution": int(row.get("caution_count") or 0),
+            "high": int(row.get("high_count") or 0),
+            "critical": int(row.get("critical_count") or 0),
+        },
+        "source": {
+            "available": bool(row.get("source_available") or source.get("available") or False),
+            "repository": _bounded_text(row.get("source_repository") or source.get("repository") or "", 8192),
+            "commit": _bounded_text(row.get("source_commit") or source.get("commit") or "", 512),
+            "branch": _bounded_text(source.get("branch"), 512),
+            "treeSha256": _bounded_text(source.get("treeSha256"), 128),
+            "error": _bounded_text(source.get("error"), 8192),
+            "dependencyIntelligence": {
+                "fingerprints": {
+                    "relevantSourceSha256": _bounded_text(source_fingerprints.get("relevantSourceSha256"), 128),
+                }
+            },
+        },
+        "package": {
+            "archive": _bounded_text(package.get("archive"), 2048),
+            "fileCount": _countish_transport(package.get("fileCount") or package.get("files")),
+            "uncompressedBytes": _countish_transport(package.get("uncompressedBytes")),
+            "bundledExecutableCount": _countish_transport(package.get("bundledExecutableCount") or package.get("bundledExecutables")),
+            "bundledManagedAssemblyCount": _countish_transport(package.get("bundledManagedAssemblyCount") or package.get("bundledManagedAssemblies")),
+            "bundledNativeLibraryCount": _countish_transport(package.get("bundledNativeLibraryCount") or package.get("bundledNativeLibraries")),
+        },
+        "automation": {
+            "level": str(automation.get("level") or row.get("automation_level") or "none"),
+            "capabilities": compact_caps,
+        },
+        "intelligence": {
+            "coverage": intelligence.get("coverage") if isinstance(intelligence.get("coverage"), dict) else {},
+            "limits": intelligence.get("limits") if isinstance(intelligence.get("limits"), dict) else {},
+        },
+        "error": _bounded_text(row.get("error") or report.get("error") or "", 8192),
+    }
+    encoded = canonical_json_bytes(summary)
+    if len(encoded) > MAX_TRANSPORT_REPORT_BYTES:
+        # Coverage/limits are informational compatibility data.  Preserve the fields
+        # required by incremental/source workflows first, then drop these optional
+        # maps rather than ever allowing a legacy report to inflate a variant file.
+        summary["intelligence"] = {"coverage": {}, "limits": {}}
+        encoded = canonical_json_bytes(summary)
+    if len(encoded) > MAX_TRANSPORT_REPORT_BYTES:
+        summary["automation"]["capabilities"] = []
+        encoded = canonical_json_bytes(summary)
+    if len(encoded) > MAX_TRANSPORT_REPORT_BYTES:
+        raise ValueError(f"transport report summary exceeds {MAX_TRANSPORT_REPORT_BYTES} bytes")
+    return summary
+
+
+def transport_security_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a scan/current row for bounded Evidence v2 transport."""
+    result = dict(row)
+    if "report_json" in result:
+        result["report_json"] = compact_report_for_transport(result)
+    return result
+
 # Core evidence is tied to one scan. Primary keys and scan_id are transport
 # identities, not semantic evidence, so they are excluded from record digests.
 CORE_DATASETS: tuple[tuple[str, str, str], ...] = (

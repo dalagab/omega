@@ -15,7 +15,7 @@ internal sealed partial class MarketplaceWindow
             return;
 
         var keepOpen = settingsOpen;
-        ImGui.SetNextWindowSize(new Vector2(920f, 660f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(UiModalSize(920f, 660f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal("Settings###DalagabOmegaSettings", ref keepOpen,
                 ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse))
         {
@@ -61,33 +61,33 @@ internal sealed partial class MarketplaceWindow
             : "Choose which plugin sources appear in Omega. You can also add your own repository.");
         ImGui.Separator();
 
-        if (DrawPillButton($"Curated ({curatedCount})", "sources-curated", new Vector2(126f, 32f), sourceSection == SourceManagerSection.Curated))
+        if (DrawPillButton($"Curated ({curatedCount})", "sources-curated", Ui(126f, 32f), sourceSection == SourceManagerSection.Curated))
         {
             sourceSection = SourceManagerSection.Curated;
             sourceSearch = string.Empty;
         }
         ImGui.SameLine();
-        if (DrawPillButton($"My Sources ({userCount})", "sources-user", new Vector2(136f, 32f), sourceSection == SourceManagerSection.UserAdded))
+        if (DrawPillButton($"My Sources ({userCount})", "sources-user", Ui(136f, 32f), sourceSection == SourceManagerSection.UserAdded))
         {
             sourceSection = SourceManagerSection.UserAdded;
             sourceSearch = string.Empty;
         }
         ImGui.SameLine();
-        if (DrawPillButton($"Dalamud ({dalamudCount})", "sources-dalamud", new Vector2(132f, 32f), sourceSection == SourceManagerSection.DalamudConfigured))
+        if (DrawPillButton($"Dalamud ({dalamudCount})", "sources-dalamud", Ui(132f, 32f), sourceSection == SourceManagerSection.DalamudConfigured))
         {
             sourceSection = SourceManagerSection.DalamudConfigured;
             sourceSearch = string.Empty;
             addSourceOpen = false;
         }
         ImGui.SameLine();
-        if (DrawPillButton(addSourceOpen ? "Hide add tools" : "Add sources", "sources-add", new Vector2(128f, 32f), addSourceOpen))
+        if (DrawPillButton(addSourceOpen ? "Hide add tools" : "Add sources", "sources-add", Ui(128f, 32f), addSourceOpen))
         {
             if (sourceSection == SourceManagerSection.DalamudConfigured)
                 sourceSection = SourceManagerSection.UserAdded;
             addSourceOpen = !addSourceOpen;
         }
 
-        ImGui.SetNextItemWidth(520f);
+        ImGui.SetNextItemWidth(Math.Min(Ui(520f), ImGui.GetContentRegionAvail().X));
         ImGui.InputTextWithHint("##source-search", "Filter repositories by name or URL...", ref sourceSearch, 256);
     }
 
@@ -147,7 +147,7 @@ internal sealed partial class MarketplaceWindow
         IReadOnlyDictionary<string, RepositoryCatalogStatus> statuses)
     {
         ImGui.Spacing();
-        if (!ImGui.BeginTable("omega-source-table", 5, ImGuiTableFlags.None, new Vector2(860f, addSourceOpen ? 230f : 360f), 0f))
+        if (!ImGui.BeginTable("omega-source-table", 5, ImGuiTableFlags.None, new Vector2(Math.Min(Ui(860f), ImGui.GetContentRegionAvail().X), Ui(addSourceOpen ? 230f : 360f)), 0f))
             return;
 
         ImGui.TableSetupColumn("Use");
@@ -300,9 +300,9 @@ internal sealed partial class MarketplaceWindow
         ImGui.Separator();
         ImGui.Text("Add one source");
         ImGui.TextDisabled("A source may contain one plugin or many; it still needs to be a PluginMaster-compatible HTTPS JSON endpoint for Dalamud servicing.");
-        ImGui.SetNextItemWidth(220);
+        ImGui.SetNextItemWidth(Math.Min(Ui(220f), ImGui.GetContentRegionAvail().X));
         ImGui.InputTextWithHint("##newRepoName", "Source name", ref newRepositoryName, 128);
-        ImGui.SetNextItemWidth(480);
+        ImGui.SetNextItemWidth(Math.Min(Ui(480f), ImGui.GetContentRegionAvail().X));
         ImGui.InputTextWithHint("##newRepoUrl", "https://.../pluginmaster.json", ref newRepositoryUrl, 512);
 
         ImGui.Checkbox("Register this source with Dalamud", ref integrateNewRepositoryWithDalamud);

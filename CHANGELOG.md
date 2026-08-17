@@ -1,6 +1,184 @@
 # Changelog
 
-Omega follows semantic product versions. Release entries here are consumed by the GitHub release workflow so the same human-readable notes are published with each immutable release.
+Omega follows semantic product versions. Development work stays under **Unreleased** until a GitHub tag is cut; the release workflow then assigns that pending work to the tagged version. Small work-build markers preserve which internal package introduced each change without turning every development package into a release entry.
+
+## [Unreleased]
+
+<sub>work build: 0.8.95</sub>
+
+### Sigmascope Evidence v2 publication repair
+
+- Keep the 32 MiB per-file publication ceiling fail-closed; do not solve the live GitHub Action failure by raising the safety limit.
+- Stop duplicating Sigmascope's full legacy `report_json` inside both the current and scan objects of every Evidence v2 variant descriptor. Detailed findings, dependencies, managed symbols, calls, reachability and other forensic records remain in their normalized content-addressed Evidence v2 datasets.
+- Replace the legacy report copy with a deterministic bounded transport summary containing only compatibility state still needed by incremental rescans, source follow-ups and legacy marketplace projection.
+- During every candidate synchronization, compact legacy oversized descriptors for **all active variants**, not only variants examined in the current batch. This lets the next successful Sigmascope run repair the already-published oversized Evidence v2 population in one pass.
+- Add regression fixtures that reproduce the live failure with a descriptor exceeding 32 MiB and prove both fresh migration and legacy candidate synchronization reduce it below 1 MiB without losing source fingerprints needed for incremental scanning.
+
+### GitHub Actions identity
+
+- Keep `.github/workflows/sigmascope.yml` as the only canonical scanner workflow and `Omega Sigmascope` as the visible Actions name. The retired `security-scanner.yml` is intentionally absent from production source, so the next source publication removes the old workflow file while preserving its historical runs in GitHub.
+
+<sub>work build: 0.8.94</sub>
+
+### About information hierarchy
+
+- Simplify the Omega identity hero: keep the publisher and product tagline, remove the duplicated inline version and the redundant marketplace-description sentence.
+- Move the Definitions explanation beneath the Sigmascope banner, where the relationship between the online scanner, its collected results, and Omega Definitions is explained in short player-facing language.
+- Remove implementation-oriented Sigmascope copy from About and shorten the lower feature bullets so the modal focuses on what an average player needs to know.
+
+<sub>work build: 0.8.93</sub>
+
+### Release-note staging
+
+- Keep development changelog entries versionless under `Unreleased` instead of creating a release heading for every ZipRunner/source package.
+- When a GitHub version tag is cut, release-note extraction uses the exact version section when one already exists and otherwise consumes the complete `Unreleased` block.
+- Add a safe changelog finalizer for tag workflows: when the tagged commit is still the default-branch tip, the pending block is rolled into the tagged version and a fresh `Unreleased` section is opened.
+
+### Repository presentation metadata
+
+- Add the extensible `.omega/index.json` repository metadata file. `OmegaBannerUrl` is the first supported presentation key; unknown future keys remain preserved in server-side enrichment metadata so the format can grow without replacing the file.
+- Resolve `.omega/index.json` from public GitHub source repositories during Definitions enrichment, cache it with website metadata, project `OmegaBannerUrl` into the client SQLite database, and retain backward compatibility with older Definitions that do not yet expose the column.
+- Product detail pages use `OmegaBannerUrl` as a subtle, wide background behind the existing translucent hero panel. Banners are lazily downloaded through Omega's bounded persistent artwork cache.
+- Add Omega's own `.omega/index.json` plus the supplied wide Omega marketplace banner as the reference implementation.
+
+### Sigmascope identity
+
+- Add the supplied Sigmascope V2.0 banner to About. The existing Omega identity and Definitions block remain fixed; Sigmascope appears at the start of the scrollable explanatory area with its evidence-oriented description.
+
+### Availability
+
+- This work adds presentation metadata and release-process behavior only. Plugin lifecycle operations remain delegated to Dalamud, and Sigmascope analysis semantics/evidence schemas are unchanged.
+
+## [0.8.92] - 2026-08-17
+
+### Card overlay alignment
+
+- Move the automation ribbon to the top-right status stack beside the Sigmascope ribbon, keeping installed and collection ownership ribbons together on the left.
+- Inset the left ownership ribbon stack by 8 logical pixels so the first ribbon is not clipped by rounded card boundaries at high UI scale.
+- Simplify the card-level update indicator to the yellow sync glyph only: remove the circular background/border and align the bare icon to a consistent bottom-right inset.
+
+### Availability
+
+- 0.8.92 changes listing-card overlay placement/presentation only. Sigmascope semantics, evidence schemas, catalog behavior, website source, install/update authority, and ZipRunner overlay tombstones remain unchanged.
+
+## [0.8.91] - 2026-08-17
+
+### Release gate repair
+
+- Synchronize the two remaining hidden source-text assertions in the marketplace chrome regression. The 0.8.90 Windows run compiled both projects and reached 71/72; the failing test stopped at its first stale assertion, masking a second stale assertion later in the same method.
+- Preserve the scale-aware implementation unchanged: legacy collapsed geometry is detected with `expandedWindowSize.Y > Ui(96f)`, and repaired geometry restores the responsive `preferredPhysical` size derived from `ResponsiveDefaultWindowLogicalSize() * OmegaUiScale`.
+- Extend the Python Windows-regression preflight to require both responsive geometry contracts and explicitly reject the two retired fixed-scale literals.
+
+### Availability
+
+- 0.8.91 contains no runtime behavior change beyond 0.8.90. Sigmascope behavior, evidence schemas, marketplace behavior, website source, and ZipRunner overlay tombstones remain unchanged.
+
+## [0.8.90] - 2026-08-17
+
+### Release gate repair
+
+- Synchronize the final stale Windows C# source-text regression contract exposed by the 0.8.89 ZipRunner run, which compiled both projects and reached 71/72 regressions.
+- The inline Filters child panel already used the correct scale-aware `ImGuiStyleVar.ChildRounding, Ui(4f)` implementation; only the regression assertion still expected the pre-scale `4f` literal.
+- Extend the Python Windows-regression preflight with this final contract so the non-Windows package gate covers every stale literal surfaced by the 0.8.87–0.8.89 Windows runs.
+
+### Availability
+
+- 0.8.90 contains no runtime behavior change beyond 0.8.89. Sigmascope behavior, evidence schemas, marketplace behavior, website source, and ZipRunner overlay tombstones remain unchanged.
+
+## [0.8.89] - 2026-08-17
+
+### Release gate repair
+
+- Synchronize the final four stale C# source-text regression contracts exposed by the 0.8.88 ZipRunner run. The runtime and regression projects both compiled successfully and 68/72 regressions passed; the four failures still expected pre-scale literals for sidebar spacing, inline-filter sizing, About positioning, and the fallback Discover hover outline.
+- Keep the stronger responsive implementations unchanged: `ImGui.Dummy(Ui(0f, 6f))`, row-derived `CalculateInlineFilterPanelHeight()`, `var leftInset = Ui(12f)`, and `rowMax - Ui(0.5f, 0.5f)`.
+- Extend the Python Windows-regression preflight to cover these four contracts so the non-Windows package gate now mirrors all source literals exposed by the 0.8.88 Windows run.
+
+### Availability
+
+- 0.8.89 contains no runtime behavior change beyond 0.8.88. Sigmascope behavior, evidence schemas, marketplace behavior, website source, and the ZipRunner overlay tombstones remain unchanged.
+
+## [0.8.88] - 2026-08-17
+
+### Release gate repair
+
+- Synchronize nine stale C# source-text regression contracts with the responsive `Ui(...)` geometry and canonical Sigmascope production-report name already present in the runtime/workflow implementation. These assertions were the remaining 10/72 ZipRunner regression failures after both C# projects compiled successfully in 0.8.87.
+- Restore the constructor-size regression to its actual two-stage contract: `MarketplaceWindow` starts from the baseline default minimum, while `PreDraw` applies `ResponsiveMinimumWindowLogicalSize()` for the current viewport and Dalamud scale.
+- Finish one real Sigmascope wording cutover left in Library: identical package hashes now say `Sigmascope evidence shared by ...` instead of the legacy `scan shared by ...`.
+- Add a Python preflight contract covering the ten Windows regression literals so future responsive/branding source changes cannot leave the C# regression suite stale without being detected before packaging.
+
+### Availability
+
+- 0.8.88 changes no marketplace behavior, security-analysis semantics, evidence schema, or website content beyond the Library wording correction above. The 0.8.86 ZipRunner overlay tombstones remain intact.
+
+## [0.8.87] - 2026-08-17
+
+### Fixed
+
+- Correct the Spotlight high-scale C# regression assertion to use the declared `shelves` source variable. The 0.8.86 runtime project compiled successfully in ZipRunner, but `Omega.RegressionTests` failed with CS0103 because the assertion referenced the nonexistent identifier `spotlightShelves`.
+- Add a Python source-contract guard so the Spotlight shelf regression binding cannot silently drift to an undeclared variable again before the Windows/Dalamud compile gate.
+
+### Availability
+
+- 0.8.87 contains no runtime behavior change beyond 0.8.86. Sigmascope behavior, evidence schemas, marketplace functionality, website source, and overlay tombstones remain unchanged.
+
+## [0.8.86] - 2026-08-17
+
+### ZipRunner overlay repair
+
+- Add compatibility tombstones at the retired `MarketplaceWindow.PluginSecurity.cs` and `MarketplaceWindow.LibrarySecurity.cs` paths. ZipRunner 1.2.304.4 overlays package files onto the existing Omega workspace; 0.8.85 omitted those renamed files, so the pre-Sigmascope partial-class implementations remained beside the new Sigmascope files and produced eleven `CS0111` duplicate-member errors.
+- Keep `MarketplaceWindow.Sigmascope.cs` and `MarketplaceWindow.LibrarySigmascope.cs` as the canonical implementations. The tombstones contain no runtime behavior and exist only to make cumulative/overlay installation converge on the same compilable source state as a clean extraction.
+- No Sigmascope analysis semantics, evidence schema, marketplace behavior, or website content changes in this repair.
+
+## [0.8.85] - 2026-08-17
+
+### Sigmascope
+
+- Canonicalize Omega's evidence-gathering analysis engine as **Sigmascope**, a small twist on *Sigmascape*: Omega's data-driven test world for studying unexpected results and gathering evidence. A scope examines closely, matching the engine's purpose without implying a final trust judgement.
+- Rename the production workflow, canonical Python entry points, in-game Library/product presentation, ribbon/status language, and Security Developer View identity to Sigmascope. Historical Python command paths remain compatibility shims, while persisted `scanner_version` fields remain stable evidence/database contracts.
+- Add first-class Sigmascope engine name/version metadata to Security Evidence v2 analysis manifests and root indexes while retaining legacy scanner-version metadata for readers of older evidence.
+- Keep findings explicitly evidence-oriented: Sigmascope reports what Omega observed in package/public-source analysis and does not present a final trust verdict.
+- Website source is intentionally unchanged in this release; public-site Sigmascope rebranding is deferred.
+
+### Release gate repair
+
+- Repair the 0.8.84 C# high-scale regression contracts so ZipRunner checks the responsive `Ui(...)` geometry introduced by the 175–200% layout repair instead of stale fixed-pixel literals.
+- Correct the Spotlight wrap regression to inspect the responsive shelf implementation where the column layout is actually calculated.
+
+### Availability
+
+- Sigmascope is the canonical engine name from 0.8.85 onward. Compatibility aliases and historical evidence field names are retained only to avoid breaking existing tools, databases, and published evidence.
+
+## [0.8.84] - 2026-08-17
+
+### Fixed
+
+- Make Omega's marketplace geometry follow Dalamud's global UI scale instead of mixing scaled fonts with fixed-pixel cards, rows, controls, ribbons, artwork, and modal dimensions. The supported layout range is explicitly bounded through 225%, covering 175% and 200% configurations.
+- Keep the expanded window usable at high scale by deriving logical default/minimum sizes from the current viewport. Existing persisted oversized geometry is automatically reduced only when it no longer fits comfortably on the current display.
+- Make Discover responsive: rich-card columns reduce automatically as usable width shrinks, compact rows and artwork spacing scale consistently, and the ribbon/status overlay remains layout-neutral.
+- Make Spotlight shelves responsive so promoted and recency cards wrap into fewer columns rather than forcing a five-card row beyond the available content width.
+- Make the inline filter panel responsive: filter controls and filter actions reflow into fewer columns at high UI scale instead of overlapping or extending outside the panel.
+- Scale the sidebar, application bar, collection/library rows, product page, repository chooser, security panels, artwork overlays, source management, and shared modal chrome from a single Omega UI-scale helper.
+- Cap secondary modal sizes to the current viewport so Settings, EULA, install/update dialogs, repository review, source panels, screenshot viewing, and other secondary windows remain reachable at high scale.
+- Repair the C# ribbon regression strings so the Windows/ZipRunner compile gate can execute those presentation assertions instead of encountering malformed nested quote literals.
+
+### Availability
+
+- 0.8.84 is a UI/layout-only release on top of the 0.8.83 ribbon presentation and 0.8.82 Security Evidence v2 repairs. No marketplace database, scanner schema, evidence format, or publication-gate semantics change.
+
+## [0.8.83] - 2026-08-17
+
+### Changed
+
+- Replace Discover and Spotlight's floating top-right star/down-arrow/security icon cluster with a shared ribbon language. The top-right ribbon color now communicates security posture: blue for informational, gold for no findings, yellow for low, orange for medium, and red for high/critical.
+- Make the top-right ribbon glyph communicate source/index status independently from security color: a lock means public source was unavailable/closed, a white star means public source was indexed by Omega, and an indexed plugin that is behind the current Dalamud API receives a red star. Unscanned/incomplete packages use a neutral question ribbon instead of pretending a source/security conclusion exists.
+- Add left-edge state ribbons in a stable order: installed is green with a white check, named Dalamud collection membership uses a folder ribbon, and detected direct/required-dependency automation uses an Omega cyan/blue robot ribbon.
+- Show a Sync/update indicator at the bottom-right of a plugin panel whenever Omega resolves a compatible update for the installed version.
+- Keep ribbon overlays layout-neutral: artwork/text geometry does not shift when installed, collected, automated, outdated, or update state changes. Discover no longer renders the old circular installed check over the plugin artwork.
+- Apply the same ribbon semantics to Discover rich cards, Discover compact rows, Spotlight promoted cards, and Spotlight recency shelves.
+
+### Availability
+
+- 0.8.83 is a UI-only marketplace presentation release on top of the 0.8.82 Security Evidence v2 publication and Windows release-gate repairs. No scanner/evidence schema or publication-gate behavior is changed by this release.
 
 ## [0.8.82] - 2026-08-17
 

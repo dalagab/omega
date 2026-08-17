@@ -60,46 +60,37 @@ internal sealed partial class MarketplaceWindow
         ImGui.PushStyleColor(ImGuiCol.Border, cardColors.Border);
         ImGui.BeginChild(
             $"spotlight-card-{plugin.InternalName}",
-            new Vector2(cardWidth, SpotlightCardHeight),
+            new Vector2(cardWidth, Ui(SpotlightCardHeight)),
             true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
+        var cardMin = ImGui.GetWindowPos();
+        var cardMax = cardMin + ImGui.GetWindowSize();
         var contentStartY = ImGui.GetCursorPosY();
         var artworkClicked = DrawPluginArtwork(
             plugin,
             installedPlugin,
-            SpotlightArtworkSize,
+            Ui(SpotlightArtworkSize),
             ImGui.GetContentRegionAvail().X,
             currentApi,
             currentDalamudVersion,
             showOverlays: false);
 
-        // Spotlight uses the exact same default repository package and security visual as the
-        // product page. The scan result stays visible even when a separate automation marker exists.
-        var afterArtwork = ImGui.GetCursorPos();
-        const float statusIconSize = 22f;
-        const float statusIconGap = 7f;
-        var statusHovered = DrawPluginScanAndAutomationIndicators(
-            plugin,
-            Math.Max(statusIconSize, cardWidth - 8f),
-            contentStartY,
-            statusIconSize,
-            statusIconGap);
-        ImGui.SetCursorPos(afterArtwork);
 
-        ImGui.SetCursorPosY(contentStartY + 112f);
+        ImGui.SetCursorPosY(contentStartY + Ui(112f));
         CenterText(Shorten(plugin.Name, 24));
-        ImGui.SetCursorPosY(contentStartY + 136f);
+        ImGui.SetCursorPosY(contentStartY + Ui(136f));
         CenterText(Shorten(string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author, 26), disabled: true);
 
-        ImGui.SetCursorPosY(contentStartY + 166f);
+        ImGui.SetCursorPosY(contentStartY + Ui(166f));
         ImGui.Separator();
-        ImGui.SetCursorPosY(contentStartY + 178f);
+        ImGui.SetCursorPosY(contentStartY + Ui(178f));
         DrawSpotlightPitch(plugin);
 
         var clicked = ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
-        if (ImGui.IsWindowHovered() && !statusHovered)
+        if (ImGui.IsWindowHovered())
             SetReadableTooltip("Open in Discover");
+        DrawPluginPanelRibbons(plugin, installedPlugin, currentApi, currentDalamudVersion, cardMin, cardMax);
         ImGui.EndChild();
         ImGui.PopStyleColor(2);
         PopUnavailableListingStyle(availabilityStyle);
@@ -133,16 +124,16 @@ internal sealed partial class MarketplaceWindow
     {
         ImGui.BeginChild(
             $"spotlight-card-missing-{internalName}",
-            new Vector2(cardWidth, SpotlightCardHeight),
+            new Vector2(cardWidth, Ui(SpotlightCardHeight)),
             true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         var contentStartY = ImGui.GetCursorPosY();
-        ImGui.SetCursorPosY(contentStartY + 112f);
+        ImGui.SetCursorPosY(contentStartY + Ui(112f));
         CenterText(SpotlightDisplayName(internalName), disabled: true);
-        ImGui.SetCursorPosY(contentStartY + 166f);
+        ImGui.SetCursorPosY(contentStartY + Ui(166f));
         ImGui.Separator();
-        ImGui.SetCursorPosY(contentStartY + 178f);
+        ImGui.SetCursorPosY(contentStartY + Ui(178f));
         ImGui.TextDisabled("Loading highlighted plugin…");
         ImGui.EndChild();
     }

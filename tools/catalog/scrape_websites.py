@@ -41,7 +41,10 @@ README_EXCERPT_BYTES = 32 * 1024
 README_SCAN_BYTES = 128 * 1024
 MAX_IMAGES = 5
 MAX_IMAGE_CANDIDATES = 12
-PRESENTATION_SCHEMA_VERSION = 2
+PRESENTATION_SCHEMA_VERSION = 3
+OMEGA_INDEX_SCHEMA_VERSION = 1
+OMEGA_INDEX_PATH = ".omega/index.json"
+OMEGA_INDEX_MAX_BYTES = 64 * 1024
 BLOCKED_PROJECT_HOSTS = {
     "discord.gg", "discord.com", "www.discord.com",
     "twitter.com", "www.twitter.com", "x.com", "www.x.com",
@@ -84,6 +87,75 @@ def parse_github_repo(url: str | None) -> tuple[str, str] | None:
 def canonical_github_repo_url(owner_repo: tuple[str, str]) -> str:
     return f"https://github.com/{owner_repo[0]}/{owner_repo[1]}"
 
+
+
+
+def _normalize_omega_banner_url(value: str | None, owner: str, repo: str, branch: str) -> str:
+    raw = str(value or "").strip()
+    if not raw or len(raw) > 2048:
+        return ""
+    if raw.startswith(("http://", "https://")):
+        try:
+            parsed = urllib.parse.urlparse(raw)
+        except ValueError:
+            return ""
+        if parsed.scheme.lower() != "https" or not parsed.hostname or parsed.username or parsed.password:
+            return ""
+        if (parsed.hostname or "").lower() in {"github.com", "www.github.com"}:
+            parts = [part for part in parsed.path.split("/") if part]
+            if len(parts) >= 5 and parts[2].lower() == "blob":
+                return f"https://raw.githubusercontent.com/{parts[0]}/{parts[1]}/{parts[3]}/{'/'.join(parts[4:])}"
+        return raw
+    relative = raw.lstrip("/")
+    if not relative or ".." in relative.split("/"):
+        return ""
+    return f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{urllib.parse.quote(relative, safe='/._-')}"
+
+
+def parse_omega_index(raw: bytes, owner: str, repo: str, branch: str) -> dict:
+    if not raw or len(raw) > OMEGA_INDEX_MAX_BYTES:
+        return {}
+    try:
+        doc = json.loads(raw.decode("utf-8-sig"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return {}
+    if not isinstance(doc, dict):
+        return {}
+    schema = doc.get("SchemaVersion", OMEGA_INDEX_SCHEMA_VERSION)
+    try:
+        schema = int(schema)
+    except (TypeError, ValueError):
+        return {}
+    if schema != OMEGA_INDEX_SCHEMA_VERSION:
+        return {}
+    banner = _normalize_omega_banner_url(doc.get("OmegaBannerUrl"), owner, repo, branch)
+    result = dict(doc)
+    result["SchemaVersion"] = schema
+    if banner:
+        result["OmegaBannerUrl"] = banner
+    else:
+        result.pop("OmegaBannerUrl", None)
+    return result
+
+
+def fetch_github_omega_index(owner: str, repo: str, branch: str, token: str | None, timeout: float) -> dict:
+    ref = urllib.parse.quote(branch or "main", safe="")
+    try:
+        record = github_get(f"/repos/{owner}/{repo}/contents/{OMEGA_INDEX_PATH}?ref={ref}", token, timeout)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return {}
+        return {}
+    except (urllib.error.URLError, TimeoutError):
+        return {}
+    if not isinstance(record, dict) or record.get("type") != "file" or record.get("encoding") != "base64":
+        return {}
+    encoded = record.get("content") or ""
+    try:
+        raw = base64.b64decode(encoded, validate=False)
+    except Exception:
+        return {}
+    return parse_omega_index(raw, owner, repo, branch or "main")
 
 def looks_like_http_diagnostic(value: str | None) -> bool:
     """Reject transport/debug output from user-facing presentation fields."""
@@ -391,6 +463,7 @@ def scrape_github_repo(owner_repo: tuple[str, str], token: str | None, timeout: 
         "description": None, "homepage": None, "topics": [], "language": None,
         "license": None, "defaultBranch": None, "lastCommit": None,
         "readmeExcerpt": None, "imageUrls": [], "discordJoinImageUrls": [], "links": [], "rawLinks": [],
+        "omegaIndex": {}, "omegaBannerUrl": "",
         "presentationSchemaVersion": PRESENTATION_SCHEMA_VERSION, "url": f"https://github.com/{owner}/{repo}",
     }
     try:
@@ -417,6 +490,11 @@ def scrape_github_repo(owner_repo: tuple[str, str], token: str | None, timeout: 
         "lastCommit": meta.get("pushed_at"),
     })
 
+    omega_index = fetch_github_omega_index(owner, repo, out["defaultBranch"] or "main", token, timeout)
+    if omega_index:
+        out["omegaIndex"] = omega_index
+        out["omegaBannerUrl"] = str(omega_index.get("OmegaBannerUrl") or "")
+
     try:
         readme_meta = github_get(f"{base}/readme", token, timeout)
         if readme_meta.get("encoding") == "base64" and readme_meta.get("content"):
@@ -438,7 +516,7 @@ def scrape_github_repo(owner_repo: tuple[str, str], token: str | None, timeout: 
 
 def scrape_generic(url: str, timeout: float = 20.0) -> dict:
     normalized = normalize_repo_url(url)
-    out = {"url": normalized, "ok": False, "error": None, "title": None, "description": None, "imageUrls": [], "discordJoinImageUrls": [], "links": [], "rawLinks": [], "presentationSchemaVersion": PRESENTATION_SCHEMA_VERSION}
+    out = {"url": normalized, "ok": False, "error": None, "title": None, "description": None, "imageUrls": [], "discordJoinImageUrls": [], "links": [], "rawLinks": [], "omegaIndex": {}, "omegaBannerUrl": "", "presentationSchemaVersion": PRESENTATION_SCHEMA_VERSION}
     try:
         body = http_get_public_html(normalized, timeout).decode("utf-8", errors="replace")
         parser = PageMetadataParser()

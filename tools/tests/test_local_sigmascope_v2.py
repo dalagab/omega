@@ -19,8 +19,8 @@ for path in (CATALOG, SECURITY):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-import local_security_v2_test_scanner
-import security_scan
+import local_sigmascope_v2_test
+import sigmascope
 
 
 class LocalSecurityV2TestScannerTests(unittest.TestCase):
@@ -34,9 +34,9 @@ class LocalSecurityV2TestScannerTests(unittest.TestCase):
             },
         }
         payload = Path("FixturePlugin.deps.json")
-        intel = security_scan.empty_dependency_intelligence("artifact")
-        security_scan.scan_dependency_json(str(payload), json.dumps(deps), intel)
-        security_scan.finalize_intelligence(intel)
+        intel = sigmascope.empty_dependency_intelligence("artifact")
+        sigmascope.scan_dependency_json(str(payload), json.dumps(deps), intel)
+        sigmascope.finalize_intelligence(intel)
         found = {
             (item["kind"], item["name"], item.get("resolvedVersion", ""))
             for item in intel["dependencies"]
@@ -56,9 +56,9 @@ class LocalSecurityV2TestScannerTests(unittest.TestCase):
             bundle = Path(td) / "fixture.zip"
             with zipfile.ZipFile(bundle, "w", compression=zipfile.ZIP_DEFLATED) as archive:
                 archive.writestr("FixturePlugin.deps.json", json.dumps(deps))
-            intel = security_scan.empty_dependency_intelligence("artifact")
-            security_scan.scan_archive(bundle.read_bytes(), defaultdict(list), intel)
-            security_scan.finalize_intelligence(intel)
+            intel = sigmascope.empty_dependency_intelligence("artifact")
+            sigmascope.scan_archive(bundle.read_bytes(), defaultdict(list), intel)
+            sigmascope.finalize_intelligence(intel)
         self.assertTrue(any(
             item["kind"] == "nuget-resolved"
             and item["name"] == "Newtonsoft.Json"
@@ -108,8 +108,8 @@ class LocalSecurityV2TestScannerTests(unittest.TestCase):
                 source_overrides=root / "missing-overrides.json", skip_source=True, skip_osv=True, osv_timeout=1.0,
                 max_osv_packages=2000, no_v2=False, quick_validation=True, reset=True,
             )
-            with mock.patch.object(security_scan, "request_bytes", return_value=(artifact, "https://example.invalid/plugin.zip")):
-                result = local_security_v2_test_scanner.run_local_scan(args)
+            with mock.patch.object(sigmascope, "request_bytes", return_value=(artifact, "https://example.invalid/plugin.zip")):
+                result = local_sigmascope_v2_test.run_local_scan(args)
             self.assertEqual(result["summary"]["completeScans"], 1)
             self.assertEqual(result["summary"]["nugetPackageVersionPairs"], 1)
             self.assertGreaterEqual(result["summary"]["depsJsonDependencyObservations"], 1)
@@ -118,7 +118,7 @@ class LocalSecurityV2TestScannerTests(unittest.TestCase):
             self.assertEqual(index["counts"]["nugetPackageVersionPairs"], 1)
 
     def test_local_scanner_self_test(self) -> None:
-        local_security_v2_test_scanner.self_test()
+        local_sigmascope_v2_test.self_test()
 
 
 if __name__ == "__main__":

@@ -34,13 +34,13 @@ internal sealed partial class MarketplaceWindow
         if (links.Count == 0)
             return;
 
-        ImGui.Dummy(new Vector2(1f, 8f));
+        ImGui.Dummy(new Vector2(Ui(1f), Ui(8f)));
         ImGui.TextDisabled("Project links");
         var first = true;
         foreach (var link in links)
         {
             var label = string.IsNullOrWhiteSpace(link.Label) ? ProjectLinkLabel(link.Kind) : link.Label.Trim();
-            var width = Math.Clamp(ImGui.CalcTextSize(label).X + 28f, 86f, 170f);
+            var width = Math.Clamp(ImGui.CalcTextSize(label).X + Ui(28f), Ui(86f), Ui(170f));
             if (!first && ImGui.GetContentRegionAvail().X < width + 8f)
                 ImGui.NewLine();
             else
@@ -49,7 +49,7 @@ internal sealed partial class MarketplaceWindow
             if (DrawPillButton(
                     label,
                     $"project-link-{StableId(plugin.InternalName + "-" + link.Kind)}",
-                    new Vector2(width, 28f),
+                    new Vector2(width, Ui(28f)),
                     link.Kind.Equals("discord", StringComparison.OrdinalIgnoreCase)))
             {
                 OpenProductWebsite(plugin, link.Url);

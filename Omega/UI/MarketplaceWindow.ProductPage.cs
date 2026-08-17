@@ -50,7 +50,7 @@ internal sealed partial class MarketplaceWindow
         DrawProductReadme(content);
         DrawProductDependencies(plugin, installed);
         DrawProductSourcePackages(plugin, sourcePackages, currentApi, currentDalamudVersion);
-        DrawProductSecurity(plugin);
+        DrawProductSigmascope(plugin);
     }
 
     private void DrawProductHero(
@@ -60,27 +60,32 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 10f);
+        var heroWidth = Math.Min(Ui(ProductHeroMaxWidth), ImGui.GetContentRegionAvail().X);
+        var heroHeight = Ui(ProductHeroHeight);
+        DrawProductHeroBanner(plugin, heroWidth, heroHeight);
+
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Ui(10f));
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
+        // Keep the existing product panel on top of the optional repository banner. The translucent
+        // child background makes the banner contextual rather than competing with plugin metadata.
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.045f, 0.052f, 0.064f, 0.74f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.17f, 0.19f, 0.22f, 0.44f));
-        var heroWidth = Math.Min(ProductHeroMaxWidth, ImGui.GetContentRegionAvail().X);
-        ImGui.BeginChild("discover-product-hero", new Vector2(heroWidth, ProductHeroHeight), true,
+        ImGui.BeginChild("discover-product-hero", new Vector2(heroWidth, heroHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        ImGui.SetCursorPos(new Vector2(22f, 24f));
+        ImGui.SetCursorPos(Ui(22f, 24f));
         DrawPluginArtwork(
             plugin,
             installedPlugin,
-            ProductHeroIconSize,
-            ProductHeroIconSize,
+            Ui(ProductHeroIconSize),
+            Ui(ProductHeroIconSize),
             currentApi,
             currentDalamudVersion,
             showOverlays: false);
 
-        ImGui.SameLine(0f, 24f);
+        ImGui.SameLine(0f, Ui(24f));
         ImGui.BeginGroup();
-        ImGui.SetCursorPosY(27f);
+        ImGui.SetCursorPosY(Ui(27f));
         ImGui.TextUnformatted(plugin.Name);
         DrawProductAuthors(plugin);
 
@@ -91,7 +96,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         DrawProductBadges(plugin, content);
         ImGui.Spacing();
-        DrawProductSecuritySummary(plugin);
+        DrawProductSigmascopeSummary(plugin);
         ImGui.Spacing();
 
         var summary = content.Summary;
@@ -99,7 +104,7 @@ internal sealed partial class MarketplaceWindow
         {
             // The hero is a concise summary surface; the complete description lives in About below.
             summary = Shorten(summary.Trim(), 180);
-            var available = Math.Max(280f, ImGui.GetContentRegionAvail().X - 24f);
+            var available = Math.Max(Ui(240f), ImGui.GetContentRegionAvail().X - Ui(24f));
             ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + available);
             ImGui.TextWrapped(summary);
             ImGui.PopTextWrapPos();
@@ -112,6 +117,36 @@ internal sealed partial class MarketplaceWindow
         ImGui.EndChild();
         ImGui.PopStyleColor(2);
         ImGui.PopStyleVar(2);
+    }
+
+    private void DrawProductHeroBanner(MarketplacePlugin plugin, float heroWidth, float heroHeight)
+    {
+        if (string.IsNullOrWhiteSpace(plugin.OmegaBannerUrl))
+            return;
+
+        var texture = iconCache.GetOrQueue(plugin.OmegaBannerUrl);
+        if (texture is null)
+            return;
+
+        // .omega banners are designed as wide repository artwork. Only the upper part of the hero
+        // receives the artwork; the normal product panel is drawn over it with a translucent fill.
+        const float recommendedAspect = 16f / 9f;
+        var visibleHeight = Math.Min(heroHeight, Ui(214f));
+        var imageHeight = Math.Max(visibleHeight, heroWidth / recommendedAspect);
+        var heroMin = ImGui.GetCursorScreenPos();
+        var clipMax = heroMin + new Vector2(heroWidth, visibleHeight);
+        var imageMin = new Vector2(heroMin.X, heroMin.Y - Math.Max(0f, (imageHeight - visibleHeight) * 0.5f));
+        var imageMax = imageMin + new Vector2(heroWidth, imageHeight);
+        var draw = ImGui.GetWindowDrawList();
+        draw.PushClipRect(heroMin, clipMax, true);
+        draw.AddImage(
+            texture.Handle,
+            imageMin,
+            imageMax,
+            Vector2.Zero,
+            Vector2.One,
+            ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 0.88f)));
+        draw.PopClipRect();
     }
 
     private readonly HashSet<string> expandedProductCollections = new(StringComparer.OrdinalIgnoreCase);
@@ -130,13 +165,13 @@ internal sealed partial class MarketplaceWindow
             .OrderBy(x => CollectionDisplayName(x.Collection), StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        ImGui.Dummy(new Vector2(1f, 9f));
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, MarketplaceLayoutRules.ControlCornerRadius);
+        ImGui.Dummy(Ui(1f, 9f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Ui(MarketplaceLayoutRules.ControlCornerRadius));
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.035f, 0.041f, 0.052f, 0.70f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.17f, 0.19f, 0.22f, 0.38f));
         // State/collection ownership is core product information; use the full available content width.
-        var panelWidth = Math.Max(320f, ImGui.GetContentRegionAvail().X);
+        var panelWidth = Math.Max(Ui(1f), ImGui.GetContentRegionAvail().X);
         var panelHeight = ProductCollectionPanelHeight(plugin.InternalName, control, memberships);
         ImGui.BeginChild(
             "discover-product-state-collections",
@@ -145,9 +180,9 @@ internal sealed partial class MarketplaceWindow
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         ImGui.TextUnformatted("Plugin state");
-        ImGui.SameLine(0f, 12f);
+        ImGui.SameLine(0f, Ui(12f));
         ImGui.TextDisabled(installedPlugin.IsLoaded ? "Running" : "Not running");
-        ImGui.SameLine(0f, 12f);
+        ImGui.SameLine(0f, Ui(12f));
 
         // Keep the state switch visible in every case. Named collections own state and therefore
         // disable direct control rather than replacing the switch with ambiguous explanatory text.
@@ -172,9 +207,9 @@ internal sealed partial class MarketplaceWindow
 
         if (memberships.Length > 0)
         {
-            ImGui.Dummy(new Vector2(1f, 12f));
+            ImGui.Dummy(Ui(1f, 12f));
             ImGui.TextUnformatted("Collections");
-            ImGui.Dummy(new Vector2(1f, 6f));
+            ImGui.Dummy(Ui(1f, 6f));
 
             foreach (var membership in memberships)
                 DrawProductCollectionRow(plugin.InternalName, membership);
@@ -193,20 +228,20 @@ internal sealed partial class MarketplaceWindow
         // A plugin with no named memberships only needs the compact state row.
         // Do not reserve vertical space for an empty Collections subsection.
         if (memberships.Count == 0)
-            return 68f;
+            return Ui(68f);
 
-        const float baseHeight = 130f;
-        var height = baseHeight + memberships.Count * MarketplaceLayoutRules.ProductCollectionRowHeight;
+        var baseHeight = Ui(130f);
+        var height = baseHeight + memberships.Count * Ui(MarketplaceLayoutRules.ProductCollectionRowHeight);
         foreach (var membership in memberships)
         {
             if (!expandedProductCollections.Contains(ProductCollectionExpansionKey(productInternalName, membership.Collection.Id)))
                 continue;
 
             var affectedCount = membership.Collection.Plugins.Count;
-            height += 8f + Math.Max(1, affectedCount) * MarketplaceLayoutRules.ProductCollectionImpactLineHeight;
+            height += Ui(8f) + Math.Max(1, affectedCount) * Ui(MarketplaceLayoutRules.ProductCollectionImpactLineHeight);
         }
 
-        return Math.Max(160f, height);
+        return Math.Max(Ui(160f), height);
     }
 
     private void DrawProductCollectionRow(
@@ -214,19 +249,19 @@ internal sealed partial class MarketplaceWindow
         PluginCollectionMembershipState membership)
     {
         var collection = membership.Collection;
-        var rowHeight = MarketplaceLayoutRules.ProductCollectionRowHeight;
+        var rowHeight = Ui(MarketplaceLayoutRules.ProductCollectionRowHeight);
         var start = ImGui.GetCursorScreenPos();
         var width = ImGui.GetContentRegionAvail().X;
         var expandedKey = ProductCollectionExpansionKey(productInternalName, collection.Id);
         var expanded = expandedProductCollections.Contains(expandedKey);
 
         var draw = ImGui.GetWindowDrawList();
-        var rowMax = start + new Vector2(width, rowHeight - 2f);
-        draw.AddRectFilled(start, rowMax, ImGui.ColorConvertFloat4ToU32(new Vector4(0.055f, 0.064f, 0.078f, 0.62f)), MarketplaceLayoutRules.ControlCornerRadius);
-        draw.AddRect(start, rowMax, ImGui.ColorConvertFloat4ToU32(new Vector4(0.16f, 0.19f, 0.23f, 0.46f)), MarketplaceLayoutRules.ControlCornerRadius, ImDrawFlags.None, 1f);
+        var rowMax = start + new Vector2(width, rowHeight - Ui(2f));
+        draw.AddRectFilled(start, rowMax, ImGui.ColorConvertFloat4ToU32(new Vector4(0.055f, 0.064f, 0.078f, 0.62f)), Ui(MarketplaceLayoutRules.ControlCornerRadius));
+        draw.AddRect(start, rowMax, ImGui.ColorConvertFloat4ToU32(new Vector4(0.16f, 0.19f, 0.23f, 0.46f)), Ui(MarketplaceLayoutRules.ControlCornerRadius), ImDrawFlags.None, Ui(1f));
 
         var rowCursor = ImGui.GetCursorPos();
-        ImGui.SetCursorPos(new Vector2(rowCursor.X + 8f, rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, ImGui.GetTextLineHeight())));
+        ImGui.SetCursorPos(new Vector2(rowCursor.X + Ui(8f), rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, ImGui.GetTextLineHeight())));
         ImGui.PushFont(UiBuilder.IconFontFixedWidth);
         ImGui.TextUnformatted((expanded ? FontAwesomeIcon.CaretDown : FontAwesomeIcon.CaretRight).ToIconString());
         ImGui.PopFont();
@@ -241,7 +276,7 @@ internal sealed partial class MarketplaceWindow
             expanded = !expanded;
         }
 
-        ImGui.SetCursorPos(new Vector2(rowCursor.X + 34f, rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, ImGui.GetTextLineHeight())));
+        ImGui.SetCursorPos(new Vector2(rowCursor.X + Ui(34f), rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, ImGui.GetTextLineHeight())));
         var label = CollectionDisplayName(collection);
         ImGui.TextUnformatted(label);
         if (ImGui.IsItemHovered())
@@ -257,16 +292,16 @@ internal sealed partial class MarketplaceWindow
             const string alwaysOn = "Always on";
             var textWidth = ImGui.CalcTextSize(alwaysOn).X;
             ImGui.SetCursorPos(new Vector2(
-                rowCursor.X + Math.Max(34f, width - textWidth - 10f),
+                rowCursor.X + Math.Max(Ui(34f), width - textWidth - Ui(10f)),
                 rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, ImGui.GetTextLineHeight())));
             ImGui.TextDisabled(alwaysOn);
         }
         else
         {
-            const float switchWidth = 44f;
+            var switchWidth = Ui(44f);
             ImGui.SetCursorPos(new Vector2(
-                rowCursor.X + Math.Max(34f, width - switchWidth - 10f),
-                rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, 22f)));
+                rowCursor.X + Math.Max(Ui(34f), width - switchWidth - Ui(10f)),
+                rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, Ui(22f))));
             if (DrawToggleSwitch($"product-collection-state-{collection.Id}", collection.IsEnabled))
                 StartCollectionToggle(collection, !collection.IsEnabled);
             if (ImGui.IsItemHovered())
@@ -282,14 +317,14 @@ internal sealed partial class MarketplaceWindow
             .ToArray();
         if (affected.Length == 0)
         {
-            ImGui.Indent(34f);
+            ImGui.Indent(Ui(34f));
             ImGui.TextDisabled("No plugins in this collection.");
-            ImGui.Unindent(34f);
-            ImGui.Dummy(new Vector2(1f, 4f));
+            ImGui.Unindent(Ui(34f));
+            ImGui.Dummy(Ui(1f, 4f));
             return;
         }
 
-        ImGui.Indent(34f);
+        ImGui.Indent(Ui(34f));
         foreach (var entry in affected)
         {
             var name = ProductCollectionPluginName(entry);
@@ -298,8 +333,8 @@ internal sealed partial class MarketplaceWindow
             if (ImGui.IsItemHovered() && !string.Equals(name, entry.InternalName, StringComparison.OrdinalIgnoreCase))
                 ImGui.SetTooltip(entry.InternalName);
         }
-        ImGui.Unindent(34f);
-        ImGui.Dummy(new Vector2(1f, 4f));
+        ImGui.Unindent(Ui(34f));
+        ImGui.Dummy(Ui(1f, 4f));
     }
 
     private string ProductCollectionPluginName(DalamudCollectionPlugin entry)
@@ -317,14 +352,14 @@ internal sealed partial class MarketplaceWindow
         var drewAny = false;
         if (catalog.GetVariants(plugin.InternalName).Any(x => x.SourceIsOfficial) || plugin.SourceIsOfficial)
         {
-            DrawDalamudOfficialLogoBadge(28f);
+            DrawDalamudOfficialLogoBadge(Ui(28f));
             drewAny = true;
         }
 
         if (content.IsEnhanced)
         {
             if (drewAny)
-                ImGui.SameLine(0f, 8f);
+                ImGui.SameLine(0f, Ui(8f));
 
             DrawDiscoverTextBadge("★ Enhanced", new Vector4(0.45f, 0.34f, 0.08f, 0.96f));
             if (ImGui.IsItemHovered())
@@ -335,7 +370,7 @@ internal sealed partial class MarketplaceWindow
         if (IsNsfwPlugin(plugin))
         {
             if (drewAny)
-                ImGui.SameLine(0f, 8f);
+                ImGui.SameLine(0f, Ui(8f));
             DrawDiscoverTextBadge("18+", new Vector4(0.56f, 0.16f, 0.22f, 0.96f));
         }
     }
@@ -388,7 +423,7 @@ internal sealed partial class MarketplaceWindow
                 DrawProductActionButton("Installed", $"product-installed-{plugin.InternalName}", enabled: false, accent: false);
             }
 
-            ImGui.SameLine(0f, 10f);
+            ImGui.SameLine(0f, Ui(10f));
             var isSelf = plugin.InternalName.Equals(Plugin.PluginInterface.InternalName, StringComparison.OrdinalIgnoreCase);
             if (uninstallTask is not null && uninstallingInternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase))
             {
@@ -411,7 +446,7 @@ internal sealed partial class MarketplaceWindow
         if (candidates.Count == 0)
         {
             DrawProductActionButton("Unavailable", $"product-unavailable-{plugin.InternalName}", enabled: false, accent: false);
-            ImGui.SameLine(0f, 10f);
+            ImGui.SameLine(0f, Ui(10f));
             ImGui.TextDisabled($"No compatible API {currentApi} package is available.");
             return;
         }
@@ -428,11 +463,11 @@ internal sealed partial class MarketplaceWindow
 
     private static bool DrawProductActionButton(string label, string id, bool enabled, bool accent)
     {
-        var size = new Vector2(196f, 44f);
+        var size = Ui(196f, 44f);
         if (!enabled)
             ImGui.BeginDisabled();
 
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 6f);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Ui(6f));
         if (accent)
         {
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.02f, 0.40f, 0.42f, 0.96f));
@@ -457,11 +492,11 @@ internal sealed partial class MarketplaceWindow
 
     private static bool DrawProductUninstallButton(string label, string id, bool enabled)
     {
-        var size = new Vector2(156f, 44f);
+        var size = Ui(156f, 44f);
         if (!enabled)
             ImGui.BeginDisabled();
 
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 6f);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Ui(6f));
         ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.40f, 0.08f, 0.10f, 0.94f));
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.56f, 0.10f, 0.13f, 1f));
         ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.34f, 0.06f, 0.08f, 1f));
@@ -484,7 +519,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextUnformatted("Project images");
         ImGui.Spacing();
         var style = ImGui.GetStyle();
-        var stripHeight = ProductScreenshotHeight + (style.WindowPadding.Y * 2f) + style.ScrollbarSize + 4f;
+        var stripHeight = Ui(ProductScreenshotHeight) + (style.WindowPadding.Y * 2f) + style.ScrollbarSize + Ui(4f);
         ImGui.BeginChild("discover-product-screenshots", new Vector2(0f, stripHeight), true,
             ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
@@ -492,7 +527,7 @@ internal sealed partial class MarketplaceWindow
         {
             DrawProductScreenshot(screenshots[index], index);
             if (index + 1 < screenshots.Length)
-                ImGui.SameLine(0f, 12f);
+                ImGui.SameLine(0f, Ui(12f));
         }
 
         ImGui.EndChild();
@@ -503,7 +538,7 @@ internal sealed partial class MarketplaceWindow
         var texture = iconCache.GetOrQueue(url);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.025f, 0.030f, 0.038f, 0.88f));
         ImGui.BeginChild($"product-screenshot-{index}-{StableId(url)}",
-            new Vector2(ProductScreenshotWidth, ProductScreenshotHeight),
+            Ui(ProductScreenshotWidth, ProductScreenshotHeight),
             true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
@@ -548,23 +583,23 @@ internal sealed partial class MarketplaceWindow
     {
         DrawProductSectionHeading("About this plugin");
 
-        ImGui.Indent(14f);
+        ImGui.Indent(Ui(14f));
         var description = CleanProductDescriptionForDisplay(content.Description, content.Summary);
         if (!string.IsNullOrWhiteSpace(description))
         {
-            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(320f, Math.Min(940f, ImGui.GetContentRegionAvail().X)));
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(Ui(280f), Math.Min(Ui(940f), ImGui.GetContentRegionAvail().X)));
             ImGui.TextWrapped(description);
             ImGui.PopTextWrapPos();
-            ImGui.Dummy(new Vector2(1f, 8f));
+            ImGui.Dummy(Ui(1f, 8f));
         }
 
-        ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, new Vector2(8f, 6f));
+        ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, Ui(8f, 6f));
         if (ImGui.BeginTable(
                 "product-about-metadata",
                 2,
                 ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.RowBg))
         {
-            ImGui.TableSetupColumn("Field", ImGuiTableColumnFlags.WidthFixed, 110f);
+            ImGui.TableSetupColumn("Field", ImGuiTableColumnFlags.WidthFixed, Ui(110f));
             ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
             DrawProductMetadataRow("Version", plugin.AssemblyVersionText);
             DrawProductMetadataRow(
@@ -576,7 +611,7 @@ internal sealed partial class MarketplaceWindow
             ImGui.EndTable();
         }
         ImGui.PopStyleVar();
-        ImGui.Unindent(14f);
+        ImGui.Unindent(Ui(14f));
     }
 
     private static string CleanProductDescriptionForDisplay(string description, string summary)
@@ -609,20 +644,20 @@ internal sealed partial class MarketplaceWindow
 
     private static void DrawProductSectionHeading(string title)
     {
-        ImGui.Dummy(new Vector2(1f, 14f));
+        ImGui.Dummy(Ui(1f, 14f));
         var x = ImGui.GetCursorPosX();
         var markerMin = ImGui.GetCursorScreenPos();
-        var markerMax = markerMin + new Vector2(3f, 22f);
+        var markerMax = markerMin + Ui(3f, 22f);
         ImGui.GetWindowDrawList().AddRectFilled(
             markerMin,
             markerMax,
             ImGui.ColorConvertFloat4ToU32(new Vector4(0.08f, 0.58f, 0.59f, 0.92f)),
-            2f);
+            Ui(2f));
 
-        ImGui.SetCursorPosX(x + 12f);
+        ImGui.SetCursorPosX(x + Ui(12f));
         ImGui.TextUnformatted(title);
         ImGui.SetCursorPosX(x);
-        ImGui.Dummy(new Vector2(1f, 8f));
+        ImGui.Dummy(Ui(1f, 8f));
     }
 
     private static bool IsNsfwPlugin(MarketplacePlugin plugin)

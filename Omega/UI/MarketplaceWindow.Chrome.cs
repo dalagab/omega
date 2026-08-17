@@ -26,14 +26,14 @@ internal sealed partial class MarketplaceWindow
         ImGui.PushStyleColor(ImGuiCol.ScrollbarGrab, new Vector4(0.11f, 0.22f, 0.24f, 0.78f));
         ImGui.PushStyleColor(ImGuiCol.ScrollbarGrabHovered, new Vector4(0.12f, 0.34f, 0.34f, 0.95f));
 
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(18f, 16f));
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 16f);
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 14f);
-        ImGui.PushStyleVar(ImGuiStyleVar.PopupRounding, 14f);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 12f);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(11f, 7f));
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(10f, 8f));
-        ImGui.PushStyleVar(ImGuiStyleVar.ScrollbarSize, 9f);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Ui(18f, 16f));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, Ui(16f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Ui(14f));
+        ImGui.PushStyleVar(ImGuiStyleVar.PopupRounding, Ui(14f));
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Ui(12f));
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Ui(11f, 7f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, Ui(10f, 8f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ScrollbarSize, Ui(9f));
     }
 
     private static void PopOmegaTheme()
@@ -52,7 +52,7 @@ internal sealed partial class MarketplaceWindow
         var counts = GetSidebarCounts(mainPlugins, installed, currentApi, currentDalamudVersion);
 
         // Keep the primary destinations visually attached to the top application bar.
-        ImGui.Dummy(new Vector2(0f, 6f));
+        ImGui.Dummy(Ui(0f, 6f));
         DrawSidebarViewIcon(MarketplaceView.Spotlight, FontAwesomeIcon.Star, "Spotlight", 0);
         DrawSidebarViewIcon(MarketplaceView.Discover, FontAwesomeIcon.Search, "Discover", mainPlugins.Count);
         DrawSidebarFooter(counts);
@@ -60,8 +60,8 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawSidebarFooter((int Installed, int Installable, int Outdated, int Updates) counts)
     {
-        const float footerHeight = 192f;
-        var targetY = Math.Max(ImGui.GetCursorPosY() + 12f, ImGui.GetWindowHeight() - footerHeight);
+        var footerHeight = Ui(192f);
+        var targetY = Math.Max(ImGui.GetCursorPosY() + Ui(12f), ImGui.GetWindowHeight() - footerHeight);
         ImGui.SetCursorPosY(targetY);
 
         if (DrawSidebarIcon(FontAwesomeIcon.Cog, "sidebar-settings", "Settings", settingsOpen))
@@ -81,7 +81,7 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.Spacing();
         var versionSize = ImGui.CalcTextSize(BuildInfo.Version);
-        var versionButtonSize = versionSize + new Vector2(8f, 4f);
+        var versionButtonSize = versionSize + Ui(8f, 4f);
         var versionAvailable = ImGui.GetContentRegionAvail().X;
         var versionCursorX = ImGui.GetCursorPosX();
         ImGui.SetCursorPosX(versionCursorX + Math.Max(0f, (versionAvailable - versionButtonSize.X) * 0.5f));
@@ -89,7 +89,7 @@ internal sealed partial class MarketplaceWindow
         var versionHovered = ImGui.IsItemHovered();
         var versionPosition = ImGui.GetItemRectMin();
         ImGui.GetWindowDrawList().AddText(
-            versionPosition + new Vector2((versionButtonSize.X - versionSize.X) * 0.5f, 2f),
+            versionPosition + new Vector2((versionButtonSize.X - versionSize.X) * 0.5f, Ui(2f)),
             ImGui.GetColorU32(versionHovered ? ImGuiCol.Text : ImGuiCol.TextDisabled),
             BuildInfo.Version);
         if (versionHovered)
@@ -152,8 +152,8 @@ internal sealed partial class MarketplaceWindow
         int notificationCount = 0,
         bool definitionsAttention = false)
     {
-        const float size = 42f;
-        const float rounding = 6f;
+        var size = Ui(42f);
+        var rounding = Ui(6f);
         var available = ImGui.GetContentRegionAvail().X;
         var cursorX = ImGui.GetCursorPosX();
         ImGui.SetCursorPosX(cursorX + Math.Max(0f, (available - size) * 0.5f));
@@ -190,8 +190,8 @@ internal sealed partial class MarketplaceWindow
             // Definitions availability is deliberately distinct from plugin/app updates: a blue
             // exclamation circle sits on the upper-left of the Downloads rail icon and survives
             // restarts through CatalogUpdateCoordinator's persisted online state.
-            var center = screen + new Vector2(4f, 5f);
-            const float radius = 8f;
+            var center = screen + Ui(4f, 5f);
+            var radius = Ui(8f);
             draw.AddCircleFilled(center, radius, ImGui.ColorConvertFloat4ToU32(new Vector4(0.12f, 0.48f, 0.86f, 0.98f)), 20);
             draw.AddCircle(center, radius, ImGui.ColorConvertFloat4ToU32(new Vector4(0.38f, 0.70f, 1f, 0.96f)), 20, 1f);
             var mark = "!";
@@ -203,7 +203,7 @@ internal sealed partial class MarketplaceWindow
         {
             var countText = notificationCount > 99 ? "99+" : notificationCount.ToString();
             var textSize = ImGui.CalcTextSize(countText);
-            const float badgeHeight = 15f;
+            var badgeHeight = Ui(15f);
             var badgeWidth = Math.Max(badgeHeight, textSize.X + 6f);
             var badgeMax = screen + new Vector2(size - 1f, 11f);
             var badgeMin = badgeMax - new Vector2(badgeWidth, badgeHeight);
@@ -261,11 +261,11 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.035f, 0.09f, 0.18f, 0.76f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.12f, 0.42f, 0.78f, 0.78f));
-        ImGui.BeginChild("omega-application-update-banner", new Vector2(0f, 72f), true,
+        ImGui.BeginChild("omega-application-update-banner", new Vector2(0f, Ui(72f)), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         ImGui.TextUnformatted($"Omega {selfUpdates.AvailableDisplayVersion} is available");
         ImGui.TextDisabled($"You are running Omega {BuildInfo.Version}. Dalamud remains the update authority.");
-        ImGui.SameLine(Math.Max(340f, ImGui.GetWindowWidth() - 190f));
+        ImGui.SameLine(Math.Max(Ui(340f), ImGui.GetWindowWidth() - Ui(190f)));
         if (ImGui.Button("Open Dalamud updates"))
             Plugin.PluginInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.UpdateablePlugins, "Omega");
         ImGui.EndChild();
@@ -281,7 +281,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.035f, 0.16f, 0.17f, 0.72f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.10f, 0.58f, 0.54f, 0.72f));
-        ImGui.BeginChild("definitions-update-banner", new Vector2(0f, 78f), true,
+        ImGui.BeginChild("definitions-update-banner", new Vector2(0f, Ui(78f)), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         ImGui.TextUnformatted("Definitions update available");
         if (!string.IsNullOrWhiteSpace(updates.AvailableDefinitionsRevision))
@@ -289,7 +289,7 @@ internal sealed partial class MarketplaceWindow
         else
             ImGui.TextDisabled("A newer marketplace Definitions package is ready.");
 
-        ImGui.SameLine(Math.Max(340f, ImGui.GetWindowWidth() - 190f));
+        ImGui.SameLine(Math.Max(Ui(340f), ImGui.GetWindowWidth() - Ui(190f)));
         if (ImGui.Button(updates.IsRefreshing ? "Updating…" : "Update Definitions") && !updates.IsRefreshing)
         {
             operationMessage = "Updating Definitions…";
@@ -334,11 +334,15 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
+        var responsiveMinimum = ResponsiveMinimumWindowLogicalSize();
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = DefaultExpandedWindowSize,
+            MinimumSize = responsiveMinimum,
             MaximumSize = new Vector2(float.MaxValue),
         };
+        // WindowHost multiplies Size/SizeConstraints by Dalamud's GlobalScale. Keep the logical
+        // default small enough that the resulting physical window remains inside the game viewport.
+        Size = ResponsiveDefaultWindowLogicalSize();
 
         if (!migrateLegacyFullscreenGeometry)
             return;
@@ -346,8 +350,9 @@ internal sealed partial class MarketplaceWindow
         // 0.8.1.5 wrote forced-full-screen geometry into ImGui persistence. Override it
         // for exactly one expanded frame, then hand size/position ownership back to ImGui.
         var viewport = ImGui.GetMainViewport();
-        var scaledDefault = DefaultExpandedWindowSize * ImGuiHelpers.GlobalScale;
-        Size = DefaultExpandedWindowSize;
+        var logicalDefault = ResponsiveDefaultWindowLogicalSize();
+        var scaledDefault = logicalDefault * ImGuiHelpers.GlobalScale;
+        Size = logicalDefault;
         SizeCondition = ImGuiCond.Always;
         Position = new Vector2(
             Math.Max(0f, (viewport.Size.X - scaledDefault.X) * 0.5f),
@@ -377,12 +382,28 @@ internal sealed partial class MarketplaceWindow
         expandedWindowSize = ImGui.GetWindowSize();
         expandedWindowPosition = ImGui.GetWindowPos();
 
+        var viewport = ImGui.GetMainViewport();
+        var maximumComfortable = viewport.WorkSize * 0.96f;
+        var preferredPhysical = ResponsiveDefaultWindowLogicalSize() * OmegaUiScale;
+
+        // A previously persisted 100%-scale geometry can become physically larger than the game
+        // viewport when Dalamud is moved to 150-200%. Repair only genuinely off-screen geometry;
+        // normal user resizing below that boundary remains authoritative.
+        if (expandedWindowSize.X > maximumComfortable.X || expandedWindowSize.Y > maximumComfortable.Y)
+        {
+            expandedWindowSize = new Vector2(
+                Math.Min(preferredPhysical.X, maximumComfortable.X),
+                Math.Min(preferredPhysical.Y, maximumComfortable.Y));
+            ImGui.SetWindowSize(expandedWindowSize, ImGuiCond.Always);
+            return;
+        }
+
         // Repair persisted geometry left behind by the old child-window minimize bug.
         // A normal Omega window can be narrow, but it should never be app-bar height.
-        if (expandedWindowSize.Y > 96f)
+        if (expandedWindowSize.Y > Ui(96f))
             return;
 
-        expandedWindowSize = DefaultExpandedWindowSize;
+        expandedWindowSize = preferredPhysical;
         ImGui.SetWindowSize(expandedWindowSize, ImGuiCond.Always);
     }
 
@@ -409,10 +430,10 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawMinimizedWindow()
     {
-        const float windowSize = 58f;
-        const float iconSize = 54f;
+        var windowSize = Ui(58f);
+        var iconSize = Ui(54f);
         ImGui.SetWindowSize(new Vector2(windowSize, windowSize), ImGuiCond.Always);
-        ImGui.SetCursorPos(new Vector2(2f, 2f));
+        ImGui.SetCursorPos(Ui(2f, 2f));
 
         var iconMin = ImGui.GetCursorScreenPos();
         ImGui.InvisibleButton("##omega-minimized-icon", new Vector2(iconSize, iconSize));
@@ -510,7 +531,7 @@ internal sealed partial class MarketplaceWindow
 
     private static bool DrawToggleSwitch(string id, bool value, bool enabled = true)
     {
-        var size = new Vector2(44f, 22f);
+        var size = Ui(44f, 22f);
         var min = ImGui.GetCursorScreenPos();
         ImGui.InvisibleButton($"##omega-toggle-{id}", size);
         var hovered = enabled && ImGui.IsItemHovered();
@@ -524,7 +545,7 @@ internal sealed partial class MarketplaceWindow
                 : new Vector4(0.22f, 0.24f, 0.28f, hovered ? 0.96f : 0.84f);
         draw.AddRectFilled(min, min + size, ImGui.ColorConvertFloat4ToU32(track), size.Y * 0.5f);
 
-        const float knobRadius = 8f;
+        var knobRadius = Ui(8f);
         var knobX = value ? min.X + size.X - 11f : min.X + 11f;
         var knobColor = enabled
             ? new Vector4(0.94f, 0.95f, 0.96f, 1f)

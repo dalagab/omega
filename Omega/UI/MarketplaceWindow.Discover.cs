@@ -68,16 +68,17 @@ internal sealed partial class MarketplaceWindow
             ImGui.SetCursorPosY(contentStartY);
             ImGui.TextUnformatted("Featured");
 
-            var gridStartY = contentStartY + 30f;
-            var availableWidth = Math.Max(420f, ImGui.GetContentRegionAvail().X - 4f);
-            var cardWidth = Math.Max(
-                250f,
-                (availableWidth - (DiscoverRichColumnGap * (DiscoverRichColumns - 1))) / DiscoverRichColumns);
+            var gridStartY = contentStartY + Ui(30f);
+            var availableWidth = Math.Max(Ui(1f), ImGui.GetContentRegionAvail().X - Ui(4f));
+            var columns = ResponsiveColumns(availableWidth, 250f, DiscoverRichColumns, DiscoverRichColumnGap);
+            var columnGap = Ui(DiscoverRichColumnGap);
+            var cardWidth = ResponsiveCardWidth(availableWidth, columns, DiscoverRichColumnGap, 220f);
             const float gridStartX = 0f;
-            var stride = DiscoverRichCardHeight + DiscoverRichRowGap;
+            var cardHeight = Ui(DiscoverRichCardHeight);
+            var stride = cardHeight + Ui(DiscoverRichRowGap);
             var visible = StorefrontVirtualization.Calculate(
                 rich.Count,
-                DiscoverRichColumns,
+                columns,
                 stride,
                 ImGui.GetScrollY(),
                 ImGui.GetWindowHeight(),
@@ -86,15 +87,15 @@ internal sealed partial class MarketplaceWindow
 
             for (var row = visible.FirstRow; row < visible.LastRowExclusive; row++)
             {
-                for (var column = 0; column < DiscoverRichColumns; column++)
+                for (var column = 0; column < columns; column++)
                 {
-                    var index = (row * DiscoverRichColumns) + column;
+                    var index = (row * columns) + column;
                     if (index >= rich.Count)
                         break;
                     var entry = rich[index];
                     installed.TryGetValue(entry.Plugin.InternalName, out var installedPlugin);
                     ImGui.SetCursorPos(new Vector2(
-                        gridStartX + (column * (cardWidth + DiscoverRichColumnGap)),
+                        gridStartX + (column * (cardWidth + columnGap)),
                         gridStartY + (row * stride)));
                     DrawDiscoverRichCard(
                         entry.Plugin,
@@ -111,12 +112,12 @@ internal sealed partial class MarketplaceWindow
 
         if (basic.Count > 0)
         {
-            var listHeaderY = cursorEndY + (rich.Count > 0 ? 12f : 0f);
+            var listHeaderY = cursorEndY + (rich.Count > 0 ? Ui(12f) : 0f);
             ImGui.SetCursorPosY(listHeaderY);
             ImGui.TextUnformatted("The rest");
 
-            var listStartY = listHeaderY + 30f;
-            var stride = DiscoverListRowHeight + DiscoverListRowGap;
+            var listStartY = listHeaderY + Ui(30f);
+            var stride = Ui(DiscoverListRowHeight + DiscoverListRowGap);
             var visible = StorefrontVirtualization.Calculate(
                 basic.Count,
                 1,
@@ -138,7 +139,7 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.SetCursorPosY(Math.Max(cursorEndY, contentStartY + 1f));
-        ImGui.Dummy(new Vector2(1f, 1f));
+        ImGui.Dummy(new Vector2(Ui(1f), Ui(1f)));
     }
 
     private void DrawDiscoverRichCard(
@@ -151,13 +152,13 @@ internal sealed partial class MarketplaceWindow
     {
         var availabilityStyle = PushUnavailableListingStyle(
             IsListingCurrentlyAvailable(plugin, installedPlugin, currentApi, currentDalamudVersion));
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 9f);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Ui(9f));
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.045f, 0.052f, 0.064f, 0.78f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.18f, 0.20f, 0.23f, 0.48f));
         ImGui.BeginChild(
             $"discover-rich-{plugin.InternalName}",
-            new Vector2(cardWidth, DiscoverRichCardHeight),
+            new Vector2(cardWidth, Ui(DiscoverRichCardHeight)),
             true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
@@ -170,16 +171,17 @@ internal sealed partial class MarketplaceWindow
         var hovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows);
         if (artworkClicked || (!screenshotClicked && hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left)))
             OpenPluginDetails(plugin);
+        DrawPluginPanelRibbons(plugin, installedPlugin, currentApi, currentDalamudVersion, cardMin, cardMax);
         ImGui.EndChild();
         if (hovered)
         {
             ImGui.GetWindowDrawList().AddRect(
-                cardMin + new Vector2(0.5f, 0.5f),
-                cardMax - new Vector2(0.5f, 0.5f),
+                cardMin + Ui(0.5f, 0.5f),
+                cardMax - Ui(0.5f, 0.5f),
                 ImGui.ColorConvertFloat4ToU32(new Vector4(0.18f, 0.54f, 0.54f, 0.44f)),
-                9f,
+                Ui(9f),
                 ImDrawFlags.None,
-                1.2f);
+                Ui(1.2f));
         }
         ImGui.PopStyleColor(2);
         ImGui.PopStyleVar(2);
@@ -195,11 +197,11 @@ internal sealed partial class MarketplaceWindow
         float cardWidth)
     {
         var installed = installedPlugin is not null;
-        ImGui.SetCursorPos(new Vector2(12f, 12f));
+        ImGui.SetCursorPos(Ui(12f, 12f));
         var artworkClicked = DrawPluginArtwork(
-            plugin, installedPlugin, 46f, 46f, currentApi, currentDalamudVersion,
-            queueIfVisible: true, showOverlays: false, showInstalledMarker: installed);
-        ImGui.SameLine(0f, 10f);
+            plugin, installedPlugin, Ui(46f), Ui(46f), currentApi, currentDalamudVersion,
+            queueIfVisible: true, showOverlays: false, showInstalledMarker: false);
+        ImGui.SameLine(0f, Ui(10f));
         ImGui.BeginGroup();
         DrawDiscoverPluginTitle(Shorten(plugin.Name, 32), installed);
         var author = string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author;
@@ -207,14 +209,13 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextDisabled(Shorten(string.IsNullOrWhiteSpace(category) ? author : $"{author}  •  {category}", 42));
         ImGui.EndGroup();
 
-        var rightEdge = Math.Max(70f, cardWidth - 12f);
-        DrawDiscoverTopRightIndicators(plugin, content, currentApi, currentDalamudVersion, rightEdge, 12f);
-        DrawDiscoverOriginAndContentBadges(plugin, rightEdge, 42f);
+        var rightEdge = Math.Max(Ui(70f), cardWidth - Ui(12f));
+        DrawDiscoverOriginAndContentBadges(plugin, rightEdge, Ui(42f));
 
-        ImGui.SetCursorPos(new Vector2(12f, 70f));
+        ImGui.SetCursorPos(Ui(12f, 70f));
         if (!string.IsNullOrWhiteSpace(content.Summary))
         {
-            ImGui.PushTextWrapPos(cardWidth - 12f);
+            ImGui.PushTextWrapPos(cardWidth - Ui(12f));
             ImGui.TextWrapped(Shorten(content.Summary.Replace('\n', ' '), 155));
             ImGui.PopTextWrapPos();
         }
@@ -223,11 +224,11 @@ internal sealed partial class MarketplaceWindow
 
     private bool DrawDiscoverRichCardScreenshot(string internalName, string url, float cardWidth)
     {
-        var screenshotY = DiscoverRichCardHeight - DiscoverRichScreenshotHeight - 12f;
-        ImGui.SetCursorPos(new Vector2(12f, screenshotY));
-        var width = Math.Max(120f, cardWidth - 24f);
+        var screenshotY = Ui(DiscoverRichCardHeight - DiscoverRichScreenshotHeight - 12f);
+        ImGui.SetCursorPos(new Vector2(Ui(12f), screenshotY));
+        var width = Math.Max(Ui(120f), cardWidth - Ui(24f));
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.025f, 0.030f, 0.038f, 0.90f));
-        ImGui.BeginChild($"discover-rich-image-{StableId(internalName)}-{StableId(url)}", new Vector2(width, DiscoverRichScreenshotHeight), true,
+        ImGui.BeginChild($"discover-rich-image-{StableId(internalName)}-{StableId(url)}", new Vector2(width, Ui(DiscoverRichScreenshotHeight)), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         var texture = iconCache.GetOrQueue(url);
         if (texture is null || texture.Size.X <= 0 || texture.Size.Y <= 0)
@@ -267,24 +268,24 @@ internal sealed partial class MarketplaceWindow
     {
         var availabilityStyle = PushUnavailableListingStyle(
             IsListingCurrentlyAvailable(plugin, installedPlugin, currentApi, currentDalamudVersion));
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 8f);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Ui(8f));
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.045f, 0.052f, 0.064f, 0.76f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.18f, 0.20f, 0.23f, 0.48f));
-        ImGui.BeginChild($"discover-result-{plugin.InternalName}", new Vector2(0f, DiscoverListRowHeight), true,
+        ImGui.BeginChild($"discover-result-{plugin.InternalName}", new Vector2(0f, Ui(DiscoverListRowHeight)), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         var rowWidth = ImGui.GetContentRegionAvail().X;
         var rowMin = ImGui.GetWindowPos();
         var rowMax = rowMin + ImGui.GetWindowSize();
         var installed = installedPlugin is not null;
-        ImGui.SetCursorPos(new Vector2(12f, 18f));
+        ImGui.SetCursorPos(Ui(12f, 18f));
         var artworkClicked = DrawPluginArtwork(
-            plugin, installedPlugin, DiscoverListIconSize, DiscoverListIconSize, currentApi, currentDalamudVersion,
-            queueIfVisible: true, showOverlays: false, showInstalledMarker: installed);
-        ImGui.SameLine(0f, 16f);
+            plugin, installedPlugin, Ui(DiscoverListIconSize), Ui(DiscoverListIconSize), currentApi, currentDalamudVersion,
+            queueIfVisible: true, showOverlays: false, showInstalledMarker: false);
+        ImGui.SameLine(0f, Ui(16f));
         ImGui.BeginGroup();
-        ImGui.SetCursorPosY(18f);
+        ImGui.SetCursorPosY(Ui(18f));
         DrawDiscoverPluginTitle(Shorten(plugin.Name, 52), installed);
         var authorText = string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author;
         var category = PrimaryPluginCategory(plugin);
@@ -293,7 +294,7 @@ internal sealed partial class MarketplaceWindow
         var content = GetDiscoverPresentation(plugin);
         if (!string.IsNullOrWhiteSpace(content.Summary))
         {
-            ImGui.PushTextWrapPos(Math.Max(220f, rowWidth - 235f));
+            ImGui.PushTextWrapPos(Math.Max(Ui(220f), rowWidth - Ui(235f)));
             ImGui.TextWrapped(Shorten(content.Summary.Replace('\n', ' '), 150));
             ImGui.PopTextWrapPos();
         }
@@ -305,13 +306,14 @@ internal sealed partial class MarketplaceWindow
             OpenPluginDetails(plugin);
         if (hovered)
             ImGui.GetWindowDrawList().AddRect(
-                rowMin + new Vector2(0.5f, 0.5f),
-                rowMax - new Vector2(0.5f, 0.5f),
+                rowMin + Ui(0.5f, 0.5f),
+                rowMax - Ui(0.5f, 0.5f),
                 ImGui.ColorConvertFloat4ToU32(new Vector4(0.18f, 0.54f, 0.54f, 0.58f)),
-                8f,
+                Ui(8f),
                 ImDrawFlags.None,
-                1.2f);
+                Ui(1.2f));
 
+        DrawPluginPanelRibbons(plugin, installedPlugin, currentApi, currentDalamudVersion, rowMin, rowMax);
         ImGui.EndChild();
         ImGui.PopStyleColor(2);
         ImGui.PopStyleVar(2);
@@ -325,10 +327,8 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        var rightEdge = Math.Max(70f, rowWidth - 12f);
-        DrawDiscoverTopRightIndicators(plugin, content, currentApi,
-            currentDalamudVersion, rightEdge, 18f);
-        DrawDiscoverOriginAndContentBadges(plugin, rightEdge, 50f);
+        var rightEdge = Math.Max(Ui(70f), rowWidth - Ui(12f));
+        DrawDiscoverOriginAndContentBadges(plugin, rightEdge, Ui(50f));
     }
 
     private MarketplacePresentationContent GetDiscoverPresentation(MarketplacePlugin plugin)
@@ -351,10 +351,10 @@ internal sealed partial class MarketplaceWindow
 
     private static void DrawDiscoverTextBadge(string label, Vector4 color)
     {
-        var size = new Vector2(Math.Max(72f, ImGui.CalcTextSize(label).X + 22f), 24f);
+        var size = new Vector2(Math.Max(Ui(72f), ImGui.CalcTextSize(label).X + Ui(22f)), Ui(24f));
         var min = ImGui.GetCursorScreenPos();
         var draw = ImGui.GetWindowDrawList();
-        draw.AddRectFilled(min, min + size, ImGui.ColorConvertFloat4ToU32(color), 6f);
+        draw.AddRectFilled(min, min + size, ImGui.ColorConvertFloat4ToU32(color), Ui(6f));
         var textSize = ImGui.CalcTextSize(label);
         draw.AddText(min + new Vector2((size.X - textSize.X) * 0.5f, (size.Y - textSize.Y) * 0.5f), 0xFFFFFFFF, label);
         ImGui.Dummy(size);
@@ -373,8 +373,8 @@ internal sealed partial class MarketplaceWindow
         float rightEdge,
         float y)
     {
-        const float iconSize = 22f;
-        const float gap = 7f;
+        var iconSize = Ui(22f);
+        var gap = Ui(7f);
         var unavailable = !HasInstallableVariant(plugin.InternalName, currentApi, currentDalamudVersion);
         var hasPrimaryMarker = unavailable || content.IsEnhanced;
         var primaryX = rightEdge - iconSize;
@@ -411,7 +411,7 @@ internal sealed partial class MarketplaceWindow
     {
         var scanX = rightEdge - iconSize;
         ImGui.SetCursorPos(new Vector2(scanX, y));
-        DrawPluginSecurityScanIndicator(plugin, iconSize);
+        DrawPluginSigmascopeIndicator(plugin, iconSize);
         var hovered = ImGui.IsItemHovered();
 
         var nextX = scanX - gap - iconSize;
@@ -439,15 +439,15 @@ internal sealed partial class MarketplaceWindow
         var official = catalog.GetVariants(plugin.InternalName).Any(v => v.SourceIsOfficial) || plugin.SourceIsOfficial;
         if (official)
         {
-            ImGui.SetCursorPos(new Vector2(rightEdge - 26f, y));
-            DrawDalamudOfficialLogoBadge(26f);
+            ImGui.SetCursorPos(new Vector2(rightEdge - Ui(26f), y));
+            DrawDalamudOfficialLogoBadge(Ui(26f));
         }
 
         if (IsNsfwPlugin(plugin))
         {
-            var nsfwWidth = 72f;
-            var x = official ? rightEdge - 26f - 8f - nsfwWidth : rightEdge - nsfwWidth;
-            ImGui.SetCursorPos(new Vector2(Math.Max(0f, x), y + 1f));
+            var nsfwWidth = Ui(72f);
+            var x = official ? rightEdge - Ui(26f) - Ui(8f) - nsfwWidth : rightEdge - nsfwWidth;
+            ImGui.SetCursorPos(new Vector2(Math.Max(0f, x), y + Ui(1f)));
             DrawDiscoverTextBadge("18+", new Vector4(0.56f, 0.16f, 0.22f, 0.94f));
         }
     }
@@ -628,8 +628,8 @@ internal sealed partial class MarketplaceWindow
         // Installed state is an artwork overlay, never part of row/card geometry. This helper
         // is called from inside the artwork child so the marker is guaranteed to render above
         // the plugin image while installed and uninstalled icons remain identically aligned.
-        var size = Math.Clamp(artworkSize * 0.32f, 18f, 24f);
-        var min = artworkMin + new Vector2(3f, 3f);
+        var size = Math.Clamp(artworkSize * 0.32f, Ui(18f), Ui(24f));
+        var min = artworkMin + Ui(3f, 3f);
         var center = min + new Vector2(size * 0.5f, size * 0.5f);
         var draw = ImGui.GetWindowDrawList();
         var markerBorder = ImGui.ColorConvertFloat4ToU32(new Vector4(0.025f, 0.030f, 0.038f, 0.98f));
@@ -642,7 +642,7 @@ internal sealed partial class MarketplaceWindow
         var a = min + new Vector2(size * 0.25f, size * 0.51f);
         var b = min + new Vector2(size * 0.43f, size * 0.68f);
         var c = min + new Vector2(size * 0.77f, size * 0.32f);
-        var stroke = Math.Clamp(size * 0.105f, 2f, 2.6f);
+        var stroke = Math.Clamp(size * 0.105f, Ui(2f), Ui(2.6f));
         draw.AddLine(a, b, checkColor, stroke);
         draw.AddLine(b, c, checkColor, stroke);
     }

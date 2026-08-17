@@ -171,6 +171,7 @@ public sealed class Plugin : IDalamudPlugin
             configBackups,
             selfUpdates,
             Path.Combine(assemblyDirectory, "icon.png"),
+            Path.Combine(assemblyDirectory, "sigmascope-banner.png"),
             Path.Combine(assemblyDirectory, "company-fallback.png"),
             Path.Combine(assemblyDirectory, "EULA.md"));
     }

@@ -14,7 +14,7 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawInlineContentRatingField()
     {
-        ImGui.SetNextItemWidth(168f);
+        ImGui.SetNextItemWidth(Math.Min(Ui(168f), ImGui.GetContentRegionAvail().X));
         if (!ImGui.BeginCombo("##filter-content-rating", ContentFilterLabel(contentFilter)))
             return;
 

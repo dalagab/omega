@@ -42,7 +42,7 @@ class ValidationFailClosedTests(unittest.TestCase):
                 (security / name).write_bytes((base / name).read_bytes())
             report = security / "security-report.json"
             subprocess.run([
-                sys.executable, str(common.ROOT / "tools/catalog/security_scan.py"),
+                sys.executable, str(common.ROOT / "tools/catalog/sigmascope.py"),
                 "--database", str(security / "omega-catalog.sqlite"),
                 "--bundle", str(security / "omega-catalog.sqlite.zip"),
                 "--descriptor", str(security / "catalog.json"),
@@ -52,7 +52,7 @@ class ValidationFailClosedTests(unittest.TestCase):
             doc = json.loads(report.read_text(encoding="utf-8"))
             doc["scannerVersion"] = "0.0.0"
             report.write_text(json.dumps(doc), encoding="utf-8")
-            with self.assertRaisesRegex(RuntimeError, "scanner version"):
+            with self.assertRaisesRegex(RuntimeError, "Sigmascope version"):
                 validate_security_catalog.validate(security)
 
     def test_compacted_validator_rejects_descriptor_hash_mismatch(self) -> None:

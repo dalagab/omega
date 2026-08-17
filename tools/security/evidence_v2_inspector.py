@@ -10,7 +10,7 @@ from typing import Any
 SEVERITY_RANK = {"none": 0, "informational": 1, "low": 1, "caution": 2, "medium": 2, "high": 3, "critical": 4}
 
 
-class V2SecurityInspector:
+class V2SigmascopeInspector:
     """Serve the existing local developer UI directly from an evidence-v2 tree.
 
     This deliberately has no SQL console or mutation path. It reads the atomic root
@@ -106,9 +106,10 @@ class V2SecurityInspector:
                 "failedScans": sum(str(row.get("status")) != "complete" for row in currents), "findings": findings,
                 "criticalFindings": sum(int(row.get("critical_count") or 0) for row in currents), "highFindings": sum(int(row.get("high_count") or 0) for row in currents),
                 "advisories": int(counts.get("advisories") or 0), "ipcProviders": int(counts.get("ipcProviders") or 0), "dependencyIssues": 0,
-                "currentAtScanner": len(currents), "legacyCurrent": 0, "observedNugetVersions": int(counts.get("nugetPackageVersionPairs") or 0),
+                "currentAtSigmascope": len(currents), "currentAtScanner": len(currents), "legacyCurrent": 0, "observedNugetVersions": int(counts.get("nugetPackageVersionPairs") or 0),
                 "osvQueriedPackages": 0, "osvMatchedPackages": 0,
             },
+            "sigmascopeVersion": str(((self.root.get("engine") or {}).get("version") or (self.root.get("source") or {}).get("engineVersion") or (self.root.get("source") or {}).get("scannerVersion") or "v2 snapshot")),
             "scannerVersion": str((self.root.get("source") or {}).get("scannerVersion") or "v2 snapshot"),
             "latestScanUtc": max((str(row.get("scanned_at_utc") or "") for row in currents), default=""),
             "hasMarketplaceComparison": False, "generatedAtUtc": self.root.get("generatedAtUtc") or "", "format": "security-evidence-v2",
@@ -182,3 +183,7 @@ class V2SecurityInspector:
 
     def read_sql(self, query: str) -> dict[str, Any]:
         raise ValueError("SQL is unavailable for Security Evidence v2 JSON. Use the Evidence browser instead.")
+
+
+# Compatibility alias for operator scripts written before the Sigmascope naming cutover.
+V2SecurityInspector = V2SigmascopeInspector

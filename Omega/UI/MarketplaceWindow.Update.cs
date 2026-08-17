@@ -45,7 +45,7 @@ internal sealed partial class MarketplaceWindow
             return;
 
         var keepOpen = updateMigrationPopupOpen;
-        ImGui.SetNextWindowSize(new Vector2(650f, 0f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(UiModalSize(650f, 0f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal(
                 "Move plugin repository###DalagabOmegaUpdateMigration",
                 ref keepOpen,
@@ -68,7 +68,7 @@ internal sealed partial class MarketplaceWindow
         if (installedPlugin is null)
         {
             ImGui.TextWrapped($"{candidate.Name} is no longer installed.");
-            if (ImGui.Button("Close", new Vector2(92f, 30f)))
+            if (ImGui.Button("Close", Ui(92f, 30f)))
                 CloseUpdateMigration();
             ImGui.EndPopup();
             return;
@@ -146,8 +146,8 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextDisabled(DescribeUpdateSourceState(candidate));
 
         ImGui.Spacing();
-        const float cancelWidth = 92f;
-        const float migrateWidth = 150f;
+        var cancelWidth = Ui(92f);
+        var migrateWidth = Ui(150f);
         if (ImGui.Button("Cancel", new Vector2(cancelWidth, 32f)))
         {
             CloseUpdateMigration();
@@ -160,7 +160,7 @@ internal sealed partial class MarketplaceWindow
                         GetAvailableUpdateCandidate(candidate.InternalName, installedPlugin, currentApi, currentDalamudVersion) is not null;
         if (!canUpdate)
             ImGui.BeginDisabled();
-        if (ImGui.Button("Migrate & update", new Vector2(migrateWidth, 32f)))
+        if (ImGui.Button("Migrate & update", new Vector2(migrateWidth, Ui(32f))))
             StartSelectedUpdate(candidate);
         if (!canUpdate)
             ImGui.EndDisabled();
@@ -180,8 +180,8 @@ internal sealed partial class MarketplaceWindow
 
         if (comparison.ArtifactDiffers)
         {
-            var destinationVisual = ResolvePluginSecurityVisual(destination);
-            var installedVisual = ResolvePluginSecurityVisual(installedSource);
+            var destinationVisual = ResolveSigmascopeVisual(destination);
+            var installedVisual = ResolveSigmascopeVisual(installedSource);
             return $"The destination repository publishes different plugin package bytes from the installed source. " +
                    $"Security summary: destination {destinationVisual.Label.ToLowerInvariant()}, installed source {installedVisual.Label.ToLowerInvariant()}.";
         }

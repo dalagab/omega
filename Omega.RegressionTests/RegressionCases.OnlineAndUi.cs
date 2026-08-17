@@ -177,7 +177,7 @@ internal static partial class RegressionCases
         False(builder.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "base catalog builder never publishes an intermediate production database");
         Contains(builder, "name: omega-sqlite-catalog", "base catalog is handed to security analysis as an Actions artifact");
 
-        var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "security-scanner.yml"));
+        var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "sigmascope.yml"));
         var evidencePublishIndex = workflow.IndexOf("Publish validated Security Evidence v2 snapshot atomically", StringComparison.Ordinal);
         var marketplacePublishIndex = workflow.IndexOf("Publish small client marketplace only after all v2 gates pass", StringComparison.Ordinal);
         True(evidencePublishIndex >= 0 && marketplacePublishIndex > evidencePublishIndex, "client marketplace publication follows the validated detailed evidence publication step");

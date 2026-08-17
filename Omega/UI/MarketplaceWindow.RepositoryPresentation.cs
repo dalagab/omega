@@ -168,10 +168,10 @@ internal sealed partial class MarketplaceWindow
             if (texture is not null && texture.Size.X > 0 && texture.Size.Y > 0)
             {
                 var iconSize = Math.Min(18f, size.Y - 8f);
-                var iconY = min.Y + Math.Max(4f, (size.Y - iconSize) * 0.5f);
+                var iconY = min.Y + Math.Max(Ui(4f), (size.Y - iconSize) * 0.5f);
                 draw.AddImage(texture.Handle, new Vector2(cursorX, iconY), new Vector2(cursorX + iconSize, iconY + iconSize));
             }
-            cursorX += 23f;
+            cursorX += Ui(23f);
         }
         draw.AddText(
             new Vector2(cursorX, min.Y + Math.Max(0f, (size.Y - textSize.Y) * 0.5f)),

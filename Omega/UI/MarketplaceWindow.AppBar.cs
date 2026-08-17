@@ -16,7 +16,7 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawApplicationBar()
     {
-        ImGui.BeginChild("omega-application-bar", new Vector2(0f, AppBarHeight), false,
+        ImGui.BeginChild("omega-application-bar", new Vector2(0f, Ui(AppBarHeight)), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         DrawApplicationMark();
@@ -32,13 +32,13 @@ internal sealed partial class MarketplaceWindow
     {
         const string label = "Omega";
         var labelSize = ImGui.CalcTextSize(label);
-        var hitSize = labelSize + new Vector2(12f, 8f);
-        var y = Math.Max(0f, (AppBarHeight - hitSize.Y) * 0.5f);
-        ImGui.SetCursorPos(new Vector2(4f, y));
+        var hitSize = labelSize + Ui(12f, 8f);
+        var y = Math.Max(0f, (Ui(AppBarHeight) - hitSize.Y) * 0.5f);
+        ImGui.SetCursorPos(new Vector2(Ui(4f), y));
         ImGui.InvisibleButton("##omega-application-mark", hitSize);
         var min = ImGui.GetItemRectMin();
         var draw = ImGui.GetWindowDrawList();
-        var textPos = min + new Vector2(6f, (hitSize.Y - labelSize.Y) * 0.5f);
+        var textPos = min + new Vector2(Ui(6f), (hitSize.Y - labelSize.Y) * 0.5f);
         draw.AddText(textPos, ImGui.GetColorU32(ImGuiCol.Text), label);
 
         // Small red core in the first O: a quiet Omega identity mark without bringing the old logo back.
@@ -46,7 +46,7 @@ internal sealed partial class MarketplaceWindow
         var omegaDotCenter = textPos + new Vector2(firstLetterSize.X * 0.50f, firstLetterSize.Y * 0.52f);
         draw.AddCircleFilled(
             omegaDotCenter,
-            2.15f,
+            Ui(2.15f),
             ImGui.ColorConvertFloat4ToU32(new Vector4(0.88f, 0.16f, 0.20f, 1f)),
             12);
 
@@ -57,9 +57,9 @@ internal sealed partial class MarketplaceWindow
     private static (float X, float Width) GetGlobalSearchLayout()
     {
         var width = ImGui.GetWindowWidth();
-        var reserved = (AppBarControlSize * 2f) + 58f;
-        var searchWidth = Math.Min(AppBarSearchWidth, Math.Max(240f, width - (reserved * 2f)));
-        var x = Math.Max(96f, (width - searchWidth) * 0.5f);
+        var reserved = (Ui(AppBarControlSize) * 2f) + Ui(58f);
+        var searchWidth = Math.Min(Ui(AppBarSearchWidth), Math.Max(Ui(220f), width - (reserved * 2f)));
+        var x = Math.Max(Ui(92f), (width - searchWidth) * 0.5f);
         return (x, searchWidth);
     }
 
@@ -68,10 +68,10 @@ internal sealed partial class MarketplaceWindow
         if (!detailsOpen || activeView != MarketplaceView.Discover)
             return;
 
-        var x = Math.Max(72f, searchX - AppBarControlSize - 10f);
-        ImGui.SetCursorPos(new Vector2(x, 5f));
+        var x = Math.Max(Ui(68f), searchX - Ui(AppBarControlSize) - Ui(10f));
+        ImGui.SetCursorPos(new Vector2(x, Ui(5f)));
         var returnLabel = detailsReturnView == MarketplaceView.Library
-            ? detailsReturnLibrarySection == LibrarySection.Security ? "Back to Library security scan" : "Back to Library"
+            ? detailsReturnLibrarySection == LibrarySection.Sigmascope ? "Back to Library / Sigmascope" : "Back to Library"
             : $"Back to {ViewTitle(detailsReturnView)}";
         if (!DrawApplicationIconButton(FontAwesomeIcon.ArrowLeft, "discover-product-back", returnLabel, false))
             return;
@@ -87,7 +87,7 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawGlobalSearch(float x, float searchWidth)
     {
-        ImGui.SetCursorPos(new Vector2(x, 5f));
+        ImGui.SetCursorPos(new Vector2(x, Ui(5f)));
         ImGui.SetNextItemWidth(searchWidth);
 
         var previous = search;
@@ -124,9 +124,10 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawApplicationControls()
     {
-        const float gap = 4f;
-        var x = ImGui.GetWindowWidth() - (AppBarControlSize * 2f) - gap - 4f;
-        ImGui.SetCursorPos(new Vector2(x, 5f));
+        var gap = Ui(4f);
+        var controlSize = Ui(AppBarControlSize);
+        var x = ImGui.GetWindowWidth() - (controlSize * 2f) - gap - Ui(4f);
+        ImGui.SetCursorPos(new Vector2(x, Ui(5f)));
         if (DrawApplicationIconButton(FontAwesomeIcon.Minus, "minimize", "Minimize Omega", false))
             EnterMinimizedMode();
 
@@ -141,9 +142,10 @@ internal sealed partial class MarketplaceWindow
         string tooltip,
         bool danger)
     {
-        const float rounding = 6f;
+        var rounding = Ui(6f);
+        var controlSize = Ui(AppBarControlSize);
         var min = ImGui.GetCursorScreenPos();
-        ImGui.InvisibleButton($"##omega-appbar-{id}", new Vector2(AppBarControlSize, AppBarControlSize));
+        ImGui.InvisibleButton($"##omega-appbar-{id}", new Vector2(controlSize, controlSize));
         var hovered = ImGui.IsItemHovered();
         var held = ImGui.IsItemActive();
         var clicked = ImGui.IsItemClicked();
@@ -154,7 +156,7 @@ internal sealed partial class MarketplaceWindow
             var background = danger
                 ? new Vector4(0.42f, 0.08f, 0.11f, held ? 0.92f : 0.72f)
                 : new Vector4(0.060f, 0.080f, 0.105f, held ? 0.90f : 0.72f);
-            draw.AddRectFilled(min, min + new Vector2(AppBarControlSize, AppBarControlSize),
+            draw.AddRectFilled(min, min + new Vector2(controlSize, controlSize),
                 ImGui.ColorConvertFloat4ToU32(background), rounding);
         }
 
@@ -162,8 +164,8 @@ internal sealed partial class MarketplaceWindow
         var glyph = icon.ToIconString();
         var glyphSize = ImGui.CalcTextSize(glyph);
         var glyphPos = min + new Vector2(
-            (AppBarControlSize - glyphSize.X) * 0.5f,
-            (AppBarControlSize - glyphSize.Y) * 0.5f);
+            (controlSize - glyphSize.X) * 0.5f,
+            (controlSize - glyphSize.Y) * 0.5f);
         draw.AddText(glyphPos, hovered || held ? ImGui.GetColorU32(ImGuiCol.Text) : ImGui.GetColorU32(ImGuiCol.TextDisabled), glyph);
         ImGui.PopFont();
 

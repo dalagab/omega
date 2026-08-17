@@ -99,6 +99,49 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             self.assertGreater(publication["files"], 0)
             self.assertEqual(publication["evidenceRevision"], "ev-test")
 
+    def test_oversized_legacy_report_is_compacted_out_of_variant_descriptor(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            database = self.make_database(root / "evidence.sqlite")
+            huge_report = {
+                "schema": "omega.plugin-security.report.v1",
+                "opaqueLegacyEvidence": "x" * (18 * 1024 * 1024),
+                "source": {
+                    "repository": "https://example.invalid/source",
+                    "commit": "abc123",
+                    "error": "temporary source lookup failure",
+                    "dependencyIntelligence": {"fingerprints": {"relevantSourceSha256": "b" * 64}},
+                },
+                "automation": {"level": "ui", "capabilities": [{"id": "fixture", "label": "Fixture"}]},
+            }
+            encoded = json.dumps(huge_report, separators=(",", ":"))
+            with closing(sqlite3.connect(database)) as db:
+                db.execute("ALTER TABLE plugin_security_current ADD COLUMN report_json TEXT NOT NULL DEFAULT '{}'")
+                db.execute("UPDATE plugin_security_scans SET report_json=? WHERE scan_id=10", (encoded,))
+                db.execute("UPDATE plugin_security_current SET report_json=? WHERE variant_id=1", (encoded,))
+                db.commit()
+
+            output = root / "v2"
+            migrate(database, output, reset=True, chunk_bytes=1024 * 1024)
+            variant_path = output / "variants" / "0000" / "1.json"
+            self.assertLess(variant_path.stat().st_size, 1024 * 1024)
+            text = variant_path.read_text(encoding="utf-8")
+            self.assertNotIn("opaqueLegacyEvidence", text)
+            payload = json.loads(text)
+            for field in ("scan", "current"):
+                report = payload[field]["report_json"]
+                self.assertEqual(report["schema"], "omega.security-evidence.scan-summary.v2")
+                self.assertEqual(
+                    report["source"]["dependencyIntelligence"]["fingerprints"]["relevantSourceSha256"],
+                    "b" * 64,
+                )
+                self.assertEqual(report["source"]["error"], "temporary source lookup failure")
+                self.assertEqual(report["automation"]["level"], "ui")
+            report = validate(database, output)
+            self.assertTrue(report["ok"], report)
+            intrinsic = validate_snapshot(output)
+            self.assertTrue(intrinsic["ok"], intrinsic)
+
     def test_resume_reuses_completed_variant_state(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

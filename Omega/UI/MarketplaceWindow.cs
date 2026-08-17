@@ -19,7 +19,7 @@ internal enum MarketplaceView
 internal enum LibrarySection
 {
     All,
-    Security,
+    Sigmascope,
     Collections,
 }
 
@@ -101,6 +101,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private readonly OmegaSelfUpdateService selfUpdates;
     private readonly FileDialogManager fileDialogs = new();
     private readonly ISharedImmediateTexture? omegaIconTexture;
+    private readonly ISharedImmediateTexture? sigmascopeBannerTexture;
     private readonly string fallbackIconPath;
     private readonly ISharedImmediateTexture? fallbackIconTexture;
     private readonly string[] eulaLines;
@@ -247,6 +248,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         PluginConfigBackupService configBackups,
         OmegaSelfUpdateService selfUpdates,
         string omegaIconPath,
+        string sigmascopeBannerPath,
         string fallbackIconPath,
         string eulaPath)
         : base("Omega###DalagabOmegaMain")
@@ -263,6 +265,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         this.configBackups = configBackups;
         this.selfUpdates = selfUpdates;
         omegaIconTexture = File.Exists(omegaIconPath) ? Plugin.TextureProvider.GetFromFile(omegaIconPath) : null;
+        sigmascopeBannerTexture = File.Exists(sigmascopeBannerPath) ? Plugin.TextureProvider.GetFromFile(sigmascopeBannerPath) : null;
         this.fallbackIconPath = fallbackIconPath;
         fallbackIconTexture = File.Exists(fallbackIconPath) ? Plugin.TextureProvider.GetFromFile(fallbackIconPath) : null;
         eulaLines = LoadEulaLines(eulaPath, out var eulaAvailable);
@@ -323,15 +326,15 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
 
         EvaluateRepositoryRiskWarnings(installed, currentApi);
 
-        const float sidebarWidth = 64f;
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(8f, 16f));
+        var sidebarWidth = Ui(64f);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Ui(8f, 16f));
         ImGui.BeginChild("omega-app-sidebar", new Vector2(sidebarWidth, 0f), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         DrawSidebar(installed, currentApi, versionInfo.Version);
         ImGui.EndChild();
         ImGui.PopStyleVar();
 
-        ImGui.SameLine(0f, 12f);
+        ImGui.SameLine(0f, Ui(12f));
         ImGui.BeginChild("omega-app-content", Vector2.Zero, false, ImGuiWindowFlags.NoScrollbar);
         if (activeView is MarketplaceView.Library or MarketplaceView.Updates)
             DrawContentHeader(versionInfo.Version, currentApi);

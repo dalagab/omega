@@ -162,7 +162,7 @@ def validate_database(database: Path, report_path: Path | None = None) -> dict:
     if report_path:
         report = json.loads(report_path.read_text(encoding="utf-8"))
         if report.get("scannerVersion") != security_scan.SCANNER_VERSION:
-            raise RuntimeError("security report scanner version does not match scanner implementation")
+            raise RuntimeError("security report Sigmascope version does not match Sigmascope implementation")
         health = report.get("databaseHealth") or {}
         if str(health.get("integrity", "")).lower() != "ok":
             raise RuntimeError("security report database health is not ok")
@@ -209,16 +209,16 @@ def validate_scan_ledger(path: Path) -> dict:
         return {"present": False, "entries": 0}
     doc = json.loads(path.read_text(encoding="utf-8"))
     if doc.get("schema") != security_scan.SECURITY_LEDGER_SCHEMA or not isinstance(doc.get("variants"), dict):
-        raise RuntimeError("security scan ledger schema is invalid")
+        raise RuntimeError("Sigmascope legacy scan-ledger schema is invalid")
     for key, entry in doc["variants"].items():
         if not str(key).isdigit() or not isinstance(entry, dict):
-            raise RuntimeError("security scan ledger contains an invalid variant entry")
+            raise RuntimeError("Sigmascope legacy scan-ledger contains an invalid variant entry")
         if entry.get("status") not in ("complete", "failed"):
-            raise RuntimeError("security scan ledger contains an invalid status")
+            raise RuntimeError("Sigmascope legacy scan-ledger contains an invalid status")
         if not str(entry.get("scannerVersion") or ""):
-            raise RuntimeError("security scan ledger entry is missing scanner version")
+            raise RuntimeError("Sigmascope legacy scan-ledger entry is missing the legacy scanner_version / Sigmascope version field")
         if not str(entry.get("lastValidatedAtUtc") or ""):
-            raise RuntimeError("security scan ledger entry is missing validation time")
+            raise RuntimeError("Sigmascope legacy scan-ledger entry is missing validation time")
     return {"present": True, "entries": len(doc["variants"]), "scannerVersion": str(doc.get("scannerVersion") or "")}
 
 def validate(root: Path) -> dict:

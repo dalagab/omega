@@ -152,7 +152,7 @@ internal sealed partial class MarketplaceWindow
             return;
 
         var keepOpen = repositoryRiskPopupOpen;
-        ImGui.SetNextWindowSize(new Vector2(720f, 0f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(UiModalSize(720f, 0f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal(RepositoryRiskPopupId, ref keepOpen,
                 ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse |
                 ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
@@ -199,7 +199,7 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.Spacing();
-        if (ImGui.Button("Review Sources", new Vector2(150f, 34f)))
+        if (ImGui.Button("Review Sources", Ui(150f, 34f)))
         {
             repositoryRiskDismissedFingerprint = repositoryRiskFingerprint;
             repositoryRiskPopupOpen = false;
@@ -210,7 +210,7 @@ internal sealed partial class MarketplaceWindow
             settingsOpen = true;
         }
         ImGui.SameLine();
-        if (ImGui.Button("Acknowledge", new Vector2(140f, 34f)))
+        if (ImGui.Button("Acknowledge", Ui(140f, 34f)))
         {
             AcknowledgeVisibleRepositoryRisks();
             repositoryRiskPopupOpen = false;
