@@ -158,6 +158,65 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertNotIn("failed-candidate", hits["network.http"])
         self.assertIn("successful-candidate", hits["filesystem.write"])
 
+    def test_source_scope_scans_only_plugin_build_graph_in_monorepo(self) -> None:
+        paths = {
+            "HonseFarm.sln",
+            "src/HonseFarm.Client/HonseFarm.Client.csproj",
+            "src/HonseFarm.Client/Plugin.cs",
+            "src/HonseFarm.Server/HonseFarm.Server.csproj",
+            "src/HonseFarm.Server/Server.cs",
+            "src/HonseFarm.Shared/HonseFarm.Shared.csproj",
+            "src/HonseFarm.Shared/Shared.cs",
+            "src/Common/PluginBridge.cs",
+            "Directory.Build.props",
+            ".github/workflows/server.yml",
+        }
+        descriptors = {
+            "HonseFarm.sln": '''
+                Project("{A}") = "HonseFarm.Client", "src\\HonseFarm.Client\\HonseFarm.Client.csproj", "{B}"
+                Project("{A}") = "HonseFarm.Server", "src\\HonseFarm.Server\\HonseFarm.Server.csproj", "{C}"
+            ''',
+            "src/HonseFarm.Client/HonseFarm.Client.csproj": '''
+                <Project Sdk="Dalamud.NET.Sdk/14.0.2">
+                  <ItemGroup>
+                    <ProjectReference Include="..\\HonseFarm.Shared\\HonseFarm.Shared.csproj" />
+                    <Compile Include="..\\Common\\PluginBridge.cs" Link="PluginBridge.cs" />
+                  </ItemGroup>
+                </Project>
+            ''',
+            "src/HonseFarm.Server/HonseFarm.Server.csproj": '''
+                <Project Sdk="Microsoft.NET.Sdk.Web"><ItemGroup>
+                  <ProjectReference Include="..\\HonseFarm.Shared\\HonseFarm.Shared.csproj" />
+                </ItemGroup></Project>
+            ''',
+            "src/HonseFarm.Shared/HonseFarm.Shared.csproj": '<Project Sdk="Microsoft.NET.Sdk" />',
+        }
+        scope = security_scan.select_plugin_source_scope(paths, descriptors, "HonseFarm", "Honse Farm")
+        self.assertEqual("plugin-build-graph", scope["mode"])
+        self.assertEqual("src/HonseFarm.Client/HonseFarm.Client.csproj", scope["primaryProject"])
+        self.assertEqual(
+            ["src/HonseFarm.Client/HonseFarm.Client.csproj", "src/HonseFarm.Shared/HonseFarm.Shared.csproj"],
+            scope["projectFiles"],
+        )
+        self.assertIn("HonseFarm.sln", scope["solutionFiles"])
+        self.assertIn("src/Common/PluginBridge.cs", scope["criticalPaths"])
+        self.assertIn("Directory.Build.props", scope["criticalPaths"])
+        self.assertNotIn("src/HonseFarm.Server/Server.cs", scope["criticalPaths"])
+        self.assertNotIn("src/HonseFarm.Server/HonseFarm.Server.csproj", scope["criticalPaths"])
+        self.assertIn("src/HonseFarm.Server/HonseFarm.Server.csproj", scope["contextProjects"])
+        self.assertGreater(scope["excludedSourceFiles"], 0)
+
+    def test_source_scope_does_not_promote_server_only_repository_to_plugin_code(self) -> None:
+        paths = {"src/HonseFarm.Server/HonseFarm.Server.csproj", "src/HonseFarm.Server/Program.cs"}
+        descriptors = {
+            "src/HonseFarm.Server/HonseFarm.Server.csproj": '<Project Sdk="Microsoft.NET.Sdk.Web" />',
+        }
+        scope = security_scan.select_plugin_source_scope(paths, descriptors, "HonseFarm", "Honse Farm")
+        self.assertEqual("repository-context-only", scope["mode"])
+        self.assertEqual("", scope["primaryProject"])
+        self.assertEqual([], scope["criticalPaths"])
+        self.assertEqual(2, scope["excludedSourceFiles"])
+
     def test_scanner_loads_only_validated_stable_github_source_overrides(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "source-overrides.json"

@@ -10,6 +10,7 @@ from pathlib import Path
 import common  # noqa: F401
 import compact_sqlite_catalog
 import project_marketplace_catalog
+import security_scan
 import validate_marketplace_catalog
 
 
@@ -195,6 +196,40 @@ class MarketplaceProjectionTests(unittest.TestCase):
                 leaked = db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_dependency_%'").fetchone()[0]
                 self.assertEqual(0, leaked)
 
+    def test_ipc_relationship_semantics_are_bounded_in_definitions(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-marketplace-ipc-relationship-") as td:
+            root = Path(td)
+            evidence = root / "evidence.sqlite"
+            compact_sqlite_catalog.build_self_test_database(evidence)
+            with closing(sqlite3.connect(evidence)) as db:
+                db.row_factory = sqlite3.Row
+                security_scan.ensure_schema(db)
+                db.execute("UPDATE plugin_security_dependencies SET kind='ipc',name='Omega.Required.Channel',requirement='soft',relationship='required',relationship_confidence='High',relationship_evidence_json=? WHERE dependency_id=1",
+                           (json.dumps(["startup path: Initialize", "IPC is invoked directly without an observed availability guard"]),))
+                db.execute("INSERT INTO plugins(plugin_id,internal_name,canonical_name,first_seen_utc,last_seen_utc,active) VALUES(2,'ProviderPlugin','Provider Plugin','','',1)")
+                db.execute("INSERT INTO plugin_variants(variant_id,plugin_id,source_id,source_entry_key,name,author,assembly_version,first_seen_utc,last_seen_utc,active) VALUES(2,2,1,'ProviderPlugin','Provider Plugin','Omega','1.0','','',1)")
+                db.execute("""INSERT OR REPLACE INTO plugin_security_dependency_resolutions(
+                    dependency_id,scan_id,source_plugin_id,source_variant_id,dependency_kind,dependency_name,normalized_name,component_key,requirement,
+                    relationship,relationship_confidence,relationship_evidence_json,resolution_status,version_status,target_plugin_id,target_variant_id,
+                    target_internal_name,target_variant_count,target_version,confidence,match_basis,evidence_json)
+                    VALUES(1,1,1,1,'ipc','Omega.Required.Channel','omega.required.channel','ipc:omega.required.channel','soft',
+                           'required','High','["startup path: Initialize"]','resolved-ipc-provider','unknown',2,2,'ProviderPlugin',1,'1.0','VeryHigh','exact-ipc-channel-provider','[]')""")
+                db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('catalog_revision','cat-v1-0123456789abcdef')")
+                db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_revision','sec-2.4.0-0123456789abcdef')")
+                db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('evidence_revision','ev-v1-0123456789abcdef')")
+                db.commit()
+            out = root / "marketplace.sqlite"
+            project_marketplace_catalog.project_database(evidence, out)
+            with closing(sqlite3.connect(out)) as db:
+                row = db.execute("SELECT security_dependencies_json FROM runtime_plugin_variants WHERE internal_name='Fixture'").fetchone()
+                dependency = json.loads(row[0])[0]
+                self.assertEqual("required", dependency["relationship"])
+                self.assertEqual("High", dependency["relationshipConfidence"])
+                self.assertIn("startup path", dependency["relationshipReason"])
+                self.assertEqual("ProviderPlugin", dependency["targetInternalName"])
+                leaked = db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='plugin_security_ipc_endpoints'").fetchone()[0]
+                self.assertEqual(0, leaked, "forensic IPC evidence must stay out of the Definitions database")
+
     def test_marketplace_descriptor_does_not_expose_evidence_download_url(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-marketplace-descriptor-") as td:
             root = Path(td)
@@ -225,6 +260,46 @@ class MarketplaceProjectionTests(unittest.TestCase):
             self.assertNotIn("security-evidence-latest", json.dumps(marketplace))
             validate_marketplace_catalog.validate_bytes((out / "catalog.json").read_bytes(), (out / "omega-marketplace.sqlite.zip").read_bytes())
 
+
+    def test_known_osv_risk_is_exact_version_scoped_and_increases_internal_risk_score(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-marketplace-known-risk-") as td:
+            root = Path(td)
+            evidence = root / "evidence.sqlite"
+            compact_sqlite_catalog.build_self_test_database(evidence)
+            with closing(sqlite3.connect(evidence)) as db:
+                db.row_factory = sqlite3.Row
+                db.execute("UPDATE plugin_security_dependencies SET kind='nuget',name='Risky.Package',version='1.2.3',resolved_version='1.2.3',requirement='required' WHERE dependency_id=1")
+                db.execute("""INSERT INTO plugin_security_dependency_resolutions(
+                    dependency_id,scan_id,source_plugin_id,source_variant_id,dependency_kind,dependency_name,version_requirement,
+                    normalized_name,component_key,requirement,resolution_status,version_status,target_plugin_id,target_variant_id,
+                    target_internal_name,target_variant_count,target_version,confidence,match_basis,evidence_json)
+                    VALUES(1,1,1,1,'nuget','Risky.Package','','risky.package','nuget:risky.package','required',
+                           'resolved-component','observed',NULL,NULL,'',0,'1.2.3','high','nuget-component','[]')""")
+                db.execute("""INSERT INTO plugin_security_dependency_advisory_matches(
+                    advisory_id,component_key,component_kind,component_name,affected_version,affected_range,fixed_version,
+                    severity,title,advisory_url,advisory_source,refreshed_at_utc)
+                    VALUES('OSV-EXACT','nuget:risky.package','nuget','Risky.Package','1.2.3','','1.2.4',
+                           'high','Exact affected version','https://osv.dev/vulnerability/OSV-EXACT','OSV','')""")
+                db.execute("""INSERT INTO plugin_security_dependency_advisory_matches(
+                    advisory_id,component_key,component_kind,component_name,affected_version,affected_range,fixed_version,
+                    severity,title,advisory_url,advisory_source,refreshed_at_utc)
+                    VALUES('OSV-OTHER','nuget:risky.package','nuget','Risky.Package','9.9.9','','10.0.0',
+                           'critical','Different version must not leak','https://osv.dev/vulnerability/OSV-OTHER','OSV','')""")
+                counts = db.execute("SELECT informational_count,caution_count,high_count,critical_count FROM plugin_security_current WHERE variant_id=1").fetchone()
+                expected_score = project_marketplace_catalog._security_risk_score(*[int(value or 0) for value in counts], advisory_points=25)
+                db.commit()
+            out = root / "marketplace.sqlite"
+            projected = project_marketplace_catalog.project_database(evidence, out)
+            self.assertEqual(1, projected["knownRiskRows"])
+            with closing(sqlite3.connect(out)) as db:
+                row = db.execute("""SELECT security_known_advisory_count,security_known_advisory_highest_severity,security_risk_score,
+                                           security_dependencies_json
+                                      FROM runtime_plugin_variants WHERE internal_name='Fixture'""").fetchone()
+                self.assertIsNotNone(row)
+                self.assertEqual(1, row[0], "only the advisory for the exact dependency version may affect the plugin")
+                self.assertEqual("high", row[1])
+                self.assertEqual(expected_score, row[2])
+                self.assertEqual([], json.loads(row[3]), "NuGet risk evidence remains security context, not a plugin dependency listing")
 
     def test_dependency_summary_is_bounded_and_retains_total_component_count(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-marketplace-dependency-bound-") as td:

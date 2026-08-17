@@ -226,12 +226,22 @@ internal sealed class SqliteCatalogStore
         var dependencyTotalProjection = runtimeColumns.Contains("security_dependency_total_count")
             ? "security_dependency_total_count"
             : "0 AS security_dependency_total_count";
+        var knownAdvisoryCountProjection = runtimeColumns.Contains("security_known_advisory_count")
+            ? "security_known_advisory_count"
+            : "0 AS security_known_advisory_count";
+        var knownAdvisorySeverityProjection = runtimeColumns.Contains("security_known_advisory_highest_severity")
+            ? "security_known_advisory_highest_severity"
+            : "'none' AS security_known_advisory_highest_severity";
+        var riskScoreProjection = runtimeColumns.Contains("security_risk_score")
+            ? "security_risk_score"
+            : "0 AS security_risk_score";
         var securityProjection = hasSecurityProjection
             ? $"""
                    security_status,security_scanned_at_utc,security_artifact_sha256,security_scanner_version,
                    security_highest_severity,security_informational_count,security_caution_count,security_high_count,
                    security_critical_count,security_capabilities_json,{automationLevelProjection},{automationCapabilitiesProjection},
-                   security_findings_json,{dependenciesProjection},{dependencyTotalProjection},security_source_available,
+                   security_findings_json,{dependenciesProjection},{dependencyTotalProjection},{knownAdvisoryCountProjection},
+                   {knownAdvisorySeverityProjection},{riskScoreProjection},security_source_available,
                    security_source_repository,security_source_commit,security_source_to_binary_verified,security_error
               """
             : """
@@ -239,7 +249,8 @@ internal sealed class SqliteCatalogStore
                    'none' AS security_highest_severity,0 AS security_informational_count,0 AS security_caution_count,0 AS security_high_count,
                    0 AS security_critical_count,'[]' AS security_capabilities_json,'none' AS security_automation_level,
                    '[]' AS security_automation_capabilities_json,'[]' AS security_findings_json,'[]' AS security_dependencies_json,
-                   0 AS security_dependency_total_count,0 AS security_source_available,
+                   0 AS security_dependency_total_count,0 AS security_known_advisory_count,'none' AS security_known_advisory_highest_severity,
+                   0 AS security_risk_score,0 AS security_source_available,
                    '' AS security_source_repository,'' AS security_source_commit,0 AS security_source_to_binary_verified,'' AS security_error
               """;
 
@@ -312,12 +323,15 @@ internal sealed class SqliteCatalogStore
                 SecurityFindings = ReadSecurityFindings(GetString(reader, 47, "[]")),
                 SecurityDependencies = ReadDependencies(GetString(reader, 48, "[]")),
                 SecurityDependencyTotalCount = GetInt(reader, 49),
-                SecuritySourceAvailable = GetBool(reader, 50),
-                SecuritySourceRepository = GetString(reader, 51),
-                SecuritySourceCommit = GetString(reader, 52),
-                SecuritySourceToBinaryVerified = GetBool(reader, 53),
-                SecurityError = GetString(reader, 54),
-                Authors = ReadStrings(GetString(reader, 55, "[]")),
+                SecurityKnownAdvisoryCount = GetInt(reader, 50),
+                SecurityKnownAdvisoryHighestSeverity = GetString(reader, 51, "none"),
+                SecurityRiskScore = GetInt(reader, 52),
+                SecuritySourceAvailable = GetBool(reader, 53),
+                SecuritySourceRepository = GetString(reader, 54),
+                SecuritySourceCommit = GetString(reader, 55),
+                SecuritySourceToBinaryVerified = GetBool(reader, 56),
+                SecurityError = GetString(reader, 57),
+                Authors = ReadStrings(GetString(reader, 58, "[]")),
             });
         }
         return result;

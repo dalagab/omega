@@ -52,13 +52,18 @@ def validate_bytes(descriptor_bytes: bytes, bundle: bytes) -> dict:
             if int(db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='marketplace_security_current'").fetchone()[0]) != 1:
                 raise RuntimeError("marketplace current-security summary table is missing")
             security_columns = {row[1] for row in db.execute("PRAGMA table_info(marketplace_security_current)")}
-            for required in ("dependencies_json", "dependency_total_count"):
+            for required in ("dependencies_json", "dependency_total_count", "known_advisory_count", "known_advisory_highest_severity", "risk_score"):
                 if required not in security_columns:
                     raise RuntimeError(f"marketplace dependency summary column is missing: {required}")
             runtime_columns = {row[1] for row in db.execute("PRAGMA table_info(runtime_plugin_variants)")}
-            for required in ("security_dependencies_json", "security_dependency_total_count"):
+            for required in ("security_dependencies_json", "security_dependency_total_count", "security_known_advisory_count", "security_known_advisory_highest_severity", "security_risk_score"):
                 if required not in runtime_columns:
                     raise RuntimeError(f"runtime dependency projection column is missing: {required}")
+            for advisory_count, risk_score in db.execute("SELECT known_advisory_count,risk_score FROM marketplace_security_current"):
+                if int(advisory_count or 0) < 0:
+                    raise RuntimeError("marketplace known-advisory count cannot be negative")
+                if not 0 <= int(risk_score or 0) <= 100:
+                    raise RuntimeError("marketplace internal risk score must stay within 0..100")
             for encoded, total in db.execute("SELECT dependencies_json,dependency_total_count FROM marketplace_security_current"):
                 dependencies = json.loads(encoded or "[]")
                 if not isinstance(dependencies, list) or len(dependencies) > 30:

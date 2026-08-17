@@ -38,8 +38,33 @@ internal sealed partial class MarketplaceWindow
                 tooltip);
         }
 
-        return ResolveCompletedSecurityVisual(plugin.SecurityHighestSeverity);
+        var staticSeverity = plugin.SecurityHighestSeverity;
+        var advisoryRank = plugin.HasKnownAtRiskDependency
+            ? Math.Max(SecuritySeverityRank(plugin.SecurityKnownAdvisoryHighestSeverity), SecuritySeverityRank("caution"))
+            : 0;
+        var effectiveSeverity = advisoryRank > SecuritySeverityRank(staticSeverity)
+            ? (SecuritySeverityRank(plugin.SecurityKnownAdvisoryHighestSeverity) > 0 ? plugin.SecurityKnownAdvisoryHighestSeverity : "caution")
+            : staticSeverity;
+        var visual = ResolveCompletedSecurityVisual(effectiveSeverity);
+        if (!plugin.HasKnownAtRiskDependency)
+            return visual;
+
+        var advisorySeverity = string.IsNullOrWhiteSpace(plugin.SecurityKnownAdvisoryHighestSeverity)
+            ? "unknown"
+            : plugin.SecurityKnownAdvisoryHighestSeverity;
+        var advisoryLabel = plugin.SecurityKnownAdvisoryCount == 1 ? "advisory" : "advisories";
+        return visual with
+        {
+            Tooltip = $"Security posture: {visual.Label}. OSV reports {plugin.SecurityKnownAdvisoryCount} known {advisoryLabel} affecting dependency versions used by this plugin package (highest: {advisorySeverity}). Static-scan severity: {ResolveCompletedSecurityVisual(staticSeverity).Label}."
+        };
     }
+
+    private static int EffectiveSecuritySeverityRank(MarketplacePlugin plugin)
+        => Math.Max(
+            SecuritySeverityRank(plugin.SecurityHighestSeverity),
+            plugin.HasKnownAtRiskDependency
+                ? Math.Max(SecuritySeverityRank(plugin.SecurityKnownAdvisoryHighestSeverity), SecuritySeverityRank("caution"))
+                : 0);
 
     /// <summary>
     /// Orders the normalized security severities used by Library posture sorting.
@@ -114,6 +139,21 @@ internal sealed partial class MarketplaceWindow
         DrawPluginFontAwesomeRiskIcon(visual.Icon, visual.IconColor, visual.Tooltip, 20f);
         ImGui.SameLine(0f, 8f);
         DrawDiscoverTextBadge(visual.Label, visual.BadgeColor);
+        if (plugin.HasKnownAtRiskDependency)
+        {
+            ImGui.SameLine(0f, 8f);
+            DrawKnownRiskBadge(plugin);
+        }
+    }
+
+    private static void DrawKnownRiskBadge(MarketplacePlugin plugin)
+    {
+        DrawDiscoverTextBadge("Known risk", new Vector4(0.58f, 0.08f, 0.11f, 0.96f));
+        if (ImGui.IsItemHovered())
+        {
+            var noun = plugin.SecurityKnownAdvisoryCount == 1 ? "advisory" : "advisories";
+            ImGui.SetTooltip($"OSV reports {plugin.SecurityKnownAdvisoryCount} known {noun} affecting dependency versions used by this plugin package. Highest advisory severity: {plugin.SecurityKnownAdvisoryHighestSeverity}.");
+        }
     }
 
     private void DrawProductSecurity(MarketplacePlugin plugin)
@@ -125,12 +165,22 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.Indent(14f);
         DrawSecuritySeverityBadge(plugin.SecurityHighestSeverity);
+        if (plugin.HasKnownAtRiskDependency)
+        {
+            ImGui.SameLine(0f, 8f);
+            DrawKnownRiskBadge(plugin);
+        }
         if (plugin.SecurityScannedAtUtc is { } scanned)
         {
             ImGui.SameLine(0f, 10f);
             ImGui.TextDisabled($"Scanned {scanned.ToLocalTime():g}");
         }
         ImGui.TextDisabled(SecurityCountSummary(plugin));
+        if (plugin.HasKnownAtRiskDependency)
+        {
+            var noun = plugin.SecurityKnownAdvisoryCount == 1 ? "dependency advisory" : "dependency advisories";
+            ImGui.TextWrapped($"Known at-risk dependency: OSV reports {plugin.SecurityKnownAdvisoryCount} {noun} affecting component versions used by this package. This contributes to Omega's internal risk score even when that score is not shown numerically.");
+        }
 
         if (plugin.SecurityCapabilities.Count > 0)
         {

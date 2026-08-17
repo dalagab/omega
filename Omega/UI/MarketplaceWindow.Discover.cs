@@ -414,11 +414,22 @@ internal sealed partial class MarketplaceWindow
         DrawPluginSecurityScanIndicator(plugin, iconSize);
         var hovered = ImGui.IsItemHovered();
 
+        var nextX = scanX - gap - iconSize;
+        if (plugin.HasKnownAtRiskDependency)
+        {
+            var noun = plugin.SecurityKnownAdvisoryCount == 1 ? "advisory" : "advisories";
+            var tooltip = $"Known risk: OSV reports {plugin.SecurityKnownAdvisoryCount} {noun} affecting dependency versions used by this plugin package. Highest advisory severity: {plugin.SecurityKnownAdvisoryHighestSeverity}.";
+            ImGui.SetCursorPos(new Vector2(nextX, y));
+            DrawPluginFontAwesomeRiskIcon(FontAwesomeIcon.ExclamationTriangle, new Vector4(0.96f, 0.16f, 0.19f, 1f), tooltip, iconSize);
+            hovered |= ImGui.IsItemHovered();
+            nextX -= gap + iconSize;
+        }
+
         var automation = GetPluginAutomationState(plugin);
         if (automation is null)
             return hovered;
 
-        ImGui.SetCursorPos(new Vector2(scanX - gap - iconSize, y));
+        ImGui.SetCursorPos(new Vector2(nextX, y));
         DrawPluginRadiationIcon(automation.Value.Color, automation.Value.Tooltip, iconSize);
         return hovered || ImGui.IsItemHovered();
     }

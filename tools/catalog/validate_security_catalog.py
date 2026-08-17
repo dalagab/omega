@@ -20,6 +20,8 @@ from catalog_revisions import CATALOG_REVISION_SCHEMA, EVIDENCE_REVISION_SCHEMA,
 REQUIRED_TABLES = (
     "plugin_security_current",
     "plugin_security_dependencies",
+    "plugin_security_ipc_endpoints",
+    "plugin_security_ipc_registry",
     "plugin_security_dependency_resolutions",
     "plugin_security_dependency_components",
     "plugin_security_dependency_issues",
@@ -58,6 +60,12 @@ def validate_database(database: Path, report_path: Path | None = None) -> dict:
             ("plugin_security_dependencies", "requirement"),
             ("plugin_security_dependencies", "version_requirement"),
             ("plugin_security_dependencies", "resolved_version"),
+            ("plugin_security_dependencies", "relationship"),
+            ("plugin_security_dependencies", "relationship_confidence"),
+            ("plugin_security_dependencies", "relationship_evidence_json"),
+            ("plugin_security_ipc_endpoints", "relationship"),
+            ("plugin_security_dependency_resolutions", "relationship"),
+            ("plugin_security_dependency_resolutions", "relationship_confidence"),
             ("plugin_security_dependency_components", "version_divergence"),
             ("plugin_security_managed_calls", "target_method_token"),
             ("plugin_security_current", "automation_level"),
@@ -80,6 +88,40 @@ def validate_database(database: Path, report_path: Path | None = None) -> dict:
         resolution_count = db.execute("SELECT COUNT(*) FROM plugin_security_dependency_resolutions").fetchone()[0]
         if resolution_count != current_dependencies:
             raise RuntimeError(f"dependency projection mismatch: {resolution_count} != {current_dependencies}")
+        ipc_registry_duplicates = db.execute("""
+            SELECT COUNT(*) FROM (
+                SELECT channel,provider_plugin_id,COUNT(*) AS n
+                  FROM plugin_security_ipc_registry
+                 GROUP BY channel,provider_plugin_id
+                HAVING n>1
+            )
+        """).fetchone()[0]
+        if ipc_registry_duplicates:
+            raise RuntimeError(f"IPC provider registry contains duplicate channel/provider rows: {ipc_registry_duplicates}")
+        invalid_ipc_edges = db.execute("""
+            SELECT COUNT(*)
+              FROM plugin_security_dependency_resolutions r
+             WHERE r.dependency_kind='ipc' AND r.resolution_status='resolved-ipc-provider'
+               AND NOT EXISTS (
+                   SELECT 1 FROM plugin_security_ipc_registry g
+                    WHERE g.channel=r.dependency_name AND g.provider_plugin_id=r.target_plugin_id
+               )
+        """).fetchone()[0]
+        if invalid_ipc_edges:
+            raise RuntimeError(f"resolved IPC edges are missing provider registrations: {invalid_ipc_edges}")
+        invalid_ipc_relationships = db.execute("""
+            SELECT COUNT(*) FROM plugin_security_dependencies
+             WHERE kind='ipc' AND TRIM(relationship)<>'' AND lower(relationship) NOT IN ('required','feature','optional','unknown')
+        """).fetchone()[0]
+        if invalid_ipc_relationships:
+            raise RuntimeError(f"invalid IPC dependency relationships: {invalid_ipc_relationships}")
+        invalid_ipc_confidence = db.execute("""
+            SELECT COUNT(*) FROM plugin_security_dependencies
+             WHERE kind='ipc' AND TRIM(relationship_confidence)<>''
+               AND lower(replace(replace(relationship_confidence,'-',''),'_','')) NOT IN ('veryhigh','high','medium','low')
+        """).fetchone()[0]
+        if invalid_ipc_confidence:
+            raise RuntimeError(f"invalid IPC relationship confidence values: {invalid_ipc_confidence}")
         for key in (
             "dependency_graph_version",
             "dependency_version_intelligence_version",

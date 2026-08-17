@@ -18,6 +18,9 @@ public sealed class MarketplaceDependency
     public string VersionStatus { get; init; } = string.Empty;
     public string TargetInternalName { get; init; } = string.Empty;
     public string TargetVersion { get; init; } = string.Empty;
+    public string Relationship { get; init; } = string.Empty;
+    public string RelationshipConfidence { get; init; } = string.Empty;
+    public string RelationshipReason { get; init; } = string.Empty;
     public bool IsFramework { get; init; }
     public string WarningSeverity { get; init; } = string.Empty;
     public int WarningCount { get; init; }

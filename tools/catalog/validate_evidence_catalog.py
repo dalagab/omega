@@ -16,7 +16,8 @@ BUNDLE_NAME = "omega-security-evidence.sqlite.zip"
 DESCRIPTOR_NAME = "evidence.json"
 REQUIRED_TABLES = (
     "plugin_security_scans", "plugin_security_findings", "plugin_security_current",
-    "plugin_security_dependencies", "plugin_security_permission_candidates",
+    "plugin_security_dependencies", "plugin_security_ipc_endpoints", "plugin_security_ipc_registry",
+    "plugin_security_permission_candidates",
     "plugin_security_managed_assemblies", "plugin_security_managed_symbols",
     "plugin_security_managed_calls", "plugin_security_managed_reachability",
     "plugin_security_automation_capabilities",

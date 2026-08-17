@@ -49,6 +49,8 @@ PRESERVED_TABLES = (
     "plugin_security_findings",
     "plugin_security_current",
     "plugin_security_dependencies",
+    "plugin_security_ipc_endpoints",
+    "plugin_security_ipc_registry",
     "plugin_security_imports",
     "plugin_security_permission_candidates",
     "plugin_security_automation_capabilities",

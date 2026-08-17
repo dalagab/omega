@@ -32,11 +32,15 @@ class ProductionReleaseHygieneTests(unittest.TestCase):
             ROOT / "README.md",
             ROOT / "SECURITY.md",
             ROOT / "EULA.md",
-            ROOT / "catalog" / "README.md",
-            ROOT / "catalog" / "WORKFLOW.md",
             ROOT / "repository" / "README.md",
             ROOT / "installer" / "README.md",
         ]
+        # ZipRunner/GitHub source packages deliberately omit the generated root catalog/ tree.
+        # When validating a full workflow checkout, its authored catalog documentation is still checked.
+        public_files.extend(path for path in (
+            ROOT / "catalog" / "README.md",
+            ROOT / "catalog" / "WORKFLOW.md",
+        ) if path.exists())
         forbidden_terms = [
             "stag" + "ing",
             "develop" + "ment build",

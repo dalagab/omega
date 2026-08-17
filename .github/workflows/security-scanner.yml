@@ -7,7 +7,8 @@ on:
     types:
       - completed
   schedule:
-    - cron: "17 6 * * *"
+    # Independent safety-net scans between catalog-driven scans.
+    - cron: "47 3,15 * * *"
   workflow_dispatch:
     inputs:
       max_scans:
@@ -104,6 +105,26 @@ jobs:
           --internal-names "${{ inputs.internal_names || '' }}"
           --advisories catalog/security-output/public-advisories.json
           --source-overrides sources/source-overrides.json
+      - name: Refresh public advisories for dependencies discovered in this scan
+        run: >-
+          python tools/catalog/collect_public_advisories.py
+          --database catalog/security-output/omega-catalog.sqlite
+          --output catalog/security-output/public-advisories.json
+      - name: Re-project fresh advisory matches without rescanning plugin artifacts
+        run: >-
+          python tools/catalog/security_scan.py
+          --database catalog/security-output/omega-catalog.sqlite
+          --bundle catalog/security-output/omega-catalog.sqlite.zip
+          --descriptor catalog/security-output/catalog.json
+          --report catalog/security-output/security-advisory-refresh-report.json
+          --ledger catalog/security-output/security-scan-ledger.json
+          --max-scans 0
+          --max-batch-seconds 0
+          --rescan-after-hours ${{ inputs.rescan_after_hours || '168' }}
+          --internal-names "${{ inputs.internal_names || '' }}"
+          --advisories catalog/security-output/public-advisories.json
+          --source-overrides sources/source-overrides.json
+          --skip-source
       - name: Project public-source coverage follow-ups
         run: >-
           python tools/catalog/source_scan_followups.py
@@ -129,6 +150,7 @@ jobs:
             catalog/security-output/catalog.json
             catalog/security-output/catalog-report.json
             catalog/security-output/security-report.json
+            catalog/security-output/security-advisory-refresh-report.json
             catalog/security-output/security-scan-ledger.json
             catalog/security-output/public-advisories.json
             catalog/security-output/source-scan-followups.json

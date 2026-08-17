@@ -7,7 +7,7 @@ archives into the runner workspace. Results are evidence-based capabilities and
 risk indicators, not a claim that a plugin is safe or malicious.
 
 Dependency intelligence is intentionally conservative: imports, declared packages,
-Dalamud services, IPC channels, native imports and bundled binaries are recorded as
+Dalamud services, IPC provider/consumer channels, native imports and bundled binaries are recorded as
 evidence and mapped to *permission candidates*. Managed PE/.NET metadata and bounded
 CIL method bodies are parsed statically to record assembly references, symbols and
 compiled call sites. Hard, soft and optional dependency semantics are preserved; a
@@ -29,11 +29,13 @@ from contextlib import closing
 import argparse
 import dataclasses
 import datetime as dt
+import fnmatch
 import hashlib
 import io
 import ipaddress
 import json
 import os
+import posixpath
 import re
 import socket
 import sqlite3
@@ -54,7 +56,7 @@ from security_path_access import external_hard_coded_paths
 from source_resolution import source_candidates, source_override_key
 
 
-SCANNER_VERSION = "2.1.0"
+SCANNER_VERSION = "2.4.0"
 SECURITY_LEDGER_SCHEMA = "omega.security-scan-ledger.v1"
 MAX_ARTIFACT_BYTES = 256 * 1024 * 1024
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
@@ -91,6 +93,7 @@ MAX_PERMISSION_CANDIDATES_PER_SCAN = 4_096
 MAX_SOURCE_FILE_RECORDS_PER_SCAN = 2_048
 MAX_NETWORK_ENDPOINT_RECORDS_PER_SCAN = 1_024
 MAX_CURRENT_DEPENDENCY_ROWS = 2_000_000
+MAX_CURRENT_IPC_ENDPOINT_ROWS = 500_000
 MAX_ADVISORIES = 100_000
 MAX_ADVISORY_MATCHES = 250_000
 DEFAULT_MAX_BATCH_SECONDS = 4_200
@@ -1334,7 +1337,7 @@ def add_network_endpoints(intel: dict, text: str, evidence_label: str) -> None:
 
 def empty_dependency_intelligence(origin: str) -> dict:
     return {
-        "schema": "omega.plugin-security.dependencies.v1",
+        "schema": "omega.plugin-security.dependencies.v2",
         "origin": origin,
         "imports": [],
         "dependencies": [],
@@ -1401,7 +1404,7 @@ def add_import(intel: dict, namespace: str, path: str) -> None:
             add_permission_candidate(intel, permission_id, risk, confidence, reason, f"{path}: using {namespace}")
 
 
-def add_dependency(intel: dict, kind: str, name: str, version: str, path: str, status: str, evidence: str = "", requirement: str = "observed", version_requirement: str = "", resolved_version: str = "") -> None:
+def add_dependency(intel: dict, kind: str, name: str, version: str, path: str, status: str, evidence: str = "", requirement: str = "observed", version_requirement: str = "", resolved_version: str = "", relationship: str = "", relationship_confidence: str = "", relationship_evidence: list[str] | None = None) -> None:
     name = (name or "").strip()
     if not name:
         return
@@ -1415,9 +1418,12 @@ def add_dependency(intel: dict, kind: str, name: str, version: str, path: str, s
         "path": path,
         "status": status,
         "requirement": requirement if requirement in {"required", "soft", "optional", "bundled", "observed", "unknown"} else "unknown",
+        "relationship": relationship if relationship in {"required", "feature", "optional", "unknown", ""} else "unknown",
+        "relationshipConfidence": relationship_confidence if relationship_confidence in {"VeryHigh", "High", "Medium", "Low", ""} else "Low",
+        "relationshipEvidence": list(relationship_evidence or [])[:6],
         "evidence": [evidence] if evidence else [],
     }
-    _append_intel(intel, "dependencies", item, ("origin", "kind", "name", "version", "versionRequirement", "resolvedVersion", "path", "requirement"))
+    _append_intel(intel, "dependencies", item, ("origin", "kind", "name", "version", "versionRequirement", "resolvedVersion", "path", "requirement", "relationship"))
     package_key = name.lower().replace(".dll", "")
     if package_key in PACKAGE_PERMISSION_MAP:
         permission_id, risk, confidence, reason = PACKAGE_PERMISSION_MAP[package_key]
@@ -1536,6 +1542,84 @@ def scan_dependency_json(path: str, text: str, intel: dict) -> None:
                 add_dependency(intel, "external-plugin", name, version, path, "external-plugin", f"{path}: {key}", requirement, version_requirement=version)
 
 
+def _source_method_name_near(text: str, position: int) -> str:
+    """Best-effort containing method name for conservative IPC relationship inference."""
+    prefix = text[max(0, position - 5000):position]
+    pattern = re.compile(
+        r"(?:(?:public|private|protected|internal|static|async|virtual|override|sealed|unsafe|partial|new)\s+)*"
+        r"(?:[A-Za-z_][\w<>,.?\[\]]*\s+)?(?P<name>[A-Za-z_]\w*)\s*\([^;{}]{0,500}\)\s*(?:=>|\{)"
+    )
+    controls = {"if", "for", "foreach", "while", "switch", "catch", "using", "lock"}
+    matches = [match for match in pattern.finditer(prefix) if match.group("name").casefold() not in controls]
+    return str(matches[-1].group("name") if matches else "")
+
+
+def infer_ipc_consumer_relationship(text: str, start: int, end: int) -> dict:
+    """Conservatively classify required / feature / optional / unknown IPC relationships.
+
+    This is static evidence, not a runtime guarantee. High-confidence `required` is deliberately
+    restricted to explicit/fatal startup evidence so Omega does not turn every subscriber into a
+    mandatory dependency. Feature/optional classifications prefer explicit availability guards.
+    """
+    left = text[max(0, start - 900):start]
+    right = text[end:min(len(text), end + 1300)]
+    local = left + text[start:end] + right
+    lower = local.casefold()
+    line_start = text.rfind("\n", 0, start) + 1
+    line_end = text.find("\n", end)
+    if line_end < 0:
+        line_end = len(text)
+    line = text[line_start:line_end]
+    method = _source_method_name_near(text, start)
+    method_lower = method.casefold()
+    startup_names = {"initialize", "initialise", "init", "load", "start", "startup", "enable", "onload", "onenable"}
+    startup = method_lower in startup_names or method_lower.endswith("plugin")
+
+    evidence: list[str] = []
+    explicit_required = bool(re.search(r"\b(required|mandatory|must[- ]?have|hard dependency)\b", lower))
+    explicit_optional = bool(re.search(r"\b(optional|soft dependency|best effort)\b", lower))
+    fatal = bool(re.search(r"\?\?\s*throw\b|throw\s+new\b|throw\s*;", right[:650], re.IGNORECASE))
+    availability_guard = bool(re.search(
+        r"\b(isvalid|isavailable|available|installed|isinstalled|pluginexists|pluginloaded|ispluginloaded|tryget|tryinvoke)\b|\?\.\s*(?:invoke|invokeaction|invokefunc)",
+        lower,
+    ))
+    feature_gate = bool(re.search(r"\b(config|configuration|feature|integration|enable|enabled|setting|option)\b", lower))
+    early_exit = bool(re.search(r"\breturn\b|\bcontinue\b|\bbreak\b", right[:850], re.IGNORECASE))
+    direct_invoke = bool(re.search(r"\.\s*(?:Invoke|InvokeAction|InvokeFunc)\w*\s*\(", line + right[:220], re.IGNORECASE))
+
+    if explicit_required and (startup or fatal or direct_invoke):
+        evidence.append("explicit required/mandatory dependency marker")
+        if startup:
+            evidence.append(f"startup path: {method or 'initialization'}")
+        if fatal:
+            evidence.append("missing provider leads to an exception")
+        return {"relationship": "required", "confidence": "VeryHigh" if fatal else "High", "evidence": evidence[:6]}
+    if startup and fatal:
+        return {"relationship": "required", "confidence": "VeryHigh", "evidence": [f"startup path: {method or 'initialization'}", "missing provider leads to an exception"]}
+    if startup and direct_invoke and not availability_guard:
+        return {"relationship": "required", "confidence": "High", "evidence": [f"startup path: {method or 'initialization'}", "IPC is invoked directly without an observed availability guard"]}
+    if explicit_optional:
+        evidence.append("explicit optional/soft dependency marker")
+        if availability_guard:
+            evidence.append("provider availability is checked")
+        return {"relationship": "optional", "confidence": "High", "evidence": evidence[:6]}
+    if availability_guard and feature_gate:
+        evidence.extend(["provider availability is checked", "IPC use is behind a feature/configuration gate"])
+        if early_exit:
+            evidence.append("missing provider exits only the guarded path")
+        return {"relationship": "feature", "confidence": "High" if early_exit else "Medium", "evidence": evidence[:6]}
+    if availability_guard:
+        evidence.append("provider availability is checked before/around IPC use")
+        if early_exit:
+            evidence.append("missing provider can leave the guarded path without aborting plugin startup")
+        return {"relationship": "optional", "confidence": "High" if early_exit else "Medium", "evidence": evidence[:6]}
+    if startup:
+        return {"relationship": "required", "confidence": "Medium", "evidence": [f"subscriber is acquired from startup-like path: {method or 'initialization'}"]}
+    if feature_gate:
+        return {"relationship": "feature", "confidence": "Medium", "evidence": ["IPC use appears in feature/integration/configuration context"]}
+    return {"relationship": "unknown", "confidence": "Low", "evidence": ["subscriber observed without enough control-flow evidence to classify necessity"]}
+
+
 def scan_source_text(path: str, raw: bytes, text: str, intel: dict, hits: dict[str, list[str]]) -> None:
     evidence_label = f"source:{path}" if intel["origin"] == "source" else f"artifact:{path}"
     add_rule_hits(text, evidence_label, hits)
@@ -1557,11 +1641,44 @@ def scan_source_text(path: str, raw: bytes, text: str, intel: dict, hits: dict[s
         add_dependency(intel, "native-import", library, "", path, "not-analyzed", f"{path}: DllImport({library})")
         add_permission_candidate(intel, "native.interop", "High", "High", "A DllImport native library is declared.", f"{path}: {library}")
 
-    ipc_re = re.compile(r"\bGetIpc(?:Subscriber|Provider)\s*(?:<[^>]*>)?\s*\(\s*[\"']([^\"']+)[\"']")
+    # Dalamud deliberately exposes separate provider/subscriber APIs. Preserve that direction so
+    # Omega can build provider -> consumer IPC edges instead of treating every channel reference
+    # as an external dependency. Generic type text is evidence only; channel identity remains the
+    # exact registration string used by Dalamud.
+    ipc_re = re.compile(
+        r"\bGetIpc(?P<role>Subscriber|Provider)\s*(?:<(?P<signature>[^()\n]{0,1024})>)?\s*\(\s*[\"'](?P<channel>[^\"']+)[\"']"
+    )
     for match in ipc_re.finditer(text):
-        channel = match.group(1).strip()
-        _append_intel(intel, "ipcIntegrations", {"origin": intel["origin"], "channel": channel, "path": path, "status": "external-plugin"}, ("origin", "channel", "path"))
-        add_dependency(intel, "ipc", channel, "", path, "external-plugin", f"{path}: IPC channel {channel}", "soft")
+        channel = match.group("channel").strip()
+        api_role = match.group("role")
+        role = "provider" if api_role == "Provider" else "consumer"
+        signature = re.sub(r"\s+", "", match.group("signature") or "")[:512]
+        status = "provider-handle" if role == "provider" else "external-plugin"
+        relationship = infer_ipc_consumer_relationship(text, match.start(), match.end()) if role == "consumer" else {
+            "relationship": "", "confidence": "", "evidence": []
+        }
+        _append_intel(
+            intel,
+            "ipcIntegrations",
+            {
+                "origin": intel["origin"],
+                "role": role,
+                "channel": channel,
+                "signature": signature,
+                "path": path,
+                "status": status,
+                "relationship": relationship["relationship"],
+                "relationshipConfidence": relationship["confidence"],
+                "relationshipEvidence": relationship["evidence"],
+            },
+            ("origin", "role", "channel", "signature", "path"),
+        )
+        if role == "consumer":
+            add_dependency(
+                intel, "ipc", channel, "", path, "external-plugin", f"{path}: IPC subscriber {channel}", "soft",
+                relationship=relationship["relationship"], relationship_confidence=relationship["confidence"],
+                relationship_evidence=relationship["evidence"],
+            )
 
     suffix = Path(path).suffix.lower()
     if suffix in PROJECT_XML_SUFFIXES:
@@ -1589,7 +1706,7 @@ def finalize_intelligence(intel: dict) -> dict:
     intel["imports"].sort(key=lambda x: (x["namespace"].lower(), x["path"].lower()))
     intel["dependencies"].sort(key=lambda x: (x.get("requirement", "observed"), x["kind"], x["name"].lower(), x["version"], x["path"].lower()))
     intel["dalamudServices"].sort(key=lambda x: (x["service"], x["path"].lower()))
-    intel["ipcIntegrations"].sort(key=lambda x: (x["channel"].lower(), x["path"].lower()))
+    intel["ipcIntegrations"].sort(key=lambda x: (str(x.get("role") or "consumer"), x["channel"].lower(), x["path"].lower()))
     intel["nativeImports"].sort(key=lambda x: (x["library"].lower(), x["path"].lower()))
     intel["managedAssemblies"].sort(key=lambda x: (x["path"].lower(), x["assemblyName"].lower()))
     intel["managedSymbols"].sort(key=lambda x: (x["path"].lower(), x["kind"], x["declaringType"].lower(), x["name"].lower()))
@@ -1782,13 +1899,258 @@ def github_repo_parts(url: str) -> tuple[str, str] | None:
     return parts[0], repo
 
 
-def _fetch_source_candidate(repo_url: str, token: str, hits: dict[str, list[str]]) -> dict:
+def _normalize_repo_path(base_dir: str, value: str) -> str:
+    """Resolve an MSBuild-ish relative path without allowing it to escape the repository."""
+    value = (value or "").strip().replace("\\", "/")
+    if not value:
+        return ""
+    # Common MSBuild directory properties can be resolved safely for repository-local inputs.
+    value = value.replace("$(MSBuildProjectDirectory)", base_dir or ".")
+    value = value.replace("$(MSBuildThisFileDirectory)", (base_dir.rstrip("/") + "/") if base_dir else "")
+    if "$(" in value:
+        return ""
+    resolved = posixpath.normpath(posixpath.join(base_dir, value))
+    if resolved in {"", ".", ".."} or resolved.startswith("../"):
+        return ""
+    return resolved.lstrip("./")
+
+
+def _xml_elements(text: str) -> list[ET.Element]:
+    try:
+        return list(ET.fromstring(text).iter())
+    except ET.ParseError:
+        return []
+
+
+def _xml_tag_name(element: ET.Element) -> str:
+    return str(element.tag).rsplit("}", 1)[-1]
+
+
+def _project_references(project_path: str, text: str) -> list[str]:
+    base_dir = str(PurePosixPath(project_path).parent)
+    if base_dir == ".":
+        base_dir = ""
+    references: list[str] = []
+    for element in _xml_elements(text):
+        if _xml_tag_name(element) != "ProjectReference":
+            continue
+        target = _normalize_repo_path(base_dir, str(element.attrib.get("Include") or ""))
+        if target and target.lower().endswith(".csproj") and target not in references:
+            references.append(target)
+    return references
+
+
+def _project_identity_score(project_path: str, text: str, internal_name: str, plugin_name: str) -> tuple[int, list[str]]:
+    """Score whether a project is the actual Dalamud plugin entry project.
+
+    A repository can contain servers, websites and tooling beside the plugin.  Only
+    projects with Dalamud/plugin build markers or a strong plugin identity match are
+    eligible to become the critical source root.
+    """
+    lower = text.casefold()
+    stem = PurePosixPath(project_path).stem
+    normalized_stem = re.sub(r"[^a-z0-9]", "", stem.casefold())
+    identities = [re.sub(r"[^a-z0-9]", "", x.casefold()) for x in (internal_name, plugin_name) if x]
+    score = 0
+    reasons: list[str] = []
+    if "dalamud.net.sdk" in lower:
+        score += 24
+        reasons.append("Dalamud.NET.Sdk")
+    if "dalamudpackager" in lower:
+        score += 14
+        reasons.append("DalamudPackager")
+    if re.search(r"(?:package|reference)[^>]+(?:include|update)\s*=\s*[\"'][^\"']*dalamud", lower):
+        score += 10
+        reasons.append("Dalamud reference")
+    if "ffxivclientstructs" in lower:
+        score += 3
+        reasons.append("FFXIVClientStructs")
+    if "microsoft.net.sdk.web" in lower or "microsoft.aspnetcore" in lower:
+        score -= 20
+        reasons.append("web/server project")
+    for identity in identities:
+        if not identity:
+            continue
+        if normalized_stem == identity:
+            score += 16
+            reasons.append("exact plugin identity")
+            break
+        if len(identity) >= 4 and (identity in normalized_stem or normalized_stem in identity):
+            score += 8
+            reasons.append("plugin identity match")
+            break
+    return score, reasons
+
+
+def _solution_project_paths(solution_path: str, text: str) -> set[str]:
+    base_dir = str(PurePosixPath(solution_path).parent)
+    if base_dir == ".":
+        base_dir = ""
+    result: set[str] = set()
+    for match in re.finditer(r'[\"\']([^\"\']+\.csproj)[\"\']', text, re.IGNORECASE):
+        normalized = _normalize_repo_path(base_dir, match.group(1))
+        if normalized:
+            result.add(normalized)
+    return result
+
+
+def _path_under(path: str, root: str) -> bool:
+    root = root.strip("/")
+    path = path.strip("/")
+    return not root or path == root or path.startswith(root + "/")
+
+
+def _project_parent(project_path: str) -> str:
+    parent = str(PurePosixPath(project_path).parent)
+    return "" if parent == "." else parent.strip("/")
+
+
+def _project_explicit_inputs(project_path: str, text: str, available_paths: set[str]) -> set[str]:
+    """Resolve repository-local linked/imported source inputs from a project file."""
+    base_dir = str(PurePosixPath(project_path).parent)
+    if base_dir == ".":
+        base_dir = ""
+    selected: set[str] = set()
+    eligible_tags = {"Compile", "Content", "None", "AdditionalFiles", "EmbeddedResource", "Import"}
+    for element in _xml_elements(text):
+        if _xml_tag_name(element) not in eligible_tags:
+            continue
+        include = str(element.attrib.get("Include") or element.attrib.get("Project") or "").strip()
+        if not include:
+            continue
+        for candidate in include.split(";"):
+            normalized = _normalize_repo_path(base_dir, candidate)
+            if not normalized:
+                continue
+            if any(ch in normalized for ch in "*?["):
+                pattern = normalized.casefold()
+                for path in available_paths:
+                    if fnmatch.fnmatchcase(path.casefold(), pattern):
+                        selected.add(path)
+            elif normalized in available_paths:
+                selected.add(normalized)
+    return selected
+
+
+def select_plugin_source_scope(
+    available_paths: set[str], descriptor_text: dict[str, str], internal_name: str = "", plugin_name: str = "",
+) -> dict:
+    """Select only source that can participate in the Dalamud plugin build graph.
+
+    Sibling server/web/tool projects remain repository context. They are deliberately
+    not allowed to contribute security findings, permission candidates, endpoint
+    capabilities, dependency edges or automation classification for the plugin.
+    """
+    projects = sorted(path for path in available_paths if path.lower().endswith(".csproj"))
+    solutions = sorted(path for path in available_paths if path.lower().endswith(".sln"))
+    scores: list[tuple[int, str, list[str]]] = []
+    for project in projects:
+        score, reasons = _project_identity_score(project, descriptor_text.get(project, ""), internal_name, plugin_name)
+        scores.append((score, project, reasons))
+    scores.sort(key=lambda item: (-item[0], item[1].casefold()))
+
+    primary = ""
+    confidence = "none"
+    reason = "No confidently identifiable Dalamud plugin project was found; repository code is context-only."
+    if scores:
+        top_score, top_project, top_reasons = scores[0]
+        second_score = scores[1][0] if len(scores) > 1 else -10_000
+        strong_plugin_marker = any(x in top_reasons for x in ("Dalamud.NET.Sdk", "DalamudPackager", "Dalamud reference"))
+        identity_match = any("plugin identity" in x for x in top_reasons)
+        unambiguous = top_score > second_score or len(scores) == 1
+        if unambiguous and ((strong_plugin_marker and top_score >= 10) or (identity_match and top_score >= 8)):
+            primary = top_project
+            confidence = "high" if strong_plugin_marker and identity_match else "medium"
+            reason = "Selected the plugin entry project from Dalamud build markers and plugin identity."
+
+    project_closure: set[str] = set()
+    if primary:
+        queue = deque([primary])
+        while queue and len(project_closure) < 256:
+            project = queue.popleft()
+            if project in project_closure or project not in available_paths:
+                continue
+            project_closure.add(project)
+            for reference in _project_references(project, descriptor_text.get(project, "")):
+                if reference in available_paths and reference not in project_closure:
+                    queue.append(reference)
+
+    critical: set[str] = set(project_closure)
+    project_roots = {_project_parent(path) for path in project_closure}
+    all_project_roots = {path: _project_parent(path) for path in projects}
+    excluded_project_roots = {root for project, root in all_project_roots.items() if project not in project_closure and root}
+
+    if primary:
+        for path in available_paths:
+            if path in critical:
+                continue
+            if not any(_path_under(path, root) for root in project_roots):
+                continue
+            # A nested sibling project is a separate build unit unless the plugin references it.
+            if any(_path_under(path, root) for root in excluded_project_roots):
+                continue
+            suffix = PurePosixPath(path).suffix.casefold()
+            name = PurePosixPath(path).name.casefold()
+            # SDK-style projects compile .cs beneath the project root by default.
+            # Project/dependency declarations also affect the build. Repository scripts,
+            # CI YAML, PowerShell and other operational files are context unless the
+            # project explicitly Includes/Imports them below.
+            if suffix not in {".cs", ".csproj", ".props", ".targets", ".json", ".config"} and name not in DEPENDENCY_JSON_NAMES:
+                continue
+            critical.add(path)
+
+        for project in project_closure:
+            critical.update(_project_explicit_inputs(project, descriptor_text.get(project, ""), available_paths))
+            directory = str(PurePosixPath(project).parent)
+            if directory == ".":
+                directory = ""
+            while True:
+                for filename in ("Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props", "global.json", "NuGet.config"):
+                    candidate = f"{directory}/{filename}".strip("/")
+                    if candidate in available_paths:
+                        critical.add(candidate)
+                if not directory:
+                    break
+                directory = str(PurePosixPath(directory).parent)
+                if directory == ".":
+                    directory = ""
+
+    relevant_solutions: list[str] = []
+    if project_closure:
+        for solution in solutions:
+            members = _solution_project_paths(solution, descriptor_text.get(solution, ""))
+            if members & project_closure:
+                relevant_solutions.append(solution)
+
+    context_projects = [path for path in projects if path not in project_closure]
+    context_solutions = [path for path in solutions if path not in relevant_solutions]
+    return {
+        "schema": "omega.plugin-source-scope.v1",
+        "mode": "plugin-build-graph" if primary else "repository-context-only",
+        "confidence": confidence,
+        "primaryProject": primary,
+        "projectFiles": sorted(project_closure, key=str.casefold),
+        "solutionFiles": relevant_solutions,
+        "contextProjects": context_projects[:128],
+        "contextSolutions": context_solutions[:64],
+        "criticalPaths": sorted(critical, key=str.casefold),
+        "repositorySourceFiles": len(available_paths),
+        "criticalSourceFiles": len(critical),
+        "excludedSourceFiles": max(0, len(available_paths) - len(critical)),
+        "reason": reason,
+    }
+
+
+def _fetch_source_candidate(
+    repo_url: str, token: str, hits: dict[str, list[str]], internal_name: str = "", plugin_name: str = "",
+) -> dict:
     parts = github_repo_parts(repo_url)
     intel = empty_dependency_intelligence("source")
     if parts is None:
         return {
             "available": False, "repository": repo_url, "commit": "", "branch": "", "filesScanned": 0,
             "treeSha256": "", "dependencyIntelligence": finalize_intelligence(intel),
+            "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "No supported source repository URL."},
             "error": "No supported GitHub repository URL",
         }
     owner, repo = parts
@@ -1812,20 +2174,33 @@ def _fetch_source_candidate(repo_url: str, token: str, hits: dict[str, list[str]
         files_scanned = 0
         total_text = 0
         with zipfile.ZipFile(io.BytesIO(source_bytes)) as archive:
+            source_entries: dict[str, zipfile.ZipInfo] = {}
+            descriptor_text: dict[str, str] = {}
             for info in archive.infolist():
-                if files_scanned >= 500 or total_text >= MAX_SOURCE_TEXT_TOTAL:
-                    break
                 if info.is_dir() or not safe_member_name(info.filename):
                     continue
                 suffix = Path(info.filename).suffix.lower()
                 if suffix not in SOURCE_SUFFIXES or info.file_size <= 0 or info.file_size > MAX_TEXT_SOURCE_BYTES:
                     continue
-                with archive.open(info) as stream:
-                    raw = stream.read(MAX_TEXT_SOURCE_BYTES)
                 # GitHub zipballs prefix every path with owner-repo-sha/. Remove
                 # that unstable transport directory from evidence/fingerprints.
                 parts_name = PurePosixPath(info.filename).parts
                 logical_name = "/".join(parts_name[1:]) if len(parts_name) > 1 else info.filename
+                source_entries[logical_name] = info
+                if suffix in {".csproj", ".sln", ".props", ".targets"}:
+                    with archive.open(info) as stream:
+                        descriptor_text[logical_name] = stream.read(MAX_TEXT_SOURCE_BYTES).decode("utf-8", "ignore")
+
+            scope = select_plugin_source_scope(set(source_entries), descriptor_text, internal_name, plugin_name)
+            critical_paths = set(scope["criticalPaths"])
+            for logical_name in sorted(critical_paths, key=str.casefold):
+                if files_scanned >= 500 or total_text >= MAX_SOURCE_TEXT_TOTAL:
+                    break
+                info = source_entries.get(logical_name)
+                if info is None:
+                    continue
+                with archive.open(info) as stream:
+                    raw = stream.read(MAX_TEXT_SOURCE_BYTES)
                 text = raw.decode("utf-8", "ignore")
                 scan_source_text(logical_name, raw, text, intel, hits)
                 files_scanned += 1
@@ -1838,6 +2213,7 @@ def _fetch_source_candidate(repo_url: str, token: str, hits: dict[str, list[str]
             "branch": branch,
             "treeSha256": tree_sha,
             "filesScanned": files_scanned,
+            "scope": scope,
             "dependencyIntelligence": intel,
             "error": "",
         }
@@ -1845,24 +2221,33 @@ def _fetch_source_candidate(repo_url: str, token: str, hits: dict[str, list[str]
         finalize_intelligence(intel)
         return {
             "available": False, "repository": repo_url, "commit": "", "branch": "", "treeSha256": "",
-            "filesScanned": 0, "dependencyIntelligence": intel, "error": str(exc)[:500],
+            "filesScanned": 0, "dependencyIntelligence": intel,
+            "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "Source repository could not be inspected."},
+            "error": str(exc)[:500],
         }
 
 
-def fetch_source(candidate_urls: list[str], token: str, hits: dict[str, list[str]]) -> dict:
+def fetch_source(
+    candidate_urls: list[str], token: str, hits: dict[str, list[str]], internal_name: str = "", plugin_name: str = "",
+) -> dict:
     """Try metadata-derived public GitHub repositories in deterministic priority order."""
     intel = empty_dependency_intelligence("source")
     if not candidate_urls:
         return {
             "available": False, "repository": "", "commit": "", "branch": "", "treeSha256": "",
-            "filesScanned": 0, "dependencyIntelligence": finalize_intelligence(intel), "candidates": [],
+            "filesScanned": 0, "dependencyIntelligence": finalize_intelligence(intel),
+            "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "No supported source repository URL."},
+            "candidates": [],
             "error": "No supported GitHub repository URL",
         }
     failures: list[str] = []
     last: dict | None = None
     for candidate in candidate_urls:
         candidate_hits: dict[str, list[str]] = defaultdict(list)
-        result = _fetch_source_candidate(candidate, token, candidate_hits)
+        if internal_name or plugin_name:
+            result = _fetch_source_candidate(candidate, token, candidate_hits, internal_name, plugin_name)
+        else:
+            result = _fetch_source_candidate(candidate, token, candidate_hits)
         result["candidates"] = list(candidate_urls)
         if result["available"]:
             for rule_id, evidence in candidate_hits.items():
@@ -1892,7 +2277,7 @@ def merge_dependency_intelligence(*items: dict) -> dict:
         for item in intel.get("dalamudServices") or []:
             _append_intel(combined, "dalamudServices", dict(item), ("origin", "service", "path"))
         for item in intel.get("ipcIntegrations") or []:
-            _append_intel(combined, "ipcIntegrations", dict(item), ("origin", "channel", "path"))
+            _append_intel(combined, "ipcIntegrations", dict(item), ("origin", "role", "channel", "signature", "path"))
         for item in intel.get("nativeImports") or []:
             _append_intel(combined, "nativeImports", dict(item), ("origin", "library", "path"))
         for item in intel.get("managedAssemblies") or []:
@@ -2042,6 +2427,10 @@ def derive_automation_capabilities(intel: dict) -> dict:
             add(rule.capability_id, rule.label, rule.automation_level, confidence, reachable, False, rule.description, evidence)
 
     for ipc in intel.get("ipcIntegrations") or []:
+        # Provider declarations expose capability to other plugins; they are not evidence that this
+        # plugin consumes another plugin's automation. Legacy rows without a role are consumer-like.
+        if str(ipc.get("role") or "consumer").casefold() == "provider":
+            continue
         channel = str(ipc.get("channel") or "")
         lowered = channel.casefold()
         for patterns, hints in IPC_AUTOMATION_HINTS:
@@ -2150,11 +2539,47 @@ def ensure_schema(db: sqlite3.Connection) -> None:
         path TEXT NOT NULL DEFAULT '',
         status TEXT NOT NULL DEFAULT '',
         requirement TEXT NOT NULL DEFAULT 'observed',
-        evidence_json TEXT NOT NULL DEFAULT '[]'
+        evidence_json TEXT NOT NULL DEFAULT '[]',
+        relationship TEXT NOT NULL DEFAULT '',
+        relationship_confidence TEXT NOT NULL DEFAULT '',
+        relationship_evidence_json TEXT NOT NULL DEFAULT '[]'
     );
     CREATE INDEX IF NOT EXISTS ix_security_dependencies_scan ON plugin_security_dependencies(scan_id);
     CREATE INDEX IF NOT EXISTS ix_security_dependencies_name ON plugin_security_dependencies(name COLLATE NOCASE);
     CREATE INDEX IF NOT EXISTS ix_security_dependencies_kind ON plugin_security_dependencies(kind);
+
+    CREATE TABLE IF NOT EXISTS plugin_security_ipc_endpoints (
+        ipc_endpoint_id INTEGER PRIMARY KEY,
+        scan_id INTEGER NOT NULL REFERENCES plugin_security_scans(scan_id) ON DELETE CASCADE,
+        origin TEXT NOT NULL DEFAULT '',
+        role TEXT NOT NULL DEFAULT 'consumer',
+        channel TEXT NOT NULL DEFAULT '',
+        signature TEXT NOT NULL DEFAULT '',
+        path TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT '',
+        relationship TEXT NOT NULL DEFAULT '',
+        relationship_confidence TEXT NOT NULL DEFAULT '',
+        relationship_evidence_json TEXT NOT NULL DEFAULT '[]'
+    );
+    CREATE INDEX IF NOT EXISTS ix_security_ipc_endpoints_scan ON plugin_security_ipc_endpoints(scan_id);
+    CREATE INDEX IF NOT EXISTS ix_security_ipc_endpoints_channel ON plugin_security_ipc_endpoints(channel);
+    CREATE INDEX IF NOT EXISTS ix_security_ipc_endpoints_role ON plugin_security_ipc_endpoints(role);
+
+    CREATE TABLE IF NOT EXISTS plugin_security_ipc_registry (
+        channel TEXT NOT NULL,
+        provider_plugin_id INTEGER NOT NULL REFERENCES plugins(plugin_id) ON DELETE CASCADE,
+        provider_variant_id INTEGER REFERENCES plugin_variants(variant_id) ON DELETE SET NULL,
+        provider_internal_name TEXT NOT NULL DEFAULT '',
+        provider_variant_count INTEGER NOT NULL DEFAULT 0,
+        provider_scan_id INTEGER REFERENCES plugin_security_scans(scan_id) ON DELETE SET NULL,
+        provider_signature TEXT NOT NULL DEFAULT '',
+        provider_origin TEXT NOT NULL DEFAULT '',
+        provider_path TEXT NOT NULL DEFAULT '',
+        provider_registration_count INTEGER NOT NULL DEFAULT 1,
+        refreshed_at_utc TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY(channel, provider_plugin_id)
+    );
+    CREATE INDEX IF NOT EXISTS ix_security_ipc_registry_provider ON plugin_security_ipc_registry(provider_plugin_id);
 
     CREATE TABLE IF NOT EXISTS plugin_security_imports (
         import_id INTEGER PRIMARY KEY,
@@ -2260,6 +2685,9 @@ def ensure_schema(db: sqlite3.Connection) -> None:
         normalized_name TEXT NOT NULL DEFAULT '',
         component_key TEXT NOT NULL DEFAULT '',
         requirement TEXT NOT NULL DEFAULT 'observed',
+        relationship TEXT NOT NULL DEFAULT '',
+        relationship_confidence TEXT NOT NULL DEFAULT '',
+        relationship_evidence_json TEXT NOT NULL DEFAULT '[]',
         resolution_status TEXT NOT NULL DEFAULT '',
         version_status TEXT NOT NULL DEFAULT '',
         target_plugin_id INTEGER REFERENCES plugins(plugin_id) ON DELETE SET NULL,
@@ -2470,6 +2898,21 @@ def ensure_schema(db: sqlite3.Connection) -> None:
         db.execute("ALTER TABLE plugin_security_dependencies ADD COLUMN version_requirement TEXT NOT NULL DEFAULT ''")
     if "resolved_version" not in dependency_columns:
         db.execute("ALTER TABLE plugin_security_dependencies ADD COLUMN resolved_version TEXT NOT NULL DEFAULT ''")
+    for column, declaration in (
+        ("relationship", "TEXT NOT NULL DEFAULT ''"),
+        ("relationship_confidence", "TEXT NOT NULL DEFAULT ''"),
+        ("relationship_evidence_json", "TEXT NOT NULL DEFAULT '[]'"),
+    ):
+        if column not in dependency_columns:
+            db.execute(f"ALTER TABLE plugin_security_dependencies ADD COLUMN {column} {declaration}")
+    ipc_endpoint_columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_security_ipc_endpoints)")}
+    for column, declaration in (
+        ("relationship", "TEXT NOT NULL DEFAULT ''"),
+        ("relationship_confidence", "TEXT NOT NULL DEFAULT ''"),
+        ("relationship_evidence_json", "TEXT NOT NULL DEFAULT '[]'"),
+    ):
+        if column not in ipc_endpoint_columns:
+            db.execute(f"ALTER TABLE plugin_security_ipc_endpoints ADD COLUMN {column} {declaration}")
     resolution_columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_security_dependency_resolutions)")}
     for column, declaration in (
         ("dependency_version", "TEXT NOT NULL DEFAULT ''"),
@@ -2477,6 +2920,9 @@ def ensure_schema(db: sqlite3.Connection) -> None:
         ("resolved_version", "TEXT NOT NULL DEFAULT ''"),
         ("version_status", "TEXT NOT NULL DEFAULT ''"),
         ("target_version", "TEXT NOT NULL DEFAULT ''"),
+        ("relationship", "TEXT NOT NULL DEFAULT ''"),
+        ("relationship_confidence", "TEXT NOT NULL DEFAULT ''"),
+        ("relationship_evidence_json", "TEXT NOT NULL DEFAULT '[]'"),
     ):
         if column not in resolution_columns:
             db.execute(f"ALTER TABLE plugin_security_dependency_resolutions ADD COLUMN {column} {declaration}")
@@ -2803,6 +3249,123 @@ def resolve_plugin_dependency(name: str, aliases: dict[str, list[tuple[int, str]
     }
 
 
+def refresh_ipc_provider_registry(
+    db: sqlite3.Connection,
+    internal_names: dict[int, str],
+    variants: dict[int, list[int]],
+    refreshed_at_utc: str,
+) -> dict[str, list[dict]]:
+    """Rebuild the current IPC provider registry from current completed plugin scans.
+
+    The registry is intentionally separate from dependency rows: providing a call gate is not a
+    dependency on another plugin. Consumer edges are resolved against exact channel strings after
+    all current providers are registered, which allows cross-plugin IPC relationships to be
+    refreshed without rescanning artifacts when the catalog changes.
+    """
+    endpoint_count = int(db.execute("""
+        SELECT COUNT(*)
+          FROM plugin_security_ipc_endpoints e
+          JOIN plugin_security_scans s ON s.scan_id=e.scan_id
+          JOIN plugin_security_current c ON c.scan_id=e.scan_id AND c.variant_id=s.variant_id
+         WHERE c.status='complete' AND s.status='complete' AND e.role='provider' AND TRIM(e.channel)<>''
+    """).fetchone()[0])
+    if endpoint_count > MAX_CURRENT_IPC_ENDPOINT_ROWS:
+        raise RuntimeError(f"Current IPC provider registry has {endpoint_count} endpoint rows; hard limit is {MAX_CURRENT_IPC_ENDPOINT_ROWS}")
+
+    rows = db.execute("""
+        SELECT e.ipc_endpoint_id,e.scan_id,e.origin,e.channel,e.signature,e.path,e.status,
+               s.plugin_id,s.variant_id
+          FROM plugin_security_ipc_endpoints e
+          JOIN plugin_security_scans s ON s.scan_id=e.scan_id
+          JOIN plugin_security_current c ON c.scan_id=e.scan_id AND c.variant_id=s.variant_id
+         WHERE c.status='complete' AND s.status='complete' AND e.role='provider' AND TRIM(e.channel)<>''
+         ORDER BY e.channel,s.plugin_id,s.variant_id,e.ipc_endpoint_id
+    """).fetchall()
+
+    grouped: dict[str, dict[int, list[sqlite3.Row]]] = defaultdict(lambda: defaultdict(list))
+    for row in rows:
+        plugin_id = int(row["plugin_id"])
+        if plugin_id not in internal_names:
+            continue
+        grouped[str(row["channel"])][plugin_id].append(row)
+
+    db.execute("DELETE FROM plugin_security_ipc_registry")
+    registry: dict[str, list[dict]] = defaultdict(list)
+    for channel in sorted(grouped, key=str.casefold):
+        for plugin_id in sorted(grouped[channel]):
+            endpoints = grouped[channel][plugin_id]
+            preferred_variant_id, variant_count = _preferred_target_variant(db, plugin_id, variants)
+            chosen = next((row for row in endpoints if preferred_variant_id is not None and int(row["variant_id"]) == preferred_variant_id), endpoints[0])
+            signatures = sorted({str(row["signature"] or "") for row in endpoints if str(row["signature"] or "")}, key=str.casefold)
+            signature = signatures[0] if len(signatures) == 1 else ""
+            entry = {
+                "channel": channel,
+                "pluginId": plugin_id,
+                "variantId": preferred_variant_id,
+                "internalName": internal_names.get(plugin_id, ""),
+                "variantCount": variant_count,
+                "targetVersion": _variant_version(db, preferred_variant_id),
+                "scanId": int(chosen["scan_id"]),
+                "signature": signature,
+                "origin": str(chosen["origin"] or ""),
+                "path": str(chosen["path"] or ""),
+                "registrationCount": len(endpoints),
+            }
+            registry[channel].append(entry)
+            db.execute("""
+                INSERT INTO plugin_security_ipc_registry(
+                    channel,provider_plugin_id,provider_variant_id,provider_internal_name,provider_variant_count,provider_scan_id,
+                    provider_signature,provider_origin,provider_path,provider_registration_count,refreshed_at_utc)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                channel, plugin_id, preferred_variant_id, entry["internalName"], variant_count, entry["scanId"],
+                signature, entry["origin"], entry["path"], len(endpoints), refreshed_at_utc,
+            ))
+    return dict(registry)
+
+
+def resolve_ipc_dependency(channel: str, source_plugin_id: int, registry: dict[str, list[dict]]) -> dict:
+    """Resolve an IPC subscriber to the plugin that currently exposes the exact channel."""
+    providers = list(registry.get((channel or "").strip(), []))
+    external = [entry for entry in providers if int(entry.get("pluginId") or 0) != source_plugin_id]
+    if not external:
+        if providers:
+            own = providers[0]
+            return {
+                "status": "self-provided-ipc",
+                "targetPluginId": int(own["pluginId"]),
+                "targetVariantId": own.get("variantId"),
+                "targetInternalName": str(own.get("internalName") or ""),
+                "targetVariantCount": int(own.get("variantCount") or 0),
+                "targetVersion": str(own.get("targetVersion") or ""),
+                "confidence": "VeryHigh",
+                "matchBasis": "exact-ipc-channel-self",
+            }
+        return {
+            "status": "ipc-provider-unresolved", "targetPluginId": None, "targetVariantId": None,
+            "targetInternalName": "", "targetVariantCount": 0, "targetVersion": "",
+            "confidence": "Low", "matchBasis": "no-current-ipc-provider",
+        }
+    plugin_ids = sorted({int(entry["pluginId"]) for entry in external})
+    if len(plugin_ids) != 1:
+        return {
+            "status": "ambiguous-ipc-provider", "targetPluginId": None, "targetVariantId": None,
+            "targetInternalName": "", "targetVariantCount": 0, "targetVersion": "",
+            "confidence": "Low", "matchBasis": "multiple-exact-ipc-providers",
+        }
+    provider = next(entry for entry in external if int(entry["pluginId"]) == plugin_ids[0])
+    return {
+        "status": "resolved-ipc-provider",
+        "targetPluginId": int(provider["pluginId"]),
+        "targetVariantId": provider.get("variantId"),
+        "targetInternalName": str(provider.get("internalName") or ""),
+        "targetVariantCount": int(provider.get("variantCount") or 0),
+        "targetVersion": str(provider.get("targetVersion") or ""),
+        "confidence": "VeryHigh",
+        "matchBasis": "exact-ipc-channel-provider",
+    }
+
+
 def _observed_dependency_version(row: sqlite3.Row, kind: str, resolution: dict) -> str:
     if kind in PLUGIN_DEPENDENCY_KINDS:
         return str(resolution.get("targetVersion") or "").strip()
@@ -2814,9 +3377,9 @@ def _observed_dependency_version(row: sqlite3.Row, kind: str, resolution: dict) 
 
 
 def _issue_severity(requirement: str, issue_code: str) -> str:
-    if issue_code in {"missing-required-plugin", "required-version-incompatible"}:
+    if issue_code in {"missing-required-plugin", "missing-required-ipc-provider", "required-version-incompatible"}:
         return "high"
-    if issue_code in {"ambiguous-required-plugin", "soft-version-incompatible", "major-component-version-divergence"}:
+    if issue_code in {"ambiguous-required-plugin", "ambiguous-required-ipc-provider", "soft-version-incompatible", "major-component-version-divergence"}:
         return "caution"
     return "informational"
 
@@ -2841,7 +3404,7 @@ def refresh_dependency_graph(db: sqlite3.Connection, advisories: list[dict] | No
         raise RuntimeError(f"Current dependency graph has {current_dependency_count} rows; hard limit is {MAX_CURRENT_DEPENDENCY_ROWS}")
     current_rows = db.execute("""
         SELECT d.dependency_id,d.scan_id,d.origin,d.kind,d.name,d.version,d.version_requirement,d.resolved_version,
-               d.path,d.status,d.requirement,d.evidence_json,
+               d.path,d.status,d.requirement,d.evidence_json,d.relationship,d.relationship_confidence,d.relationship_evidence_json,
                s.plugin_id AS source_plugin_id,s.variant_id AS source_variant_id
           FROM plugin_security_dependencies d
           JOIN plugin_security_scans s ON s.scan_id=d.scan_id
@@ -2865,17 +3428,21 @@ def refresh_dependency_graph(db: sqlite3.Connection, advisories: list[dict] | No
 
     components: dict[str, dict] = {}
     resolved_plugins = unresolved_plugins = ambiguous_plugins = 0
-    incompatible_versions = missing_required = 0
+    resolved_ipc = unresolved_ipc = ambiguous_ipc = self_ipc = 0
+    incompatible_versions = missing_required = missing_required_ipc = 0
     refreshed = utc_now()
+    ipc_registry = refresh_ipc_provider_registry(db, internal_names, variants, refreshed)
 
     def record_issue(row: sqlite3.Row, component_key: str, issue_code: str, title: str, detail: str, observed: str, target: str = "") -> None:
-        nonlocal incompatible_versions, missing_required
+        nonlocal incompatible_versions, missing_required, missing_required_ipc
         requirement = str(row["requirement"] or "observed")
         severity = _issue_severity(requirement, issue_code)
         if issue_code in {"required-version-incompatible", "soft-version-incompatible"}:
             incompatible_versions += 1
         if issue_code == "missing-required-plugin":
             missing_required += 1
+        if issue_code == "missing-required-ipc-provider":
+            missing_required_ipc += 1
         db.execute("""
             INSERT INTO plugin_security_dependency_issues(
                 dependency_id,scan_id,source_plugin_id,source_variant_id,component_key,issue_code,severity,title,detail,
@@ -2902,6 +3469,16 @@ def refresh_dependency_graph(db: sqlite3.Connection, advisories: list[dict] | No
                 ambiguous_plugins += 1
             else:
                 unresolved_plugins += 1
+        elif kind == "ipc":
+            resolution = resolve_ipc_dependency(name, int(row["source_plugin_id"]), ipc_registry)
+            if resolution["status"] == "resolved-ipc-provider":
+                resolved_ipc += 1
+            elif resolution["status"] == "ambiguous-ipc-provider":
+                ambiguous_ipc += 1
+            elif resolution["status"] == "self-provided-ipc":
+                self_ipc += 1
+            else:
+                unresolved_ipc += 1
         else:
             resolution = {"status": "component", "targetPluginId": None, "targetVariantId": None, "targetInternalName": "", "targetVariantCount": 0, "targetVersion": "", "confidence": "High", "matchBasis": "normalized-component"}
 
@@ -2916,21 +3493,23 @@ def refresh_dependency_graph(db: sqlite3.Connection, advisories: list[dict] | No
         db.execute("""
             INSERT INTO plugin_security_dependency_resolutions(
                 dependency_id,scan_id,source_plugin_id,source_variant_id,dependency_kind,dependency_name,dependency_version,
-                version_requirement,resolved_version,normalized_name,component_key,requirement,resolution_status,version_status,
+                version_requirement,resolved_version,normalized_name,component_key,requirement,relationship,relationship_confidence,relationship_evidence_json,resolution_status,version_status,
                 target_plugin_id,target_variant_id,target_internal_name,target_variant_count,target_version,confidence,match_basis,evidence_json)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(dependency_id) DO UPDATE SET
                 scan_id=excluded.scan_id,source_plugin_id=excluded.source_plugin_id,source_variant_id=excluded.source_variant_id,
                 dependency_kind=excluded.dependency_kind,dependency_name=excluded.dependency_name,dependency_version=excluded.dependency_version,
                 version_requirement=excluded.version_requirement,resolved_version=excluded.resolved_version,normalized_name=excluded.normalized_name,
-                component_key=excluded.component_key,requirement=excluded.requirement,resolution_status=excluded.resolution_status,
-                version_status=excluded.version_status,target_plugin_id=excluded.target_plugin_id,target_variant_id=excluded.target_variant_id,
+                component_key=excluded.component_key,requirement=excluded.requirement,relationship=excluded.relationship,
+                relationship_confidence=excluded.relationship_confidence,relationship_evidence_json=excluded.relationship_evidence_json,
+                resolution_status=excluded.resolution_status,version_status=excluded.version_status,target_plugin_id=excluded.target_plugin_id,target_variant_id=excluded.target_variant_id,
                 target_internal_name=excluded.target_internal_name,target_variant_count=excluded.target_variant_count,target_version=excluded.target_version,
                 confidence=excluded.confidence,match_basis=excluded.match_basis,evidence_json=excluded.evidence_json
         """, (
             int(row["dependency_id"]), int(row["scan_id"]), int(row["source_plugin_id"]), int(row["source_variant_id"]),
             kind, name, str(row["version"] or ""), compatibility_requirement, resolved_version, normalized, component_key,
-            requirement, resolution["status"], version_status, resolution["targetPluginId"], resolution["targetVariantId"],
+            requirement, str(row["relationship"] or ""), str(row["relationship_confidence"] or ""),
+            str(row["relationship_evidence_json"] or "[]"), resolution["status"], version_status, resolution["targetPluginId"], resolution["targetVariantId"],
             resolution["targetInternalName"], int(resolution["targetVariantCount"]), resolution.get("targetVersion", ""),
             resolution["confidence"], resolution["matchBasis"], str(row["evidence_json"] or "[]"),
         ))
@@ -2947,6 +3526,17 @@ def refresh_dependency_graph(db: sqlite3.Connection, advisories: list[dict] | No
             elif version_status == "incompatible":
                 code = "required-version-incompatible" if requirement == "required" else "soft-version-incompatible"
                 record_issue(row, component_key, code, "Resolved plugin version does not satisfy declared requirement", f"Declared requirement {compatibility_requirement!r} does not include target version {observed_version!r}.", observed_version, resolution.get("targetVersion", ""))
+        elif kind == "ipc":
+            relationship = str(row["relationship"] or "unknown").casefold()
+            relationship_confidence = str(row["relationship_confidence"] or "Low")
+            strong_required = relationship == "required" and relationship_confidence in {"High", "VeryHigh"}
+            if strong_required and resolution["status"] == "ipc-provider-unresolved":
+                record_issue(row, component_key, "missing-required-ipc-provider", "Required IPC provider is not in the current catalog", f"{name} is inferred as a required IPC provider ({relationship_confidence} confidence) but no current provider exposes this exact channel.", observed_version)
+            elif strong_required and resolution["status"] == "ambiguous-ipc-provider":
+                record_issue(row, component_key, "ambiguous-required-ipc-provider", "Required IPC channel has multiple possible providers", f"{name} is inferred as required but multiple current plugins expose the exact channel; Omega will not guess which provider is intended.", observed_version)
+            if version_status == "incompatible":
+                code = "required-version-incompatible" if strong_required else "soft-version-incompatible"
+                record_issue(row, component_key, code, "Resolved dependency version does not satisfy declared requirement", f"Declared requirement {compatibility_requirement!r} does not include observed version {observed_version!r}.", observed_version)
         elif version_status == "incompatible":
             code = "required-version-incompatible" if requirement == "required" else "soft-version-incompatible"
             record_issue(row, component_key, code, "Resolved dependency version does not satisfy declared requirement", f"Declared requirement {compatibility_requirement!r} does not include observed version {observed_version!r}.", observed_version)
@@ -3043,7 +3633,9 @@ def refresh_dependency_graph(db: sqlite3.Connection, advisories: list[dict] | No
     return {
         "dependencies": len(current_rows), "components": len(components), "resolvedPluginDependencies": resolved_plugins,
         "unresolvedPluginDependencies": unresolved_plugins, "ambiguousPluginDependencies": ambiguous_plugins,
-        "missingRequiredDependencies": missing_required, "incompatibleVersionRequirements": incompatible_versions,
+        "ipcProviderChannels": len(ipc_registry), "resolvedIpcDependencies": resolved_ipc,
+        "unresolvedIpcDependencies": unresolved_ipc, "ambiguousIpcDependencies": ambiguous_ipc, "selfProvidedIpcDependencies": self_ipc,
+        "missingRequiredDependencies": missing_required, "missingRequiredIpcProviders": missing_required_ipc, "incompatibleVersionRequirements": incompatible_versions,
         "divergentComponents": divergent_components, "platformVersionVariationsSuppressed": platform_version_variations, "advisoryMatches": advisory_matches,
         "issueRows": int(db.execute("SELECT COUNT(*) FROM plugin_security_dependency_issues").fetchone()[0]),
     }
@@ -3234,25 +3826,43 @@ def _drift_basis(previous: sqlite3.Row, result: dict) -> tuple[str, dict]:
     current_version = str(result.get("assemblyVersion") or "")
     previous_scanner = str(previous["scanner_version"] or "")
     artifact_changed = bool(previous_artifact and current_artifact and previous_artifact != current_artifact)
-    source_changed = bool((previous_source or current_source) and previous_source != current_source)
+    repository_changed = bool((previous_source or current_source) and previous_source != current_source)
+    previous_source_fp = ""
+    try:
+        previous_report = json.loads(str(previous["report_json"] or "{}"))
+        previous_source_fp = str((((previous_report.get("source") or {}).get("dependencyIntelligence") or {}).get("fingerprints") or {}).get("relevantSourceSha256") or "")
+    except (json.JSONDecodeError, TypeError, AttributeError):
+        previous_source_fp = ""
+    current_source_fp = str(((((result.get("source") or {}).get("dependencyIntelligence") or {}).get("fingerprints") or {}).get("relevantSourceSha256")) or "")
     version_changed = bool((previous_version or current_version) and previous_version != current_version)
     scanner_changed = previous_scanner != SCANNER_VERSION
+    if scanner_changed:
+        # Source-scope fingerprints are not comparable across scanner semantics.
+        source_changed = False
+    elif previous_source_fp or current_source_fp:
+        source_changed = previous_source_fp != current_source_fp
+    else:
+        # Legacy/fallback scans without source fingerprints retain commit-level behavior.
+        source_changed = repository_changed
     if artifact_changed and source_changed:
         basis = "artifact-and-source-changed"
     elif artifact_changed:
         basis = "artifact-changed"
-    elif source_changed:
-        basis = "source-changed"
     elif scanner_changed:
         basis = "scanner-changed"
+    elif source_changed:
+        basis = "source-changed"
+    elif repository_changed:
+        basis = "repository-context-changed"
     else:
         basis = "revalidation"
     return basis, {
         "previousArtifactSha256": previous_artifact, "currentArtifactSha256": current_artifact,
         "previousSourceCommit": previous_source, "currentSourceCommit": current_source,
+        "previousRelevantSourceSha256": previous_source_fp, "currentRelevantSourceSha256": current_source_fp,
         "previousAssemblyVersion": previous_version, "currentAssemblyVersion": current_version,
         "previousScannerVersion": previous_scanner, "currentScannerVersion": SCANNER_VERSION,
-        "artifactChanged": artifact_changed, "sourceChanged": source_changed,
+        "artifactChanged": artifact_changed, "sourceChanged": source_changed, "repositoryChanged": repository_changed,
         "assemblyVersionChanged": version_changed, "scannerChanged": scanner_changed,
     }
 
@@ -3270,7 +3880,7 @@ def record_dependency_history(db: sqlite3.Connection, previous_scan_id: int | No
         return {"previousScanId": None, "changeBasis": "baseline", "events": 0, "dependencyEvents": 0, "permissionEvents": 0}
 
     previous = db.execute("""
-        SELECT scan_id,artifact_sha256,source_commit,assembly_version,scanner_version,status
+        SELECT scan_id,artifact_sha256,source_commit,assembly_version,scanner_version,status,report_json
           FROM plugin_security_scans WHERE scan_id=?
     """, (previous_scan_id,)).fetchone()
     if previous is None:
@@ -3508,13 +4118,27 @@ def save_dependency_intelligence(db: sqlite3.Connection, scan_id: int, result: d
     intel = result.get("dependencyIntelligence") or {}
     for item in intel.get("dependencies") or []:
         db.execute(
-            """INSERT INTO plugin_security_dependencies(scan_id,origin,kind,name,version,version_requirement,resolved_version,path,status,requirement,evidence_json)
-               VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+            """INSERT INTO plugin_security_dependencies(scan_id,origin,kind,name,version,version_requirement,resolved_version,path,status,requirement,evidence_json,relationship,relationship_confidence,relationship_evidence_json)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 scan_id, str(item.get("origin") or intel.get("origin") or "combined"), str(item.get("kind") or ""),
                 str(item.get("name") or ""), str(item.get("version") or ""), str(item.get("versionRequirement") or ""),
                 str(item.get("resolvedVersion") or ""), str(item.get("path") or ""), str(item.get("status") or ""),
                 str(item.get("requirement") or "observed"), json.dumps(item.get("evidence") or [], separators=(",", ":")),
+                str(item.get("relationship") or ""), str(item.get("relationshipConfidence") or ""),
+                json.dumps(item.get("relationshipEvidence") or [], separators=(",", ":")),
+            ),
+        )
+    for item in intel.get("ipcIntegrations") or []:
+        db.execute(
+            """INSERT INTO plugin_security_ipc_endpoints(scan_id,origin,role,channel,signature,path,status,relationship,relationship_confidence,relationship_evidence_json)
+               VALUES(?,?,?,?,?,?,?,?,?,?)""",
+            (
+                scan_id, str(item.get("origin") or intel.get("origin") or "combined"),
+                str(item.get("role") or "consumer"), str(item.get("channel") or ""),
+                str(item.get("signature") or ""), str(item.get("path") or ""), str(item.get("status") or ""),
+                str(item.get("relationship") or ""), str(item.get("relationshipConfidence") or ""),
+                json.dumps(item.get("relationshipEvidence") or [], separators=(",", ":")),
             ),
         )
     for item in intel.get("imports") or []:
@@ -3705,6 +4329,7 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool, source_override: s
         "source": {
             "available": False, "repository": str(row["repo_url"] or ""), "commit": "", "branch": "", "treeSha256": "",
             "filesScanned": 0, "sourceToBinaryVerified": False, "dependencyIntelligence": empty_source_intel,
+            "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "Source was not scanned."},
             "candidates": [], "error": "",
         },
         "package": {},
@@ -3733,7 +4358,9 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool, source_override: s
         base["source"]["candidates"] = candidates
         if scan_source and candidates:
             source_hits: dict[str, list[str]] = defaultdict(list)
-            base["source"] = fetch_source(candidates, token, source_hits)
+            base["source"] = fetch_source(
+                candidates, token, source_hits, str(row["internal_name"] or ""), str(row["name"] or ""),
+            )
             base["source"]["sourceToBinaryVerified"] = False
             source_intel = base["source"].get("dependencyIntelligence") or empty_source_intel
             source_findings, source_capabilities = finding_payload(source_hits, {})
@@ -4149,7 +4776,38 @@ internal sealed class Services {
     assert any(x["rootMethodName"] == "OnFrameworkUpdate" and x["methodName"] == "NativeCall" and x["depth"] == 1 for x in intel["managedReachability"])
     assert any(x["assemblyName"] == "TestPlugin" and x["assemblyVersion"] == "1.2.3.4" for x in intel["managedAssemblies"])
     assert any(x["service"] == "IClientState" for x in intel["dalamudServices"])
-    assert any(x["channel"] == "Omega.Test.Channel" for x in intel["ipcIntegrations"])
+    assert any(x["channel"] == "Omega.Test.Channel" and x.get("role") == "consumer" for x in intel["ipcIntegrations"])
+    provider_intel = empty_dependency_intelligence("source")
+    provider_text = 'void Register(dynamic pi) => pi.GetIpcProvider<int>("Omega.Test.Channel").RegisterFunc(() => 1);'
+    scan_source_text("ProviderPlugin/Ipc.cs", provider_text.encode("utf-8"), provider_text, provider_intel, defaultdict(list))
+    finalize_intelligence(provider_intel)
+    assert any(x["channel"] == "Omega.Test.Channel" and x.get("role") == "provider" for x in provider_intel["ipcIntegrations"])
+    assert not any(x["kind"] == "ipc" for x in provider_intel["dependencies"]), "IPC providers must not become dependencies on themselves"
+
+    required_ipc_text = 'class Client { void Initialize(dynamic pi) { var gate = pi.GetIpcSubscriber<int>("Omega.Required.Channel"); gate.InvokeFunc(); } }'
+    required_ipc = empty_dependency_intelligence("source")
+    scan_source_text("Client/Required.cs", required_ipc_text.encode("utf-8"), required_ipc_text, required_ipc, defaultdict(list))
+    finalize_intelligence(required_ipc)
+    required_dep = next(x for x in required_ipc["dependencies"] if x.get("kind") == "ipc")
+    assert required_dep["relationship"] == "required" and required_dep["relationshipConfidence"] == "High"
+    assert any("startup path" in evidence for evidence in required_dep["relationshipEvidence"])
+
+    feature_ipc_text = 'class Client { void Feature(dynamic pi) { var gate = pi.GetIpcSubscriber<int>("Omega.Feature.Channel"); if (!gate.IsValid) return; Config.EnableFeature = true; } }'
+    feature_ipc = empty_dependency_intelligence("source")
+    scan_source_text("Client/Feature.cs", feature_ipc_text.encode("utf-8"), feature_ipc_text, feature_ipc, defaultdict(list))
+    finalize_intelligence(feature_ipc)
+    feature_dep = next(x for x in feature_ipc["dependencies"] if x.get("kind") == "ipc")
+    assert feature_dep["relationship"] == "feature" and feature_dep["relationshipConfidence"] == "High"
+
+    optional_ipc_text = 'class Client { void TryConnect(dynamic pi) { var gate = pi.GetIpcSubscriber<int>("Omega.Optional.Channel"); if (!gate.IsValid) return; } }'
+    optional_ipc = empty_dependency_intelligence("source")
+    scan_source_text("Client/Optional.cs", optional_ipc_text.encode("utf-8"), optional_ipc_text, optional_ipc, defaultdict(list))
+    finalize_intelligence(optional_ipc)
+    optional_dep = next(x for x in optional_ipc["dependencies"] if x.get("kind") == "ipc")
+    assert optional_dep["relationship"] == "optional" and optional_dep["relationshipConfidence"] == "High"
+
+    unknown_dep = next(x for x in intel["dependencies"] if x.get("kind") == "ipc")
+    assert unknown_dep["relationship"] == "unknown" and unknown_dep["relationshipConfidence"] == "Low"
     assert any(x["library"] == "user32.dll" for x in intel["nativeImports"])
     candidate_ids = {x["permissionId"] for x in intel["permissionCandidates"]}
     assert "network.outbound" in candidate_ids
@@ -4173,9 +4831,11 @@ internal sealed class Services {
         INSERT INTO plugins(plugin_id,internal_name,canonical_name) VALUES(1,'TestPlugin','Test Plugin');
         INSERT INTO plugins(plugin_id,internal_name,canonical_name) VALUES(2,'SomeExternalPlugin','Some External Plugin');
         INSERT INTO plugins(plugin_id,internal_name,canonical_name) VALUES(3,'NiceToHavePlugin','Nice To Have Plugin');
+        INSERT INTO plugins(plugin_id,internal_name,canonical_name) VALUES(4,'ProviderPlugin','Provider Plugin');
         INSERT INTO plugin_variants(variant_id,plugin_id,name,assembly_version) VALUES(1,1,'Test Plugin','1.2.3.4');
         INSERT INTO plugin_variants(variant_id,plugin_id,name,assembly_version) VALUES(2,2,'Some External Plugin','2.4.0');
         INSERT INTO plugin_variants(variant_id,plugin_id,name,assembly_version) VALUES(3,3,'Nice To Have Plugin','1.5.0');
+        INSERT INTO plugin_variants(variant_id,plugin_id,name,assembly_version) VALUES(4,4,'Provider Plugin','4.2.0');
         INSERT INTO sources(source_id) VALUES(1);
     """)
     ensure_schema(db)
@@ -4224,6 +4884,7 @@ internal sealed class Services {
     assert db.execute("SELECT COUNT(*) FROM plugin_security_managed_reachability WHERE scan_id=? AND method_name='NativeCall' AND depth=1", (scan_id,)).fetchone()[0] >= 1
     assert db.execute("SELECT COUNT(*) FROM plugin_security_dependencies WHERE scan_id=? AND kind='managed-assembly-reference'", (scan_id,)).fetchone()[0] >= 2
     assert db.execute("SELECT COUNT(*) FROM plugin_security_dependencies WHERE scan_id=? AND requirement='soft'", (scan_id,)).fetchone()[0] >= 3
+    assert db.execute("SELECT COUNT(*) FROM plugin_security_ipc_endpoints WHERE scan_id=? AND role='consumer' AND channel='Omega.Test.Channel'", (scan_id,)).fetchone()[0] >= 1
     assert db.execute("SELECT COUNT(*) FROM plugin_security_permission_candidates WHERE scan_id=? AND permission_id='process.execute'", (scan_id,)).fetchone()[0] >= 1
     assert db.execute("SELECT COUNT(*) FROM plugin_security_automation_capabilities WHERE scan_id=? AND capability_id='game.character.execute_action' AND reachable=1", (scan_id,)).fetchone()[0] == 1
     current_automation = db.execute("SELECT automation_level,automation_capabilities_json FROM plugin_security_current WHERE variant_id=1").fetchone()
@@ -4240,6 +4901,13 @@ internal sealed class Services {
     db.execute("INSERT INTO plugin_security_current(variant_id,scan_id,status) VALUES(2,?,'complete')", (other_scan_id,))
     db.execute("""INSERT INTO plugin_security_dependencies(scan_id,origin,kind,name,version,version_requirement,resolved_version,path,status,requirement,evidence_json)
                   VALUES(?,?,?,?,?,?,?,?,?,?,?)""", (other_scan_id,'artifact','nuget-lock','Newtonsoft.Json','12.0.3','[12.0.0,13.0.0)','12.0.3','packages.lock.json','known','required','[]'))
+
+    provider_scan = db.execute("INSERT INTO plugin_security_scans(plugin_id,variant_id,source_id,status) VALUES(4,4,1,'complete')")
+    provider_scan_id = int(provider_scan.lastrowid)
+    db.execute("INSERT INTO plugin_security_current(variant_id,scan_id,status) VALUES(4,?,'complete')", (provider_scan_id,))
+    db.execute("""INSERT INTO plugin_security_ipc_endpoints(scan_id,origin,role,channel,signature,path,status)
+                  VALUES(?,?,?,?,?,?,?)""", (provider_scan_id,'source','provider','Omega.Test.Channel','System.Int32','ProviderPlugin/Ipc.cs','provider-handle'))
+
     graph = refresh_dependency_graph(db, [{
         "id": "TEST-ADV-001", "componentKind": "nuget", "name": "Newtonsoft.Json",
         "affectedRange": "<13.0.4", "fixedVersion": "13.0.4", "severity": "high",
@@ -4250,6 +4918,14 @@ internal sealed class Services {
     assert graph["missingRequiredDependencies"] >= 1
     assert graph["divergentComponents"] >= 1
     assert graph["advisoryMatches"] >= 2
+    assert graph["ipcProviderChannels"] >= 1 and graph["resolvedIpcDependencies"] >= 1
+    ipc_edge = db.execute("""SELECT resolution_status,target_plugin_id,target_variant_id,target_internal_name,match_basis,target_version
+                              FROM plugin_security_dependency_resolutions
+                             WHERE scan_id=? AND dependency_kind='ipc' AND dependency_name='Omega.Test.Channel'""", (scan_id,)).fetchone()
+    assert ipc_edge is not None and ipc_edge["resolution_status"] == 'resolved-ipc-provider'
+    assert ipc_edge["target_plugin_id"] == 4 and ipc_edge["target_variant_id"] == 4 and ipc_edge["target_internal_name"] == 'ProviderPlugin'
+    assert ipc_edge["match_basis"] == 'exact-ipc-channel-provider' and ipc_edge["target_version"] == '4.2.0'
+    assert db.execute("SELECT COUNT(*) FROM plugin_security_ipc_registry WHERE channel='Omega.Test.Channel' AND provider_plugin_id=4").fetchone()[0] == 1
     required_edge = db.execute("""SELECT resolution_status,target_plugin_id,target_variant_id,requirement,match_basis,version_status,target_version
                                    FROM plugin_security_dependency_resolutions
                                   WHERE scan_id=? AND dependency_name='SomeExternalPlugin'""", (scan_id,)).fetchone()

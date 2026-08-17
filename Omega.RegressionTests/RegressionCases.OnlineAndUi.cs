@@ -12,6 +12,7 @@ internal static partial class RegressionCases
     {
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
         Contains(workflow, "collect_sources.py", "online source discovery step");
+        Contains(workflow, "cron: \"17 0,6,12,18 * * *\"", "catalog source discovery runs every six hours");
         Contains(workflow, "enrich_metadata.py", "manifest normalization step");
         Contains(workflow, "scrape_websites_incremental.py", "incremental website enrichment step");
         Contains(workflow, "build_sqlite_catalog.py", "SQLite build step");

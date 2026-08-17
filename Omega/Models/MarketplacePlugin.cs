@@ -55,6 +55,10 @@ public sealed class MarketplacePlugin
     public IReadOnlyList<MarketplaceSecurityFinding> SecurityFindings { get; init; } = [];
     public IReadOnlyList<MarketplaceDependency> SecurityDependencies { get; init; } = [];
     public int SecurityDependencyTotalCount { get; init; }
+    public int SecurityKnownAdvisoryCount { get; init; }
+    public string SecurityKnownAdvisoryHighestSeverity { get; init; } = "none";
+    public int SecurityRiskScore { get; init; }
+    public bool HasKnownAtRiskDependency => SecurityKnownAdvisoryCount > 0;
     public bool SecuritySourceAvailable { get; init; }
     public string SecuritySourceRepository { get; init; } = string.Empty;
     public string SecuritySourceCommit { get; init; } = string.Empty;

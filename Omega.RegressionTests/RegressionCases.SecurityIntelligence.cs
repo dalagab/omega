@@ -5,7 +5,7 @@ internal static partial class RegressionCases
     internal static void TestPluginSecurityIntelligenceContract()
     {
         var scanner = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "security_scan.py"));
-        Contains(scanner, "SCANNER_VERSION = \"2.1.0\"", "scanner version is explicit so stale scans can be refreshed");
+        Contains(scanner, "SCANNER_VERSION = \"2.4.0\"", "scanner version is explicit so stale scans can be refreshed");
         Contains(scanner, "Only HTTPS downloads are scanned", "scanner refuses insecure artifact transports");
         Contains(scanner, "MAX_ARTIFACT_BYTES", "artifact downloads are bounded");
         Contains(scanner, "MAX_ARTIFACT_BYTES = 256 * 1024 * 1024", "artifact download ceiling accommodates large production plugin packages while remaining bounded");
@@ -18,6 +18,10 @@ internal static partial class RegressionCases
         Contains(scanner, "compound.network-execute", "compound network/process risk is surfaced");
         Contains(scanner, "sourceToBinaryVerified", "source inspection does not imply source-to-binary verification");
         Contains(scanner, "source_candidates(", "source scanning derives GitHub repositories from more than RepoUrl");
+        Contains(scanner, "select_plugin_source_scope", "monorepo source scans are narrowed to the actual plugin build graph");
+        Contains(scanner, "repository-context-only", "unrelated repository projects remain context instead of becoming plugin security evidence");
+        Contains(scanner, "contextProjects", "sibling server and tooling projects remain visible as non-critical repository context");
+        Contains(scanner, "project_closure", "plugin source scope follows transitive project references instead of traversing the whole repository");
         Contains(scanner, "source_override_key(", "human-reviewed source overrides use stable plugin/source identities instead of SQLite row ids");
         Contains(scanner, "sources/source-overrides.json", "validated public-source overrides remain a repository-side scanner input");
         Contains(scanner, "plugin_security_current", "scanner persists the current result per exact catalog variant");
@@ -29,7 +33,7 @@ internal static partial class RegressionCases
         Contains(scanner, "automation.via_ipc", "automation supplied indirectly through IPC is classified explicitly");
         Contains(scanner, "Preserve last-known-good intelligence", "transient revalidation failures do not erase the last completed scan");
 
-        Contains(scanner, "omega.plugin-security.dependencies.v1", "dependency inventory has an explicit machine-readable schema");
+        Contains(scanner, "omega.plugin-security.dependencies.v2", "dependency inventory has an explicit machine-readable schema");
         Contains(scanner, "plugin_security_dependencies", "dependency records are persisted separately from security findings");
         Contains(scanner, "plugin_security_imports", "namespace/import evidence is persisted");
         Contains(scanner, "plugin_security_permission_candidates", "import/dependency evidence maps to explicit permission candidates");
@@ -37,7 +41,16 @@ internal static partial class RegressionCases
         Contains(scanner, "ProjectReference", "project references are inventoried");
         Contains(scanner, "packages.lock.json", "locked NuGet dependency versions are inventoried");
         Contains(scanner, "project.assets.json", "resolved NuGet dependency versions are inventoried when present");
-        Contains(scanner, "GetIpcSubscriber", "Dalamud IPC integrations are inventoried");
+        Contains(scanner, "GetIpcSubscriber", "Dalamud IPC consumers are inventoried");
+        Contains(scanner, "GetIpcProvider", "Dalamud IPC providers are inventoried separately from consumers");
+        Contains(scanner, "plugin_security_ipc_endpoints", "historical IPC provider/consumer observations are persisted per scan");
+        Contains(scanner, "plugin_security_ipc_registry", "current IPC providers are registered by exact channel identity");
+        Contains(scanner, "resolved-ipc-provider", "IPC consumers can resolve to the plugin that exposes the channel");
+        Contains(scanner, "exact-ipc-channel-provider", "IPC provider links use the exact Dalamud registration string rather than plugin-name guessing");
+        Contains(scanner, "infer_ipc_consumer_relationship", "IPC consumers receive conservative required/feature/optional/unknown relationship inference");
+        Contains(scanner, "missing-required-ipc-provider", "high-confidence required IPC providers become explicit dependency issues when absent");
+        Contains(scanner, "relationship_confidence", "IPC relationship confidence is retained in normalized dependency evidence");
+        Contains(scanner, "relationship_evidence_json", "IPC relationship evidence remains available server-side");
         Contains(scanner, "RequiredPlugins", "required external Dalamud plugin dependencies are inventoried from manifests");
         Contains(scanner, "OptionalPlugins", "soft external Dalamud plugin dependencies are preserved from manifests");
         Contains(scanner, "requirement", "dependency rows preserve required/soft/optional/bundled semantics");
@@ -121,7 +134,7 @@ internal static partial class RegressionCases
 
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "security-scanner.yml"));
         var normalizedWorkflow = workflow.ReplaceLineEndings("\n");
-        Contains(normalizedWorkflow, "cron: \"17 6 * * *\"", "security scanner runs daily");
+        Contains(normalizedWorkflow, "cron: \"47 3,15 * * *\"", "security scanner has twice-daily independent safety-net runs");
         Contains(normalizedWorkflow, "workflows:\n      - \"Omega SQLite catalog builder\"", "security scanner runs after successful catalog builds");
         Contains(normalizedWorkflow, "tools/catalog/security_scan.py", "scanner code changes trigger immediate repository-side validation");
         Contains(normalizedWorkflow, "github.event.workflow_run.conclusion == 'success'", "failed catalog builds cannot start a publish scan");
@@ -129,7 +142,7 @@ internal static partial class RegressionCases
         Contains(normalizedWorkflow, "contents: read", "hostile artifact scan job has read-only repository permission");
         False(workflow.Contains("contents: write", StringComparison.Ordinal), "security scanner never receives repository write permission");
         Contains(workflow, "name: omega-security-catalog", "security enrichment hands its database to the post-scan compactor as an Actions artifact");
-        Contains(workflow, "--max-scans", "daily scan work is bounded");
+        Contains(workflow, "--max-scans", "scheduled scan work is bounded");
         Contains(workflow, "--max-batch-seconds", "workflow supplies a wall-clock scan-start budget below the job timeout");
         Contains(workflow, "--hardening-self-test", "workflow runs the catalog/pathological-input hardening fixture");
         Contains(workflow, "--rescan-after-hours", "unchanged artifacts are periodically revalidated");
@@ -145,6 +158,9 @@ internal static partial class RegressionCases
         Contains(securityValidator, "plugin_security_managed_reachability", "validator checks bounded reachability persistence");
         Contains(securityValidator, "plugin_security_dependency_resolutions", "validator checks catalog cross-reference edges");
         Contains(securityValidator, "plugin_security_dependency_components", "validator checks shared dependency component aggregation");
+        Contains(securityValidator, "plugin_security_ipc_endpoints", "validator requires persisted IPC endpoint observations");
+        Contains(securityValidator, "plugin_security_ipc_registry", "validator requires the current IPC provider registry");
+        Contains(securityValidator, "resolved IPC edges are missing provider registrations", "validator rejects IPC edges that cannot be backed by a registered provider");
         Contains(securityValidator, "plugin_security_dependency_issues", "validator checks version/missing dependency issue persistence");
         Contains(securityValidator, "plugin_security_dependency_advisory_matches", "validator checks advisory match projection");
         Contains(securityValidator, "plugin_security_scan_lineage", "validator checks scan lineage persistence");
@@ -234,6 +250,12 @@ internal static partial class RegressionCases
         Contains(dependenciesUi, "Dependency information is not present in the current Definitions snapshot for this package.", "older or unscanned Definitions snapshots explain missing dependency data instead of hiding the view");
         DoesNotContain(dependenciesUi, "if (!plugin.HasCompletedSecurityScan || plugin.SecurityDependencyTotalCount <= 0 || plugin.SecurityDependencies.Count == 0)", "dependency section must not disappear behind the old security/dependency guard");
         Contains(dependenciesUi, "Available in Omega", "resolved plugin dependencies advertise that they can be opened in Omega");
+        Contains(dependenciesUi, "Provided by {dependency.TargetInternalName}", "resolved IPC consumers name the plugin that provides the channel");
+        Contains(dependenciesUi, "Required plugins / providers", "required IPC providers are presented alongside required plugin dependencies");
+        Contains(dependenciesUi, "Feature integrations", "feature-scoped IPC relationships receive their own dependency group");
+        Contains(dependenciesUi, "IsHighConfidenceRequiredProvider", "required-provider warnings are limited to strong relationship evidence");
+        Contains(dependenciesUi, "RelationshipReason", "bounded relationship evidence is explainable from the dependency UI");
+        Contains(dependenciesUi, "Multiple IPC providers observed", "ambiguous IPC provider registrations remain explicit instead of being guessed");
         Contains(dependenciesUi, "OpenPluginDetails", "resolved plugin dependencies navigate to their Omega product page");
         Contains(dependenciesUi, "IsDisplayablePluginDependency", "dependency UI filters legacy Definitions rows to plugin and IPC relationships");
         Contains(dependenciesUi, "dependency.IsFramework", "framework dependencies are explicitly excluded from the product dependency panel");
@@ -280,14 +302,27 @@ internal static partial class RegressionCases
         Contains(projector, "_normalized_package_url", "exact mirrored package URLs can reuse a proven artifact identity for the same plugin version");
         Contains(projector, "canonicalize_marketplace_security_by_artifact", "client security summaries are canonicalized by exact artifact hash");
         Contains(projector, "validate_artifact_security_consistency", "projection fails if identical artifact hashes retain different security summaries");
+        Contains(projector, "build_advisory_risk_summaries", "known dependency advisories are summarized into the client security posture");
+        Contains(projector, "adv.affected_version", "known-risk projection is scoped to the exact affected dependency version");
+        Contains(projector, "security_risk_score", "the compact Definitions database carries Omega's bounded internal risk score");
+        Contains(projector, "advisory_points", "known advisories explicitly add weight to the internal risk score");
+        Contains(projector, "relationshipConfidence", "Definitions project bounded IPC relationship confidence");
+        Contains(projector, "relationshipReason", "Definitions project a bounded IPC relationship explanation without forensic evidence tables");
 
         var discoverUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
         var securityUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.PluginSecurity.cs"));
+        var installUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Install.cs"));
+        Contains(installUi, "Required provider not installed", "install chooser warns when a high-confidence required IPC provider is missing");
+        Contains(installUi, "View provider", "install warning can route the user to a resolved required provider");
+        Contains(installUi, "will not install it automatically", "inferred IPC dependencies remain assisted rather than silently installed");
         Contains(discoverUi, "FindRequiredDependencyAutomation", "automation resolver follows required plugin dependencies for automation exposure");
         Contains(discoverUi, "Automation exposure through required dependency", "dependency-provided automation is explained in the automation tooltip");
         Contains(discoverUi, "maximumDependencyRiskDepth = 8", "recursive dependency-automation traversal remains bounded");
         Contains(discoverUi, "plugin.SecurityDependencies", "dependency automation follows evidence from the exact selected repository package");
         Contains(securityUi, "FontAwesomeIcon.ExclamationTriangle", "scan findings use the standard Font Awesome warning-triangle glyph");
+        Contains(securityUi, "Known risk", "product security surfaces a dedicated known-risk badge for OSV-affected dependencies");
+        Contains(securityUi, "HasKnownAtRiskDependency", "known dependency advisories are handled independently from static findings");
+        Contains(discoverUi, "Known risk: OSV reports", "Discover exposes a visible known-risk marker without revealing the numeric score");
         Contains(discoverUi, "UiBuilder.IconFontFixedWidth", "scan glyphs use Dalamud's fixed-width Font Awesome font for stable alignment");
         Contains(discoverUi, "var glyphSize = ImGui.CalcTextSize(glyph)", "scan glyph centering is derived from measured glyph bounds");
         Contains(discoverUi, "(size - glyphSize.X) * 0.5f", "scan glyphs remain horizontally centered without punctuation-specific offsets");
@@ -312,7 +347,7 @@ internal static partial class RegressionCases
         Contains(compactor, "securityRevision", "compactor writes the security revision into the production descriptor");
         Contains(compactor, "changelogEntryCount", "descriptor exposes embedded changelog size for troubleshooting");
         var projector = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "project_marketplace_catalog.py"));
-        Contains(projector, "PROJECTOR_VERSION = \"1.4.0\"", "marketplace projector version is explicit");
+        Contains(projector, "PROJECTOR_VERSION = \"1.5.0\"", "marketplace projector version is explicit");
         Contains(projector, "marketplace_security_current", "client database retains only compact current security summaries");
         Contains(projector, "DEPENDENCY_SUMMARY_LIMIT = 30", "Definitions dependency projection remains bounded per plugin variant");
         Contains(projector, "build_dependency_summaries", "projector derives compact dependencies from detailed server-side evidence before dropping it");

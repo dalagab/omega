@@ -110,6 +110,18 @@ class UiLayoutContractTests(unittest.TestCase):
         self.assertNotIn('"Large list"', presentation)
         self.assertIn("DrawRepositoryName", presentation)
 
+    def test_required_ipc_provider_warning_is_assisted_not_automatic(self):
+        dependencies = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Dependencies.cs").read_text(encoding="utf-8")
+        install = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Install.cs").read_text(encoding="utf-8")
+        self.assertIn("Required plugins / providers", dependencies)
+        self.assertIn("Feature integrations", dependencies)
+        self.assertIn("IPC · {IpcRelationship(dependency)}", dependencies)
+        self.assertIn("IsHighConfidenceRequiredProvider", dependencies)
+        self.assertIn("Required provider not installed", install)
+        self.assertIn("View provider", install)
+        self.assertIn("will not install it automatically", install)
+        self.assertNotIn("InstallRequiredProvider", install)
+
     def test_discover_installed_check_is_composited_above_artwork_without_shifting_layout(self):
         discover = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Discover.cs").read_text(encoding="utf-8")
         artwork = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Artwork.cs").read_text(encoding="utf-8")

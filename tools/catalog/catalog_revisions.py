@@ -303,6 +303,16 @@ SECURITY_QUERY_BUILDERS: tuple[tuple[str, str], ...] = (
 
 
 EVIDENCE_QUERY_BUILDERS: tuple[tuple[str, str], ...] = (
+    ("ipc_endpoints", _child_current_query(
+        "plugin_security_ipc_endpoints", "ipc",
+        "ipc.origin,ipc.role,ipc.channel,ipc.signature,ipc.path,ipc.status",
+        "ipc.origin,ipc.role,ipc.channel,ipc.signature,ipc.path,ipc.status"
+    )),
+    ("ipc_registry", """
+        SELECT channel,provider_internal_name,provider_variant_count,provider_signature,provider_origin,provider_path,provider_registration_count
+          FROM plugin_security_ipc_registry
+         ORDER BY channel,provider_internal_name COLLATE NOCASE,provider_path
+    """),
     ("managed_symbols", _child_current_query(
         "plugin_security_managed_symbols", "ms",
         "ms.origin,ms.path,ms.symbol_kind,ms.declaring_type,ms.name,ms.assembly_name,ms.evidence_json",

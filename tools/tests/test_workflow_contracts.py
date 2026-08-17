@@ -138,6 +138,9 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("--advisories catalog/security-output/public-advisories.json", text)
         self.assertIn("catalog/security-output/public-advisories.json", text)
         self.assertLess(text.index(collector), text.rindex(scanner))
+        self.assertGreaterEqual(text.count(collector), 2, "advisories are refreshed after newly scanned dependencies are discovered")
+        self.assertIn("--max-scans 0", text, "fresh advisory matches are re-projected without rescanning plugin artifacts")
+        self.assertIn("security-advisory-refresh-report.json", text)
 
     def test_compactor_is_only_database_publisher_and_splits_client_from_evidence(self) -> None:
         text = self.read("catalog-compaction.yml")

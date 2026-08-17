@@ -43,16 +43,17 @@ internal sealed partial class MarketplaceWindow
                     ResolveInstalledSecurityVariant(listing, installedPlugin),
                     installedPlugin);
             })
-            .OrderByDescending(x => SecuritySeverityRank(x.SecurityVariant.SecurityHighestSeverity))
+            .OrderByDescending(x => x.SecurityVariant.SecurityRiskScore)
+            .ThenByDescending(x => EffectiveSecuritySeverityRank(x.SecurityVariant))
             .ThenByDescending(x => x.SecurityVariant.SecurityCriticalCount)
             .ThenByDescending(x => x.SecurityVariant.SecurityHighCount)
             .ThenBy(x => x.Listing.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         var completed = entries.Count(x => x.SecurityVariant.HasCompletedSecurityScan);
-        var elevated = entries.Count(x => SecuritySeverityRank(x.SecurityVariant.SecurityHighestSeverity) >= SecuritySeverityRank("high"));
+        var elevated = entries.Count(x => EffectiveSecuritySeverityRank(x.SecurityVariant) >= SecuritySeverityRank("high"));
         var caution = entries.Count(x => x.SecurityVariant.HasCompletedSecurityScan &&
-                                         SecuritySeverityRank(x.SecurityVariant.SecurityHighestSeverity) == SecuritySeverityRank("caution"));
+                                         EffectiveSecuritySeverityRank(x.SecurityVariant) == SecuritySeverityRank("caution"));
         var unknown = entries.Length - completed;
 
         DrawSecurityDisclaimerPanel();
@@ -200,7 +201,7 @@ internal sealed partial class MarketplaceWindow
 
         var total = plugin.SecurityCriticalCount + plugin.SecurityHighCount +
                     plugin.SecurityCautionCount + plugin.SecurityInformationalCount;
-        if (total == 0)
+        if (total == 0 && !plugin.HasKnownAtRiskDependency)
             return "No findings in the latest completed static scan";
 
         var parts = new List<string>();
@@ -208,6 +209,8 @@ internal sealed partial class MarketplaceWindow
         if (plugin.SecurityHighCount > 0) parts.Add($"{plugin.SecurityHighCount} high");
         if (plugin.SecurityCautionCount > 0) parts.Add($"{plugin.SecurityCautionCount} medium");
         if (plugin.SecurityInformationalCount > 0) parts.Add($"{plugin.SecurityInformationalCount} low");
+        if (plugin.HasKnownAtRiskDependency)
+            parts.Add($"OSV {plugin.SecurityKnownAdvisoryCount} known risk{(plugin.SecurityKnownAdvisoryCount == 1 ? string.Empty : "s")}");
         var firstFinding = plugin.SecurityFindings.FirstOrDefault()?.Title;
         return Shorten(
             string.IsNullOrWhiteSpace(firstFinding)

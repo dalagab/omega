@@ -25,12 +25,14 @@ internal sealed partial class MarketplaceWindow
         }
 
         var required = dependencies.Where(IsRequiredDependency).ToArray();
-        var optional = dependencies.Where(x => !IsRequiredDependency(x) && IsOptionalDependency(x)).ToArray();
-        var linked = dependencies.Where(x => !IsRequiredDependency(x) && !IsOptionalDependency(x)).ToArray();
+        var feature = dependencies.Where(x => !IsRequiredDependency(x) && IsFeatureDependency(x)).ToArray();
+        var optional = dependencies.Where(x => !IsRequiredDependency(x) && !IsFeatureDependency(x) && IsOptionalDependency(x)).ToArray();
+        var linked = dependencies.Where(x => !IsRequiredDependency(x) && !IsFeatureDependency(x) && !IsOptionalDependency(x)).ToArray();
 
-        DrawDependencyGroup("Required plugins", required, installed);
-        DrawDependencyGroup("Optional / IPC", optional, installed);
-        DrawDependencyGroup("Plugin links", linked, installed);
+        DrawDependencyGroup("Required plugins / providers", required, installed);
+        DrawDependencyGroup("Feature integrations", feature, installed);
+        DrawDependencyGroup("Optional integrations", optional, installed);
+        DrawDependencyGroup("Plugin links / unknown IPC", linked, installed);
 
         ImGui.Unindent(14f);
     }
@@ -120,6 +122,11 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.TableSetColumnIndex(2);
         ImGui.TextDisabled(DependencyTypeLabel(dependency));
+        if (ImGui.IsItemHovered() && IsIpcDependency(dependency) && !string.IsNullOrWhiteSpace(dependency.RelationshipReason))
+        {
+            var confidence = string.IsNullOrWhiteSpace(dependency.RelationshipConfidence) ? "unknown" : dependency.RelationshipConfidence;
+            ImGui.SetTooltip($"Static IPC relationship inference: {IpcRelationship(dependency)} ({confidence} confidence)\n{dependency.RelationshipReason}");
+        }
 
         ImGui.TableSetColumnIndex(3);
         ImGui.TextWrapped(DependencyVersionText(dependency));
@@ -128,6 +135,8 @@ internal sealed partial class MarketplaceWindow
         var status = DependencyStatusText(dependency, availableInOmega, targetInstalled);
         if (dependency.HasWarning)
             ImGui.TextColored(DependencyWarningColor(dependency.WarningSeverity), status);
+        else if (IsHighConfidenceRequiredProvider(dependency) && !targetInstalled)
+            ImGui.TextColored(new Vector4(0.92f, 0.30f, 0.24f, 1f), status);
         else if (targetInstalled)
             ImGui.TextColored(new Vector4(0.26f, 0.76f, 0.48f, 1f), status);
         else
@@ -158,33 +167,57 @@ internal sealed partial class MarketplaceWindow
         return true;
     }
 
+    private static bool IsIpcDependency(MarketplaceDependency dependency)
+        => dependency.Type.Equals("ipc", StringComparison.OrdinalIgnoreCase) ||
+           dependency.Kind.Equals("ipc", StringComparison.OrdinalIgnoreCase);
+
+    private static string IpcRelationship(MarketplaceDependency dependency)
+    {
+        var relationship = (dependency.Relationship ?? string.Empty).Trim().ToLowerInvariant();
+        return relationship is "required" or "feature" or "optional" or "unknown" ? relationship : "unknown";
+    }
+
+    private static bool HasHighRelationshipConfidence(MarketplaceDependency dependency)
+        => dependency.RelationshipConfidence.Equals("High", StringComparison.OrdinalIgnoreCase) ||
+           dependency.RelationshipConfidence.Equals("VeryHigh", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsHighConfidenceRequiredProvider(MarketplaceDependency dependency)
+        => IsIpcDependency(dependency) && IpcRelationship(dependency) == "required" && HasHighRelationshipConfidence(dependency);
+
     private static bool IsRequiredDependency(MarketplaceDependency dependency)
-        => dependency.Requirement.Equals("required", StringComparison.OrdinalIgnoreCase) ||
+        => (IsIpcDependency(dependency) && IpcRelationship(dependency) == "required") ||
+           dependency.Requirement.Equals("required", StringComparison.OrdinalIgnoreCase) ||
            dependency.Type.Equals("hard", StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsFeatureDependency(MarketplaceDependency dependency)
+        => IsIpcDependency(dependency) && IpcRelationship(dependency) == "feature";
+
     private static bool IsOptionalDependency(MarketplaceDependency dependency)
-        => dependency.Requirement is "soft" or "optional" || dependency.Type is "soft" or "optional" or "ipc";
+        => (IsIpcDependency(dependency) && IpcRelationship(dependency) == "optional") ||
+           (!IsIpcDependency(dependency) && (dependency.Requirement is "soft" or "optional" || dependency.Type is "soft" or "optional"));
 
     private static string DependencyMarker(MarketplaceDependency dependency, bool availableInOmega, bool installed)
     {
-        if (dependency.HasWarning)
+        if (dependency.HasWarning || (IsHighConfidenceRequiredProvider(dependency) && !installed))
             return "!";
         if (installed)
             return "✓";
         if (availableInOmega)
             return "↓";
-        return dependency.Requirement.Equals("required", StringComparison.OrdinalIgnoreCase) ? "!" : "•";
+        return IsRequiredDependency(dependency) ? "!" : "•";
     }
 
     private static Vector4 DependencyMarkerColor(MarketplaceDependency dependency, bool availableInOmega, bool installed)
     {
         if (dependency.HasWarning)
             return DependencyWarningColor(dependency.WarningSeverity);
+        if (IsHighConfidenceRequiredProvider(dependency) && !installed)
+            return new Vector4(0.92f, 0.30f, 0.24f, 1f);
         if (installed)
             return new Vector4(0.26f, 0.76f, 0.48f, 1f);
         if (availableInOmega)
             return new Vector4(0.16f, 0.72f, 0.75f, 1f);
-        if (dependency.Requirement.Equals("required", StringComparison.OrdinalIgnoreCase))
+        if (IsRequiredDependency(dependency))
             return new Vector4(0.88f, 0.28f, 0.24f, 1f);
         return new Vector4(0.62f, 0.64f, 0.68f, 1f);
     }
@@ -198,16 +231,20 @@ internal sealed partial class MarketplaceWindow
         };
 
     private static string DependencyTypeLabel(MarketplaceDependency dependency)
-        => (dependency.Type ?? string.Empty).Trim().ToLowerInvariant() switch
+    {
+        if (IsIpcDependency(dependency))
+            return $"IPC · {IpcRelationship(dependency)}";
+
+        return (dependency.Type ?? string.Empty).Trim().ToLowerInvariant() switch
         {
             "hard" => "Plugin · required",
             "soft" => "Plugin · soft",
             "optional" => "Plugin · optional",
             "plugin" => "Plugin",
-            "ipc" => "IPC integration",
             var value when !string.IsNullOrWhiteSpace(value) => value,
             _ => "Component",
         };
+    }
 
     private static string DependencyVersionText(MarketplaceDependency dependency)
     {
@@ -228,16 +265,38 @@ internal sealed partial class MarketplaceWindow
     private static string DependencyStatusText(MarketplaceDependency dependency, bool availableInOmega, bool installed)
     {
         var parts = new List<string>();
-        if (installed)
+        var isIpc = IsIpcDependency(dependency);
+        var relationship = isIpc ? IpcRelationship(dependency) : string.Empty;
+        if (isIpc && !string.IsNullOrWhiteSpace(dependency.TargetInternalName))
+        {
+            parts.Add($"Provided by {dependency.TargetInternalName}");
+            if (relationship == "required" && HasHighRelationshipConfidence(dependency) && !installed)
+                parts.Add(availableInOmega ? "Required provider not installed; available in Omega" : "Required provider not installed");
+            else
+                parts.Add(installed ? "Installed" : availableInOmega ? "Available in Omega" : "Provider resolved");
+        }
+        else if (installed)
             parts.Add("Installed");
         else if (availableInOmega)
             parts.Add("Available in Omega");
         else if (dependency.Requirement.Equals("required", StringComparison.OrdinalIgnoreCase) && dependency.IsPluginDependency)
             parts.Add("Required plugin not in Definitions");
-        else if (dependency.Type.Equals("ipc", StringComparison.OrdinalIgnoreCase))
-            parts.Add("Integration observed");
+        else if (isIpc)
+        {
+            if (relationship == "required" && HasHighRelationshipConfidence(dependency))
+                parts.Add(dependency.ResolutionStatus.Equals("ambiguous-ipc-provider", StringComparison.OrdinalIgnoreCase)
+                    ? "Required IPC provider is ambiguous"
+                    : "Required IPC provider not yet identified");
+            else
+                parts.Add(dependency.ResolutionStatus.Equals("ambiguous-ipc-provider", StringComparison.OrdinalIgnoreCase)
+                    ? "Multiple IPC providers observed"
+                    : "IPC provider not yet identified");
+        }
         else
             parts.Add("Plugin relationship observed");
+
+        if (isIpc && !string.IsNullOrWhiteSpace(dependency.RelationshipConfidence))
+            parts.Add($"{relationship} · {dependency.RelationshipConfidence} confidence");
 
         if (dependency.WarningCount > 0)
             parts.Add($"{dependency.WarningCount} warning{(dependency.WarningCount == 1 ? "" : "s")}");

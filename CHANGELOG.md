@@ -2,6 +2,61 @@
 
 Omega follows semantic product versions. Release entries here are consumed by the GitHub release workflow so the same human-readable notes are published with each immutable release.
 
+## [0.8.68] - 2026-08-17
+
+### Added
+
+- Classify consumed Dalamud IPC relationships as **required**, **feature**, **optional**, or **unknown**, with a bounded confidence level and static evidence explaining the classification.
+- Show IPC relationship semantics in the in-game Dependencies panel and preserve the bounded relationship reason in Definitions while keeping detailed source evidence server-side.
+- Warn in the repository/install chooser when a **High** or **VeryHigh** confidence required IPC provider is not installed, with a direct route to the resolved provider when Omega knows it.
+
+### Changed
+
+- Required-provider inference is deliberately conservative: merely obtaining an IPC subscriber is not enough. Strong required status needs startup/fatal/direct-use evidence; guarded integrations are classified as feature/optional and insufficient evidence remains unknown.
+- High-confidence required IPC channels that cannot be resolved, or resolve ambiguously, now produce dependency-graph issues instead of being treated like ordinary optional IPC.
+- Required IPC providers participate in the same bounded required-dependency automation propagation as declared required plugin dependencies. Omega still does not silently install inferred dependencies.
+- Security scanner schema advances to **2.4.0** / dependency intelligence v2 so existing source-assisted IPC relationships are re-evaluated under the new semantics.
+
+## [0.8.67] - 2026-08-17
+
+### Changed
+
+- Split Dalamud IPC observations into explicit provider and consumer roles instead of treating every `GetIpcProvider`/`GetIpcSubscriber` reference as the same external integration.
+- Added a current IPC provider registry keyed by the exact Dalamud channel string, allowing subscriber edges to resolve to the plugin that exposes the channel without guessing by plugin name.
+- Resolved IPC integrations now carry the provider plugin target into Definitions, making the provider clickable from the in-game Dependencies panel; unresolved and ambiguous provider channels remain explicit.
+- Provider declarations no longer count as indirect automation consumption merely because the exposed channel name resembles a known automation IPC.
+- IPC provider/consumer endpoint evidence and the provider registry are retained in the server-side security evidence database and semantic Evidence Revision.
+
+## [0.8.66] - 2026-08-17
+
+### Changed
+- Increase scheduled catalog/source discovery from once daily to every six hours. Accepted source submissions remain event-driven and continue to queue the catalog builder immediately.
+- Run the independent security/OSV safety-net scan twice daily, in addition to the security scan automatically triggered after every successful catalog build. With the four catalog passes, normal security/follow-up reconciliation can now run up to six times per day.
+- Reconcile actionable public-source follow-up issues after every security pass, while retaining the existing per-run creation bound so increased cadence clears backlogs without creating an unbounded issue burst.
+- Keep successful website enrichment cached for seven days; the higher catalog cadence therefore prioritizes newly discovered or stale sources instead of repeatedly scraping unchanged project sites.
+
+## [0.8.65] - 2026-08-17
+
+### Added
+- Plugins whose exact resolved dependency versions match one or more public OSV advisories now carry a visible **Known risk** security marker in Discover, product security summaries, and the installed-environment security view.
+- Marketplace Definitions now retain the bounded advisory count, highest advisory severity, and an internal 0–100 security risk score for each exact plugin package. The numeric score remains intentionally hidden from normal UI.
+
+### Changed
+- Known OSV advisories now add explicit weight to Omega's internal plugin risk score and can elevate the effective security posture used for Library ordering and warning color, while remaining distinct from static-analysis findings.
+- Advisory matching is now exact-version scoped when projecting risk, preventing an advisory for one version of a shared NuGet component from incorrectly flagging plugins that use a different version.
+- The security workflow refreshes OSV data after artifact scanning and re-projects advisory matches with `--max-scans 0`, so dependencies discovered in the current run can receive known-risk status immediately instead of waiting for the next scheduled scan.
+
+## [0.8.64] - 2026-08-17
+
+### Fixed
+- Scope source-assisted security analysis to the actual Dalamud plugin build graph instead of treating an entire monorepo as plugin-integrated code.
+- Follow transitive `ProjectReference` dependencies, linked source/build inputs, and applicable MSBuild configuration for the selected plugin project.
+- Keep sibling server, website, deployment, test, and tooling projects as non-critical repository context so their capabilities do not affect plugin security, dependency, endpoint, or automation conclusions.
+- Distinguish a repository-only commit change from a change to the relevant plugin source fingerprint in security lineage.
+
+### Security
+- Bump the static security scanner to 2.2.0 so existing source-assisted scans are refreshed under the corrected source-scope semantics.
+
 ## [0.8.63] - 2026-08-16
 
 ### Changed

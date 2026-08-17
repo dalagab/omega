@@ -22,7 +22,7 @@ from typing import Any
 
 from source_stability import stable_source_priority
 
-PROJECTOR_VERSION = "1.4.0"
+PROJECTOR_VERSION = "1.5.0"
 MARKETPLACE_DB_FILENAME = "omega-marketplace.sqlite"
 MARKETPLACE_BUNDLE_FILENAME = "omega-marketplace.sqlite.zip"
 CLIENT_INTERNAL_DB_FILENAME = "omega-catalog.sqlite"
@@ -40,6 +40,7 @@ ARTIFACT_CANONICAL_RUNTIME_COLUMNS = {
     "security_informational_count", "security_caution_count", "security_high_count", "security_critical_count",
     "security_capabilities_json", "security_automation_level", "security_automation_capabilities_json",
     "security_findings_json", "security_dependencies_json", "security_dependency_total_count",
+    "security_known_advisory_count", "security_known_advisory_highest_severity", "security_risk_score",
     "security_source_available", "security_source_repository", "security_source_commit",
     "security_source_to_binary_verified", "security_error",
 }
@@ -48,6 +49,8 @@ DETAILED_SECURITY_TABLES = (
     "plugin_security_scans",
     "plugin_security_findings",
     "plugin_security_dependencies",
+    "plugin_security_ipc_endpoints",
+    "plugin_security_ipc_registry",
     "plugin_security_imports",
     "plugin_security_managed_assemblies",
     "plugin_security_managed_symbols",
@@ -98,6 +101,14 @@ def _dependency_severity(rank: int) -> str:
 
 def _dependency_requirement_rank(value: str) -> int:
     return {"required": 5, "soft": 4, "optional": 3, "bundled": 2, "observed": 1}.get(value.casefold(), 0)
+
+
+def _ipc_relationship_rank(value: str) -> int:
+    return {"required": 4, "feature": 3, "optional": 2, "unknown": 1}.get(value.casefold(), 0)
+
+
+def _relationship_confidence_rank(value: str) -> int:
+    return {"veryhigh": 4, "high": 3, "medium": 2, "low": 1}.get(value.replace("_", "").replace("-", "").casefold(), 0)
 
 
 def _framework_dependency_identity(name: str) -> tuple[str, str] | None:
@@ -203,27 +214,37 @@ def build_dependency_summaries(db: sqlite3.Connection, current_table: str = "plu
     if "plugin_security_dependency_advisory_matches" in table_names:
         advisory_cte = """
         advisories AS (
-            SELECT component_key,
+            SELECT component_key,affected_version,
                    MAX(CASE lower(severity) WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'caution' THEN 2 WHEN 'moderate' THEN 2 WHEN 'low' THEN 1 WHEN 'informational' THEN 1 ELSE 0 END) AS warning_rank,
                    COUNT(*) AS advisory_count
               FROM plugin_security_dependency_advisory_matches
              WHERE component_key<>''
-             GROUP BY component_key
+             GROUP BY component_key,affected_version
         )
         """
-        advisory_join = "LEFT JOIN advisories adv ON adv.component_key=COALESCE(r.component_key,'')"
+        advisory_join = """LEFT JOIN advisories adv
+                                 ON adv.component_key=COALESCE(r.component_key,'')
+                                AND (TRIM(adv.affected_version)=''
+                                     OR lower(TRIM(adv.affected_version))=lower(COALESCE(NULLIF(TRIM(d.resolved_version),''),NULLIF(TRIM(d.version),''))))"""
         advisory_fields = "COALESCE(adv.warning_rank,0) AS advisory_rank,COALESCE(adv.advisory_count,0) AS advisory_count"
 
     ctes = issue_ctes + advisory_cte
     if ctes.strip().endswith(','):
         ctes = ctes.rstrip().rstrip(',')
     with_clause = f"WITH {ctes}" if ctes.strip() else ""
+    dependency_columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_security_dependencies)")}
+    relationship_fields = (
+        "COALESCE(d.relationship,'') AS relationship,COALESCE(d.relationship_confidence,'') AS relationship_confidence,"
+        "COALESCE(d.relationship_evidence_json,'[]') AS relationship_evidence_json"
+        if {"relationship", "relationship_confidence", "relationship_evidence_json"}.issubset(dependency_columns)
+        else "'' AS relationship,'' AS relationship_confidence,'[]' AS relationship_evidence_json"
+    )
     query = f"""
         {with_clause}
         SELECT sc.variant_id,d.dependency_id,d.origin,d.kind,d.name,d.version,d.version_requirement,d.resolved_version,d.status,d.requirement,
                COALESCE(r.component_key,'') AS component_key,COALESCE(r.resolution_status,'') AS resolution_status,
                COALESCE(r.version_status,'') AS version_status,COALESCE(r.target_internal_name,'') AS target_internal_name,
-               COALESCE(r.target_version,'') AS target_version,{issue_fields},{advisory_fields}
+               COALESCE(r.target_version,'') AS target_version,{issue_fields},{advisory_fields},{relationship_fields}
           FROM {current_table} sc
           JOIN plugin_security_dependencies d ON d.scan_id=sc.scan_id
           {resolution_join}
@@ -252,6 +273,7 @@ def build_dependency_summaries(db: sqlite3.Connection, current_table: str = "plu
         items = [item for item in merged.values() if _dependency_is_presentation_candidate(item, source_internal_name)]
         total = len(items)
         items.sort(key=lambda item: (
+            -_ipc_relationship_rank(str(item.get("relationship") or "")),
             -_dependency_requirement_rank(str(item.get("requirement") or "")),
             -int(item.get("warningRank") or 0),
             0 if item.get("isFramework") else 1,
@@ -265,6 +287,8 @@ def build_dependency_summaries(db: sqlite3.Connection, current_table: str = "plu
                 "version": item["version"], "versionRequirement": item["versionRequirement"], "resolvedVersion": item["resolvedVersion"],
                 "resolutionStatus": item["resolutionStatus"], "versionStatus": item["versionStatus"],
                 "targetInternalName": item["targetInternalName"], "targetVersion": item["targetVersion"], "isFramework": item["isFramework"],
+                "relationship": item.get("relationship") or "", "relationshipConfidence": item.get("relationshipConfidence") or "",
+                "relationshipReason": item.get("relationshipReason") or "",
                 "warningSeverity": _dependency_severity(int(item.get("warningRank") or 0)),
                 "warningCount": int(item.get("warningCount") or 0), "advisoryCount": int(item.get("advisoryCount") or 0),
             })
@@ -293,12 +317,20 @@ def build_dependency_summaries(db: sqlite3.Connection, current_table: str = "plu
         warning_rank = max(int(row[15] or 0), int(row[17] or 0), int(row[19] or 0))
         warning_count = int(row[16] or 0) + int(row[18] or 0)
         advisory_count = int(row[20] or 0)
+        relationship = str(row[21] or "").strip().casefold()
+        relationship_confidence = str(row[22] or "").strip()
+        try:
+            relationship_evidence = json.loads(str(row[23] or "[]"))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            relationship_evidence = []
+        relationship_reason = " · ".join(str(x) for x in relationship_evidence[:2] if str(x).strip())[:320]
         if item is None:
             merged[key] = {
                 "name": name, "kind": kind, "type": dep_type, "requirement": requirement, "version": str(row[5] or ""),
                 "versionRequirement": str(row[6] or ""), "resolvedVersion": str(row[7] or ""),
                 "resolutionStatus": str(row[11] or ""), "versionStatus": str(row[12] or ""),
                 "targetInternalName": target_internal, "targetVersion": str(row[14] or ""), "isFramework": is_framework,
+                "relationship": relationship, "relationshipConfidence": relationship_confidence, "relationshipReason": relationship_reason,
                 "warningRank": warning_rank, "warningCount": warning_count, "advisoryCount": advisory_count,
             }
             continue
@@ -310,12 +342,75 @@ def build_dependency_summaries(db: sqlite3.Connection, current_table: str = "plu
         item["warningRank"] = max(int(item.get("warningRank") or 0), warning_rank)
         item["warningCount"] = max(int(item.get("warningCount") or 0), warning_count)
         item["advisoryCount"] = max(int(item.get("advisoryCount") or 0), advisory_count)
+        current_relationship = str(item.get("relationship") or "")
+        current_confidence = str(item.get("relationshipConfidence") or "")
+        if (_ipc_relationship_rank(relationship), _relationship_confidence_rank(relationship_confidence)) > (
+            _ipc_relationship_rank(current_relationship), _relationship_confidence_rank(current_confidence)
+        ):
+            item["relationship"] = relationship
+            item["relationshipConfidence"] = relationship_confidence
+            item["relationshipReason"] = relationship_reason
         for field, value in (("versionRequirement", row[6]), ("resolvedVersion", row[7]), ("resolutionStatus", row[11]),
                              ("versionStatus", row[12]), ("targetInternalName", row[13]), ("targetVersion", row[14])):
             if not item.get(field) and value:
                 item[field] = str(value)
 
     flush()
+    return summaries
+
+
+def _security_risk_score(informational: int, caution: int, high: int, critical: int, advisory_points: int = 0) -> int:
+    """Return Omega's bounded internal risk score.
+
+    The score is intentionally not a safety verdict and is not currently shown numerically in the UI.
+    It exists so sorting/filtering can account for both static findings and independently published
+    dependency advisories. Known vulnerable dependencies carry extra weight because an external
+    advisory confirms a concrete affected component/version rather than only an observed capability.
+    """
+    base = (max(0, informational) * 1) + (max(0, caution) * 6) + (max(0, high) * 15) + (max(0, critical) * 30)
+    return min(100, base + max(0, advisory_points))
+
+
+def build_advisory_risk_summaries(db: sqlite3.Connection, current_table: str = "marketplace_security_current") -> dict[int, tuple[int, str, int]]:
+    """Summarize advisories that affect the exact dependency versions used by each current plugin scan."""
+    tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    required = {current_table, "plugin_security_dependencies", "plugin_security_dependency_resolutions", "plugin_security_dependency_advisory_matches"}
+    if not required.issubset(tables):
+        return {}
+    if current_table not in {"plugin_security_current", "marketplace_security_current"}:
+        raise ValueError(f"unsupported advisory-current table: {current_table}")
+
+    severity_rank = {"critical": 4, "high": 3, "medium": 2, "caution": 2, "moderate": 2, "low": 1, "informational": 1}
+    severity_points = {4: 40, 3: 25, 2: 12, 1: 5, 0: 8}
+    by_variant: dict[int, dict[tuple[str, str, str], int]] = {}
+    rows = db.execute(f"""
+        SELECT sc.variant_id,adv.advisory_id,adv.component_key,adv.affected_version,adv.severity
+          FROM {current_table} sc
+          JOIN plugin_security_dependencies d ON d.scan_id=sc.scan_id
+          JOIN plugin_security_dependency_resolutions r ON r.dependency_id=d.dependency_id
+          JOIN plugin_security_dependency_advisory_matches adv
+            ON adv.component_key=r.component_key
+           AND (TRIM(adv.affected_version)=''
+                OR lower(TRIM(adv.affected_version))=lower(COALESCE(NULLIF(TRIM(d.resolved_version),''),NULLIF(TRIM(d.version),''))))
+         WHERE sc.status='complete' AND TRIM(adv.advisory_id)<>''
+         ORDER BY sc.variant_id,adv.advisory_id,adv.component_key,adv.affected_version
+    """).fetchall()
+    for row in rows:
+        variant_id = int(row[0])
+        key = (str(row[1] or '').casefold(), str(row[2] or '').casefold(), str(row[3] or '').casefold())
+        rank = severity_rank.get(str(row[4] or '').strip().casefold(), 0)
+        bucket = by_variant.setdefault(variant_id, {})
+        bucket[key] = max(bucket.get(key, -1), rank)
+
+    summaries: dict[int, tuple[int, str, int]] = {}
+    for variant_id, matches in by_variant.items():
+        ranks = list(matches.values())
+        highest_rank = max(ranks, default=0)
+        summaries[variant_id] = (
+            len(matches),
+            _dependency_severity(highest_rank) or ("unknown" if matches else "none"),
+            sum(severity_points.get(rank, 8) for rank in ranks),
+        )
     return summaries
 
 
@@ -344,6 +439,9 @@ def create_marketplace_security_current(db: sqlite3.Connection) -> None:
             findings_json TEXT NOT NULL DEFAULT '[]',
             dependencies_json TEXT NOT NULL DEFAULT '[]',
             dependency_total_count INTEGER NOT NULL DEFAULT 0,
+            known_advisory_count INTEGER NOT NULL DEFAULT 0,
+            known_advisory_highest_severity TEXT NOT NULL DEFAULT 'none',
+            risk_score INTEGER NOT NULL DEFAULT 0,
             source_available INTEGER NOT NULL DEFAULT 0,
             source_repository TEXT NOT NULL DEFAULT '',
             source_commit TEXT NOT NULL DEFAULT '',
@@ -376,6 +474,15 @@ def create_marketplace_security_current(db: sqlite3.Connection) -> None:
         db.execute(
             "UPDATE marketplace_security_current SET dependencies_json=?,dependency_total_count=? WHERE variant_id=?",
             (encoded, total_count, variant_id),
+        )
+    advisory_summaries = build_advisory_risk_summaries(db, "marketplace_security_current")
+    for row in db.execute("SELECT variant_id,informational_count,caution_count,high_count,critical_count FROM marketplace_security_current").fetchall():
+        variant_id = int(row[0])
+        advisory_count, advisory_severity, advisory_points = advisory_summaries.get(variant_id, (0, "none", 0))
+        risk_score = _security_risk_score(int(row[1] or 0), int(row[2] or 0), int(row[3] or 0), int(row[4] or 0), advisory_points)
+        db.execute(
+            "UPDATE marketplace_security_current SET known_advisory_count=?,known_advisory_highest_severity=?,risk_score=? WHERE variant_id=?",
+            (advisory_count, advisory_severity, risk_score, variant_id),
         )
     canonicalize_marketplace_security_by_artifact(db)
     validate_artifact_security_consistency(db)
@@ -595,7 +702,8 @@ def canonicalize_marketplace_security_by_artifact(db: sqlite3.Connection) -> dic
         "scan_id", "scanner_version", "status", "scanned_at_utc", "highest_severity",
         "informational_count", "caution_count", "high_count", "critical_count", "capabilities_json",
         "automation_level", "automation_capabilities_json", "findings_json", "dependencies_json",
-        "dependency_total_count", "source_available", "source_repository", "source_commit",
+        "dependency_total_count", "known_advisory_count", "known_advisory_highest_severity", "risk_score",
+        "source_available", "source_repository", "source_commit",
         "source_to_binary_verified", "error",
     )
     updated = 0
@@ -641,7 +749,8 @@ def validate_artifact_security_consistency(db: sqlite3.Connection) -> None:
                    m.status || '|' || m.highest_severity || '|' || m.informational_count || '|' ||
                    m.caution_count || '|' || m.high_count || '|' || m.critical_count || '|' ||
                    m.capabilities_json || '|' || m.automation_level || '|' || m.automation_capabilities_json || '|' ||
-                   m.findings_json || '|' || m.dependencies_json || '|' || m.dependency_total_count
+                   m.findings_json || '|' || m.dependencies_json || '|' || m.dependency_total_count || '|' ||
+                   m.known_advisory_count || '|' || m.known_advisory_highest_severity || '|' || m.risk_score
                )) AS signatures
           FROM marketplace_security_current m
           JOIN plugin_variants v ON v.variant_id=m.variant_id
@@ -686,6 +795,9 @@ def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
              COALESCE(sc.findings_json,'[]') AS security_findings_json,
              COALESCE(sc.dependencies_json,'[]') AS security_dependencies_json,
              COALESCE(sc.dependency_total_count,0) AS security_dependency_total_count,
+             COALESCE(sc.known_advisory_count,0) AS security_known_advisory_count,
+             COALESCE(sc.known_advisory_highest_severity,'none') AS security_known_advisory_highest_severity,
+             COALESCE(sc.risk_score,0) AS security_risk_score,
              COALESCE(sc.source_available,0) AS security_source_available,
              COALESCE(sc.source_repository,'') AS security_source_repository,COALESCE(sc.source_commit,'') AS security_source_commit,
              COALESCE(sc.source_to_binary_verified,0) AS security_source_to_binary_verified,COALESCE(sc.error,'') AS security_error
@@ -763,6 +875,7 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
             "securityRows": int(check.execute("SELECT COUNT(*) FROM marketplace_security_current").fetchone()[0]),
             "dependencySummaryRows": int(check.execute("SELECT COUNT(*) FROM marketplace_security_current WHERE dependency_total_count>0").fetchone()[0]),
             "dependencySummaryEntries": int(check.execute("SELECT COALESCE(SUM(MIN(dependency_total_count, ?)),0) FROM marketplace_security_current", (DEPENDENCY_SUMMARY_LIMIT,)).fetchone()[0]),
+            "knownRiskRows": int(check.execute("SELECT COUNT(*) FROM marketplace_security_current WHERE known_advisory_count>0").fetchone()[0]),
             "evidenceRevision": evidence_revision,
             "catalogRevision": read_meta(check, "catalog_revision"),
             "securityRevision": read_meta(check, "security_revision"),

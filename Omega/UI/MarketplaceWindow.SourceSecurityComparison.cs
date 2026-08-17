@@ -94,7 +94,7 @@ internal sealed partial class MarketplaceWindow
     private static string SecurityResultSignature(MarketplacePlugin plugin)
         => $"{(plugin.HasCompletedSecurityScan ? "complete" : plugin.SecurityStatus)}|{plugin.SecurityHighestSeverity}|" +
            $"{plugin.SecurityCriticalCount}|{plugin.SecurityHighCount}|{plugin.SecurityCautionCount}|" +
-           $"{plugin.SecurityInformationalCount}|{plugin.SecurityAutomationLevel}|" +
+           $"{plugin.SecurityInformationalCount}|{plugin.SecurityKnownAdvisoryCount}|{plugin.SecurityKnownAdvisoryHighestSeverity}|{plugin.SecurityRiskScore}|{plugin.SecurityAutomationLevel}|" +
            $"{string.Join(",", plugin.SecurityCapabilities.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))}|" +
            $"{string.Join(",", plugin.SecurityFindings.Select(x => $"{x.RuleId}:{x.Severity}").OrderBy(x => x, StringComparer.OrdinalIgnoreCase))}";
 
@@ -103,8 +103,8 @@ internal sealed partial class MarketplaceWindow
         var candidateVisual = ResolvePluginSecurityVisual(candidate);
         var baselineVisual = ResolvePluginSecurityVisual(baseline);
         return $"Security: {SourceLabel(candidate)} is {candidateVisual.Label.ToLowerInvariant()} " +
-               $"({candidate.SecurityCriticalCount} critical, {candidate.SecurityHighCount} high, {candidate.SecurityCautionCount} medium) versus " +
-               $"baseline {baselineVisual.Label.ToLowerInvariant()} ({baseline.SecurityCriticalCount} critical, {baseline.SecurityHighCount} high, {baseline.SecurityCautionCount} medium).";
+               $"({candidate.SecurityCriticalCount} critical, {candidate.SecurityHighCount} high, {candidate.SecurityCautionCount} medium, {candidate.SecurityKnownAdvisoryCount} known OSV risk(s)) versus " +
+               $"baseline {baselineVisual.Label.ToLowerInvariant()} ({baseline.SecurityCriticalCount} critical, {baseline.SecurityHighCount} high, {baseline.SecurityCautionCount} medium, {baseline.SecurityKnownAdvisoryCount} known OSV risk(s)).";
     }
 
     private static void DrawRepositorySecurityDifferenceIndicator(RepositorySecurityComparison comparison)
