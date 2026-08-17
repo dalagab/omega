@@ -279,6 +279,7 @@ internal sealed class PluginConfigBackupService
             .Select(name => name["config/".Length..])
             .Where(name => !name.Contains('/') && name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             .Select(Path.GetFileNameWithoutExtension)
+            .OfType<string>()
             .Where(IsSafeInternalName)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();

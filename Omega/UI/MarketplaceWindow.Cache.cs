@@ -100,7 +100,7 @@ internal sealed partial class MarketplaceWindow
             filterView == activeView &&
             filterSort == sort &&
             filterSearch.Equals(search, StringComparison.Ordinal) &&
-            filterAuthor.Equals(author, StringComparison.Ordinal) &&
+            filterAuthors.Equals(AuthorSelectionKey(), StringComparison.Ordinal) &&
             filterSource.Equals(selectedSource, StringComparison.Ordinal) &&
             filterCategory.Equals(selectedCategory, StringComparison.Ordinal) &&
             filterTags.Equals(TagSelectionKey(), StringComparison.Ordinal) &&
@@ -123,7 +123,7 @@ internal sealed partial class MarketplaceWindow
         filterView = activeView;
         filterSort = sort;
         filterSearch = search;
-        filterAuthor = author;
+        filterAuthors = AuthorSelectionKey();
         filterSource = selectedSource;
         filterCategory = selectedCategory;
         filterTags = TagSelectionKey();
@@ -161,7 +161,8 @@ internal sealed partial class MarketplaceWindow
     private void ResetFilters()
     {
         search = string.Empty;
-        author = string.Empty;
+        selectedAuthors.Clear();
+        authorSearch = string.Empty;
         selectedSource = "All sources";
         selectedCategory = "All categories";
         selectedTags.Clear();

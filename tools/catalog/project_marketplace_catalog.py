@@ -776,9 +776,10 @@ def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
              v.applicable_version,v.minimum_dalamud_version,v.repo_url,v.download_link_install,v.download_link_update,
              v.download_link_testing,v.icon_url,v.image_urls_json,v.tags_json,v.category_tags_json,v.download_count,
              v.last_update,v.is_hide,v.is_testing_exclusive,v.dip17_channel,s.name AS source_name,s.url AS source_url,
-             s.is_official AS source_is_official,COALESCE(w.url,'') AS website_url,COALESCE(w.title,'') AS website_title,
-             COALESCE(w.description,'') AS website_description,COALESCE(w.readme_excerpt,'') AS website_readme_excerpt,
-             COALESCE(w.image_urls_json,'[]') AS website_image_urls_json,
+             s.is_official AS source_is_official,CASE WHEN w.ok=1 THEN COALESCE(w.url,'') ELSE '' END AS website_url,CASE WHEN w.ok=1 THEN COALESCE(w.title,'') ELSE '' END AS website_title,
+             CASE WHEN w.ok=1 THEN COALESCE(w.description,'') ELSE '' END AS website_description,CASE WHEN w.ok=1 THEN COALESCE(w.readme_excerpt,'') ELSE '' END AS website_readme_excerpt,
+             CASE WHEN w.ok=1 THEN COALESCE(w.image_urls_json,'[]') ELSE '[]' END AS website_image_urls_json,
+             CASE WHEN w.ok=1 THEN COALESCE(w.links_json,'[]') ELSE '[]' END AS website_links_json,
              CASE WHEN w.website_id IS NOT NULL AND w.ok=1 THEN 1 ELSE 0 END AS website_enriched,
              COALESCE(pr.rich_card,0) AS rich_card,COALESCE(pr.official,0) AS plugin_official,COALESCE(pr.nsfw,0) AS plugin_nsfw,
              COALESCE(pr.richness_score,0) AS richness_score,
@@ -831,6 +832,13 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
             db.execute("DROP VIEW IF EXISTS runtime_plugin_variants")
             for table in DETAILED_SECURITY_TABLES:
                 db.execute(f'DROP TABLE IF EXISTS "{table}"')
+            # Raw scraper metadata may contain arbitrary discovered URLs. The client only needs
+            # bounded classified links from websites.links_json, so keep raw URL context server-side.
+            if db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='websites'").fetchone()[0]:
+                # The client marketplace is a current projection, not a historical scrape archive.
+                # Keep old/failed presentation snapshots only in server-side evidence.
+                db.execute("UPDATE websites SET metadata_json='{}'")
+                db.execute("UPDATE websites SET title='',description='',homepage='',readme_excerpt='',image_urls_json='[]',links_json='[]' WHERE ok<>1")
             create_marketplace_runtime_view(db)
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('database_role','marketplace')")
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('marketplace_projector_version',?)", (PROJECTOR_VERSION,))

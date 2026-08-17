@@ -55,13 +55,19 @@ internal sealed partial class MarketplaceWindow
                 Contains(x.InternalName, needle) ||
                 Contains(x.Punchline, needle) ||
                 Contains(x.Description, needle) ||
+                Contains(x.OmegaWebsiteDescription, needle) ||
+                Contains(x.OmegaWebsiteReadmeExcerpt, needle) ||
                 Contains(x.Author, needle) ||
                 x.Tags.Any(tag => Contains(tag, needle)) ||
                 x.EffectiveCategories.Any(category => Contains(category, needle)));
         }
 
-        if (!string.IsNullOrWhiteSpace(author))
-            query = query.Where(x => x.EffectiveAuthors.Any(value => value.Equals(author.Trim(), StringComparison.OrdinalIgnoreCase)));
+        if (selectedAuthors.Count > 0)
+        {
+            var requiredAuthors = selectedAuthors.ToArray();
+            query = query.Where(x => requiredAuthors.All(required =>
+                x.EffectiveAuthors.Any(value => value.Equals(required, StringComparison.OrdinalIgnoreCase))));
+        }
 
 
         if (selectedCategory != "All categories")
@@ -247,20 +253,34 @@ internal sealed partial class MarketplaceWindow
     {
         var statuses = catalog.GetRepositoryStatuses(currentApi)
             .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
+        var divergentSources = catalog.Variants
+            .Where(v => v.SecurityFindings.Any(f =>
+                f.RuleId.Equals("artifact.cross-source-hash-mismatch", StringComparison.OrdinalIgnoreCase)))
+            .Select(v => NormalizeUrl(v.SourceUrl))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         return catalog.GetMainVariants(internalName, currentApi)
             .Where(v =>
                 v.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out _) &&
                 (v.MinimumDalamudVersion is null || v.MinimumDalamudVersion <= currentDalamudVersion) &&
                 IsSourceEnabledInOmega(v))
-            .OrderBy(v => RepositoryProviderRules.SortPriority(
+            // Never auto-prefer a package that the scanner already identified as the divergent
+            // same-version artifact. A repository with known divergence elsewhere is also demoted
+            // behind clean alternatives, but remains available for explicit reviewed selection.
+            .OrderBy(v => IsPluginPackageArtifactDivergent(v) ? 1 : 0)
+            .ThenBy(v => divergentSources.Contains(NormalizeUrl(v.SourceUrl)) ? 1 : 0)
+            .ThenByDescending(v => v.AssemblyVersion)
+            .ThenBy(v => RepositoryProviderRules.SortPriority(
                 v.SourceName,
                 v.SourceUrl,
                 v.SourceIsOfficial,
                 statuses.TryGetValue(NormalizeUrl(v.SourceUrl), out var status) ? status.PluginCount : 0))
-            .ThenByDescending(v => v.AssemblyVersion)
             .ThenBy(v => v.SourceName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
+
+    private static bool IsPluginPackageArtifactDivergent(MarketplacePlugin plugin)
+        => plugin.SecurityFindings.Any(finding =>
+            finding.RuleId.Equals("artifact.cross-source-hash-mismatch", StringComparison.OrdinalIgnoreCase));
 
     private MarketplacePlugin ResolveProductBaselineVariant(
         MarketplacePlugin plugin,
@@ -280,7 +300,10 @@ internal sealed partial class MarketplaceWindow
     private void OpenInstallChooser(MarketplacePlugin plugin)
     {
         pendingInstall = plugin;
-        pendingInstallSourceUrl = plugin.SourceUrl;
+        // Product presentation may currently be showing a repository variant that is not the
+        // safest install candidate. The chooser owns source selection and starts from its ranked
+        // clean candidate instead of inheriting the displayed variant implicitly.
+        pendingInstallSourceUrl = string.Empty;
         installPopupOpen = true;
         requestInstallPopup = true;
     }

@@ -54,8 +54,11 @@ internal sealed partial class MarketplaceWindow
     {
         var curatedCount = configuration.Repositories.Count(x => x.IsCurated);
         var userCount = configuration.Repositories.Count(x => !x.IsCurated);
+        var dalamudCount = repositoryBridge.GetConfiguredRepositories().Count;
         ImGui.TextDisabled("Plugin sources");
-        ImGui.TextWrapped("Choose which plugin sources appear in Omega. You can also add your own repository.");
+        ImGui.TextWrapped(sourceSection == SourceManagerSection.DalamudConfigured
+            ? "Review every third-party repository currently configured in Dalamud. User-managed Dalamud entries are shown even when they are not enabled as Omega marketplace sources."
+            : "Choose which plugin sources appear in Omega. You can also add your own repository.");
         ImGui.Separator();
 
         if (DrawPillButton($"Curated ({curatedCount})", "sources-curated", new Vector2(126f, 32f), sourceSection == SourceManagerSection.Curated))
@@ -70,8 +73,19 @@ internal sealed partial class MarketplaceWindow
             sourceSearch = string.Empty;
         }
         ImGui.SameLine();
+        if (DrawPillButton($"Dalamud ({dalamudCount})", "sources-dalamud", new Vector2(132f, 32f), sourceSection == SourceManagerSection.DalamudConfigured))
+        {
+            sourceSection = SourceManagerSection.DalamudConfigured;
+            sourceSearch = string.Empty;
+            addSourceOpen = false;
+        }
+        ImGui.SameLine();
         if (DrawPillButton(addSourceOpen ? "Hide add tools" : "Add sources", "sources-add", new Vector2(128f, 32f), addSourceOpen))
+        {
+            if (sourceSection == SourceManagerSection.DalamudConfigured)
+                sourceSection = SourceManagerSection.UserAdded;
             addSourceOpen = !addSourceOpen;
+        }
 
         ImGui.SetNextItemWidth(520f);
         ImGui.InputTextWithHint("##source-search", "Filter repositories by name or URL...", ref sourceSearch, 256);
@@ -81,6 +95,38 @@ internal sealed partial class MarketplaceWindow
     {
         var statuses = catalog.GetRepositoryStatuses(currentApi)
             .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
+
+        if (sourceSection == SourceManagerSection.DalamudConfigured)
+        {
+            return repositoryBridge.GetConfiguredRepositories()
+                .Select(registration =>
+                {
+                    var normalized = NormalizeUrl(registration.Url);
+                    var configured = configuration.Repositories.FirstOrDefault(x =>
+                        NormalizeUrl(x.Url).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+                    if (configured is not null)
+                        return configured;
+
+                    statuses.TryGetValue(normalized, out var known);
+                    return new RepositorySource
+                    {
+                        Name = known?.SourceName ?? RepositoryDisplayNameFromUrl(registration.Url),
+                        Url = registration.Url,
+                        Enabled = registration.Enabled,
+                        IsCurated = false,
+                        IsExperimental = true,
+                        IntegrateWithDalamud = true,
+                        DalamudManagedByOmega = false,
+                    };
+                })
+                .Where(x => string.IsNullOrWhiteSpace(sourceSearch) ||
+                            Contains(x.Name, sourceSearch.Trim()) ||
+                            Contains(x.Url, sourceSearch.Trim()))
+                .OrderByDescending(x => IsRepositoryArtifactDivergent(x.Url))
+                .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
         return configuration.Repositories
             .Where(x => sourceSection == SourceManagerSection.Curated ? x.IsCurated : !x.IsCurated)
             .Where(x => string.IsNullOrWhiteSpace(sourceSearch) ||
@@ -125,7 +171,19 @@ internal sealed partial class MarketplaceWindow
     {
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
-        DrawSourceEnabledCheckbox(source);
+        if (sourceSection == SourceManagerSection.DalamudConfigured)
+        {
+            var enabledInDalamud = dalamudRegistration?.Enabled == true;
+            ImGui.BeginDisabled();
+            ImGui.Checkbox($"##dalamud-source-enabled-{StableId(source.Url)}", ref enabledInDalamud);
+            ImGui.EndDisabled();
+            if (ImGui.IsItemHovered())
+                SetReadableTooltip(enabledInDalamud ? "Enabled in Dalamud" : "Configured but disabled in Dalamud");
+        }
+        else
+        {
+            DrawSourceEnabledCheckbox(source);
+        }
 
         ImGui.TableSetColumnIndex(1);
         DrawRepositoryName(source.Name, source.Url, source.IsOfficial, Plugin.PluginInterface.Manifest.DalamudApiLevel);
@@ -137,8 +195,50 @@ internal sealed partial class MarketplaceWindow
         ImGui.TableSetColumnIndex(3);
         ImGui.Text(status is null || status.HighestKnownApiLevel <= 0 ? "?" : status.HighestKnownApiLevel.ToString());
         ImGui.TableSetColumnIndex(4);
-        DrawSourceState(source, status, dalamudRegistration);
+        if (sourceSection == SourceManagerSection.DalamudConfigured)
+            DrawDalamudSourceReviewState(source, status, dalamudRegistration);
+        else
+            DrawSourceState(source, status, dalamudRegistration);
     }
+
+    private void DrawDalamudSourceReviewState(
+        RepositorySource source,
+        RepositoryCatalogStatus? status,
+        DalamudRepositoryRegistration? dalamudRegistration)
+    {
+        var normalized = NormalizeUrl(source.Url);
+        var notice = repositoryRiskAllNotices.FirstOrDefault(x =>
+            NormalizeUrl(x.Url).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+        if (notice is not null)
+        {
+            var acknowledged = IsRepositoryRiskAcknowledged(notice);
+            ImGui.TextColored(
+                acknowledged ? new Vector4(0.95f, 0.64f, 0.20f, 1f) : new Vector4(0.96f, 0.30f, 0.24f, 1f),
+                acknowledged ? "Risk acknowledged" : "Review required");
+            if (ImGui.IsItemHovered())
+                SetReadableTooltip($"{notice.DivergentArtifactCount} plugin package(s) from this repository differ from Omega's package baseline. Example: {notice.ExamplePlugin}.");
+            if (!acknowledged)
+            {
+                ImGui.SameLine(0f, 8f);
+                if (ImGui.SmallButton($"Acknowledge risk##ack-source-risk-{StableId(source.Url)}"))
+                {
+                    AcknowledgeRepositoryRisk(notice);
+                    operationMessage = $"Acknowledged the current package-divergence evidence for {notice.Name}. A changed risk fingerprint will require review again.";
+                }
+            }
+            return;
+        }
+
+        if (dalamudRegistration?.Enabled == true)
+            ImGui.TextColored(new Vector4(0.34f, 0.86f, 0.61f, 1f), status is null ? "Enabled • not in Definitions" : "Enabled");
+        else
+            ImGui.TextDisabled(status is null ? "Disabled • not in Definitions" : "Disabled");
+    }
+
+    private static string RepositoryDisplayNameFromUrl(string url)
+        => Uri.TryCreate(url, UriKind.Absolute, out var uri) && !string.IsNullOrWhiteSpace(uri.Host)
+            ? uri.Host
+            : "Dalamud repository";
 
     private void DrawSourceEnabledCheckbox(RepositorySource source)
     {

@@ -37,7 +37,8 @@ internal sealed partial class MarketplaceWindow
     private void OpenAuthorInDiscover(string authorName)
     {
         ResetFilters();
-        author = authorName;
+        selectedAuthors.Clear();
+        AddSelectedAuthor(authorName);
         activeView = MarketplaceView.Discover;
         detailsOpen = false;
         selectedPlugin = null;

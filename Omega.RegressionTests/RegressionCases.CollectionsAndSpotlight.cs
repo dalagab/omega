@@ -208,11 +208,12 @@ internal static partial class RegressionCases
         Contains(product, "MarketplacePresentationContent", "product page consumes the canonical presentation selection");
         Contains(product, "DrawDalamudOfficialLogoBadge", "official plugins use the Dalamud logo rather than a text badge");
         Contains(product, "★ Enhanced", "website-enriched product pages expose the enhanced marker");
-        Contains(product, "DrawProductWebsiteIcon(plugin, enhancedUrl)", "enhanced product pages place their project link beside the Enhanced badge");
+        Contains(product, "DrawProductProjectLinks(plugin)", "enhanced product pages expose classified project actions outside the badge row");
         Contains(product, "DrawProductSecuritySummary(plugin)", "security posture is summarized inside the product hero instead of as a detached block");
         Contains(product, "DrawProductCollectionMembership(plugin, installedPlugin)", "installed product pages show the plugin's collection membership directly below the hero");
         Contains(product, ".Where(x => !x.Collection.IsDefault)", "product membership excludes Dalamud's Default plugins profile from named collection claims");
-        Contains(product, "Not in a named collection", "plugins without named memberships are described accurately");
+        Contains(product, "if (memberships.Length > 0)", "collection membership UI is only rendered when named memberships exist");
+        False(product.Contains("Not in a named collection", StringComparison.Ordinal), "plugins without named memberships do not render an empty Collections subsection");
         Contains(product, "DrawProductUsage(content)", "product pages expose collected how-to-use information");
         Contains(product, "DrawProductChangelog(plugin)", "product pages expose plugin release notes");
         Contains(product, "foreach (var membership in memberships)", "all matching collection memberships are iterated instead of reducing membership to a single owner");

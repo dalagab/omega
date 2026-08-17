@@ -1,18 +1,23 @@
+using Dalamud.Plugin.Services;
+
 namespace Dalagab.Omega;
 
 /// <summary>
-/// Performs at most one automatic Definitions check per 24 hours. The tiny descriptor is checked
-/// without downloading a changed central database; a pending Definitions update is surfaced on the
-/// Updates page. User-added repositories are refreshed during the same check.
+/// Performs lightweight automatic Definitions checks while Omega is loaded. The tiny online descriptor
+/// is checked hourly without downloading a changed central database; a pending Definitions update is
+/// surfaced in Omega and announced once through Dalamud notifications for each newly seen revision.
+/// User-added repositories are refreshed during the same check.
 /// </summary>
 internal sealed class DailyCatalogUpdateService : IDisposable
 {
     private static readonly TimeSpan InitialDelay = TimeSpan.FromMinutes(2);
-    private static readonly TimeSpan PollInterval = TimeSpan.FromHours(1);
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan AutomaticCheckCadence = TimeSpan.FromHours(1);
 
     private readonly Configuration configuration;
     private readonly MarketplaceCatalogService catalog;
     private readonly CatalogUpdateCoordinator updates;
+    private readonly INotificationManager notifications;
     private readonly CancellationTokenSource cts = new();
     private readonly Task worker;
     private int running;
@@ -20,11 +25,13 @@ internal sealed class DailyCatalogUpdateService : IDisposable
     public DailyCatalogUpdateService(
         Configuration configuration,
         MarketplaceCatalogService catalog,
-        CatalogUpdateCoordinator updates)
+        CatalogUpdateCoordinator updates,
+        INotificationManager notifications)
     {
         this.configuration = configuration;
         this.catalog = catalog;
         this.updates = updates;
+        this.notifications = notifications;
         worker = RunAsync(cts.Token);
     }
 
@@ -56,8 +63,8 @@ internal sealed class DailyCatalogUpdateService : IDisposable
     {
         if (!catalog.HasLoaded && updates.IsRefreshing)
             return false;
-        var last = configuration.LastDailyUpdateCheckUtc;
-        return last is null || DateTimeOffset.UtcNow - last.Value >= TimeSpan.FromDays(1);
+        var last = configuration.LastDefinitionsUpdateCheckUtc ?? configuration.LastDailyUpdateCheckUtc;
+        return last is null || DateTimeOffset.UtcNow - last.Value >= AutomaticCheckCadence;
     }
 
     private async Task CheckNowAsync(CancellationToken cancellationToken)
@@ -67,26 +74,54 @@ internal sealed class DailyCatalogUpdateService : IDisposable
 
         try
         {
-            await updates.CheckForUpdatesAsync(cancellationToken).ConfigureAwait(false);
-            configuration.LastDailyUpdateCheckUtc = DateTimeOffset.UtcNow;
+            await updates.CheckDefinitionsForUpdatesAsync(cancellationToken).ConfigureAwait(false);
+            configuration.LastDefinitionsUpdateCheckUtc = DateTimeOffset.UtcNow;
+            NotifyIfNewDefinitionsRevision();
             configuration.Save();
             Plugin.Log.Information(
-                "Omega daily Definitions check completed; mode={Mode}; cachedSources={SourceCount}; definitionsUpdateAvailable={DefinitionsUpdateAvailable}",
+                "Omega Definitions check completed; mode={Mode}; cachedSources={SourceCount}; definitionsUpdateAvailable={DefinitionsUpdateAvailable}; availableRevision={AvailableRevision}",
                 updates.ModeLabel,
                 catalog.CachedRepositoryCount,
-                updates.DefinitionsUpdateAvailable);
+                updates.DefinitionsUpdateAvailable,
+                updates.AvailableDefinitionsRevision);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception ex)
         {
-            Plugin.Log.Warning(ex, "Omega daily Definitions check failed; cached Definitions remain active.");
+            Plugin.Log.Warning(ex, "Omega automatic Definitions check failed; cached Definitions remain active.");
         }
         finally
         {
             Interlocked.Exchange(ref running, 0);
         }
+    }
+
+    private void NotifyIfNewDefinitionsRevision()
+    {
+        if (!updates.DefinitionsUpdateAvailable)
+            return;
+
+        var revision = string.IsNullOrWhiteSpace(updates.AvailableDefinitionsRevision)
+            ? "pending"
+            : updates.AvailableDefinitionsRevision.Trim();
+        if (string.Equals(configuration.LastNotifiedDefinitionsRevision, revision, StringComparison.Ordinal))
+            return;
+
+        notifications.AddNotification(new Dalamud.Interface.ImGuiNotification.Notification
+        {
+            Title = "Omega Definitions update available",
+            Content = revision == "pending"
+                ? "New marketplace Definitions are ready. Open Omega > Updates to review and apply them."
+                : $"Definitions {revision} are ready. Open Omega > Updates to review and apply them.",
+            Type = Dalamud.Interface.ImGuiNotification.NotificationType.Info,
+            InitialDuration = TimeSpan.FromSeconds(12),
+            ExtensionDurationSinceLastInterest = TimeSpan.FromSeconds(6),
+            Minimized = false,
+        });
+
+        configuration.LastNotifiedDefinitionsRevision = revision;
     }
 
     public void Dispose()

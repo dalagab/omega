@@ -75,6 +75,7 @@ public sealed class MarketplacePlugin
     public string OmegaWebsiteDescription { get; init; } = string.Empty;
     public string OmegaWebsiteReadmeExcerpt { get; init; } = string.Empty;
     public IReadOnlyList<string> OmegaWebsiteImageUrls { get; init; } = [];
+    public IReadOnlyList<MarketplaceProjectLink> OmegaProjectLinks { get; init; } = [];
     public bool OmegaEnriched { get; init; }
     public bool OmegaIsAdultContent { get; init; }
 
@@ -191,6 +192,7 @@ public sealed class MarketplacePlugin
             OmegaWebsiteDescription = ReadString(element, "OmegaWebsiteDescription"),
             OmegaWebsiteReadmeExcerpt = ReadString(element, "OmegaWebsiteReadmeExcerpt"),
             OmegaWebsiteImageUrls = ReadStrings(element, "OmegaWebsiteImageUrls"),
+            OmegaProjectLinks = ReadProjectLinks(element, "OmegaProjectLinks"),
             OmegaEnriched = ReadBool(element, "OmegaEnriched"),
             OmegaIsAdultContent = ReadBool(element, "OmegaIsAdultContent"),
         };
@@ -267,6 +269,22 @@ public sealed class MarketplacePlugin
         if (value.ValueKind == JsonValueKind.String && bool.TryParse(value.GetString(), out var flag))
             return flag;
         return false;
+    }
+
+
+    private static IReadOnlyList<MarketplaceProjectLink> ReadProjectLinks(JsonElement element, string name)
+    {
+        if (!TryGet(element, name, out var value) || value.ValueKind != JsonValueKind.Array)
+            return [];
+        return value.EnumerateArray()
+            .Where(x => x.ValueKind == JsonValueKind.Object)
+            .Select(x => new MarketplaceProjectLink(
+                ReadString(x, "Kind"),
+                ReadString(x, "Label"),
+                ReadString(x, "Url")))
+            .Where(x => !string.IsNullOrWhiteSpace(x.Kind) && !string.IsNullOrWhiteSpace(x.Url))
+            .Take(8)
+            .ToArray();
     }
 
     private static IReadOnlyList<string> ReadStrings(JsonElement element, string name)

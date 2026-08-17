@@ -41,6 +41,7 @@ README_EXCERPT_BYTES = 32 * 1024
 README_SCAN_BYTES = 128 * 1024
 MAX_IMAGES = 5
 MAX_IMAGE_CANDIDATES = 12
+PRESENTATION_SCHEMA_VERSION = 2
 BLOCKED_PROJECT_HOSTS = {
     "discord.gg", "discord.com", "www.discord.com",
     "twitter.com", "www.twitter.com", "x.com", "www.x.com",
@@ -205,6 +206,7 @@ class PageMetadataParser(HTMLParser):
         self.title = ""
         self.description = ""
         self.images: list[str] = []
+        self.links: list[str] = []
         self._inside_title = False
         self._title_parts: list[str] = []
 
@@ -212,6 +214,11 @@ class PageMetadataParser(HTMLParser):
         values = {k.lower(): (v or "") for k, v in attrs}
         if tag.lower() == "title":
             self._inside_title = True
+            return
+        if tag.lower() == "a":
+            href = html.unescape(values.get("href") or "").strip()
+            if href:
+                self.links.append(href)
             return
         if tag.lower() != "meta":
             return
@@ -266,6 +273,115 @@ def extract_readme_images(text: str, owner: str, repo: str, branch: str) -> list
     return result
 
 
+
+EXECUTABLE_LINK_SUFFIXES = (".exe", ".dll", ".msi", ".zip", ".7z", ".rar", ".ps1", ".bat", ".cmd", ".sh")
+
+def _normalize_discovered_link(raw: str, base: str) -> str:
+    value = html.unescape((raw or "").strip().strip("<>\"'"))
+    if not value or value.startswith(("#", "mailto:", "javascript:", "data:")):
+        return ""
+    candidate = urllib.parse.urljoin(base, value)
+    try:
+        parsed = urllib.parse.urlparse(candidate)
+    except ValueError:
+        return ""
+    if parsed.scheme.lower() != "https" or not parsed.hostname:
+        return ""
+    path = parsed.path.lower()
+    if path.endswith(EXECUTABLE_LINK_SUFFIXES):
+        return ""
+    return urllib.parse.urlunparse(("https", parsed.netloc, parsed.path, "", parsed.query, ""))
+
+def classify_project_link(url: str, source_repo_url: str = "") -> tuple[str, str] | None:
+    """Return a bounded user-facing project-link role, or None for context-only URLs.
+
+    Unknown links remain in scraper metadata for evidence/debugging but are intentionally not
+    promoted into the client Definitions database. Direct executable/archive links are never
+    promoted as product actions.
+    """
+    try:
+        parsed = urllib.parse.urlparse(url)
+    except ValueError:
+        return None
+    host = (parsed.hostname or "").lower()
+    path = parsed.path.rstrip("/")
+    lower_path = path.lower()
+    if parsed.scheme.lower() != "https" or not host or lower_path.endswith(EXECUTABLE_LINK_SUFFIXES):
+        return None
+
+    if host in {"discord.gg", "www.discord.gg"}:
+        return ("discord", "Join Discord") if path not in {"", "/"} else None
+    if host in {"discord.com", "www.discord.com"} and lower_path.startswith("/invite/"):
+        return ("discord", "Join Discord")
+
+    source = normalize_repo_url(source_repo_url)
+    source_repo = parse_github_repo(source)
+    link_repo = parse_github_repo(url)
+    if source_repo and link_repo == source_repo:
+        base_parts = [part for part in path.split("/") if part]
+        tail = "/".join(base_parts[2:]).lower() if len(base_parts) > 2 else ""
+        if tail == "" or tail.startswith("tree/"):
+            return ("source", "Source")
+        if tail == "issues" or tail.startswith("issues/"):
+            return ("issues", "Issues")
+        if tail == "wiki" or tail.startswith("wiki/") or "/docs/" in f"/{tail}/":
+            return ("docs", "Documentation")
+        if tail == "releases" or tail.startswith("releases/"):
+            return ("releases", "Releases")
+
+    if host.endswith(".readthedocs.io") or host.startswith("docs.") or host.endswith(".github.io") or "/docs/" in f"{lower_path}/":
+        return ("docs", "Documentation")
+    return None
+
+def extract_readme_links(text: str, owner: str, repo: str, branch: str) -> list[str]:
+    # Image badges are commonly wrapped in a link (especially Discord badges); capture the
+    # outer target before ordinary Markdown links so the badge image itself is never promoted.
+    candidates = re.findall(r"\[!\[[^\]]*\]\([^)]+\)\]\(([^)\s]+)", text, flags=re.I)
+    candidates += re.findall(r"(?<!!)\[[^\]]+\]\(([^)\s]+)", text, flags=re.I)
+    candidates += re.findall(r"<a[^>]+href=[\"']([^\"']+)", text, flags=re.I)
+    base = f"https://github.com/{owner}/{repo}/blob/{branch}/"
+    result: list[str] = []
+    for raw in candidates:
+        url = _normalize_discovered_link(raw, base)
+        if url and url not in result:
+            result.append(url)
+        if len(result) >= 64:
+            break
+    return result
+
+def classify_project_links(candidates: list[str], source_repo_url: str, homepage: str | None = None) -> list[dict]:
+    raw_urls = list(candidates)
+    normalized_homepage = _normalize_discovered_link(homepage or "", source_repo_url or "https://example.invalid/")
+    if normalized_homepage:
+        raw_urls.insert(0, normalized_homepage)
+    if source_repo_url:
+        source = normalize_repo_url(source_repo_url)
+        if source.startswith("https://"):
+            raw_urls.insert(0, source)
+
+    result: list[dict] = []
+    seen_kinds: set[str] = set()
+    for url in raw_urls:
+        classified = classify_project_link(url, source_repo_url)
+        if classified is None:
+            # The project page itself/homepage can still be a useful Website when it is not a
+            # GitHub source/docs/Discord role. Unknown README links stay context-only instead.
+            normalized_source = normalize_repo_url(source_repo_url)
+            if normalized_homepage and url == normalized_homepage:
+                classified = ("website", "Website")
+            elif url == normalized_source and parse_github_repo(normalized_source) is None:
+                classified = ("website", "Website")
+            else:
+                continue
+        kind, label = classified
+        if kind in seen_kinds:
+            continue
+        seen_kinds.add(kind)
+        result.append({"kind": kind, "label": label, "url": url})
+        if len(result) >= 8:
+            break
+    return result
+
 def scrape_github_repo(owner_repo: tuple[str, str], token: str | None, timeout: float = 20.0) -> dict:
     owner, repo = owner_repo
     base = f"/repos/{owner}/{repo}"
@@ -274,7 +390,8 @@ def scrape_github_repo(owner_repo: tuple[str, str], token: str | None, timeout: 
         "stars": None, "forks": None, "watchers": None, "title": None,
         "description": None, "homepage": None, "topics": [], "language": None,
         "license": None, "defaultBranch": None, "lastCommit": None,
-        "readmeExcerpt": None, "imageUrls": [], "discordJoinImageUrls": [], "url": f"https://github.com/{owner}/{repo}",
+        "readmeExcerpt": None, "imageUrls": [], "discordJoinImageUrls": [], "links": [], "rawLinks": [],
+        "presentationSchemaVersion": PRESENTATION_SCHEMA_VERSION, "url": f"https://github.com/{owner}/{repo}",
     }
     try:
         meta = github_get(base, token, timeout)
@@ -312,6 +429,8 @@ def scrape_github_repo(owner_repo: tuple[str, str], token: str | None, timeout: 
             )
             out["imageUrls"] = display_images[:MAX_IMAGES]
             out["discordJoinImageUrls"] = discord_join_images[:MAX_IMAGES]
+            out["rawLinks"] = extract_readme_links(readme, owner, repo, out["defaultBranch"] or "main")
+            out["links"] = classify_project_links(out["rawLinks"], out["url"], out.get("homepage"))
     except Exception:
         pass
     return out
@@ -319,7 +438,7 @@ def scrape_github_repo(owner_repo: tuple[str, str], token: str | None, timeout: 
 
 def scrape_generic(url: str, timeout: float = 20.0) -> dict:
     normalized = normalize_repo_url(url)
-    out = {"url": normalized, "ok": False, "error": None, "title": None, "description": None, "imageUrls": [], "discordJoinImageUrls": []}
+    out = {"url": normalized, "ok": False, "error": None, "title": None, "description": None, "imageUrls": [], "discordJoinImageUrls": [], "links": [], "rawLinks": [], "presentationSchemaVersion": PRESENTATION_SCHEMA_VERSION}
     try:
         body = http_get_public_html(normalized, timeout).decode("utf-8", errors="replace")
         parser = PageMetadataParser()
@@ -332,7 +451,14 @@ def scrape_generic(url: str, timeout: float = 20.0) -> dict:
             if len(images) >= MAX_IMAGE_CANDIDATES:
                 break
         display_images, discord_join_images = split_project_image_urls(images)
-        out.update({"ok": True, "title": parser.title or None, "description": sanitize_presentation_text(parser.description), "imageUrls": display_images[:MAX_IMAGES], "discordJoinImageUrls": discord_join_images[:MAX_IMAGES]})
+        raw_links = []
+        for value in parser.links:
+            candidate = _normalize_discovered_link(value, normalized)
+            if candidate and candidate not in raw_links:
+                raw_links.append(candidate)
+            if len(raw_links) >= 64:
+                break
+        out.update({"ok": True, "title": parser.title or None, "description": sanitize_presentation_text(parser.description), "imageUrls": display_images[:MAX_IMAGES], "discordJoinImageUrls": discord_join_images[:MAX_IMAGES], "rawLinks": raw_links, "links": classify_project_links(raw_links, normalized)})
     except Exception as exc:
         out["error"] = f"{type(exc).__name__}: {exc}"
     return out

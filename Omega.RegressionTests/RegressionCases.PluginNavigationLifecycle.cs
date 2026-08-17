@@ -133,8 +133,13 @@ internal static partial class RegressionCases
         Contains(collections, "OpenPluginDetails(plugin)", "Collection selections use canonical product navigation");
 
         Contains(details, "Process.Start(new ProcessStartInfo(projectUrl) { UseShellExecute = true })", "legacy Project action opens the system browser");
-        Contains(headerLinks, "FontAwesomeIcon.Globe", "Discover product header exposes project navigation as a compact globe icon");
-        Contains(headerLinks, "OpenProductWebsite", "product-header globe opens the selected project URL");
+        Contains(headerLinks, "BuildProductProjectLinks", "Discover product header builds bounded classified project actions");
+        Contains(headerLinks, "ProjectLinkLabel", "classified project actions expose stable user-facing labels");
+        Contains(headerLinks, "Join Discord", "Discord project metadata is exposed as a dedicated action");
+        Contains(headerLinks, "Documentation", "documentation project metadata is exposed as a dedicated action");
+        Contains(headerLinks, "IsSafeProjectActionUrl", "project actions remain restricted to safe HTTPS URLs");
+        Contains(headerLinks, "OpenProductWebsite", "classified project actions open through the system browser");
+        DoesNotContain(headerLinks, "FontAwesomeIcon.Globe", "obsolete single-globe project navigation is not reintroduced");
         var appBar = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.AppBar.cs"));
         Contains(appBar, "DrawProductBackButton(searchX)", "product-page back navigation lives on the same application-bar row as search");
         Contains(appBar, "const string label = \"Omega\"", "the application bar keeps the text Omega mark");
@@ -317,7 +322,8 @@ internal static partial class RegressionCases
         Contains(usage, "command prefix", "usage extraction recognizes command metadata such as Questionable's command prefix");
         Contains(store, "ReadPluginChangelogHistory", "Definitions retains and loads historical plugin changelogs from historical variants");
         Contains(store, "WHERE TRIM(v.changelog)<>''", "empty changelog records are not projected into client history");
-        Contains(changelog, "## [0.8.68]", "repository changelog has an entry for the current release");
+        Contains(changelog, "## [0.8.74]", "repository changelog has an entry for the current release");
+        Contains(changelog, "Availability", "release notes can explain when Definitions-backed features become visible");
         Contains(release, "extract_changelog.py", "release workflow consumes repository CHANGELOG.md");
         Contains(release, "--notes-file release-notes.md", "GitHub Releases receive curated project release notes");
     }
@@ -355,6 +361,10 @@ internal static partial class RegressionCases
         Contains(awareness, "artifact.cross-source-hash-mismatch", "repository warnings are grounded in stable-baseline artifact divergence");
         Contains(awareness, "AcknowledgedRepositoryRiskFingerprint", "repository risk acknowledgement survives restarts until the risk set changes");
         Contains(awareness, "Review Sources", "repository warning can take the user directly to source review");
+        Contains(sources, "SourceManagerSection.DalamudConfigured", "source review has a dedicated view of every repository configured in Dalamud");
+        Contains(sources, "repositoryBridge.GetConfiguredRepositories()", "Dalamud source review is driven by live Dalamud configuration rather than only Omega's filtered inventory");
+        Contains(sources, "Acknowledge risk", "a divergent configured source can be acknowledged directly from source review");
+        Contains(awareness, "ImGuiWindowFlags.NoScrollbar", "repository warning modal does not show an unnecessary outer scrollbar");
 
         Contains(library, "DrawInstalledAuthorRepositoryLine", "Library renders repository provenance from the installed plugin rather than the marketplace baseline");
         Contains(repositoryPresentation, "installedPlugin.Manifest.InstalledFromUrl", "installed repository provenance uses Dalamud's persisted install source");

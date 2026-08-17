@@ -91,7 +91,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetNextItemWidth(searchWidth);
 
         var previous = search;
-        if (!ImGui.InputTextWithHint("##omega-global-search", "Search plugins, authors, tags...", ref search, 256))
+        if (!ImGui.InputTextWithHint("##omega-global-search", "Search plugins, descriptions, READMEs, authors, tags...", ref search, 256))
             return;
         if (search.Equals(previous, StringComparison.Ordinal))
             return;
@@ -111,7 +111,8 @@ internal sealed partial class MarketplaceWindow
         if (wasDiscover)
             return;
 
-        author = string.Empty;
+        selectedAuthors.Clear();
+        authorSearch = string.Empty;
         selectedSource = "All sources";
         selectedCategory = "All categories";
         selectedTags.Clear();

@@ -13,6 +13,7 @@ internal sealed partial class MarketplaceWindow
     private string repositoryRiskFingerprint = string.Empty;
     private string repositoryRiskDismissedFingerprint = string.Empty;
     private RepositoryRiskNotice[] repositoryRiskNotices = [];
+    private RepositoryRiskNotice[] repositoryRiskAllNotices = [];
 
     private sealed record RepositoryRiskNotice(
         string Name,
@@ -20,7 +21,8 @@ internal sealed partial class MarketplaceWindow
         bool EnabledInDalamud,
         bool UsedByInstalledPlugin,
         int DivergentArtifactCount,
-        string ExamplePlugin);
+        string ExamplePlugin,
+        string NoticeFingerprint);
 
     private void RefreshDalamudRepositoryAwareness()
     {
@@ -50,24 +52,41 @@ internal sealed partial class MarketplaceWindow
         if (!catalog.HasLoaded || repositoryRiskPopupOpen || requestRepositoryRiskPopup)
             return;
 
+        repositoryRiskAllNotices = BuildRepositoryRiskNotices(installed.Values);
+        var risky = repositoryRiskAllNotices
+            .Where(x => x.EnabledInDalamud || x.UsedByInstalledPlugin)
+            .ToArray();
+        if (risky.Length == 0)
+            return;
+
+        var fingerprintMaterial = string.Join("\n", risky.Select(x => x.NoticeFingerprint));
+        var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintMaterial))).ToLowerInvariant();
+        if (fingerprint.Equals(configuration.AcknowledgedRepositoryRiskFingerprint, StringComparison.OrdinalIgnoreCase) ||
+            fingerprint.Equals(repositoryRiskDismissedFingerprint, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var unacknowledged = risky.Where(notice => !IsRepositoryRiskAcknowledged(notice)).ToArray();
+        if (unacknowledged.Length == 0)
+            return;
+
+        repositoryRiskNotices = unacknowledged;
+        repositoryRiskFingerprint = fingerprint;
+        repositoryRiskPopupOpen = true;
+        requestRepositoryRiskPopup = true;
+    }
+
+    private RepositoryRiskNotice[] BuildRepositoryRiskNotices(IEnumerable<Dalamud.Plugin.IExposedPlugin> installedPlugins)
+    {
         var registrations = repositoryBridge.GetConfiguredRepositories();
         var enabledUrls = registrations
             .Where(x => x.Enabled)
             .Select(x => NormalizeUrl(x.Url))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var installedUrls = installed.Values
+        var installedUrls = installedPlugins
             .Select(x => NormalizeUrl(x.Manifest.InstalledFromUrl))
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (enabledUrls.Count == 0 && installedUrls.Count == 0)
-            return;
-
-        var risky = catalog.Variants
-            .Where(variant =>
-            {
-                var url = NormalizeUrl(variant.SourceUrl);
-                return enabledUrls.Contains(url) || installedUrls.Contains(url);
-            })
+        return catalog.Variants
             .Where(variant => variant.SecurityFindings.Any(finding =>
                 finding.RuleId.Equals("artifact.cross-source-hash-mismatch", StringComparison.OrdinalIgnoreCase)))
             .GroupBy(variant => NormalizeUrl(variant.SourceUrl), StringComparer.OrdinalIgnoreCase)
@@ -76,31 +95,55 @@ internal sealed partial class MarketplaceWindow
                 var first = group.First();
                 var example = group.FirstOrDefault(x => x.SecurityFindings.Any(f =>
                     f.RuleId.Equals("artifact.cross-source-hash-mismatch", StringComparison.OrdinalIgnoreCase))) ?? first;
+                var enabled = enabledUrls.Contains(group.Key);
+                var installed = installedUrls.Contains(group.Key);
+                var pluginNames = group.Select(x => x.InternalName)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                var noticeMaterial = $"{group.Key}|{enabled}|{installed}|{string.Join(",", pluginNames)}";
+                var noticeFingerprint = Convert.ToHexString(
+                    SHA256.HashData(Encoding.UTF8.GetBytes(noticeMaterial))).ToLowerInvariant();
                 return new RepositoryRiskNotice(
                     SourceLabel(first),
                     group.Key,
-                    enabledUrls.Contains(group.Key),
-                    installedUrls.Contains(group.Key),
-                    group.Select(x => x.InternalName).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
-                    example.Name);
+                    enabled,
+                    installed,
+                    pluginNames.Length,
+                    example.Name,
+                    noticeFingerprint);
             })
             .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
 
-        if (risky.Length == 0)
-            return;
+    private bool IsRepositoryRiskAcknowledged(RepositoryRiskNotice notice)
+    {
+        var normalized = NormalizeUrl(notice.Url);
+        return configuration.AcknowledgedRepositoryRiskByUrl.TryGetValue(normalized, out var acknowledged) &&
+               acknowledged.Equals(notice.NoticeFingerprint, StringComparison.OrdinalIgnoreCase);
+    }
 
-        var fingerprintMaterial = string.Join("\n", risky.Select(x =>
-            $"{x.Url}|{x.EnabledInDalamud}|{x.UsedByInstalledPlugin}|{x.DivergentArtifactCount}"));
-        var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintMaterial))).ToLowerInvariant();
-        if (fingerprint.Equals(configuration.AcknowledgedRepositoryRiskFingerprint, StringComparison.OrdinalIgnoreCase) ||
-            fingerprint.Equals(repositoryRiskDismissedFingerprint, StringComparison.OrdinalIgnoreCase))
-            return;
+    private bool IsRepositoryRiskAcknowledged(string sourceUrl)
+    {
+        var normalized = NormalizeUrl(sourceUrl);
+        var notice = repositoryRiskAllNotices.FirstOrDefault(x =>
+            NormalizeUrl(x.Url).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+        return notice is not null && IsRepositoryRiskAcknowledged(notice);
+    }
 
-        repositoryRiskNotices = risky;
-        repositoryRiskFingerprint = fingerprint;
-        repositoryRiskPopupOpen = true;
-        requestRepositoryRiskPopup = true;
+    private void AcknowledgeRepositoryRisk(RepositoryRiskNotice notice)
+    {
+        configuration.AcknowledgedRepositoryRiskByUrl[NormalizeUrl(notice.Url)] = notice.NoticeFingerprint;
+        configuration.Save();
+    }
+
+    private void AcknowledgeVisibleRepositoryRisks()
+    {
+        foreach (var notice in repositoryRiskNotices)
+            configuration.AcknowledgedRepositoryRiskByUrl[NormalizeUrl(notice.Url)] = notice.NoticeFingerprint;
+        configuration.AcknowledgedRepositoryRiskFingerprint = repositoryRiskFingerprint;
+        configuration.Save();
     }
 
     private void DrawRepositoryRiskModal()
@@ -109,9 +152,10 @@ internal sealed partial class MarketplaceWindow
             return;
 
         var keepOpen = repositoryRiskPopupOpen;
-        ImGui.SetNextWindowSize(new Vector2(720f, 430f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(new Vector2(720f, 0f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal(RepositoryRiskPopupId, ref keepOpen,
-                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse))
+                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse |
+                ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
         {
             repositoryRiskPopupOpen = keepOpen;
             return;
@@ -130,7 +174,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextWrapped("This does not prove a repository is malicious. It means at least one package with the same plugin version differs from Omega's stable-provider plugin package baseline, so the source deserves review before further installs or updates.");
         ImGui.Spacing();
 
-        if (ImGui.BeginTable("repository-risk-table", 3, ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.RowBg, new Vector2(0f, 235f)))
+        if (ImGui.BeginTable("repository-risk-table", 3, ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.RowBg, new Vector2(0f, 0f)))
         {
             ImGui.TableSetupColumn("Repository", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupColumn("Use", ImGuiTableColumnFlags.WidthFixed, 150f);
@@ -160,14 +204,15 @@ internal sealed partial class MarketplaceWindow
             repositoryRiskDismissedFingerprint = repositoryRiskFingerprint;
             repositoryRiskPopupOpen = false;
             ImGui.CloseCurrentPopup();
+            sourceSection = SourceManagerSection.DalamudConfigured;
+            sourceSearch = string.Empty;
             requestSettingsPopup = true;
             settingsOpen = true;
         }
         ImGui.SameLine();
         if (ImGui.Button("Acknowledge", new Vector2(140f, 34f)))
         {
-            configuration.AcknowledgedRepositoryRiskFingerprint = repositoryRiskFingerprint;
-            configuration.Save();
+            AcknowledgeVisibleRepositoryRisks();
             repositoryRiskPopupOpen = false;
             ImGui.CloseCurrentPopup();
         }

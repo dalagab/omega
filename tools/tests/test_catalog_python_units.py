@@ -382,6 +382,27 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertTrue(out["plugins"][0]["webEnriched"])
         self.assertEqual(record["description"], out["plugins"][0]["website"]["description"])
 
+
+    def test_scraper_classifies_safe_project_actions_and_hides_unknown_links(self) -> None:
+        repo = "https://github.com/example/plugin"
+        links = scrape_websites.classify_project_links([
+            "https://discord.gg/example",
+            "https://github.com/example/plugin/issues",
+            "https://github.com/example/plugin/wiki",
+            "https://github.com/example/plugin/releases",
+            "https://example.invalid/random-tracker",
+            "https://example.invalid/download/plugin.zip",
+        ], repo, "https://plugin.example.invalid/")
+        by_kind = {item["kind"]: item for item in links}
+        self.assertEqual("Join Discord", by_kind["discord"]["label"])
+        self.assertEqual("Source", by_kind["source"]["label"])
+        self.assertEqual("Issues", by_kind["issues"]["label"])
+        self.assertEqual("Documentation", by_kind["docs"]["label"])
+        self.assertEqual("Releases", by_kind["releases"]["label"])
+        self.assertEqual("Website", by_kind["website"]["label"])
+        self.assertFalse(any(item["url"].endswith("plugin.zip") for item in links))
+        self.assertFalse(any("random-tracker" in item["url"] for item in links))
+
     def test_github_scraper_captures_bounded_readme_and_project_image_urls(self) -> None:
         project = {"name": "Fixture", "default_branch": "main", "stargazers_count": 0, "forks_count": 0}
         readme = "# Fixture\n![Preview](images/preview.png)\n" + ("x" * 6000)
@@ -546,15 +567,17 @@ class CatalogPythonUnitTests(unittest.TestCase):
                     "readmeExcerpt": "# Fixture\nProject documentation.",
                     "imageUrls": ["https://raw.githubusercontent.com/example/fixture/main/images/preview.png"],
                     "discordJoinImageUrls": ["https://discord.com/api/guilds/123456/widget.png"],
+                    "links": [{"kind": "discord", "label": "Join Discord", "url": "https://discord.gg/fixture"}],
                 },
             }}, "2026-08-16T00:00:00Z")
-            row = db.execute("SELECT readme_excerpt,image_urls_json,metadata_json FROM websites").fetchone()
+            row = db.execute("SELECT readme_excerpt,image_urls_json,links_json,metadata_json FROM websites").fetchone()
         self.assertEqual("# Fixture\nProject documentation.", row["readme_excerpt"])
         self.assertEqual(
             ["https://raw.githubusercontent.com/example/fixture/main/images/preview.png"],
             json.loads(row["image_urls_json"]),
         )
         self.assertEqual(["https://discord.com/api/guilds/123456/widget.png"], json.loads(row["metadata_json"])["discordJoinImageUrls"])
+        self.assertEqual("discord", json.loads(row["links_json"])[0]["kind"])
 
     def test_http_diagnostics_are_rejected_from_presentation_text(self) -> None:
         poisoned = "404:\n- https://example.invalid/a at line 1\n- https://example.invalid/b at line 1\n\n500:\n- https://example.invalid/c"
@@ -564,6 +587,88 @@ class CatalogPythonUnitTests(unittest.TestCase):
             "A normal project description.",
             scrape_websites.sanitize_presentation_text("A normal project description."),
         )
+
+    def test_incremental_website_cache_reuses_current_generation_classified_links(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "seed.sqlite"
+            now = dt.datetime.now(dt.timezone.utc).isoformat()
+            with closing(sqlite3.connect(path)) as db:
+                db.executescript("""
+                    CREATE TABLE websites(
+                        url TEXT, ok INTEGER, last_success_utc TEXT, metadata_json TEXT,
+                        description TEXT, homepage TEXT, stars INTEGER, forks INTEGER, watchers INTEGER,
+                        language TEXT, license TEXT, default_branch TEXT, last_commit_utc TEXT,
+                        readme_excerpt TEXT, topics_json TEXT, image_urls_json TEXT, links_json TEXT
+                    );
+                """)
+                db.execute(
+                    "INSERT INTO websites VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        "https://github.com/example/plugin", 1, now, json.dumps({"presentationSchemaVersion": scrape_websites.PRESENTATION_SCHEMA_VERSION}), "Fixture", "https://plugin.example/",
+                        None, None, None, "C#", "MIT", "main", "",
+                        "[Discord](https://discord.gg/example)\n[Issues](https://github.com/example/plugin/issues)",
+                        "[]", "[]", json.dumps([
+                            {"kind": "source", "label": "Source", "url": "https://github.com/example/plugin"},
+                            {"kind": "website", "label": "Website", "url": "https://plugin.example/"},
+                            {"kind": "discord", "label": "Join Discord", "url": "https://discord.gg/example"},
+                            {"kind": "issues", "label": "Issues", "url": "https://github.com/example/plugin/issues"},
+                        ]),
+                    ),
+                )
+                db.commit()
+            cache = scrape_websites_incremental.load_cache(path, 168.0)
+        record = cache["https://github.com/example/plugin"]
+        kinds = {item["kind"] for item in record["links"]}
+        self.assertTrue({"source", "website", "discord", "issues"}.issubset(kinds))
+
+
+    def test_incremental_website_cache_invalidates_old_presentation_generation(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "seed.sqlite"
+            now = dt.datetime.now(dt.timezone.utc).isoformat()
+            with closing(sqlite3.connect(path)) as db:
+                db.executescript("""
+                    CREATE TABLE websites(
+                        url TEXT, ok INTEGER, last_success_utc TEXT, metadata_json TEXT,
+                        description TEXT, homepage TEXT, stars INTEGER, forks INTEGER, watchers INTEGER,
+                        language TEXT, license TEXT, default_branch TEXT, last_commit_utc TEXT,
+                        readme_excerpt TEXT, topics_json TEXT, image_urls_json TEXT, links_json TEXT
+                    );
+                """)
+                db.execute(
+                    "INSERT INTO websites VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        "https://github.com/example/plugin", 1, now, json.dumps({"presentationSchemaVersion": scrape_websites.PRESENTATION_SCHEMA_VERSION - 1}),
+                        "Old description", "", None, None, None, "C#", "MIT", "main", "",
+                        "Old README", "[]", "[]", "[]",
+                    ),
+                )
+                db.commit()
+            cache = scrape_websites_incremental.load_cache(path, 168.0)
+        self.assertEqual({}, cache)
+
+    def test_failed_rescrape_preserves_server_history_but_invalidates_current_presentation(self) -> None:
+        with closing(sqlite3.connect(":memory:")) as db:
+            db.row_factory = sqlite3.Row
+            db.executescript(build_sqlite_catalog.SCHEMA_SQL)
+            build_sqlite_catalog.import_websites(db, {"repos": {
+                "https://github.com/example/fixture": {
+                    "url": "https://github.com/example/fixture", "ok": True,
+                    "description": "Current description", "readmeExcerpt": "Current README",
+                    "presentationSchemaVersion": scrape_websites.PRESENTATION_SCHEMA_VERSION,
+                },
+            }}, "2026-08-17T00:00:00Z")
+            build_sqlite_catalog.import_websites(db, {"repos": {
+                "https://github.com/example/fixture": {
+                    "url": "https://github.com/example/fixture", "ok": False, "error": "timeout",
+                    "presentationSchemaVersion": scrape_websites.PRESENTATION_SCHEMA_VERSION,
+                },
+            }}, "2026-08-17T01:00:00Z")
+            row = db.execute("SELECT ok,description,readme_excerpt,last_error FROM websites").fetchone()
+        self.assertEqual(0, row["ok"])
+        self.assertEqual("Current description", row["description"])
+        self.assertEqual("Current README", row["readme_excerpt"])
+        self.assertEqual("timeout", row["last_error"])
 
     def test_incremental_website_cache_rejects_poisoned_presentation_rows(self) -> None:
         with tempfile.TemporaryDirectory() as td:

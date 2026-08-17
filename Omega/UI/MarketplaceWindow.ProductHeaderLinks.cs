@@ -1,63 +1,64 @@
 using System.Diagnostics;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
-using Dalamud.Interface;
 
 namespace Dalagab.Omega;
 
 /// <summary>
-/// Keeps project navigation inside the product header instead of adding detached action rows.
+/// Renders bounded, classified project actions discovered by Omega's public metadata scraper.
+/// Arbitrary/raw URLs are intentionally not exposed as client buttons.
 /// </summary>
 internal sealed partial class MarketplaceWindow
 {
-    private static string ResolveEnhancedProjectUrl(
-        MarketplacePlugin plugin,
-        MarketplacePresentationContent content)
+    private IReadOnlyList<MarketplaceProjectLink> BuildProductProjectLinks(MarketplacePlugin plugin)
     {
-        var enhanced = content.Variant.OmegaWebsiteUrl;
-        if (IsWebUrl(enhanced))
-            return enhanced;
-        return ResolveProjectUrl(plugin);
-    }
-
-    private static bool IsWebUrl(string? candidate)
-        => Uri.TryCreate(candidate, UriKind.Absolute, out var uri) &&
-           (uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
-            uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase));
-
-    private void DrawProductWebsiteIcon(MarketplacePlugin plugin, string url)
-    {
-        const float size = 22f;
-        const float rounding = 5f;
-        var min = ImGui.GetCursorScreenPos();
-        ImGui.InvisibleButton($"##product-project-{StableId(plugin.InternalName)}", new Vector2(size, size));
-        var hovered = ImGui.IsItemHovered();
-        var active = ImGui.IsItemActive();
-        var clicked = ImGui.IsItemClicked();
-        var draw = ImGui.GetWindowDrawList();
-
-        if (hovered || active)
+        var links = new List<MarketplaceProjectLink>();
+        foreach (var link in plugin.OmegaProjectLinks.OrderBy(link => ProjectLinkPriority(link.Kind)))
         {
-            draw.AddRectFilled(
-                min,
-                min + new Vector2(size, size),
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0.07f, 0.18f, 0.20f, active ? 0.95f : 0.74f)),
-                rounding);
+            if (!IsSafeProjectActionUrl(link.Url) || links.Any(x => x.Kind.Equals(link.Kind, StringComparison.OrdinalIgnoreCase)))
+                continue;
+            links.Add(link);
         }
 
-        ImGui.PushFont(UiBuilder.IconFontFixedWidth);
-        var glyph = FontAwesomeIcon.Globe.ToIconString();
-        var glyphSize = ImGui.CalcTextSize(glyph);
-        draw.AddText(
-            min + new Vector2((size - glyphSize.X) * 0.5f, (size - glyphSize.Y) * 0.5f),
-            hovered ? ImGui.GetColorU32(ImGuiCol.Text) : ImGui.GetColorU32(ImGuiCol.TextDisabled),
-            glyph);
-        ImGui.PopFont();
+        // Older Definitions do not carry classified links yet. Keep the existing project action as a
+        // compatibility fallback until the next Definitions refresh populates the structured roles.
+        var project = ResolveProjectUrl(plugin);
+        if (IsSafeProjectActionUrl(project) && !links.Any(x => x.Kind.Equals("source", StringComparison.OrdinalIgnoreCase)))
+            links.Add(new MarketplaceProjectLink("source", "Source", project));
+        return links.OrderBy(link => ProjectLinkPriority(link.Kind)).Take(6).ToArray();
+    }
 
-        if (hovered)
-            ImGui.SetTooltip("Open project page");
-        if (clicked)
-            OpenProductWebsite(plugin, url);
+    private void DrawProductProjectLinks(MarketplacePlugin plugin)
+    {
+        var links = BuildProductProjectLinks(plugin);
+        if (links.Count == 0)
+            return;
+
+        ImGui.Dummy(new Vector2(1f, 8f));
+        ImGui.TextDisabled("Project links");
+        var first = true;
+        foreach (var link in links)
+        {
+            var label = string.IsNullOrWhiteSpace(link.Label) ? ProjectLinkLabel(link.Kind) : link.Label.Trim();
+            var width = Math.Clamp(ImGui.CalcTextSize(label).X + 28f, 86f, 170f);
+            if (!first && ImGui.GetContentRegionAvail().X < width + 8f)
+                ImGui.NewLine();
+            else
+                ImGui.SameLine(0f, 7f);
+
+            if (DrawPillButton(
+                    label,
+                    $"project-link-{StableId(plugin.InternalName + "-" + link.Kind)}",
+                    new Vector2(width, 28f),
+                    link.Kind.Equals("discord", StringComparison.OrdinalIgnoreCase)))
+            {
+                OpenProductWebsite(plugin, link.Url);
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(link.Url);
+            first = false;
+        }
+        ImGui.NewLine();
     }
 
     private void OpenProductWebsite(MarketplacePlugin plugin, string url)
@@ -72,4 +73,30 @@ internal sealed partial class MarketplaceWindow
             operationMessage = $"Could not open the project page for {plugin.Name}.";
         }
     }
+
+    private static bool IsSafeProjectActionUrl(string? candidate)
+        => Uri.TryCreate(candidate, UriKind.Absolute, out var uri) &&
+           uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
+
+    private static int ProjectLinkPriority(string kind) => kind.Trim().ToLowerInvariant() switch
+    {
+        "discord" => 0,
+        "website" => 1,
+        "source" => 2,
+        "docs" => 3,
+        "issues" => 4,
+        "releases" => 5,
+        _ => 10,
+    };
+
+    private static string ProjectLinkLabel(string kind) => kind.Trim().ToLowerInvariant() switch
+    {
+        "discord" => "Join Discord",
+        "website" => "Website",
+        "source" => "Source",
+        "docs" => "Documentation",
+        "issues" => "Issues",
+        "releases" => "Releases",
+        _ => "Project link",
+    };
 }

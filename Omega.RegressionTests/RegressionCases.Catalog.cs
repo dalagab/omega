@@ -127,21 +127,28 @@ internal static partial class RegressionCases
     internal static void TestDailyUpdateJobContract()
     {
         var service = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DailyCatalogUpdateService.cs"));
-        Contains(service, "TimeSpan.FromDays(1)", "daily cadence");
-        Contains(service, "updates.CheckForUpdatesAsync", "daily job probes for pending Definitions updates without silently applying them");
-        Contains(service, "DefinitionsUpdateAvailable", "daily check records whether Definitions are pending");
-        Contains(service, "LastDailyUpdateCheckUtc", "daily completion is persisted");
+        Contains(service, "AutomaticCheckCadence = TimeSpan.FromHours(1)", "Definitions descriptor is checked hourly");
+        Contains(service, "PollInterval = TimeSpan.FromMinutes(15)", "scheduler notices the next hourly due time promptly");
+        Contains(service, "updates.CheckDefinitionsForUpdatesAsync", "automatic polling probes only the tiny Definitions descriptor without refreshing every user repository");
+        Contains(service, "LastDefinitionsUpdateCheckUtc", "automatic completion is persisted separately from the legacy daily field");
+        Contains(service, "LastNotifiedDefinitionsRevision", "each Definitions revision is announced only once");
+        Contains(service, "Omega Definitions update available", "new Definitions revisions produce a visible Dalamud notification");
+        Contains(service, "INotificationManager", "notification delivery uses Dalamud's notification service");
+        var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CatalogUpdateCoordinator.cs"));
+        Contains(coordinator, "CheckDefinitionsForUpdatesAsync", "coordinator exposes a descriptor-only automatic probe");
+        Contains(coordinator, "refreshUserSources: false", "automatic Definitions probes do not fan out to custom repositories");
 
         var plugin = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
         Contains(plugin, "catalog.LoadCached", "startup loads the local catalog once");
-        Contains(plugin, "DailyCatalogUpdateService", "daily job is wired into plugin lifetime");
-        Contains(plugin, "dailyCatalogUpdate.TriggerIfDue", "opening Omega can trigger an overdue daily check");
+        Contains(plugin, "INotificationManager Notifications", "Dalamud notification manager is injected");
+        Contains(plugin, "DailyCatalogUpdateService", "Definitions polling job is wired into plugin lifetime");
+        Contains(plugin, "dailyCatalogUpdate.TriggerIfDue", "opening Omega can trigger an overdue hourly check");
     }
 
     internal static void TestCuratedEnableMigration()
     {
         var configuration = File.ReadAllText(Path.Combine(Root, "Omega", "Configuration.cs"));
-        Contains(configuration, "Version { get; set; } = 9", "configuration schema 9");
+        Contains(configuration, "Version { get; set; } = 10", "configuration schema 10");
 
         var curated = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CuratedSourceCatalog.cs"));
         Contains(curated, "enableAllCuratedMigration", "one-time all-enabled migration");
@@ -221,6 +228,7 @@ internal static partial class RegressionCases
         Contains(ui, "Selected", "selected plugin is visibly marked in the shelf");
         Contains(ui, "Unmaintained", "unmaintained badge is visible");
         Contains(ui, "omega-author-filter", "author filter is available inside the expanded storefront filter panel");
+        Contains(ui, "selectedAuthors", "author filtering supports multiple removable identities");
         Contains(ui, "selectedVariantSource", "duplicate source selection");
         Contains(ui, "fallbackIconPath", "company fallback artwork path");
         True(File.Exists(Path.Combine(Root, "images", "company-fallback.png")), "company fallback artwork file");

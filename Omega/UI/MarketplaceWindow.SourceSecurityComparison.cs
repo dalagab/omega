@@ -27,6 +27,12 @@ internal sealed partial class MarketplaceWindow
             .Equals(NormalizeUrl(baseline.SourceUrl), StringComparison.OrdinalIgnoreCase))
             return default;
 
+        // Different plugin versions are expected to have different package bytes. Cross-source
+        // provenance comparison is meaningful only for the same advertised version/API package.
+        if (!candidate.AssemblyVersion.Equals(baseline.AssemblyVersion) ||
+            candidate.DalamudApiLevel != baseline.DalamudApiLevel)
+            return default;
+
         var candidateHash = NormalizeArtifactHash(candidate.SecurityArtifactSha256);
         var baselineHash = NormalizeArtifactHash(baseline.SecurityArtifactSha256);
         var sameKnownArtifact = candidateHash.Length > 0 && baselineHash.Length > 0 &&

@@ -289,6 +289,7 @@ CREATE TABLE IF NOT EXISTS websites (
     last_commit_utc TEXT NOT NULL DEFAULT '',
     readme_excerpt TEXT NOT NULL DEFAULT '',
     image_urls_json TEXT NOT NULL DEFAULT '[]',
+    links_json TEXT NOT NULL DEFAULT '[]',
     metadata_json TEXT NOT NULL DEFAULT '{}',
     last_checked_utc TEXT NOT NULL DEFAULT '',
     last_success_utc TEXT NOT NULL DEFAULT '',
@@ -403,6 +404,9 @@ def reset_database(path: Path) -> sqlite3.Connection:
     variant_columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_variants)")}
     if "authors_json" not in variant_columns:
         db.execute("ALTER TABLE plugin_variants ADD COLUMN authors_json TEXT NOT NULL DEFAULT '[]'")
+    website_columns = {row[1] for row in db.execute("PRAGMA table_info(websites)")}
+    if "links_json" not in website_columns:
+        db.execute("ALTER TABLE websites ADD COLUMN links_json TEXT NOT NULL DEFAULT '[]'")
     security_current_columns = {row[1] for row in db.execute("PRAGMA table_info(plugin_security_current)")}
     if "automation_level" not in security_current_columns:
         db.execute("ALTER TABLE plugin_security_current ADD COLUMN automation_level TEXT NOT NULL DEFAULT 'none'")
@@ -705,22 +709,22 @@ def import_websites(db: sqlite3.Connection, website_doc: Any, now: str) -> None:
             metadata["discordJoinImageUrls"] = discord_join_images
             db.execute(
                 """INSERT INTO websites(url,ok,title,description,homepage,stars,forks,watchers,topics_json,language,license,
-                    default_branch,last_commit_utc,readme_excerpt,image_urls_json,metadata_json,last_checked_utc,last_success_utc,last_error,failure_count,next_retry_utc)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'',0,'')
+                    default_branch,last_commit_utc,readme_excerpt,image_urls_json,links_json,metadata_json,last_checked_utc,last_success_utc,last_error,failure_count,next_retry_utc)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'',0,'')
                    ON CONFLICT(url) DO UPDATE SET
                     ok=1,title=excluded.title,description=excluded.description,homepage=excluded.homepage,
                     stars=excluded.stars,forks=excluded.forks,watchers=excluded.watchers,topics_json=excluded.topics_json,
                     language=excluded.language,license=excluded.license,default_branch=excluded.default_branch,
                     last_commit_utc=excluded.last_commit_utc,readme_excerpt=excluded.readme_excerpt,
-                    image_urls_json=excluded.image_urls_json,metadata_json=excluded.metadata_json,
+                    image_urls_json=excluded.image_urls_json,links_json=excluded.links_json,metadata_json=excluded.metadata_json,
                     last_checked_utc=excluded.last_checked_utc,last_success_utc=excluded.last_success_utc,
                     last_error='',failure_count=0,next_retry_utc=''""",
                 (
                     url, 1, str(rec.get("title") or ""), description, str(rec.get("homepage") or ""),
                     rec.get("stars"), rec.get("forks"), rec.get("watchers"), json_text(rec.get("topics") or []),
                     str(rec.get("language") or ""), str(rec.get("license") or ""), str(rec.get("defaultBranch") or ""),
-                    str(rec.get("lastCommit") or ""), excerpt, json_text(images), json.dumps(metadata, ensure_ascii=False, separators=(",", ":")),
-                    now, now,
+                    str(rec.get("lastCommit") or ""), excerpt, json_text(images), json_text(rec.get("links") or []),
+                    json.dumps(metadata, ensure_ascii=False, separators=(",", ":")), now, now,
                 ),
             )
         else:
@@ -728,7 +732,7 @@ def import_websites(db: sqlite3.Connection, website_doc: Any, now: str) -> None:
             if existing:
                 failures = int(existing["failure_count"] or 0) + 1
                 db.execute(
-                    "UPDATE websites SET ok=CASE WHEN last_success_utc<>'' THEN 1 ELSE 0 END,last_checked_utc=?,last_error=?,failure_count=? WHERE website_id=?",
+                    "UPDATE websites SET ok=0,last_checked_utc=?,last_error=?,failure_count=? WHERE website_id=?",
                     (now, error, failures, int(existing["website_id"])),
                 )
             else:
@@ -762,7 +766,7 @@ def recompute_presentation(db: sqlite3.Connection, now: str) -> None:
         pid = int(prow["plugin_id"])
         variants = db.execute(
             """SELECT v.*,s.is_official,s.name AS source_name,s.url AS source_url,
-                      w.ok AS website_ok,w.description AS website_description,w.readme_excerpt,w.image_urls_json AS website_images
+                      w.ok AS website_ok,CASE WHEN w.ok=1 THEN w.description ELSE '' END AS website_description,CASE WHEN w.ok=1 THEN w.readme_excerpt ELSE '' END AS readme_excerpt,CASE WHEN w.ok=1 THEN w.image_urls_json ELSE '[]' END AS website_images
                FROM plugin_variants v
                JOIN sources s ON s.source_id=v.source_id
                LEFT JOIN websites w ON w.url=v.repo_url COLLATE NOCASE
@@ -872,11 +876,12 @@ def create_runtime_view(db: sqlite3.Connection) -> None:
              s.name AS source_name,
              s.url AS source_url,
              s.is_official AS source_is_official,
-             COALESCE(w.url,'') AS website_url,
-             COALESCE(w.title,'') AS website_title,
-             COALESCE(w.description,'') AS website_description,
-             COALESCE(w.readme_excerpt,'') AS website_readme_excerpt,
-             COALESCE(w.image_urls_json,'[]') AS website_image_urls_json,
+             CASE WHEN w.ok=1 THEN COALESCE(w.url,'') ELSE '' END AS website_url,
+             CASE WHEN w.ok=1 THEN COALESCE(w.title,'') ELSE '' END AS website_title,
+             CASE WHEN w.ok=1 THEN COALESCE(w.description,'') ELSE '' END AS website_description,
+             CASE WHEN w.ok=1 THEN COALESCE(w.readme_excerpt,'') ELSE '' END AS website_readme_excerpt,
+             CASE WHEN w.ok=1 THEN COALESCE(w.image_urls_json,'[]') ELSE '[]' END AS website_image_urls_json,
+             CASE WHEN w.ok=1 THEN COALESCE(w.links_json,'[]') ELSE '[]' END AS website_links_json,
              CASE WHEN w.website_id IS NOT NULL AND w.ok=1 THEN 1 ELSE 0 END AS website_enriched,
              COALESCE(pr.rich_card,0) AS rich_card,
              COALESCE(pr.official,0) AS plugin_official,

@@ -41,6 +41,7 @@ internal sealed partial class MarketplaceWindow
         }
         DrawProductPackageBaselineWarning(plugin, sourcePackages, currentApi, currentDalamudVersion);
         DrawProductHero(plugin, content, installedPlugin, currentApi, currentDalamudVersion);
+        DrawProductProjectLinks(plugin);
         DrawProductCollectionMembership(plugin, installedPlugin);
         DrawProductScreenshots(content);
         DrawProductInformation(plugin, content, currentApi, currentDalamudVersion);
@@ -169,16 +170,12 @@ internal sealed partial class MarketplaceWindow
                     : control.Reason);
         }
 
-        ImGui.Dummy(new Vector2(1f, 12f));
-        ImGui.TextUnformatted("Collections");
-        ImGui.Dummy(new Vector2(1f, 6f));
+        if (memberships.Length > 0)
+        {
+            ImGui.Dummy(new Vector2(1f, 12f));
+            ImGui.TextUnformatted("Collections");
+            ImGui.Dummy(new Vector2(1f, 6f));
 
-        if (memberships.Length == 0)
-        {
-            ImGui.TextDisabled("Not in a named collection");
-        }
-        else
-        {
             foreach (var membership in memberships)
                 DrawProductCollectionRow(plugin.InternalName, membership);
         }
@@ -193,6 +190,11 @@ internal sealed partial class MarketplaceWindow
         PluginDirectControlState control,
         IReadOnlyList<PluginCollectionMembershipState> memberships)
     {
+        // A plugin with no named memberships only needs the compact state row.
+        // Do not reserve vertical space for an empty Collections subsection.
+        if (memberships.Count == 0)
+            return 68f;
+
         const float baseHeight = 130f;
         var height = baseHeight + memberships.Count * MarketplaceLayoutRules.ProductCollectionRowHeight;
         foreach (var membership in memberships)
@@ -323,13 +325,6 @@ internal sealed partial class MarketplaceWindow
         {
             if (drewAny)
                 ImGui.SameLine(0f, 8f);
-
-            var enhancedUrl = ResolveEnhancedProjectUrl(plugin, content);
-            if (!string.IsNullOrWhiteSpace(enhancedUrl))
-            {
-                DrawProductWebsiteIcon(plugin, enhancedUrl);
-                ImGui.SameLine(0f, 5f);
-            }
 
             DrawDiscoverTextBadge("★ Enhanced", new Vector4(0.45f, 0.34f, 0.08f, 0.96f));
             if (ImGui.IsItemHovered())

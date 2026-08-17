@@ -2,6 +2,81 @@
 
 Omega follows semantic product versions. Release entries here are consumed by the GitHub release workflow so the same human-readable notes are published with each immutable release.
 
+## [0.8.74] - 2026-08-17
+
+### Changed
+
+- Hide the **Collections** subsection on an installed plugin product page when the plugin is not a member of any named Dalamud collection. The plugin-state row remains visible, but Omega no longer reserves empty space or shows the redundant “Not in a named collection” placeholder.
+
+### Availability
+
+- This is a client UI change and is visible immediately after installing 0.8.74. No Definitions refresh or plugin re-scrape is required.
+
+## [0.8.73] - 2026-08-17
+
+### Fixed
+
+- Repair the Windows/ZipRunner build gate after the 0.8.71 project-link redesign. The regression suite now validates the classified **Discord / Website / Source / Documentation / Issues / Releases** action model instead of requiring the obsolete single globe-icon project button.
+- Remove the nullable-return warning in legacy plugin-config backup identity inference by explicitly discarding null filename candidates before validation.
+
+### Availability
+
+- This is a compile/regression repair only. It does not change Definitions data or require plugins to be re-scraped.
+
+## [0.8.72] - 2026-08-17
+
+### Changed
+
+- Treat marketplace website/README metadata as a **current presentation projection**, not an accumulating history. A successful re-scrape replaces the previous description, README, images, and classified project links instead of merging old presentation text into the new entry.
+- Keep prior successful scrape content only in the server-side evidence/cache for diagnostics and retry lineage. If a due re-scrape fails, that stale content is no longer projected into the client marketplace until a current scrape succeeds.
+- Add a presentation-parser generation to website enrichment. Parser changes can invalidate older cached presentation snapshots so improved scraping/rendering does not have to wait for the normal seven-day website cache horizon.
+- Release changelog entries now call out **Availability** whenever a feature is shipped in plugin code before existing catalog entries have been re-scraped/re-published.
+
+### Availability
+
+- This release changes how future Definitions are built. Existing installed Definitions remain unchanged until the next catalog/security/compaction publication is applied in Omega.
+
+## [0.8.71] - 2026-08-17
+
+### Added
+
+- Added classified project actions for **Join Discord**, **Website**, **Source**, **Documentation**, **Issues**, and **Releases**. Only recognized HTTPS roles are promoted to storefront buttons; arbitrary discovered URLs stay in server-side evidence.
+- Added safe README presentation for Markdown headings, paragraphs, lists, quotes, code fences, and common embedded HTML while stripping executable/interactive HTML such as scripts, forms, iframes, objects, and embeds.
+- Added removable active-filter pills that remain visible outside the expanded filter editor, plus multi-select author filters with AND semantics.
+
+### Changed
+
+- Expanded marketplace text search to include enriched project descriptions and README content.
+- Reworked the filter editor so its lower controls are not clipped at scaled UI sizes.
+
+### Availability
+
+- Filter pills and README rendering are client features available immediately after installing 0.8.71.
+- Discord/website/source/docs/issues/releases actions and newly searchable enriched text depend on each project having been scraped with the newer metadata parser and then included in a published Definitions revision. Older catalog entries may therefore gain these features progressively as they are re-scraped.
+
+## [0.8.70] - 2026-08-17
+
+### Changed
+
+- Check the lightweight online Definitions descriptor every hour while Omega is loaded instead of at most once per 24 hours. The scheduler wakes every 15 minutes so an overdue check is picked up promptly without downloading the Definitions database or refreshing every custom repository.
+- Preserve the previous daily-check timestamp as a configuration fallback so upgrades do not create unnecessary duplicate requests.
+
+### Added
+
+- Show a native Dalamud notification when a new Definitions revision is discovered, even when the Omega window is closed. Each revision is announced once and remains visible through the existing Updates attention state until applied.
+
+## [0.8.69] - 2026-08-17
+
+### Fixed
+
+- Repository package-divergence warnings no longer show an unnecessary outer scrollbar.
+- **Review Sources** now opens a dedicated Dalamud repository view backed by Dalamud's live configured repository list, rather than only Omega's curated/My Sources inventory.
+- Divergent repositories can be acknowledged directly from the Dalamud source-review view; acknowledgement is source-specific and tied to the current evidence fingerprint, so changed package evidence requires review again.
+- The install chooser no longer inherits the currently displayed product variant as its implicit source. It starts from Omega's ranked clean candidate instead.
+- Packages already identified as cross-source artifact outliers, and repositories with known package divergence, are demoted behind clean alternatives before ordinary provider preference is applied.
+- Selecting an unacknowledged divergent repository changes the install action to **Review risk** instead of allowing that source to be installed accidentally.
+- Repository security comparison now compares package hashes only for the same plugin version/API, avoiding false divergence when two repositories legitimately advertise different versions.
+
 ## [0.8.68] - 2026-08-17
 
 ### Added

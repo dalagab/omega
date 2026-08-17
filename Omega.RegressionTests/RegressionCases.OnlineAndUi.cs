@@ -297,7 +297,9 @@ internal static partial class RegressionCases
         Contains(ui, "Narrow by tag", "tag picker uses Steam-like narrowing language");
         Contains(ui, "##omega-tag-search", "tag picker has searchable input");
         Contains(ui, "all selected tags must match", "multi-tag semantics are explicit AND matching");
-        Contains(ui, "Selected tags:", "selected tags remain visible as removable chips");
+        Contains(ui, "Multiple authors use AND matching", "multi-author filters use AND matching too");
+        Contains(ui, "OmegaWebsiteReadmeExcerpt", "global search includes README enrichment text");
+        Contains(ui, "selected-filter-", "selected filters remain visible as removable pills");
         Contains(ui, "Take(needle.Length == 0 ? 120 : 250)", "tag popup draw work is bounded");
         Contains(ui, "catalog.GetTagIndex(currentApi, selectedSource)", "tag index respects repository filtering");
 
@@ -307,6 +309,17 @@ internal static partial class RegressionCases
 
         var project = File.ReadAllText(Path.Combine(Root, "Omega.RegressionTests", "Omega.RegressionTests.csproj"));
         Contains(project, "MarketplaceTagRules.cs", "tag behavior helper is exercised by the build-time regression suite");
+    }
+
+
+    internal static void TestReadmeMarkupRenderingContract()
+    {
+        var blocks = MarketplaceReadmeMarkup.Parse("# Heading\n<p>Hello <strong>world</strong></p>\n- One\n<blockquote>Quoted</blockquote>\n<pre><code>DoThing();</code></pre><script>evil()</script>");
+        True(blocks.Any(x => x.Kind == MarketplaceReadmeBlockKind.Heading && x.Text == "Heading"), "Markdown heading becomes a heading block");
+        True(blocks.Any(x => x.Kind == MarketplaceReadmeBlockKind.Bullet && x.Text == "One"), "Markdown list becomes a bullet block");
+        True(blocks.Any(x => x.Kind == MarketplaceReadmeBlockKind.Quote && x.Text.Contains("Quoted", StringComparison.Ordinal)), "HTML blockquote becomes a quote block");
+        True(blocks.Any(x => x.Kind == MarketplaceReadmeBlockKind.Code && x.Text.Contains("DoThing();", StringComparison.Ordinal)), "HTML pre/code becomes a code block");
+        False(blocks.Any(x => x.Text.Contains("evil()", StringComparison.Ordinal)), "script contents are removed rather than rendered");
     }
 
 }

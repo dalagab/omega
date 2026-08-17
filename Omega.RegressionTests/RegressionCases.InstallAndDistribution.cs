@@ -62,9 +62,10 @@ internal static partial class RegressionCases
         Contains(ui, "filtersOpen = !filtersOpen", "panel Filters control expands and collapses inline");
         Contains(ui, "contentStartX + Math.Max(0f, contentWidth - buttonWidth)", "Filters button is anchored at the right edge of its owning content panel");
         Contains(ui, "ImGui.SetCursorPosX(contentStartX);", "right-aligned Filters control restores the full-width content origin before expansion");
-        Contains(ui, "DrawInlineMarketplaceFilters(currentApi)", "full filter set is hidden until Filters is expanded");
+        Contains(ui, "DrawInlineMarketplaceFilters(currentApi)", "full filter editor is hidden until Filters is expanded");
+        Contains(ui, "DrawSelectedFilterPills()", "active filter pills remain visible while the editor is collapsed");
         Contains(ui, "omega-inline-filters", "expanded filters render in the owning content panel rather than a modal");
-        Contains(filters, "activeView is MarketplaceView.Discover or MarketplaceView.Library ? 228f : 198f", "Discover and Library reserve enough inline filter height for all controls");
+        Contains(filters, "Math.Max(minimum, scaled)", "Discover and Library reserve scale-aware inline filter height for all controls");
         Contains(filters, "ImGuiStyleVar.ChildRounding, 4f", "expanded filter panel matches the square-cornered Filters control");
         False(ui.Contains("Filters###DalagabOmegaFilters", StringComparison.Ordinal), "filter popup modal must not return");
         Contains(ui, "omega-application-bar", "window chrome is owned by one shared application top bar");
@@ -123,14 +124,19 @@ internal static partial class RegressionCases
     internal static void TestInstallRepositoryChooserContract()
     {
         var ui = ReadMarketplaceWindowSource();
+        var details = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Details.cs"));
+        var awareness = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.RepositoryAwareness.cs"));
         var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginInstallCoordinator.cs"));
         var installer = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudInstallerBridge.cs"));
 
         Contains(ui, "Choose repository###DalagabOmegaInstall", "repository chooser popup");
         Contains(ui, "Choose which repository to use", "repository choice explanation");
         Contains(ui, "GetInstallCandidates", "compatible repository variants");
-        Contains(ui, "ImGui.Button(\"Install\",", "single user-facing install action remains explicit in the repository chooser");
+        Contains(ui, "ImGui.Button(actionLabel", "repository chooser keeps one explicit top action while allowing risk review to replace unsafe install");
         Contains(ui, "StartSelectedInstall", "selected source install flow");
+        Contains(ui, "selectedNeedsRiskReview", "unacknowledged divergent repositories cannot be installed by the normal Install action");
+        Contains(ui, "OpenDalamudRepositoryRiskReviewFromInstall", "risky source selection routes to repository review instead of installing immediately");
+        Contains(ui, "pendingInstallSourceUrl = string.Empty", "opening the chooser does not inherit a potentially risky displayed repository as the implicit selection");
         Contains(ui, "ImGuiSelectableFlags.DontClosePopups", "choosing a repository does not close the chooser before Install");
         DoesNotContain(ui, "DrawInstallProviderFilters", "repository chooser does not add a redundant provider-filter row");
         Contains(ui, "DrawRepositoryName", "repository names use shared provider presentation");
@@ -139,10 +145,14 @@ internal static partial class RegressionCases
         Contains(ui, "FontAwesomeIcon.Check", "present repository marker uses a standard icon");
         DoesNotContain(ui, "ImGui.Button(\"Cancel\")", "the modal close X is the only cancel control");
         True(
-            ui.IndexOf("ImGui.Button(\"Install\"", StringComparison.Ordinal) <
+            ui.IndexOf("ImGui.Button(actionLabel", StringComparison.Ordinal) <
             ui.IndexOf("foreach (var candidate in candidates)", StringComparison.Ordinal),
-            "Install action renders above repository choices");
+            "Install/review action renders above repository choices");
         False(ui.Contains("Prepare this repository", StringComparison.Ordinal), "prepare wording hidden from marketplace user");
+
+        Contains(details, ".OrderBy(v => IsPluginPackageArtifactDivergent(v) ? 1 : 0)", "known divergent package variants are demoted before source provider preference");
+        Contains(details, "divergentSources.Contains(NormalizeUrl(v.SourceUrl)) ? 1 : 0", "repositories with known package divergence are not auto-preferred when a clean alternative exists");
+        Contains(awareness, "AcknowledgedRepositoryRiskByUrl", "risk acknowledgement is source-specific and invalidates when evidence changes");
 
         Contains(coordinator, "EnsureRepositoryReadyAsync", "hidden source preparation coordinator");
         Contains(coordinator, "EnsureIntegratedAsync", "Dalamud repository integration before install");

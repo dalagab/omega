@@ -75,6 +75,7 @@ internal enum SourceManagerSection
 {
     Curated,
     UserAdded,
+    DalamudConfigured,
 }
 
 internal sealed partial class MarketplaceWindow : Window, IDisposable
@@ -106,7 +107,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private readonly bool eulaDocumentAvailable;
 
     private string search = string.Empty;
-    private string author = string.Empty;
+    private readonly List<string> selectedAuthors = [];
+    private string authorSearch = string.Empty;
     private string selectedSource = "All sources";
     private string selectedCategory = "All categories";
     private readonly List<string> selectedTags = [];
@@ -209,7 +211,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private MarketplaceView filterView;
     private MarketplaceSort filterSort;
     private string filterSearch = string.Empty;
-    private string filterAuthor = string.Empty;
+    private string filterAuthors = string.Empty;
     private string filterSource = string.Empty;
     private string filterCategory = string.Empty;
     private string filterTags = string.Empty;

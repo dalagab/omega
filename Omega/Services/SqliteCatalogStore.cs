@@ -211,6 +211,9 @@ internal sealed class SqliteCatalogStore
         var websiteReadmeProjection = runtimeColumns.Contains("website_readme_excerpt")
             ? "website_readme_excerpt"
             : "'' AS website_readme_excerpt";
+        var websiteLinksProjection = runtimeColumns.Contains("website_links_json")
+            ? "website_links_json"
+            : "'[]' AS website_links_json";
         var adultContentProjection = runtimeColumns.Contains("plugin_nsfw")
             ? "plugin_nsfw"
             : "0 AS plugin_nsfw";
@@ -264,7 +267,7 @@ internal sealed class SqliteCatalogStore
                    dip17_channel,source_name,source_url,source_is_official,website_url,website_title,
                    website_description,{websiteReadmeProjection},website_image_urls_json,website_enriched,{adultContentProjection},
                    {securityProjection},
-                   {authorsProjection}
+                   {authorsProjection},{websiteLinksProjection}
               FROM runtime_plugin_variants;
             """;
         using var reader = command.ExecuteReader();
@@ -332,6 +335,7 @@ internal sealed class SqliteCatalogStore
                 SecuritySourceToBinaryVerified = GetBool(reader, 56),
                 SecurityError = GetString(reader, 57),
                 Authors = ReadStrings(GetString(reader, 58, "[]")),
+                OmegaProjectLinks = ReadProjectLinks(GetString(reader, 59, "[]")),
             });
         }
         return result;
@@ -557,6 +561,40 @@ internal sealed class SqliteCatalogStore
         {
             return [];
         }
+    }
+
+
+    private static IReadOnlyList<MarketplaceProjectLink> ReadProjectLinks(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+                return [];
+            return document.RootElement.EnumerateArray()
+                .Where(x => x.ValueKind == JsonValueKind.Object)
+                .Select(x => new MarketplaceProjectLink(
+                    ReadJsonString(x, "kind"),
+                    ReadJsonString(x, "label"),
+                    ReadJsonString(x, "url")))
+                .Where(x => !string.IsNullOrWhiteSpace(x.Kind) && !string.IsNullOrWhiteSpace(x.Url))
+                .Take(8)
+                .ToArray();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static string ReadJsonString(JsonElement element, string name)
+    {
+        foreach (var property in element.EnumerateObject())
+        {
+            if (property.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && property.Value.ValueKind == JsonValueKind.String)
+                return property.Value.GetString() ?? string.Empty;
+        }
+        return string.Empty;
     }
 
     private static IReadOnlyList<MarketplaceAutomationCapability> ReadAutomationCapabilities(string json)

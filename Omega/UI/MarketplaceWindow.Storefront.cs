@@ -33,8 +33,11 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(filtersOpen ? "Hide marketplace filters" : $"Show all filters for {ViewTitle(activeView)}");
 
-        // Restore the content origin so an expanded panel still spans the complete owning view.
+        // Selected filters remain visible even while the editor is collapsed; each pill removes
+        // its own constraint without making the user reopen and search the full filter list.
         ImGui.SetCursorPosX(contentStartX);
+        if (activeFilters > 0)
+            DrawSelectedFilterPills();
         if (!filtersOpen)
             return;
 
@@ -46,8 +49,8 @@ internal sealed partial class MarketplaceWindow
     private int CountActiveMarketplaceFilters()
     {
         var count = 0;
-        if (!string.IsNullOrWhiteSpace(author))
-            count++;
+        if (selectedAuthors.Count > 0)
+            count += selectedAuthors.Count;
         if (!selectedSource.Equals("All sources", StringComparison.OrdinalIgnoreCase))
             count++;
         if (!selectedCategory.Equals("All categories", StringComparison.OrdinalIgnoreCase))

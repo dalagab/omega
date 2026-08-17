@@ -20,6 +20,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDalamudAssetManager DalamudAssets { get; private set; } = null!;
     [PluginService] internal static ITitleScreenMenu TitleScreenMenu { get; private set; } = null!;
     [PluginService] internal static IGameInteropProvider GameInterop { get; private set; } = null!;
+    [PluginService] internal static INotificationManager Notifications { get; private set; } = null!;
 
     private readonly WindowSystem windowSystem = new("DalagabOmega");
     private readonly MarketplaceCatalogService catalog;
@@ -73,7 +74,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.ActivePluginsChanged += OnActivePluginsChanged;
         titleScreenEntry = TryRegisterTitleScreenEntry(assemblyDirectory);
         systemMenuBridge = new DalamudSystemMenuBridge(GameInterop, OpenMainUi);
-        dailyCatalogUpdate = new DailyCatalogUpdateService(Configuration, catalog, catalogUpdates);
+        dailyCatalogUpdate = new DailyCatalogUpdateService(Configuration, catalog, catalogUpdates, Notifications);
         catalogUpdates.SeedIfEmpty();
 
         Log.Information(

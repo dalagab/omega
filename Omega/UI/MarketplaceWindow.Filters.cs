@@ -9,33 +9,6 @@ namespace Dalagab.Omega;
 
 internal sealed partial class MarketplaceWindow
 {
-    private void DrawSelectedTagChips()
-    {
-        if (selectedTags.Count == 0)
-            return;
-
-        ImGui.Spacing();
-        ImGui.TextDisabled("Selected tags:");
-        var first = true;
-        foreach (var tag in selectedTags.ToArray())
-        {
-            var label = $"{Shorten(tag, 18)} ×";
-            var width = Math.Clamp(ImGui.CalcTextSize(label).X + 22f, 64f, 154f);
-            if (!first && ImGui.GetContentRegionAvail().X < width + 8f)
-                ImGui.NewLine();
-            else
-                ImGui.SameLine(0f, 7f);
-
-            if (DrawPillButton(label, $"selected-tag-{StableId(tag)}", new Vector2(width, 26f), true))
-            {
-                RemoveSelectedTag(tag);
-                resetStorefrontScroll = true;
-            }
-
-            first = false;
-        }
-    }
-
     private void DrawTagPickerPopup(int currentApi)
     {
         ImGui.SetNextWindowSize(new Vector2(500f, 500f), ImGuiCond.Appearing);
@@ -144,10 +117,27 @@ internal sealed partial class MarketplaceWindow
     private string TagSelectionKey()
         => string.Join("\u001f", selectedTags.OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
 
+    private bool ContainsSelectedAuthor(string value)
+        => selectedAuthors.Any(x => x.Equals(value, StringComparison.OrdinalIgnoreCase));
+
+    private void AddSelectedAuthor(string value)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.Length == 0 || ContainsSelectedAuthor(trimmed))
+            return;
+        selectedAuthors.Add(trimmed);
+    }
+
+    private void RemoveSelectedAuthor(string value)
+        => selectedAuthors.RemoveAll(x => x.Equals(value, StringComparison.OrdinalIgnoreCase));
+
+    private string AuthorSelectionKey()
+        => string.Join("\u001f", selectedAuthors.OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
+
     private void DrawInlineMarketplaceFilters(int currentApi)
     {
         var filterPlugins = catalog.GetMainProjection(currentApi, selectedSource).Plugins;
-        var panelHeight = activeView is MarketplaceView.Discover or MarketplaceView.Library ? 228f : 198f;
+        var panelHeight = CalculateInlineFilterPanelHeight();
 
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 4f);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
@@ -164,6 +154,68 @@ internal sealed partial class MarketplaceWindow
         ImGui.EndChild();
         ImGui.PopStyleColor(2);
         ImGui.PopStyleVar(2);
+    }
+
+    private float CalculateInlineFilterPanelHeight()
+    {
+        // Reserve the complete two-row filter grid and action row. Scale from the actual ImGui
+        // frame height as well as keeping a sane minimum so higher UI/font scales cannot clip it.
+        var discoverOrLibrary = activeView is MarketplaceView.Discover or MarketplaceView.Library;
+        var minimum = discoverOrLibrary ? 264f : 234f;
+        var scaled = ImGui.GetFrameHeightWithSpacing() * (discoverOrLibrary ? 10.5f : 9.2f);
+        return Math.Max(minimum, scaled);
+    }
+
+    private void DrawSelectedFilterPills()
+    {
+        if (CountActiveMarketplaceFilters() == 0)
+            return;
+
+        ImGui.Dummy(new Vector2(1f, 4f));
+        ImGui.TextDisabled("Selected:");
+        var first = true;
+
+        foreach (var value in selectedAuthors.ToArray())
+            DrawSelectedFilterPill($"Author: {Shorten(value, 22)}", $"author-{value}", ref first, () => RemoveSelectedAuthor(value));
+        foreach (var value in selectedTags.ToArray())
+            DrawSelectedFilterPill($"Tag: {Shorten(value, 22)}", $"tag-{value}", ref first, () => RemoveSelectedTag(value));
+
+        if (selectedSource != "All sources")
+            DrawSelectedFilterPill($"Repository: {Shorten(selectedSource, 22)}", "repository", ref first, () => selectedSource = "All sources");
+        if (selectedCategory != "All categories")
+            DrawSelectedFilterPill($"Category: {Shorten(selectedCategory, 22)}", "category", ref first, () => selectedCategory = "All categories");
+        if (selectedApi > 0)
+            DrawSelectedFilterPill($"API {selectedApi}", "api", ref first, () => selectedApi = 0);
+        if (activeView == MarketplaceView.Discover && statusFilter != MarketplaceStatusFilter.All)
+            DrawSelectedFilterPill($"Status: {StatusFilterLabel(statusFilter)}", "status", ref first, () => statusFilter = MarketplaceStatusFilter.All);
+        if (activeView == MarketplaceView.Library && libraryRuntimeFilter != LibraryRuntimeFilter.All)
+            DrawSelectedFilterPill($"Status: {LibraryRuntimeFilterLabel(libraryRuntimeFilter)}", "library-status", ref first, () => libraryRuntimeFilter = LibraryRuntimeFilter.All);
+        if (securityFilter != MarketplaceSecurityFilter.All)
+            DrawSelectedFilterPill(SecurityFilterLabel(securityFilter), "security", ref first, () => securityFilter = MarketplaceSecurityFilter.All);
+        if (contentFilter != MarketplaceContentFilter.All)
+            DrawSelectedFilterPill(ContentFilterLabel(contentFilter), "content", ref first, () => contentFilter = MarketplaceContentFilter.All);
+        if (sort != MarketplaceSort.Name)
+            DrawSelectedFilterPill($"Sort: {SortLabel(sort)}", "sort", ref first, () => sort = MarketplaceSort.Name);
+
+        ImGui.NewLine();
+    }
+
+    private void DrawSelectedFilterPill(string label, string id, ref bool first, Action remove)
+    {
+        var text = $"{label}  ×";
+        var width = Math.Clamp(ImGui.CalcTextSize(text).X + 24f, 78f, 238f);
+        if (!first && ImGui.GetContentRegionAvail().X < width + 8f)
+            ImGui.NewLine();
+        else
+            ImGui.SameLine(0f, 7f);
+
+        if (DrawPillButton(text, $"selected-filter-{StableId(id)}", new Vector2(width, 25f), true))
+        {
+            remove();
+            resetStorefrontScroll = true;
+        }
+
+        first = false;
     }
 
     private void DrawInlineFilterGrid(IReadOnlyList<MarketplacePlugin> filterPlugins, int currentApi)
@@ -228,24 +280,41 @@ internal sealed partial class MarketplaceWindow
     {
         ImGui.TextDisabled("Author");
         ImGui.SetNextItemWidth(-1f);
-        var label = string.IsNullOrWhiteSpace(author) ? "All authors" : Shorten(author, 24);
+        var label = selectedAuthors.Count switch
+        {
+            0 => "All authors",
+            1 => Shorten(selectedAuthors[0], 24),
+            _ => $"{selectedAuthors.Count} authors selected",
+        };
         if (!ImGui.BeginCombo("##omega-author-filter", label))
             return;
 
-        if (ImGui.Selectable("All authors", string.IsNullOrWhiteSpace(author)))
+        ImGui.SetNextItemWidth(-1f);
+        ImGui.InputTextWithHint("##omega-author-search", "Search authors...", ref authorSearch, 128);
+        ImGui.TextDisabled("Multiple authors use AND matching.");
+        ImGui.Separator();
+
+        if (selectedAuthors.Count > 0 && ImGui.Selectable("Clear selected authors"))
         {
-            author = string.Empty;
+            selectedAuthors.Clear();
             resetStorefrontScroll = true;
         }
 
+        var needle = authorSearch.Trim();
         foreach (var value in filterPlugins.SelectMany(x => x.EffectiveAuthors)
                      .Where(x => !string.IsNullOrWhiteSpace(x))
                      .Distinct(StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+                     .Where(x => needle.Length == 0 || Contains(x, needle))
+                     .OrderByDescending(ContainsSelectedAuthor)
+                     .ThenBy(x => x, StringComparer.OrdinalIgnoreCase))
         {
-            if (!ImGui.Selectable(value, author.Equals(value, StringComparison.OrdinalIgnoreCase)))
+            var isSelected = ContainsSelectedAuthor(value);
+            if (!ImGui.Selectable(value, isSelected, ImGuiSelectableFlags.DontClosePopups))
                 continue;
-            author = value;
+            if (isSelected)
+                RemoveSelectedAuthor(value);
+            else
+                AddSelectedAuthor(value);
             resetStorefrontScroll = true;
         }
         ImGui.EndCombo();
@@ -307,7 +376,6 @@ internal sealed partial class MarketplaceWindow
             if (!clicked)
                 continue;
             selectedSource = status.SourceName;
-            author = string.Empty;
             resetStorefrontScroll = true;
         }
         ImGui.EndCombo();
@@ -423,5 +491,4 @@ internal sealed partial class MarketplaceWindow
         }
         ImGui.EndCombo();
     }
-
 }

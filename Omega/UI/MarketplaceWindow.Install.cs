@@ -71,20 +71,29 @@ internal sealed partial class MarketplaceWindow
         EnsurePendingInstallSource(candidates);
         var selected = candidates.FirstOrDefault(x =>
             NormalizeUrl(x.SourceUrl).Equals(NormalizeUrl(pendingInstallSourceUrl), StringComparison.OrdinalIgnoreCase));
+        var selectedNeedsRiskReview = selected is not null &&
+                                      IsRepositoryArtifactDivergent(selected.SourceUrl) &&
+                                      !IsRepositoryRiskAcknowledged(selected.SourceUrl);
 
         var headingY = ImGui.GetCursorPosY();
         ImGui.Text($"Install {plugin.Name}");
 
-        const float installButtonWidth = 88f;
         const float installButtonHeight = 30f;
+        var installButtonWidth = selectedNeedsRiskReview ? 108f : 88f;
         var actionX = ImGui.GetCursorPosX() + Math.Max(0f, ImGui.GetContentRegionAvail().X - installButtonWidth);
         ImGui.SetCursorPos(new Vector2(actionX, headingY));
-        var canInstall = selected is not null && installTask is null;
-        if (!canInstall)
+        var actionLabel = selectedNeedsRiskReview ? "Review risk" : "Install";
+        var canAct = selected is not null && installTask is null;
+        if (!canAct)
             ImGui.BeginDisabled();
-        if (ImGui.Button("Install", new Vector2(installButtonWidth, installButtonHeight)))
-            StartSelectedInstall(selected!);
-        if (!canInstall)
+        if (ImGui.Button(actionLabel, new Vector2(installButtonWidth, installButtonHeight)))
+        {
+            if (selectedNeedsRiskReview)
+                OpenDalamudRepositoryRiskReviewFromInstall();
+            else
+                StartSelectedInstall(selected!);
+        }
+        if (!canAct)
             ImGui.EndDisabled();
 
         ImGui.SetCursorPosY(headingY + installButtonHeight + 4f);
@@ -106,6 +115,13 @@ internal sealed partial class MarketplaceWindow
         {
             foreach (var candidate in candidates)
                 DrawInstallSourceChoice(candidate, currentApi, currentDalamudVersion);
+        }
+
+        if (selectedNeedsRiskReview)
+        {
+            ImGui.Spacing();
+            ImGui.TextColored(new Vector4(0.96f, 0.30f, 0.24f, 1f),
+                "The selected repository has unacknowledged package-divergence evidence. Review and acknowledge that source before installing from it.");
         }
 
         ImGui.Separator();
@@ -193,8 +209,19 @@ internal sealed partial class MarketplaceWindow
         var api = testing ? candidate.TestingDalamudApiLevel ?? candidate.DalamudApiLevel : candidate.DalamudApiLevel;
         var sourceState = DescribeInstallSourceState(candidate);
         var alreadyPresent = IsInstallRepositoryPresent(candidate);
-        var baseline = GetInstallCandidates(candidate.InternalName, currentApi, currentDalamudVersion).FirstOrDefault() ?? candidate;
+        var candidates = GetInstallCandidates(candidate.InternalName, currentApi, currentDalamudVersion);
+        var baseline = candidates.FirstOrDefault(x =>
+                           x.AssemblyVersion.Equals(candidate.AssemblyVersion) &&
+                           x.DalamudApiLevel == candidate.DalamudApiLevel &&
+                           !IsPluginPackageArtifactDivergent(x))
+                       ?? candidates.FirstOrDefault(x =>
+                           x.AssemblyVersion.Equals(candidate.AssemblyVersion) &&
+                           x.DalamudApiLevel == candidate.DalamudApiLevel)
+                       ?? candidate;
         var sourceComparison = CompareRepositorySecurity(candidate, baseline);
+        var repositoryDivergent = IsRepositoryArtifactDivergent(candidate.SourceUrl);
+        var repositoryAcknowledged = repositoryDivergent && IsRepositoryRiskAcknowledged(candidate.SourceUrl);
+        var needsReview = repositoryDivergent && !repositoryAcknowledged;
 
         ImGui.PushID($"install-source-{StableId(candidate.SourceUrl)}");
         var rowStart = ImGui.GetCursorPos();
@@ -210,10 +237,12 @@ internal sealed partial class MarketplaceWindow
         var rowEnd = ImGui.GetCursorPos();
 
         ImGui.SetCursorPos(rowStart + new Vector2(10f, 8f));
-        if (sourceComparison.Worse)
+        if (sourceComparison.Worse || needsReview)
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.94f, 0.28f, 0.26f, 1f));
+        else if (repositoryAcknowledged)
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.95f, 0.64f, 0.20f, 1f));
         DrawRepositoryName(Shorten(candidate.SourceName, 46), candidate.SourceUrl, candidate.SourceIsOfficial, currentApi);
-        if (sourceComparison.Worse)
+        if (sourceComparison.Worse || needsReview || repositoryAcknowledged)
             ImGui.PopStyleColor();
         DrawRepositorySecurityDifferenceIndicator(sourceComparison);
 
@@ -223,8 +252,10 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetCursorPos(rowStart + new Vector2(10f, 33f));
         ImGui.TextDisabled($"Version {version}  •  API {api}");
         ImGui.SetCursorPos(rowStart + new Vector2(10f, 55f));
-        if (sourceComparison.Worse)
+        if (sourceComparison.Worse || needsReview)
             ImGui.TextColored(new Vector4(0.94f, 0.28f, 0.26f, 1f), sourceState);
+        else if (repositoryAcknowledged)
+            ImGui.TextColored(new Vector4(0.95f, 0.64f, 0.20f, 1f), sourceState);
         else
             ImGui.TextDisabled(sourceState);
         ImGui.SetCursorPos(rowStart + new Vector2(10f, 76f));
@@ -262,6 +293,14 @@ internal sealed partial class MarketplaceWindow
 
     private string DescribeInstallSourceState(MarketplacePlugin candidate)
     {
+        if (IsPluginPackageArtifactDivergent(candidate))
+            return "Plugin package differs from the preferred baseline — review required";
+
+        if (IsRepositoryArtifactDivergent(candidate.SourceUrl))
+            return IsRepositoryRiskAcknowledged(candidate.SourceUrl)
+                ? "Repository risk acknowledged — available for explicit installation"
+                : "Repository has known package divergence — acknowledge before use";
+
         if (candidate.SourceIsOfficial)
             return "Built into Dalamud";
 
@@ -279,6 +318,19 @@ internal sealed partial class MarketplaceWindow
         if (!state.Enabled)
             return "Currently disabled; Install will enable it";
         return "Ready";
+    }
+
+    private void OpenDalamudRepositoryRiskReviewFromInstall()
+    {
+        pendingInstall = null;
+        pendingInstallSourceUrl = string.Empty;
+        installPopupOpen = false;
+        ImGui.CloseCurrentPopup();
+        sourceSection = SourceManagerSection.DalamudConfigured;
+        sourceSearch = string.Empty;
+        addSourceOpen = false;
+        requestSettingsPopup = true;
+        settingsOpen = true;
     }
 
     private void EnsurePendingInstallSource(IReadOnlyList<MarketplacePlugin> candidates)

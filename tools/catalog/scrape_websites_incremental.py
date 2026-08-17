@@ -51,6 +51,10 @@ def load_cache(path: Path | None, max_age_hours: float) -> dict[str, dict]:
                 metadata = {}
             if not isinstance(metadata, dict):
                 metadata = {}
+            # Presentation/parser changes must become visible through a real re-scrape rather than
+            # silently reinterpreting an old bounded README/description snapshot forever.
+            if int(metadata.get("presentationSchemaVersion") or 0) != scrape_websites.PRESENTATION_SCHEMA_VERSION:
+                continue
             # Do not reuse presentation cache entries that contain transport/debug
             # diagnostics. They must be re-scraped so stale 404/500 text can never
             # persist as a plugin description.
@@ -80,6 +84,10 @@ def load_cache(path: Path | None, max_age_hours: float) -> dict[str, dict]:
                 metadata["imageUrls"] = json.loads(row["image_urls_json"] or "[]")
             except Exception:
                 metadata["imageUrls"] = []
+            try:
+                metadata["links"] = json.loads(row["links_json"] or "[]") if "links_json" in row.keys() else metadata.get("links", [])
+            except Exception:
+                metadata["links"] = []
             out[normalize_url(row["url"]).lower()] = metadata
         db.close()
     except Exception:

@@ -101,7 +101,13 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
     /// repositories are refreshed at the same time so the Updates page can reflect their versions.
     /// No central Definitions bundle is downloaded by this method.
     /// </summary>
-    public async Task CheckForUpdatesAsync(CancellationToken cancellationToken)
+    public Task CheckDefinitionsForUpdatesAsync(CancellationToken cancellationToken)
+        => CheckForUpdatesCoreAsync(refreshUserSources: false, cancellationToken);
+
+    public Task CheckForUpdatesAsync(CancellationToken cancellationToken)
+        => CheckForUpdatesCoreAsync(refreshUserSources: true, cancellationToken);
+
+    private async Task CheckForUpdatesCoreAsync(bool refreshUserSources, CancellationToken cancellationToken)
     {
         if (Interlocked.Exchange(ref running, 1) != 0)
             return;
@@ -139,7 +145,8 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
                 Mode = catalog.HasLoaded ? CatalogAcquisitionMode.OnlineCatalog : CatalogAcquisitionMode.LocalCache;
             }
 
-            await RefreshUserSourcesAsync().ConfigureAwait(false);
+            if (refreshUserSources)
+                await RefreshUserSourcesAsync().ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
