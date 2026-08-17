@@ -59,6 +59,7 @@ from security_evidence_v2 import (  # noqa: E402
     normalize_row,
     read_dataset_rows,
     read_json_file,
+    write_record_dataset,
     safe_relpath,
     sha256_bytes,
     sha256_file,
@@ -334,13 +335,26 @@ def _identity_maps(db: sqlite3.Connection) -> tuple[dict[int, dict[str, Any]], d
     return plugins, variants, sources
 
 
-def _graph_derived(db: sqlite3.Connection, scan_id: int, variant_id: int) -> dict[str, Any]:
+DERIVED_DATASETS: dict[str, str] = {
+    "dependencyResolutions": "dependency-resolutions",
+    "dependencyIssues": "dependency-issues",
+    "advisoryMatches": "advisory-matches",
+}
+
+
+def _graph_derived(db: sqlite3.Connection, scan_id: int, variant_id: int) -> dict[str, list[dict[str, Any]]]:
     derived = _derived_for_variant(db, scan_id, variant_id)
-    return {
-        "dependencyResolutions": derived.get("dependencyResolutions") or [],
-        "dependencyIssues": derived.get("dependencyIssues") or [],
-        "advisoryMatches": derived.get("advisoryMatches") or [],
-    }
+    return {name: list(derived.get(name) or []) for name in DERIVED_DATASETS}
+
+
+def _write_variant_derived_datasets(
+    candidate: Path, variant_id: int, datasets: dict[str, list[dict[str, Any]]]
+) -> dict[str, Any]:
+    directory = candidate / "derived" / "variants" / f"{variant_id // 1000:04d}" / str(variant_id)
+    result: dict[str, Any] = {}
+    for name, stem in DERIVED_DATASETS.items():
+        result[name] = write_record_dataset(candidate, directory, stem, datasets.get(name) or [])
+    return result
 
 
 def synchronize_candidate(candidate: Path, database: Path, successful_variants: set[int]) -> dict[str, Any]:
@@ -378,13 +392,44 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
             # Graph/advisory derivations, however, are global and are refreshed every run.
             scan_id = int(current.get("scan_id") or 0)
             derived = dict(payload.get("derived") or {})
-            derived.update(_graph_derived(db, scan_id, variant_id))
+            graph_derived = _graph_derived(db, scan_id, variant_id)
+            # The graph projections are potentially very large and are not artifact
+            # evidence. Keep variant JSON lightweight by storing only bounded file
+            # descriptors here; the actual rows live under derived/variants/.
+            for name in DERIVED_DATASETS:
+                derived.pop(name, None)
             payload["derived"] = derived
+            payload["derivedEvidence"] = _write_variant_derived_datasets(candidate, variant_id, graph_derived)
             write_json(path, payload)
             updated_variants += 1
             analysis_path = str((payload.get("analysis") or {}).get("path") or "")
             if analysis_path:
                 referenced_analyses.add(safe_relpath(analysis_path))
+
+    removed_derived = 0
+    derived_root = candidate / "derived" / "variants"
+    if derived_root.exists():
+        live_variant_ids = {
+            int(json.loads(path.read_text(encoding="utf-8")).get("variantId") or 0)
+            for path in (candidate / "variants").rglob("*.json")
+        }
+        for directory in sorted(
+            [p for p in derived_root.glob("*/*") if p.is_dir()],
+            key=lambda p: len(p.parts),
+            reverse=True,
+        ):
+            try:
+                variant_id = int(directory.name)
+            except ValueError:
+                variant_id = 0
+            if variant_id not in live_variant_ids:
+                shutil.rmtree(directory, ignore_errors=True)
+                removed_derived += 1
+        for directory in sorted([p for p in derived_root.rglob("*") if p.is_dir()], key=lambda p: len(p.parts), reverse=True):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
 
     removed_analyses = 0
     analyses_root = candidate / "artifacts"
@@ -405,6 +450,7 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
         "variantsRemoved": removed_variants,
         "analysesReferenced": len(referenced_analyses),
         "analysesGarbageCollected": removed_analyses,
+        "derivedVariantDirectoriesGarbageCollected": removed_derived,
     }
 
 

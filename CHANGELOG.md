@@ -2,6 +2,21 @@
 
 Omega follows semantic product versions. Release entries here are consumed by the GitHub release workflow so the same human-readable notes are published with each immutable release.
 
+## [0.8.82] - 2026-08-17
+
+### Fixed
+
+- Keep Security Evidence v2 variant records lightweight by moving current dependency resolutions, dependency issues, and advisory-match projections into bounded `derived/variants/...` record datasets. Small projections remain readable JSON; large projections are deterministically chunked as compressed JSONL with the existing 32 MiB hard publication ceiling.
+- Extend intrinsic v2 validation to verify every derived dataset file hash, size, record count, and semantic record digest, and reject orphan derived files. The failed 0.8.81 production candidate can therefore be rebuilt without weakening the publication limit.
+- Update the one-time/local v1-to-v2 migration and parity validator to use the same bounded derived-evidence representation while remaining backward-compatible with the already-published inline-derived baseline.
+- Close SQLite test connections explicitly with `contextlib.closing()` in the Security Evidence v2 regression fixtures. Python's SQLite context manager does not close the connection, which caused Windows release runners to retain temporary `.sqlite` handles and fail cleanup with `WinError 32`.
+- Add regressions for Windows-safe v2 SQLite lifecycle and compressed derived-evidence sharding.
+- Ignore root `.staging/` and `artifacts/` working directories so local/security publication scratch output cannot be committed accidentally.
+
+### Availability
+
+- 0.8.82 supersedes the failed 0.8.81 GitHub release attempt. The current validated `security-evidence-v2` snapshot remains the last-known-good production state until a fully staged 0.8.82 scanner candidate passes every publication gate.
+
 ## [0.8.81] - 2026-08-17
 
 ### Fixed

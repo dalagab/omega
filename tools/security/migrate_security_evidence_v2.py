@@ -58,9 +58,15 @@ from security_evidence_v2 import (  # noqa: E402
     sha256_file,
     table_columns,
     table_exists,
+    write_record_dataset,
 )
 
 STATE_FILE = ".omega-security-evidence-v2-migration.json"
+DERIVED_DATASETS = {
+    "dependencyResolutions": "dependency-resolutions",
+    "dependencyIssues": "dependency-issues",
+    "advisoryMatches": "advisory-matches",
+}
 
 
 def utc_now() -> str:
@@ -453,7 +459,9 @@ def migrate(
                 payload = json.loads(variant_path.read_text(encoding="utf-8"))
                 analysis_id = str(payload.get("analysis", {}).get("analysisId") or "")
                 analysis_path = str(payload.get("analysis", {}).get("path") or "")
-                if analysis_id and (output / analysis_path / "manifest.json").is_file():
+                derived_evidence = payload.get("derivedEvidence") or {}
+                has_bounded_derived = all(name in derived_evidence for name in DERIVED_DATASETS)
+                if analysis_id and (output / analysis_path / "manifest.json").is_file() and has_bounded_derived:
                     analysis_paths[analysis_id] = analysis_path
                     artifact_sha = str(current.get("artifact_sha256") or "").strip().lower() or "unknown"
                     bucket = artifact_map.setdefault(artifact_sha, {"artifactSha256": artifact_sha, "analyses": {}, "variants": []})
@@ -482,6 +490,13 @@ def migrate(
                 )
                 analysis_paths[analysis_id] = analysis_path
 
+            derived = _derived_for_variant(db, scan_id, variant_id)
+            derived_evidence: dict[str, Any] = {}
+            derived_dir = output / "derived" / "variants" / f"{variant_id // 1000:04d}" / str(variant_id)
+            for name, stem in DERIVED_DATASETS.items():
+                derived_evidence[name] = write_record_dataset(
+                    output, derived_dir, stem, list(derived.pop(name, []) or []), chunk_bytes=chunk_bytes
+                )
             payload = {
                 "schema": "omega.security-evidence.variant.v2",
                 "formatVersion": FORMAT_VERSION,
@@ -499,7 +514,8 @@ def migrate(
                     "artifactSha256": str(current.get("artifact_sha256") or "").strip().lower(),
                     "recordCount": int(analysis_manifest.get("recordCount") or 0) if analysis_manifest else 0,
                 },
-                "derived": _derived_for_variant(db, scan_id, variant_id),
+                "derived": derived,
+                "derivedEvidence": derived_evidence,
             }
             _write_json(variant_path, payload)
             artifact_sha = str(current.get("artifact_sha256") or "").strip().lower() or "unknown"

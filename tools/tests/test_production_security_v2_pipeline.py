@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import closing
 from pathlib import Path
 import io
 import json
@@ -39,7 +40,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
         built = root / "built"
         test_sqlite_catalog.run_builder(common.ROOT, built, curated, raw, enriched, websites)
         database = built / "omega-catalog.sqlite"
-        with sqlite3.connect(database) as db:
+        with closing(sqlite3.connect(database)) as db:
             db.row_factory = sqlite3.Row
             security_scan.ensure_schema(db)
             variant = db.execute(
@@ -90,6 +91,16 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             db.commit()
         return database, variant_id, plugin_id
 
+    def test_v2_sqlite_test_connections_are_windows_cleanup_safe(self) -> None:
+        # sqlite3.Connection.__exit__ commits/rolls back but does not close the handle.
+        # A leaked handle is tolerated by POSIX unlink semantics and rejected by Windows,
+        # so v2 temporary-database tests must always wrap connections in closing().
+        for path in (
+            Path(__file__),
+            Path(__file__).with_name("test_security_evidence_v2.py"),
+        ):
+            self.assertNotIn("with sqlite3." + "connect(", path.read_text(encoding="utf-8"))
+
     def test_materializes_published_v2_into_disposable_working_state(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-production-") as td:
             root = Path(td)
@@ -101,7 +112,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             # Simulate the catalog builder delivering identities/presentation without detailed state.
             base = root / "base.sqlite"
             shutil.copy2(database, base)
-            with sqlite3.connect(base) as db:
+            with closing(sqlite3.connect(base)) as db:
                 security_scan.ensure_schema(db)
                 db.execute("PRAGMA foreign_keys=OFF")
                 for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
@@ -112,7 +123,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             work = root / "work.sqlite"
             report = materialize_current_state(base, evidence, work)
             self.assertEqual(report["currentVariantsMaterialized"], 1)
-            with sqlite3.connect(work) as db:
+            with closing(sqlite3.connect(work)) as db:
                 self.assertEqual(db.execute("SELECT COUNT(*) FROM plugin_security_current").fetchone()[0], 1)
                 self.assertEqual(db.execute("SELECT COUNT(*) FROM plugin_security_findings").fetchone()[0], 1)
                 dep = db.execute("SELECT kind,name,resolved_version FROM plugin_security_dependencies").fetchone()
@@ -124,7 +135,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             root = Path(td)
             database, variant_id, plugin_id = self.make_catalog_with_security(root)
             previous = _current_rows(database)
-            with sqlite3.connect(database) as db:
+            with closing(sqlite3.connect(database)) as db:
                 source_id = int(db.execute("SELECT source_id FROM plugin_variants WHERE variant_id=?", (variant_id,)).fetchone()[0])
                 db.execute(
                     """INSERT INTO plugin_security_scans(scan_id,plugin_id,variant_id,source_id,artifact_sha256,
@@ -141,7 +152,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             successful, failed = _restore_last_known_good(database, previous)
             self.assertEqual(successful, [])
             self.assertEqual(failed, [variant_id])
-            with sqlite3.connect(database) as db:
+            with closing(sqlite3.connect(database)) as db:
                 current = db.execute("SELECT scan_id,status,artifact_sha256 FROM plugin_security_current WHERE variant_id=?", (variant_id,)).fetchone()
                 self.assertEqual(current, (9001, "complete", "a" * 64))
 
@@ -156,7 +167,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
 
             base = root / "base.sqlite"
             shutil.copy2(database, base)
-            with sqlite3.connect(base) as db:
+            with closing(sqlite3.connect(base)) as db:
                 security_scan.ensure_schema(db)
                 db.execute("PRAGMA foreign_keys=OFF")
                 for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
@@ -211,6 +222,15 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertTrue((root / "publication" / "omega-marketplace.sqlite").is_file())
             self.assertTrue((root / "publication" / "omega-marketplace.sqlite.zip").is_file())
             self.assertEqual(result["summary"]["nugetPackageVersionPairs"], 1)
+            variant_file = next((root / "candidate" / "variants").rglob("*.json"))
+            payload = json.loads(variant_file.read_text(encoding="utf-8"))
+            for name in ("dependencyResolutions", "dependencyIssues", "advisoryMatches"):
+                self.assertNotIn(name, payload.get("derived") or {})
+                descriptor = (payload.get("derivedEvidence") or {}).get(name)
+                self.assertIsInstance(descriptor, dict)
+                self.assertIn("recordDigest", descriptor)
+                for file_info in descriptor.get("files") or []:
+                    self.assertLessEqual(int(file_info.get("bytes") or 0), 32 * 1024 * 1024)
 
 
     def test_full_incremental_pipeline_merges_fresh_deps_json_analysis(self) -> None:
@@ -218,7 +238,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             root = Path(td)
             database, variant_id, _plugin_id = self.make_catalog_with_security(root)
             # The published baseline came from scanner 2.4.0; 2.5.0 must refresh it.
-            with sqlite3.connect(database) as db:
+            with closing(sqlite3.connect(database)) as db:
                 db.execute("UPDATE plugin_security_scans SET scanner_version='2.4.0' WHERE scan_id=9001")
                 db.execute("UPDATE plugin_security_current SET scanner_version='2.4.0' WHERE variant_id=?", (variant_id,))
                 db.commit()
@@ -228,7 +248,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
 
             base = root / "base.sqlite"
             shutil.copy2(database, base)
-            with sqlite3.connect(base) as db:
+            with closing(sqlite3.connect(base)) as db:
                 security_scan.ensure_schema(db)
                 db.execute("PRAGMA foreign_keys=OFF")
                 for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
@@ -312,7 +332,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             migrate(database, evidence, reset=True)
             base = root / "base.sqlite"
             shutil.copy2(database, base)
-            with sqlite3.connect(base) as db:
+            with closing(sqlite3.connect(base)) as db:
                 security_scan.ensure_schema(db)
                 db.execute("PRAGMA foreign_keys=OFF")
                 for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
@@ -345,7 +365,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="omega-v2-revision-") as td:
             root = Path(td)
             database, variant_id, plugin_id = self.make_catalog_with_security(root)
-            with sqlite3.connect(database) as db:
+            with closing(sqlite3.connect(database)) as db:
                 db.row_factory = sqlite3.Row
                 before = _semantic_security_revision(db)
                 old_scan = dict(db.execute("SELECT * FROM plugin_security_scans WHERE scan_id=9001").fetchone())

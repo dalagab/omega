@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import closing
 import json
 from pathlib import Path
 import sqlite3
@@ -15,7 +16,7 @@ if str(SECURITY) not in sys.path:
 from migrate_security_evidence_v2 import _resolve_source_database, migrate
 from publish_security_evidence_v2 import preflight, validate_audit_report, validate_snapshot_report
 from security_evidence_download import DownloadedEvidence, parse_sidecar, safe_extract_sqlite
-from security_evidence_v2 import sha256_file, validate_snapshot
+from security_evidence_v2 import (MAX_PUBLISH_FILE_BYTES, read_record_dataset, sha256_file, validate_snapshot, write_record_dataset)
 from validate_security_evidence_v2 import infer_database_from_migration_state, validate
 
 
@@ -161,7 +162,7 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             database = self.make_database(root / "evidence.sqlite")
-            with sqlite3.connect(database) as db:
+            with closing(sqlite3.connect(database)) as db:
                 db.execute("UPDATE plugin_security_scans SET status='failed',artifact_sha256='' WHERE scan_id=11")
                 db.execute("UPDATE plugin_security_current SET status='failed',artifact_sha256='' WHERE variant_id=2")
                 db.commit()
@@ -221,6 +222,23 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             self.assertEqual(validate_audit_report(report)["counts"]["warn"], 1)
             with self.assertRaisesRegex(RuntimeError, "warnings"):
                 validate_audit_report(report, strict_warnings=True)
+
+    def test_large_derived_record_dataset_uses_bounded_compressed_shards(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            rows = [
+                {"component_key": f"component-{i}", "evidence": "x" * 512, "status": "resolved"}
+                for i in range(6000)
+            ]
+            descriptor = write_record_dataset(
+                root, root / "derived" / "variants" / "0000" / "1", "dependency-resolutions", rows,
+                inline_bytes=1024, chunk_bytes=1024 * 1024,
+            )
+            self.assertEqual(descriptor["records"], len(rows))
+            self.assertGreaterEqual(len(descriptor["files"]), 1)
+            self.assertTrue(all(item["encoding"] == "jsonl+gzip" for item in descriptor["files"]))
+            self.assertTrue(all(int(item["bytes"]) <= MAX_PUBLISH_FILE_BYTES for item in descriptor["files"]))
+            self.assertEqual(read_record_dataset(root, descriptor), rows)
 
     def test_download_helper_sidecar_and_safe_sqlite_extraction(self) -> None:
         import zipfile

@@ -23,6 +23,7 @@ SCHEMA = "omega.security-evidence.v2"
 FORMAT_VERSION = 2
 DEFAULT_CHUNK_BYTES = 16 * 1024 * 1024
 MAX_PUBLISH_FILE_BYTES = 32 * 1024 * 1024
+DEFAULT_INLINE_DATASET_BYTES = 4 * 1024 * 1024
 JSON_COLUMNS_SUFFIX = "_json"
 NUGET_KINDS = ("nuget", "nuget-lock", "nuget-resolved")
 
@@ -302,6 +303,105 @@ def verify_file_entry(root: Path, entry: dict[str, Any], *, max_bytes: int | Non
     return errors
 
 
+def write_record_dataset(
+    root: Path,
+    directory: Path,
+    stem: str,
+    rows: Iterable[dict[str, Any]],
+    *,
+    chunk_bytes: int = DEFAULT_CHUNK_BYTES,
+    inline_bytes: int = DEFAULT_INLINE_DATASET_BYTES,
+) -> dict[str, Any]:
+    """Write a bounded record collection as JSON or deterministic JSONL+gzip shards.
+
+    This is used for evidence that belongs to a current variant but is not part of the
+    immutable artifact analysis (for example dependency resolution and OSV projection
+    rows).  The descriptor has the same records/digest/files shape as an analysis
+    dataset so intrinsic validation can use one contract for both.
+    """
+    root = root.resolve()
+    directory = directory.resolve()
+    if directory != root and root not in directory.parents:
+        raise ValueError(f"record dataset directory escaped evidence root: {directory}")
+    directory.mkdir(parents=True, exist_ok=True)
+    safe_stem = "".join(ch if ch.isalnum() or ch in "-_." else "-" for ch in stem).strip(".-") or "records"
+
+    # Remove the previous transport representation for this logical dataset before
+    # replacing it, otherwise a JSON -> JSONL transition would leave orphan files.
+    for old in directory.glob(f"{safe_stem}*"):
+        if old.is_file() and (old.name == f"{safe_stem}.json" or old.name.startswith(f"{safe_stem}-")):
+            old.unlink()
+
+    materialized: list[dict[str, Any]] = []
+    row_hashes: list[str] = []
+    total_uncompressed = 0
+    for row in rows:
+        normalized = dict(row)
+        encoded = canonical_json_bytes(normalized)
+        materialized.append(normalized)
+        row_hashes.append(sha256_bytes(encoded))
+        total_uncompressed += len(encoded) + 1
+    count, digest = dataset_record_digest_from_hashes(row_hashes)
+
+    if total_uncompressed <= max(0, int(inline_bytes)):
+        path = directory / f"{safe_stem}.json"
+        write_json(path, materialized)
+        return {
+            "records": count,
+            "recordDigest": digest,
+            "files": [file_entry(root, path, records=count, record_digest=digest, encoding="json")],
+        }
+
+    writer = JsonlGzipChunkWriter(directory, safe_stem, target_bytes=chunk_bytes)
+    for row in materialized:
+        writer.write(row)
+    chunks = writer.close()
+    return {
+        "records": count,
+        "recordDigest": digest,
+        "files": [
+            file_entry(
+                root,
+                directory / chunk.path,
+                records=chunk.records,
+                record_digest=chunk.record_digest,
+                encoding=chunk.encoding,
+            )
+            for chunk in chunks
+        ],
+    }
+
+
+def read_record_dataset(root: Path, descriptor: dict[str, Any]) -> list[dict[str, Any]]:
+    """Read a generic v2 records/digest/files descriptor.
+
+    Hash/size verification remains the validator's job; this helper intentionally only
+    performs safe-path parsing and decoding so callers can reconstruct semantic rows.
+    """
+    rows: list[dict[str, Any]] = []
+    for file_info in descriptor.get("files") or []:
+        if not isinstance(file_info, dict):
+            continue
+        rel = safe_relpath(str(file_info.get("path") or ""))
+        path = root.resolve() / rel
+        encoding = str(file_info.get("encoding") or "")
+        if encoding == "json":
+            value = json.loads(path.read_text(encoding="utf-8"))
+            values = value if isinstance(value, list) else [value]
+            rows.extend(item for item in values if isinstance(item, dict))
+        elif encoding == "jsonl+gzip":
+            with gzip.open(path, "rt", encoding="utf-8") as stream:
+                for line in stream:
+                    if not line.strip():
+                        continue
+                    value = json.loads(line)
+                    if isinstance(value, dict):
+                        rows.append(value)
+        else:
+            raise ValueError(f"unsupported record dataset encoding: {encoding!r}")
+    return rows
+
+
 def row_digest_from_query(db: sqlite3.Connection, sql: str, params: Sequence[Any], *, exclude: Iterable[str]) -> tuple[int, str]:
     row_hashes: list[str] = []
     count = 0
@@ -443,6 +543,46 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
             except ValueError:
                 pass
 
+    def validate_record_descriptor(label: str, dataset: dict[str, Any]) -> None:
+        declared_records = int(dataset.get("records") or 0)
+        file_records = 0
+        row_hashes: list[str] = []
+        for file_info in dataset.get("files") or []:
+            if not isinstance(file_info, dict):
+                errors.append(f"{label}: malformed file entry")
+                continue
+            errors.extend(f"{label}: {item}" for item in verify_file_entry(root, file_info, max_bytes=MAX_PUBLISH_FILE_BYTES))
+            try:
+                rel = safe_relpath(str(file_info.get("path") or ""))
+                referenced_files.add(rel)
+                path = root / rel
+                encoding = str(file_info.get("encoding") or "")
+                if encoding == "json":
+                    value = json.loads(path.read_text(encoding="utf-8"))
+                    rows = value if isinstance(value, list) else [value]
+                    rows = [row for row in rows if isinstance(row, dict)]
+                    for row in rows:
+                        row_hashes.append(sha256_bytes(canonical_json_bytes(row)))
+                    file_records += len(rows)
+                elif encoding == "jsonl+gzip":
+                    with gzip.open(path, "rt", encoding="utf-8") as stream:
+                        for line in stream:
+                            if not line.strip():
+                                continue
+                            row = json.loads(line)
+                            if isinstance(row, dict):
+                                row_hashes.append(sha256_bytes(canonical_json_bytes(row)))
+                                file_records += 1
+                else:
+                    errors.append(f"{label}: unsupported encoding {encoding!r}")
+            except Exception as exc:
+                errors.append(f"{label}: cannot read records: {type(exc).__name__}: {exc}")
+        count, digest = dataset_record_digest_from_hashes(row_hashes)
+        if count != declared_records or file_records != declared_records:
+            errors.append(f"{label}: record count mismatch declared={declared_records}, read={count}")
+        if str(dataset.get("recordDigest") or "") != digest:
+            errors.append(f"{label}: semantic record digest mismatch")
+
     for entry in plugin_entries:
         try:
             variant_id = int(entry.get("variantId") or 0)
@@ -468,6 +608,16 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                 errors.append(f"variant {variant_id} references missing artifact group {artifact_key}")
             elif variant_id not in {int(value) for value in (group.get("variants") or []) if str(value).isdigit()}:
                 errors.append(f"variant {variant_id} is missing from artifact group {artifact_key}")
+            derived_evidence = payload.get("derivedEvidence") or {}
+            if not isinstance(derived_evidence, dict):
+                errors.append(f"variant {variant_id} derivedEvidence is not an object")
+            else:
+                for dataset_name, dataset in sorted(derived_evidence.items()):
+                    if not isinstance(dataset, dict):
+                        errors.append(f"variant {variant_id} derived dataset {dataset_name} is not an object")
+                        continue
+                    validate_record_descriptor(f"variant {variant_id}/derived/{dataset_name}", dataset)
+
             if str(current.get("status") or "") == "complete":
                 if not analysis_id or not analysis_path:
                     errors.append(f"variant {variant_id} is complete but has no analysis pointer")
@@ -568,6 +718,8 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                 analysis_dir = path.rsplit("/", 1)[0]
                 if analysis_dir not in referenced_analysis_paths:
                     errors.append(f"orphan analysis object is still published: {analysis_dir}")
+            if path.startswith("derived/") and path not in referenced_files:
+                errors.append(f"orphan derived evidence file is still published: {path}")
 
     return {
         "schema": "omega.security-evidence.snapshot-validation.v2",

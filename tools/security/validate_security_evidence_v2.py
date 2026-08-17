@@ -34,6 +34,7 @@ from security_evidence_v2 import (  # noqa: E402
     open_ro,
     primary_key_column,
     read_meta,
+    read_record_dataset,
     row_digest_from_query,
     safe_relpath,
     sha256_bytes,
@@ -231,7 +232,11 @@ def validate(database: Path, evidence: Path, *, quick: bool = False) -> dict[str
             _compare_exact(f"variant {variant_id} plugin identity", plugin, payload.get("plugin"), errors)
             _compare_exact(f"variant {variant_id} variant identity", variant, payload.get("variant"), errors)
             _compare_exact(f"variant {variant_id} source identity", source, payload.get("source"), errors)
-            _compare_exact(f"variant {variant_id} derived evidence", _expected_derived(db, scan_id), payload.get("derived"), errors)
+            actual_derived = dict(payload.get("derived") or {})
+            for name, descriptor in (payload.get("derivedEvidence") or {}).items():
+                if isinstance(descriptor, dict):
+                    actual_derived[name] = read_record_dataset(evidence, descriptor)
+            _compare_exact(f"variant {variant_id} derived evidence", _expected_derived(db, scan_id), actual_derived, errors)
 
             if str(current.get("status") or "") != "complete":
                 continue
