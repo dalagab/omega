@@ -49,19 +49,26 @@ def followups(database: Path) -> dict:
         db.row_factory = sqlite3.Row
         rows = db.execute(
             """SELECT p.internal_name,v.variant_id,v.name,s.name AS source_name,s.url AS source_url,
-                      sc.artifact_url,sc.report_json
+                      sc.artifact_url,sc.source_available,sc.report_json
                    FROM plugin_security_current sc
                    JOIN plugin_variants v ON v.variant_id=sc.variant_id
                    JOIN plugins p ON p.plugin_id=v.plugin_id
                    JOIN sources s ON s.source_id=v.source_id
-                  WHERE sc.status='complete' AND sc.source_available=0
+                  WHERE sc.status='complete'
                   ORDER BY p.internal_name COLLATE NOCASE,s.name COLLATE NOCASE,v.variant_id"""
         ).fetchall()
 
     # One follow-up per stable plugin/feed pair. Multiple historical/current package
     # variants in the same feed should not create duplicate human work.
     projected: dict[str, dict] = {}
+    resolved_keys: set[str] = set()
     for row in rows:
+        internal_name = str(row["internal_name"] or "")
+        source_url = str(row["source_url"] or "")
+        override_key = source_override_key(internal_name, source_url)
+        if int(row["source_available"] or 0):
+            resolved_keys.add(f"omega-source-followup:{override_key}")
+            continue
         try:
             report = json.loads(str(row["report_json"] or "{}"))
         except json.JSONDecodeError:
@@ -71,9 +78,6 @@ def followups(database: Path) -> dict:
         if is_not_found(error):
             continue
 
-        internal_name = str(row["internal_name"] or "")
-        source_url = str(row["source_url"] or "")
-        override_key = source_override_key(internal_name, source_url)
         retryable = is_retryable(error)
         item = {
             "key": f"omega-source-followup:{override_key}",
@@ -99,6 +103,7 @@ def followups(database: Path) -> dict:
         "schema": SCHEMA,
         "count": len(items),
         "actionableCount": sum(1 for item in items if item["actionable"]),
+        "resolvedKeys": sorted(resolved_keys),
         "followups": items,
     }
 

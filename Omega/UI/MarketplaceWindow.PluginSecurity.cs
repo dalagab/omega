@@ -144,6 +144,25 @@ internal sealed partial class MarketplaceWindow
             ImGui.SameLine(0f, 8f);
             DrawKnownRiskBadge(plugin);
         }
+        ImGui.SameLine(0f, 8f);
+        DrawPublicSourceAvailabilityBadge(plugin);
+    }
+
+    private static void DrawPublicSourceAvailabilityBadge(MarketplacePlugin plugin)
+    {
+        if (plugin.SecuritySourceAvailable)
+        {
+            DrawDiscoverTextBadge("Source: public source inspected", new Vector4(0.10f, 0.30f, 0.36f, 0.96f));
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(plugin.SecuritySourceToBinaryVerified
+                    ? "Public source was inspected and the published package was verified against that source."
+                    : "Public source was inspected, but the published package was not verified to match that source.");
+            return;
+        }
+
+        DrawDiscoverTextBadge("Source: public source unavailable.", new Vector4(0.25f, 0.25f, 0.27f, 0.94f));
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("No public source was available to Omega for this repository package scan.");
     }
 
     private static void DrawKnownRiskBadge(MarketplacePlugin plugin)

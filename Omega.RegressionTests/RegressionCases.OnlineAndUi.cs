@@ -17,10 +17,10 @@ internal static partial class RegressionCases
         Contains(workflow, "scrape_websites_incremental.py", "incremental website enrichment step");
         Contains(workflow, "build_sqlite_catalog.py", "SQLite build step");
         Contains(workflow, "test_sqlite_catalog.py", "SQLite builder self-test step");
-        Contains(workflow, "omega-security-evidence.sqlite.zip", "builder seeds authoritative server-side evidence state");
-        Contains(workflow, "omega-marketplace.sqlite.zip", "builder reuses the small client database for presentation caches");
+        Contains(workflow, "omega-marketplace.sqlite.zip", "builder reuses the small client database for presentation and identity continuity");
         Contains(workflow, "Download previous marketplace database", "small client database supplies presentation/enrichment cache");
-        Contains(workflow, "Download previous security evidence database as authoritative seed", "full evidence database remains the authoritative server-side build seed");
+        Contains(workflow, "Download previous small marketplace database as catalog seed", "build state no longer depends on the archived detailed evidence SQLite");
+        False(workflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "catalog builder never downloads the archived giant v1 security evidence bundle");
         Contains(workflow, "--seed-database catalog/seed/omega-catalog.sqlite", "manifest fetches use prior ETag/Last-Modified state");
         Contains(workflow, "validate_base_catalog.py", "generated database and transport are validated by tested Python");
         Contains(workflow, "name: omega-sqlite-catalog", "validated base catalog is handed to the security workflow");
@@ -177,14 +177,14 @@ internal static partial class RegressionCases
         False(builder.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "base catalog builder never publishes an intermediate production database");
         Contains(builder, "name: omega-sqlite-catalog", "base catalog is handed to security analysis as an Actions artifact");
 
-        var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-compaction.yml"));
-        var publishIndex = workflow.IndexOf("Replace small client catalog assets only", StringComparison.Ordinal);
-        var verifyIndex = workflow.IndexOf("Verify published marketplace database", StringComparison.Ordinal);
-        True(publishIndex >= 0 && verifyIndex > publishIndex, "published marketplace SQLite bundle is verified after release upload");
+        var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "security-scanner.yml"));
+        var evidencePublishIndex = workflow.IndexOf("Publish validated Security Evidence v2 snapshot atomically", StringComparison.Ordinal);
+        var marketplacePublishIndex = workflow.IndexOf("Publish small client marketplace only after all v2 gates pass", StringComparison.Ordinal);
+        True(evidencePublishIndex >= 0 && marketplacePublishIndex > evidencePublishIndex, "client marketplace publication follows the validated detailed evidence publication step");
         Contains(workflow, "omega-marketplace.sqlite.zip", "client release contains only the marketplace SQLite transport bundle");
-        Contains(workflow, "omega-security-evidence.sqlite.zip", "detailed evidence is published to its separate release");
-        Contains(workflow, "needs.compact.outputs.publish_marketplace == 'true'", "semantic no-op runs do not replace the client marketplace database");
-        Contains(workflow, "security-scan-ledger.json", "timestamp-only scan freshness can advance without replacing the database");
+        Contains(workflow, "--snapshot-validation-report", "detailed v2 evidence must pass intrinsic snapshot validation");
+        Contains(workflow, "--audit-report", "detailed v2 evidence must pass the independent developer audit");
+        False(workflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "live pipeline no longer publishes a giant detailed evidence SQLite bundle");
 
         var validator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_marketplace_catalog.py"));
         Contains(validator, "catalogSha256", "published database bytes are hash verified");

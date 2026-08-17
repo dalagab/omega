@@ -201,7 +201,7 @@ jobs:
         with:
           name: website-enrichment
           path: catalog/
-      - name: Download previous security evidence database as authoritative seed
+      - name: Download previous small marketplace database as catalog seed
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -209,17 +209,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          gh release download security-evidence-latest --repo "$GH_REPO" --pattern omega-security-evidence.sqlite.zip --dir catalog/seed || true
-          if [ ! -f catalog/seed/omega-security-evidence.sqlite.zip ]; then
-            gh release download catalog-latest --repo "$GH_REPO" --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
-          fi
-      - name: Build one authoritative server-side catalog state
+          # Security Evidence v2 is the detailed security state. The catalog builder only
+          # needs the small marketplace projection for conditional/history-aware identity
+          # rebuilding; it must never pull the archived multi-gigabyte v1 evidence DB.
+          gh release download catalog-latest --repo "$GH_REPO" --pattern omega-marketplace.sqlite.zip --dir catalog/seed || true
+      - name: Build authoritative catalog identities and presentation
         shell: bash
         run: |
           set -euo pipefail
           seed=""
-          [ -f catalog/seed/omega-security-evidence.sqlite.zip ] && seed=catalog/seed/omega-security-evidence.sqlite.zip
-          [ -z "$seed" ] && [ -f catalog/seed/omega-catalog.sqlite.zip ] && seed=catalog/seed/omega-catalog.sqlite.zip
+          [ -f catalog/seed/omega-marketplace.sqlite.zip ] && seed=catalog/seed/omega-marketplace.sqlite.zip
           args=(
             --out catalog/dist
             --curated sources/curated-sources.json

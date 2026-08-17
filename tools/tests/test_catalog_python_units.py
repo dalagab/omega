@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import io
 import json
 import datetime as dt
 from collections import defaultdict
@@ -8,6 +9,7 @@ from contextlib import closing
 import sqlite3
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -99,6 +101,10 @@ class CatalogPythonUnitTests(unittest.TestCase):
         )
         self.assertEqual(["https://github.com/example/Plugin"], candidates)
         self.assertEqual("", source_resolution.github_repository_url("https://downloads.example.invalid/Plugin.zip"))
+        self.assertEqual(
+            ["https://git.honse.farm/astraea/honse-farm"],
+            source_resolution.source_candidates("https://git.honse.farm/astraea/honse-farm", "https://downloads.honse.farm/main/honsefarm.zip"),
+        )
         first = source_resolution.source_override_key("Plugin", "https://example.invalid/feed.json")
         second = source_resolution.source_override_key("plugin", "https://example.invalid/feed.json")
         self.assertEqual(first, second)
@@ -133,14 +139,38 @@ class CatalogPythonUnitTests(unittest.TestCase):
                 db.execute("INSERT INTO sources VALUES(1,'Repo','https://example.invalid/repo.json')")
                 db.execute("INSERT INTO plugin_variants VALUES(10,1,1,'Example')")
                 db.execute("INSERT INTO plugin_variants VALUES(11,1,1,'Example')")
+                db.execute("INSERT INTO plugin_variants VALUES(12,1,1,'Example')")
                 db.execute("INSERT INTO plugin_security_current VALUES(10,'complete',0,'https://example.invalid/a.zip',?)", (json.dumps({"source":{"error":"No GitHub source candidate could be derived","candidates":[]}}),))
                 db.execute("INSERT INTO plugin_security_current VALUES(11,'complete',0,'https://example.invalid/b.zip',?)", (json.dumps({"source":{"error":"HTTP Error 429: Too Many Requests","candidates":["https://github.com/example/Example"]}}),))
+                db.execute("INSERT INTO plugin_security_current VALUES(12,'complete',1,'https://example.invalid/c.zip',?)", (json.dumps({"source":{"error":"","candidates":["https://github.com/example/Example"]}}),))
                 db.commit()
             document = source_scan_followups.followups(database)
         self.assertEqual(1, document["count"])
         self.assertEqual(1, document["actionableCount"])
         self.assertTrue(document["followups"][0]["actionable"])
         self.assertTrue(document["followups"][0]["overrideKey"].startswith("src-"))
+        self.assertEqual([document["followups"][0]["key"]], document["resolvedKeys"])
+
+    def test_source_followup_reconciliation_closes_only_confirmed_source_coverage(self) -> None:
+        existing = [
+            {"number": 10, "body": "<!-- omega-source-followup:src-resolved -->", "title": "Resolved"},
+            {"number": 11, "body": "<!-- omega-source-followup:src-transient -->", "title": "Transient"},
+        ]
+        calls: list[tuple[str, ...]] = []
+
+        def fake_gh(*args: str) -> str:
+            calls.append(args)
+            return json.dumps(existing) if args[:2] == ("issue", "list") else ""
+
+        document = {
+            "followups": [{"key": "omega-source-followup:src-transient", "actionable": False}],
+            "resolvedKeys": ["omega-source-followup:src-resolved"],
+        }
+        with mock.patch.object(create_source_followup_issues, "gh", side_effect=fake_gh):
+            result = create_source_followup_issues.reconcile_issues(document, "example/omega")
+        self.assertEqual((0, 1), result)
+        closed_numbers = [call[2] for call in calls if call[:2] == ("issue", "close")]
+        self.assertEqual(["10"], closed_numbers)
 
     def test_source_candidate_failover_does_not_mix_partial_evidence_from_failed_repository(self) -> None:
         calls = []
@@ -157,6 +187,35 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertTrue(result["available"])
         self.assertNotIn("failed-candidate", hits["network.http"])
         self.assertIn("successful-candidate", hits["filesystem.write"])
+
+    def test_self_hosted_public_git_source_is_scanned_without_github_api(self) -> None:
+        class FakeRepository:
+            repository = "https://git.example.test/team/plugin"
+            commit = "abc123"
+            branch = "main"
+            tree_sha = "tree123"
+            files = {"Plugin.csproj": 120, "Plugin.cs": 80}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read_file(self, path, _maximum_bytes):
+                values = {
+                    "Plugin.csproj": b'<Project Sdk="Dalamud.NET.Sdk"><PropertyGroup><AssemblyName>HonseFarm.Client</AssemblyName></PropertyGroup></Project>',
+                    "Plugin.cs": b'System.Net.Http.HttpClient client;',
+                }
+                return values[path]
+
+        hits = defaultdict(list)
+        with mock.patch.object(security_scan, "PublicGitSource", return_value=FakeRepository()):
+            result = security_scan.fetch_source(["https://git.example.test/team/plugin"], "", hits, "HonseFarm.Client", "HonseFarm.Client")
+        self.assertTrue(result["available"])
+        self.assertEqual("https://git.example.test/team/plugin", result["repository"])
+        self.assertEqual("abc123", result["commit"])
+        self.assertTrue(any("System.Net.Http.HttpClient" in item for item in hits["network.http"]))
 
     def test_source_scope_scans_only_plugin_build_graph_in_monorepo(self) -> None:
         paths = {
@@ -303,6 +362,22 @@ class CatalogPythonUnitTests(unittest.TestCase):
         normalized = enrich_metadata._normalize_plugin(raw)
         self.assertTrue(enrich_metadata._is_metadata_complete(normalized))
         self.assertEqual("preserved", normalized["rawManifest"]["FutureField"])
+
+    def test_enrichment_accepts_bom_prefixed_single_plugin_manifests(self) -> None:
+        source = {"url": "https://example.invalid/repo.json", "provider": "Community"}
+        body = ("\ufeff" + json.dumps({
+            "Author": "Omega",
+            "Name": "Example",
+            "InternalName": "Example",
+            "AssemblyVersion": "1.2.3.4",
+            "DalamudApiLevel": 15,
+            "DownloadLinkInstall": "https://example.invalid/Example.zip",
+        })).encode("utf-8")
+        with mock.patch.object(enrich_metadata, "http_get", return_value=(200, body, {})):
+            row = enrich_metadata.fetch_source(source)
+        self.assertTrue(row["ok"])
+        self.assertEqual(1, row["pluginCount"])
+        self.assertEqual("Example", row["plugins"][0]["internalName"])
 
     def test_enrichment_accepts_pluginmaster_trailing_commas_without_touching_strings(self) -> None:
         source = {"url": "https://example.invalid/repo.json", "provider": "Community"}
@@ -455,6 +530,7 @@ class CatalogPythonUnitTests(unittest.TestCase):
         )
         self.assertEqual("https://api.github.com/repos/example", endpoints[0]["url"])
         self.assertEqual("recognised-platform", endpoints[0]["classification"])
+        self.assertEqual("source hosting", endpoints[0]["purpose"])
         findings, capabilities = security_endpoint_inventory.endpoint_findings(endpoints, has_network_capability=True)
         self.assertEqual("informational", findings[0]["severity"])
         self.assertIn("Endpoint: api.github.com", capabilities)
@@ -470,10 +546,42 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertEqual("high", severities["private-or-loopback"])
         self.assertIn("not proof of a runtime connection", findings[0]["description"])
 
+    def test_endpoint_inventory_marks_direct_ip_and_redacts_webhook_tokens(self) -> None:
+        endpoints = security_endpoint_inventory.endpoint_candidates(
+            'HttpClient.GetStringAsync("https://8.8.8.8/update"); HttpClient.PostAsync("https://discord.com/api/webhooks/12345678901234567890/this-is-a-long-secret-token-value", body);',
+            "source:Plugin.cs",
+        )
+        self.assertEqual("public-ip-literal", endpoints[0]["classification"])
+        self.assertEqual("direct public IP", endpoints[0]["purpose"])
+        self.assertEqual("webhook-endpoint", endpoints[1]["classification"])
+        self.assertEqual("https://discord.com/api/webhooks/<redacted>", endpoints[1]["url"])
+
+    def test_endpoint_inventory_distinguishes_community_lodestone_and_source_links(self) -> None:
+        endpoints = security_endpoint_inventory.endpoint_candidates(
+            '"https://discord.gg/community" "https://na.finalfantasyxiv.com/lodestone/character/123/" "https://git.example.test/team/plugin/-/tree/main/Plugin.cs" "https://server.example.com/" "http://nonemptyuri/path"',
+            "source:Plugin.cs",
+        )
+        self.assertEqual(["community-invite", "ffxiv-lodestone-link", "source-reference"], [item["classification"] for item in endpoints])
+        findings, _ = security_endpoint_inventory.endpoint_findings(endpoints, True, ["https://git.example.test/team/plugin"])
+        self.assertEqual(["Community invite: Discord", "Official FFXIV Lodestone page link"], [item["title"] for item in findings])
+        self.assertTrue(all("server.example.com" not in str(item) and "nonemptyuri" not in str(item) for item in endpoints))
+
     def test_endpoint_inventory_reports_dynamic_destinations_when_network_target_is_not_literal(self) -> None:
         findings, capabilities = security_endpoint_inventory.endpoint_findings([], has_network_capability=True)
         self.assertEqual("network.endpoint.dynamic-or-undetermined", findings[0]["ruleId"])
         self.assertEqual(["Network destination undetermined"], capabilities)
+
+    def test_bundled_binary_documentation_urls_are_not_plugin_endpoints(self) -> None:
+        payload = io.BytesIO()
+        with zipfile.ZipFile(payload, "w") as archive:
+            archive.writestr("Microsoft.IdentityModel.Logging.dll", b"MZ System.Net.Http.HttpClient https://aka.ms/IdentityModel/SecurityArtifactLogging")
+            archive.writestr("Plugin.cs", 'System.Net.Http.HttpClient client; var endpoint = "https://api.example.test/plugin";')
+        hits = defaultdict(list)
+        intel = security_scan.empty_dependency_intelligence("artifact")
+        security_scan.scan_archive(payload.getvalue(), hits, intel)
+        endpoints = {item["url"] for item in intel["networkEndpoints"]}
+        self.assertIn("https://api.example.test/plugin", endpoints)
+        self.assertNotIn("https://aka.ms/IdentityModel/SecurityArtifactLogging", endpoints)
 
     def test_cross_source_hash_consensus_uses_named_stable_baseline(self) -> None:
         with closing(sqlite3.connect(":memory:")) as db:
@@ -549,6 +657,28 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertEqual(["1.2.3"], advisory["affectedVersions"])
         self.assertEqual("high", advisory["severity"])
         self.assertEqual("CVE-2026-0001", advisory["aliases"][0])
+
+    def test_public_advisory_collector_reads_security_evidence_v2_nuget_index(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            index = root / "nuget.json"
+            output = root / "public-advisories.json"
+            index.write_text(json.dumps({
+                "schema": "omega.security-evidence.nuget-index.v2",
+                "ecosystem": "NuGet",
+                "packageVersionPairs": 2,
+                "packages": [
+                    {"normalized_name": "example.package", "name": "Example.Package", "version": "1.2.3", "observations": 4},
+                    {"normalized_name": "other.package", "name": "Other.Package", "version": "2.0.0", "observations": 1},
+                ],
+            }), encoding="utf-8")
+            def query_batch(_url, payload, _timeout):
+                self.assertEqual(["Example.Package", "Other.Package"], [q["package"]["name"] for q in payload["queries"]])
+                return {"results": [{"vulns": []}, {"vulns": []}]}
+            with mock.patch.object(collect_public_advisories, "post_json", side_effect=query_batch):
+                document = collect_public_advisories.collect_from_nuget_index(index, output)
+        self.assertEqual(2, document["queriedPackages"])
+        self.assertEqual(0, document["matchedPackages"])
 
     def test_public_advisory_collector_allows_a_fresh_catalog_without_security_tables(self) -> None:
         with tempfile.TemporaryDirectory() as td:

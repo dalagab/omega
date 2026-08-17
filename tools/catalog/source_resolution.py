@@ -7,6 +7,7 @@ repository identities; it never fetches source code itself.
 from __future__ import annotations
 
 import hashlib
+from pathlib import PurePosixPath
 import urllib.parse
 
 
@@ -36,12 +37,41 @@ def github_repository_url(value: str) -> str:
     return f"https://github.com/{owner}/{repo}"
 
 
+def public_repository_url(value: str) -> str:
+    """Return a stable public HTTPS Git repository candidate from metadata.
+
+    GitHub forms are canonicalised first. Other public Git hosts retain their
+    host and repository path, allowing the scanner's constrained smart-Git
+    fallback to handle GitLab, Gitea, Forgejo, Bitbucket, and self-hosted hosts.
+    Artifact and manifest URLs are deliberately excluded.
+    """
+    github = github_repository_url(value)
+    if github:
+        return github
+    try:
+        parsed = urllib.parse.urlsplit(str(value or "").strip())
+    except ValueError:
+        return ""
+    if parsed.scheme.lower() != "https" or not parsed.hostname or parsed.username or parsed.password:
+        return ""
+    path = parsed.path.rstrip("/")
+    parts = PurePosixPath(path).parts
+    if len(parts) < 2 or path.lower().endswith((".zip", ".json", ".dll", ".exe", ".nupkg")):
+        return ""
+    if path.endswith(".git"):
+        path = path[:-4]
+    if not path or path.casefold().endswith(("/releases", "/issues", "/pulls", "/wiki")):
+        return ""
+    authority = parsed.hostname.lower() if parsed.port in {None, 443} else f"{parsed.hostname.lower()}:{parsed.port}"
+    return urllib.parse.urlunsplit(("https", authority, path, "", ""))
+
+
 def source_candidates(*values: str) -> list[str]:
-    """Return stable, deduplicated GitHub source candidates from metadata."""
+    """Return stable, deduplicated public HTTPS Git source candidates."""
     candidates: list[str] = []
     seen: set[str] = set()
     for value in values:
-        candidate = github_repository_url(value)
+        candidate = public_repository_url(value)
         lowered = candidate.lower()
         if candidate and lowered not in seen:
             candidates.append(candidate)

@@ -2,6 +2,102 @@
 
 Omega follows semantic product versions. Release entries here are consumed by the GitHub release workflow so the same human-readable notes are published with each immutable release.
 
+## [0.8.81] - 2026-08-17
+
+### Fixed
+
+- Make `catalog/security-v2-work/production-security-v2-report.json` an explicit named path in the security workflow diagnostics artifact. The report was already included by the broader `*.json` upload, but the release regression contract intentionally requires an explicit path so future diagnostics cleanup cannot silently stop retaining the per-batch production summary.
+- Restore the C# production security release gate that verifies every bounded Security Evidence v2 run keeps an auditable production summary. No scanner semantics, evidence schema, marketplace projection, or publication behavior changed from 0.8.80.
+
+### Availability
+
+- 0.8.81 supersedes the failed 0.8.80 ZipRunner candidate. The production Security Evidence v2 cutover remains otherwise unchanged.
+
+## [0.8.80] - 2026-08-17
+
+### Added
+
+- Promote **Security Evidence v2** to the production scanner state. The security workflow now checks out the last-known-good `security-evidence-v2` snapshot, materializes only the bounded mutable evidence needed by the scanner/projector into a disposable SQLite working database, and stages every candidate update away from the published branch.
+- Add the production v2 orchestrator `tools/security/production_security_v2_pipeline.py`. Bounded scans reuse unchanged content-addressed analyses, retain the previous current pointer when a revalidation fails, refresh dependency/IPC/advisory projections, merge only successful new analyses, garbage-collect unreferenced analysis objects, rebuild all v2 indexes, validate the staged snapshot, and build the small client marketplace SQLite.
+- Add artifact-side resolved NuGet recovery from packaged `*.deps.json` files. Exact package/version observations are emitted as `nuget-resolved` evidence even when a distributed plugin does not contain `project.assets.json` or `packages.lock.json`.
+- Add explicit scanner diagnostics for dependency rows by kind, exact and missing-version NuGet observations, IPC provider/consumer/unresolved channels, and OSV observed/queried/matched coverage.
+- Add intrinsic v2 snapshot validation for index hashes, variant/analysis pointers, dataset hashes/sizes/record digests, root counts, orphan analyses, and the publication file-size ceiling. Incremental v2 publication requires this validation report plus the independent developer audit.
+- Include the latest operator/security/source-analysis tools supplied for this cutover, including the local v2 scanner, evidence inspector, public Git source handling, permission/dependency analysis, package validator, and marketplace UI validation helpers.
+
+### Changed
+
+- Advance the security scanner generation to **2.5.0** so existing 2.4.0 evidence is revalidated gradually under the new artifact dependency semantics. A revalidation that fails cannot replace previously validated evidence.
+- Route OSV coverage through exact current NuGet package/version observations and fail publication when observed queryable versions are not actually queried. Advisory matches are then re-projected without starting a second artifact scan.
+- Rebuild `indexes/nuget.json`, `indexes/ipc.json`, dependency components, advisories, plugin mappings, and artifact mappings from the staged current state before publication. Security/evidence revisions ignore transient SQLite scan IDs so an identical revalidation does not manufacture a semantic change.
+- Publish the `security-evidence-v2` branch as a validated snapshot only after the independent audit succeeds. The client `catalog-latest` release is updated only after those v2 gates pass.
+- Stop the catalog builder from downloading the archived detailed SQLite evidence database. It now uses only the small marketplace SQLite as an identity/presentation seed.
+- Retire the giant SQLite compactor from the production chain. `catalog-compaction.yml` is now a manual compatibility/self-test workflow and the existing `security-evidence-latest` release remains untouched as the archival v1 rollback/reference dataset.
+- Add a public-source availability badge to the product security summary so package scan severity, automation, and source coverage remain distinct signals.
+
+### Safety / publication guarantees
+
+- Scanner crashes, failed plugin revalidations, malformed or oversized shards, hash/record-digest mismatches, missing variant/analysis pointers, incomplete OSV coverage, marketplace projection disagreement, developer-audit failures, or an evidence push failure cannot replace the last-known-good v2 snapshot. The root `index.json` is generated last in staging and the evidence branch is replaced only after every gate passes.
+- Detailed evidence remains server/developer-side. The Dalamud client continues to consume the compact `omega-marketplace.sqlite` projection rather than the forensic v2 corpus.
+
+### Availability
+
+- This is the production cutover release. Once 0.8.80 is pushed to GitHub `main`, the next successful catalog/security chain begins bounded 2.5.0 revalidation against the already-published `security-evidence-v2` baseline. The archived v1 SQLite evidence is not deleted or overwritten.
+
+## [0.8.79] - 2026-08-17
+
+### Added
+
+- Add `--download-current` to the security-evidence v2 migration CLI. The tool now resolves the live `security-evidence-latest` GitHub release, resumes interrupted downloads, validates the published size and SHA-256, invalidates stale cache entries, safely extracts the SQLite database, and immediately uses that verified database as the v1 migration source.
+- Add `--validate` to run the **full** v1 ↔ v2 parity validator automatically after migration. The default report is written to `<output>/validation-report.json`, and a parity mismatch makes the migration command fail instead of leaving the snapshot looking publication-ready.
+- Record the operator-local v1 database path only in the excluded migration state so `validate_security_evidence_v2.py` can infer the exact source database when `--database` is omitted, without leaking a local filesystem path into the publishable `index.json`.
+
+### Changed
+
+- The recommended local migration command is now one operation: `--download-current --output ... --resume --validate`. Manual `--database` migration remains available for offline or archived v1 evidence.
+- Keep downloading/migration separate from publication: the v2 branch publisher still requires an explicit successful full validation report and `--push`.
+
+### Availability
+
+- These are local/operator CLI changes and require no Definitions refresh. After this source is built through ZipRunner, the current published v1 evidence can be downloaded and migrated directly from the Omega repository checkout.
+
+## [0.8.78] - 2026-08-17
+
+### Added
+
+- Add the first **security evidence v2** migration toolchain for moving the large server-side forensic database away from one monolithic SQLite transport. `migrate_security_evidence_v2.py` opens a downloaded v1 evidence database read-only and exports current security state into per-variant JSON plus content-addressed artifact analyses. Ordinary evidence remains readable JSON where bounded, while managed symbols, calls, reachability, and other large collections are emitted as deterministic gzip JSONL shards.
+- Add resumable local migration state. Interrupted conversions can continue with `--resume` as long as the source database revision has not changed; the v2 root `index.json` is written last so an incomplete conversion cannot masquerade as a finished evidence snapshot.
+- Add `indexes/plugins.json`, `indexes/artifacts.json`, `indexes/nuget.json`, and `indexes/ipc.json` so future scanners, OSV processing, and the Developer View can use small purpose-built indexes instead of traversing multi-gigabyte forensic storage. Identical mirror evidence deduplicates to one semantic analysis ID beneath the shared artifact SHA-256.
+- Add a full **v1 ↔ v2 parity validator**. It verifies every referenced file hash/size, current scan and identity state, derived dependency state, NuGet/IPC/advisory/component indexes, and semantic row digests for current findings, dependencies, IPC, permissions, automation, assemblies, imports, managed symbols, calls, and reachability.
+- Add a local evidence publisher for the dedicated `security-evidence-v2` branch. It performs preflight by default, enforces the bounded per-file ceiling, publishes from a temporary Git repository rather than touching the Omega source checkout, and uses a single snapshot commit with force-with-lease only when `--push` is explicitly supplied.
+
+### Changed
+
+- Document the migration boundary explicitly: **the client marketplace/Definitions database remains SQLite**. Security evidence v2 is only for the large server-side static-analysis/evidence transport. Phase 1 migrates current security state while the downloaded v1 SQLite database remains the historical reference.
+
+### Availability
+
+- The v2 tools are local/operator tooling and do **not** change the production GitHub Actions publication format yet. Download the current v1 evidence database, migrate it locally, run full parity validation, then publish the validated snapshot branch. Production runners will be switched only after the real migrated dataset proves equivalent.
+
+## [0.8.77] - 2026-08-17
+
+### Added
+
+- Add a **click-through evidence browser** to the Security Developer View. Developer investigation can now start from readable table groups, browse rows with pagination, inspect every field, follow database relationships, and jump from rows carrying a variant ID directly into the plugin conclusion view. The raw SQL console remains available only as an optional Advanced tool.
+- Make summary cards such as Findings, OSV matches, IPC providers, dependencies, and scan state open the corresponding evidence table directly.
+
+### Fixed
+
+- Fix the Developer View plugin list returning zero rows in browsers where the element id `status` collided with the browser's built-in `window.status` property. UI code now resolves controls explicitly instead of depending on implicit element globals.
+
+### Changed
+
+- Reposition the GitHub Pages homepage around Omega's actual product: an **in-game Dalamud plugin marketplace with integrated security scanning**. Search/share metadata and the hero copy now lead with plugin discovery, source comparison, dependency/security intelligence, and install-through-Dalamud instead of framing Omega primarily as evidence gathering in a risky ecosystem.
+
+### Availability
+
+- The Developer View changes are available immediately after updating the repository tooling and work with an already-downloaded evidence database. A newly published database is not required for click-through browsing.
+- The homepage copy becomes public after the next successful GitHub Pages deployment from this source revision. Search engines and link-preview caches may keep the previous title/description temporarily after deployment.
+
 ## [0.8.76] - 2026-08-17
 
 ### Fixed

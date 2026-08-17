@@ -73,16 +73,21 @@ def reconcile_issues(document: dict, repository: str, max_new: int = DEFAULT_MAX
         if item.get("actionable", True) and str(item.get("key") or "")
     }
 
-    # Close stale scanner-generated follow-up issues once the current evidence no
-    # longer reports that plugin/source pair as actionable.
+    # A missing row can mean a transient scanner/API failure, a 404, or a source
+    # gap that was intentionally made non-actionable. Close only when current
+    # evidence explicitly confirms the public source was scanned successfully.
+    resolved_keys = {
+        str(key) for key in document.get("resolvedKeys") or []
+        if str(key).startswith("omega-source-followup:")
+    }
     closed = 0
     for key, issue in list(open_by_key.items()):
-        if key in actionable:
+        if key not in resolved_keys:
             continue
         number = str(issue.get("number") or "")
         if not number:
             continue
-        gh("issue", "close", number, "--repo", repository, "--comment", "Omega's current scanner evidence no longer reports this public-source gap as actionable.")
+        gh("issue", "close", number, "--repo", repository, "--comment", "Omega's current scanner evidence successfully inspected a public source repository for this plugin/source pair.")
         closed += 1
 
     created = 0

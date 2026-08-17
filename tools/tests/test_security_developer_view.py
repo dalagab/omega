@@ -16,6 +16,11 @@ import build_sqlite_catalog
 import security_scan
 
 ROOT = Path(__file__).resolve().parents[2]
+SECURITY_TOOLS = ROOT / "tools" / "security"
+if str(SECURITY_TOOLS) not in sys.path:
+    sys.path.insert(0, str(SECURITY_TOOLS))
+from evidence_v2_inspector import V2SecurityInspector
+
 MODULE_PATH = ROOT / "tools" / "security" / "developer_view.py"
 spec = importlib.util.spec_from_file_location("omega_security_developer_view", MODULE_PATH)
 assert spec and spec.loader
@@ -103,6 +108,33 @@ def make_marketplace(path: Path, risk_score: int = 40) -> None:
 
 
 class SecurityDeveloperViewTests(unittest.TestCase):
+    def test_developer_view_reads_a_local_v2_snapshot_without_sqlite(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "security-evidence-v2"
+            (root / "indexes").mkdir(parents=True)
+            (root / "variants" / "0000").mkdir(parents=True)
+            (root / "artifacts" / "aa" / "analysis").mkdir(parents=True)
+            (root / "indexes" / "plugins.json").write_text(json.dumps({"currentVariants": [{"variantId": 1, "scanId": 1, "variantPath": "variants/0000/1.json"}]}), encoding="utf-8")
+            (root / "artifacts" / "aa" / "analysis" / "manifest.json").write_text(json.dumps({"datasets": {"findings": {"files": [{"path": "artifacts/aa/analysis/findings.json", "encoding": "json"}]}}}), encoding="utf-8")
+            (root / "artifacts" / "aa" / "analysis" / "findings.json").write_text(json.dumps([{ "rule_id": "network.endpoint.public-ip-literal", "severity": "caution", "title": "Endpoint: 8.8.8.8"}]), encoding="utf-8")
+            (root / "variants" / "0000" / "1.json").write_text(json.dumps({
+                "variantId": 1, "plugin": {"plugin_id": 1, "internal_name": "Fixture", "canonical_name": "Fixture"},
+                "variant": {"name": "Fixture", "author": "Test", "assembly_version": "1.0.0"},
+                "source": {"name": "Fixture feed", "url": "https://example.invalid/repo.json"},
+                "current": {"variant_id": 1, "scan_id": 1, "status": "complete", "highest_severity": "caution", "caution_count": 1},
+                "analysis": {"path": "artifacts/aa/analysis"}, "derived": {},
+            }), encoding="utf-8")
+            (root / "index.json").write_text(json.dumps({"schema": "omega.security-evidence.v2", "formatVersion": 2, "counts": {}, "indexes": {"plugins": {"path": "indexes/plugins.json"}}}), encoding="utf-8")
+            inspector = V2SecurityInspector(root)
+            try:
+                self.assertEqual("security-evidence-v2", inspector.summary()["format"])
+                self.assertEqual("Fixture", inspector.list_plugins()[0]["canonical_name"])
+                self.assertEqual("network.endpoint.public-ip-literal", inspector.plugin_detail(1)["findings"][0]["rule_id"])
+                with self.assertRaises(ValueError):
+                    inspector.read_sql("SELECT 1")
+            finally:
+                inspector.close()
+
     def test_reproduces_static_advisory_and_marketplace_conclusions(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             evidence = Path(td) / "evidence.sqlite"
@@ -151,7 +183,7 @@ class SecurityDeveloperViewTests(unittest.TestCase):
 
 
     def test_default_sql_template_contains_real_line_breaks(self) -> None:
-        marker = '<textarea id="sql">'
+        marker = '<textarea id="sqlText">'
         start = view.HTML.index(marker) + len(marker)
         end = view.HTML.index('</textarea>', start)
         query = view.HTML[start:end]
@@ -271,6 +303,49 @@ class SecurityDeveloperViewTests(unittest.TestCase):
             finally:
                 inspector.close()
 
+
+    def test_click_through_table_browser_is_read_only_bounded_and_filterable(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            evidence = Path(td) / "evidence.sqlite"
+            make_evidence(evidence)
+            inspector = view.SecurityInspector(evidence)
+            try:
+                catalog = inspector.table_catalog()
+                names = {item["name"] for item in catalog}
+                self.assertIn("plugins", names)
+                self.assertIn("plugin_security_findings", names)
+                self.assertFalse(any(name.startswith("sqlite_") for name in names))
+
+                page = inspector.browse_table("plugin_security_dependencies", limit=10)
+                self.assertEqual("Observed dependencies", page["label"])
+                self.assertEqual(1, len(page["rows"]))
+                self.assertLessEqual(page["limit"], view.MAX_TABLE_ROWS)
+                relationships = {(fk["from"], fk["table"], fk["to"]) for fk in page["foreignKeys"]}
+                self.assertIn(("scan_id", "plugin_security_scans", "scan_id"), relationships)
+
+                filtered = inspector.browse_table("plugin_variants", filter_column="variant_id", filter_value="1")
+                self.assertEqual(1, len(filtered["rows"]))
+                self.assertEqual(1, filtered["rows"][0]["variant_id"])
+                self.assertEqual({"column": "variant_id", "value": "1"}, filtered["filter"])
+
+                with self.assertRaises(ValueError):
+                    inspector.browse_table("sqlite_master")
+                with self.assertRaises(ValueError):
+                    inspector.browse_table("plugins", filter_column="definitely_not_a_column", filter_value="1")
+                self.assertEqual("Fixture Plugin", inspector.db.execute("SELECT canonical_name FROM plugins WHERE plugin_id=1").fetchone()[0])
+            finally:
+                inspector.close()
+
+    def test_developer_view_uses_explicit_controls_and_click_through_evidence_browser(self) -> None:
+        self.assertIn("Evidence browser", view.HTML)
+        self.assertIn("No SQL required", view.HTML)
+        self.assertIn("Advanced · read-only SQL console", view.HTML)
+        self.assertIn("scanStatusFilter", view.HTML)
+        self.assertIn("document.getElementById", view.HTML)
+        self.assertNotIn("status.value", view.HTML)
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        self.assertIn('parsed.path == "/api/tables"', source)
+        self.assertIn('parsed.path == "/api/table"', source)
 
 if __name__ == "__main__":
     unittest.main()

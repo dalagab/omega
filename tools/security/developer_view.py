@@ -40,6 +40,8 @@ import webbrowser
 import zipfile
 from typing import Any, Iterable
 
+from evidence_v2_inspector import V2SecurityInspector
+
 REPOSITORY = "dalagab/omega"
 EVIDENCE_TAG = "security-evidence-latest"
 MARKETPLACE_TAG = "catalog-latest"
@@ -49,6 +51,7 @@ GITHUB_API = "https://api.github.com"
 USER_AGENT = "Omega-Security-Developer-View/1.0"
 DEFAULT_PORT = 8765
 MAX_SQL_ROWS = 1000
+MAX_TABLE_ROWS = 250
 OSV_QUERY_LIMIT = 2_000
 SEVERITY_RANK = {"none": 0, "informational": 1, "low": 1, "caution": 2, "moderate": 2, "medium": 2, "high": 3, "critical": 4}
 RANK_SEVERITY = {0: "none", 1: "informational", 2: "caution", 3: "high", 4: "critical"}
@@ -736,6 +739,171 @@ class SecurityInspector:
         args.append(limit)
         return [dict(r) for r in self.db.execute(sql, tuple(args)).fetchall()]
 
+    @staticmethod
+    def _quote_identifier(name: str) -> str:
+        return '"' + str(name).replace('"', '""') + '"'
+
+    @staticmethod
+    def _table_category(name: str) -> str:
+        if name.startswith("plugin_security_"):
+            if "ipc" in name:
+                return "IPC"
+            if "dependency" in name:
+                return "Dependencies"
+            if "permission" in name or "automation" in name:
+                return "Capabilities"
+            if "managed_" in name or "source_artifact" in name or "lineage" in name:
+                return "Forensics"
+            return "Security"
+        if name in {"plugins", "plugin_variants", "sources", "websites", "presentation", "runtime_plugin_variants", "plugin_search"}:
+            return "Marketplace"
+        if name.startswith("catalog_") or name in {"base_revision_changelog", "security_revision_changelog"}:
+            return "Metadata"
+        return "Other"
+
+    @staticmethod
+    def _friendly_table_name(name: str) -> str:
+        overrides = {
+            "plugins": "Plugins",
+            "plugin_variants": "Plugin variants",
+            "sources": "Repository sources",
+            "websites": "Project-page scrapes",
+            "plugin_security_current": "Current security conclusions",
+            "plugin_security_scans": "Security scan history",
+            "plugin_security_findings": "Static findings",
+            "plugin_security_dependencies": "Observed dependencies",
+            "plugin_security_dependency_resolutions": "Dependency resolutions",
+            "plugin_security_dependency_issues": "Dependency issues",
+            "plugin_security_dependency_advisory_matches": "Known vulnerability matches",
+            "plugin_security_dependency_components": "Dependency components",
+            "plugin_security_dependency_drift": "Dependency drift",
+            "plugin_security_ipc_endpoints": "IPC endpoints",
+            "plugin_security_ipc_registry": "IPC provider registry",
+            "plugin_security_permission_candidates": "Permission candidates",
+            "plugin_security_automation_capabilities": "Automation capabilities",
+            "plugin_security_source_artifact_comparisons": "Source / package comparisons",
+            "plugin_security_scan_lineage": "Scan lineage",
+            "plugin_security_managed_assemblies": "Managed assemblies",
+            "plugin_security_managed_symbols": "Managed symbols",
+            "plugin_security_managed_calls": "Managed calls",
+            "plugin_security_managed_reachability": "Managed reachability",
+            "catalog_meta": "Catalog metadata",
+        }
+        return overrides.get(name, name.replace("_", " ").strip().title())
+
+    def table_catalog(self) -> list[dict[str, Any]]:
+        hidden_suffixes = ("_data", "_idx", "_content", "_docsize", "_config")
+        preferred = [
+            "plugins", "plugin_variants", "sources", "websites",
+            "plugin_security_current", "plugin_security_scans", "plugin_security_findings",
+            "plugin_security_dependencies", "plugin_security_dependency_resolutions",
+            "plugin_security_dependency_issues", "plugin_security_dependency_advisory_matches",
+            "plugin_security_dependency_components", "plugin_security_dependency_drift",
+            "plugin_security_ipc_endpoints", "plugin_security_ipc_registry",
+            "plugin_security_permission_candidates", "plugin_security_automation_capabilities",
+            "plugin_security_source_artifact_comparisons", "plugin_security_scan_lineage",
+            "plugin_security_managed_assemblies", "plugin_security_managed_symbols",
+            "plugin_security_managed_calls", "plugin_security_managed_reachability",
+            "catalog_meta",
+        ]
+        rank = {name: index for index, name in enumerate(preferred)}
+        rows: list[dict[str, Any]] = []
+        with self.lock:
+            for name in self.tables:
+                if name.startswith("sqlite_"):
+                    continue
+                if name != "plugin_search" and name.endswith(hidden_suffixes):
+                    continue
+                columns = [dict(r) for r in self.db.execute(f"PRAGMA table_info({self._quote_identifier(name)})").fetchall()]
+                rows.append({
+                    "name": name,
+                    "label": self._friendly_table_name(name),
+                    "category": self._table_category(name),
+                    "columnCount": len(columns),
+                    "primaryKeys": [str(c.get("name") or "") for c in columns if int(c.get("pk") or 0) > 0],
+                })
+        return sorted(rows, key=lambda r: (rank.get(r["name"], 10_000), r["category"], r["label"].casefold()))
+
+    def browse_table(
+        self,
+        name: str,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        filter_column: str = "",
+        filter_value: str = "",
+    ) -> dict[str, Any]:
+        if name not in self.tables or name.startswith("sqlite_"):
+            raise ValueError(f"Unknown table: {name}")
+        limit = min(max(1, int(limit)), MAX_TABLE_ROWS)
+        offset = max(0, int(offset))
+        with self.lock:
+            columns = [dict(r) for r in self.db.execute(f"PRAGMA table_info({self._quote_identifier(name)})").fetchall()]
+            column_names = {str(c.get("name") or "") for c in columns}
+            if filter_column and filter_column not in column_names:
+                raise ValueError(f"Unknown column {filter_column!r} for table {name!r}")
+            foreign_keys = [dict(r) for r in self.db.execute(f"PRAGMA foreign_key_list({self._quote_identifier(name)})").fetchall()]
+            # The evidence schema intentionally avoids expensive cross-table FK enforcement on
+            # the very large forensic tables. Add read-only semantic relationships so the
+            # developer browser can still traverse the database without requiring raw SQL.
+            relationship_targets = {
+                "variant_id": ("plugin_variants", "variant_id"),
+                "source_variant_id": ("plugin_variants", "variant_id"),
+                "plugin_id": ("plugins", "plugin_id"),
+                "source_plugin_id": ("plugins", "plugin_id"),
+                "provider_plugin_id": ("plugins", "plugin_id"),
+                "source_id": ("sources", "source_id"),
+                "scan_id": ("plugin_security_scans", "scan_id"),
+                "provider_scan_id": ("plugin_security_scans", "scan_id"),
+                "dependency_id": ("plugin_security_dependencies", "dependency_id"),
+                "component_key": ("plugin_security_dependency_components", "component_key"),
+                "ipc_endpoint_id": ("plugin_security_ipc_endpoints", "ipc_endpoint_id"),
+                "managed_assembly_id": ("plugin_security_managed_assemblies", "managed_assembly_id"),
+                "managed_symbol_id": ("plugin_security_managed_symbols", "managed_symbol_id"),
+                "source_symbol_id": ("plugin_security_managed_symbols", "managed_symbol_id"),
+                "target_symbol_id": ("plugin_security_managed_symbols", "managed_symbol_id"),
+                "provider_internal_name": ("plugins", "internal_name"),
+            }
+            linked_columns = {str(fk.get("from") or "") for fk in foreign_keys}
+            for column in columns:
+                column_name = str(column.get("name") or "")
+                target = relationship_targets.get(column_name)
+                if not target or column_name in linked_columns or target[0] not in self.tables:
+                    continue
+                target_columns = {str(r[1]) for r in self.db.execute(f"PRAGMA table_info({self._quote_identifier(target[0])})").fetchall()}
+                if target[1] not in target_columns:
+                    continue
+                foreign_keys.append({
+                    "id": -1, "seq": 0, "table": target[0], "from": column_name, "to": target[1],
+                    "on_update": "", "on_delete": "", "match": "", "inferred": 1,
+                })
+            sql = f"SELECT * FROM {self._quote_identifier(name)}"
+            args: list[Any] = []
+            if filter_column:
+                sql += f" WHERE {self._quote_identifier(filter_column)} = ?"
+                args.append(filter_value)
+            order_columns = [str(c.get("name") or "") for c in columns if int(c.get("pk") or 0) > 0]
+            if order_columns:
+                sql += " ORDER BY " + ",".join(self._quote_identifier(c) for c in order_columns)
+            sql += " LIMIT ? OFFSET ?"
+            args.extend([limit + 1, offset])
+            fetched = self.db.execute(sql, tuple(args)).fetchall()
+            has_more = len(fetched) > limit
+            fetched = fetched[:limit]
+            rows = [dict(r) for r in fetched]
+            return {
+                "name": name,
+                "label": self._friendly_table_name(name),
+                "category": self._table_category(name),
+                "columns": columns,
+                "foreignKeys": foreign_keys,
+                "rows": rows,
+                "limit": limit,
+                "offset": offset,
+                "hasMore": has_more,
+                "filter": {"column": filter_column, "value": filter_value} if filter_column else None,
+            }
+
     def read_sql(self, query: str) -> dict[str, Any]:
         text = query.strip()
         if not text:
@@ -760,31 +928,46 @@ HTML = r'''<!doctype html>
 <style>
 :root{color-scheme:dark;--bg:#090c0f;--panel:#0f1419;--panel2:#141b22;--line:#27323c;--text:#eef4f7;--muted:#8fa1ad;--cyan:#36d5d0;--red:#ff5e62;--amber:#ffbf4d;--green:#55d98d;--blue:#68a7ff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,Segoe UI,Arial,sans-serif}button,input,select,textarea{font:inherit;color:inherit;background:#111820;border:1px solid var(--line);border-radius:7px;padding:8px 10px}button{cursor:pointer}button:hover{border-color:var(--cyan)}a{color:var(--cyan)}
-header{position:sticky;top:0;z-index:10;background:rgba(9,12,15,.96);border-bottom:1px solid var(--line);padding:14px 18px;display:flex;align-items:center;gap:12px}.logo{font-weight:800;letter-spacing:.08em}.badge{padding:3px 7px;border-radius:999px;background:#162028;color:var(--muted);font-size:12px}.badge.ro{color:var(--green)}main{padding:18px;max-width:1800px;margin:auto}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px}.card{padding:12px}.card .n{font-size:24px;font-weight:700}.muted{color:var(--muted)}.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}.toolbar input{min-width:280px;flex:1}.split{display:grid;grid-template-columns:minmax(500px,1.05fr) minmax(520px,1.4fr);gap:14px;align-items:start}.panel{overflow:hidden}.panel h2,.panel h3{margin:0}.panelhead{padding:11px 13px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}.scroll{overflow:auto;max-height:68vh}table{width:100%;border-collapse:collapse}th,td{padding:8px 9px;border-bottom:1px solid #1c252d;text-align:left;vertical-align:top}th{position:sticky;top:0;background:#131a20;color:#aebbc3;font-size:12px}tr.click:hover{background:#142028;cursor:pointer}.sev-critical{color:var(--red);font-weight:700}.sev-high{color:#ff866b;font-weight:700}.sev-caution,.sev-medium{color:var(--amber)}.sev-informational{color:var(--blue)}.sev-none{color:var(--muted)}.pass{color:var(--green)}.warn{color:var(--amber)}.fail{color:var(--red)}.info{color:var(--blue)}
-.detail{padding:13px}.kv{display:grid;grid-template-columns:160px 1fr;gap:4px 10px;margin:8px 0}.kv b{color:#aebbc3}.section{border-top:1px solid var(--line);padding:12px 0}.section:first-child{border-top:0;padding-top:0}details{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:#0c1116}summary{cursor:pointer;padding:9px 11px;font-weight:600}details>div{padding:0 11px 11px}.finding{padding:9px;border:1px solid #28333c;border-radius:7px;margin:7px 0;background:#11171c}.finding h4{margin:0 0 4px}.pill{display:inline-block;padding:2px 7px;border:1px solid var(--line);border-radius:999px;margin:2px;font-size:12px}.code{font:12px/1.4 Consolas,monospace;white-space:pre-wrap;word-break:break-word;background:#080b0e;padding:8px;border-radius:6px;max-height:320px;overflow:auto}.auditrow{padding:7px 0;border-bottom:1px solid #1b242b}.auditrow:last-child{border:0}.hidden{display:none!important}.tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}.tabs button.active{border-color:var(--cyan);color:var(--cyan)}textarea{width:100%;min-height:90px;font-family:Consolas,monospace}.sqlout{max-height:340px;overflow:auto}.small{font-size:12px}@media(max-width:1100px){.split{grid-template-columns:1fr}.scroll{max-height:48vh}}
+header{position:sticky;top:0;z-index:10;background:rgba(9,12,15,.96);border-bottom:1px solid var(--line);padding:14px 18px;display:flex;align-items:center;gap:12px}.logo{font-weight:800;letter-spacing:.08em}.badge{padding:3px 7px;border-radius:999px;background:#162028;color:var(--muted);font-size:12px}.badge.ro{color:var(--green)}main{padding:18px;max-width:1900px;margin:auto}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px}.card{padding:12px}.card.clickable{cursor:pointer}.card.clickable:hover{border-color:var(--cyan);background:#111a20}.card .n{font-size:24px;font-weight:700}.muted{color:var(--muted)}.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}.toolbar input{min-width:280px;flex:1}.split{display:grid;grid-template-columns:minmax(500px,1.05fr) minmax(520px,1.4fr);gap:14px;align-items:start}.panel{overflow:hidden}.panel h2,.panel h3{margin:0}.panelhead{padding:11px 13px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}.scroll{overflow:auto;max-height:68vh}table{width:100%;border-collapse:collapse}th,td{padding:8px 9px;border-bottom:1px solid #1c252d;text-align:left;vertical-align:top}th{position:sticky;top:0;background:#131a20;color:#aebbc3;font-size:12px;z-index:1}tr.click:hover{background:#142028;cursor:pointer}.sev-critical{color:var(--red);font-weight:700}.sev-high{color:#ff866b;font-weight:700}.sev-caution,.sev-medium{color:var(--amber)}.sev-informational{color:var(--blue)}.sev-none{color:var(--muted)}.pass{color:var(--green)}.warn{color:var(--amber)}.fail{color:var(--red)}.info{color:var(--blue)}
+.detail{padding:13px}.kv{display:grid;grid-template-columns:190px minmax(0,1fr);gap:5px 10px;margin:8px 0}.kv b{color:#aebbc3}.kv span{word-break:break-word}.section{border-top:1px solid var(--line);padding:12px 0}.section:first-child{border-top:0;padding-top:0}details{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:#0c1116}summary{cursor:pointer;padding:9px 11px;font-weight:600}details>div{padding:0 11px 11px}.finding{padding:9px;border:1px solid #28333c;border-radius:7px;margin:7px 0;background:#11171c}.finding h4{margin:0 0 4px}.pill{display:inline-block;padding:2px 7px;border:1px solid var(--line);border-radius:999px;margin:2px;font-size:12px}.code{font:12px/1.4 Consolas,monospace;white-space:pre-wrap;word-break:break-word;background:#080b0e;padding:8px;border-radius:6px;max-height:320px;overflow:auto}.auditrow{padding:7px 0;border-bottom:1px solid #1b242b}.auditrow:last-child{border:0}.small{font-size:12px}
+.db-browser{display:grid;grid-template-columns:270px minmax(520px,1fr) minmax(300px,.55fr);min-height:520px}.db-sidebar{border-right:1px solid var(--line);padding:10px;max-height:70vh;overflow:auto}.db-main{min-width:0;border-right:1px solid var(--line)}.db-row{padding:12px;max-height:70vh;overflow:auto}.table-group{margin:10px 0 4px;color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.table-button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:7px 9px;margin:1px 0}.table-button:hover,.table-button.active{background:#142028;color:var(--cyan)}.table-grid{overflow:auto;max-height:58vh}.table-grid td{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.table-filter{display:inline-flex;align-items:center;gap:7px}.linkbutton{border:0;padding:0;background:transparent;color:var(--cyan);text-align:left}.linkbutton:hover{text-decoration:underline}.empty{padding:28px;color:var(--muted);text-align:center}.advanced{margin-top:14px}.advanced>summary{background:var(--panel);border-radius:8px}.advanced[open]>summary{border-bottom:1px solid var(--line);border-radius:8px 8px 0 0}textarea{width:100%;min-height:90px;font-family:Consolas,monospace}.sqlout{max-height:340px;overflow:auto}
+@media(max-width:1250px){.split{grid-template-columns:1fr}.scroll{max-height:48vh}.db-browser{grid-template-columns:230px 1fr}.db-row{grid-column:1/-1;border-top:1px solid var(--line);max-height:none}.db-main{border-right:0}}
+@media(max-width:760px){main{padding:10px}.db-browser{grid-template-columns:1fr}.db-sidebar{border-right:0;border-bottom:1px solid var(--line);max-height:220px}.db-row{grid-column:auto}.toolbar input{min-width:100%}.kv{grid-template-columns:1fr}}
 </style></head>
-<body><header><div class="logo">Ω OMEGA · SECURITY DEVELOPER VIEW</div><span class="badge ro">READ ONLY</span><span id="scanner" class="badge"></span><span id="latest" class="badge"></span><button onclick="runAudit()" style="margin-left:auto">Run consistency audit</button></header>
-<main><div id="cards" class="cards"></div><div class="toolbar"><input id="q" placeholder="Search plugin, internal name, author, source…" oninput="debouncedLoad()"><select id="severity" onchange="loadPlugins()"><option value="">Any severity</option><option>critical</option><option>high</option><option>caution</option><option>informational</option><option>none</option></select><select id="status" onchange="loadPlugins()"><option value="">Any scan status</option><option>complete</option><option>failed</option><option>unscanned</option></select><label><input id="risk" type="checkbox" onchange="loadPlugins()"> Known OSV risk</label><button onclick="loadPlugins()">Refresh</button></div>
-<div class="split"><section class="panel"><div class="panelhead"><h2>Plugin variants</h2><span id="rowcount" class="muted"></span></div><div class="scroll"><table><thead><tr><th>Plugin</th><th>Source</th><th>Version</th><th>Severity</th><th>Risk</th><th>Scan</th></tr></thead><tbody id="plugins"></tbody></table></div></section><section class="panel"><div class="panelhead"><h2 id="detailtitle">Select a plugin</h2><span id="detailmeta" class="muted"></span></div><div id="detail" class="detail"><span class="muted">Choose a plugin variant to inspect its conclusion and raw evidence.</span></div></section></div>
-<section class="panel" style="margin-top:14px"><div class="panelhead"><h2>Read-only SQL console</h2><span class="muted">SELECT / PRAGMA / WITH / EXPLAIN only · max 1000 rows</span></div><div class="detail"><textarea id="sql">SELECT severity, category, rule_id, COUNT(*) AS n
+<body><header><div class="logo">Ω OMEGA · SECURITY DEVELOPER VIEW</div><span class="badge ro">READ ONLY</span><span id="scannerBadge" class="badge"></span><span id="latestBadge" class="badge"></span><button id="auditButton" style="margin-left:auto">Run consistency audit</button></header>
+<main>
+<div id="summaryCards" class="cards"></div>
+<section class="panel" style="margin-top:14px"><div class="panelhead"><h2>Plugin explorer</h2><span class="muted">Search conclusions first; inspect raw evidence on the right.</span></div><div style="padding:0 12px 12px"><div class="toolbar"><input id="pluginQuery" placeholder="Search plugin, internal name, author, source…"><select id="severityFilter"><option value="">Any severity</option><option>critical</option><option>high</option><option>caution</option><option>informational</option><option>none</option></select><select id="scanStatusFilter"><option value="">Any scan status</option><option>complete</option><option>failed</option><option>unscanned</option></select><label><input id="knownRiskFilter" type="checkbox"> Known OSV risk</label><button id="refreshPlugins">Refresh</button></div>
+<div class="split"><section class="panel"><div class="panelhead"><h3>Plugin variants</h3><span id="pluginRowCount" class="muted"></span></div><div class="scroll"><table><thead><tr><th>Plugin</th><th>Source</th><th>Version</th><th>Severity</th><th>Risk</th><th>Scan</th></tr></thead><tbody id="pluginRows"></tbody></table></div></section><section class="panel"><div class="panelhead"><h3 id="detailTitle">Select a plugin</h3><span id="detailMeta" class="muted"></span></div><div id="pluginDetail" class="detail"><span class="muted">Choose a plugin variant to inspect its conclusion and raw evidence.</span></div></section></div></div></section>
+<section class="panel" style="margin-top:14px"><div class="panelhead"><h2>Evidence browser</h2><span class="muted">Click tables, rows, and foreign-key links. No SQL required.</span></div><div class="db-browser"><aside class="db-sidebar"><input id="tableSearch" style="width:100%" placeholder="Find a table…"><div id="tableList"></div></aside><section class="db-main"><div class="panelhead"><div><h3 id="tableTitle">Choose a table</h3><div id="tableSubtitle" class="muted small"></div></div><div><button id="tablePrev" disabled>← Previous</button> <button id="tableNext" disabled>Next →</button></div></div><div id="tableFilterBar" class="detail" style="display:none"></div><div id="tableGrid" class="table-grid"><div class="empty">Choose a table from the left, or click one of the summary cards above.</div></div></section><aside class="db-row"><h3 id="rowTitle">Row inspector</h3><div id="rowDetail" class="muted" style="margin-top:10px">Click any row to inspect every field and follow database relationships.</div></aside></div></section>
+<details class="advanced"><summary>Advanced · read-only SQL console</summary><div><div class="muted small" style="margin:8px 0">Optional escape hatch: SELECT / PRAGMA / WITH / EXPLAIN only · max 1000 rows.</div><textarea id="sqlText">SELECT severity, category, rule_id, COUNT(*) AS n
 FROM plugin_security_findings
 GROUP BY severity, category, rule_id
 ORDER BY n DESC
-LIMIT 100</textarea><div style="margin:7px 0"><button onclick="runSql()">Run query</button></div><div id="sqlout" class="sqlout"></div></div></section>
+LIMIT 100</textarea><div style="margin:7px 0"><button id="runSqlButton">Run query</button></div><div id="sqlOutput" class="sqlout"></div></div></details>
 </main><script>
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const sev=s=>`sev-${String(s||'none').toLowerCase()}`; const fmt=n=>Number(n||0).toLocaleString(); let timer;
+const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sev=s=>`sev-${String(s||'none').toLowerCase()}`;const fmt=n=>Number(n||0).toLocaleString();let timer;let tables=[];let currentTable=null;let currentRows=[];let currentFkLinks=[];
 async function api(path,opts){const r=await fetch(path,opts);const j=await r.json();if(!r.ok)throw new Error(j.error||r.statusText);return j}
-async function init(){const s=await api('/api/summary');scanner.textContent=`scanner ${s.scannerVersion||'?'}`;latest.textContent=s.latestScanUtc?`latest ${s.latestScanUtc}`:'';const c=s.counts;cards.innerHTML=[['Plugins',c.plugins],['Variants',c.variants],['Current scans',c.currentScans],[`Current @ ${s.scannerVersion||'scanner'}`,c.currentAtScanner],['Legacy current',c.legacyCurrent],['Failed current',c.failedScans],['Findings',c.findings],['Critical',c.criticalFindings],['High',c.highFindings],['NuGet versions',c.observedNugetVersions],['OSV packages queried',c.osvQueriedPackages],['OSV matched packages',c.osvMatchedPackages],['OSV matches',c.advisories],['IPC providers observed',c.ipcProviders],['Dependency issues',c.dependencyIssues]].map(x=>`<div class=card><div class=n>${fmt(x[1])}</div><div class=muted>${esc(x[0])}</div></div>`).join('');loadPlugins()}
-function debouncedLoad(){clearTimeout(timer);timer=setTimeout(loadPlugins,220)}
-async function loadPlugins(){let u='/api/plugins?limit=500&q='+encodeURIComponent(q.value)+'&severity='+encodeURIComponent(severity.value)+'&status='+encodeURIComponent(status.value)+(risk.checked?'&known_risk=1':'');let rows=await api(u);rowcount.textContent=`${rows.length} shown`;plugins.innerHTML=rows.map(r=>`<tr class=click onclick="loadDetail(${r.variant_id})"><td><b>${esc(r.canonical_name||r.name||r.internal_name)}</b><div class="muted small">${esc(r.internal_name)} · ${esc(r.author)}</div></td><td>${esc(r.source_name||r.source_url)}<div class="muted small">${esc(r.source_url)}</div></td><td>${esc(r.assembly_version)}</td><td class="${sev(r.highest_severity)}">${esc(r.highest_severity)}</td><td>${r.knownAdvisoryCount?`<span class=fail>Known risk · ${r.knownAdvisoryCount}</span><br>`:''}<span class=muted>${r.riskScore}/100 internal</span></td><td>${esc(r.scan_status)}<div class="muted small">${esc(r.scanned_at_utc)}</div></td></tr>`).join('')}
-function kv(obj,keys){return `<div class=kv>`+keys.map(([k,l])=>`<b>${esc(l)}</b><span>${esc(obj?.[k]??'')}</span>`).join('')+`</div>`}
 function evidence(v){if(v==null)return'';return `<div class=code>${esc(typeof v==='string'?v:JSON.stringify(v,null,2))}</div>`}
-async function loadDetail(id){const d=await api('/api/plugin?variant_id='+id),i=d.identity;detailtitle.textContent=i.canonical_name||i.name||i.internal_name;detailmeta.textContent=`variant ${id} · scan ${i.scan_id||'none'}`;const audits=d.audit.map(a=>`<div class="auditrow ${a.status}"><b>${esc(a.status.toUpperCase())} · ${esc(a.title)}</b><div class="muted small">${esc(a.code)} — ${esc(a.detail)}</div></div>`).join('');const finds=d.findings.map(f=>`<div class=finding><h4 class="${sev(f.severity)}">${esc(f.severity)} · ${esc(f.title)}</h4><div>${esc(f.description)}</div><div class="muted small">${esc(f.rule_id)} · ${esc(f.category)}</div>${evidence(f.evidence_json)}</div>`).join('')||'<span class=muted>No findings.</span>';const adv=d.advisories.map(a=>`<div class=finding><h4 class="${sev(a.severity)}">${esc(a.severity)} · ${esc(a.advisory_id)} · ${esc(a.component_name)}</h4><div>${esc(a.title)}</div><div class=small>used ${esc(a.resolved_version||a.dependency_version)} · affected ${esc(a.affected_version||a.affected_range)} · fixed ${esc(a.fixed_version)}</div>${a.advisory_url?`<a target=_blank rel=noopener href="${esc(a.advisory_url)}">Open advisory</a>`:''}</div>`).join('')||'<span class=muted>No matching advisories.</span>';const deps=d.dependencies.map(x=>`<tr><td>${esc(x.kind)}</td><td>${esc(x.name)}</td><td>${esc(x.resolved_version||x.version)}</td><td>${esc(x.requirement)}</td><td>${esc(x.relationship)}</td><td>${esc(x.resolution?.resolution_status||'')}</td><td>${(x.issues||[]).map(z=>`<span class="pill ${sev(z.severity)}">${esc(z.issue_code)}</span>`).join('')}</td></tr>`).join('');const ipc=d.ipc.map(x=>`<tr><td>${esc(x.role)}</td><td>${esc(x.channel)}</td><td>${esc(x.relationship)}</td><td>${esc(x.relationship_confidence)}</td><td>${(x.providers||[]).map(p=>esc(p.provider_internal_name)).join(', ')}</td></tr>`).join('');const perms=d.permissions.map(x=>`<div class=finding><b>${esc(x.permission_id)}</b> <span class=pill>${esc(x.risk)}</span> <span class=pill>${esc(x.confidence)}</span><div>${esc(x.reason)}</div>${evidence(x.evidence_json)}</div>`).join('')||'<span class=muted>No permission candidates.</span>';const aut=d.automation.map(x=>`<div class=finding><b>${esc(x.label||x.capability_id)}</b> <span class=pill>${esc(x.automation_level)}</span> <span class=pill>${esc(x.confidence)}</span><div>${esc(x.reason)}</div>${evidence(x.evidence_json)}</div>`).join('')||'<span class=muted>No automation capabilities.</span>';
-let m=d.marketplaceSecurity;detail.innerHTML=`<div class=section><div class=cards><div class=card><div class=n class="${sev(i.highest_severity)}">${esc(i.highest_severity||'none')}</div><div class=muted>Recorded static conclusion</div></div><div class=card><div class=n>${d.riskScore}</div><div class=muted>Internal risk score</div></div><div class=card><div class=n>${d.advisorySummary.count}</div><div class=muted>Exact-version OSV matches</div></div><div class=card><div class=n>${esc(i.automation_level||'none')}</div><div class=muted>Automation level</div></div></div>${kv(i,[['internal_name','Internal name'],['assembly_version','Version'],['source_name','Source'],['source_url','Source URL'],['artifact_sha256','Artifact SHA-256'],['scanner_version','Scanner'],['scanned_at_utc','Scanned'],['source_repository','Source repository'],['source_commit','Source commit']])}</div><div class=section><h3>Conclusion audit</h3>${audits}</div><details open><summary>Static findings (${d.findings.length})</summary><div>${finds}</div></details><details open><summary>Known advisories (${d.advisories.length})</summary><div>${adv}</div></details><details><summary>Dependencies (${d.dependencies.length})</summary><div style="overflow:auto"><table><thead><tr><th>Kind</th><th>Name</th><th>Version</th><th>Requirement</th><th>IPC semantics</th><th>Resolution</th><th>Issues</th></tr></thead><tbody>${deps}</tbody></table></div></details><details><summary>IPC endpoints (${d.ipc.length})</summary><div style="overflow:auto"><table><thead><tr><th>Role</th><th>Channel</th><th>Relationship</th><th>Confidence</th><th>Provider(s)</th></tr></thead><tbody>${ipc}</tbody></table></div></details><details><summary>Permission candidates (${d.permissions.length})</summary><div>${perms}</div></details><details><summary>Automation evidence (${d.automation.length})</summary><div>${aut}</div></details><details><summary>Plugin source build scope</summary><div>${evidence(d.sourceScope)}</div></details><details><summary>Source ↔ package comparison</summary><div>${evidence(d.sourceArtifactComparison)}</div></details><details><summary>Scan lineage and dependency drift</summary><div><h4>Lineage</h4>${evidence(d.lineage)}<h4>Drift</h4>${evidence(d.drift)}</div></details><details><summary>Client marketplace projection</summary><div>${m?evidence(m):'<span class=muted>Marketplace database not loaded.</span>'}</div></details><details><summary>Managed calls (lazy)</summary><div><input id=callq placeholder="Filter target type/method/native library"><button onclick="loadCalls(${id})">Load calls</button><div id=calls></div></div></details>`}
-async function loadCalls(id){let rows=await api('/api/calls?variant_id='+id+'&q='+encodeURIComponent(callq.value));calls.innerHTML=`<div class=muted>${rows.length} rows</div>`+evidence(rows)}
-async function runAudit(){detailtitle.textContent='Global consistency audit';detailmeta.textContent='running…';detail.innerHTML='<span class=muted>Recomputing current conclusions…</span>';try{let a=await api('/api/audit');detailmeta.textContent=`${a.counts.fail} fail · ${a.counts.warn} warn`;detail.innerHTML=`<div class=cards><div class=card><div class="n fail">${a.counts.fail}</div><div class=muted>Failures</div></div><div class=card><div class="n warn">${a.counts.warn}</div><div class=muted>Warnings</div></div><div class=card><div class="n pass">${a.counts.pass}</div><div class=muted>Passed global checks</div></div></div>`+a.items.map(x=>`<div class="auditrow ${x.status}"><b>${esc(x.status.toUpperCase())} · ${esc(x.title)}</b><div class=small>${esc(x.code)} ${x.plugin?'· '+esc(x.plugin):''}</div><div class=muted>${esc(x.detail)}</div></div>`).join('')}catch(e){detail.innerHTML=`<span class=fail>${esc(e.message)}</span>`}}
-async function runSql(){try{let r=await api('/api/sql',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:sql.value})});sqlout.innerHTML=`<table><thead><tr>${r.columns.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${r.rows.map(row=>`<tr>${row.map(v=>`<td>${esc(typeof v==='object'?JSON.stringify(v):v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`}catch(e){sqlout.innerHTML=`<span class=fail>${esc(e.message)}</span>`}}
+function kv(obj,keys){return `<div class=kv>`+keys.map(([k,l])=>`<b>${esc(l)}</b><span>${esc(obj?.[k]??'')}</span>`).join('')+`</div>`}
+function card(label,value,table){return `<div class="card ${table?'clickable':''}" ${table?`data-table="${esc(table)}"`:''}><div class=n>${fmt(value)}</div><div class=muted>${esc(label)}</div></div>`}
+async function init(){const [s,t]=await Promise.all([api('/api/summary'),api('/api/tables')]);tables=t;$('scannerBadge').textContent=`scanner ${s.scannerVersion||'?'}`;$('latestBadge').textContent=s.latestScanUtc?`latest ${s.latestScanUtc}`:'';const c=s.counts;$('summaryCards').innerHTML=[['Plugins',c.plugins,'plugins'],['Variants',c.variants,'plugin_variants'],['Current scans',c.currentScans,'plugin_security_current'],[`Current @ ${s.scannerVersion||'scanner'}`,c.currentAtScanner,'plugin_security_current'],['Legacy current',c.legacyCurrent,'plugin_security_current'],['Failed current',c.failedScans,'plugin_security_current'],['Findings',c.findings,'plugin_security_findings'],['Critical',c.criticalFindings,'plugin_security_findings'],['High',c.highFindings,'plugin_security_findings'],['NuGet versions',c.observedNugetVersions,'plugin_security_dependencies'],['OSV packages queried',c.osvQueriedPackages,'plugin_security_dependencies'],['OSV matched packages',c.osvMatchedPackages,'plugin_security_dependency_advisory_matches'],['OSV matches',c.advisories,'plugin_security_dependency_advisory_matches'],['IPC providers observed',c.ipcProviders,'plugin_security_ipc_registry'],['Dependency issues',c.dependencyIssues,'plugin_security_dependency_issues']].map(x=>card(...x)).join('');$('summaryCards').querySelectorAll('[data-table]').forEach(x=>x.addEventListener('click',()=>openTable(x.dataset.table)));renderTableList();await loadPlugins()}
+function debouncedLoad(){clearTimeout(timer);timer=setTimeout(loadPlugins,220)}
+async function loadPlugins(){const u='/api/plugins?limit=500&q='+encodeURIComponent($('pluginQuery').value)+'&severity='+encodeURIComponent($('severityFilter').value)+'&status='+encodeURIComponent($('scanStatusFilter').value)+($('knownRiskFilter').checked?'&known_risk=1':'');const rows=await api(u);$('pluginRowCount').textContent=`${rows.length} shown`;$('pluginRows').innerHTML=rows.map(r=>`<tr class=click data-variant="${r.variant_id}"><td><b>${esc(r.canonical_name||r.name||r.internal_name)}</b><div class="muted small">${esc(r.internal_name)} · ${esc(r.author)}</div></td><td>${esc(r.source_name||r.source_url)}<div class="muted small">${esc(r.source_url)}</div></td><td>${esc(r.assembly_version)}</td><td class="${sev(r.highest_severity)}">${esc(r.highest_severity)}</td><td>${r.knownAdvisoryCount?`<span class=fail>Known risk · ${r.knownAdvisoryCount}</span><br>`:''}<span class=muted>${r.riskScore}/100 internal</span></td><td>${esc(r.scan_status)}<div class="muted small">${esc(r.scanned_at_utc)}</div></td></tr>`).join('')||'<tr><td colspan=6 class=empty>No plugin variants match these filters.</td></tr>';$('pluginRows').querySelectorAll('[data-variant]').forEach(x=>x.addEventListener('click',()=>loadDetail(Number(x.dataset.variant))))}
+async function loadDetail(id){const d=await api('/api/plugin?variant_id='+id),i=d.identity;$('detailTitle').textContent=i.canonical_name||i.name||i.internal_name;$('detailMeta').textContent=`variant ${id} · scan ${i.scan_id||'none'}`;const audits=d.audit.map(a=>`<div class="auditrow ${a.status}"><b>${esc(a.status.toUpperCase())} · ${esc(a.title)}</b><div class="muted small">${esc(a.code)} — ${esc(a.detail)}</div></div>`).join('');const finds=d.findings.map(f=>`<div class=finding><h4 class="${sev(f.severity)}">${esc(f.severity)} · ${esc(f.title)}</h4><div>${esc(f.description)}</div><div class="muted small">${esc(f.rule_id)} · ${esc(f.category)}</div>${evidence(f.evidence_json)}</div>`).join('')||'<span class=muted>No findings.</span>';const adv=d.advisories.map(a=>`<div class=finding><h4 class="${sev(a.severity)}">${esc(a.severity)} · ${esc(a.advisory_id)} · ${esc(a.component_name)}</h4><div>${esc(a.title)}</div><div class=small>used ${esc(a.resolved_version||a.dependency_version)} · affected ${esc(a.affected_version||a.affected_range)} · fixed ${esc(a.fixed_version)}</div>${a.advisory_url?`<a target=_blank rel=noopener href="${esc(a.advisory_url)}">Open advisory</a>`:''}</div>`).join('')||'<span class=muted>No matching advisories.</span>';const deps=d.dependencies.map(x=>`<tr><td>${esc(x.kind)}</td><td>${esc(x.name)}</td><td>${esc(x.resolved_version||x.version)}</td><td>${esc(x.requirement)}</td><td>${esc(x.relationship)}</td><td>${esc(x.resolution?.resolution_status||'')}</td><td>${(x.issues||[]).map(z=>`<span class="pill ${sev(z.severity)}">${esc(z.issue_code)}</span>`).join('')}</td></tr>`).join('');const ipc=d.ipc.map(x=>`<tr><td>${esc(x.role)}</td><td>${esc(x.channel)}</td><td>${esc(x.relationship)}</td><td>${esc(x.relationship_confidence)}</td><td>${(x.providers||[]).map(p=>esc(p.provider_internal_name)).join(', ')}</td></tr>`).join('');const perms=d.permissions.map(x=>`<div class=finding><b>${esc(x.permission_id)}</b> <span class=pill>${esc(x.risk)}</span> <span class=pill>${esc(x.confidence)}</span><div>${esc(x.reason)}</div>${evidence(x.evidence_json)}</div>`).join('')||'<span class=muted>No permission candidates.</span>';const aut=d.automation.map(x=>`<div class=finding><b>${esc(x.label||x.capability_id)}</b> <span class=pill>${esc(x.automation_level)}</span> <span class=pill>${esc(x.confidence)}</span><div>${esc(x.reason)}</div>${evidence(x.evidence_json)}</div>`).join('')||'<span class=muted>No automation capabilities.</span>';let m=d.marketplaceSecurity;$('pluginDetail').innerHTML=`<div class=section><div class=cards><div class=card><div class="n ${sev(i.highest_severity)}">${esc(i.highest_severity||'none')}</div><div class=muted>Recorded static conclusion</div></div><div class=card><div class=n>${d.riskScore}</div><div class=muted>Internal risk score</div></div><div class=card><div class=n>${d.advisorySummary.count}</div><div class=muted>Exact-version OSV matches</div></div><div class=card><div class=n>${esc(i.automation_level||'none')}</div><div class=muted>Automation level</div></div></div>${kv(i,[['internal_name','Internal name'],['assembly_version','Version'],['source_name','Source'],['source_url','Source URL'],['artifact_sha256','Artifact SHA-256'],['scanner_version','Scanner'],['scanned_at_utc','Scanned'],['source_repository','Source repository'],['source_commit','Source commit']])}</div><div class=section><h3>Conclusion audit</h3>${audits}</div><details open><summary>Static findings (${d.findings.length})</summary><div>${finds}</div></details><details open><summary>Known advisories (${d.advisories.length})</summary><div>${adv}</div></details><details><summary>Dependencies (${d.dependencies.length})</summary><div style="overflow:auto"><table><thead><tr><th>Kind</th><th>Name</th><th>Version</th><th>Requirement</th><th>IPC semantics</th><th>Resolution</th><th>Issues</th></tr></thead><tbody>${deps}</tbody></table></div></details><details><summary>IPC endpoints (${d.ipc.length})</summary><div style="overflow:auto"><table><thead><tr><th>Role</th><th>Channel</th><th>Relationship</th><th>Confidence</th><th>Provider(s)</th></tr></thead><tbody>${ipc}</tbody></table></div></details><details><summary>Permission candidates (${d.permissions.length})</summary><div>${perms}</div></details><details><summary>Automation evidence (${d.automation.length})</summary><div>${aut}</div></details><details><summary>Plugin source build scope</summary><div>${evidence(d.sourceScope)}</div></details><details><summary>Source ↔ package comparison</summary><div>${evidence(d.sourceArtifactComparison)}</div></details><details><summary>Scan lineage and dependency drift</summary><div><h4>Lineage</h4>${evidence(d.lineage)}<h4>Drift</h4>${evidence(d.drift)}</div></details><details><summary>Client marketplace projection</summary><div>${m?evidence(m):'<span class=muted>Marketplace database not loaded.</span>'}</div></details><details><summary>Managed calls (lazy)</summary><div><input id="callQuery" placeholder="Filter target type/method/native library"><button id="loadCallsButton">Load calls</button><div id="callsOutput"></div></div></details>`;const b=$('loadCallsButton');if(b)b.addEventListener('click',()=>loadCalls(id))}
+async function loadCalls(id){const q=$('callQuery')?.value||'';const rows=await api('/api/calls?variant_id='+id+'&q='+encodeURIComponent(q));$('callsOutput').innerHTML=`<div class=muted>${rows.length} rows</div>`+evidence(rows)}
+async function runAudit(){$('detailTitle').textContent='Global consistency audit';$('detailMeta').textContent='running…';$('pluginDetail').innerHTML='<span class=muted>Recomputing current conclusions…</span>';try{const a=await api('/api/audit');$('detailMeta').textContent=`${a.counts.fail} fail · ${a.counts.warn} warn`;$('pluginDetail').innerHTML=`<div class=cards><div class=card><div class="n fail">${a.counts.fail}</div><div class=muted>Failures</div></div><div class=card><div class="n warn">${a.counts.warn}</div><div class=muted>Warnings</div></div><div class=card><div class="n pass">${a.counts.pass}</div><div class=muted>Passed global checks</div></div></div>`+a.items.map(x=>`<div class="auditrow ${x.status}"><b>${esc(x.status.toUpperCase())} · ${esc(x.title)}</b><div class=small>${esc(x.code)} ${x.plugin?'· '+esc(x.plugin):''}</div><div class=muted>${esc(x.detail)}</div></div>`).join('')}catch(e){$('pluginDetail').innerHTML=`<span class=fail>${esc(e.message)}</span>`}}
+function renderTableList(){const needle=$('tableSearch').value.trim().toLowerCase();let last='';$('tableList').innerHTML=tables.map((t,i)=>({t,i})).filter(x=>!needle||x.t.name.toLowerCase().includes(needle)||x.t.label.toLowerCase().includes(needle)||x.t.category.toLowerCase().includes(needle)).map(({t,i})=>{let h='';if(t.category!==last){last=t.category;h=`<div class=table-group>${esc(t.category)}</div>`}return h+`<button class="table-button ${currentTable?.name===t.name?'active':''}" data-table-index="${i}">${esc(t.label)}<div class="muted small">${esc(t.name)} · ${t.columnCount} columns</div></button>`}).join('');$('tableList').querySelectorAll('[data-table-index]').forEach(x=>x.addEventListener('click',()=>openTable(tables[Number(x.dataset.tableIndex)].name)))}
+async function openTable(name,filterColumn='',filterValue='',offset=0){const params=new URLSearchParams({name,limit:'100',offset:String(offset)});if(filterColumn){params.set('column',filterColumn);params.set('value',String(filterValue))}currentTable=await api('/api/table?'+params.toString());currentRows=currentTable.rows;currentFkLinks=[];$('tableTitle').textContent=currentTable.label;$('tableSubtitle').textContent=`${currentTable.name} · rows ${currentTable.offset+1}–${currentTable.offset+currentRows.length}${currentTable.hasMore?' · more available':''}`;$('tablePrev').disabled=currentTable.offset<=0;$('tableNext').disabled=!currentTable.hasMore;$('rowTitle').textContent='Row inspector';$('rowDetail').innerHTML='<span class=muted>Click a row to inspect every field and follow database relationships.</span>';renderTableList();renderTableFilter();renderTableGrid();$('tableTitle').scrollIntoView({behavior:'smooth',block:'nearest'})}
+function renderTableFilter(){if(!currentTable?.filter){$('tableFilterBar').style.display='none';$('tableFilterBar').innerHTML='';return}$('tableFilterBar').style.display='block';$('tableFilterBar').innerHTML=`<span class=table-filter><span class=pill>${esc(currentTable.filter.column)} = ${esc(currentTable.filter.value)}</span><button id="clearTableFilter">Clear filter</button></span>`;$('clearTableFilter').addEventListener('click',()=>openTable(currentTable.name))}
+function renderTableGrid(){if(!currentTable)return;const cols=currentTable.columns.map(c=>c.name);if(!currentRows.length){$('tableGrid').innerHTML='<div class=empty>No rows in this page.</div>';return}$('tableGrid').innerHTML=`<table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${currentRows.map((r,i)=>`<tr class=click data-row-index="${i}">${cols.map(c=>`<td title="${esc(r[c])}">${esc(formatCell(r[c]))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;$('tableGrid').querySelectorAll('[data-row-index]').forEach(x=>x.addEventListener('click',()=>inspectRow(Number(x.dataset.rowIndex))))}
+function formatCell(v){if(v==null)return'';const s=typeof v==='object'?JSON.stringify(v):String(v);return s.length>180?s.slice(0,177)+'…':s}
+function inspectRow(index){const row=currentRows[index];if(!row)return;const fkMap={};(currentTable.foreignKeys||[]).forEach(f=>{fkMap[f.from]=f});currentFkLinks=[];const variant=Number(row.variant_id||row.source_variant_id||0);const top=variant?`<button id="openRowPlugin">Open plugin variant ${variant}</button>`:'';const body=Object.entries(row).map(([k,v])=>{const fk=fkMap[k];if(fk&&v!=null){const linkIndex=currentFkLinks.push({table:fk.table,column:fk.to,value:v})-1;return `<b>${esc(k)}</b><span><button class=linkbutton data-fk-link="${linkIndex}">${esc(formatCell(v))} → ${esc(fk.table)}.${esc(fk.to)}</button></span>`}return `<b>${esc(k)}</b><span>${looksJson(v)?evidenceJsonInline(v):esc(formatCell(v))}</span>`}).join('');$('rowTitle').textContent=`${currentTable.label} · row ${currentTable.offset+index+1}`;$('rowDetail').innerHTML=top+`<div class=kv>${body}</div>`;$('rowDetail').querySelectorAll('[data-fk-link]').forEach(x=>x.addEventListener('click',()=>{const f=currentFkLinks[Number(x.dataset.fkLink)];openTable(f.table,f.column,f.value)}));const b=$('openRowPlugin');if(b)b.addEventListener('click',()=>loadDetail(variant))}
+function looksJson(v){if(typeof v!=='string')return false;const s=v.trim();return (s.startsWith('{')&&s.endsWith('}'))||(s.startsWith('[')&&s.endsWith(']'))}
+function evidenceJsonInline(v){try{return `<span class=code style="display:block;max-height:180px">${esc(JSON.stringify(JSON.parse(v),null,2))}</span>`}catch{return esc(formatCell(v))}}
+async function runSql(){try{const r=await api('/api/sql',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:$('sqlText').value})});$('sqlOutput').innerHTML=`<table><thead><tr>${r.columns.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${r.rows.map(row=>`<tr>${row.map(v=>`<td>${esc(typeof v==='object'?JSON.stringify(v):v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`}catch(e){$('sqlOutput').innerHTML=`<span class=fail>${esc(e.message)}</span>`}}
+$('pluginQuery').addEventListener('input',debouncedLoad);$('severityFilter').addEventListener('change',loadPlugins);$('scanStatusFilter').addEventListener('change',loadPlugins);$('knownRiskFilter').addEventListener('change',loadPlugins);$('refreshPlugins').addEventListener('click',loadPlugins);$('auditButton').addEventListener('click',runAudit);$('tableSearch').addEventListener('input',renderTableList);$('tablePrev').addEventListener('click',()=>currentTable&&openTable(currentTable.name,currentTable.filter?.column||'',currentTable.filter?.value||'',Math.max(0,currentTable.offset-currentTable.limit)));$('tableNext').addEventListener('click',()=>currentTable&&openTable(currentTable.name,currentTable.filter?.column||'',currentTable.filter?.value||'',currentTable.offset+currentTable.limit));$('runSqlButton').addEventListener('click',runSql);
 init().catch(e=>{document.body.innerHTML='<pre class=fail>'+esc(e.stack||e.message)+'</pre>'});
 </script></body></html>'''
 
@@ -820,6 +1003,16 @@ class AppHandler(BaseHTTPRequestHandler):
                 return
             if parsed.path == "/api/summary":
                 return self.json_response(self.inspector.summary())
+            if parsed.path == "/api/tables":
+                return self.json_response(self.inspector.table_catalog())
+            if parsed.path == "/api/table":
+                return self.json_response(self.inspector.browse_table(
+                    (query.get("name") or [""])[0],
+                    limit=int((query.get("limit") or ["100"])[0]),
+                    offset=int((query.get("offset") or ["0"])[0]),
+                    filter_column=(query.get("column") or [""])[0],
+                    filter_value=(query.get("value") or [""])[0],
+                ))
             if parsed.path == "/api/plugins":
                 rows = self.inspector.list_plugins(
                     q=(query.get("q") or [""])[0], severity=(query.get("severity") or [""])[0],
@@ -873,6 +1066,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Download and inspect Omega's published security evidence database read-only.")
     parser.add_argument("command", nargs="?", choices=["fetch", "serve", "audit"], default="serve")
     parser.add_argument("--database", type=Path, help="Local omega-security-evidence.sqlite; skips evidence download.")
+    parser.add_argument("--evidence-v2", type=Path, help="Local Security Evidence v2 JSON directory; opens it directly without publication or download.")
     parser.add_argument("--marketplace-database", type=Path, help="Optional local omega-marketplace.sqlite for projection comparison.")
     parser.add_argument("--cache-dir", type=Path, default=default_cache_dir())
     parser.add_argument("--no-download", action="store_true", help="Do not fetch latest databases if --database is omitted.")
@@ -896,12 +1090,19 @@ def resolve_databases(args: argparse.Namespace) -> tuple[Path, Path | None]:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        if args.evidence_v2 and args.database:
+            raise ValueError("choose either --database or --evidence-v2, not both")
         if args.command == "fetch":
+            if args.evidence_v2:
+                raise ValueError("fetch is not available for a local --evidence-v2 directory")
             evidence, marketplace = fetch_latest(args.cache_dir.resolve(), include_marketplace=not args.no_marketplace)
             print(json.dumps({"evidence": str(evidence), "marketplace": str(marketplace) if marketplace else None}, indent=2))
             return 0
-        evidence, marketplace = resolve_databases(args)
-        inspector = SecurityInspector(evidence, marketplace)
+        if args.evidence_v2:
+            inspector = V2SecurityInspector(args.evidence_v2)
+        else:
+            evidence, marketplace = resolve_databases(args)
+            inspector = SecurityInspector(evidence, marketplace)
         if args.command == "audit":
             result = inspector.global_audit()
             inspector.close()
@@ -915,7 +1116,7 @@ def main(argv: list[str] | None = None) -> int:
                         print(f"{item['status'].upper():4} {item['code']}{identity}: {item['title']} — {item['detail']}")
             return 1 if result["counts"]["fail"] or (args.strict_warnings and result["counts"]["warn"]) else 0
         return serve(inspector, args.host, args.port, not args.no_browser)
-    except (RuntimeError, OSError, sqlite3.DatabaseError, urllib.error.URLError) as exc:
+    except (RuntimeError, OSError, ValueError, sqlite3.DatabaseError, urllib.error.URLError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 

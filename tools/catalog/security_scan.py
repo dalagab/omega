@@ -53,10 +53,11 @@ from catalog_revisions import read_meta as read_catalog_meta, update_candidate_r
 from security_endpoint_inventory import endpoint_candidates, endpoint_findings
 from security_hash_consensus import canonicalize_current_security_by_artifact, refresh_cross_source_hash_findings
 from security_path_access import external_hard_coded_paths
-from source_resolution import source_candidates, source_override_key
+from source_resolution import github_repository_url, source_candidates, source_override_key
+from public_git_source import PublicGitSource
 
 
-SCANNER_VERSION = "2.4.0"
+SCANNER_VERSION = "2.5.0"
 SECURITY_LEDGER_SCHEMA = "omega.security-scan-ledger.v1"
 MAX_ARTIFACT_BYTES = 256 * 1024 * 1024
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
@@ -1509,6 +1510,30 @@ def scan_dependency_json(path: str, text: str, intel: dict) -> None:
                 if isinstance(payload, dict) and payload.get("type") == "project":
                     kind, status = "project-reference", "known"
                 add_dependency(intel, kind, name, version, path, status, f"{path}: resolved {key}", "required", resolved_version=version)
+    elif lower_name.endswith(".deps.json") and isinstance(doc, dict):
+        # Published .NET applications commonly carry a runtime *.deps.json even when
+        # project.assets.json/packages.lock.json are not present in the plugin ZIP.
+        # The libraries map is therefore valuable artifact-side evidence of the exact
+        # NuGet package versions that the built plugin was resolved against.  Restrict
+        # this to entries explicitly marked as NuGet packages so project/runtime entries
+        # are not accidentally turned into vulnerability lookups.
+        libraries = doc.get("libraries") or {}
+        if isinstance(libraries, dict):
+            for key, payload in libraries.items():
+                if "/" not in key or not isinstance(payload, dict):
+                    continue
+                if str(payload.get("type") or "").strip().casefold() != "package":
+                    continue
+                name, version = key.split("/", 1)
+                name = name.strip()
+                version = version.strip()
+                if not name or not version:
+                    continue
+                add_dependency(
+                    intel, "nuget-resolved", name, version, path, "known",
+                    f"{path}: runtime dependency {key}", "required",
+                    version_requirement=version, resolved_version=version,
+                )
     if isinstance(doc, dict):
         plugin_dependency_keys = {
             "RequiredPlugins": "required",
@@ -1771,7 +1796,12 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
         text = decoded_views(data[:MAX_ENTRY_SCAN_BYTES])
         add_rule_hits(text, "artifact", hits)
         add_external_path_hits(text, "artifact", hits)
-        add_network_endpoints(intel, text, "artifact")
+        # A standalone managed/native binary can contain documentation URLs,
+        # certificate endpoints, and third-party metadata strings. Keep those
+        # bytes useful for capability detection, but do not present them as
+        # plugin destinations without source/config evidence.
+        if not data.startswith(b"MZ"):
+            add_network_endpoints(intel, text, "artifact")
         if data.startswith(b"MZ"):
             metadata["bundledExecutables"].append("artifact")
             managed = None
@@ -1881,7 +1911,9 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
                 text = decoded_views(sample)
                 add_rule_hits(text, f"artifact:{info.filename}", hits)
                 add_external_path_hits(text, f"artifact:{info.filename}", hits)
-                add_network_endpoints(intel, text, f"artifact:{info.filename}")
+                # URL-shaped strings in compiled/bundled binaries are often
+                # documentation or certificate metadata. They do not establish
+                # that this plugin constructs or connects to that destination.
 
     return metadata
 
@@ -2227,27 +2259,74 @@ def _fetch_source_candidate(
         }
 
 
+def _fetch_public_git_source_candidate(
+    repo_url: str, _token: str, hits: dict[str, list[str]], internal_name: str = "", plugin_name: str = "",
+) -> dict:
+    """Inspect a public HTTPS Git remote without executing or checking out its code."""
+    intel = empty_dependency_intelligence("source")
+    try:
+        with PublicGitSource(repo_url) as repository:
+            source_entries = {
+                path: size for path, size in repository.files.items()
+                if Path(path).suffix.lower() in SOURCE_SUFFIXES and 0 < size <= MAX_TEXT_SOURCE_BYTES
+            }
+            descriptor_text = {
+                path: repository.read_file(path, MAX_TEXT_SOURCE_BYTES).decode("utf-8", "ignore")
+                for path in source_entries
+                if Path(path).suffix.lower() in {".csproj", ".sln", ".props", ".targets"}
+            }
+            scope = select_plugin_source_scope(set(source_entries), descriptor_text, internal_name, plugin_name)
+            files_scanned = 0
+            total_text = 0
+            for logical_name in sorted(scope["criticalPaths"], key=str.casefold):
+                if files_scanned >= 500 or total_text >= MAX_SOURCE_TEXT_TOTAL:
+                    break
+                if logical_name not in source_entries:
+                    continue
+                raw = repository.read_file(logical_name, MAX_TEXT_SOURCE_BYTES)
+                if not raw:
+                    continue
+                scan_source_text(logical_name, raw, raw.decode("utf-8", "ignore"), intel, hits)
+                files_scanned += 1
+                total_text += len(raw)
+        finalize_intelligence(intel)
+        return {
+            "available": True, "repository": repository.repository, "commit": repository.commit, "branch": repository.branch,
+            "treeSha256": repository.tree_sha, "filesScanned": files_scanned, "scope": scope,
+            "dependencyIntelligence": intel, "error": "",
+        }
+    except Exception as exc:
+        finalize_intelligence(intel)
+        return {
+            "available": False, "repository": repo_url, "commit": "", "branch": "", "treeSha256": "", "filesScanned": 0,
+            "dependencyIntelligence": intel,
+            "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "Public Git source repository could not be inspected."},
+            "error": str(exc)[:500],
+        }
+
+
 def fetch_source(
     candidate_urls: list[str], token: str, hits: dict[str, list[str]], internal_name: str = "", plugin_name: str = "",
 ) -> dict:
-    """Try metadata-derived public GitHub repositories in deterministic priority order."""
+    """Try metadata-derived public Git repositories in deterministic priority order."""
     intel = empty_dependency_intelligence("source")
     if not candidate_urls:
         return {
             "available": False, "repository": "", "commit": "", "branch": "", "treeSha256": "",
             "filesScanned": 0, "dependencyIntelligence": finalize_intelligence(intel),
-            "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "No supported source repository URL."},
+            "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "No public source repository URL could be derived."},
             "candidates": [],
-            "error": "No supported GitHub repository URL",
+            "error": "No public source repository URL could be derived",
         }
     failures: list[str] = []
     last: dict | None = None
     for candidate in candidate_urls:
         candidate_hits: dict[str, list[str]] = defaultdict(list)
+        fetcher = _fetch_source_candidate if github_repo_parts(candidate) is not None else _fetch_public_git_source_candidate
         if internal_name or plugin_name:
-            result = _fetch_source_candidate(candidate, token, candidate_hits, internal_name, plugin_name)
+            result = fetcher(candidate, token, candidate_hits, internal_name, plugin_name)
         else:
-            result = _fetch_source_candidate(candidate, token, candidate_hits)
+            result = fetcher(candidate, token, candidate_hits)
         result["candidates"] = list(candidate_urls)
         if result["available"]:
             for rule_id, evidence in candidate_hits.items():
@@ -4396,6 +4475,7 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool, source_override: s
         endpoint_results, endpoint_capabilities = endpoint_findings(
             base["dependencyIntelligence"]["networkEndpoints"],
             any(finding["ruleId"] in {"network.http", "network.socket", "local.listener"} for finding in findings + source_findings),
+            candidates,
         )
         automation = derive_automation_capabilities(base["dependencyIntelligence"])
         base["automation"] = automation
@@ -4498,6 +4578,7 @@ def run(args: argparse.Namespace) -> dict:
             intel = result.get("dependencyIntelligence") or {}
             if len(summary["plugins"]) < MAX_SCAN_REPORT_PLUGINS:
                 summary["plugins"].append({
+                "variantId": int(row["variant_id"]),
                 "internalName": row["internal_name"], "sourceName": row["source_name"], "status": result["status"],
                 "highestSeverity": result["highestSeverity"], "artifactSha256": result["artifactSha256"],
                 "dependencyCount": len(intel.get("dependencies") or []),
@@ -4538,12 +4619,57 @@ def run(args: argparse.Namespace) -> dict:
         summary["databaseHealth"] = validate_database_health(db)
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('dependency_hardening_version',?)", (SCANNER_VERSION,))
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('dependency_hardening_validated_at_utc',?)", (utc_now(),))
-        revisions = update_candidate_revisions(db)
+        if getattr(args, "skip_revision_update", False):
+            # Local reduced-catalog scanner mode deliberately contains only catalog
+            # identity + fresh security evidence.  It is not a publication candidate,
+            # so production catalog/evidence revisions must not be recomputed from the
+            # subset.  Preserve the source revision markers for diagnostics instead.
+            revisions = {
+                "baseRevision": read_catalog_meta(db, "base_revision", read_catalog_meta(db, "catalog_base_revision", "")),
+                "catalogRevision": read_catalog_meta(db, "catalog_revision", read_catalog_meta(db, "catalog_revision_candidate", "")),
+                "securityRevision": read_catalog_meta(db, "security_revision", ""),
+                "evidenceRevision": read_catalog_meta(db, "evidence_revision", ""),
+                "localTestSubset": True,
+            }
+        else:
+            revisions = update_candidate_revisions(db)
         db.commit()
         summary["revisions"] = revisions
         summary["currentScanCount"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_current WHERE status='complete'").fetchone()[0])
         summary["currentHighOrCritical"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_current WHERE status='complete' AND highest_severity IN ('high','critical')").fetchone()[0])
         summary["dependencyRows"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_dependencies").fetchone()[0])
+        summary["dependencyRowsByKind"] = {
+            str(row[0] or ""): int(row[1] or 0)
+            for row in db.execute(
+                """SELECT lower(d.kind),COUNT(*) FROM plugin_security_dependencies d
+                   JOIN plugin_security_current c ON c.scan_id=d.scan_id
+                   WHERE c.status='complete' GROUP BY lower(d.kind) ORDER BY lower(d.kind)"""
+            )
+        }
+        summary["nugetExactPackageVersionObservations"] = int(db.execute(
+            """SELECT COUNT(*) FROM plugin_security_dependencies d JOIN plugin_security_current c ON c.scan_id=d.scan_id
+               WHERE c.status='complete' AND lower(d.kind) IN ('nuget','nuget-lock','nuget-resolved')
+                 AND TRIM(d.name)<>'' AND COALESCE(NULLIF(TRIM(d.resolved_version),''),NULLIF(TRIM(d.version),''))<>''"""
+        ).fetchone()[0])
+        summary["nugetMissingVersionObservations"] = int(db.execute(
+            """SELECT COUNT(*) FROM plugin_security_dependencies d JOIN plugin_security_current c ON c.scan_id=d.scan_id
+               WHERE c.status='complete' AND lower(d.kind) IN ('nuget','nuget-lock','nuget-resolved')
+                 AND TRIM(d.name)<>'' AND COALESCE(NULLIF(TRIM(d.resolved_version),''),NULLIF(TRIM(d.version),''))=''"""
+        ).fetchone()[0])
+        summary["ipcProviderChannels"] = int(db.execute(
+            """SELECT COUNT(*) FROM plugin_security_ipc_endpoints e JOIN plugin_security_current c ON c.scan_id=e.scan_id
+               WHERE c.status='complete' AND e.role='provider' AND TRIM(e.channel)<>''"""
+        ).fetchone()[0])
+        summary["ipcConsumerChannels"] = int(db.execute(
+            """SELECT COUNT(*) FROM plugin_security_ipc_endpoints e JOIN plugin_security_current c ON c.scan_id=e.scan_id
+               WHERE c.status='complete' AND e.role='consumer' AND TRIM(e.channel)<>''"""
+        ).fetchone()[0])
+        summary["ipcUnresolvedConsumerChannels"] = int(db.execute(
+            """SELECT COUNT(*) FROM plugin_security_ipc_endpoints e
+               JOIN plugin_security_current c ON c.scan_id=e.scan_id
+               LEFT JOIN plugin_security_ipc_registry r ON r.channel=e.channel
+               WHERE c.status='complete' AND e.role='consumer' AND TRIM(e.channel)<>'' AND r.channel IS NULL"""
+        ).fetchone()[0])
         summary["permissionCandidateRows"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_permission_candidates").fetchone()[0])
         summary["managedAssemblyRows"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_managed_assemblies").fetchone()[0])
         summary["managedSymbolRows"] = int(db.execute("SELECT COUNT(*) FROM plugin_security_managed_symbols").fetchone()[0])
@@ -4589,9 +4715,9 @@ def load_source_overrides(path: Path | None) -> dict[str, str]:
         return {}
     overrides: dict[str, str] = {}
     for key, value in raw.items():
-        candidates = source_candidates(str(value or ""))
-        if candidates and str(key).startswith("src-"):
-            overrides[str(key)] = candidates[0]
+        candidate = github_repository_url(str(value or ""))
+        if candidate and str(key).startswith("src-"):
+            overrides[str(key)] = candidate
     return overrides
 
 

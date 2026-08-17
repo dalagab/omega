@@ -52,6 +52,37 @@ def observed_nuget_packages(database: Path, max_packages: int) -> list[tuple[str
     return [(str(name), str(version)) for name, version, _uses in rows]
 
 
+def observed_nuget_index(index_path: Path, max_packages: int) -> list[tuple[str, str]]:
+    """Read exact NuGet package/version pairs from the Security Evidence v2 contract.
+
+    Production OSV collection consumes this purpose-built index rather than reaching
+    into the mutable SQLite working projection. This makes the advisory boundary
+    explicit and independently inspectable.
+    """
+    document = json.loads(index_path.read_text(encoding="utf-8-sig"))
+    if not isinstance(document, dict) or document.get("schema") != "omega.security-evidence.nuget-index.v2":
+        raise ValueError(f"unsupported NuGet evidence index: {document.get('schema') if isinstance(document, dict) else type(document).__name__!r}")
+    rows = document.get("packages") or []
+    if not isinstance(rows, list):
+        raise ValueError("NuGet evidence index packages must be a list")
+    pairs: dict[tuple[str, str], tuple[str, str, int]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("name") or "").strip()
+        version = str(row.get("version") or "").strip()
+        if not name or not version:
+            continue
+        key = (name.casefold(), version)
+        observations = max(0, int(row.get("observations") or 0))
+        previous = pairs.get(key)
+        if previous is None or observations > previous[2]:
+            pairs[key] = (name, version, observations)
+    ordered = sorted(pairs.values(), key=lambda item: (-item[2], item[0].casefold(), item[1].casefold()))
+    limit = max(0, min(int(max_packages), MAX_PACKAGES))
+    return [(name, version) for name, version, _observations in ordered[:limit]]
+
+
 def _request_json(request: urllib.request.Request, timeout: float) -> dict:
     last_error: Exception | None = None
     for attempt in range(HTTP_ATTEMPTS):
@@ -144,8 +175,7 @@ def normalized_advisories(matches: dict[tuple[str, str], list[str]], timeout: fl
     return advisories
 
 
-def collect(database: Path, output: Path, timeout: float = 20.0, max_packages: int = MAX_PACKAGES) -> dict:
-    packages = observed_nuget_packages(database, max_packages)
+def collect_packages(packages: list[tuple[str, str]], output: Path, timeout: float = 20.0) -> dict:
     matches = osv_ids_for_packages(packages, timeout) if packages else {}
     advisories = normalized_advisories(matches, timeout) if matches else []
     document = {
@@ -162,17 +192,33 @@ def collect(database: Path, output: Path, timeout: float = 20.0, max_packages: i
     return document
 
 
+def collect(database: Path, output: Path, timeout: float = 20.0, max_packages: int = MAX_PACKAGES) -> dict:
+    """Compatibility collector for archived SQLite evidence and local tooling."""
+    return collect_packages(observed_nuget_packages(database, max_packages), output, timeout)
+
+
+def collect_from_nuget_index(index_path: Path, output: Path, timeout: float = 20.0, max_packages: int = MAX_PACKAGES) -> dict:
+    """Production collector for Security Evidence v2."""
+    return collect_packages(observed_nuget_index(index_path, max_packages), output, timeout)
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Collect public OSV advisories for NuGet dependencies in an Omega catalog")
-    parser.add_argument("--database", type=Path, required=True)
+    parser = argparse.ArgumentParser(description="Collect public OSV advisories for exact NuGet dependencies observed by Omega")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--database", type=Path, help="Compatibility input: SQLite evidence database")
+    source.add_argument("--nuget-index", type=Path, help="Security Evidence v2 indexes/nuget.json (production input)")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--timeout", type=float, default=20.0)
     parser.add_argument("--max-packages", type=int, default=MAX_PACKAGES)
     args = parser.parse_args()
-    if not args.database.exists():
-        raise SystemExit(f"Catalog database does not exist: {args.database}")
+    selected = args.nuget_index or args.database
+    if selected is None or not selected.exists():
+        raise SystemExit(f"Advisory input does not exist: {selected}")
     try:
-        result = collect(args.database, args.output, args.timeout, args.max_packages)
+        if args.nuget_index is not None:
+            result = collect_from_nuget_index(args.nuget_index, args.output, args.timeout, args.max_packages)
+        else:
+            result = collect(args.database, args.output, args.timeout, args.max_packages)
     except (OSError, ValueError, urllib.error.URLError, json.JSONDecodeError) as exc:
         raise SystemExit(f"Public advisory collection failed: {type(exc).__name__}: {exc}") from exc
     print(json.dumps({key: result[key] for key in ("queriedPackages", "matchedPackages", "generatedAtUtc")}, indent=2))

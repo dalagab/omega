@@ -1,0 +1,582 @@
+#!/usr/bin/env python3
+"""Shared primitives for Omega security-evidence v2.
+
+The v2 format is intentionally transport-oriented rather than query-oriented:
+small JSON manifests/indexes describe the current graph while large forensic
+collections are emitted as deterministic gzip-compressed JSON Lines shards.
+The published root index is written last and acts as the atomic revision pointer.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+import gzip
+import hashlib
+import json
+import os
+from pathlib import Path, PurePosixPath
+import sqlite3
+import tempfile
+import urllib.parse
+from typing import Any, Iterable, Iterator, Sequence
+
+SCHEMA = "omega.security-evidence.v2"
+FORMAT_VERSION = 2
+DEFAULT_CHUNK_BYTES = 16 * 1024 * 1024
+MAX_PUBLISH_FILE_BYTES = 32 * 1024 * 1024
+JSON_COLUMNS_SUFFIX = "_json"
+NUGET_KINDS = ("nuget", "nuget-lock", "nuget-resolved")
+
+# Core evidence is tied to one scan. Primary keys and scan_id are transport
+# identities, not semantic evidence, so they are excluded from record digests.
+CORE_DATASETS: tuple[tuple[str, str, str], ...] = (
+    ("findings", "plugin_security_findings", "finding_id"),
+    ("dependencies", "plugin_security_dependencies", "dependency_id"),
+    ("ipc", "plugin_security_ipc_endpoints", "ipc_endpoint_id"),
+    ("imports", "plugin_security_imports", "import_id"),
+    ("assemblies", "plugin_security_managed_assemblies", "managed_assembly_id"),
+    ("symbols", "plugin_security_managed_symbols", "managed_symbol_id"),
+    ("calls", "plugin_security_managed_calls", "managed_call_id"),
+    ("reachability", "plugin_security_managed_reachability", "reachability_id"),
+    ("permissions", "plugin_security_permission_candidates", "candidate_id"),
+    ("automation", "plugin_security_automation_capabilities", "automation_capability_id"),
+)
+
+LARGE_DATASETS = {"imports", "symbols", "calls", "reachability"}
+
+
+def canonical_json_bytes(value: Any) -> bytes:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def normalize_value(key: str, value: Any) -> Any:
+    if value is None:
+        return None
+    if key.endswith(JSON_COLUMNS_SUFFIX) and isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return [] if text == "" else value
+        try:
+            return json.loads(text)
+        except Exception:
+            # Preserve malformed legacy evidence exactly instead of inventing data.
+            return value
+    return value
+
+
+def normalize_row(row: sqlite3.Row | dict[str, Any], *, exclude: Iterable[str] = ()) -> dict[str, Any]:
+    excluded = set(exclude)
+    source = dict(row)
+    return {key: normalize_value(key, value) for key, value in source.items() if key not in excluded}
+
+
+def table_exists(db: sqlite3.Connection, name: str) -> bool:
+    return db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone() is not None
+
+
+def table_columns(db: sqlite3.Connection, name: str) -> list[str]:
+    if not table_exists(db, name):
+        return []
+    return [str(row[1]) for row in db.execute(f'PRAGMA table_info("{name}")')]
+
+
+def primary_key_column(db: sqlite3.Connection, table: str) -> str | None:
+    rows = list(db.execute(f'PRAGMA table_info("{table}")'))
+    for row in rows:
+        if int(row[5] or 0) == 1:
+            return str(row[1])
+    return None
+
+
+def read_meta(db: sqlite3.Connection) -> dict[str, str]:
+    if not table_exists(db, "catalog_meta"):
+        return {}
+    return {str(row[0]): str(row[1]) for row in db.execute("SELECT key,value FROM catalog_meta ORDER BY key")}
+
+
+def open_ro(path: Path) -> sqlite3.Connection:
+    resolved = path.resolve()
+    uri = "file:" + urllib.parse.quote(str(resolved).replace("\\", "/"), safe="/:_") + "?mode=ro"
+    db = sqlite3.connect(uri, uri=True)
+    db.row_factory = sqlite3.Row
+    db.execute("PRAGMA query_only=ON")
+    return db
+
+
+def safe_relpath(path: str) -> str:
+    pure = PurePosixPath(path.replace("\\", "/"))
+    if pure.is_absolute() or ".." in pure.parts:
+        raise ValueError(f"unsafe evidence path: {path!r}")
+    return pure.as_posix()
+
+
+def atomic_write_bytes(path: Path, data: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temp_name, path)
+    finally:
+        try:
+            os.unlink(temp_name)
+        except FileNotFoundError:
+            pass
+
+
+def write_json(path: Path, value: Any, *, pretty: bool = True) -> dict[str, Any]:
+    if pretty:
+        data = (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    else:
+        data = canonical_json_bytes(value) + b"\n"
+    atomic_write_bytes(path, data)
+    return {"path": path.name, "bytes": len(data), "sha256": sha256_bytes(data), "encoding": "json"}
+
+
+def dataset_record_digest(rows: Iterable[dict[str, Any]]) -> tuple[int, str]:
+    row_hashes: list[str] = []
+    count = 0
+    for row in rows:
+        row_hashes.append(sha256_bytes(canonical_json_bytes(row)))
+        count += 1
+    row_hashes.sort()
+    digest = hashlib.sha256()
+    for item in row_hashes:
+        digest.update(item.encode("ascii"))
+        digest.update(b"\n")
+    return count, digest.hexdigest()
+
+
+@dataclass
+class ChunkResult:
+    path: str
+    bytes: int
+    sha256: str
+    records: int
+    record_digest: str
+    encoding: str = "jsonl+gzip"
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "path": self.path,
+            "bytes": self.bytes,
+            "sha256": self.sha256,
+            "records": self.records,
+            "recordDigest": self.record_digest,
+            "encoding": self.encoding,
+        }
+
+
+class JsonlGzipChunkWriter:
+    """Deterministic bounded gzip JSONL writer.
+
+    gzip mtime is fixed at zero so repeated migrations of identical evidence
+    produce byte-identical shards. Chunks roll after the compressed file crosses
+    the target size; the hard publish ceiling is checked separately.
+    """
+
+    def __init__(self, directory: Path, stem: str, *, target_bytes: int = DEFAULT_CHUNK_BYTES):
+        self.directory = directory
+        self.stem = stem
+        self.target_bytes = max(1024 * 1024, int(target_bytes))
+        self.directory.mkdir(parents=True, exist_ok=True)
+        self._index = 0
+        self._raw = None
+        self._gzip = None
+        self._path: Path | None = None
+        self._records = 0
+        self._row_hashes: list[str] = []
+        self.results: list[ChunkResult] = []
+
+    def _open(self) -> None:
+        self._index += 1
+        self._path = self.directory / f"{self.stem}-{self._index:04d}.jsonl.gz"
+        self._raw = self._path.open("wb")
+        self._gzip = gzip.GzipFile(filename="", mode="wb", fileobj=self._raw, compresslevel=6, mtime=0)
+        self._records = 0
+        self._row_hashes = []
+
+    def _finish(self) -> None:
+        if self._gzip is None or self._raw is None or self._path is None:
+            return
+        self._gzip.close()
+        self._raw.close()
+        count, digest = dataset_record_digest_from_hashes(self._row_hashes)
+        size = self._path.stat().st_size
+        self.results.append(ChunkResult(
+            path=self._path.name,
+            bytes=size,
+            sha256=sha256_file(self._path),
+            records=count,
+            record_digest=digest,
+        ))
+        self._gzip = None
+        self._raw = None
+        self._path = None
+        self._records = 0
+        self._row_hashes = []
+
+    def write(self, row: dict[str, Any]) -> None:
+        if self._gzip is None:
+            self._open()
+        data = canonical_json_bytes(row) + b"\n"
+        self._gzip.write(data)
+        self._records += 1
+        self._row_hashes.append(sha256_bytes(canonical_json_bytes(row)))
+        # Flush before measuring compressed position. This is slightly more CPU
+        # intensive but keeps shard size bounded for GitHub branch publication.
+        self._gzip.flush()
+        if self._raw.tell() >= self.target_bytes and self._records > 0:
+            self._finish()
+
+    def close(self) -> list[ChunkResult]:
+        self._finish()
+        return self.results
+
+
+def dataset_record_digest_from_hashes(row_hashes: Sequence[str]) -> tuple[int, str]:
+    ordered = sorted(row_hashes)
+    digest = hashlib.sha256()
+    for item in ordered:
+        digest.update(item.encode("ascii"))
+        digest.update(b"\n")
+    return len(ordered), digest.hexdigest()
+
+
+def combine_chunk_record_digests(chunks: Sequence[ChunkResult]) -> tuple[int, str]:
+    # Chunk-level record digests cannot be combined into the same multiset digest
+    # as all rows, so callers that need an overall digest should track row hashes
+    # separately. This helper is only a transport fingerprint.
+    payload = [{"records": c.records, "recordDigest": c.record_digest} for c in chunks]
+    return sum(c.records for c in chunks), sha256_bytes(canonical_json_bytes(payload))
+
+
+def file_entry(root: Path, path: Path, *, records: int | None = None, record_digest: str | None = None, encoding: str | None = None) -> dict[str, Any]:
+    rel = path.relative_to(root).as_posix()
+    result: dict[str, Any] = {
+        "path": rel,
+        "bytes": path.stat().st_size,
+        "sha256": sha256_file(path),
+    }
+    if records is not None:
+        result["records"] = int(records)
+    if record_digest:
+        result["recordDigest"] = record_digest
+    if encoding:
+        result["encoding"] = encoding
+    return result
+
+
+def verify_file_entry(root: Path, entry: dict[str, Any], *, max_bytes: int | None = None) -> list[str]:
+    errors: list[str] = []
+    try:
+        rel = safe_relpath(str(entry.get("path") or ""))
+    except ValueError as exc:
+        return [str(exc)]
+    path = root / rel
+    if not path.is_file():
+        return [f"missing file: {rel}"]
+    actual_size = path.stat().st_size
+    expected_size = int(entry.get("bytes") or -1)
+    if actual_size != expected_size:
+        errors.append(f"size mismatch for {rel}: manifest={expected_size}, actual={actual_size}")
+    if max_bytes is not None and actual_size > max_bytes:
+        errors.append(f"file exceeds {max_bytes} byte ceiling: {rel} ({actual_size} bytes)")
+    expected_hash = str(entry.get("sha256") or "").lower()
+    actual_hash = sha256_file(path)
+    if expected_hash != actual_hash:
+        errors.append(f"sha256 mismatch for {rel}: manifest={expected_hash}, actual={actual_hash}")
+    return errors
+
+
+def row_digest_from_query(db: sqlite3.Connection, sql: str, params: Sequence[Any], *, exclude: Iterable[str]) -> tuple[int, str]:
+    row_hashes: list[str] = []
+    count = 0
+    for row in db.execute(sql, params):
+        normalized = normalize_row(row, exclude=exclude)
+        row_hashes.append(sha256_bytes(canonical_json_bytes(normalized)))
+        count += 1
+    return dataset_record_digest_from_hashes(row_hashes)
+
+
+def read_json_file(root: Path, relative: str) -> Any:
+    rel = safe_relpath(relative)
+    path = (root / rel).resolve()
+    resolved_root = root.resolve()
+    if path != resolved_root and resolved_root not in path.parents:
+        raise ValueError(f"evidence path escaped root: {relative!r}")
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def read_dataset_rows(root: Path, analysis_path: str, dataset: str) -> list[dict[str, Any]]:
+    """Read one v2 analysis dataset and verify its declared files while doing so."""
+    manifest = read_json_file(root, f"{safe_relpath(analysis_path)}/manifest.json")
+    item = ((manifest.get("datasets") or {}).get(dataset) or {}) if isinstance(manifest, dict) else {}
+    rows: list[dict[str, Any]] = []
+    for entry in item.get("files") or []:
+        errors = verify_file_entry(root, entry, max_bytes=MAX_PUBLISH_FILE_BYTES)
+        if errors:
+            raise ValueError("; ".join(errors))
+        rel = safe_relpath(str(entry.get("path") or ""))
+        path = root / rel
+        encoding = str(entry.get("encoding") or "")
+        if encoding == "json":
+            value = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(value, list):
+                rows.extend(item for item in value if isinstance(item, dict))
+            elif isinstance(value, dict):
+                rows.append(value)
+        elif encoding == "jsonl+gzip":
+            with gzip.open(path, "rt", encoding="utf-8") as stream:
+                for line in stream:
+                    if not line.strip():
+                        continue
+                    value = json.loads(line)
+                    if isinstance(value, dict):
+                        rows.append(value)
+        else:
+            raise ValueError(f"unsupported v2 evidence encoding {encoding!r} for {rel}")
+    return rows
+
+
+def iter_variant_entries(root: Path) -> Iterator[tuple[dict[str, Any], dict[str, Any]]]:
+    index = read_json_file(root, "index.json")
+    if index.get("schema") != SCHEMA:
+        raise ValueError(f"unsupported evidence schema: {index.get('schema')!r}")
+    plugins_entry = ((index.get("indexes") or {}).get("plugins") or {})
+    plugins = read_json_file(root, str(plugins_entry.get("path") or "indexes/plugins.json"))
+    for entry in plugins.get("currentVariants") or []:
+        if not isinstance(entry, dict):
+            continue
+        payload = read_json_file(root, str(entry.get("variantPath") or ""))
+        yield entry, payload
+
+
+def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[str, Any]:
+    """Validate a published/staged v2 tree without requiring the retired v1 SQLite DB.
+
+    This is the production incremental publication gate. It verifies the atomic root,
+    every declared index, every current variant pointer, every analysis manifest and
+    shard hash/size, the v2 file-size ceiling, and the root counts. It intentionally
+    does not attempt to prove semantic parity with the archived v1 database; that was
+    the one-time migration gate.
+    """
+    root = root.resolve()
+    errors: list[str] = []
+    warnings: list[str] = []
+    index_path = root / "index.json"
+    if not index_path.is_file():
+        return {
+            "schema": "omega.security-evidence.snapshot-validation.v2",
+            "ok": False,
+            "mode": "intrinsic",
+            "errors": ["index.json is missing"],
+            "warnings": [],
+        }
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "schema": "omega.security-evidence.snapshot-validation.v2",
+            "ok": False,
+            "mode": "intrinsic",
+            "errors": [f"index.json is unreadable: {type(exc).__name__}: {exc}"],
+            "warnings": [],
+        }
+    if index.get("schema") != SCHEMA or int(index.get("formatVersion") or 0) != FORMAT_VERSION:
+        errors.append(f"unexpected root schema/version: {index.get('schema')!r}/{index.get('formatVersion')!r}")
+
+    indexes = index.get("indexes") or {}
+    for name, entry in sorted(indexes.items()):
+        if not isinstance(entry, dict):
+            errors.append(f"index entry {name!r} is not an object")
+            continue
+        errors.extend(f"index {name}: {item}" for item in verify_file_entry(root, entry, max_bytes=MAX_PUBLISH_FILE_BYTES))
+
+    plugin_entries: list[dict[str, Any]] = []
+    try:
+        plugins_path = str((indexes.get("plugins") or {}).get("path") or "")
+        plugins = read_json_file(root, plugins_path)
+        plugin_entries = [item for item in (plugins.get("currentVariants") or []) if isinstance(item, dict)]
+    except Exception as exc:  # validation should aggregate rather than abort
+        errors.append(f"plugins index unreadable: {type(exc).__name__}: {exc}")
+
+    artifact_index_groups: dict[str, dict[str, Any]] = {}
+    try:
+        artifacts_path = str((indexes.get("artifacts") or {}).get("path") or "")
+        artifacts_index = read_json_file(root, artifacts_path)
+        for item in artifacts_index.get("artifacts") or []:
+            if not isinstance(item, dict):
+                errors.append("artifacts index contains a non-object entry")
+                continue
+            artifact_key = str(item.get("artifactSha256") or "").strip().lower() or "unknown"
+            if artifact_key in artifact_index_groups:
+                errors.append(f"duplicate artifact group {artifact_key}")
+                continue
+            artifact_index_groups[artifact_key] = item
+    except Exception as exc:
+        errors.append(f"artifacts index unreadable: {type(exc).__name__}: {exc}")
+
+    variant_ids: set[int] = set()
+    analysis_ids: set[str] = set()
+    referenced_analysis_paths: set[str] = set()
+    referenced_files: set[str] = {"index.json"}
+    for entry in indexes.values():
+        if isinstance(entry, dict) and entry.get("path"):
+            try:
+                referenced_files.add(safe_relpath(str(entry["path"])))
+            except ValueError:
+                pass
+
+    for entry in plugin_entries:
+        try:
+            variant_id = int(entry.get("variantId") or 0)
+            if variant_id <= 0:
+                raise ValueError("variantId is missing/invalid")
+            if variant_id in variant_ids:
+                errors.append(f"duplicate current variant {variant_id}")
+                continue
+            variant_ids.add(variant_id)
+            variant_path = safe_relpath(str(entry.get("variantPath") or ""))
+            referenced_files.add(variant_path)
+            payload = read_json_file(root, variant_path)
+            if int(payload.get("variantId") or 0) != variant_id:
+                errors.append(f"variant {variant_id} identity mismatch in {variant_path}")
+            current = payload.get("current") or {}
+            analysis = payload.get("analysis") or {}
+            analysis_id = str(analysis.get("analysisId") or "")
+            analysis_path = str(analysis.get("path") or "")
+            artifact_sha = str(analysis.get("artifactSha256") or current.get("artifact_sha256") or "").lower().strip()
+            artifact_key = str(entry.get("artifactSha256") or artifact_sha or "").lower().strip() or "unknown"
+            group = artifact_index_groups.get(artifact_key)
+            if group is None:
+                errors.append(f"variant {variant_id} references missing artifact group {artifact_key}")
+            elif variant_id not in {int(value) for value in (group.get("variants") or []) if str(value).isdigit()}:
+                errors.append(f"variant {variant_id} is missing from artifact group {artifact_key}")
+            if str(current.get("status") or "") == "complete":
+                if not analysis_id or not analysis_path:
+                    errors.append(f"variant {variant_id} is complete but has no analysis pointer")
+                    continue
+                if str(entry.get("analysisId") or "") != analysis_id:
+                    errors.append(f"variant {variant_id} plugins index analysisId mismatch")
+                if str(entry.get("artifactSha256") or "").lower().strip() != artifact_sha:
+                    errors.append(f"variant {variant_id} plugins index artifact SHA mismatch")
+                analysis_ids.add(analysis_id)
+                analysis_path = safe_relpath(analysis_path)
+                referenced_analysis_paths.add(analysis_path)
+                manifest_rel = f"{analysis_path}/manifest.json"
+                referenced_files.add(manifest_rel)
+                manifest = read_json_file(root, manifest_rel)
+                if group is not None:
+                    group_analysis_ids = {str(item.get("analysisId") or "") for item in (group.get("analyses") or []) if isinstance(item, dict)}
+                    if analysis_id not in group_analysis_ids:
+                        errors.append(f"analysis {analysis_id} is missing from artifact group {artifact_key}")
+                if str(manifest.get("analysisId") or "") != analysis_id:
+                    errors.append(f"analysis manifest ID mismatch for variant {variant_id}: {analysis_path}")
+                if str(manifest.get("artifactSha256") or "").lower().strip() != artifact_sha:
+                    errors.append(f"analysis artifact SHA mismatch for variant {variant_id}: {analysis_path}")
+                for dataset_name, dataset in sorted((manifest.get("datasets") or {}).items()):
+                    if not isinstance(dataset, dict):
+                        errors.append(f"analysis {analysis_id} dataset {dataset_name} is not an object")
+                        continue
+                    declared_records = int(dataset.get("records") or 0)
+                    file_records = 0
+                    row_hashes: list[str] = []
+                    for file_info in dataset.get("files") or []:
+                        if not isinstance(file_info, dict):
+                            errors.append(f"analysis {analysis_id} dataset {dataset_name} has malformed file entry")
+                            continue
+                        errors.extend(
+                            f"analysis {analysis_id}/{dataset_name}: {item}"
+                            for item in verify_file_entry(root, file_info, max_bytes=MAX_PUBLISH_FILE_BYTES)
+                        )
+                        try:
+                            rel = safe_relpath(str(file_info.get("path") or ""))
+                            referenced_files.add(rel)
+                            path = root / rel
+                            encoding = str(file_info.get("encoding") or "")
+                            if encoding == "json":
+                                value = json.loads(path.read_text(encoding="utf-8"))
+                                rows = value if isinstance(value, list) else [value]
+                                rows = [row for row in rows if isinstance(row, dict)]
+                                for row in rows:
+                                    row_hashes.append(sha256_bytes(canonical_json_bytes(row)))
+                                file_records += len(rows)
+                            elif encoding == "jsonl+gzip":
+                                with gzip.open(path, "rt", encoding="utf-8") as stream:
+                                    for line in stream:
+                                        if not line.strip():
+                                            continue
+                                        row = json.loads(line)
+                                        if isinstance(row, dict):
+                                            row_hashes.append(sha256_bytes(canonical_json_bytes(row)))
+                                            file_records += 1
+                            else:
+                                errors.append(f"analysis {analysis_id}/{dataset_name}: unsupported encoding {encoding!r}")
+                        except Exception as exc:
+                            errors.append(f"analysis {analysis_id}/{dataset_name}: cannot read records: {type(exc).__name__}: {exc}")
+                    count, digest = dataset_record_digest_from_hashes(row_hashes)
+                    if count != declared_records or file_records != declared_records:
+                        errors.append(
+                            f"analysis {analysis_id}/{dataset_name}: record count mismatch declared={declared_records}, read={count}"
+                        )
+                    if str(dataset.get("recordDigest") or "") != digest:
+                        errors.append(f"analysis {analysis_id}/{dataset_name}: semantic record digest mismatch")
+        except Exception as exc:
+            errors.append(f"current variant entry invalid: {type(exc).__name__}: {exc}")
+
+    counts = index.get("counts") or {}
+    expected_counts = {
+        "currentVariants": len(variant_ids),
+        "analyses": len(analysis_ids),
+        "artifactGroups": len(artifact_index_groups),
+    }
+    for key, actual in expected_counts.items():
+        if int(counts.get(key) or 0) != actual:
+            errors.append(f"root count mismatch {key}: index={counts.get(key)!r}, actual={actual}")
+
+    # Every published file must be bounded. Orphan analysis objects are rejected for
+    # production snapshots so repeated bounded scans cannot regrow branch storage.
+    all_files: set[str] = set()
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(root).as_posix()
+        if rel.startswith(".git/") or rel.startswith(".staging/") or path.name == ".omega-security-evidence-v2-migration.json":
+            continue
+        all_files.add(rel)
+        if path.stat().st_size > MAX_PUBLISH_FILE_BYTES:
+            errors.append(f"published file exceeds {MAX_PUBLISH_FILE_BYTES} byte ceiling: {rel}")
+    if require_no_orphans:
+        for path in sorted(all_files):
+            if path.startswith("artifacts/") and path.endswith("/manifest.json"):
+                analysis_dir = path.rsplit("/", 1)[0]
+                if analysis_dir not in referenced_analysis_paths:
+                    errors.append(f"orphan analysis object is still published: {analysis_dir}")
+
+    return {
+        "schema": "omega.security-evidence.snapshot-validation.v2",
+        "ok": not errors,
+        "mode": "intrinsic",
+        "indexSha256": sha256_file(index_path),
+        "evidenceRevision": str((index.get("revisions") or {}).get("evidenceRevision") or ""),
+        "checkedVariants": len(variant_ids),
+        "checkedAnalyses": len(analysis_ids),
+        "errors": errors,
+        "warnings": warnings,
+    }

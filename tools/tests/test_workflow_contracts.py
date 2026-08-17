@@ -33,9 +33,8 @@ class WorkflowContractTests(unittest.TestCase):
             "needs: [collect, enrich, scrape]",
             "python tools/catalog/validate_base_catalog.py --root catalog/dist",
             "name: omega-sqlite-catalog",
-            "omega-security-evidence.sqlite.zip",
             "omega-marketplace.sqlite.zip",
-            "security-evidence-latest",
+            "Download previous small marketplace database as catalog seed",
         )
         self.assertRegex(text, r"(?m)^  preflight:\s*$")
         self.assertRegex(text, r"(?m)^  collect:\s*\n(?:.|\n)*?    needs: preflight\s*$")
@@ -56,17 +55,17 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn('- ".github/workflows/security-scanner.yml"', builder)
         self.assertIn('- ".github/workflows/catalog-compaction.yml"', builder)
 
-        # Downstream workflows chain from builder/scanner completion instead of also firing on the
-        # same push. That prevents duplicate scans/compactions while still executing changed code.
+        # Security chains from the catalog builder; the retired v1 compactor is manual only.
         self.assertNotRegex(security, r"(?m)^  push:\s*$")
         self.assertNotRegex(compactor, r"(?m)^  push:\s*$")
         self.assertIn('- "Omega SQLite catalog builder"', security)
-        self.assertIn('- "Omega plugin security scanner"', compactor)
+        self.assertIn("workflow_dispatch:", compactor)
+        self.assertNotIn("workflow_run:", compactor)
 
         catalog_modules = list((common.ROOT / "tools" / "catalog").glob("*.py"))
         self.assertGreater(len(catalog_modules), 5, "catalog processing modules should exist under the trigger root")
 
-    def test_security_scanner_is_read_only_and_hands_off_an_artifact(self) -> None:
+    def test_security_scanner_stages_and_publishes_v2_fail_closed(self) -> None:
         text = self.read("security-scanner.yml")
         self.assert_has(
             text,
@@ -74,22 +73,30 @@ class WorkflowContractTests(unittest.TestCase):
             '- "Omega SQLite catalog builder"',
             "github.event.workflow_run.conclusion == 'success'",
             "actions: read",
-            "contents: read",
+            "contents: write",
             "issues: write",
+            "ref: security-evidence-v2",
+            "path: catalog/security-v2-current",
             "--name omega-sqlite-catalog",
-            "security-evidence-latest",
-            "omega-security-evidence.sqlite.zip",
-            "python tools/catalog/validate_security_catalog.py --root catalog/security-output",
-            "name: omega-security-catalog",
-            "--ledger catalog/security-output/security-scan-ledger.json",
+            "production_security_v2_pipeline.py",
+            "--candidate-evidence catalog/security-v2-candidate",
             "--source-overrides sources/source-overrides.json",
+            "validate_marketplace_catalog.py --root catalog/publication-output",
+            "developer_view.py audit",
+            "security-developer-audit.json",
+            "publish_security_evidence_v2.py",
+            "--snapshot-validation-report",
+            "--audit-report",
+            "--branch security-evidence-v2",
+            "gh release upload catalog-latest",
             "source-scan-followups.json",
             "tools/catalog/create_source_followup_issues.py",
             "continue-on-error: true",
-            "security-scan-ledger.json",
         )
-        self.assertNotIn("contents: write", text)
-        self.assertNotIn("gh release upload", text)
+        self.assertNotIn("security-evidence-latest", text)
+        self.assertNotIn("omega-security-evidence.sqlite.zip", text)
+        self.assertNotIn("omega-security-catalog", text)
+
 
 
     def test_source_submission_workflow_validates_before_privileged_persistence_and_restarts_minimum_chain(self) -> None:
@@ -130,107 +137,59 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("--community sources/community-sources.json", text)
         self.assertGreaterEqual(text.count("--community sources/community-sources.json"), 2)
 
-    def test_security_scanner_collects_public_advisories_before_dependency_projection(self) -> None:
-        text = self.read("security-scanner.yml")
-        collector = "python tools/catalog/collect_public_advisories.py"
-        scanner = "python tools/catalog/security_scan.py"
-        self.assertIn(collector, text)
-        self.assertIn("--advisories catalog/security-output/public-advisories.json", text)
-        self.assertIn("catalog/security-output/public-advisories.json", text)
-        self.assertLess(text.index(collector), text.rindex(scanner))
-        self.assertGreaterEqual(text.count(collector), 2, "advisories are refreshed after newly scanned dependencies are discovered")
-        self.assertIn("--max-scans 0", text, "fresh advisory matches are re-projected without rescanning plugin artifacts")
-        self.assertIn("security-advisory-refresh-report.json", text)
+    def test_security_scanner_routes_osv_through_the_v2_pipeline(self) -> None:
+        workflow = self.read("security-scanner.yml")
+        pipeline = (common.ROOT / "tools" / "security" / "production_security_v2_pipeline.py").read_text(encoding="utf-8")
+        self.assertIn("production_security_v2_pipeline.py", workflow)
+        self.assertIn("collect_public_advisories.collect", pipeline)
+        self.assertIn("nugetPackageVersionPairs", pipeline)
+        self.assertIn("OSV publication gate failed", pipeline)
+        self.assertIn("max_scans=0", pipeline, "advisory matches must be re-projected without starting another artifact scan")
+        self.assertIn("security-advisory-refresh-report.json", pipeline)
 
-    def test_compactor_is_only_database_publisher_and_splits_client_from_evidence(self) -> None:
+
+
+    def test_legacy_compactor_is_manual_and_never_publishes(self) -> None:
         text = self.read("catalog-compaction.yml")
         self.assert_has(
             text,
-            "name: Omega SQLite catalog compactor",
-            '- "Omega plugin security scanner"',
-            "github.event.workflow_run.conclusion == 'success'",
-            "--name omega-security-catalog",
-            "python tools/catalog/project_marketplace_catalog.py",
-            "python tools/catalog/validate_marketplace_catalog.py --root catalog/publication-output",
-            "python tools/catalog/validate_evidence_catalog.py --root catalog/publication-output",
-            "python tools/security/developer_view.py audit",
-            "--marketplace-database catalog/publication-output/omega-marketplace.sqlite",
-            "security-developer-audit.json",
-            "name: omega-publication-databases",
-            "python tools/catalog/publication_decision.py",
-            "publish_marketplace:",
-            "needs: [compact, publish_evidence]",
-            "needs.publish_evidence.result == 'success'",
-            "Publish client marketplace catalog",
-            "omega-marketplace.sqlite.zip",
-            "gh release upload catalog-latest",
-            "publish_evidence:",
-            "if: needs.compact.outputs.publish_evidence == 'true'",
-            "Publish server-side security evidence database",
-            "omega-security-evidence.sqlite.zip",
-            "gh release upload security-evidence-latest",
-            "name: Publish scan freshness ledger only",
-            "if: needs.compact.outputs.publish_marketplace == 'false' && needs.compact.outputs.publish_evidence == 'false'",
+            "name: Omega legacy SQLite catalog compactor (disabled)",
+            "workflow_dispatch:",
+            "Legacy compactor compatibility self-tests only",
+            "python tools/catalog/compact_sqlite_catalog.py --self-test",
+            "python tools/catalog/project_marketplace_catalog.py --self-test",
+            "The v1 SQLite evidence release is archival only.",
         )
-        # Repository write permission must be scoped to publication jobs, never the compaction/analysis job.
-        compact_start = text.index("  compact:")
-        marketplace_start = text.index("\n  publish_marketplace:\n")
-        compact_block = text[compact_start:marketplace_start]
-        self.assertNotIn("contents: write", compact_block)
+        self.assertNotIn("workflow_run:", text)
+        self.assertNotIn("gh release upload", text)
+        self.assertNotIn("gh release upload security-evidence-latest", text)
+        self.assertNotIn("omega-security-evidence.sqlite.zip", text)
+        self.assertNotIn("contents: write", text)
 
-        marketplace_end = text.index("\n  publish_evidence:\n")
-        marketplace_block = text[marketplace_start:marketplace_end]
-        self.assertIn("contents: write", marketplace_block)
-        self.assertIn("gh release upload catalog-latest", marketplace_block)
-        self.assertNotIn("omega-security-evidence.sqlite.zip", marketplace_block, "client release must never publish detailed evidence database")
+    def test_marketplace_publication_follows_v2_snapshot_gate(self) -> None:
+        text = self.read("security-scanner.yml")
+        v2_publish = text.index("Publish validated Security Evidence v2 snapshot atomically")
+        marketplace = text.index("Publish small client marketplace only after all v2 gates pass")
+        self.assertLess(v2_publish, marketplace)
+        self.assertIn("if: steps.v2.outputs.publish_v2 == 'true'", text)
+        self.assertIn("if: steps.v2.outputs.publish_marketplace == 'true'", text)
+        self.assertIn("--audit-report catalog/security-v2-work/security-developer-audit.json", text)
+        self.assertNotIn("omega-security-evidence.sqlite.zip", text)
 
-        evidence_end = text.index("\n  publish_scan_ledger:\n")
-        evidence_block = text[marketplace_end:evidence_end]
-        self.assertIn("contents: write", evidence_block)
-        self.assertIn("gh release upload security-evidence-latest", evidence_block)
-        self.assertIn("omega-security-evidence.sqlite.zip", evidence_block)
-
-        ledger_block = text[evidence_end:]
-        self.assertIn("security-evidence-latest", ledger_block)
-        self.assertNotIn("omega-marketplace.sqlite.zip", ledger_block)
-        self.assertNotIn("omega-security-evidence.sqlite.zip", ledger_block)
-
-
-    def test_marketplace_publication_waits_for_required_evidence_publication(self) -> None:
-        text = self.read("catalog-compaction.yml")
-        marketplace_start = text.index("\n  publish_marketplace:\n")
-        evidence_start = text.index("\n  publish_evidence:\n")
-        marketplace_block = text[marketplace_start:evidence_start]
-        self.assertIn("needs: [compact, publish_evidence]", marketplace_block)
-        self.assertIn("always()", marketplace_block)
-        self.assertIn("needs.compact.result == 'success'", marketplace_block)
-        self.assertIn("needs.compact.outputs.publish_evidence == 'false'", marketplace_block)
-        self.assertIn("needs.publish_evidence.result == 'success'", marketplace_block)
-
-    def test_publish_jobs_checkout_validator_source(self) -> None:
-        text = self.read("catalog-compaction.yml")
-        marketplace_start = text.index("\n  publish_marketplace:\n")
-        evidence_start = text.index("\n  publish_evidence:\n")
-        ledger_start = text.index("\n  publish_scan_ledger:\n")
-        for name, block, validator in (
-            ("marketplace", text[marketplace_start:evidence_start], "tools/catalog/validate_marketplace_catalog.py"),
-            ("evidence", text[evidence_start:ledger_start], "tools/catalog/validate_evidence_catalog.py"),
-        ):
-            checkout = block.index("actions/checkout@v6")
-            setup = block.index("actions/setup-python@v7")
-            verify = block.index(validator)
-            self.assertLess(checkout, verify, f"{name} publish job must checkout repository before validator")
-            self.assertLess(setup, verify, f"{name} publish job must set up Python before validator")
-            self.assertIn("persist-credentials: false", block)
+    def test_builder_never_downloads_archived_v1_evidence(self) -> None:
+        text = self.read("catalog-builder.yml")
+        self.assertIn("omega-marketplace.sqlite.zip", text)
+        self.assertNotIn("security-evidence-latest", text)
+        self.assertNotIn("omega-security-evidence.sqlite.zip", text)
 
     def test_workflow_chain_names_match_exactly(self) -> None:
         builder = self.read("catalog-builder.yml")
         security = self.read("security-scanner.yml")
-        compactor = self.read("catalog-compaction.yml")
         builder_name = re.search(r"(?m)^name:\s*(.+)$", builder).group(1).strip()
-        security_name = re.search(r"(?m)^name:\s*(.+)$", security).group(1).strip()
         self.assertIn(builder_name, security)
-        self.assertIn(security_name, compactor)
+        self.assertIn("Omega legacy SQLite catalog compactor (disabled)", self.read("catalog-compaction.yml"))
+
+
 
     def test_client_code_has_no_evidence_database_endpoint(self) -> None:
         omega_root = common.ROOT / "Omega"
@@ -263,12 +222,13 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("1.2.0", self.read("catalog-compaction.yml"))
         self.assertNotIn("1.0.0", self.read("catalog-compaction.yml"))
 
-    def test_revision_and_changelog_tools_are_workflow_inputs(self) -> None:
+    def test_revision_and_v2_publication_tools_are_workflow_inputs(self) -> None:
         builder = self.read("catalog-builder.yml")
-        compactor = self.read("catalog-compaction.yml")
-        self.assertIn('- "tools/catalog/**"', builder, "all revision/publication modules must restart from the builder on push")
-        self.assertIn("python tools/catalog/publication_decision.py", compactor)
-        self.assertIn("python tools/catalog/project_marketplace_catalog.py", compactor)
+        security = self.read("security-scanner.yml")
+        self.assertIn('- "tools/catalog/**"', builder, "all catalog/security processing modules must restart from the builder on push")
+        self.assertIn("production_security_v2_pipeline.py", security)
+        self.assertIn("publish_security_evidence_v2.py", security)
+        self.assertIn("validate_marketplace_catalog.py", security)
 
     def test_release_workflow_runs_python_and_dotnet_regressions_before_publish(self) -> None:
         text = self.read("release.yml")

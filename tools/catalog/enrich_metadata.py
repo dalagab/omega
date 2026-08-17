@@ -163,6 +163,7 @@ def _strip_trailing_json_commas(text: str) -> str:
 
 def _loads_pluginmaster_json(text: str):
     """Parse a PluginMaster feed, retrying only for trailing-comma tolerance."""
+    text = text.removeprefix("\ufeff")
     try:
         return json.loads(text)
     except json.JSONDecodeError as strict_error:
@@ -188,6 +189,8 @@ def _extract_plugin_list(data):
             nested = _extract_plugin_list(value)
             if nested is not None:
                 return nested
+    if any(key in data for key in ("InternalName", "internalName")):
+        return [data]
     return None
 
 def fetch_source(
@@ -214,7 +217,7 @@ def fetch_source(
             contentSha256=str(cached.get("content_sha256") or ""),
         )
     try:
-        data = _loads_pluginmaster_json(body.decode("utf-8", errors="replace"))
+        data = _loads_pluginmaster_json(body.decode("utf-8-sig", errors="replace"))
     except json.JSONDecodeError as exc:
         return _record(source, ok=False, error=f"Non-JSON response: {exc}")
     entries = _extract_plugin_list(data)

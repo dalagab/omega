@@ -10,6 +10,15 @@ class PublicSiteContractTests(unittest.TestCase):
         self.assertIn("python tools/site/build_site.py", workflow)
         self.assertIn("python tools/site/validate_site.py", workflow)
         self.assertIn("actions/deploy-pages@v4", workflow)
+    def test_homepage_leads_with_marketplace_and_integrated_security(self):
+        index = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("Dalamud Plugin Marketplace &amp; Security Scanner", index)
+        self.assertIn("in-game Dalamud plugin marketplace with integrated security scanning", index)
+        self.assertIn("Your plugin marketplace.", index)
+        self.assertIn("Security intelligence included.", index)
+        self.assertIn('property="og:title"', index)
+        self.assertNotIn("Gather the evidence. Choose your own trial.", index)
+
     def test_site_keeps_marketplace_discovery_in_game(self):
         index = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
         self.assertIn("No giant plugin dump on a random website.", index)

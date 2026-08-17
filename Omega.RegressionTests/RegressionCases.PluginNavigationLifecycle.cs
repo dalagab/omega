@@ -322,7 +322,7 @@ internal static partial class RegressionCases
         Contains(usage, "command prefix", "usage extraction recognizes command metadata such as Questionable's command prefix");
         Contains(store, "ReadPluginChangelogHistory", "Definitions retains and loads historical plugin changelogs from historical variants");
         Contains(store, "WHERE TRIM(v.changelog)<>''", "empty changelog records are not projected into client history");
-        Contains(changelog, "## [0.8.76]", "repository changelog has an entry for the current release");
+        Contains(changelog, "## [0.8.78]", "repository changelog has an entry for the current release");
         Contains(changelog, "Availability", "release notes can explain when Definitions-backed features become visible");
         Contains(release, "extract_changelog.py", "release workflow consumes repository CHANGELOG.md");
         Contains(release, "--notes-file release-notes.md", "GitHub Releases receive curated project release notes");

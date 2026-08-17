@@ -5,7 +5,7 @@ internal static partial class RegressionCases
     internal static void TestPluginSecurityIntelligenceContract()
     {
         var scanner = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "security_scan.py"));
-        Contains(scanner, "SCANNER_VERSION = \"2.4.0\"", "scanner version is explicit so stale scans can be refreshed");
+        Contains(scanner, "SCANNER_VERSION = \"2.5.0\"", "scanner version is explicit so stale scans can be refreshed");
         Contains(scanner, "Only HTTPS downloads are scanned", "scanner refuses insecure artifact transports");
         Contains(scanner, "MAX_ARTIFACT_BYTES", "artifact downloads are bounded");
         Contains(scanner, "MAX_ARTIFACT_BYTES = 256 * 1024 * 1024", "artifact download ceiling accommodates large production plugin packages while remaining bounded");
@@ -139,16 +139,24 @@ internal static partial class RegressionCases
         Contains(normalizedWorkflow, "tools/catalog/security_scan.py", "scanner code changes trigger immediate repository-side validation");
         Contains(normalizedWorkflow, "github.event.workflow_run.conclusion == 'success'", "failed catalog builds cannot start a publish scan");
         Contains(normalizedWorkflow, "actions: read", "security scan can read the exact upstream catalog artifact");
-        Contains(normalizedWorkflow, "contents: read", "hostile artifact scan job has read-only repository permission");
-        False(workflow.Contains("contents: write", StringComparison.Ordinal), "security scanner never receives repository write permission");
-        Contains(workflow, "name: omega-security-catalog", "security enrichment hands its database to the post-scan compactor as an Actions artifact");
+        Contains(normalizedWorkflow, "contents: write", "final validated v2 snapshot publication has repository write permission");
+        Contains(workflow, "ref: security-evidence-v2", "scanner begins from the last-known-good v2 evidence snapshot");
+        Contains(workflow, "production_security_v2_pipeline.py", "security scanning is staged through the production v2 orchestrator");
+        var productionV2Pipeline = File.ReadAllText(Path.Combine(Root, "tools", "security", "production_security_v2_pipeline.py"));
+        Contains(productionV2Pipeline, "collect_from_nuget_index", "production OSV queries are driven from the v2 NuGet evidence index");
+        Contains(productionV2Pipeline, "NuGet evidence-index publication gate", "production fails closed when exact NuGet observations are not actually queried");
+        Contains(scanner, ".deps.json", "packaged .deps.json files are inspected for exact resolved NuGet package versions");
+        Contains(workflow, "publish_security_evidence_v2.py", "validated v2 publication is an explicit final step");
+        Contains(workflow, "--snapshot-validation-report", "v2 push requires intrinsic snapshot validation");
+        Contains(workflow, "--audit-report", "v2 push requires the independent developer audit");
         Contains(workflow, "--max-scans", "scheduled scan work is bounded");
         Contains(workflow, "--max-batch-seconds", "workflow supplies a wall-clock scan-start budget below the job timeout");
         Contains(workflow, "--hardening-self-test", "workflow runs the catalog/pathological-input hardening fixture");
         Contains(workflow, "--rescan-after-hours", "unchanged artifacts are periodically revalidated");
-        Contains(workflow, "security-report.json", "each batch publishes an auditable scan summary");
-        Contains(workflow, "tools/catalog/validate_security_catalog.py", "workflow delegates security persistence checks to tested Python validation");
+        Contains(workflow, "production-security-v2-report.json", "each batch retains an auditable v2 production summary");
+        Contains(workflow, "tools/catalog/validate_marketplace_catalog.py", "workflow validates the small client projection before publication");
         Contains(workflow, "--name omega-sqlite-catalog", "security scan consumes the exact catalog-builder artifact instead of an intermediate release");
+        False(workflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "production scanner no longer transports the giant v1 evidence SQLite database");
         var securityValidator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_security_catalog.py"));
         Contains(securityValidator, "plugin_security_dependencies", "validator checks dependency intelligence persistence");
         Contains(securityValidator, "plugin_security_permission_candidates", "validator checks permission candidate persistence");
@@ -358,35 +366,19 @@ internal static partial class RegressionCases
 
 
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-compaction.yml"));
-        var normalized = workflow.ReplaceLineEndings("\n");
-        Contains(normalized, "workflows:\n      - \"Omega plugin security scanner\"", "compaction runs after the security scanner workflow completes");
-        Contains(normalized, "github.event.workflow_run.conclusion == 'success'", "failed security scans cannot start production compaction");
-        Contains(workflow, "gh run download", "automatic compaction consumes the exact security workflow artifact");
-        Contains(workflow, "omega-security-catalog", "compaction consumes security-enriched catalog artifacts");
-        Contains(workflow, "compaction-report.json", "compaction publishes an auditable size and integrity report");
-        Contains(workflow, "name: Publish client marketplace catalog", "small marketplace database is promoted to the client release");
-        Contains(workflow, "name: Publish server-side security evidence database", "detailed evidence is published separately");
-        Contains(workflow, "omega-marketplace.sqlite.zip", "client release uses the small marketplace bundle");
-        Contains(workflow, "omega-security-evidence.sqlite.zip", "server-side release retains detailed evidence");
-        Contains(workflow, "security-evidence-latest", "detailed evidence has a separate stable release");
-        Contains(workflow, "contents: write", "repository write permission is isolated to the final compaction publish job");
-        Contains(workflow, "tools/catalog/validate_marketplace_catalog.py", "compaction validates the projected client marketplace database before publication");
-        Contains(workflow, "tools/catalog/validate_evidence_catalog.py", "compaction validates the detailed evidence database before publication");
-        Contains(compactor, "validate_compacted_database", "compactor validates its intermediate compacted evidence database before projection");
-        Contains(workflow, "tools/catalog/publication_decision.py", "compaction uses tested fail-closed publication decision logic");
-        Contains(workflow, "needs: [compact, publish_evidence]", "marketplace publication waits for the evidence publication decision");
-        Contains(workflow, "needs.publish_evidence.result == 'success'", "marketplace publication cannot expose an evidence revision before required evidence publication succeeds");
-        Contains(workflow, "--previous-database", "compaction compares against the previous production database for changelog generation");
-        Contains(workflow, "tools/catalog/compact_sqlite_catalog.py", "compactor code changes can compact the current production release immediately");
-        var publishStart = normalized.IndexOf("\n  publish_marketplace:\n", StringComparison.Ordinal);
-        var ledgerStart = normalized.IndexOf("\n  publish_evidence:\n", publishStart + 1, StringComparison.Ordinal);
-        True(publishStart >= 0 && ledgerStart > publishStart, "compactor publish job can be isolated for verification contracts");
-        var publishBlock = normalized[publishStart..ledgerStart];
-        var checkoutIndex = publishBlock.IndexOf("actions/checkout@v6", StringComparison.Ordinal);
-        var setupPythonIndex = publishBlock.IndexOf("actions/setup-python@v7", StringComparison.Ordinal);
-        var remoteVerifyIndex = publishBlock.IndexOf("tools/catalog/validate_marketplace_catalog.py", StringComparison.Ordinal);
-        True(checkoutIndex >= 0 && remoteVerifyIndex > checkoutIndex, "marketplace publish job checks out repository before running the published-catalog validator");
-        True(setupPythonIndex >= 0 && remoteVerifyIndex > setupPythonIndex, "marketplace publish job configures Python before running the published-catalog validator");
+        Contains(workflow, "Omega legacy SQLite catalog compactor (disabled)", "v1 compactor is retained only as a manual compatibility tool");
+        Contains(workflow, "workflow_dispatch:", "legacy compactor can be invoked manually for compatibility testing");
+        False(workflow.Contains("workflow_run:", StringComparison.Ordinal), "legacy compactor is removed from the production chain");
+        False(workflow.Contains("gh release upload", StringComparison.Ordinal), "legacy compactor cannot publish production data");
+        Contains(workflow, "compact_sqlite_catalog.py --self-test", "legacy compactor implementation remains regression tested");
+        Contains(compactor, "validate_compacted_database", "legacy compactor still validates its compacted evidence database");
+
+        var scannerWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "security-scanner.yml"));
+        Contains(scannerWorkflow, "Publish validated Security Evidence v2 snapshot atomically", "production scanner publishes the detailed v2 snapshot only after validation");
+        Contains(scannerWorkflow, "Publish small client marketplace only after all v2 gates pass", "client Definitions publication follows v2 validation/audit gates");
+        Contains(scannerWorkflow, "omega-marketplace.sqlite.zip", "client release continues to use the small marketplace bundle");
+        Contains(scannerWorkflow, "security-developer-audit.json", "independent conclusion audit is a production publication gate");
+        False(scannerWorkflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "production chain no longer transports detailed evidence through a giant SQLite bundle");
         var compactValidator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_compacted_catalog.py"));
         Contains(compactValidator, "foreign_key_check", "compaction validator refuses foreign-key violations");
         Contains(compactValidator, "catalog_changelog", "compaction validator requires the embedded changelog");

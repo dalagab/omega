@@ -206,6 +206,8 @@ class UiLayoutContractTests(unittest.TestCase):
         self.assertIn("Automation is deliberately separate from scan severity", discover)
         self.assertIn("ResolvePluginSecurityVisual", security)
         self.assertIn("DrawProductSecuritySummary", security)
+        self.assertIn("DrawPublicSourceAvailabilityBadge", security)
+        self.assertIn("Source: public source unavailable.", security)
         self.assertIn("selectedPlugin = ResolveDefaultVariant(plugin)", artwork)
         self.assertNotIn(".Concat(catalog.GetPresentationVariants(plugin.InternalName))", discover)
 
