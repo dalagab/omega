@@ -2,6 +2,47 @@
 
 Omega follows semantic product versions. Release entries here are consumed by the GitHub release workflow so the same human-readable notes are published with each immutable release.
 
+## [0.8.76] - 2026-08-17
+
+### Fixed
+
+- Repair **OSV collection against real scanner output**. Public-advisory collection now includes resolved NuGet observations recorded as `nuget-lock` and `nuget-resolved` as well as direct `nuget` dependencies. The previous collector could report `queriedPackages: 0` even while the evidence database contained tens of thousands of resolved dependency rows.
+- Fix the Security Developer View SQL example so it contains real line breaks instead of literal `\n` escape text, which SQLite rejected as `unrecognized token: "\"`.
+- Make the developer-view evidence cache invalidate a same-named release asset when its published size or SHA-256 changes instead of accidentally reusing the previous large database.
+- Add resumable `.part` downloads using HTTP Range requests for the detailed security evidence bundle, so an interrupted hundreds-of-megabytes download does not normally have to restart from zero.
+- Carry the corrected SQLite catalog integration expectation that failed current website scrapes invalidate marketplace presentation while retaining server-side history; this is the repair required for the currently failing scheduled catalog-builder preflight once this source reaches `main`.
+
+### Changed
+
+- The Security Developer View now shows **current scans at the latest scanner generation**, **legacy current scans**, and the number of observed resolved NuGet package/version pairs. IPC is labelled **IPC providers observed** so a zero is not misread as proof that no plugin exposes IPC while incremental rescanning is still catching up.
+- OSV collection de-duplicates package/version observations across current variants and only queries dependencies belonging to completed current scans.
+- Persist OSV collector coverage (`queriedPackages` / `matchedPackages`) into security evidence metadata. The developer consistency audit now fails when resolved NuGet versions exist but the collector queried fewer packages than expected, making a silent zero-query regression publish-blocking.
+
+### Availability
+
+- Developer-view download/SQL/coverage fixes are available immediately after updating the repository tooling.
+- OSV matches begin populating after the next successful security scan using this collector and a subsequent evidence/Definitions publication. Existing published evidence can continue to show zero until that run completes.
+- The online catalog workflow repair takes effect only after this source revision is pushed to GitHub `main`; rerunning the old workflow revision will continue to execute its stale self-test.
+
+## [0.8.75] - 2026-08-17
+
+### Added
+
+- Add the **Omega Security Developer View**, a read-only Python/localhost browser tool that can download the published detailed security-evidence database and small marketplace database, verify their SHA-256 sidecars, and traverse current plugin/source-variant security conclusions.
+- Expose static findings and evidence, exact-version OSV matches, dependency resolutions/issues, IPC providers/consumers and required/feature/optional semantics, permission candidates, automation evidence, plugin source build scope, source/package comparison, scan lineage, dependency drift, and lazy managed-call inspection.
+- Add a bounded read-only SQL console for developer investigation. The SQLite connection runs with `query_only` and the console accepts only a single SELECT/PRAGMA/WITH/EXPLAIN statement.
+- Add an independent **conclusion audit** that reproduces finding counters, highest static severity, exact-version advisory summary, hidden internal risk score, and the client marketplace security projection from detailed evidence.
+- Run that conclusion audit inside the catalog compaction/publication workflow before databases can be published, and publish `security-developer-audit.json` with the detailed evidence release for diagnostics.
+
+### Fixed
+
+- Update the SQLite catalog integration self-test to match the current-presentation policy introduced in 0.8.72: a failed due website re-scrape keeps server-side history but marks that website presentation non-current instead of expecting stale rich-card data to remain active. This repairs the current push-driven catalog/regression workflow failure.
+
+### Availability
+
+- The developer view is repository tooling and can be used immediately after updating the source. Running it without arguments downloads the latest published security evidence locally; the Omega plugin itself still never downloads the detailed evidence database.
+- The new online conclusion-audit artifact appears after the next successful security -> compaction publication using this workflow revision.
+
 ## [0.8.74] - 2026-08-17
 
 ### Changed

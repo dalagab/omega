@@ -531,11 +531,18 @@ class CatalogPythonUnitTests(unittest.TestCase):
                 """)
                 db.execute("INSERT INTO plugin_security_current VALUES(1,'complete')")
                 db.execute("INSERT INTO plugin_security_dependencies VALUES(1,'nuget','Example.Package','1.2.3','')")
+                db.execute("INSERT INTO plugin_security_dependencies VALUES(1,'nuget-lock','Locked.Package','2.0.0','2.0.1')")
+                db.execute("INSERT INTO plugin_security_dependencies VALUES(1,'nuget-resolved','Resolved.Package','','3.4.5')")
                 db.commit()
-            with mock.patch.object(collect_public_advisories, "post_json", return_value={"results": [{"vulns": [{"id": "GHSA-test"}]}]}), \
+            def query_batch(_url, payload, _timeout):
+                return {"results": [
+                    {"vulns": [{"id": "GHSA-test"}]} if q["package"]["name"] == "Example.Package" else {"vulns": []}
+                    for q in payload["queries"]
+                ]}
+            with mock.patch.object(collect_public_advisories, "post_json", side_effect=query_batch), \
                  mock.patch.object(collect_public_advisories, "get_json", return_value={"id": "GHSA-test", "summary": "Example vulnerability", "aliases": ["CVE-2026-0001"], "database_specific": {"severity": "HIGH"}}):
                 document = collect_public_advisories.collect(database, output)
-        self.assertEqual(1, document["queriedPackages"])
+        self.assertEqual(3, document["queriedPackages"])
         self.assertEqual(1, document["matchedPackages"])
         advisory = document["advisories"][0]
         self.assertEqual("Example.Package", advisory["name"])

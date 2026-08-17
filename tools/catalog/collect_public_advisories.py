@@ -21,6 +21,7 @@ USER_AGENT = "Dalagab-Omega-Advisory-Collector/1.0 (+https://github.com/dalagab/
 QUERY_BATCH_SIZE = 100
 MAX_PACKAGES = 2_000
 HTTP_ATTEMPTS = 3
+NUGET_DEPENDENCY_KINDS = ("nuget", "nuget-lock", "nuget-resolved")
 
 
 def utc_now() -> str:
@@ -34,16 +35,20 @@ def observed_nuget_packages(database: Path, max_packages: int) -> list[tuple[str
             # A brand-new catalog has not been through the scanner yet. The first scan can
             # proceed without advisory input; the next run will have observed package data.
             return []
-        rows = db.execute("""
-            SELECT d.name,COALESCE(NULLIF(d.resolved_version,''),NULLIF(d.version,'')) AS version,COUNT(*) AS uses
+        kind_placeholders = ",".join("?" for _ in NUGET_DEPENDENCY_KINDS)
+        rows = db.execute(f"""
+            SELECT MIN(d.name) AS name,COALESCE(NULLIF(TRIM(d.resolved_version),''),NULLIF(TRIM(d.version),'')) AS version,COUNT(*) AS uses
               FROM plugin_security_dependencies d
-              JOIN plugin_security_current c ON c.scan_id=d.scan_id
-             WHERE c.status='complete' AND d.kind='nuget' AND d.name<>''
-               AND COALESCE(NULLIF(d.resolved_version,''),NULLIF(d.version,''))<>''
-             GROUP BY lower(d.name),version
-             ORDER BY uses DESC,d.name COLLATE NOCASE,version COLLATE NOCASE
+             WHERE lower(d.kind) IN ({kind_placeholders}) AND TRIM(d.name)<>''
+               AND COALESCE(NULLIF(TRIM(d.resolved_version),''),NULLIF(TRIM(d.version),''))<>''
+               AND EXISTS (
+                    SELECT 1 FROM plugin_security_current c
+                     WHERE c.scan_id=d.scan_id AND c.status='complete'
+               )
+             GROUP BY lower(TRIM(d.name)),version
+             ORDER BY uses DESC,name COLLATE NOCASE,version COLLATE NOCASE
              LIMIT ?
-        """, (max(0, min(max_packages, MAX_PACKAGES)),)).fetchall()
+        """, (*NUGET_DEPENDENCY_KINDS, max(0, min(max_packages, MAX_PACKAGES)))).fetchall()
     return [(str(name), str(version)) for name, version, _uses in rows]
 
 

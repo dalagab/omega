@@ -114,6 +114,15 @@ jobs:
           set -euo pipefail
           python tools/catalog/validate_marketplace_catalog.py --root catalog/publication-output
           python tools/catalog/validate_evidence_catalog.py --root catalog/publication-output
+      - name: Reproduce security conclusions with developer audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/developer_view.py audit \
+            --no-download \
+            --database catalog/compaction-output/omega-catalog.sqlite \
+            --marketplace-database catalog/publication-output/omega-marketplace.sqlite \
+            --json > catalog/publication-output/security-developer-audit.json
       - name: Resolve semantic publication decision
         id: publication
         run: >-
@@ -136,6 +145,7 @@ jobs:
             catalog/publication-output/catalog-report.json
             catalog/publication-output/security-report.json
             catalog/publication-output/security-scan-ledger.json
+            catalog/publication-output/security-developer-audit.json
           if-no-files-found: warn
           retention-days: 30
 
@@ -225,6 +235,7 @@ jobs:
           )
           [ -f catalog/publication-output/security-report.json ] && assets+=(catalog/publication-output/security-report.json)
           [ -f catalog/publication-output/security-scan-ledger.json ] && assets+=(catalog/publication-output/security-scan-ledger.json)
+          [ -f catalog/publication-output/security-developer-audit.json ] && assets+=(catalog/publication-output/security-developer-audit.json)
           gh release upload security-evidence-latest "${assets[@]}" --repo "$GH_REPO" --clobber
       - name: Verify published evidence database
         run: python tools/catalog/validate_evidence_catalog.py --base-url "https://github.com/${{ github.repository }}/releases/download/security-evidence-latest/"

@@ -6,7 +6,7 @@ Exercises the storage invariants that matter independently of live network acces
 - raw manifest preservation
 - source failure retains last-known-good variants when seeded
 - successful source refresh is authoritative for that source
-- website scrape failure retains last-known-good enrichment
+- website scrape failure retains server-side history but invalidates current presentation
 - rich presentation source may differ from preferred installation source
 - indexed search projection is populated
 """
@@ -104,7 +104,8 @@ def main() -> int:
         preferred, presentation = query(db1, "select preferred_variant_id,presentation_variant_id from presentation")
         assert preferred == presentation, "preferred package baseline must also own product presentation metadata"
 
-        # Second run: official source and website transiently fail. Seed must retain both last-known-good records.
+        # Second run: official source and website transiently fail. Source variants remain available,
+        # but stale website presentation is marked non-current instead of being projected again.
         failed_enriched = tmp / "failed-enriched.json"
         failed_websites = tmp / "failed-websites.json"
         rich_url = "https://example.invalid/rich.json"
@@ -121,9 +122,9 @@ def main() -> int:
         run_builder(root, out2, curated, raw, failed_enriched, failed_websites, out1 / "omega-catalog.sqlite.zip")
         db2 = out2 / "omega-catalog.sqlite"
         assert query(db2, "select count(*) from runtime_plugin_variants")[0] == 2
-        assert query(db2, "select ok from websites where url='https://example.invalid/project'")[0] == 1
+        assert query(db2, "select ok from websites where url='https://example.invalid/project'")[0] == 0
         assert "temporary timeout" in query(db2, "select last_error from sources where url=?", (official_url,))[0]
-        assert query(db2, "select count(*) from presentation where rich_card=1")[0] == 1
+        assert query(db2, "select count(*) from presentation where rich_card=1")[0] == 0
 
         # Third run: both manifests report HTTP 304. Empty payloads must not deactivate
         # any previously active variants; conditional fetches are state-preserving.
@@ -140,7 +141,7 @@ def main() -> int:
         assert query(db3, "select count(*) from runtime_plugin_variants")[0] == 2
         assert query(db3, "select count(*) from plugin_search")[0] == 1
         assert query(db3, "select etag from sources where url=?", (official_url,))[0] == '"official-etag"'
-        assert query(db3, "select count(*) from presentation where rich_card=1")[0] == 1
+        assert query(db3, "select count(*) from presentation where rich_card=1")[0] == 0
 
         with zipfile.ZipFile(out3 / "omega-catalog.sqlite.zip") as zf:
             assert zf.namelist() == ["omega-catalog.sqlite"]

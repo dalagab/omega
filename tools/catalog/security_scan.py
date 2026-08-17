@@ -3113,6 +3113,29 @@ def is_platform_assembly_component(component_kind: str, normalized_name: str) ->
     return normalized in PLATFORM_ASSEMBLY_NAMES or any(normalized.startswith(prefix) for prefix in PLATFORM_ASSEMBLY_PREFIXES)
 
 
+def load_advisory_coverage(path: str) -> dict[str, str | int]:
+    """Read bounded collector coverage metadata without trusting it as advisory evidence."""
+    if not path:
+        return {}
+    advisory_path = Path(path)
+    if not advisory_path.exists():
+        return {}
+    doc = json.loads(advisory_path.read_text(encoding="utf-8-sig"))
+    if not isinstance(doc, dict):
+        return {}
+    result: dict[str, str | int] = {}
+    for key in ("source", "ecosystem", "generatedAtUtc"):
+        value = str(doc.get(key) or "").strip()
+        if value:
+            result[key] = value[:200]
+    for key in ("queriedPackages", "matchedPackages"):
+        try:
+            result[key] = max(0, int(doc.get(key) or 0))
+        except (TypeError, ValueError):
+            result[key] = 0
+    return result
+
+
 def load_advisories(path: str) -> list[dict]:
     """Load optional local advisory data; the scanner never fetches advisories itself."""
     if not path:
@@ -4426,6 +4449,7 @@ def run(args: argparse.Namespace) -> dict:
     token = os.environ.get("GITHUB_TOKEN", "")
     names = {x.strip().lower() for x in args.internal_names.split(",") if x.strip()}
     advisories = load_advisories(args.advisories)
+    advisory_coverage = load_advisory_coverage(args.advisories)
     source_overrides = load_source_overrides(Path(args.source_overrides) if args.source_overrides else None)
     summary = {
         "schema": "omega.plugin-security.batch.v1", "scannerVersion": SCANNER_VERSION, "startedAtUtc": utc_now(),
@@ -4491,6 +4515,17 @@ def run(args: argparse.Namespace) -> dict:
         summary["reportedPluginRows"] = len(summary["plugins"])
         dependency_graph = refresh_dependency_graph(db, advisories)
         summary["dependencyGraph"] = dependency_graph
+        if advisory_coverage:
+            coverage_meta = {
+                "public_advisory_source": advisory_coverage.get("source", ""),
+                "public_advisory_ecosystem": advisory_coverage.get("ecosystem", ""),
+                "public_advisory_queried_packages": advisory_coverage.get("queriedPackages", 0),
+                "public_advisory_matched_packages": advisory_coverage.get("matchedPackages", 0),
+                "public_advisory_generated_at_utc": advisory_coverage.get("generatedAtUtc", ""),
+            }
+            for key, value in coverage_meta.items():
+                db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES(?,?)", (key, str(value)))
+            summary["publicAdvisoryCoverage"] = dict(advisory_coverage)
         summary["artifactSecurityCanonicalization"] = canonicalize_current_security_by_artifact(db)
         summary["crossSourceHashConsensus"] = refresh_cross_source_hash_findings(db)
         recreate_runtime_view(db)

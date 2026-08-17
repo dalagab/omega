@@ -254,3 +254,13 @@ Security findings describe observed static capabilities and risk indicators. The
 Project release notes are maintained in [`CHANGELOG.md`](CHANGELOG.md). The release workflow extracts the matching version section and publishes it with the immutable GitHub release and `omega-latest`.
 
 Omega product pages can also surface collected usage/command information and plugin changelogs from Definitions, so installation, operation, update context, and security provenance stay in one place.
+
+## Security developer view
+
+Repository developers can inspect the detailed published scanner evidence independently of the in-game client:
+
+```bash
+python tools/security/developer_view.py
+```
+
+The tool downloads and verifies the current `security-evidence-latest` database (and the small marketplace database for projection comparison), opens them read-only, and starts a localhost browser UI. Use `python tools/security/developer_view.py audit ...` in automation to reproduce security conclusions and fail on consistency errors. See [`tools/security/README.md`](tools/security/README.md) for details.
