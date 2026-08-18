@@ -38,4 +38,65 @@
       }
     });
   }
+
+  const installAcknowledgement = document.querySelector('[data-install-acknowledgement]');
+  const installRepository = document.querySelector('[data-install-repository]');
+  if (installAcknowledgement && installRepository) {
+    installAcknowledgement.addEventListener('change', () => {
+      installRepository.hidden = !installAcknowledgement.checked;
+    });
+  }
+
+  const progress = document.querySelector('[data-reading-progress]');
+  const updateProgress = () => {
+    if (!progress) return;
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    progress.style.setProperty('--reading-progress', `${maxScroll > 0 ? (window.scrollY / maxScroll) * 100 : 0}%`);
+  };
+  window.addEventListener('scroll', updateProgress, { passive: true });
+  updateProgress();
+
+  const revealItems = document.querySelectorAll('[data-reveal]');
+  if ('IntersectionObserver' in window) {
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    revealItems.forEach((item) => revealObserver.observe(item));
+  } else {
+    revealItems.forEach((item) => item.classList.add('is-visible'));
+  }
+
+  const teamSection = document.querySelector('#team');
+  const sigmascopeSection = document.querySelector('#sigmascope');
+  if (teamSection && sigmascopeSection) {
+    sigmascopeSection.insertAdjacentElement('afterend', teamSection);
+  }
+
+  const storyPanels = Array.from(document.querySelectorAll('[data-story-panel], #about + section'))
+    .filter((panel) => panel.getClientRects().length > 0);
+  let storyScrollLocked = false;
+  window.addEventListener('wheel', (event) => {
+    if (storyScrollLocked || Math.abs(event.deltaY) < 8 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const currentIndex = storyPanels.findIndex((panel) => {
+      const bounds = panel.getBoundingClientRect();
+      return bounds.top < 160 && bounds.bottom > window.innerHeight * 0.55;
+    });
+    if (currentIndex < 0) return;
+    const currentBounds = storyPanels[currentIndex].getBoundingClientRect();
+    const atDownwardBoundary = currentBounds.bottom <= window.innerHeight + 120;
+    const atUpwardBoundary = currentBounds.top >= -120;
+    if ((event.deltaY > 0 && !atDownwardBoundary) || (event.deltaY < 0 && !atUpwardBoundary)) return;
+    const nextIndex = currentIndex + (event.deltaY > 0 ? 1 : -1);
+    const target = storyPanels[nextIndex];
+    if (!target) return;
+    event.preventDefault();
+    storyScrollLocked = true;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => { storyScrollLocked = false; }, 650);
+  }, { passive: false });
 })();

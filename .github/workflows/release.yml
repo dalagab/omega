@@ -13,11 +13,13 @@ on:
 
 permissions:
   contents: write
+  actions: write
   id-token: write
   attestations: write
 
 concurrency:
-  group: omega-release-${{ github.ref_name }}
+  # Every release updates the shared omega-latest endpoint, so publication must be serialized across tags.
+  group: omega-release-stable
   cancel-in-progress: false
 
 jobs:
@@ -63,17 +65,13 @@ jobs:
           Expand-Archive 'dalamud.zip' -DestinationPath $dalamudHome -Force
           Remove-Item 'dalamud.zip'
 
-      - name: Verify repository version matches tag
+      - name: Verify project version matches tag
         shell: pwsh
         run: |
           [xml]$project = Get-Content 'Omega/DalagabOmega.csproj'
           $projectVersion = [string]$project.Project.PropertyGroup.Version
-          $manifest = Get-Content 'repository/pluginmaster.json' -Raw | ConvertFrom-Json
-          $manifestVersion = [string]$manifest[0].AssemblyVersion
           $tagVersion = '${{ steps.release.outputs.version }}'
-          $expectedAssemblyVersion = "$tagVersion.0"
           if ($projectVersion -ne $tagVersion) { throw "Project version $projectVersion does not match tag $tagVersion" }
-          if ($manifestVersion -ne $expectedAssemblyVersion) { throw "PluginMaster version $manifestVersion does not match distributed assembly version $expectedAssemblyVersion" }
 
       - name: Build release notes from CHANGELOG.md
         shell: pwsh
@@ -114,15 +112,25 @@ jobs:
           Compress-Archive -Path (Join-Path $extract '*') -DestinationPath 'Omega.zip' -CompressionLevel Optimal
           $packagedManifestPath = (Get-ChildItem $extract -Filter 'DalagabOmega.json' -Recurse -File | Select-Object -First 1).FullName
           $packagedManifest = Get-Content $packagedManifestPath -Raw | ConvertFrom-Json
-          $repoManifest = Get-Content 'repository/pluginmaster.json' -Raw | ConvertFrom-Json
           $distributedVersion = [string]$packagedManifest.AssemblyVersion
-          $repoVersion = [string]$repoManifest[0].AssemblyVersion
-          if ($distributedVersion -ne $repoVersion) {
-            throw "Distributed plugin version $distributedVersion does not match repo version $repoVersion"
+          $expectedAssemblyVersion = '${{ steps.release.outputs.version }}.0'
+          if ($distributedVersion -ne $expectedAssemblyVersion) {
+            throw "Distributed plugin version $distributedVersion does not match release tag assembly version $expectedAssemblyVersion"
           }
           $hash = (Get-FileHash 'Omega.zip' -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  Omega.zip" | Set-Content 'Omega.zip.sha256' -Encoding ascii
           "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+
+      - name: Generate PluginMaster from packaged Omega.zip
+        shell: pwsh
+        run: >-
+          python tools/release/generate_pluginmaster.py
+          --template repository/pluginmaster.template.json
+          --package Omega.zip
+          --tag '${{ steps.release.outputs.tag }}'
+          --release-notes release-notes.md
+          --output pluginmaster.json
 
       - name: Attest Omega.zip build provenance
         uses: actions/attest@v4
@@ -135,23 +143,87 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $tag = '${{ steps.release.outputs.tag }}'
-          if (gh release view $tag *> $null) {
-            gh release upload $tag Omega.zip Omega.zip.sha256 --clobber
+          if (-not (gh release view $tag *> $null)) {
+            gh release create $tag Omega.zip Omega.zip.sha256 pluginmaster.json --verify-tag --notes-file release-notes.md --title "Omega ${{ steps.release.outputs.version }}"
           } else {
-            gh release create $tag Omega.zip Omega.zip.sha256 --verify-tag --notes-file release-notes.md --title "Omega ${{ steps.release.outputs.version }}"
+            # A tagged package is immutable once present. A rerun may fill in a missing
+            # sidecar/manifest, but it must never replace different bytes for an existing asset.
+            $assets = (gh release view $tag --json assets | ConvertFrom-Json).assets
+            $verify = Join-Path $env:RUNNER_TEMP 'omega-existing-versioned-assets'
+            if (Test-Path $verify) { Remove-Item $verify -Recurse -Force }
+            New-Item -ItemType Directory -Force -Path $verify | Out-Null
+            foreach ($assetName in @('Omega.zip','Omega.zip.sha256','pluginmaster.json')) {
+              $local = Resolve-Path $assetName
+              if (@($assets | Where-Object { $_.name -eq $assetName }).Count -eq 0) {
+                gh release upload $tag $assetName
+                continue
+              }
+              gh release download $tag --pattern $assetName --dir $verify
+              $remote = Join-Path $verify $assetName
+              $localHash = (Get-FileHash $local -Algorithm SHA256).Hash.ToLowerInvariant()
+              $remoteHash = (Get-FileHash $remote -Algorithm SHA256).Hash.ToLowerInvariant()
+              if ($localHash -ne $remoteHash) {
+                throw "Immutable release $tag already contains different bytes for $assetName ($remoteHash != $localHash). Refusing to clobber the tagged release."
+              }
+            }
           }
           gh release edit $tag --notes-file release-notes.md --title "Omega ${{ steps.release.outputs.version }}"
 
-      - name: Publish stable Dalamud release assets
+      - name: Verify immutable versioned release asset
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = '${{ steps.release.outputs.tag }}'
+          $verify = Join-Path $env:RUNNER_TEMP 'omega-versioned-release-verify'
+          if (Test-Path $verify) { Remove-Item $verify -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $verify | Out-Null
+          gh release download $tag --pattern 'Omega.zip' --dir $verify
+          $downloaded = Join-Path $verify 'Omega.zip'
+          $expectedHash = '${{ steps.package.outputs.sha256 }}'
+          $actualHash = (Get-FileHash $downloaded -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) { throw "Published $tag/Omega.zip SHA-256 $actualHash does not match built package $expectedHash" }
+          $extract = Join-Path $verify 'extract'
+          Expand-Archive $downloaded -DestinationPath $extract -Force
+          $packagedManifestPath = (Get-ChildItem $extract -Filter 'DalagabOmega.json' -Recurse -File | Select-Object -First 1).FullName
+          if (-not $packagedManifestPath) { throw 'Published immutable Omega.zip is missing DalagabOmega.json' }
+          $packagedManifest = Get-Content $packagedManifestPath -Raw | ConvertFrom-Json
+          $generated = Get-Content 'pluginmaster.json' -Raw | ConvertFrom-Json
+          if ([string]$packagedManifest.AssemblyVersion -ne [string]$generated[0].AssemblyVersion) {
+            throw "Published immutable package version $($packagedManifest.AssemblyVersion) does not match generated PluginMaster $($generated[0].AssemblyVersion)"
+          }
+
+      - name: Publish stable generated Dalamud feed
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if (-not (gh release view omega-latest *> $null)) {
-            gh release create omega-latest --target '${{ github.sha }}' --title 'Omega latest stable' --notes 'Stable Dalamud distribution endpoint. Assets are replaced by the release workflow.'
+            gh release create omega-latest --target '${{ github.sha }}' --title 'Omega latest stable' --notes 'Stable generated Dalamud feed. PluginMaster points to an immutable tagged Omega.zip.'
           }
-          gh release upload omega-latest Omega.zip Omega.zip.sha256 --clobber
+          # Keep mirrored package assets for humans/legacy links, but the generated PluginMaster
+          # points to the immutable vX.Y.Z release so a partial omega-latest upload cannot mismatch.
+          gh release upload omega-latest pluginmaster.json Omega.zip Omega.zip.sha256 --clobber
           gh release edit omega-latest --title 'Omega latest stable (${{ steps.release.outputs.version }})' --notes-file release-notes.md
+
+      - name: Verify stable generated Dalamud feed
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $verify = Join-Path $env:RUNNER_TEMP 'omega-stable-feed-verify'
+          if (Test-Path $verify) { Remove-Item $verify -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $verify | Out-Null
+          gh release download omega-latest --pattern 'pluginmaster.json' --dir $verify
+          $downloaded = Join-Path $verify 'pluginmaster.json'
+          $expectedHash = (Get-FileHash 'pluginmaster.json' -Algorithm SHA256).Hash.ToLowerInvariant()
+          $actualHash = (Get-FileHash $downloaded -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) { throw "Published omega-latest/pluginmaster.json SHA-256 $actualHash does not match generated manifest $expectedHash" }
+          $manifest = Get-Content $downloaded -Raw | ConvertFrom-Json
+          $expectedUrl = 'https://github.com/dalagab/omega/releases/download/${{ steps.release.outputs.tag }}/Omega.zip'
+          if ([string]$manifest[0].DownloadLinkInstall -ne $expectedUrl -or [string]$manifest[0].DownloadLinkUpdate -ne $expectedUrl) {
+            throw 'Stable generated PluginMaster does not point to the immutable tagged Omega.zip.'
+          }
       - name: Finalize tagged changelog on default branch
         if: github.event_name == 'push'
         shell: pwsh
@@ -185,3 +257,30 @@ jobs:
           git commit -m "Finalize changelog for $tag"
           git push origin "HEAD:refs/heads/$defaultBranch"
 
+      - name: Publish legacy raw-main PluginMaster compatibility mirror
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $defaultBranch = '${{ github.event.repository.default_branch }}'
+          if ([string]::IsNullOrWhiteSpace($defaultBranch)) { throw 'Repository default branch is unavailable.' }
+          $endpoint = "repos/$env:GITHUB_REPOSITORY/contents/repository/pluginmaster.json"
+          $current = gh api "${endpoint}?ref=$defaultBranch" | ConvertFrom-Json
+          $content = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes((Resolve-Path 'pluginmaster.json')))
+          $payload = @{
+            message = "Publish generated PluginMaster for ${{ steps.release.outputs.tag }} [skip ci]"
+            content = $content
+            sha = [string]$current.sha
+            branch = $defaultBranch
+          } | ConvertTo-Json -Depth 4
+          $payloadPath = Join-Path $env:RUNNER_TEMP 'omega-pluginmaster-publish.json'
+          [System.IO.File]::WriteAllText($payloadPath, $payload, [System.Text.UTF8Encoding]::new($false))
+          gh api --method PUT $endpoint --input $payloadPath | Out-Null
+
+      - name: Queue Definitions rebuild for published Omega feed
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $defaultBranch = '${{ github.event.repository.default_branch }}'
+          gh workflow run catalog-builder.yml --ref $defaultBranch
