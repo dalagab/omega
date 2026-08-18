@@ -50,7 +50,7 @@ internal static partial class RegressionCases
         Contains(coordinator, "retaining local Definitions", "network failure retains last-known-good SQLite Definitions");
         False(coordinator.Contains("LocalFallback", StringComparison.Ordinal), "public catalog is not rebuilt by crawling repositories in-game");
         False(coordinator.Contains("await catalog.RefreshAsync(configuration.Repositories)", StringComparison.Ordinal), "central failure does not fan out across public sources");
-        Contains(coordinator, "!x.IsCurated", "user-added sources can remain explicit temporary overlays");
+        Contains(coordinator, "!x.IsCurated", "unmanaged Dalamud sources can remain explicit temporary overlays");
 
         var store = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "SqliteCatalogStore.cs"));
         Contains(store, "ReplaceFromBundle", "SQLite update replaces one database");

@@ -11,7 +11,7 @@ internal sealed record SqliteCatalogApplyResult(
 /// <summary>
 /// Owns Omega's in-memory marketplace projection backed by one SQLite catalog file. The database is
 /// authoritative for public catalog data; direct repository reads are temporary overlays for explicit
-/// user-added/source checks and are never persisted as a second catalog format.
+/// unmanaged Dalamud/source checks and are never persisted as a second catalog format.
 /// </summary>
 internal sealed partial class MarketplaceCatalogService : IDisposable
 {
@@ -32,12 +32,14 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
     private IReadOnlyDictionary<string, IReadOnlyList<MarketplaceChangelogEntry>> changelogHistoryByInternalName =
         new Dictionary<string, IReadOnlyList<MarketplaceChangelogEntry>>(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<int, IReadOnlyList<RepositoryCatalogStatus>> repositoryStatusCache = new();
+    private readonly Dictionary<int, IReadOnlyList<RepositoryCatalogStatus>> repositoryInventoryStatusCache = new();
     private readonly Dictionary<string, MarketplaceCatalogProjection> mainProjectionCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<int, IReadOnlyDictionary<string, MarketplacePlugin[]>> mainVariantIndexCache = new();
     private readonly Dictionary<string, MarketplaceTagIndex> tagIndexCache = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? refreshCts;
     private string[] loadedRepositoryUrls = [];
     private HashSet<string> loadedRepositoryUrlSet = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> definitionsRepositoryUrlSet = new(StringComparer.OrdinalIgnoreCase);
     private long revision;
 
     public MarketplaceCatalogService(string databasePath)
@@ -185,6 +187,35 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
             return GetRepositoryStatusesLocked(currentApi);
     }
 
+    /// <summary>
+    /// Repository inventory for Settings. Unlike the marketplace projection this includes disabled
+    /// Definitions sources and temporary unmanaged Dalamud overlays so rows do not disappear merely
+    /// because the user disabled them.
+    /// </summary>
+    public IReadOnlyList<RepositoryCatalogStatus> GetRepositoryInventoryStatuses(int currentApi)
+    {
+        lock (sync)
+        {
+            if (repositoryInventoryStatusCache.TryGetValue(currentApi, out var cached))
+                return cached;
+
+            var inventory = allDatabaseVariants
+                .Concat(liveOverlayByUrl.Values.SelectMany(x => x))
+                .Concat(defaultPlugins)
+                .ToArray();
+            var statuses = RepositoryHealthRules.BuildStatuses(inventory, currentApi);
+            repositoryInventoryStatusCache[currentApi] = statuses;
+            return statuses;
+        }
+    }
+
+    public bool IsSourceInDefinitions(string sourceUrl)
+    {
+        var normalized = NormalizeUrl(sourceUrl);
+        lock (sync)
+            return definitionsRepositoryUrlSet.Contains(normalized);
+    }
+
     public RepositoryCatalogStatus? GetRepositoryStatus(string sourceUrl, int currentApi)
     {
         var normalized = NormalizeUrl(sourceUrl);
@@ -250,6 +281,7 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
         variantsByInternalName = BuildVariantIndex(projection.Variants);
         presentationVariantsByInternalName = BuildVariantIndex(databaseVariants.Concat(defaultPlugins));
         repositoryStatusCache.Clear();
+        repositoryInventoryStatusCache.Clear();
         mainProjectionCache.Clear();
         mainVariantIndexCache.Clear();
         tagIndexCache.Clear();

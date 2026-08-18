@@ -79,8 +79,8 @@ internal sealed class PluginInstallCoordinator
         if (source is null)
         {
             return
-                $"Omega does not have a local source definition for {plugin.SourceName}. " +
-                "Reload the catalog or add the repository before continuing.";
+                $"Omega does not have a usable repository descriptor for {plugin.SourceName}. " +
+                "Refresh Definitions before continuing.";
         }
 
         var state = repositories.GetState(source.Url);

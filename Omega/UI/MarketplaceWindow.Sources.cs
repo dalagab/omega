@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
@@ -75,36 +76,40 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawSettingsRepositoriesTab(int currentApi)
     {
-        DrawSourcesHeader();
+        DrawSourcesHeader(currentApi);
         if (addSourceOpen)
             DrawAddSourceTools();
 
         var shownSources = GetVisibleSourceRows(currentApi);
-        var statuses = catalog.GetRepositoryStatuses(currentApi)
+        var statuses = catalog.GetRepositoryInventoryStatuses(currentApi)
             .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
-        DrawSourcesTable(shownSources, statuses);
+        var unmanaged = sourceSection == SourceManagerSection.DalamudConfigured
+            ? shownSources.Where(x => !catalog.IsSourceInDefinitions(x.Url)).ToArray()
+            : Array.Empty<RepositorySource>();
+        DrawSourcesTable(shownSources, statuses, unmanaged.Length > 0);
+        if (unmanaged.Length > 0)
+            DrawUnmanagedSourceSubmissionFooter(unmanaged);
     }
 
-    private void DrawSourcesHeader()
+    private void DrawSourcesHeader(int currentApi)
     {
-        var curatedCount = configuration.Repositories.Count(x => x.IsCurated);
-        var userCount = configuration.Repositories.Count(x => !x.IsCurated);
-        var dalamudCount = repositoryBridge.GetConfiguredRepositories().Count;
+        var statuses = catalog.GetRepositoryInventoryStatuses(currentApi)
+            .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
+        var curatedCount = configuration.Repositories
+            .Where(x => x.IsCurated)
+            .Count(x => IsRepositoryVisibleInSettings(x.Url, statuses));
+        var dalamudCount = repositoryBridge.GetConfiguredRepositories()
+            .Count(x => IsRepositoryVisibleInSettings(x.Url, statuses));
+
         ImGui.TextDisabled("Plugin sources");
         ImGui.TextWrapped(sourceSection == SourceManagerSection.DalamudConfigured
-            ? "Review every third-party repository currently configured in Dalamud. User-managed Dalamud entries are shown even when they are not enabled as Omega marketplace sources."
-            : "Choose which plugin sources appear in Omega. You can also add your own repository.");
+            ? "Repositories configured in Dalamud. Blue entries are unmanaged local feeds that are not yet part of Omega's online Definitions."
+            : "Repositories published through Omega Definitions. Local Dalamud repositories are kept in the separate Dalamud list.");
         ImGui.Separator();
 
-        if (DrawPillButton($"Curated ({curatedCount})", "sources-curated", Ui(126f, 32f), sourceSection == SourceManagerSection.Curated))
+        if (DrawPillButton($"Omega ({curatedCount})", "sources-curated", Ui(126f, 32f), sourceSection == SourceManagerSection.Curated))
         {
             sourceSection = SourceManagerSection.Curated;
-            sourceSearch = string.Empty;
-        }
-        ImGui.SameLine();
-        if (DrawPillButton($"My Sources ({userCount})", "sources-user", Ui(136f, 32f), sourceSection == SourceManagerSection.UserAdded))
-        {
-            sourceSection = SourceManagerSection.UserAdded;
             sourceSearch = string.Empty;
         }
         ImGui.SameLine();
@@ -112,28 +117,32 @@ internal sealed partial class MarketplaceWindow
         {
             sourceSection = SourceManagerSection.DalamudConfigured;
             sourceSearch = string.Empty;
-            addSourceOpen = false;
         }
         ImGui.SameLine();
-        if (DrawPillButton(addSourceOpen ? "Hide add tools" : "Add sources", "sources-add", Ui(128f, 32f), addSourceOpen))
-        {
-            if (sourceSection == SourceManagerSection.DalamudConfigured)
-                sourceSection = SourceManagerSection.UserAdded;
+        if (DrawPillButton(addSourceOpen ? "Hide add tools" : "Add source", "sources-add", Ui(128f, 32f), addSourceOpen))
             addSourceOpen = !addSourceOpen;
-        }
 
         ImGui.SetNextItemWidth(Math.Min(Ui(520f), ImGui.GetContentRegionAvail().X));
         ImGui.InputTextWithHint("##source-search", "Filter repositories by name or URL...", ref sourceSearch, 256);
     }
 
+    private static bool IsRepositoryVisibleInSettings(
+        string sourceUrl,
+        IReadOnlyDictionary<string, RepositoryCatalogStatus> statuses)
+    {
+        return statuses.TryGetValue(NormalizeUrl(sourceUrl), out var status) &&
+               (status.PluginCount > 0 || status.HighestKnownApiLevel > 0);
+    }
+
     private RepositorySource[] GetVisibleSourceRows(int currentApi)
     {
-        var statuses = catalog.GetRepositoryStatuses(currentApi)
+        var statuses = catalog.GetRepositoryInventoryStatuses(currentApi)
             .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
 
         if (sourceSection == SourceManagerSection.DalamudConfigured)
         {
             return repositoryBridge.GetConfiguredRepositories()
+                .Where(registration => IsRepositoryVisibleInSettings(registration.Url, statuses))
                 .Select(registration =>
                 {
                     var normalized = NormalizeUrl(registration.Url);
@@ -158,12 +167,14 @@ internal sealed partial class MarketplaceWindow
                             Contains(x.Name, sourceSearch.Trim()) ||
                             Contains(x.Url, sourceSearch.Trim()))
                 .OrderByDescending(x => IsRepositoryArtifactDivergent(x.Url))
+                .ThenBy(x => catalog.IsSourceInDefinitions(x.Url) ? 0 : 1)
                 .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         }
 
         return configuration.Repositories
-            .Where(x => sourceSection == SourceManagerSection.Curated ? x.IsCurated : !x.IsCurated)
+            .Where(x => x.IsCurated)
+            .Where(x => IsRepositoryVisibleInSettings(x.Url, statuses))
             .Where(x => string.IsNullOrWhiteSpace(sourceSearch) ||
                         Contains(x.Name, sourceSearch.Trim()) ||
                         Contains(x.Url, sourceSearch.Trim()))
@@ -179,10 +190,12 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawSourcesTable(
         IReadOnlyList<RepositorySource> shownSources,
-        IReadOnlyDictionary<string, RepositoryCatalogStatus> statuses)
+        IReadOnlyDictionary<string, RepositoryCatalogStatus> statuses,
+        bool reserveSubmissionFooter)
     {
         ImGui.Spacing();
-        var tableHeight = Math.Max(Ui(160f), ImGui.GetContentRegionAvail().Y);
+        var footerReserve = reserveSubmissionFooter ? Ui(66f) : 0f;
+        var tableHeight = Math.Max(Ui(160f), ImGui.GetContentRegionAvail().Y - footerReserve);
         var tableFlags = ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg |
                          ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
         var isDalamudView = sourceSection == SourceManagerSection.DalamudConfigured;
@@ -241,9 +254,17 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.TableSetColumnIndex(1);
+        var unmanagedDalamudSource = sourceSection == SourceManagerSection.DalamudConfigured &&
+                                     !catalog.IsSourceInDefinitions(source.Url);
+        if (unmanagedDalamudSource)
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.34f, 0.64f, 0.98f, 1f));
         DrawRepositoryName(source.Name, source.Url, source.IsOfficial, Plugin.PluginInterface.Manifest.DalamudApiLevel);
+        if (unmanagedDalamudSource)
+            ImGui.PopStyleColor();
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(source.Url);
+            ImGui.SetTooltip(unmanagedDalamudSource
+                ? $"{source.Url}\nUnmanaged local source: configured in Dalamud but not present in Omega online Definitions."
+                : source.Url);
 
         ImGui.TableSetColumnIndex(2);
         ImGui.Text(status?.PluginCount.ToString() ?? "—");
@@ -296,7 +317,9 @@ internal sealed partial class MarketplaceWindow
         }
         else
         {
-            SetReadableTooltip("Remove this repository from Dalamud. The Omega source definition is kept so it can still be reviewed or re-added later.");
+            SetReadableTooltip(catalog.IsSourceInDefinitions(source.Url)
+                ? "Remove this repository from Dalamud. Its online Omega Definitions entry remains available."
+                : "Remove this unmanaged repository from Dalamud. Its temporary local Omega overlay is removed as well.");
         }
     }
 
@@ -325,6 +348,15 @@ internal sealed partial class MarketplaceWindow
                     operationMessage = $"Acknowledged the current package-divergence evidence for {notice.Name}. A changed risk fingerprint will require review again.";
                 }
             }
+            return;
+        }
+
+        if (!catalog.IsSourceInDefinitions(source.Url))
+        {
+            ImGui.TextColored(new Vector4(0.34f, 0.64f, 0.98f, 1f),
+                dalamudRegistration?.Enabled == true ? "Unmanaged • enabled" : "Unmanaged • disabled");
+            if (ImGui.IsItemHovered())
+                SetReadableTooltip("This repository exists locally in Dalamud but is not part of Omega's online Definitions. Omega can show its plugins as a temporary unmanaged overlay.");
             return;
         }
 
@@ -397,116 +429,141 @@ internal sealed partial class MarketplaceWindow
     private void DrawAddSourceTools()
     {
         ImGui.Separator();
-        ImGui.Text("Add one source");
-        ImGui.TextDisabled("A source may contain one plugin or many; it still needs to be a PluginMaster-compatible HTTPS JSON endpoint for Dalamud servicing.");
-        ImGui.SetNextItemWidth(Math.Min(Ui(220f), ImGui.GetContentRegionAvail().X));
-        ImGui.InputTextWithHint("##newRepoName", "Source name", ref newRepositoryName, 128);
-        ImGui.SetNextItemWidth(Math.Min(Ui(480f), ImGui.GetContentRegionAvail().X));
+        ImGui.Text("Add repository to Dalamud");
+        ImGui.TextDisabled("Omega does not keep a second local repository list. This adds the PluginMaster URL to Dalamud; Omega then observes it as a normal Dalamud source.");
+        ImGui.SetNextItemWidth(Math.Min(Ui(560f), ImGui.GetContentRegionAvail().X));
         ImGui.InputTextWithHint("##newRepoUrl", "https://.../pluginmaster.json", ref newRepositoryUrl, 512);
 
-        ImGui.Checkbox("Register this source with Dalamud", ref integrateNewRepositoryWithDalamud);
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("When enabled, Omega also registers the source with Dalamud so plugins installed from it remain serviceable.");
-
-        if (ImGui.Button("Add to My Sources") &&
-            Uri.TryCreate(newRepositoryUrl.Trim(), UriKind.Absolute, out var uri) &&
-            uri.Scheme == Uri.UriSchemeHttps)
+        var validUrl = Uri.TryCreate(newRepositoryUrl.Trim(), UriKind.Absolute, out var uri) &&
+                       uri.Scheme == Uri.UriSchemeHttps;
+        var canAdd = repositoryTask is null && validUrl;
+        ImGui.BeginDisabled(!canAdd);
+        if (ImGui.Button("Add to Dalamud") && uri is not null)
         {
-            var normalized = NormalizeUrl(uri.ToString());
-            var duplicate = configuration.Repositories.Any(x =>
-                NormalizeUrl(x.Url).Equals(normalized, StringComparison.OrdinalIgnoreCase));
-
-            if (duplicate)
+            var source = new RepositorySource
             {
-                operationMessage = "That source URL is already known to Omega.";
+                Name = RepositoryDisplayNameFromUrl(uri.ToString()),
+                Url = uri.ToString(),
+                Enabled = true,
+                IsCurated = false,
+                IsExperimental = true,
+                IntegrateWithDalamud = true,
+                DalamudManagedByOmega = false,
+            };
+            newRepositoryUrl = string.Empty;
+            sourceSection = SourceManagerSection.DalamudConfigured;
+            sourceSearch = string.Empty;
+            StartRepositoryTask(
+                source,
+                RepositoryTaskKind.Integrate,
+                repositoryBridge.EnsureIntegratedAsync(source.Url, true, ownedByOmega: false));
+        }
+        ImGui.EndDisabled();
+
+        ImGui.Spacing();
+        ImGui.Text("Bulk import to Dalamud");
+        ImGui.TextWrapped("Copy HTTPS PluginMaster JSON URLs and press the button. Every valid new URL is registered with Dalamud; Omega does not create a second local source entry.");
+        ImGui.BeginDisabled(repositoryTask is not null);
+        if (ImGui.Button("Paste URL list from clipboard"))
+        {
+            var urls = ParseRepositoryList(ImGui.GetClipboardText());
+            if (urls.Count == 0)
+            {
+                operationMessage = "No valid new HTTPS repository URLs were found on the clipboard.";
             }
             else
             {
                 var source = new RepositorySource
                 {
-                    Name = string.IsNullOrWhiteSpace(newRepositoryName) ? uri.Host : newRepositoryName.Trim(),
-                    Url = uri.ToString(),
+                    Name = urls.Count == 1 ? RepositoryDisplayNameFromUrl(urls[0]) : $"{urls.Count} repositories",
+                    Url = urls[0],
                     Enabled = true,
-                    IsCurated = false,
-                    IsExperimental = true,
+                    IntegrateWithDalamud = true,
+                    DalamudManagedByOmega = false,
                 };
-                configuration.Repositories.Add(source);
-                InvalidateSourceCaches();
-                configuration.Save();
-                catalog.LoadCached(configuration.Repositories);
-                newRepositoryName = string.Empty;
-                newRepositoryUrl = string.Empty;
-                sourceSection = SourceManagerSection.UserAdded;
+                sourceSection = SourceManagerSection.DalamudConfigured;
                 sourceSearch = string.Empty;
-                operationMessage = $"Added {source.Name}. Use Check for updates to load it into your local Definitions.";
-
-                if (integrateNewRepositoryWithDalamud && repositoryTask is null)
-                    StartRepositoryTask(source, RepositoryTaskKind.Integrate, repositoryBridge.EnsureIntegratedAsync(source.Url, source.Enabled));
+                StartRepositoryTask(source, RepositoryTaskKind.Integrate, AddRepositoryListToDalamudAsync(urls));
             }
         }
-
-        ImGui.Spacing();
-        ImGui.Text("Bulk import");
-        ImGui.TextWrapped("Copy many HTTPS PluginMaster JSON URLs and press the button. Bulk imports are added to My Sources only and are not registered with Dalamud automatically.");
-        if (ImGui.Button("Paste URL list from clipboard"))
-        {
-            var result = AddRepositoryList(ImGui.GetClipboardText());
-            sourceSection = SourceManagerSection.UserAdded;
-            sourceSearch = string.Empty;
-            operationMessage = result.Added > 0
-                ? $"Added {result.Added} source(s); {result.Duplicates} duplicate(s), {result.Invalid} invalid. Use Check for updates to load them into your local Definitions."
-                : $"No sources added; {result.Duplicates} duplicate(s), {result.Invalid} invalid.";
-        }
+        ImGui.EndDisabled();
     }
 
-    private (int Added, int Duplicates, int Invalid) AddRepositoryList(string text)
+    private IReadOnlyList<string> ParseRepositoryList(string text)
     {
-        var tokens = text.Split(
-            new[] { '\r', '\n', '\t', ';', ' ' },
-            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var added = 0;
-        var duplicates = 0;
-        var invalid = 0;
-        var known = configuration.Repositories
+        var existing = repositoryBridge.GetConfiguredRepositories()
             .Select(x => NormalizeUrl(x.Url))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var token in tokens)
+        var result = new List<string>();
+        foreach (var token in text.Split(
+                     new[] { '\r', '\n', '\t', ';', ' ' },
+                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             if (!Uri.TryCreate(token, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
-            {
-                invalid++;
                 continue;
-            }
-
             var normalized = NormalizeUrl(uri.ToString());
-            if (!known.Add(normalized))
-            {
-                duplicates++;
-                continue;
-            }
-
-            configuration.Repositories.Add(new RepositorySource
-            {
-                Name = uri.Host,
-                Url = uri.ToString(),
-                Enabled = true,
-                IsCurated = false,
-                IsExperimental = true,
-                IntegrateWithDalamud = false,
-                DalamudManagedByOmega = false,
-            });
-            added++;
+            if (existing.Add(normalized))
+                result.Add(uri.ToString());
         }
+        return result;
+    }
 
-        if (added > 0)
+    private async Task<RepositoryBridgeResult> AddRepositoryListToDalamudAsync(IReadOnlyList<string> urls)
+    {
+        var added = 0;
+        var existing = 0;
+        var failures = new List<string>();
+        foreach (var url in urls)
         {
-            InvalidateSourceCaches();
-            configuration.Save();
-            catalog.LoadCached(configuration.Repositories);
+            var result = await repositoryBridge.EnsureIntegratedAsync(url, true, ownedByOmega: false).ConfigureAwait(false);
+            if (result.Outcome == RepositoryBridgeOutcome.Added)
+                added++;
+            else if (result.Outcome == RepositoryBridgeOutcome.AlreadyPresent)
+                existing++;
+            else if (!result.Success)
+                failures.Add(result.Message);
         }
 
-        return (added, duplicates, invalid);
+        var message = $"Added {added} repository source(s) to Dalamud" +
+                      (existing > 0 ? $"; {existing} already present" : string.Empty) +
+                      (failures.Count > 0 ? $"; {failures.Count} failed: {string.Join(" | ", failures.Take(3))}" : ".");
+        return new RepositoryBridgeResult(
+            failures.Count == 0 ? RepositoryBridgeOutcome.Added : added > 0 ? RepositoryBridgeOutcome.Updated : RepositoryBridgeOutcome.Failed,
+            message,
+            OwnedByOmega: false);
+    }
+
+    private void DrawUnmanagedSourceSubmissionFooter(IReadOnlyList<RepositorySource> unmanaged)
+    {
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.TextColored(new Vector4(0.34f, 0.64f, 0.98f, 1f),
+            $"{unmanaged.Count} unmanaged Dalamud source{(unmanaged.Count == 1 ? string.Empty : "s")} not in Omega Definitions.");
+        ImGui.SameLine();
+        if (ImGui.SmallButton(unmanaged.Count == 1 ? "Add it to Omega on GitHub##submit-unmanaged-source" : "Add a source to Omega on GitHub##submit-unmanaged-source"))
+        {
+            var sourceUrl = unmanaged.Count == 1 ? unmanaged[0].Url : string.Empty;
+            OpenSourceSubmissionIssue(sourceUrl);
+        }
+        if (ImGui.IsItemHovered())
+            SetReadableTooltip(unmanaged.Count == 1
+                ? "Open Omega's source-submission issue form with this repository URL prefilled."
+                : "Open Omega's source-submission issue form. Multiple unmanaged sources are present, so choose the one you want to submit.");
+    }
+
+    private static void OpenSourceSubmissionIssue(string sourceUrl)
+    {
+        var url = $"{ProjectGitHubUrl}/issues/new?template=plugin-source.yml";
+        if (!string.IsNullOrWhiteSpace(sourceUrl))
+            url += $"&source-url={Uri.EscapeDataString(sourceUrl)}";
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Could not open Omega source-submission issue form.");
+        }
     }
 
     private void StartRepositoryTask(RepositorySource source, RepositoryTaskKind kind, Task<RepositoryBridgeResult> task)
@@ -543,10 +600,17 @@ internal sealed partial class MarketplaceWindow
                     case RepositoryTaskKind.Integrate when result.Success:
                         source.IntegrateWithDalamud = true;
                         source.DalamudManagedByOmega = result.OwnedByOmega;
+                        RefreshDalamudRepositoryAwareness();
+                        var unmanagedSources = configuration.Repositories
+                            .Where(x => !x.IsCurated && x.Enabled)
+                            .ToArray();
+                        if (unmanagedSources.Length > 0)
+                            _ = catalog.RefreshRepositoriesAsync(unmanagedSources, configuration.Repositories);
                         break;
                     case RepositoryTaskKind.Detach when result.Success:
                         source.IntegrateWithDalamud = false;
                         source.DalamudManagedByOmega = false;
+                        RefreshDalamudRepositoryAwareness();
                         break;
                     case RepositoryTaskKind.SetEnabled when !result.Success:
                         var state = repositoryBridge.GetState(source.Url);

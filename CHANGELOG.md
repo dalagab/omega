@@ -4,7 +4,84 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
-<sub>work build: 0.9.8</sub>
+<sub>work build: 0.9.20</sub>
+- Keep `site/`, `tools/site/`, Node/Tailwind files, the Pages workflow, and retired installer material out of the production package.
+- Make the C# lean-source regression compatible with ZipRunner's overlay deployment: stale files left behind by an older checkout no longer make a correct direct-ZIP production snapshot fail.
+- Keep clean-checkout/package absence enforcement in the Python production-release hygiene tests, where filesystem absence is authoritative.
+
+<sub>work build: 0.9.19</sub>
+- Restore a lean root `SECURITY.md` as a required production-source document for vulnerability reporting and Sigmascope/security architecture.
+- Harden the lean-source regression contract so `README.md`, `SECURITY.md`, `EULA.md`, `CHANGELOG.md`, and `.omega/index.json` are all explicitly retained while website- and installer-only material remains excluded.
+
+<sub>work build: 0.9.18</sub>
+
+- Restore a lean root `README.md` as part of the production source contract; the source branch should remain understandable and buildable without carrying the GitHub Pages site.
+- Change lean-source regressions from requiring `README.md` to be absent to requiring a developer-facing README while continuing to reject website/installer-only material.
+
+<sub>work build: 0.9.17</sub>
+
+- Restore `.omega/index.json` and its referenced `images/omega-banner.png`; this metadata is part of Omega's repository-enrichment/scraping contract, not website-only presentation material.
+- Restore `.omega/**` and `images/omega-banner.png` as catalog/regression workflow triggers so changes to Omega's own scrapeable metadata rebuild and validate the catalog.
+- Strengthen lean-production regressions so `.omega` metadata can never again be classified as removable website material.
+
+<sub>work build: 0.9.16</sub>
+
+- Reduce the production source package to the Omega application, regression suite, catalog/Sigmascope pipeline, source definitions, release automation, runtime assets, and required EULA/release metadata.
+- Move website-only sources/tests/tooling out of the main production source package and remove the retired external installer plus unrelated repository-analysis workflows from this build tree.
+- Include `catalog/catalog-endpoint.json` directly so a clean source extraction can compile Omega without relying on a pre-existing ZipRunner overlay checkout.
+
+
+<sub>work build: 0.9.15</sub>
+
+- Treat a 404 from the not-yet-initialized `omega-latest/pluginmaster.json` asset as a normal pre-release bootstrap state instead of an Omega update-check failure.
+- Defer the silent legacy-repository migration without warning while that canonical stable feed has not yet been published.
+
+<sub>work build: 0.9.14</sub>
+
+- Isolate GitHub Pages publication to the dedicated `website` branch; pushes or manual dispatches from `main` no longer deploy the public site.
+
+### Windows regression contract synchronization
+
+- Synchronize the hourly Definitions probe regression guard with the renamed unmanaged-Dalamud source refresh gate introduced by the unified local repository model.
+- Update the Settings source-table regression guard for the current unmanaged-source footer argument without changing the tested fixed-tab/self-scrolling layout.
+- Replace the obsolete My-Sources-era Settings wording assertion with explicit guards for the separate online Omega Definitions and local Dalamud repository explanations.
+- Keep the release-managed legacy `repository/pluginmaster.json` pinned to the published last-known-good release; ordinary work-build metadata advances independently.
+
+<sub>work build: 0.9.12</sub>
+
+### Single Dalamud installation path
+
+- Remove the PowerShell helper from the public website installation flow and present one supported installation method: add Omega's canonical PluginMaster URL in Dalamud's Custom Plugin Repositories, then install through `/xlplugins`.
+- Remove installer-script FAQs and public README installation instructions so the website and repository landing documentation no longer advertise competing installation paths.
+- Keep the existing installer utilities in the source tree only as legacy/recovery tooling; they are no longer presented as the normal user installation path.
+
+<sub>work build: 0.9.11</sub>
+
+### Silent Omega repository servicing migration
+
+- Validate the generated `omega-latest/pluginmaster.json` feed before changing any local repository state, including plugin identity, non-regressing version, and immutable versioned `Omega.zip` linkage.
+- Stage only Omega's exact historical raw-`main` PluginMaster migration through Dalamud's live `ThirdRepoList`: add the canonical stable feed alongside the legacy row with the same enabled state, rather than orphaning an installed plugin by replacing its servicing URL too early.
+- Retarget the running Omega `LocalPlugin.Manifest.InstalledFromUrl` in memory because Dalamud filters third-party updates by that exact source URL; retain the legacy row across restarts until a normal Dalamud update has persisted canonical provenance, then remove it automatically on a later launch.
+- Never edit installed plugin files or `dalamudConfig.json` directly, recover a missing legacy row when a prior in-place migration left canonical configuration but legacy installed provenance, and roll back repository/provenance state if Dalamud's own repository refresh fails.
+
+<sub>work build: 0.9.10</sub>
+
+### Atomic generated Dalamud release feed
+
+- Generate the public PluginMaster from the packaged `DalagabOmega.json` during the tagged release instead of requiring development `main` to carry the next release version in advance.
+- Point generated install/update URLs at the immutable tagged `vX.Y.Z/Omega.zip`, publish that package first without permitting tagged asset replacement, re-download and verify it, then publish the stable `omega-latest/pluginmaster.json` feed.
+- Keep `repository/pluginmaster.json` as a release-workflow-managed legacy compatibility mirror and stop advancing it in ordinary work builds, preventing `main` edits from advertising an unpublished package version.
+- Move new installations and Omega's self-update probe to the stable release-manifest URL while retaining the legacy raw-`main` feed for existing Dalamud registrations.
+- Serialize stable release publication across tags so two releases cannot race while updating the shared `omega-latest` endpoint.
+- Include Omega's own generated stable feed in the curated online source inventory and queue a Definitions rebuild after publication so Omega can index its newly released version like any other plugin.
+
+<sub>work build: 0.9.9</sub>
+
+### Dalamud-owned local repository model
+
+- Remove the duplicate My Sources settings list: online Omega sources remain in the Omega list, while local repositories remain in the separate Dalamud list.
+- Add Source now registers the PluginMaster feed directly with Dalamud; Omega observes unknown feeds as blue unmanaged local overlays instead of owning a second repository entry.
+- Hide repository rows that have neither discovered plugins nor API metadata, and offer a GitHub source-submission link for unmanaged Dalamud feeds missing from online Definitions.
 
 ### Original-source provenance and automated source intake
 

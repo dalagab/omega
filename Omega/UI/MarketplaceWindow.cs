@@ -74,7 +74,6 @@ internal enum RepositoryTaskKind
 internal enum SourceManagerSection
 {
     Curated,
-    UserAdded,
     DalamudConfigured,
 }
 
@@ -190,9 +189,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private string sourceSearch = string.Empty;
     private string pendingInstallRiskSourceUrl = string.Empty;
     private bool pendingInstallRiskAcknowledgementChecked;
-    private string newRepositoryName = string.Empty;
     private string newRepositoryUrl = string.Empty;
-    private bool integrateNewRepositoryWithDalamud = true;
 
     private Task<RepositoryBridgeResult>? repositoryTask;
     private RepositorySource? repositoryTaskSource;

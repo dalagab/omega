@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 
 namespace Dalagab.Omega;
@@ -10,7 +11,7 @@ namespace Dalagab.Omega;
 internal sealed class OmegaSelfUpdateService : IDisposable
 {
     internal const string RepositoryManifestUrl =
-        "https://raw.githubusercontent.com/dalagab/omega/main/repository/pluginmaster.json";
+        "https://github.com/dalagab/omega/releases/download/omega-latest/pluginmaster.json";
 
     private static readonly TimeSpan InitialDelay = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(6);
@@ -83,6 +84,19 @@ internal sealed class OmegaSelfUpdateService : IDisposable
             using var request = new HttpRequestMessage(HttpMethod.Get, RepositoryManifestUrl);
             using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                 .ConfigureAwait(false);
+
+            // Before the first release produced by the generated-feed workflow, the canonical
+            // omega-latest/pluginmaster.json asset legitimately does not exist yet. Treat that
+            // bootstrap 404 as "no stable feed published" rather than an update-system failure.
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                configuration.LastApplicationUpdateCheckUtc = DateTimeOffset.UtcNow;
+                configuration.Save();
+                Plugin.Log.Information(
+                    "Omega application update check deferred because the stable release feed has not been initialized yet.");
+                return;
+            }
+
             response.EnsureSuccessStatusCode();
 
             if (response.Content.Headers.ContentLength is > MaximumManifestBytes)

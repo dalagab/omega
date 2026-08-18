@@ -10,6 +10,7 @@ internal sealed partial class MarketplaceCatalogService
             {
                 allDatabaseVariants = [];
                 databaseVariants = [];
+                definitionsRepositoryUrlSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 HasLoaded = false;
                 CachedRepositoryCount = 0;
                 CatalogRevision = string.Empty;
@@ -54,7 +55,7 @@ internal sealed partial class MarketplaceCatalogService
 
     /// <summary>
     /// The public catalog is refreshed by CatalogUpdateCoordinator. Direct repository refresh is
-    /// intentionally reserved for user-added/explicit source checks and stays in-memory.
+    /// intentionally reserved for unmanaged Dalamud/explicit source checks and stays in-memory.
     /// </summary>
     public Task RefreshAsync(IEnumerable<RepositorySource> repositories)
     {
@@ -146,6 +147,11 @@ internal sealed partial class MarketplaceCatalogService
         lock (sync)
         {
             allDatabaseVariants = snapshot.Variants;
+            definitionsRepositoryUrlSet = snapshot.SourceDefinitions
+                .Select(x => NormalizeUrl(x.Url))
+                .Concat(snapshot.Variants.Select(x => NormalizeUrl(x.SourceUrl)))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
             CatalogRevision = snapshot.CatalogRevision;
             SecurityRevision = snapshot.SecurityRevision;
             EvidenceRevision = snapshot.EvidenceRevision;

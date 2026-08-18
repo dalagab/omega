@@ -268,6 +268,8 @@ internal static partial class RegressionCases
         Contains(chrome, "var mark = \"!\"", "Definitions attention marker contains an exclamation point");
         Contains(selfUpdate, "CheckInterval = TimeSpan.FromHours(6)", "Omega application updates are checked on an interval");
         Contains(selfUpdate, "RepositoryManifestUrl", "application update checks use Omega's public Dalamud repository manifest");
+        Contains(selfUpdate, "response.StatusCode == HttpStatusCode.NotFound", "an uninitialized stable release feed does not surface as an application update failure");
+        Contains(selfUpdate, "stable release feed has not been initialized yet", "bootstrap 404 state remains visible in diagnostic logs without becoming an error");
         Contains(selfUpdate, "MaximumManifestBytes", "application update checks bound remote manifest size");
         Contains(config, "LastApplicationUpdateCheckUtc", "application update cadence survives restarts");
         Contains(config, "AvailableApplicationVersion", "detected Omega application update state survives restarts");
@@ -370,6 +372,14 @@ internal static partial class RegressionCases
         Contains(sources, "GetInstalledPluginUsageByRepository", "repository rows use Dalamud persisted installed-source provenance for usage counts");
         Contains(sources, "RemoveIfUnusedAsync", "Dalamud repository rows expose the safe explicit removal path");
         Contains(sources, "Cannot remove this repository while", "blocked removal explains installed plugin usage");
+        Contains(sources, "Blue entries are unmanaged local feeds", "Dalamud repositories missing from online Definitions are explained as blue unmanaged sources");
+        Contains(sources, "Add to Dalamud", "Add Source registers the repository with Dalamud rather than a second Omega-local list");
+        Contains(sources, "ownedByOmega: false", "manually added Dalamud repositories remain user-managed");
+        Contains(sources, "IsRepositoryVisibleInSettings", "repository settings hide rows with neither plugin nor API inventory");
+        Contains(sources, "plugin-source.yml", "unmanaged Dalamud sources link to the GitHub source-submission intake");
+        False(sources.Contains("My Sources (", StringComparison.Ordinal), "the duplicate My Sources settings tab is removed");
+        Contains(bridge, "bool ownedByOmega = true", "repository bridge distinguishes explicit user-managed additions from Omega-managed install servicing");
+        Contains(pluginEntry, "MergeDalamudRepositoryAwareness", "Dalamud remains the local source-of-truth boundary");
         Contains(bridge, "plugin.Manifest.InstalledFromUrl", "repository usage is grounded in Dalamud's persisted installation source");
         Contains(bridge, "RemoveIfUnusedAsync", "Dalamud repository bridge re-checks usage immediately before removal");
         Contains(bridge, "GetInstalledPluginUsageByRepository();", "removal reuses the same installed-source mapping as the UI");

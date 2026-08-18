@@ -34,6 +34,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly DalamudSystemMenuBridge systemMenuBridge;
     private readonly DailyCatalogUpdateService dailyCatalogUpdate;
     private readonly OmegaSelfUpdateService selfUpdates;
+    private readonly OmegaRepositoryMigrationService repositoryMigration;
     private readonly IReadOnlyTitleScreenMenuEntry? titleScreenEntry;
 
     public Configuration Configuration { get; }
@@ -66,6 +67,7 @@ public sealed class Plugin : IDalamudPlugin
         libraryLedger.ObserveInstalled(PluginInterface.InstalledPlugins.Select(x => x.InternalName));
         configBackups = new PluginConfigBackupService(PluginInterface.ConfigFile.FullName);
         selfUpdates = new OmegaSelfUpdateService(Configuration);
+        repositoryMigration = new OmegaRepositoryMigrationService(Configuration, catalog, repositoryBridge);
         var profileBridge = new DalamudProfileBridge();
         marketplaceWindow = CreateMarketplaceWindow(assemblyDirectory, repositoryBridge, profileBridge);
         windowSystem.AddWindow(marketplaceWindow);
@@ -194,6 +196,7 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         dailyCatalogUpdate.Dispose();
+        repositoryMigration.Dispose();
         selfUpdates.Dispose();
         catalogUpdates.Dispose();
         systemMenuBridge.Dispose();

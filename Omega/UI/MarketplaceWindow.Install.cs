@@ -313,7 +313,7 @@ internal sealed partial class MarketplaceWindow
 
         var source = FindConfiguredSource(candidate.SourceUrl);
         if (source is null)
-            return "Known in Omega Definitions — will be added to My Sources and Dalamud for this installation";
+            return "Known in Omega Definitions — will be added to Dalamud for this installation";
 
         var state = repositoryBridge.GetState(source.Url);
         if (!state.Available)
@@ -510,22 +510,18 @@ internal sealed partial class MarketplaceWindow
         if (!Uri.TryCreate(plugin.SourceUrl, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
             return null;
 
-        // Explicitly selecting a catalog repository is consent to prepare that source for this
-        // plugin. Keep it disabled as an Omega discovery feed unless the user enables it later;
-        // Dalamud integration is handled by PluginInstallCoordinator for servicing the install.
-        var source = new RepositorySource
+        // The repository identity already belongs to online Definitions. Installation only needs
+        // an ephemeral source descriptor so Dalamud can register/service the selected feed; Omega
+        // does not create a second local repository entry.
+        return new RepositorySource
         {
             Name = string.IsNullOrWhiteSpace(plugin.SourceName) ? uri.Host : plugin.SourceName,
             Url = uri.ToString(),
-            Enabled = false,
-            IsCurated = false,
+            Enabled = true,
+            IsCurated = true,
             IsExperimental = true,
             IntegrateWithDalamud = true,
         };
-        configuration.Repositories.Add(source);
-        InvalidateSourceCaches();
-        configuration.Save();
-        return source;
     }
 
     private void CloseInstallChooser()

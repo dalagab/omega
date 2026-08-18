@@ -67,7 +67,7 @@ var tests = new (string Name, Action Body)[]
     ("expanded marketplace enforces only a minimum usable size", TestMarketplaceMinimumWindowSizeContract),
     ("first-run catalog acquisition stays automatic and visually quiet", TestCatalogFirstRunLoadingContract),
     ("first-use EULA and Settings retrieval remain enforced", TestEulaFirstUseContract),
-    ("GitHub distribution and repository-only installation remain documented", TestGitHubDistributionDocumentationContract),
+    ("production source tree stays lean and release-safe", TestProductionSourceDistributionContract),
     ("GitHub release and security workflows remain publishable and visible", TestGitHubReleaseAndSecurityWorkflowsContract),
     ("Sigmascope remains static, incremental, evidence-oriented, and catalog-backed", TestPluginSecurityIntelligenceContract),
     ("security-enriched catalog compaction preserves history and runtime projection", TestCatalogCompactionWorkflowContract),

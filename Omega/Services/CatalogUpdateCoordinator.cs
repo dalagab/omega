@@ -97,17 +97,17 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
     }
 
     /// <summary>
-    /// Checks the tiny online descriptor and records a pending Definitions update. User-added
+    /// Checks the tiny online descriptor and records a pending Definitions update. Unmanaged Dalamud
     /// repositories are refreshed at the same time so the Updates page can reflect their versions.
     /// No central Definitions bundle is downloaded by this method.
     /// </summary>
     public Task CheckDefinitionsForUpdatesAsync(CancellationToken cancellationToken)
-        => CheckForUpdatesCoreAsync(refreshUserSources: false, cancellationToken);
+        => CheckForUpdatesCoreAsync(refreshUnmanagedDalamudSources: false, cancellationToken);
 
     public Task CheckForUpdatesAsync(CancellationToken cancellationToken)
-        => CheckForUpdatesCoreAsync(refreshUserSources: true, cancellationToken);
+        => CheckForUpdatesCoreAsync(refreshUnmanagedDalamudSources: true, cancellationToken);
 
-    private async Task CheckForUpdatesCoreAsync(bool refreshUserSources, CancellationToken cancellationToken)
+    private async Task CheckForUpdatesCoreAsync(bool refreshUnmanagedDalamudSources, CancellationToken cancellationToken)
     {
         if (Interlocked.Exchange(ref running, 1) != 0)
             return;
@@ -145,8 +145,8 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
                 Mode = catalog.HasLoaded ? CatalogAcquisitionMode.OnlineCatalog : CatalogAcquisitionMode.LocalCache;
             }
 
-            if (refreshUserSources)
-                await RefreshUserSourcesAsync().ConfigureAwait(false);
+            if (refreshUnmanagedDalamudSources)
+                await RefreshUnmanagedDalamudSourcesAsync().ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -174,7 +174,7 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
 
             var onlineApplied = await TryApplyOnlineCatalogAsync(cancellationToken).ConfigureAwait(false);
             Mode = onlineApplied ? CatalogAcquisitionMode.OnlineCatalog : CatalogAcquisitionMode.LocalCache;
-            await RefreshUserSourcesAsync().ConfigureAwait(false);
+            await RefreshUnmanagedDalamudSourcesAsync().ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -185,12 +185,12 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
         }
     }
 
-    private Task RefreshUserSourcesAsync()
+    private Task RefreshUnmanagedDalamudSourcesAsync()
     {
-        var userSources = configuration.Repositories.Where(x => x.Enabled && !x.IsCurated).ToArray();
-        return userSources.Length == 0
+        var unmanagedDalamudSources = configuration.Repositories.Where(x => x.Enabled && !x.IsCurated).ToArray();
+        return unmanagedDalamudSources.Length == 0
             ? Task.CompletedTask
-            : catalog.RefreshRepositoriesAsync(userSources, configuration.Repositories);
+            : catalog.RefreshRepositoriesAsync(unmanagedDalamudSources, configuration.Repositories);
     }
 
     public Task RefreshPluginSourcesAsync(string internalName)

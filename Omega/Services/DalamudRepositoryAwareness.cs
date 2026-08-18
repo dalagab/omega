@@ -14,12 +14,27 @@ internal static class DalamudRepositoryAwareness
         int currentApi)
     {
         var registrations = bridge.GetConfiguredRepositories();
-        if (registrations.Count == 0)
-            return false;
 
-        var statuses = catalog.GetRepositoryStatuses(currentApi)
+        var statuses = catalog.GetRepositoryInventoryStatuses(currentApi)
             .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
+        var registeredUrls = registrations
+            .Select(x => NormalizeUrl(x.Url))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var changed = false;
+
+        // Local-only Omega sources are retired. A repository that is not part of online Definitions
+        // exists locally only while it exists in Dalamud, where it remains user-managed.
+        var retiredLocalRows = configuration.Repositories
+            .Where(x => !x.IsCurated && !x.IsOfficial)
+            .Where(x => !catalog.IsSourceInDefinitions(x.Url))
+            .Where(x => !registeredUrls.Contains(NormalizeUrl(x.Url)))
+            .ToArray();
+        foreach (var source in retiredLocalRows)
+        {
+            configuration.Repositories.Remove(source);
+            changed = true;
+        }
+
         foreach (var registration in registrations)
         {
             var normalized = NormalizeUrl(registration.Url);
@@ -27,6 +42,11 @@ internal static class DalamudRepositoryAwareness
                 NormalizeUrl(x.Url).Equals(normalized, StringComparison.OrdinalIgnoreCase));
             if (source is null)
             {
+                // Online Definitions already own known source identities. Only unknown Dalamud feeds
+                // need an internal unmanaged row so Omega can fetch them as a temporary local overlay.
+                if (catalog.IsSourceInDefinitions(registration.Url))
+                    continue;
+
                 statuses.TryGetValue(normalized, out var known);
                 source = new RepositorySource
                 {
@@ -43,9 +63,19 @@ internal static class DalamudRepositoryAwareness
                 continue;
             }
 
+            if (!source.IsCurated && source.Enabled != registration.Enabled)
+            {
+                source.Enabled = registration.Enabled;
+                changed = true;
+            }
             if (!source.IntegrateWithDalamud)
             {
                 source.IntegrateWithDalamud = true;
+                changed = true;
+            }
+            if (!source.IsCurated && source.DalamudManagedByOmega)
+            {
+                source.DalamudManagedByOmega = false;
                 changed = true;
             }
         }

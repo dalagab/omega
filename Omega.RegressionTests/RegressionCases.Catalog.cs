@@ -136,7 +136,7 @@ internal static partial class RegressionCases
         Contains(service, "INotificationManager", "notification delivery uses Dalamud's notification service");
         var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CatalogUpdateCoordinator.cs"));
         Contains(coordinator, "CheckDefinitionsForUpdatesAsync", "coordinator exposes a descriptor-only automatic probe");
-        Contains(coordinator, "refreshUserSources: false", "automatic Definitions probes do not fan out to custom repositories");
+        Contains(coordinator, "refreshUnmanagedDalamudSources: false", "automatic Definitions probes do not fan out to unmanaged Dalamud repositories");
 
         var plugin = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
         Contains(plugin, "catalog.LoadCached", "startup loads the local catalog once");
@@ -161,10 +161,6 @@ internal static partial class RegressionCases
     {
         var project = XDocument.Load(Path.Combine(Root, "Omega", "DalagabOmega.csproj"));
         var projectVersion = project.Descendants("Version").Single().Value.Trim();
-
-        using var master = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "repository", "pluginmaster.json")));
-        var manifestVersion = RequiredString(master.RootElement.EnumerateArray().Single(), "AssemblyVersion");
-        Equal(projectVersion + ".0", manifestVersion, "three-part product version maps to four-part Dalamud AssemblyVersion");
 
         var buildInfo = File.ReadAllText(Path.Combine(Root, "Omega", "BuildInfo.cs"));
         Equal(projectVersion, Capture(buildInfo, "Version\\s*=\\s*\"([^\"]+)\""), "BuildInfo version");
@@ -217,7 +213,7 @@ internal static partial class RegressionCases
         Contains(ui, "catalog.LoadCached", "source configuration applies locally without network");
 
         var catalog = ReadMarketplaceCatalogServiceSource();
-        Contains(catalog, "x.Enabled && !x.IsCurated", "automatic direct refresh is limited to explicit user-added sources");
+        Contains(catalog, "x.Enabled && !x.IsCurated", "automatic direct refresh is limited to unmanaged Dalamud overlays");
     }
 
     internal static void TestStorefrontContract()
@@ -309,7 +305,7 @@ internal static partial class RegressionCases
         Contains(ui, "ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse", "Settings modal itself does not scroll its close control out of view");
         False(ui.Contains("[Curated (", StringComparison.Ordinal), "selected Curated tab must not use decorative brackets");
         var addTools = ui.IndexOf("DrawAddSourceTools();", StringComparison.Ordinal);
-        var sourceTable = ui.IndexOf("DrawSourcesTable(shownSources, statuses);", StringComparison.Ordinal);
+        var sourceTable = ui.IndexOf("DrawSourcesTable(shownSources, statuses, unmanaged.Length > 0);", StringComparison.Ordinal);
         True(addTools >= 0 && sourceTable > addTools, "add-source tools render above the scrolling source table");
         False(ui.Contains("selectedSourceIndex", StringComparison.Ordinal), "removed selection-list index state must not return after source table migration");
 

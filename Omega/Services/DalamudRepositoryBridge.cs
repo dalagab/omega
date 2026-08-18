@@ -120,7 +120,11 @@ internal sealed class DalamudRepositoryBridge
         }
     }
 
-    public async Task<RepositoryBridgeResult> EnsureIntegratedAsync(string url, bool enabled, CancellationToken cancellationToken = default)
+    public async Task<RepositoryBridgeResult> EnsureIntegratedAsync(
+        string url,
+        bool enabled,
+        CancellationToken cancellationToken = default,
+        bool ownedByOmega = true)
     {
         if (!TryNormalizeUrl(url, out var normalized, out var error))
             return new RepositoryBridgeResult(RepositoryBridgeOutcome.InvalidUrl, error);
@@ -160,7 +164,7 @@ internal sealed class DalamudRepositoryBridge
                 enabled
                     ? "Repository added to Dalamud and enabled. Dalamud now owns normal servicing/update discovery for plugins from this feed."
                     : "Repository added to Dalamud but left disabled.",
-                OwnedByOmega: true);
+                OwnedByOmega: ownedByOmega);
         }
         catch (Exception ex)
         {
@@ -257,6 +261,218 @@ internal sealed class DalamudRepositoryBridge
             return new RepositoryBridgeResult(RepositoryBridgeOutcome.Failed, $"Could not update Dalamud repository state: {ex.GetBaseException().Message}");
         }
     }
+
+    /// <summary>
+    /// Stages or completes migration of one exact, caller-supplied repository URL while preserving
+    /// Dalamud's installed-plugin servicing semantics. This is intentionally used only for Omega's
+    /// own historical repository URL.
+    ///
+    /// Dalamud filters third-party updates by LocalPlugin.Manifest.InstalledFromUrl. While the
+    /// installed manifest still points at the legacy URL, both repository rows are retained and the
+    /// live LocalPlugin manifest is retargeted in memory so update discovery follows the canonical
+    /// feed. A normal Dalamud update then persists the canonical InstalledFromUrl. On a later launch,
+    /// once the installed manifest already points at the canonical feed, the legacy row is removed.
+    /// </summary>
+    public async Task<RepositoryBridgeResult> MigrateKnownInstalledPluginRepositoryAsync(
+        string internalName,
+        string legacyUrl,
+        string canonicalUrl,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryNormalizeUrl(legacyUrl, out var legacy, out var legacyError))
+            return new RepositoryBridgeResult(RepositoryBridgeOutcome.InvalidUrl, legacyError);
+        if (!TryNormalizeUrl(canonicalUrl, out var canonical, out var canonicalError))
+            return new RepositoryBridgeResult(RepositoryBridgeOutcome.InvalidUrl, canonicalError);
+        if (string.IsNullOrWhiteSpace(internalName))
+            return new RepositoryBridgeResult(RepositoryBridgeOutcome.Failed, "Installed plugin identity is required for repository migration.");
+
+        try
+        {
+            var context = ResolveContext();
+            var legacySetting = FindRepositorySetting(context.RepositoryList, legacy);
+            var canonicalSetting = FindRepositorySetting(context.RepositoryList, canonical);
+            var reflected = FindInstalledPlugin(context.PluginManager, internalName);
+            var localManifest = reflected?.Manifest;
+            var previousInstalledFrom = ReadString(localManifest, "InstalledFromUrl");
+            var installedFromLegacy = NormalizeUrl(previousInstalledFrom).Equals(legacy, StringComparison.OrdinalIgnoreCase);
+            var installedFromCanonical = NormalizeUrl(previousInstalledFrom).Equals(canonical, StringComparison.OrdinalIgnoreCase);
+            var exposedInstalledFromLegacy = Plugin.PluginInterface.InstalledPlugins.Any(plugin =>
+                plugin.InternalName.Equals(internalName, StringComparison.OrdinalIgnoreCase) &&
+                NormalizeUrl(plugin.Manifest.InstalledFromUrl ?? string.Empty).Equals(legacy, StringComparison.OrdinalIgnoreCase));
+            if (exposedInstalledFromLegacy && (localManifest is null || !installedFromLegacy))
+            {
+                return new RepositoryBridgeResult(
+                    RepositoryBridgeOutcome.Failed,
+                    "Dalamud exposed Omega as installed from the legacy repository, but the live LocalPlugin manifest could not be retargeted safely; legacy state was retained.");
+            }
+
+            if (legacySetting is null && canonicalSetting is null)
+                return new RepositoryBridgeResult(RepositoryBridgeOutcome.NotFound, "Neither the legacy nor canonical Omega repository is registered in Dalamud.");
+
+            var legacyEnabled = legacySetting is not null && ReadBool(legacySetting, "IsEnabled");
+            var canonicalEnabledBefore = canonicalSetting is not null && ReadBool(canonicalSetting, "IsEnabled");
+            var legacyIndex = legacySetting is null ? -1 : context.RepositoryList.IndexOf(legacySetting);
+            var createdCanonical = false;
+            var createdLegacyRecovery = false;
+            var enabledCanonical = false;
+            var removedLegacy = false;
+            var changedInstalledFrom = false;
+            object? createdCanonicalSetting = null;
+            object? createdLegacySetting = null;
+
+            try
+            {
+                if (installedFromLegacy)
+                {
+                    // Keep a legacy row until Dalamud itself has persisted canonical provenance. This
+                    // guarantees Omega is not orphaned on the next game boot if the user does not
+                    // install an update during this session.
+                    if (legacySetting is null && canonicalSetting is not null)
+                    {
+                        createdLegacySetting = CreateRepositorySetting(
+                            context.RepositorySettingsType,
+                            legacy,
+                            ReadBool(canonicalSetting, "IsEnabled"));
+                        context.RepositoryList.Add(createdLegacySetting);
+                        legacySetting = createdLegacySetting;
+                        legacyEnabled = ReadBool(createdLegacySetting, "IsEnabled");
+                        createdLegacyRecovery = true;
+                    }
+                    if (legacySetting is null)
+                    {
+                        return new RepositoryBridgeResult(
+                            RepositoryBridgeOutcome.Failed,
+                            "Omega is installed from the legacy repository, but no servicing row remains to preserve safe boot behavior; migration was not attempted.");
+                    }
+
+                    if (canonicalSetting is null)
+                    {
+                        createdCanonicalSetting = CreateRepositorySetting(context.RepositorySettingsType, canonical, legacyEnabled);
+                        context.RepositoryList.Add(createdCanonicalSetting);
+                        canonicalSetting = createdCanonicalSetting;
+                        createdCanonical = true;
+                    }
+                    else if (legacyEnabled && !canonicalEnabledBefore)
+                    {
+                        Set(canonicalSetting, "IsEnabled", true);
+                        enabledCanonical = true;
+                    }
+
+                    if (localManifest is not null)
+                    {
+                        Set(localManifest, "InstalledFromUrl", canonical);
+                        changedInstalledFrom = true;
+                    }
+                }
+                else if (legacySetting is not null)
+                {
+                    // Once Dalamud has persisted canonical provenance (or Omega was installed from a
+                    // different source), the historical row is no longer needed. Preserve effective
+                    // enabled state when consolidating an old+new duplicate.
+                    if (canonicalSetting is null)
+                    {
+                        createdCanonicalSetting = CreateRepositorySetting(context.RepositorySettingsType, canonical, legacyEnabled);
+                        context.RepositoryList.Add(createdCanonicalSetting);
+                        canonicalSetting = createdCanonicalSetting;
+                        createdCanonical = true;
+                    }
+                    else if (legacyEnabled && !canonicalEnabledBefore)
+                    {
+                        Set(canonicalSetting, "IsEnabled", true);
+                        enabledCanonical = true;
+                    }
+
+                    context.RepositoryList.Remove(legacySetting);
+                    removedLegacy = true;
+                }
+                else if (installedFromCanonical)
+                {
+                    return new RepositoryBridgeResult(
+                        RepositoryBridgeOutcome.AlreadyPresent,
+                        "Omega repository servicing is already canonical.",
+                        OwnedByOmega: false);
+                }
+
+                if (createdCanonical || createdLegacyRecovery || enabledCanonical || removedLegacy)
+                    QueueSave(context.Configuration);
+
+                // Refresh only after the repository set and live provenance are mutually serviceable.
+                // PluginManager's update scan can then select the canonical feed immediately.
+                await RefreshDalamudRepositoriesAsync(context.PluginManager, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                if (changedInstalledFrom && localManifest is not null)
+                    Set(localManifest, "InstalledFromUrl", previousInstalledFrom);
+
+                if (removedLegacy && legacySetting is not null)
+                {
+                    if (legacyIndex >= 0 && legacyIndex <= context.RepositoryList.Count)
+                        context.RepositoryList.Insert(legacyIndex, legacySetting);
+                    else
+                        context.RepositoryList.Add(legacySetting);
+                }
+                if (createdCanonical && createdCanonicalSetting is not null)
+                    context.RepositoryList.Remove(createdCanonicalSetting);
+                if (createdLegacyRecovery && createdLegacySetting is not null)
+                    context.RepositoryList.Remove(createdLegacySetting);
+                if (enabledCanonical && canonicalSetting is not null)
+                    Set(canonicalSetting, "IsEnabled", canonicalEnabledBefore);
+
+                if (createdCanonical || createdLegacyRecovery || enabledCanonical || removedLegacy)
+                    QueueSave(context.Configuration);
+                throw;
+            }
+
+            return new RepositoryBridgeResult(
+                RepositoryBridgeOutcome.Updated,
+                installedFromLegacy
+                    ? "Omega stable repository added; the legacy row is retained until a normal Dalamud update persists canonical servicing provenance."
+                    : removedLegacy
+                        ? "Omega legacy repository removed after canonical servicing provenance was confirmed."
+                        : "Omega repository servicing is canonical.",
+                OwnedByOmega: false);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Failed to migrate known installed plugin repository from {LegacyRepository} to {CanonicalRepository}", legacyUrl, canonicalUrl);
+            return new RepositoryBridgeResult(RepositoryBridgeOutcome.Failed, $"Dalamud repository migration failed: {ex.GetBaseException().Message}");
+        }
+    }
+
+    private static InstalledPluginReflection? FindInstalledPlugin(object pluginManager, string internalName)
+    {
+        var installedProperty = pluginManager.GetType().GetProperty("InstalledPlugins", AllInstance)
+            ?? throw new MissingMemberException("Dalamud PluginManager.InstalledPlugins was not found.");
+        if (installedProperty.GetValue(pluginManager) is not IEnumerable installed)
+            throw new InvalidOperationException("Dalamud PluginManager.InstalledPlugins was not enumerable.");
+
+        foreach (var plugin in installed)
+        {
+            if (plugin is null)
+                continue;
+            var manifest = plugin.GetType().GetProperty("Manifest", AllInstance)?.GetValue(plugin);
+            if (manifest is null)
+                continue;
+            var candidate = ReadString(manifest, "InternalName");
+            if (candidate.Equals(internalName, StringComparison.OrdinalIgnoreCase))
+                return new InstalledPluginReflection(plugin, manifest);
+        }
+
+        return null;
+    }
+
+    private static object CreateRepositorySetting(Type repositorySettingsType, string url, bool enabled)
+    {
+        var setting = Activator.CreateInstance(repositorySettingsType, nonPublic: true)
+            ?? throw new InvalidOperationException("Could not construct Dalamud ThirdPartyRepoSettings.");
+        Set(setting, "Url", url);
+        Set(setting, "IsEnabled", enabled);
+        return setting;
+    }
+
+    private static string ReadString(object? target, string propertyName)
+        => target?.GetType().GetProperty(propertyName, AllInstance)?.GetValue(target) as string ?? string.Empty;
 
     /// <summary>
     /// Removes a user-selected third-party repository only when no currently installed plugin
@@ -438,6 +654,8 @@ internal sealed class DalamudRepositoryBridge
     }
 
     private static string NormalizeUrl(string url) => url.Trim().TrimEnd('/');
+
+    private sealed record InstalledPluginReflection(object Plugin, object Manifest);
 
     private sealed record ReflectionContext(object Configuration, object PluginManager, Type RepositorySettingsType, IList RepositoryList);
 }

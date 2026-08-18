@@ -257,6 +257,9 @@ class WorkflowContractTests(unittest.TestCase):
             text,
             "Run repository Python regression suite",
             "python -m unittest discover -s tools/tests -p 'test_*.py' -v",
+            "Stage validated current catalog bootstrap",
+            "gh release download catalog-latest",
+            "python tools/catalog/validate_base_catalog.py --root $stage",
             "Build and run regression suite",
             "dotnet build .\\Omega.sln -c Release",
             "Publish immutable versioned release",
@@ -270,8 +273,36 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn('      - "v*.*.*.*"', text)
         self.assertIn(r"^v(?<version>\d+\.\d+\.\d+)$", text)
         self.assertNotIn(r"^v(?<version>\d+\.\d+\.\d+\.\d+)$", text)
-        self.assertIn('$expectedAssemblyVersion = "$tagVersion.0"', text)
-        self.assertIn('Distributed plugin version $distributedVersion does not match repo version $repoVersion', text)
+        self.assertIn("Distributed plugin version $distributedVersion does not match release tag assembly version $expectedAssemblyVersion", text)
+        self.assertIn("generate_pluginmaster.py", text)
+        self.assertIn("repository/pluginmaster.template.json", text)
+        self.assertIn("Verify immutable versioned release asset", text)
+        self.assertIn("gh release upload omega-latest pluginmaster.json Omega.zip Omega.zip.sha256 --clobber", text)
+        self.assertIn("Publish legacy raw-main PluginMaster compatibility mirror", text)
+        self.assertNotIn("Distributed plugin version $distributedVersion does not match repo version $repoVersion", text)
+
+    def test_release_feed_is_generated_from_built_package_before_stable_publication(self) -> None:
+        text = self.read("release.yml")
+        ordered = [
+            "Assemble Dalamud package",
+            "Generate PluginMaster from packaged Omega.zip",
+            "Publish immutable versioned release",
+            "Verify immutable versioned release asset",
+            "Publish stable generated Dalamud feed",
+            "Verify stable generated Dalamud feed",
+            "Publish legacy raw-main PluginMaster compatibility mirror",
+        ]
+        positions = [text.index(item) for item in ordered]
+        self.assertEqual(sorted(positions), positions)
+        self.assertIn("--package Omega.zip", text)
+        self.assertIn("--tag '${{ steps.release.outputs.tag }}'", text)
+        self.assertNotIn("Get-Content 'repository/pluginmaster.json'", text)
+        self.assertIn("group: omega-release-stable", text)
+        self.assertIn("actions: write", text)
+        self.assertIn("gh workflow run catalog-builder.yml", text)
+        versioned = text[text.index("Publish immutable versioned release"):text.index("Verify immutable versioned release asset")]
+        self.assertNotIn("--clobber", versioned)
+        self.assertIn("Refusing to clobber the tagged release", versioned)
 
     def test_release_package_contains_private_sqlite_runtime(self) -> None:
         text = self.read("release.yml")

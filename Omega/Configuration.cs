@@ -8,7 +8,8 @@ public sealed class Configuration : IPluginConfiguration
     public int Version { get; set; } = 10;
 
     // Persisted source state. Curated identity/name/url are refreshed from the
-    // bundled curated-sources.json whenever Omega loads; user-added sources remain editable.
+    // bundled/online Definitions whenever Omega loads. Non-curated rows are temporary mirrors of
+    // user-managed Dalamud repositories and are pruned when those Dalamud entries disappear.
     public List<RepositorySource> Repositories { get; set; } = [];
 
     public bool PreferTestingBuilds { get; set; }

@@ -37,39 +37,103 @@ internal static partial class RegressionCases
         Contains(eula, "https://github.com/dalagab/omega", "EULA document points to the GitHub project");
     }
 
-    internal static void TestGitHubDistributionDocumentationContract()
+    internal static void TestProductionSourceDistributionContract()
     {
-        var readme = File.ReadAllText(Path.Combine(Root, "README.md"));
-        Contains(readme, "open-source visual marketplace for Dalamud plugins", "GitHub README explains the product");
-        Contains(readme, "Install Omega normally through Dalamud", "README keeps installation inside Dalamud");
-        Contains(readme, "Install-OmegaRepository.ps1", "README documents the source-registration installer");
-        Contains(readme, "does **not** install Omega itself", "README explains the installer trust boundary");
-        Contains(readme, @"%APPDATA%\XIVLauncher\dalamudConfig.json", "README identifies the modified Dalamud config file");
+        var runtimeMigration = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OmegaRepositoryMigrationService.cs"));
+        Contains(runtimeMigration, "LegacyRepositoryUrl", "runtime migration recognizes only Omega's exact historical feed");
+        Contains(runtimeMigration, "CanonicalRepositoryUrl = OmegaSelfUpdateService.RepositoryManifestUrl", "runtime migration shares the canonical generated feed endpoint");
+        Contains(runtimeMigration, "ValidateCanonicalFeedAsync", "runtime migration validates the stable feed before touching Dalamud state");
+        Contains(runtimeMigration, "ex.StatusCode == HttpStatusCode.NotFound", "runtime migration quietly waits until the generated stable feed exists");
+        Contains(runtimeMigration, "IsSafeCanonicalEntry", "runtime migration validates identity, version, and immutable package linkage");
+        DoesNotContain(runtimeMigration, "dalamudConfig.json", "runtime migration never edits Dalamud's configuration file directly");
+        DoesNotContain(runtimeMigration, "File.Write", "runtime migration never writes installed plugin or Dalamud files directly");
 
-        var installer = File.ReadAllText(Path.Combine(Root, "installer", "Install-OmegaRepository.ps1"));
-        Contains(installer, "ThirdRepoList", "installer only targets Dalamud custom repositories");
-        Contains(installer, "Assert-DalamudIsNotRunning", "installer prevents live config races");
-        Contains(installer, "Backup-DalamudConfiguration", "installer creates a rollback copy before writing");
-        Contains(installer, "Write-DalamudConfigurationAtomically", "installer uses a bounded atomic-write path");
-        Contains(installer, "WhatIfOnly", "installer supports a no-write preview");
-
-        var installerDocs = File.ReadAllText(Path.Combine(Root, "installer", "README.md"));
-        Contains(installerDocs, "Functions in `Install-OmegaRepository.ps1`", "installer is documented function by function");
-        Contains(installerDocs, "It does **not** copy DLLs", "installer docs enumerate excluded OS changes");
+        var repositoryBridge = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudRepositoryBridge.cs"));
+        Contains(repositoryBridge, "MigrateKnownInstalledPluginRepositoryAsync", "Dalamud bridge exposes the bounded self-repository migration operation");
+        Contains(repositoryBridge, "Set(localManifest, \"InstalledFromUrl\", canonical)", "migration retargets live update provenance before reloading repositories");
+        Contains(repositoryBridge, "if (installedFromLegacy)", "migration retains legacy servicing until a normal Dalamud update persists canonical provenance");
+        Contains(repositoryBridge, "context.RepositoryList.Remove(legacySetting)", "migration removes the legacy row after canonical provenance is no longer pending");
+        Contains(repositoryBridge, "await RefreshDalamudRepositoriesAsync", "migration asks Dalamud to rebuild repositories only after source/provenance agree");
 
         using var master = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "repository", "pluginmaster.json")));
         var omega = master.RootElement.EnumerateArray().Single();
         Equal("DalagabOmega", RequiredString(omega, "InternalName"), "public repository manifest targets Omega");
         Equal("Every plugin. One orbit.", RequiredString(omega, "Punchline"), "Dalamud listing uses the Omega product tagline");
-        var listingDescription = RequiredString(omega, "Description");
-        Contains(listingDescription, "/omega", "Dalamud listing advertises the primary command");
-        Contains(listingDescription, "/omg", "Dalamud listing advertises the command alias");
-        Contains(listingDescription, "Spotlight", "Dalamud listing sells the storefront experience");
-        False(listingDescription.Contains("Definitions database", StringComparison.OrdinalIgnoreCase), "Dalamud listing avoids implementation-oriented database copy");
         Equal("https://github.com/dalagab/omega", RequiredString(omega, "RepoUrl"), "public repository manifest points back to project source");
-        var project = XDocument.Load(Path.Combine(Root, "Omega", "DalagabOmega.csproj"));
-        var projectVersion = project.Descendants("Version").Single().Value.Trim();
-        Equal(projectVersion + ".0", RequiredString(omega, "AssemblyVersion"), "public repository manifest uses the four-part CLR/Dalamud assembly version");
+        var publicAssemblyVersion = RequiredString(omega, "AssemblyVersion");
+        var publicDownload = RequiredString(omega, "DownloadLinkInstall");
+        var match = System.Text.RegularExpressions.Regex.Match(publicDownload, @"/releases/download/v(\d+\.\d+\.\d+)/Omega\.zip$");
+        True(match.Success, "legacy raw-main manifest points to an immutable tagged Omega.zip");
+        Equal(match.Groups[1].Value + ".0", publicAssemblyVersion, "legacy raw-main manifest version matches its immutable package URL");
+        Equal(publicDownload, RequiredString(omega, "DownloadLinkUpdate"), "legacy install and update URLs are identical");
+
+        var required = new[]
+        {
+            "Omega.sln",
+            "Omega/DalagabOmega.csproj",
+            "Omega.RegressionTests/Omega.RegressionTests.csproj",
+            "EULA.md",
+            "CHANGELOG.md",
+            "README.md",
+            "SECURITY.md",
+            ".omega/index.json",
+            "images/omega-banner.png",
+            "catalog/catalog-endpoint.json",
+            "sources/curated-sources.json",
+            "tools/catalog/sigmascope.py",
+            "tools/security/production_sigmascope_v2_pipeline.py",
+            ".github/workflows/regression-tests.yml",
+            ".github/workflows/catalog-builder.yml",
+            ".github/workflows/sigmascope.yml",
+            ".github/workflows/release.yml",
+        };
+        foreach (var relative in required)
+            True(File.Exists(Path.Combine(Root, relative.Replace('/', Path.DirectorySeparatorChar))), $"lean production source keeps {relative}");
+
+        var omegaIndex = File.ReadAllText(Path.Combine(Root, ".omega", "index.json"));
+        Contains(omegaIndex, "OmegaBannerUrl", "lean production source keeps Omega's scrapeable repository metadata");
+        Contains(omegaIndex, "images/omega-banner.png", "Omega self metadata points at the retained repository banner");
+        var catalogWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
+        Contains(catalogWorkflow, ".omega/**", "changes to Omega repository metadata rebuild the catalog");
+        Contains(catalogWorkflow, "images/omega-banner.png", "changes to the self metadata banner rebuild the catalog");
+
+        var readme = File.ReadAllText(Path.Combine(Root, "README.md"));
+        Contains(readme, "Build Omega", "lean production README documents the application build");
+        Contains(readme, "Sigmascope", "lean production README documents Sigmascope tooling");
+        Contains(readme, ".omega/index.json", "lean production README documents scrapeable Omega metadata");
+        DoesNotContain(readme, "Install-OmegaRepository.ps1", "lean production README does not resurrect the retired installer path");
+
+        var securityPolicy = File.ReadAllText(Path.Combine(Root, "SECURITY.md"));
+        Contains(securityPolicy, "Reporting a vulnerability", "lean production security policy retains private-reporting guidance");
+        Contains(securityPolicy, "Sigmascope", "lean production security policy documents Sigmascope");
+        Contains(securityPolicy, "Security Evidence v2", "lean production security policy documents the evidence publication model");
+        Contains(securityPolicy, "catalog/catalog-endpoint.json", "lean production security policy documents runtime catalog safety");
+        DoesNotContain(securityPolicy, "CodeQL", "lean production security policy does not claim removed CodeQL workflow coverage");
+
+        // ZipRunner publishes source ZIPs as overlays onto an existing checkout. Files removed
+        // from the production snapshot can therefore remain on disk from an older build. Do not
+        // use workspace absence as the C# contract; clean-checkout/package absence is enforced by
+        // tools/tests/test_production_release_hygiene.py. Here we verify that retained production
+        // entry points no longer depend on the retired website/installer toolchain.
+        var projectText = File.ReadAllText(Path.Combine(Root, "Omega", "DalagabOmega.csproj"));
+        var releaseWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "release.yml"));
+        var regressionWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "regression-tests.yml"));
+
+        foreach (var retiredReference in new[]
+                 {
+                     "tools/site",
+                     "package.json",
+                     "package-lock.json",
+                     "Install-OmegaRepository.ps1",
+                     "actions/deploy-pages",
+                 })
+        {
+            DoesNotContain(projectText, retiredReference, $"Omega project does not depend on retired website/installer material: {retiredReference}");
+            DoesNotContain(releaseWorkflow, retiredReference, $"release workflow does not depend on retired website/installer material: {retiredReference}");
+        }
+
+        DoesNotContain(regressionWorkflow, "tools/tests/test_site_contracts.py", "main regression workflow does not depend on website-only tests");
+        DoesNotContain(regressionWorkflow, "tools/site", "main regression workflow does not depend on website-only tooling");
     }
 
     internal static void TestGitHubReleaseAndSecurityWorkflowsContract()
@@ -81,9 +145,11 @@ internal static partial class RegressionCases
         Contains(release, "latest.zip", "release workflow consumes the Dalamud.NET.Sdk package");
         Contains(release, "Omega.zip", "stable Dalamud release asset is published under the PluginMaster name");
         Contains(release, "omega-latest", "release workflow refreshes the stable repository endpoint");
+        Contains(release, "generate_pluginmaster.py", "release workflow generates PluginMaster from the built package");
+        Contains(release, "Verify immutable versioned release asset", "release verifies the remotely published immutable package before advancing the stable feed");
+        Contains(release, "Publish legacy raw-main PluginMaster compatibility mirror", "release keeps old raw-main repository registrations serviceable without development drift");
         Contains(release, "actions/attest@v4", "release artifact receives GitHub build-provenance attestation");
-        Contains(release, "$expectedAssemblyVersion = \"$tagVersion.0\"", "three-part release tags map to four-part CLR/Dalamud assembly versions");
-        Contains(release, "Distributed plugin version $distributedVersion does not match repo version $repoVersion", "release refuses to publish a package/repository version mismatch");
+        Contains(release, "Distributed plugin version $distributedVersion does not match release tag assembly version $expectedAssemblyVersion", "release refuses to publish a package/tag version mismatch");
         Contains(release, "e_sqlite3.dll", "release package explicitly carries Omega's private SQLite native runtime");
         Contains(release, "SQLitePCLRaw.provider.e_sqlite3.dll", "release verifies the matching e_sqlite3 managed provider is present");
 
@@ -96,21 +162,6 @@ internal static partial class RegressionCases
         Contains(sqliteStore, "SQLitePCL.Batteries_V2.Init()", "SQLite bundle provider initialization is explicit and portable under Wine");
         DoesNotContain(sqliteStore, "SQLite3Provider_winsqlite3", "runtime code cannot regress to the host winsqlite3 provider");
 
-        var codeql = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "codeql.yml"));
-        Contains(codeql, "github/codeql-action/init@v4", "CodeQL advanced workflow is configured");
-        Contains(codeql, "build-mode: none", "C# CodeQL analysis does not depend on the game runtime build environment");
-
-        var dependency = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "dependency-review.yml"));
-        Contains(dependency, "actions/dependency-review-action@v5", "dependency review is configured for pull requests");
-
-        var scorecard = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "scorecards.yml"));
-        Contains(scorecard, "ossf/scorecard-action@v2.4.4", "OpenSSF Scorecard workflow is configured");
-        Contains(scorecard, "publish_results: true", "Scorecard results can be surfaced by the public Scorecard service");
-
-        var dependabot = File.ReadAllText(Path.Combine(Root, ".github", "dependabot.yml"));
-        Contains(dependabot, "package-ecosystem: nuget", "Dependabot watches NuGet dependencies");
-        Contains(dependabot, "package-ecosystem: github-actions", "Dependabot watches workflow action dependencies");
-
         var settingsUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
         Contains(settingsUi, "DrawSettingsGeneralTab", "Settings keeps update controls in their own General tab");
         Contains(settingsUi, "DrawSettingsLegalTab", "Settings keeps EULA controls in their own Legal tab");
@@ -120,7 +171,8 @@ internal static partial class RegressionCases
         False(settingsUi.Contains("GitHub Security", StringComparison.Ordinal), "developer security links stay out of in-game Settings");
 
         var sourcesUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sources.cs"));
-        Contains(sourcesUi, "Choose which plugin sources appear in Omega", "Settings explains sources in user-facing language");
+        Contains(sourcesUi, "Repositories published through Omega Definitions", "Settings explains the separate online Omega source list in user-facing language");
+        Contains(sourcesUi, "Repositories configured in Dalamud", "Settings explains the separate local Dalamud source list in user-facing language");
         False(sourcesUi.Contains("SQLite catalog:", StringComparison.Ordinal), "source settings do not expose catalog implementation details");
 
         var sigmascopeWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "sigmascope.yml"));
