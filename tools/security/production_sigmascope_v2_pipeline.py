@@ -55,6 +55,7 @@ from security_evidence_v2 import (  # noqa: E402
     SCHEMA,
     atomic_write_bytes,
     canonical_json_bytes,
+    compact_report_for_transport,
     file_entry,
     normalize_row,
     read_dataset_rows,
@@ -128,6 +129,80 @@ def _insert_child_rows(db: sqlite3.Connection, table: str, scan_id: int, rows: I
         row["scan_id"] = scan_id
         _insert_mapping(db, table, row)
 
+
+
+
+_SEVERITY_RANK = {"none": 0, "informational": 1, "caution": 2, "high": 3, "critical": 4}
+
+
+def _materialized_finding_projection(db: sqlite3.Connection, scan_id: int) -> tuple[dict[str, int], str, str]:
+    """Rebuild the immutable static conclusion from normalized finding evidence.
+
+    Early Security Evidence v2 snapshots could carry stale zero/none summary columns in
+    ``current`` even while the analysis datasets and legacy report contained the real
+    conclusion.  The normalized finding rows are the auditable primitive, so the
+    disposable SQLite projection derives its static summary from those rows instead of
+    trusting transport-era counters.
+    """
+    rows = db.execute(
+        """SELECT rule_id,severity,category,title,description,evidence_json
+             FROM plugin_security_findings
+            WHERE scan_id=?
+            ORDER BY finding_id""",
+        (scan_id,),
+    ).fetchall()
+    counts = {"informational": 0, "caution": 0, "high": 0, "critical": 0}
+    findings: list[dict[str, Any]] = []
+    highest = "none"
+    for row in rows:
+        severity = str(row["severity"] or "none").strip().casefold()
+        if severity in counts:
+            counts[severity] += 1
+        if _SEVERITY_RANK.get(severity, 0) > _SEVERITY_RANK.get(highest, 0):
+            highest = severity
+        try:
+            evidence = json.loads(str(row["evidence_json"] or "[]"))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            evidence = []
+        findings.append({
+            "ruleId": str(row["rule_id"] or ""),
+            "severity": severity,
+            "category": str(row["category"] or ""),
+            "title": str(row["title"] or ""),
+            "description": str(row["description"] or ""),
+            "evidence": evidence if isinstance(evidence, list) else [],
+        })
+    return counts, highest, json.dumps(findings, ensure_ascii=False, separators=(",", ":"))
+
+
+def _repair_materialized_static_conclusion(db: sqlite3.Connection, scan_id: int, variant_id: int) -> None:
+    """Make scan/current summary columns reproducible from the loaded analysis dataset."""
+    counts, highest, findings_json = _materialized_finding_projection(db, scan_id)
+    count_values = (counts["informational"], counts["caution"], counts["high"], counts["critical"])
+    db.execute(
+        """UPDATE plugin_security_scans
+              SET highest_severity=?,informational_count=?,caution_count=?,high_count=?,critical_count=?
+            WHERE scan_id=?""",
+        (highest, *count_values, scan_id),
+    )
+    db.execute(
+        """UPDATE plugin_security_current
+              SET highest_severity=?,informational_count=?,caution_count=?,high_count=?,critical_count=?,findings_json=?
+            WHERE variant_id=? AND scan_id=?""",
+        (highest, *count_values, findings_json, variant_id, scan_id),
+    )
+
+    # Re-emit bounded transport summaries after repairing the relational columns so
+    # the next candidate descriptor does not preserve the historical stale values.
+    for table, key, value in (("plugin_security_scans", "scan_id", scan_id), ("plugin_security_current", "variant_id", variant_id)):
+        row = db.execute(f'SELECT * FROM "{table}" WHERE "{key}"=?', (value,)).fetchone()
+        if row is None:
+            continue
+        compact = compact_report_for_transport(dict(row))
+        db.execute(
+            f'UPDATE "{table}" SET report_json=? WHERE "{key}"=?',
+            (json.dumps(compact, ensure_ascii=False, separators=(",", ":")), value),
+        )
 
 def _active_variant_ids(db: sqlite3.Connection) -> set[int]:
     return {
@@ -213,6 +288,7 @@ def materialize_current_state(base_database: Path, evidence: Path, work_database
                     rows = read_dataset_rows(evidence, analysis_path, dataset)
                     _insert_child_rows(db, table, scan_id, rows)
                     loaded_datasets[dataset] += len(rows)
+                _repair_materialized_static_conclusion(db, scan_id, variant_id)
             comparison = ((payload.get("derived") or {}).get("sourceArtifactComparison"))
             if isinstance(comparison, dict) and comparison:
                 row = dict(comparison)

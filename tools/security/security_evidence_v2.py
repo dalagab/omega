@@ -84,18 +84,42 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
         elif isinstance(item, (str, int, float, bool)):
             compact_caps.append(item)
 
+    report_counts_raw = report.get("counts") if isinstance(report.get("counts"), dict) else {}
+    report_counts = {
+        "informational": int(report_counts_raw.get("informational") or 0),
+        "caution": int(report_counts_raw.get("caution") or 0),
+        "high": int(report_counts_raw.get("high") or 0),
+        "critical": int(report_counts_raw.get("critical") or 0),
+    }
+    row_counts = {
+        "informational": int(row.get("informational_count") or 0),
+        "caution": int(row.get("caution_count") or 0),
+        "high": int(row.get("high_count") or 0),
+        "critical": int(row.get("critical_count") or 0),
+    }
+    # Early v2 descriptors could carry zeroed current summary columns while the
+    # immutable scan report and normalized findings still contained the real static
+    # conclusion.  Preserve a non-empty legacy report conclusion when the row is the
+    # known empty/stale shape; otherwise current row values remain authoritative so
+    # intentional derived current-projection findings are not lost.
+    counts = report_counts if not any(row_counts.values()) and any(report_counts.values()) else row_counts
+    row_highest = str(row.get("highest_severity") or "none").strip().casefold()
+    report_highest = str(report.get("highestSeverity") or "none").strip().casefold()
+    highest = report_highest if row_highest in {"", "none"} and report_highest not in {"", "none"} else (row_highest or "none")
+    top_capabilities = report.get("capabilities") if isinstance(report.get("capabilities"), list) else []
+    compact_top_capabilities = [
+        item for item in top_capabilities[:128]
+        if isinstance(item, (str, int, float, bool))
+    ]
+
     summary = {
         "schema": TRANSPORT_REPORT_SCHEMA,
         "scannerVersion": str(row.get("scanner_version") or report.get("scannerVersion") or ""),
         "scannedAtUtc": str(row.get("scanned_at_utc") or report.get("scannedAtUtc") or ""),
         "status": str(row.get("status") or report.get("status") or ""),
-        "highestSeverity": str(row.get("highest_severity") or report.get("highestSeverity") or "none"),
-        "counts": {
-            "informational": int(row.get("informational_count") or 0),
-            "caution": int(row.get("caution_count") or 0),
-            "high": int(row.get("high_count") or 0),
-            "critical": int(row.get("critical_count") or 0),
-        },
+        "highestSeverity": highest,
+        "counts": counts,
+        "capabilities": compact_top_capabilities,
         "source": {
             "available": bool(row.get("source_available") or source.get("available") or False),
             "repository": _bounded_text(row.get("source_repository") or source.get("repository") or "", 8192),

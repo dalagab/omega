@@ -579,37 +579,73 @@ class SecurityInspector:
         if not row["scan_id"]:
             return [AuditItem("warn", "scan.missing", "No current Sigmascope analysis", "This active variant has no current Sigmascope analysis pointer.", plugin, variant_id)]
         scan_id = int(row["scan_id"])
+        scan = self.db.execute("SELECT * FROM plugin_security_scans WHERE scan_id=?", (scan_id,)).fetchone()
+        if scan is None:
+            return [AuditItem("fail", "scan.pointer", "Current Sigmascope pointer has no immutable scan row", f"scan_id={scan_id}", plugin, variant_id)]
+
         items: list[AuditItem] = []
         finding_rows = self.db.execute("SELECT severity,COUNT(*) FROM plugin_security_findings WHERE scan_id=? GROUP BY lower(severity)", (scan_id,)).fetchall()
-        actual = {str(r[0]).casefold(): int(r[1]) for r in finding_rows}
-        expected_counts = {
+        actual_static = {str(r[0]).casefold(): int(r[1]) for r in finding_rows}
+        scan_counts = {
+            "informational": int(scan["informational_count"] or 0),
+            "caution": int(scan["caution_count"] or 0),
+            "high": int(scan["high_count"] or 0),
+            "critical": int(scan["critical_count"] or 0),
+        }
+        mismatches = {k: (scan_counts[k], actual_static.get(k, 0)) for k in scan_counts if scan_counts[k] != actual_static.get(k, 0)}
+        if mismatches:
+            items.append(AuditItem("fail", "conclusion.finding_counts", "Immutable scan finding counts disagree with evidence rows", json.dumps(mismatches, sort_keys=True), plugin, variant_id))
+        else:
+            items.append(AuditItem("pass", "conclusion.finding_counts", "Immutable scan finding counts reproduce", f"{sum(scan_counts.values())} finding rows match the recorded scan counters.", plugin, variant_id))
+        actual_static_highest = severity_max([str(r[0]) for r in finding_rows for _ in range(int(r[1]))])
+        scan_highest = str(scan["highest_severity"] or "none").casefold()
+        if actual_static_highest != scan_highest:
+            items.append(AuditItem("fail", "conclusion.highest_severity", "Immutable scan highest severity does not reproduce", f"recorded={scan_highest}, evidence={actual_static_highest}", plugin, variant_id))
+        else:
+            items.append(AuditItem("pass", "conclusion.highest_severity", "Immutable scan highest severity reproduces", scan_highest, plugin, variant_id))
+
+        # Current rows are a derived user-facing projection: artifact canonicalization
+        # and cross-source provenance can intentionally add/copy findings without
+        # mutating immutable scan evidence. Audit that projection against its own
+        # explicit findings_json, then compare that reproducible projection to the
+        # small marketplace database.
+        current_findings = json_value(row["findings_json"], [])
+        if not isinstance(current_findings, list):
+            current_findings = []
+        current_counts_actual = {"informational": 0, "caution": 0, "high": 0, "critical": 0}
+        current_severities: list[str] = []
+        for finding in current_findings:
+            if not isinstance(finding, dict):
+                continue
+            severity = str(finding.get("severity") or "none").casefold()
+            if severity in current_counts_actual:
+                current_counts_actual[severity] += 1
+            current_severities.append(severity)
+        current_counts = {
             "informational": int(row["informational_count"] or 0),
             "caution": int(row["caution_count"] or 0),
             "high": int(row["high_count"] or 0),
             "critical": int(row["critical_count"] or 0),
         }
-        mismatches = {k: (expected_counts[k], actual.get(k, 0)) for k in expected_counts if expected_counts[k] != actual.get(k, 0)}
-        if mismatches:
-            items.append(AuditItem("fail", "conclusion.finding_counts", "Recorded finding counts disagree with evidence rows", json.dumps(mismatches, sort_keys=True), plugin, variant_id))
-        else:
-            items.append(AuditItem("pass", "conclusion.finding_counts", "Finding counts reproduce", f"{sum(expected_counts.values())} finding rows match the recorded counters.", plugin, variant_id))
-        actual_highest = severity_max([str(r[0]) for r in finding_rows for _ in range(int(r[1]))])
-        recorded_highest = str(row["highest_severity"] or "none").casefold()
-        if actual_highest != recorded_highest:
-            items.append(AuditItem("fail", "conclusion.highest_severity", "Highest severity does not reproduce", f"recorded={recorded_highest}, evidence={actual_highest}", plugin, variant_id))
-        else:
-            items.append(AuditItem("pass", "conclusion.highest_severity", "Highest static severity reproduces", recorded_highest, plugin, variant_id))
+        current_mismatches = {k: (current_counts[k], current_counts_actual[k]) for k in current_counts if current_counts[k] != current_counts_actual[k]}
+        if current_mismatches:
+            items.append(AuditItem("fail", "projection.current_finding_counts", "Current projection counters disagree with current findings", json.dumps(current_mismatches, sort_keys=True), plugin, variant_id))
+        current_highest = str(row["highest_severity"] or "none").casefold()
+        projected_highest = severity_max(current_severities)
+        if current_highest != projected_highest:
+            items.append(AuditItem("fail", "projection.current_highest_severity", "Current projection highest severity does not reproduce", f"recorded={current_highest}, findings={projected_highest}", plugin, variant_id))
+
         if str(row["status"] or "") != "complete":
             items.append(AuditItem("warn", "scan.status", "Current scan is not complete", f"status={row['status']!r}; error={row['error']!r}", plugin, variant_id))
         else:
             items.append(AuditItem("pass", "scan.status", "Current scan completed", str(row["scanned_at_utc"] or ""), plugin, variant_id))
 
         adv = self.advisory_summary(variant_id)
-        risk = security_risk_score(expected_counts["informational"], expected_counts["caution"], expected_counts["high"], expected_counts["critical"], adv["points"])
+        risk = security_risk_score(current_counts["informational"], current_counts["caution"], current_counts["high"], current_counts["critical"], adv["points"])
         market = self.marketplace_security(variant_id)
         if market:
             comparisons = {
-                "highest_severity": (recorded_highest, str(market.get("highest_severity") or "none").casefold()),
+                "highest_severity": (current_highest, str(market.get("highest_severity") or "none").casefold()),
                 "known_advisory_count": (adv["count"], int(market.get("known_advisory_count") or 0)),
                 "known_advisory_highest_severity": (adv["highestSeverity"], str(market.get("known_advisory_highest_severity") or "none")),
                 "risk_score": (risk, int(market.get("risk_score") or 0)),
@@ -699,11 +735,14 @@ class SecurityInspector:
 
             # Same artifact + Sigmascope version should not produce contradictory static conclusions.
             conflicting = self.db.execute("""
-                SELECT artifact_sha256,scanner_version,COUNT(DISTINCT highest_severity || ':' || informational_count || ':' || caution_count || ':' || high_count || ':' || critical_count) AS conclusions,
+                SELECT p.internal_name,c.assembly_version,c.artifact_sha256,c.scanner_version,
+                       COUNT(DISTINCT c.highest_severity || ':' || c.informational_count || ':' || c.caution_count || ':' || c.high_count || ':' || c.critical_count) AS conclusions,
                        COUNT(*) AS variants
-                  FROM plugin_security_current
-                 WHERE status='complete' AND length(artifact_sha256)=64
-                 GROUP BY artifact_sha256,scanner_version
+                  FROM plugin_security_current c
+                  JOIN plugin_variants v ON v.variant_id=c.variant_id
+                  JOIN plugins p ON p.plugin_id=v.plugin_id
+                 WHERE c.status='complete' AND length(c.artifact_sha256)=64 AND v.active=1 AND p.active=1
+                 GROUP BY lower(p.internal_name),lower(c.assembly_version),lower(c.artifact_sha256),c.scanner_version
                 HAVING conclusions>1
                  LIMIT 100
             """).fetchall()

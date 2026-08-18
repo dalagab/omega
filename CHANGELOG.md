@@ -4,6 +4,17 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
+<sub>work build: 0.8.96</sub>
+
+### Sigmascope independent audit repair
+
+- The live 0.8.95 Sigmascope run proves the 32 MiB transport repair works: Evidence v2 candidate validation and the small marketplace validation both pass.
+- Repair historical Evidence v2 rows whose stored severity/count summary drifted from their normalized findings when the published snapshot is materialized into the disposable working database.
+- Let bounded transport summaries fall back to the non-empty legacy report conclusion when an older row contains the known zero/`none` stale-summary shape.
+- Audit immutable scan evidence separately from the intentionally derived current marketplace projection, so canonicalized or provenance-derived current findings do not falsely mutate the original scan record.
+- Match the independent canonical-artifact audit to production identity semantics by grouping plugin identity, assembly version, artifact hash and scanner generation together.
+- Keep the 32 MiB per-file publication ceiling unchanged and fail-closed.
+
 <sub>work build: 0.8.95</sub>
 
 ### Sigmascope Evidence v2 publication repair

@@ -69,6 +69,13 @@ def make_evidence(path: Path) -> None:
             INSERT INTO plugin_security_findings(scan_id,rule_id,severity,category,title,description,evidence_json)
             VALUES(1,'test.high','high','test','High test finding','Synthetic high finding','["evidence"]')
         """)
+        db.execute(
+            "UPDATE plugin_security_current SET findings_json=? WHERE variant_id=1",
+            (json.dumps([{
+                "ruleId": "test.high", "severity": "high", "category": "test",
+                "title": "High test finding", "description": "Synthetic high finding", "evidence": ["evidence"],
+            }], separators=(",", ":")),),
+        )
         db.execute("""
             INSERT INTO plugin_security_dependencies(dependency_id,scan_id,origin,kind,name,version,resolved_version,status,requirement,evidence_json)
             VALUES(1,1,'artifact','nuget','Newtonsoft.Json','12.0.1','12.0.1','resolved','required','[]')
@@ -150,6 +157,33 @@ class SecurityDeveloperViewTests(unittest.TestCase):
                 failures = [x for x in detail["audit"] if x["status"] == "fail"]
                 self.assertEqual([], failures)
                 self.assertEqual("FixturePlugin.csproj", detail["sourceScope"]["primaryProject"])
+            finally:
+                inspector.close()
+
+    def test_current_projection_can_include_derived_findings_without_mutating_scan_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            evidence = Path(td) / "evidence.sqlite"
+            make_evidence(evidence)
+            derived = {
+                "ruleId": "artifact.cross-source-hash-mismatch",
+                "severity": "caution",
+                "category": "provenance",
+                "title": "Cross-source artifact hash mismatch",
+                "description": "Derived current projection finding.",
+                "evidence": ["fixture"],
+            }
+            with closing(sqlite3.connect(evidence)) as db:
+                existing = json.loads(db.execute("SELECT findings_json FROM plugin_security_current WHERE variant_id=1").fetchone()[0])
+                existing.append(derived)
+                db.execute(
+                    "UPDATE plugin_security_current SET caution_count=1,findings_json=? WHERE variant_id=1",
+                    (json.dumps(existing, separators=(",", ":")),),
+                )
+                db.commit()
+            inspector = view.SecurityInspector(evidence)
+            try:
+                failures = [x for x in inspector.audit_variant(1) if x.status == "fail"]
+                self.assertEqual([], failures)
             finally:
                 inspector.close()
 

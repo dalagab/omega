@@ -23,6 +23,7 @@ for item in (SECURITY, CATALOG):
         sys.path.insert(0, str(item))
 
 import sigmascope
+import developer_view as developer_view
 from migrate_security_evidence_v2 import migrate
 from production_sigmascope_v2_pipeline import (
     _current_rows,
@@ -130,6 +131,63 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 dep = db.execute("SELECT kind,name,resolved_version FROM plugin_security_dependencies").fetchone()
                 self.assertEqual(dep, ("nuget-resolved", "Example.Package", "1.2.3"))
                 self.assertEqual(db.execute("SELECT scan_id FROM plugin_security_current WHERE variant_id=?", (variant_id,)).fetchone()[0], 9001)
+
+    def test_materialization_repairs_stale_v2_summary_from_normalized_findings(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-stale-summary-repair-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            evidence = root / "evidence"
+            migrate(database, evidence, reset=True)
+            variant_path = next((evidence / "variants").rglob("*.json"))
+            payload = json.loads(variant_path.read_text(encoding="utf-8"))
+            legacy_report = {
+                "scannerVersion": "2.0.0",
+                "status": "complete",
+                "highestSeverity": "caution",
+                "counts": {"informational": 0, "caution": 1, "high": 0, "critical": 0},
+                "capabilities": ["Fixture capability"],
+                "source": {"repository": "https://example.invalid/repo"},
+            }
+            for field in ("scan", "current"):
+                payload[field]["highest_severity"] = "none"
+                payload[field]["informational_count"] = 0
+                payload[field]["caution_count"] = 0
+                payload[field]["high_count"] = 0
+                payload[field]["critical_count"] = 0
+                payload[field]["report_json"] = legacy_report
+            payload["current"]["findings_json"] = []
+            variant_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+            base = root / "base.sqlite"
+            shutil.copy2(database, base)
+            with closing(sqlite3.connect(base)) as db:
+                sigmascope.ensure_schema(db)
+                db.execute("PRAGMA foreign_keys=OFF")
+                for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
+                    db.execute(f'DELETE FROM "{row[0]}"')
+                db.execute("PRAGMA foreign_keys=ON")
+                db.commit()
+
+            work = root / "work.sqlite"
+            materialize_current_state(base, evidence, work)
+            with closing(sqlite3.connect(work)) as db:
+                db.row_factory = sqlite3.Row
+                scan = db.execute("SELECT highest_severity,informational_count,caution_count,high_count,critical_count,report_json FROM plugin_security_scans WHERE scan_id=9001").fetchone()
+                current = db.execute("SELECT highest_severity,informational_count,caution_count,high_count,critical_count,findings_json,report_json FROM plugin_security_current WHERE variant_id=?", (variant_id,)).fetchone()
+                self.assertEqual(tuple(scan[:5]), ("caution", 0, 1, 0, 0))
+                self.assertEqual(tuple(current[:5]), ("caution", 0, 1, 0, 0))
+                self.assertEqual(json.loads(current["findings_json"])[0]["ruleId"], "fixture.rule")
+                self.assertEqual(json.loads(scan["report_json"])["highestSeverity"], "caution")
+                self.assertEqual(json.loads(current["report_json"])["counts"]["caution"], 1)
+
+            # Reproduce the live workflow's next gate: the independent developer audit
+            # must accept the self-healed historical row after materialization.
+            inspector = developer_view.SecurityInspector(work)
+            try:
+                failures = [item for item in inspector.audit_variant(variant_id) if item.status == "fail"]
+                self.assertEqual([], failures)
+            finally:
+                inspector.close()
 
     def test_candidate_synchronization_repairs_legacy_oversized_variant_reports(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-legacy-report-repair-") as td:

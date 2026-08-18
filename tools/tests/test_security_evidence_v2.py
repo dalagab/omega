@@ -112,13 +112,16 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
                     "error": "temporary source lookup failure",
                     "dependencyIntelligence": {"fingerprints": {"relevantSourceSha256": "b" * 64}},
                 },
+                "highestSeverity": "caution",
+                "counts": {"informational": 1, "caution": 2, "high": 0, "critical": 0},
+                "capabilities": ["Network access", "Filesystem access"],
                 "automation": {"level": "ui", "capabilities": [{"id": "fixture", "label": "Fixture"}]},
             }
             encoded = json.dumps(huge_report, separators=(",", ":"))
             with closing(sqlite3.connect(database)) as db:
                 db.execute("ALTER TABLE plugin_security_current ADD COLUMN report_json TEXT NOT NULL DEFAULT '{}'")
-                db.execute("UPDATE plugin_security_scans SET report_json=? WHERE scan_id=10", (encoded,))
-                db.execute("UPDATE plugin_security_current SET report_json=? WHERE variant_id=1", (encoded,))
+                db.execute("UPDATE plugin_security_scans SET highest_severity='none',informational_count=0,caution_count=0,high_count=0,critical_count=0,report_json=? WHERE scan_id=10", (encoded,))
+                db.execute("UPDATE plugin_security_current SET highest_severity='none',informational_count=0,caution_count=0,high_count=0,critical_count=0,report_json=? WHERE variant_id=1", (encoded,))
                 db.commit()
 
             output = root / "v2"
@@ -137,6 +140,9 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
                 )
                 self.assertEqual(report["source"]["error"], "temporary source lookup failure")
                 self.assertEqual(report["automation"]["level"], "ui")
+                self.assertEqual(report["highestSeverity"], "caution")
+                self.assertEqual(report["counts"], {"informational": 1, "caution": 2, "high": 0, "critical": 0})
+                self.assertEqual(report["capabilities"], ["Network access", "Filesystem access"])
             report = validate(database, output)
             self.assertTrue(report["ok"], report)
             intrinsic = validate_snapshot(output)
