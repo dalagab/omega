@@ -155,7 +155,10 @@ internal static partial class RegressionCases
         Contains(workflow, "--rescan-after-hours", "unchanged artifacts are periodically revalidated");
         Contains(workflow, "production-sigmascope-v2-report.json", "each batch retains an auditable v2 production summary");
         Contains(workflow, "tools/catalog/validate_marketplace_catalog.py", "workflow validates the small client projection before publication");
-        Contains(workflow, "--name omega-sqlite-catalog", "Sigmascope consumes the exact catalog-builder artifact instead of an intermediate release");
+        Contains(workflow, "tools/security/sigmascope_handoff.py", "Sigmascope delegates authoritative catalog selection to the bounded handoff helper");
+        var sigmascopeHandoff = File.ReadAllText(Path.Combine(Root, "tools", "security", "sigmascope_handoff.py"));
+        Contains(sigmascopeHandoff, "ARTIFACT_NAME = \"omega-sqlite-catalog\"", "Sigmascope handoff consumes the exact catalog-builder artifact instead of an intermediate release");
+        Contains(sigmascopeHandoff, "\"gh\", \"run\", \"download\"", "Sigmascope handoff downloads the selected authoritative builder artifact directly");
         False(workflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "production Sigmascope no longer transports the giant v1 evidence SQLite database");
         var securityValidator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_security_catalog.py"));
         Contains(securityValidator, "plugin_security_dependencies", "validator checks dependency intelligence persistence");

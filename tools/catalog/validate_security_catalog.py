@@ -15,7 +15,7 @@ import zipfile
 from pathlib import Path
 
 import security_scan
-from catalog_revisions import CATALOG_REVISION_SCHEMA, EVIDENCE_REVISION_SCHEMA, SECURITY_REVISION_SCHEMA
+from catalog_revisions import CATALOG_REVISION_SCHEMA, EVIDENCE_REVISION_SCHEMA, SECURITY_REVISION_SCHEMA, is_valid_evidence_revision
 
 REQUIRED_TABLES = (
     "plugin_security_current",
@@ -140,7 +140,7 @@ def validate_database(database: Path, report_path: Path | None = None) -> dict:
         base_revision = str(meta.get("catalog_base_revision", ""))
         if not security_revision.startswith(f"sec-{security_scan.SCANNER_VERSION}-"):
             raise RuntimeError("security revision candidate is missing or stale")
-        if not evidence_revision.startswith("ev-v1-"):
+        if not is_valid_evidence_revision(evidence_revision):
             raise RuntimeError("evidence revision candidate is missing or stale")
         if not catalog_revision.startswith("cat-v1-") or not base_revision.startswith("base-v1-"):
             raise RuntimeError("catalog revision candidate metadata is missing")

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import compact_sqlite_catalog
-from catalog_revisions import CATALOG_REVISION_SCHEMA, CHANGELOG_SCHEMA, EVIDENCE_REVISION_SCHEMA, SECURITY_REVISION_SCHEMA
+from catalog_revisions import CATALOG_REVISION_SCHEMA, CHANGELOG_SCHEMA, EVIDENCE_REVISION_SCHEMA, SECURITY_REVISION_SCHEMA, is_valid_evidence_revision
 
 
 def validate_database_bytes(raw: bytes, descriptor: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:
@@ -58,7 +58,7 @@ def validate_database_bytes(raw: bytes, descriptor: dict[str, Any], report: dict
                 raise RuntimeError("descriptor catalogRevision does not match compacted database")
             if descriptor.get("securityRevision") != security_revision or not security_revision.startswith("sec-"):
                 raise RuntimeError("descriptor securityRevision does not match compacted database")
-            if descriptor.get("evidenceRevision") != evidence_revision or not evidence_revision.startswith("ev-v1-"):
+            if descriptor.get("evidenceRevision") != evidence_revision or not is_valid_evidence_revision(evidence_revision):
                 raise RuntimeError("descriptor evidenceRevision does not match compacted database")
             if (meta.get("catalog_revision_schema") != CATALOG_REVISION_SCHEMA or
                     meta.get("security_revision_schema") != SECURITY_REVISION_SCHEMA or

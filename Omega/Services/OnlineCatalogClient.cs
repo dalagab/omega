@@ -284,9 +284,16 @@ internal sealed class OnlineCatalogClient : IDisposable
     }
 
     internal static bool IsValidEvidenceRevision(string? value)
-        => string.IsNullOrWhiteSpace(value) ||
-           (value.StartsWith("ev-v1-", StringComparison.Ordinal) &&
-            value.Length == 22 && value.AsSpan(6).ToString().All(char.IsAsciiHexDigit));
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return true;
+        if (value.Length != 22 || value[5] != '-')
+            return false;
+        if (!value.StartsWith("ev-v1", StringComparison.Ordinal) &&
+            !value.StartsWith("ev-v2", StringComparison.Ordinal))
+            return false;
+        return value.AsSpan(6).ToString().All(char.IsAsciiHexDigit);
+    }
 
     internal static string EffectiveCatalogSha256(OnlineCatalogDescriptor descriptor)
         => descriptor.CatalogSha256;

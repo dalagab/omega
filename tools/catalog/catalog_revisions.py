@@ -20,6 +20,13 @@ SECURITY_REVISION_SCHEMA = "omega.security-revision.v2"
 EVIDENCE_REVISION_SCHEMA = "omega.security-evidence-revision.v1"
 CHANGELOG_SCHEMA = "omega.catalog-changelog.v1"
 
+
+def is_valid_evidence_revision(value: str) -> bool:
+    """Accept published Evidence v1 and Sigmascope Evidence v2 semantic IDs."""
+    text = str(value or "")
+    return (text.startswith("ev-v1-") or text.startswith("ev-v2-")) and len(text) == 22 and all(c in "0123456789abcdefABCDEF" for c in text[6:])
+
+
 JSON_COLUMNS = {
     "image_urls_json", "tags_json", "category_tags_json", "topics_json", "metadata_json",
     "capabilities_json", "findings_json", "evidence_json", "versions_json", "source_only_json",

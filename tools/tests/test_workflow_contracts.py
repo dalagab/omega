@@ -77,13 +77,15 @@ class WorkflowContractTests(unittest.TestCase):
             "issues: write",
             "ref: security-evidence-v2",
             "path: catalog/security-v2-current",
-            "--name omega-sqlite-catalog",
+            "tools/security/sigmascope_handoff.py",
+            "catalog/sigmascope-handoff-diagnostics.json",
             "production_sigmascope_v2_pipeline.py",
             "--candidate-evidence catalog/security-v2-candidate",
             "--source-overrides sources/source-overrides.json",
             "validate_marketplace_catalog.py --root catalog/publication-output",
             "developer_view.py audit",
             "security-developer-audit.json",
+            "print_sigmascope_audit_failures.py",
             "publish_security_evidence_v2.py",
             "--snapshot-validation-report",
             "--audit-report",
@@ -98,6 +100,20 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("omega-security-catalog", text)
 
 
+
+
+    def test_sigmascope_handoff_uses_builder_artifacts_for_all_events_and_emits_early_diagnostics(self) -> None:
+        workflow = self.read("sigmascope.yml")
+        handoff = (common.ROOT / "tools" / "security" / "sigmascope_handoff.py").read_text(encoding="utf-8")
+        self.assertIn("tools/security/sigmascope_handoff.py", workflow)
+        self.assertIn("catalog/sigmascope-handoff-diagnostics.json", workflow)
+        self.assertIn("if: always()", workflow)
+        self.assertIn("catalog-builder.yml", handoff)
+        self.assertIn('"gh", "run", "list"', handoff)
+        self.assertIn("latest-successful-builder-run", handoff)
+        self.assertIn("triggering-builder-run", handoff)
+        self.assertIn("omega-sqlite-catalog", handoff)
+        self.assertNotIn("python -m zipfile -e catalog/security-input/omega-marketplace.sqlite.zip", workflow)
 
     def test_source_submission_workflow_validates_before_privileged_persistence_and_restarts_minimum_chain(self) -> None:
         text = self.read("source-submissions.yml")

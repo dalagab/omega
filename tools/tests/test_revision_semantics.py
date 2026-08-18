@@ -105,6 +105,18 @@ class RevisionSemanticsTests(unittest.TestCase):
             self.assertEqual("cat-v1-0123456789abcdef", result["catalog_revision"])
             self.assertEqual("sec-2.0.0-0123456789abcdef", result["security_revision"])
             self.assertEqual("ev-v1-fedcba9876543210", result["evidence_revision"])
+            self.assertTrue(catalog_revisions.is_valid_evidence_revision("ev-v1-fedcba9876543210"))
+            self.assertTrue(catalog_revisions.is_valid_evidence_revision("ev-v2-fedcba9876543210"))
+            self.assertFalse(catalog_revisions.is_valid_evidence_revision("ev-v3-fedcba9876543210"))
+
+            report.write_text(json.dumps({
+                "publication": {"required": True},
+                "revisions": {"catalogRevision": "cat-v1-0123456789abcdef", "securityRevision": "sec-2.5.0-0123456789abcdef", "evidenceRevision": "ev-v2-fedcba9876543210"},
+            }), encoding="utf-8")
+            v2_result = publication_decision.decision(report)
+            self.assertEqual("true", v2_result["publish_evidence"])
+            self.assertEqual("ev-v2-fedcba9876543210", v2_result["evidence_revision"])
+
             report.write_text("{}", encoding="utf-8")
             with self.assertRaises(ValueError):
                 publication_decision.decision(report)

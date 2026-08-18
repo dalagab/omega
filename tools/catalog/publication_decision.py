@@ -6,6 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
+from catalog_revisions import is_valid_evidence_revision
+
 
 def decision(report_path: Path, projection_report_path: Path | None = None) -> dict[str, str]:
     report = json.loads(report_path.read_text(encoding="utf-8"))
@@ -19,7 +21,7 @@ def decision(report_path: Path, projection_report_path: Path | None = None) -> d
     catalog_revision = str(revisions.get("catalogRevision") or "")
     security_revision = str(revisions.get("securityRevision") or "")
     evidence_revision = str(revisions.get("evidenceRevision") or "")
-    if not catalog_revision.startswith("cat-v1-") or not security_revision.startswith("sec-") or not evidence_revision.startswith("ev-v1-"):
+    if not catalog_revision.startswith("cat-v1-") or not security_revision.startswith("sec-") or not is_valid_evidence_revision(evidence_revision):
         raise ValueError("compaction report contains invalid semantic revision IDs")
     marketplace_required = required
     if projection_report_path is not None:

@@ -4,6 +4,32 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
+<sub>work build: 0.8.99</sub>
+
+### Windows regression contract synchronization
+
+- Update the C# Sigmascope regression to follow the 0.8.98 authoritative handoff architecture: the workflow delegates catalog selection to `tools/security/sigmascope_handoff.py`, and that helper owns the exact `omega-sqlite-catalog` artifact download.
+- Add a Python preflight guard so the stale inline `--name omega-sqlite-catalog` workflow assertion cannot return.
+- No production Sigmascope handoff or scanning behavior changed in this work build.
+
+<sub>work build: 0.8.98</sub>
+
+### Sigmascope workflow handoff resilience
+
+- Resolve Sigmascope input from authoritative `omega-sqlite-catalog` artifacts produced by successful `Omega SQLite catalog builder` runs for **all** invocation modes. Scheduled/manual runs no longer depend on an already-published `catalog-latest` marketplace bundle.
+- For `workflow_run` triggers, prefer the exact triggering builder artifact, then fall back to the newest successful builder artifact if that run's artifact is unavailable.
+- Always write bounded `sigmascope-handoff-diagnostics.json` during the handoff step, recording event/run selection, attempted GitHub CLI commands, bounded stdout/stderr and observed files. The always-run diagnostics upload now has a real artifact even when catalog handoff fails before Sigmascope staging begins.
+- Print a bounded summary of independent developer-audit failures directly into the GitHub Actions log before failing, while retaining the complete JSON audit in the diagnostics artifact.
+- Retain the 0.8.97 client compatibility fix for `ev-v1-…` and `ev-v2-…` Definitions Evidence Revisions.
+
+<sub>work build: 0.8.97</sub>
+
+### Definitions Evidence v2 compatibility
+
+- Accept both legacy `ev-v1-…` and Sigmascope `ev-v2-…` semantic Evidence Revision identifiers in the in-game Definitions client. The 0.8.96 client rejected valid Sigmascope descriptors because it still recognized only the older revision generation.
+- Keep malformed and unknown Evidence Revision generations fail-closed; `ev-v3-…` remains rejected.
+- Align catalog publication/validation helpers with the same v1/v2 compatibility contract so maintenance tooling does not reject a valid Sigmascope Evidence v2 descriptor.
+
 <sub>work build: 0.8.96</sub>
 
 ### Sigmascope independent audit repair

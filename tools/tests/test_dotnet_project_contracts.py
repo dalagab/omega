@@ -57,6 +57,10 @@ class DotNetProjectContractTests(unittest.TestCase):
         self.assertIn('var normalizedWorkflow = workflow.ReplaceLineEndings("\\n");', text)
         self.assertIn('Contains(normalizedWorkflow, "workflows:\\n', text)
         self.assertIn('Omega SQLite catalog builder', text)
+        self.assertIn('Contains(workflow, "tools/security/sigmascope_handoff.py"', text)
+        self.assertIn(r'ARTIFACT_NAME = \"omega-sqlite-catalog\"', text)
+        self.assertIn(r'\"gh\", \"run\", \"download\"', text)
+        self.assertNotIn('Contains(workflow, "--name omega-sqlite-catalog"', text)
         self.assertNotIn('workflow.IndexOf("\\n  publish_marketplace:', text)
         self.assertNotIn('workflow.IndexOf("\\n  publish_evidence:', text)
 
@@ -85,6 +89,15 @@ class DotNetProjectContractTests(unittest.TestCase):
         self.assertIn('PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12"', regressions)
         self.assertNotIn("SQLitePCLRaw.provider.winsqlite3", regressions)
 
+
+
+    def test_online_definitions_client_accepts_sigmascope_evidence_v2_revision(self) -> None:
+        client = (common.ROOT / "Omega" / "Services" / "OnlineCatalogClient.cs").read_text(encoding="utf-8")
+        regressions = (common.ROOT / "Omega.RegressionTests" / "RegressionCases.OnlineAndUi.cs").read_text(encoding="utf-8")
+        self.assertIn('value.StartsWith("ev-v1", StringComparison.Ordinal)', client)
+        self.assertIn('value.StartsWith("ev-v2", StringComparison.Ordinal)', client)
+        self.assertIn('IsValidEvidenceRevision("ev-v2-0123456789abcdef")', regressions)
+        self.assertIn('IsValidEvidenceRevision("ev-v3-0123456789abcdef")', regressions)
 
     def test_windows_regression_literals_follow_responsive_sigmascope_source(self) -> None:
         catalog = (common.ROOT / "Omega.RegressionTests" / "RegressionCases.Catalog.cs").read_text(encoding="utf-8")

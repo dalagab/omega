@@ -95,8 +95,10 @@ internal static partial class RegressionCases
         False(OnlineCatalogClient.IsValidCatalogRevision("cat-v1-not-a-hash"), "malformed Catalog Revision is rejected");
         True(OnlineCatalogClient.IsValidSecurityRevision("sec-2.0.0-0123456789abcdef"), "semantic Security Revision format is accepted");
         False(OnlineCatalogClient.IsValidSecurityRevision("sec-2.0.0-short"), "malformed Security Revision is rejected");
-        True(OnlineCatalogClient.IsValidEvidenceRevision("ev-v1-0123456789abcdef"), "semantic Evidence Revision format is accepted");
+        True(OnlineCatalogClient.IsValidEvidenceRevision("ev-v1-0123456789abcdef"), "legacy Evidence Revision format remains accepted");
+        True(OnlineCatalogClient.IsValidEvidenceRevision("ev-v2-0123456789abcdef"), "Sigmascope Evidence v2 Revision format is accepted");
         False(OnlineCatalogClient.IsValidEvidenceRevision("ev-v1-short"), "malformed Evidence Revision is rejected");
+        False(OnlineCatalogClient.IsValidEvidenceRevision("ev-v3-0123456789abcdef"), "unknown Evidence Revision generation is rejected");
 
         var hashes = new OnlineCatalogDescriptor
         {

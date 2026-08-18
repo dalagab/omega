@@ -69,29 +69,22 @@ jobs:
         run: python tools/catalog/sigmascope.py --hardening-self-test
       - name: Self-test production Sigmascope Security Evidence v2 orchestration
         run: python tools/security/production_sigmascope_v2_pipeline.py --self-test
-      - name: Download current catalog identities and previous client descriptor
+      - name: Resolve authoritative catalog handoff with early diagnostics
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
-        run: |
-          set -euo pipefail
-          mkdir -p catalog/security-input catalog/previous-marketplace
-          gh release download catalog-latest --repo "$GH_REPO" --pattern catalog.json --dir catalog/previous-marketplace || true
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            gh run download "$UPSTREAM_RUN_ID" --repo "$GH_REPO" --name omega-sqlite-catalog --dir catalog/security-input
-          else
-            gh release download catalog-latest --repo "$GH_REPO" \
-              --pattern omega-marketplace.sqlite.zip --pattern catalog.json --dir catalog/security-input
-            python -m zipfile -e catalog/security-input/omega-marketplace.sqlite.zip catalog/security-input
-            test -f catalog/security-input/omega-marketplace.sqlite
-            cp catalog/security-input/omega-marketplace.sqlite catalog/security-input/omega-catalog.sqlite
-          fi
-          test -f catalog/security-input/omega-catalog.sqlite
-          test -f catalog/security-input/catalog.json
-          test -f catalog/security-v2-current/index.json
-          test -f catalog/security-v2-current/validation-report.json
+          EVENT_NAME: ${{ github.event_name }}
+          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+        run: >-
+          python tools/security/sigmascope_handoff.py
+          --event-name "$EVENT_NAME"
+          --repository "$GH_REPO"
+          --upstream-run-id "$UPSTREAM_RUN_ID"
+          --output-dir catalog/security-input
+          --previous-marketplace-dir catalog/previous-marketplace
+          --current-evidence-dir catalog/security-v2-current
+          --diagnostics catalog/sigmascope-handoff-diagnostics.json
       - name: Stage bounded Sigmascope v2 examination, refresh OSV/IPC/dependencies, and build marketplace candidate
         id: v2
         env:
@@ -119,11 +112,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          audit=catalog/security-v2-work/security-developer-audit.json
+          set +e
           python tools/security/developer_view.py audit \
             --no-download \
             --database catalog/security-v2-work/omega-security-v2-working.sqlite \
             --marketplace-database catalog/publication-output/omega-marketplace.sqlite \
-            --json > catalog/security-v2-work/security-developer-audit.json
+            --json > "$audit"
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            if [ -s "$audit" ]; then
+              python tools/security/print_sigmascope_audit_failures.py "$audit" --limit 20 || true
+            fi
+            exit "$status"
+          fi
       - name: Project public-source coverage follow-ups
         run: >-
           python tools/catalog/sigmascope_source_followups.py
@@ -180,6 +183,9 @@ jobs:
         with:
           name: omega-sigmascope-v2-diagnostics
           path: |
+            # The handoff file is created before catalog download attempts, so even an
+            # early authoritative-catalog failure produces a downloadable diagnostic.
+            catalog/sigmascope-handoff-diagnostics.json
             # Keep the production batch summary explicit: C# release contracts
             # require this audit artifact not to depend on a broad diagnostics glob.
             catalog/security-v2-work/production-sigmascope-v2-report.json
