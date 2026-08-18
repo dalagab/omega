@@ -120,6 +120,19 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("omega-sqlite-catalog", handoff)
         self.assertNotIn("python -m zipfile -e catalog/security-input/omega-marketplace.sqlite.zip", workflow)
 
+    def test_catalog_bootstrap_handoff_is_shared_by_windows_regression_and_release(self) -> None:
+        helper = (common.ROOT / "tools" / "catalog" / "stage_catalog_bootstrap.py").read_text(encoding="utf-8")
+        regression = self.read("regression-tests.yml")
+        release = self.read("release.yml")
+        self.assertIn('BUILDER_WORKFLOW = "catalog-builder.yml"', helper)
+        self.assertIn('ARTIFACT_NAME = "omega-sqlite-catalog"', helper)
+        self.assertIn('validate_base_catalog.validate_local', helper)
+        self.assertIn('"gh", "run", "list"', helper)
+        self.assertIn('"gh", "run", "download"', helper)
+        self.assertIn("tools/catalog/stage_catalog_bootstrap.py", regression)
+        self.assertIn("tools/catalog/stage_catalog_bootstrap.py", release)
+        self.assertNotIn("gh release download catalog-latest --repo '${{ github.repository }}' --pattern 'omega-catalog.sqlite.zip'", release)
+
     def test_source_submission_workflow_validates_before_privileged_persistence_and_restarts_minimum_chain(self) -> None:
         text = self.read("source-submissions.yml")
         self.assert_has(
@@ -230,13 +243,19 @@ class WorkflowContractTests(unittest.TestCase):
             "name: Omega repository regression tests",
             "pull_request:",
             "workflow_dispatch:",
+            "actions: read",
             "python -m unittest discover -s tools/tests -p 'test_*.py' -v",
             "python tools/catalog/sigmascope.py --self-test",
             "python tools/catalog/sigmascope.py --hardening-self-test",
             "python tools/catalog/compact_sqlite_catalog.py --self-test",
             "python tools/catalog/project_marketplace_catalog.py --self-test",
+            "Stage validated current catalog bootstrap",
+            "tools/catalog/stage_catalog_bootstrap.py",
+            "--branch \"${{ github.event.repository.default_branch }}\"",
+            "--output catalog/bootstrap/omega-catalog.sqlite.zip",
             "dotnet build .\\Omega.sln -c Release",
         )
+        self.assertLess(text.index("Stage validated current catalog bootstrap"), text.index("dotnet build .\\Omega.sln -c Release"))
 
     def test_workflows_do_not_duplicate_tool_version_constants(self) -> None:
         self.assertNotIn("2.0.0", self.read("sigmascope.yml"))
@@ -258,12 +277,15 @@ class WorkflowContractTests(unittest.TestCase):
             "Run repository Python regression suite",
             "python -m unittest discover -s tools/tests -p 'test_*.py' -v",
             "Stage validated current catalog bootstrap",
-            "gh release download catalog-latest",
-            "python tools/catalog/validate_base_catalog.py --root $stage",
+            "tools/catalog/stage_catalog_bootstrap.py",
+            "--branch \"${{ github.event.repository.default_branch }}\"",
+            "--output catalog/bootstrap/omega-catalog.sqlite.zip",
             "Build and run regression suite",
             "dotnet build .\\Omega.sln -c Release",
             "Publish immutable versioned release",
         )
+        bootstrap = text[text.index("Stage validated current catalog bootstrap"):text.index("Build and run regression suite")]
+        self.assertNotIn("gh release download catalog-latest", bootstrap, "full base catalog must come from the catalog-builder artifact, not the small client release")
         self.assertLess(text.index("Run repository Python regression suite"), text.index("Publish immutable versioned release"))
         self.assertLess(text.index("Build and run regression suite"), text.index("Publish immutable versioned release"))
 

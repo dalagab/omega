@@ -27,7 +27,7 @@ var tests = new (string Name, Action Body)[]
     ("highest community version wins without official source", TestHighestCommunityVersionWinsProjection),
     ("hidden variants stay out of the storefront", TestHiddenVariantFiltering),
     ("curated source catalog invariants", TestCuratedSources),
-    ("SQLite bootstrap exposes catalog variants and source definitions", TestCatalogDatabaseRoundTrip),
+    ("SQLite bootstrap stays optional in lean source and exposes catalog data when staged", TestCatalogDatabaseRoundTrip),
     ("pre-security SQLite catalogs remain readable", TestLegacyCatalogWithoutSecurityProjection),
     ("SQLite bundle replacement contract stays strict", TestCatalogBundleImport),
     ("persistent catalog and conditional refresh contract", TestPersistentCatalogContract),

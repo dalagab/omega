@@ -4,6 +4,12 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
+<sub>work build: 0.9.21</sub>
+- Repair the GitHub Actions Windows/.NET regression gate by staging and validating `omega-catalog.sqlite.zip` from the authoritative `omega-sqlite-catalog` catalog-builder artifact before `dotnet build`.
+- Use the same artifact handoff in the tagged release workflow instead of expecting the full base catalog on `catalog-latest`, which intentionally publishes the small client marketplace projection.
+- Add a shared fail-closed bootstrap handoff with fallback across retained successful catalog-builder runs, explicit Actions read permission for repository regressions, and regression coverage for both workflows.
+- Keep clean local/ZipRunner source builds independent of generated GitHub artifact bytes while still running the full SQLite bootstrap round-trip whenever CI/release stages the authoritative artifact.
+
 <sub>work build: 0.9.20</sub>
 - Keep `site/`, `tools/site/`, Node/Tailwind files, the Pages workflow, and retired installer material out of the production package.
 - Make the C# lean-source regression compatible with ZipRunner's overlay deployment: stale files left behind by an older checkout no longer make a correct direct-ZIP production snapshot fail.

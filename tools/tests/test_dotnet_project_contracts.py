@@ -64,6 +64,16 @@ class DotNetProjectContractTests(unittest.TestCase):
         self.assertNotIn('workflow.IndexOf("\\n  publish_marketplace:', text)
         self.assertNotIn('workflow.IndexOf("\\n  publish_evidence:', text)
 
+    def test_clean_source_build_does_not_require_generated_catalog_bootstrap_bytes(self) -> None:
+        catalog = (common.ROOT / "Omega.RegressionTests" / "RegressionCases.Catalog.cs").read_text(encoding="utf-8")
+        program = (common.ROOT / "Omega.RegressionTests" / "Program.cs").read_text(encoding="utf-8")
+        self.assertIn("if (!File.Exists(bootstrap))", catalog)
+        self.assertIn("project declares optional SQLite bootstrap content", catalog)
+        self.assertIn("bootstrap remains optional for lean source builds", catalog)
+        self.assertIn("bootstrap imports into empty catalog", catalog, "staged CI/release artifacts must still exercise the real round-trip")
+        self.assertIn("SQLite bootstrap stays optional in lean source and exposes catalog data when staged", program)
+        self.assertNotIn('True(File.Exists(bootstrap), "packaged SQLite bootstrap exists")', catalog)
+
     def test_spotlight_shelf_regression_uses_declared_source_binding(self) -> None:
         path = common.ROOT / "Omega.RegressionTests" / "RegressionCases.CollectionsAndSpotlight.cs"
         text = path.read_text(encoding="utf-8")

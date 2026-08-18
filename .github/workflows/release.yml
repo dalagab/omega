@@ -78,18 +78,13 @@ jobs:
         run: python tools/release/extract_changelog.py --version '${{ steps.release.outputs.version }}' --output release-notes.md
 
       - name: Stage validated current catalog bootstrap
-        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          New-Item -ItemType Directory -Force -Path 'catalog/bootstrap' | Out-Null
-          $stage = Join-Path $env:RUNNER_TEMP 'omega-catalog-bootstrap'
-          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-          New-Item -ItemType Directory -Force -Path $stage | Out-Null
-          gh release download catalog-latest --repo '${{ github.repository }}' --pattern 'omega-catalog.sqlite.zip' --pattern 'catalog.json' --dir $stage
-          Copy-Item (Join-Path $stage 'omega-catalog.sqlite.zip') 'catalog/bootstrap/omega-catalog.sqlite.zip' -Force
-          Expand-Archive (Join-Path $stage 'omega-catalog.sqlite.zip') -DestinationPath $stage -Force
-          python tools/catalog/validate_base_catalog.py --root $stage
+        run: >-
+          python tools/catalog/stage_catalog_bootstrap.py
+          --repository "${{ github.repository }}"
+          --branch "${{ github.event.repository.default_branch }}"
+          --output catalog/bootstrap/omega-catalog.sqlite.zip
 
       - name: Build and run regression suite
         run: dotnet build .\Omega.sln -c Release

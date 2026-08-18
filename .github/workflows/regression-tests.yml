@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: omega-regression-${{ github.ref }}
@@ -57,6 +58,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
@@ -68,5 +72,13 @@ jobs:
           Invoke-WebRequest 'https://goatcorp.github.io/dalamud-distrib/stg/latest.zip' -OutFile 'dalamud.zip'
           Expand-Archive 'dalamud.zip' -DestinationPath $dalamudHome -Force
           Remove-Item 'dalamud.zip'
+      - name: Stage validated current catalog bootstrap
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/catalog/stage_catalog_bootstrap.py
+          --repository "${{ github.repository }}"
+          --branch "${{ github.event.repository.default_branch }}"
+          --output catalog/bootstrap/omega-catalog.sqlite.zip
       - name: Build and run Omega regression suite
         run: dotnet build .\Omega.sln -c Release
