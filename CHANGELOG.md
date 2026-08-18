@@ -4,6 +4,8 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
+## [0.9.21] - 2026-08-18
+
 <sub>work build: 0.9.21</sub>
 - Repair the GitHub Actions Windows/.NET regression gate by staging and validating `omega-catalog.sqlite.zip` from the authoritative `omega-sqlite-catalog` catalog-builder artifact before `dotnet build`.
 - Use the same artifact handoff in the tagged release workflow instead of expecting the full base catalog on `catalog-latest`, which intentionally publishes the small client marketplace projection.
