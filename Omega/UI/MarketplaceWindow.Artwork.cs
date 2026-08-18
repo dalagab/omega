@@ -42,7 +42,10 @@ internal sealed partial class MarketplaceWindow
         Version currentDalamudVersion,
         bool queueIfVisible = true,
         bool showOverlays = true,
-        bool showInstalledMarker = false)
+        bool showInstalledMarker = false,
+        bool showListingRibbons = false,
+        Vector2? listingPanelMin = null,
+        Vector2? listingPanelMax = null)
     {
         var startX = ImGui.GetCursorPosX();
         ImGui.SetCursorPosX(startX + Math.Max(0f, (layoutWidth - iconSize) * 0.5f));
@@ -64,6 +67,9 @@ internal sealed partial class MarketplaceWindow
 
         var overlayConsumed = showOverlays &&
                               DrawArtworkTopLayer(plugin, installedPlugin, overlayMin, overlaySize, currentApi, currentDalamudVersion);
+
+        if (showListingRibbons && listingPanelMin is { } panelMin && listingPanelMax is { } panelMax)
+            DrawPluginCardTopRibbons(plugin, installedPlugin, currentApi, panelMin, panelMax);
 
         ImGui.EndChild();
         ImGui.PopStyleVar();

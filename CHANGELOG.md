@@ -4,6 +4,94 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
+<sub>work build: 0.9.8</sub>
+
+### Original-source provenance and automated source intake
+
+- Upgrade Sigmascope to 2.6.0 and derive original public source repositories from `RepoUrl`, resolved/download package URLs, GitHub raw/release/tree/blob forms, and persisted source overrides instead of treating each distribution feed as the source-code identity.
+- Inspect the downloaded plugin manifest first and prefer exact `AssemblyVersion` / `vAssemblyVersion` Git refs before mutable branch refs; record source identity, version, repository-origin and selected-ref provenance without claiming reproducible source-to-binary verification.
+- Share a successfully resolved source association across mirrors only when the plugin identity and exact artifact SHA-256 match, while keeping historical scan rows immutable and leaving `sourceToBinaryVerified` false.
+- Do not open missing-source issues when current metadata can already resolve a source candidate; automatically close existing Omega source-followup issues after Sigmascope has successfully inspected the source.
+- Automatically validate, scrape and persist public PluginMaster feeds submitted through the source-submission issue workflow, disabled by default, then queue the catalog builder. Validate source-repository replies on Omega-managed follow-up issues against the plugin identity before persisting an override and queueing a targeted Sigmascope rescan.
+- Preserve dependency/advisory/risk projections per repository variant when identical artifact bytes are canonicalized, preventing a stale mirror with zero OSV matches from erasing a known advisory in another variant.
+
+<sub>work build: 0.9.7</sub>
+
+### Dalamud repository usage and safe removal
+
+- Show how many currently installed plugins came from each repository in Settings > Repositories > Dalamud, using Dalamud's persisted `InstalledFromUrl` provenance rather than Omega catalog guesses.
+- Add a repository Remove action for configured Dalamud repositories. Removal is available only when no installed plugin currently points at that repository; installed plugins block removal even when disabled so their update/service source cannot be orphaned.
+- Re-check repository usage inside the Dalamud bridge immediately before removal, so a stale UI count cannot race a plugin install.
+- Explain blocked removal with the installed plugin count and plugin names, while preserving the repository as an Omega source definition when only its Dalamud registration is removed.
+
+<sub>work build: 0.9.6</sub>
+
+### Installability, repository risk review, and Settings structure
+
+- Stop treating a disabled Omega source as inherently uninstallable: explicit repository selection may use disabled or not-yet-local HTTPS sources and the install coordinator prepares them through Dalamud.
+- Explain every unavailable install action with the concrete reason: missing package URL, testing-only package, newer Dalamud requirement, invalid source URL, or unsupported API generation.
+- Replace the incomplete untrusted-source jump to Settings with an install-specific repository-risk review that preserves the selected plugin/source, shows repository URL/package/API/divergence evidence, and requires an explicit acknowledgement checkbox before the source can be used.
+- Correct Library collection hover text to point to Library > Collections instead of referring to an unrelated location below the current row.
+- Split Settings into General, Repositories, and Legal tabs; keep the modal chrome/tabs fixed and give the repository table its own vertical scrolling with a frozen header so the close cross never scrolls away.
+
+<sub>work build: 0.9.5</sub>
+
+### Card ribbon compile and overlap correction
+
+- Repair the Discover rich-card card-bound refactor so the Windows/Dalamud build no longer has missing card-bound arguments or shadowed `cardMin`/`cardMax` locals.
+- Keep ownership + collection side-by-side at the card top-left and Sigmascope + automation side-by-side at the card top-right, with the artwork child used only for front-most compositing.
+- Remove the 0.9.4 blank top strip: artwork returns to its normal position and may be overlapped slightly by card ribbons, preserving icon space on horizontal rows.
+- Add a restrained vertical velvet-like shade to ribbon colours without changing their semantic status hues.
+- Add a source regression guard for the Discover card-bound ownership mistake that caused the 0.9.4 compile failure.
+
+<sub>work build: 0.9.4</sub>
+
+### Card-top ribbon anchoring correction
+
+- Anchor ownership and collection ribbons to the card's top-left corner, side-by-side horizontally.
+- Anchor Sigmascope and automation ribbons to the card's top-right corner, side-by-side horizontally.
+- Keep ribbon coordinates completely independent from the plugin icon/logo; the artwork child is used only as the draw layer so ribbons composite above nested artwork rather than behind it.
+- Expand the artwork-child clip rectangle to the card bounds while drawing ribbons, then restore it immediately, preventing the card-top flags from being clipped to the icon.
+- Reserve a small card-top strip before drawing plugin artwork so horizontal and Spotlight icons remain readable instead of sitting underneath the ribbons.
+- Add regression guards that reject artwork-relative X coordinates and vertical ribbon stacking.
+
+<sub>work build: 0.9.3</sub>
+
+### Ribbon layering and panel hierarchy correction
+
+- Restore the intended ribbon semantics: installed/collection state stays on the left side of plugin artwork, while Sigmascope/automation stays on the right side.
+- Composite listing ribbons inside the artwork child after the plugin image so every ribbon is genuinely above the icon instead of being hidden behind the child-window draw layer.
+- Keep the robot/question glyphs centered against the complete flag shape and stack multiple ribbons vertically on their own side so left/right states never collide on compact artwork.
+- Draw panel-local Filters before page headings, Library tabs/actions, and Updates content whenever Filters are available.
+- Reduce the Omega application-update notice corner radius so it reads as a compact notification panel instead of a rounded card.
+
+<sub>work build: 0.9.2</sub>
+
+### Compact artwork status flags
+
+- Replace the oversized Sigmascope/automation artwork ribbons with compact flags inset inside the plugin icon's upper-left corner.
+- Keep paired Sigmascope + automation flags within compact-list artwork width, with a small fixed gap and no card-edge anchoring.
+- Center the status glyph against the complete compact flag shape rather than the rectangular ribbon body.
+- Keep installed/collection ownership ribbons and the bare update glyph as separate card-level states.
+
+<sub>work build: 0.9.1</sub>
+
+### About database size and artwork-anchored status ribbons
+
+- Show the loaded Omega Definitions SQLite size immediately after the Definitions revision in About, using human-readable KiB/MiB/GiB units with the exact byte count available on hover.
+- Anchor Sigmascope and automation ribbons to the actual plugin artwork rectangle instead of the card's top-right edge, so the status flags sit on the plugin icon consistently in Discover, Spotlight, and recency shelves.
+- Center ribbon glyphs against the rectangular flag body and add small scale-aware optical corrections for the Font Awesome Robot and Question glyphs.
+
+<sub>work build: 0.9.0</sub>
+
+### Online Sigmascope Developer View
+
+- Make the published `security-evidence-v2` branch the default Developer View source. `python tools/security/developer_view.py` now reads the atomic root over raw GitHub instead of cloning the branch or downloading the complete evidence database.
+- Add a bounded revision-scoped HTTP cache (128 MiB by default), hash verification for indexed/sharded files, and a 60-second Evidence Revision check with an explicit **New evidence · Refresh** control.
+- Load plugin variant descriptors, manifests, findings, dependencies, IPC, permissions, automation, and managed-call shards only when the operator opens them. Keep local `--evidence-v2` and explicit SQLite modes for unpublished/debug and historical workflows.
+- Enrich the published `indexes/plugins.json` with a small identity/current-conclusion summary plus each variant descriptor SHA-256. This lets the online browser render and filter the full plugin list from the root/plugin indexes without fetching every variant descriptor.
+- Extend intrinsic Evidence v2 validation to verify the optional descriptor hash and summary projection when present, while remaining backward-compatible with older published v2 indexes.
+
 <sub>work build: 0.8.99</sub>
 
 ### Windows regression contract synchronization

@@ -26,6 +26,7 @@ def issue_body(item: dict) -> str:
     return f"""<!-- {item['key']} -->
 <!-- omega-source-submission -->
 <!-- omega-source-internal:{item['internalName']} -->
+<!-- omega-source-version:{item.get('assemblyVersion','')} -->
 ## Public source needed for Sigmascope coverage
 
 Omega downloaded and statically scanned this plugin artifact, but could not inspect a public source repository for the same plugin/source pair. This is not a claim that the plugin is unsafe.
@@ -40,7 +41,7 @@ Omega downloaded and statically scanned this plugin artifact, but could not insp
 {candidates}
 
 ### Provide the source repository
-Reply with the public GitHub repository URL containing this plugin's source. Omega will validate the repository identity, persist the plugin/source override, and queue a targeted security rescan.
+Reply with the public source repository URL containing this plugin's source. Omega will validate the repository identity, persist the plugin/source override, and queue a targeted security rescan. The issue closes automatically after Sigmascope successfully inspects the resolved source.
 """
 
 
@@ -76,10 +77,15 @@ def reconcile_issues(document: dict, repository: str, max_new: int = DEFAULT_MAX
     # A missing row can mean a transient Sigmascope/API failure, a 404, or a source
     # gap that was intentionally made non-actionable. Close only when current
     # evidence explicitly confirms the public source was scanned successfully.
+    resolved_by_key = {
+        str(item.get("key") or ""): item
+        for item in document.get("resolved") or []
+        if isinstance(item, dict) and str(item.get("key") or "").startswith("omega-source-followup:")
+    }
     resolved_keys = {
         str(key) for key in document.get("resolvedKeys") or []
         if str(key).startswith("omega-source-followup:")
-    }
+    } | set(resolved_by_key)
     closed = 0
     for key, issue in list(open_by_key.items()):
         if key not in resolved_keys:
@@ -87,7 +93,21 @@ def reconcile_issues(document: dict, repository: str, max_new: int = DEFAULT_MAX
         number = str(issue.get("number") or "")
         if not number:
             continue
-        gh("issue", "close", number, "--repo", repository, "--comment", "Omega's current Sigmascope evidence successfully inspected a public source repository for this plugin/source pair.")
+        resolution = resolved_by_key.get(key) or {}
+        repository_url = str(resolution.get("repository") or "")
+        commit = str(resolution.get("commit") or "")
+        confidence = str(resolution.get("confidence") or "")
+        detail = ""
+        if repository_url:
+            detail += f" Repository: {repository_url}."
+        if commit:
+            detail += f" Commit: {commit[:12]}."
+        if confidence:
+            detail += f" Provenance confidence: {confidence}."
+        gh(
+            "issue", "close", number, "--repo", repository,
+            "--comment", "Omega's current Sigmascope evidence successfully inspected a public source repository for this plugin/source pair." + detail,
+        )
         closed += 1
 
     created = 0

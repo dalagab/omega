@@ -6,16 +6,17 @@ Read-only developer tooling for inspecting the published Omega security evidence
 Typical use:
     python tools/security/developer_view.py
 
-That command downloads the latest evidence + marketplace databases into a local cache,
-verifies their SHA-256 sidecars, extracts them safely, starts a localhost-only web UI,
-and opens the browser.
+That command opens the latest published Security Evidence v2 directly from GitHub. It
+fetches only the root/plugin indexes initially and downloads individual variant/evidence
+shards lazily as the operator opens them. A bounded local HTTP cache avoids repeat fetches.
 
 Other useful modes:
-    python tools/security/developer_view.py fetch
+    python tools/security/developer_view.py serve-online
+    python tools/security/developer_view.py serve --evidence-v2 path/to/security-evidence-v2
     python tools/security/developer_view.py serve --database path/to/omega-security-evidence.sqlite
     python tools/security/developer_view.py audit --database path/to/omega-security-evidence.sqlite --json
 
-The database is always opened read-only. The SQL console only accepts SELECT/PRAGMA/WITH/EXPLAIN.
+Local SQLite databases are always opened read-only. The SQL console only accepts SELECT/PRAGMA/WITH/EXPLAIN.
 """
 from __future__ import annotations
 
@@ -40,7 +41,7 @@ import webbrowser
 import zipfile
 from typing import Any, Iterable
 
-from evidence_v2_inspector import V2SigmascopeInspector
+from evidence_v2_inspector import DEFAULT_ONLINE_BASE_URL, DEFAULT_REMOTE_CACHE_BYTES, V2SigmascopeInspector
 
 REPOSITORY = "dalagab/omega"
 EVIDENCE_TAG = "security-evidence-latest"
@@ -975,13 +976,13 @@ header{position:sticky;top:0;z-index:10;background:rgba(9,12,15,.96);border-bott
 @media(max-width:1250px){.split{grid-template-columns:1fr}.scroll{max-height:48vh}.db-browser{grid-template-columns:230px 1fr}.db-row{grid-column:1/-1;border-top:1px solid var(--line);max-height:none}.db-main{border-right:0}}
 @media(max-width:760px){main{padding:10px}.db-browser{grid-template-columns:1fr}.db-sidebar{border-right:0;border-bottom:1px solid var(--line);max-height:220px}.db-row{grid-column:auto}.toolbar input{min-width:100%}.kv{grid-template-columns:1fr}}
 </style></head>
-<body><header><div class="logo">Ω OMEGA · SIGMASCOPE DEVELOPER VIEW</div><span class="badge ro">READ ONLY</span><span id="scannerBadge" class="badge"></span><span id="latestBadge" class="badge"></span><button id="auditButton" style="margin-left:auto">Run consistency audit</button></header>
+<body><header><div class="logo">Ω OMEGA · SIGMASCOPE DEVELOPER VIEW</div><span class="badge ro">READ ONLY</span><span id="sourceBadge" class="badge"></span><span id="scannerBadge" class="badge"></span><span id="revisionBadge" class="badge"></span><span id="latestBadge" class="badge"></span><button id="refreshEvidence" style="display:none;margin-left:auto">New evidence · Refresh</button><button id="auditButton">Run consistency audit</button></header>
 <main>
 <div id="summaryCards" class="cards"></div>
 <section class="panel" style="margin-top:14px"><div class="panelhead"><h2>Plugin explorer</h2><span class="muted">Search conclusions first; inspect raw evidence on the right.</span></div><div style="padding:0 12px 12px"><div class="toolbar"><input id="pluginQuery" placeholder="Search plugin, internal name, author, source…"><select id="severityFilter"><option value="">Any severity</option><option>critical</option><option>high</option><option>caution</option><option>informational</option><option>none</option></select><select id="scanStatusFilter"><option value="">Any scan status</option><option>complete</option><option>failed</option><option>unscanned</option></select><label><input id="knownRiskFilter" type="checkbox"> Known OSV risk</label><button id="refreshPlugins">Refresh</button></div>
 <div class="split"><section class="panel"><div class="panelhead"><h3>Plugin variants</h3><span id="pluginRowCount" class="muted"></span></div><div class="scroll"><table><thead><tr><th>Plugin</th><th>Source</th><th>Version</th><th>Severity</th><th>Risk</th><th>Scan</th></tr></thead><tbody id="pluginRows"></tbody></table></div></section><section class="panel"><div class="panelhead"><h3 id="detailTitle">Select a plugin</h3><span id="detailMeta" class="muted"></span></div><div id="pluginDetail" class="detail"><span class="muted">Choose a plugin variant to inspect its conclusion and raw evidence.</span></div></section></div></div></section>
 <section class="panel" style="margin-top:14px"><div class="panelhead"><h2>Evidence browser</h2><span class="muted">Click tables, rows, and foreign-key links. No SQL required.</span></div><div class="db-browser"><aside class="db-sidebar"><input id="tableSearch" style="width:100%" placeholder="Find a table…"><div id="tableList"></div></aside><section class="db-main"><div class="panelhead"><div><h3 id="tableTitle">Choose a table</h3><div id="tableSubtitle" class="muted small"></div></div><div><button id="tablePrev" disabled>← Previous</button> <button id="tableNext" disabled>Next →</button></div></div><div id="tableFilterBar" class="detail" style="display:none"></div><div id="tableGrid" class="table-grid"><div class="empty">Choose a table from the left, or click one of the summary cards above.</div></div></section><aside class="db-row"><h3 id="rowTitle">Row inspector</h3><div id="rowDetail" class="muted" style="margin-top:10px">Click any row to inspect every field and follow database relationships.</div></aside></div></section>
-<details class="advanced"><summary>Advanced · read-only SQL console</summary><div><div class="muted small" style="margin:8px 0">Optional escape hatch: SELECT / PRAGMA / WITH / EXPLAIN only · max 1000 rows.</div><textarea id="sqlText">SELECT severity, category, rule_id, COUNT(*) AS n
+<details id="advancedSql" class="advanced"><summary>Advanced · read-only SQL console</summary><div><div class="muted small" style="margin:8px 0">Optional escape hatch: SELECT / PRAGMA / WITH / EXPLAIN only · max 1000 rows.</div><textarea id="sqlText">SELECT severity, category, rule_id, COUNT(*) AS n
 FROM plugin_security_findings
 GROUP BY severity, category, rule_id
 ORDER BY n DESC
@@ -993,10 +994,15 @@ async function api(path,opts){const r=await fetch(path,opts);const j=await r.jso
 function evidence(v){if(v==null)return'';return `<div class=code>${esc(typeof v==='string'?v:JSON.stringify(v,null,2))}</div>`}
 function kv(obj,keys){return `<div class=kv>`+keys.map(([k,l])=>`<b>${esc(l)}</b><span>${esc(obj?.[k]??'')}</span>`).join('')+`</div>`}
 function card(label,value,table){return `<div class="card ${table?'clickable':''}" ${table?`data-table="${esc(table)}"`:''}><div class=n>${fmt(value)}</div><div class=muted>${esc(label)}</div></div>`}
-async function init(){const [s,t]=await Promise.all([api('/api/summary'),api('/api/tables')]);tables=t;$('scannerBadge').textContent=`Sigmascope ${s.sigmascopeVersion||s.scannerVersion||'?'}`;$('latestBadge').textContent=s.latestScanUtc?`latest ${s.latestScanUtc}`:'';const c=s.counts;$('summaryCards').innerHTML=[['Plugins',c.plugins,'plugins'],['Variants',c.variants,'plugin_variants'],['Current analyses',c.currentScans,'plugin_security_current'],[`Current @ Sigmascope ${s.sigmascopeVersion||s.scannerVersion||'?'}`,(c.currentAtSigmascope??c.currentAtScanner),'plugin_security_current'],['Legacy current',c.legacyCurrent,'plugin_security_current'],['Failed analyses',c.failedScans,'plugin_security_current'],['Findings',c.findings,'plugin_security_findings'],['Critical',c.criticalFindings,'plugin_security_findings'],['High',c.highFindings,'plugin_security_findings'],['NuGet versions',c.observedNugetVersions,'plugin_security_dependencies'],['OSV packages queried',c.osvQueriedPackages,'plugin_security_dependencies'],['OSV matched packages',c.osvMatchedPackages,'plugin_security_dependency_advisory_matches'],['OSV matches',c.advisories,'plugin_security_dependency_advisory_matches'],['IPC providers observed',c.ipcProviders,'plugin_security_ipc_registry'],['Dependency issues',c.dependencyIssues,'plugin_security_dependency_issues']].map(x=>card(...x)).join('');$('summaryCards').querySelectorAll('[data-table]').forEach(x=>x.addEventListener('click',()=>openTable(x.dataset.table)));renderTableList();await loadPlugins()}
+async function init(){const [s,t,source]=await Promise.all([api('/api/summary'),api('/api/tables'),api('/api/source')]);tables=t;applySourceStatus(source);$('scannerBadge').textContent=`Sigmascope ${s.sigmascopeVersion||s.scannerVersion||'?'}`;$('latestBadge').textContent=s.latestScanUtc?`latest ${s.latestScanUtc}`:'';const c=s.counts;$('summaryCards').innerHTML=[['Plugins',c.plugins,'plugins'],['Variants',c.variants,'plugin_variants'],['Current analyses',c.currentScans,'plugin_security_current'],[`Current @ Sigmascope ${s.sigmascopeVersion||s.scannerVersion||'?'}`,(c.currentAtSigmascope??c.currentAtScanner),'plugin_security_current'],['Legacy current',c.legacyCurrent,'plugin_security_current'],['Failed analyses',c.failedScans,'plugin_security_current'],['Findings',c.findings,'plugin_security_findings'],['Critical',c.criticalFindings,'plugin_security_findings'],['High',c.highFindings,'plugin_security_findings'],['NuGet versions',c.observedNugetVersions,'plugin_security_dependencies'],['OSV packages queried',c.osvQueriedPackages,'plugin_security_dependencies'],['OSV matched packages',c.osvMatchedPackages,'plugin_security_dependency_advisory_matches'],['OSV matches',c.advisories,'plugin_security_dependency_advisory_matches'],['IPC providers observed',c.ipcProviders,'plugin_security_ipc_registry'],['Dependency issues',c.dependencyIssues,'plugin_security_dependency_issues']].map(x=>card(...x)).join('');$('summaryCards').querySelectorAll('[data-table]').forEach(x=>x.addEventListener('click',()=>openTable(x.dataset.table)));if(source.mode==='online'||s.format==='security-evidence-v2')$('advancedSql').style.display='none';renderTableList();await loadPlugins()}
+function applySourceStatus(s){$('sourceBadge').textContent=s.mode==='online'?'ONLINE · RAW GITHUB':String(s.mode||'LOCAL').toUpperCase();$('sourceBadge').title=s.baseUrl||s.cacheDirectory||'';$('revisionBadge').textContent=s.currentRevision?`evidence ${s.currentRevision}`:'';const b=$('refreshEvidence');b.style.display=s.updateAvailable?'inline-block':'none';if(s.updateAvailable)b.textContent=`New evidence ${s.remoteRevision} · Refresh`;if(s.error)$('sourceBadge').title=(($('sourceBadge').title||'')+' '+s.error).trim()}
+async function checkEvidenceRevision(){try{const s=await api('/api/source?check=1');applySourceStatus(s)}catch(e){console.warn('Evidence revision check failed',e)}}
+async function refreshEvidence(){const b=$('refreshEvidence');b.disabled=true;try{const s=await api('/api/refresh',{method:'POST'});applySourceStatus(s);await init()}finally{b.disabled=false}}
 function debouncedLoad(){clearTimeout(timer);timer=setTimeout(loadPlugins,220)}
 async function loadPlugins(){const u='/api/plugins?limit=500&q='+encodeURIComponent($('pluginQuery').value)+'&severity='+encodeURIComponent($('severityFilter').value)+'&status='+encodeURIComponent($('scanStatusFilter').value)+($('knownRiskFilter').checked?'&known_risk=1':'');const rows=await api(u);$('pluginRowCount').textContent=`${rows.length} shown`;$('pluginRows').innerHTML=rows.map(r=>`<tr class=click data-variant="${r.variant_id}"><td><b>${esc(r.canonical_name||r.name||r.internal_name)}</b><div class="muted small">${esc(r.internal_name)} · ${esc(r.author)}</div></td><td>${esc(r.source_name||r.source_url)}<div class="muted small">${esc(r.source_url)}</div></td><td>${esc(r.assembly_version)}</td><td class="${sev(r.highest_severity)}">${esc(r.highest_severity)}</td><td>${r.knownAdvisoryCount?`<span class=fail>Known risk · ${r.knownAdvisoryCount}</span><br>`:''}<span class=muted>${r.riskScore}/100 internal</span></td><td>${esc(r.scan_status)}<div class="muted small">${esc(r.scanned_at_utc)}</div></td></tr>`).join('')||'<tr><td colspan=6 class=empty>No plugin variants match these filters.</td></tr>';$('pluginRows').querySelectorAll('[data-variant]').forEach(x=>x.addEventListener('click',()=>loadDetail(Number(x.dataset.variant))))}
-async function loadDetail(id){const d=await api('/api/plugin?variant_id='+id),i=d.identity;$('detailTitle').textContent=i.canonical_name||i.name||i.internal_name;$('detailMeta').textContent=`variant ${id} · analysis record ${i.scan_id||'none'}`;const audits=d.audit.map(a=>`<div class="auditrow ${a.status}"><b>${esc(a.status.toUpperCase())} · ${esc(a.title)}</b><div class="muted small">${esc(a.code)} — ${esc(a.detail)}</div></div>`).join('');const finds=d.findings.map(f=>`<div class=finding><h4 class="${sev(f.severity)}">${esc(f.severity)} · ${esc(f.title)}</h4><div>${esc(f.description)}</div><div class="muted small">${esc(f.rule_id)} · ${esc(f.category)}</div>${evidence(f.evidence_json)}</div>`).join('')||'<span class=muted>No findings.</span>';const adv=d.advisories.map(a=>`<div class=finding><h4 class="${sev(a.severity)}">${esc(a.severity)} · ${esc(a.advisory_id)} · ${esc(a.component_name)}</h4><div>${esc(a.title)}</div><div class=small>used ${esc(a.resolved_version||a.dependency_version)} · affected ${esc(a.affected_version||a.affected_range)} · fixed ${esc(a.fixed_version)}</div>${a.advisory_url?`<a target=_blank rel=noopener href="${esc(a.advisory_url)}">Open advisory</a>`:''}</div>`).join('')||'<span class=muted>No matching advisories.</span>';const deps=d.dependencies.map(x=>`<tr><td>${esc(x.kind)}</td><td>${esc(x.name)}</td><td>${esc(x.resolved_version||x.version)}</td><td>${esc(x.requirement)}</td><td>${esc(x.relationship)}</td><td>${esc(x.resolution?.resolution_status||'')}</td><td>${(x.issues||[]).map(z=>`<span class="pill ${sev(z.severity)}">${esc(z.issue_code)}</span>`).join('')}</td></tr>`).join('');const ipc=d.ipc.map(x=>`<tr><td>${esc(x.role)}</td><td>${esc(x.channel)}</td><td>${esc(x.relationship)}</td><td>${esc(x.relationship_confidence)}</td><td>${(x.providers||[]).map(p=>esc(p.provider_internal_name)).join(', ')}</td></tr>`).join('');const perms=d.permissions.map(x=>`<div class=finding><b>${esc(x.permission_id)}</b> <span class=pill>${esc(x.risk)}</span> <span class=pill>${esc(x.confidence)}</span><div>${esc(x.reason)}</div>${evidence(x.evidence_json)}</div>`).join('')||'<span class=muted>No permission candidates.</span>';const aut=d.automation.map(x=>`<div class=finding><b>${esc(x.label||x.capability_id)}</b> <span class=pill>${esc(x.automation_level)}</span> <span class=pill>${esc(x.confidence)}</span><div>${esc(x.reason)}</div>${evidence(x.evidence_json)}</div>`).join('')||'<span class=muted>No automation capabilities.</span>';let m=d.marketplaceSecurity;$('pluginDetail').innerHTML=`<div class=section><div class=cards><div class=card><div class="n ${sev(i.highest_severity)}">${esc(i.highest_severity||'none')}</div><div class=muted>Recorded static conclusion</div></div><div class=card><div class=n>${d.riskScore}</div><div class=muted>Internal risk score</div></div><div class=card><div class=n>${d.advisorySummary.count}</div><div class=muted>Exact-version OSV matches</div></div><div class=card><div class=n>${esc(i.automation_level||'none')}</div><div class=muted>Automation level</div></div></div>${kv(i,[['internal_name','Internal name'],['assembly_version','Version'],['source_name','Source'],['source_url','Source URL'],['artifact_sha256','Artifact SHA-256'],['scanner_version','Sigmascope version'],['scanned_at_utc','Analyzed'],['source_repository','Source repository'],['source_commit','Source commit']])}</div><div class=section><h3>Conclusion audit</h3>${audits}</div><details open><summary>Static findings (${d.findings.length})</summary><div>${finds}</div></details><details open><summary>Known advisories (${d.advisories.length})</summary><div>${adv}</div></details><details><summary>Dependencies (${d.dependencies.length})</summary><div style="overflow:auto"><table><thead><tr><th>Kind</th><th>Name</th><th>Version</th><th>Requirement</th><th>IPC semantics</th><th>Resolution</th><th>Issues</th></tr></thead><tbody>${deps}</tbody></table></div></details><details><summary>IPC endpoints (${d.ipc.length})</summary><div style="overflow:auto"><table><thead><tr><th>Role</th><th>Channel</th><th>Relationship</th><th>Confidence</th><th>Provider(s)</th></tr></thead><tbody>${ipc}</tbody></table></div></details><details><summary>Permission candidates (${d.permissions.length})</summary><div>${perms}</div></details><details><summary>Automation evidence (${d.automation.length})</summary><div>${aut}</div></details><details><summary>Plugin source build scope</summary><div>${evidence(d.sourceScope)}</div></details><details><summary>Source ↔ package comparison</summary><div>${evidence(d.sourceArtifactComparison)}</div></details><details><summary>Sigmascope lineage and dependency drift</summary><div><h4>Lineage</h4>${evidence(d.lineage)}<h4>Drift</h4>${evidence(d.drift)}</div></details><details><summary>Client marketplace projection</summary><div>${m?evidence(m):'<span class=muted>Marketplace database not loaded.</span>'}</div></details><details><summary>Managed calls (lazy)</summary><div><input id="callQuery" placeholder="Filter target type/method/native library"><button id="loadCallsButton">Load calls</button><div id="callsOutput"></div></div></details>`;const b=$('loadCallsButton');if(b)b.addEventListener('click',()=>loadCalls(id))}
+function renderDataset(name,rows){if(name==='findings')return rows.map(f=>`<div class=finding><h4 class="${sev(f.severity)}">${esc(f.severity)} · ${esc(f.title)}</h4><div>${esc(f.description)}</div><div class="muted small">${esc(f.rule_id)} · ${esc(f.category)}</div>${evidence(f.evidence_json)}</div>`).join('')||'<span class=muted>No findings.</span>';if(name==='dependencies')return `<div style="overflow:auto"><table><thead><tr><th>Kind</th><th>Name</th><th>Version</th><th>Requirement</th><th>Relationship</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.kind)}</td><td>${esc(x.name)}</td><td>${esc(x.resolved_version||x.version)}</td><td>${esc(x.requirement)}</td><td>${esc(x.relationship)}</td></tr>`).join('')}</tbody></table></div>`;if(name==='ipc')return `<div style="overflow:auto"><table><thead><tr><th>Role</th><th>Channel</th><th>Relationship</th><th>Confidence</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.role)}</td><td>${esc(x.channel)}</td><td>${esc(x.relationship)}</td><td>${esc(x.relationship_confidence)}</td></tr>`).join('')}</tbody></table></div>`;if(name==='permissions')return rows.map(x=>`<div class=finding><b>${esc(x.permission_id)}</b> <span class=pill>${esc(x.risk)}</span> <span class=pill>${esc(x.confidence)}</span><div>${esc(x.reason)}</div>${evidence(x.evidence_json)}</div>`).join('')||'<span class=muted>No permission candidates.</span>';if(name==='automation')return rows.map(x=>`<div class=finding><b>${esc(x.label||x.capability_id)}</b> <span class=pill>${esc(x.automation_level)}</span> <span class=pill>${esc(x.confidence)}</span><div>${esc(x.reason)}</div>${evidence(x.evidence_json)}</div>`).join('')||'<span class=muted>No automation capabilities.</span>';return evidence(rows)}
+async function loadDataset(id,name,body){body.innerHTML='<span class=muted>Loading published evidence shard…</span>';try{const rows=await api('/api/dataset?variant_id='+id+'&name='+encodeURIComponent(name));body.innerHTML=renderDataset(name,rows)}catch(e){body.innerHTML=`<span class=fail>${esc(e.message)}</span>`}}
+async function loadDetail(id){const d=await api('/api/plugin?variant_id='+id),i=d.identity;$('detailTitle').textContent=i.canonical_name||i.name||i.internal_name;$('detailMeta').textContent=`variant ${id} · analysis record ${i.scan_id||'none'}`;const audits=d.audit.map(a=>`<div class="auditrow ${a.status}"><b>${esc(a.status.toUpperCase())} · ${esc(a.title)}</b><div class="muted small">${esc(a.code)} — ${esc(a.detail)}</div></div>`).join('');const counts=d.datasetCounts||{};const section=(name,label,open=false)=>{const inline=d[name]||[];if(!d.lazyDatasets)return `<details ${open?'open':''}><summary>${esc(label)} (${inline.length})</summary><div>${renderDataset(name,inline)}</div></details>`;const n=counts[name]??0;return `<details data-lazy-dataset="${esc(name)}" ${open?'open':''}><summary>${esc(label)} (${n})</summary><div data-lazy-body><span class=muted>${open?'Loading published evidence shard…':'Open to fetch this evidence from GitHub.'}</span></div></details>`};let m=d.marketplaceSecurity;$('pluginDetail').innerHTML=`<div class=section><div class=cards><div class=card><div class="n ${sev(i.highest_severity)}">${esc(i.highest_severity||'none')}</div><div class=muted>Recorded static conclusion</div></div><div class=card><div class=n>${d.riskScore}</div><div class=muted>Internal risk score</div></div><div class=card><div class=n>${d.advisorySummary.count}</div><div class=muted>Exact-version OSV matches</div></div><div class=card><div class=n>${esc(i.automation_level||'none')}</div><div class=muted>Automation level</div></div></div>${kv(i,[['internal_name','Internal name'],['assembly_version','Version'],['source_name','Source'],['source_url','Source URL'],['artifact_sha256','Artifact SHA-256'],['scanner_version','Sigmascope version'],['scanned_at_utc','Analyzed'],['source_repository','Source repository'],['source_commit','Source commit']])}</div><div class=section><h3>Conclusion audit</h3>${audits}</div>${section('findings','Static findings',true)}<details><summary>Known advisories (${d.advisories.length})</summary><div>${d.advisories.length?evidence(d.advisories):'<span class=muted>No matching advisories.</span>'}</div></details>${section('dependencies','Dependencies')}${section('ipc','IPC endpoints')}${section('permissions','Permission candidates')}${section('automation','Automation evidence')}<details><summary>Plugin source build scope</summary><div>${evidence(d.sourceScope)}</div></details><details><summary>Source ↔ package comparison</summary><div>${evidence(d.sourceArtifactComparison)}</div></details><details><summary>Sigmascope lineage and dependency drift</summary><div><h4>Lineage</h4>${evidence(d.lineage)}<h4>Drift</h4>${evidence(d.drift)}</div></details><details><summary>Client marketplace projection</summary><div>${m?evidence(m):'<span class=muted>Marketplace database not loaded.</span>'}</div></details><details><summary>Managed calls (lazy)</summary><div><input id="callQuery" placeholder="Filter target type/method/native library"><button id="loadCallsButton">Load calls</button><div id="callsOutput"></div></div></details>`;if(d.lazyDatasets){$('pluginDetail').querySelectorAll('[data-lazy-dataset]').forEach(node=>{let loaded=false;const load=()=>{if(loaded)return;loaded=true;loadDataset(id,node.dataset.lazyDataset,node.querySelector('[data-lazy-body]'))};node.addEventListener('toggle',()=>{if(node.open)load()});if(node.open)load()})}const b=$('loadCallsButton');if(b)b.addEventListener('click',()=>loadCalls(id))}
 async function loadCalls(id){const q=$('callQuery')?.value||'';const rows=await api('/api/calls?variant_id='+id+'&q='+encodeURIComponent(q));$('callsOutput').innerHTML=`<div class=muted>${rows.length} rows</div>`+evidence(rows)}
 async function runAudit(){$('detailTitle').textContent='Global consistency audit';$('detailMeta').textContent='running…';$('pluginDetail').innerHTML='<span class=muted>Recomputing current conclusions…</span>';try{const a=await api('/api/audit');$('detailMeta').textContent=`${a.counts.fail} fail · ${a.counts.warn} warn`;$('pluginDetail').innerHTML=`<div class=cards><div class=card><div class="n fail">${a.counts.fail}</div><div class=muted>Failures</div></div><div class=card><div class="n warn">${a.counts.warn}</div><div class=muted>Warnings</div></div><div class=card><div class="n pass">${a.counts.pass}</div><div class=muted>Passed global checks</div></div></div>`+a.items.map(x=>`<div class="auditrow ${x.status}"><b>${esc(x.status.toUpperCase())} · ${esc(x.title)}</b><div class=small>${esc(x.code)} ${x.plugin?'· '+esc(x.plugin):''}</div><div class=muted>${esc(x.detail)}</div></div>`).join('')}catch(e){$('pluginDetail').innerHTML=`<span class=fail>${esc(e.message)}</span>`}}
 function renderTableList(){const needle=$('tableSearch').value.trim().toLowerCase();let last='';$('tableList').innerHTML=tables.map((t,i)=>({t,i})).filter(x=>!needle||x.t.name.toLowerCase().includes(needle)||x.t.label.toLowerCase().includes(needle)||x.t.category.toLowerCase().includes(needle)).map(({t,i})=>{let h='';if(t.category!==last){last=t.category;h=`<div class=table-group>${esc(t.category)}</div>`}return h+`<button class="table-button ${currentTable?.name===t.name?'active':''}" data-table-index="${i}">${esc(t.label)}<div class="muted small">${esc(t.name)} · ${t.columnCount} columns</div></button>`}).join('');$('tableList').querySelectorAll('[data-table-index]').forEach(x=>x.addEventListener('click',()=>openTable(tables[Number(x.dataset.tableIndex)].name)))}
@@ -1008,14 +1014,14 @@ function inspectRow(index){const row=currentRows[index];if(!row)return;const fkM
 function looksJson(v){if(typeof v!=='string')return false;const s=v.trim();return (s.startsWith('{')&&s.endsWith('}'))||(s.startsWith('[')&&s.endsWith(']'))}
 function evidenceJsonInline(v){try{return `<span class=code style="display:block;max-height:180px">${esc(JSON.stringify(JSON.parse(v),null,2))}</span>`}catch{return esc(formatCell(v))}}
 async function runSql(){try{const r=await api('/api/sql',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:$('sqlText').value})});$('sqlOutput').innerHTML=`<table><thead><tr>${r.columns.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${r.rows.map(row=>`<tr>${row.map(v=>`<td>${esc(typeof v==='object'?JSON.stringify(v):v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`}catch(e){$('sqlOutput').innerHTML=`<span class=fail>${esc(e.message)}</span>`}}
-$('pluginQuery').addEventListener('input',debouncedLoad);$('severityFilter').addEventListener('change',loadPlugins);$('scanStatusFilter').addEventListener('change',loadPlugins);$('knownRiskFilter').addEventListener('change',loadPlugins);$('refreshPlugins').addEventListener('click',loadPlugins);$('auditButton').addEventListener('click',runAudit);$('tableSearch').addEventListener('input',renderTableList);$('tablePrev').addEventListener('click',()=>currentTable&&openTable(currentTable.name,currentTable.filter?.column||'',currentTable.filter?.value||'',Math.max(0,currentTable.offset-currentTable.limit)));$('tableNext').addEventListener('click',()=>currentTable&&openTable(currentTable.name,currentTable.filter?.column||'',currentTable.filter?.value||'',currentTable.offset+currentTable.limit));$('runSqlButton').addEventListener('click',runSql);
-init().catch(e=>{document.body.innerHTML='<pre class=fail>'+esc(e.stack||e.message)+'</pre>'});
+$('pluginQuery').addEventListener('input',debouncedLoad);$('severityFilter').addEventListener('change',loadPlugins);$('scanStatusFilter').addEventListener('change',loadPlugins);$('knownRiskFilter').addEventListener('change',loadPlugins);$('refreshPlugins').addEventListener('click',loadPlugins);$('refreshEvidence').addEventListener('click',refreshEvidence);$('auditButton').addEventListener('click',runAudit);$('tableSearch').addEventListener('input',renderTableList);$('tablePrev').addEventListener('click',()=>currentTable&&openTable(currentTable.name,currentTable.filter?.column||'',currentTable.filter?.value||'',Math.max(0,currentTable.offset-currentTable.limit)));$('tableNext').addEventListener('click',()=>currentTable&&openTable(currentTable.name,currentTable.filter?.column||'',currentTable.filter?.value||'',currentTable.offset+currentTable.limit));$('runSqlButton').addEventListener('click',runSql);
+init().then(()=>setInterval(checkEvidenceRevision,60000)).catch(e=>{document.body.innerHTML='<pre class=fail>'+esc(e.stack||e.message)+'</pre>'});
 </script></body></html>'''
 
 
 class AppHandler(BaseHTTPRequestHandler):
-    inspector: SecurityInspector
-    server_version = "OmegaSecurityDeveloperView/1.0"
+    inspector: Any
+    server_version = "OmegaSigmascopeDeveloperView/2.0"
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(f"[{self.log_date_time_string()}] {fmt % args}", file=sys.stderr)
@@ -1044,6 +1050,10 @@ class AppHandler(BaseHTTPRequestHandler):
                 return
             if parsed.path == "/api/summary":
                 return self.json_response(self.inspector.summary())
+            if parsed.path == "/api/source":
+                if hasattr(self.inspector, "source_status"):
+                    return self.json_response(self.inspector.source_status(check_remote=(query.get("check") or ["0"])[0] == "1"))
+                return self.json_response({"mode": "sqlite", "baseUrl": "", "currentRevision": "", "remoteRevision": "", "updateAvailable": False, "error": ""})
             if parsed.path == "/api/tables":
                 return self.json_response(self.inspector.table_catalog())
             if parsed.path == "/api/table":
@@ -1063,6 +1073,15 @@ class AppHandler(BaseHTTPRequestHandler):
                 return self.json_response(rows)
             if parsed.path == "/api/plugin":
                 return self.json_response(self.inspector.plugin_detail(int((query.get("variant_id") or ["0"])[0])))
+            if parsed.path == "/api/dataset":
+                variant_id = int((query.get("variant_id") or ["0"])[0])
+                name = (query.get("name") or [""])[0]
+                if hasattr(self.inspector, "plugin_dataset"):
+                    return self.json_response(self.inspector.plugin_dataset(variant_id, name))
+                detail = self.inspector.plugin_detail(variant_id)
+                if name not in {"findings", "dependencies", "ipc", "permissions", "automation"}:
+                    raise ValueError(f"unknown plugin dataset {name!r}")
+                return self.json_response(detail.get(name) or [])
             if parsed.path == "/api/audit":
                 return self.json_response(self.inspector.global_audit())
             if parsed.path == "/api/calls":
@@ -1073,7 +1092,12 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         try:
-            if urllib.parse.urlparse(self.path).path != "/api/sql":
+            path = urllib.parse.urlparse(self.path).path
+            if path == "/api/refresh":
+                if not hasattr(self.inspector, "refresh_online"):
+                    return self.json_response({"error": "the current evidence source is not refreshable online"}, 400)
+                return self.json_response(self.inspector.refresh_online())
+            if path != "/api/sql":
                 return self.json_response({"error": "not found"}, 404)
             length = min(int(self.headers.get("Content-Length") or 0), 1024 * 1024)
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
@@ -1084,12 +1108,12 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.json_response({"error": str(exc)}, 500)
 
 
-def serve(inspector: SecurityInspector, host: str, port: int, open_browser: bool) -> int:
+def serve(inspector: Any, host: str, port: int, open_browser: bool) -> int:
     handler = type("BoundAppHandler", (AppHandler,), {"inspector": inspector})
     server = ThreadingHTTPServer((host, port), handler)
     url = f"http://{host}:{server.server_address[1]}/"
     print(f"Omega Security Developer View: {url}", file=sys.stderr)
-    print(f"Evidence database: {inspector.evidence_path}", file=sys.stderr)
+    print(f"Evidence source: {inspector.evidence_path}", file=sys.stderr)
     print("Press Ctrl+C to stop.", file=sys.stderr)
     if open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
@@ -1104,13 +1128,15 @@ def serve(inspector: SecurityInspector, host: str, port: int, open_browser: bool
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Download and inspect Omega's published security evidence database read-only.")
-    parser.add_argument("command", nargs="?", choices=["fetch", "serve", "audit"], default="serve")
-    parser.add_argument("--database", type=Path, help="Local omega-security-evidence.sqlite; skips evidence download.")
+    parser = argparse.ArgumentParser(description="Browse Omega Sigmascope evidence read-only. Published Evidence v2 is streamed lazily from GitHub by default.")
+    parser.add_argument("command", nargs="?", choices=["fetch", "serve", "serve-online", "audit"], default="serve")
+    parser.add_argument("--database", type=Path, help="Local omega-security-evidence.sqlite; uses legacy/local SQLite view.")
     parser.add_argument("--evidence-v2", type=Path, help="Local Security Evidence v2 JSON directory; opens it directly without publication or download.")
+    parser.add_argument("--online-base-url", default=DEFAULT_ONLINE_BASE_URL, help="Published Evidence v2 raw HTTPS root. Default: dalagab/omega security-evidence-v2 branch.")
     parser.add_argument("--marketplace-database", type=Path, help="Optional local omega-marketplace.sqlite for projection comparison.")
     parser.add_argument("--cache-dir", type=Path, default=default_cache_dir())
-    parser.add_argument("--no-download", action="store_true", help="Do not fetch latest databases if --database is omitted.")
+    parser.add_argument("--online-cache-mb", type=int, default=DEFAULT_REMOTE_CACHE_BYTES // (1024 * 1024), help="Bounded on-demand Evidence v2 HTTP cache size in MiB.")
+    parser.add_argument("--no-download", action="store_true", help="For local/legacy operation, do not download release databases.")
     parser.add_argument("--no-marketplace", action="store_true", help="Do not download/use the small marketplace DB for conclusion comparison.")
     parser.add_argument("--host", default="127.0.0.1", help="Bind address. Default is localhost only.")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Local web UI port; use 0 for an automatic port.")
@@ -1139,11 +1165,22 @@ def main(argv: list[str] | None = None) -> int:
             evidence, marketplace = fetch_latest(args.cache_dir.resolve(), include_marketplace=not args.no_marketplace)
             print(json.dumps({"evidence": str(evidence), "marketplace": str(marketplace) if marketplace else None}, indent=2))
             return 0
-        if args.evidence_v2:
+
+        use_online = args.command == "serve-online" or (args.command == "serve" and not args.database and not args.evidence_v2 and not args.no_download)
+        if args.command == "serve-online" and (args.database or args.evidence_v2):
+            raise ValueError("serve-online cannot be combined with --database or --evidence-v2")
+        if use_online:
+            inspector = V2SigmascopeInspector.online(
+                base_url=args.online_base_url,
+                cache_dir=args.cache_dir.resolve() / "evidence-v2-http",
+                cache_limit_bytes=max(8, args.online_cache_mb) * 1024 * 1024,
+            )
+        elif args.evidence_v2:
             inspector = V2SigmascopeInspector(args.evidence_v2)
         else:
             evidence, marketplace = resolve_databases(args)
             inspector = SecurityInspector(evidence, marketplace)
+
         if args.command == "audit":
             result = inspector.global_audit()
             inspector.close()

@@ -29,7 +29,7 @@ internal static partial class RegressionCases
         Contains(ui, "StartRemovePluginFromCollection", "opened named collections support removing membership");
         Contains(ui, "StartCollectionPluginStateChange", "opened collections can change per-plugin desired state");
         Contains(ui, "GetPluginDirectControlState", "Library and Discover derive direct plugin control from Dalamud collection membership");
-        Contains(ui, "Direct control is unavailable because this plugin is managed by:", "named collection membership visibly explains why direct plugin control is unavailable");
+        Contains(ui, "Open Library > Collections to change its state", "Library collection tooltip points to the actual collection-management location");
         Contains(ui, "OpenCollectionView", "collection membership can navigate directly into the selected collection");
         Contains(ui, "DrawToggleSwitch", "collection and plugin state use semantic toggle switches");
         Contains(ui, "Task.Run(() => profileBridge.SetCollectionEnabledAsync", "collection changes are delegated asynchronously");
@@ -70,9 +70,9 @@ internal static partial class RegressionCases
         Contains(spotlight, "\"ChatTwo\" =>", "Chat 2 has its own monochrome logo-derived Spotlight palette");
         Contains(spotlight, "ImGui.PushStyleColor(ImGuiCol.ChildBg, cardColors.Background)", "promoted Spotlight cards apply the plugin-specific background tint");
         Contains(spotlight, "ImGui.PushStyleColor(ImGuiCol.Border, cardColors.Border)", "promoted Spotlight cards apply the matching plugin-specific border tint");
-        Contains(spotlight, "DrawPluginPanelRibbons(plugin, installedPlugin", "all five promoted Spotlight cards use the shared status ribbon language");
+        Contains(spotlight, "showListingRibbons: true", "all five promoted Spotlight cards composite shared ribbons inside artwork");
         Contains(spotlight, "ResolveDefaultVariant(plugin)", "Spotlight resolves the same default repository package as the product page");
-        Contains(spotlight, "DrawPluginPanelRibbons", "Spotlight overlays ribbon tooltips after the generic whole-card tooltip");
+        Contains(spotlight, "DrawPluginPanelUpdateState", "Spotlight keeps panel-level update state separate from artwork ribbons");
         DoesNotContain(spotlight, "Omega's primary logo accent", "promoted-card color must not be derived from Omega branding");
 
         var shelves = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SpotlightShelves.cs"));
@@ -84,8 +84,8 @@ internal static partial class RegressionCases
         Contains(shelves, "NormalizeUnix(x.LastUpdate)", "latest updates use repository LastUpdate ordering");
         Contains(shelves, "showOverlays: false", "recency shelves keep artwork clean");
         Contains(shelves, "OpenSpotlightPluginInDiscover(plugin)", "latest additions and updates use whole-card Discover navigation");
-        Contains(shelves, "DrawPluginPanelRibbons(plugin, installedPlugin", "latest additions and updates use the shared status ribbon language");
-        Contains(shelves, "DrawPluginPanelRibbons", "recency shelf ribbons can replace the generic card tooltip with specific status context");
+        Contains(shelves, "showListingRibbons: true", "latest additions and updates composite shared ribbons inside artwork");
+        Contains(shelves, "DrawPluginPanelUpdateState", "recency shelf keeps panel-level update state separate from artwork ribbons");
         DoesNotContain(shelves, "SpotlightPromotedCardColors", "latest additions and updates remain neutral rather than inheriting promoted plugin palettes");
         False(shelves.Contains("Install", StringComparison.Ordinal), "recency shelves do not duplicate install actions");
         False(shelves.Contains("InfoCircle", StringComparison.Ordinal), "recency shelves do not duplicate info buttons");
@@ -244,9 +244,9 @@ internal static partial class RegressionCases
         var scale = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Scale.cs"));
         var filters = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Filters.cs"));
 
-        Contains(discover, "DrawPluginPanelRibbons(plugin, installedPlugin", "Discover rich and compact listings use the shared ribbon language");
-        Contains(spotlight, "DrawPluginPanelRibbons(plugin, installedPlugin", "Spotlight promoted cards use the same shared ribbon language");
-        Contains(shelves, "DrawPluginPanelRibbons(plugin, installedPlugin", "Spotlight shelf cards use the same shared ribbon language");
+        Contains(discover, "showListingRibbons: true", "Discover rich and compact listings use the card-top ribbon overlay");
+        Contains(spotlight, "showListingRibbons: true", "Spotlight promoted cards use the same card-top ribbon language");
+        Contains(shelves, "showListingRibbons: true", "Spotlight shelf cards use the same card-top ribbon language");
         Contains(artwork, "selectedPlugin = ResolveDefaultVariant(plugin)", "fresh product-page navigation starts from the same deterministic default package as listing security");
         Contains(security, "ResolveSigmascopeVisual", "the product page retains the exact-package security resolver");
         Contains(security, "DrawProductSigmascopeSummary", "the product hero consumes the shared exact-package security result");
@@ -266,10 +266,19 @@ internal static partial class RegressionCases
         Contains(ribbons, "FontAwesomeIcon.Robot", "automation exposure has a dedicated robot ribbon");
         Contains(ribbons, "0.05f, 0.62f, 0.78f", "automation ribbon uses Omega cyan/blue");
         Contains(ribbons, "GetPluginAutomationState(plugin)", "automation ribbon preserves direct and required-dependency automation evidence semantics");
-        Contains(ribbons, "var edgeInset = Ui(8f)", "left ownership ribbons are inset from rounded card clipping");
-        Contains(ribbons, "var rightX = panelMax.X - ribbonWidth - edgeInset", "right-side status ribbons share one aligned inset");
-        Contains(ribbons, "new Vector2(rightX - ribbonWidth - ribbonGap, topY)", "automation ribbon sits on the right beside Sigmascope");
-        Contains(ribbons, "new Vector2(rightX, topY)", "Sigmascope ribbon remains the rightmost top status ribbon");
+        Contains(artwork, "if (showListingRibbons && listingPanelMin is { } panelMin && listingPanelMax is { } panelMax)", "listing ribbons use explicit card bounds while the artwork child owns the top compositing layer");
+        Contains(artwork, "DrawPluginCardTopRibbons(plugin, installedPlugin, currentApi, panelMin, panelMax)", "ribbons are composited after the plugin image while remaining anchored to the card");
+        Contains(ribbons, "var leftX = panelMin.X + edgeInset", "ownership and collection ribbons anchor to the card top-left");
+        Contains(ribbons, "var rightX = panelMax.X - edgeInset - ribbonWidth", "Sigmascope and automation ribbons anchor to the card top-right");
+        Contains(ribbons, "leftX += ribbonWidth + ribbonGap", "ownership and collection ribbons sit side-by-side horizontally");
+        Contains(ribbons, "rightX - ribbonWidth - ribbonGap", "Sigmascope and automation ribbons sit side-by-side horizontally");
+        Contains(ribbons, "draw.PushClipRect(panelMin, panelMax, false)", "card-top ribbons expand the artwork child clip to the card bounds so they are not clipped to the icon");
+        Contains(ribbons, "draw.AddRectFilledMultiColor", "ribbons use a restrained velvet-like vertical shade without changing their semantic colour");
+        DoesNotContain(spotlight, "ImGui.SetCursorPosY(contentStartY + Ui(26f))", "Spotlight does not reserve a blank strip; card ribbons may overlap a small part of the logo");
+        DoesNotContain(shelves, "ImGui.SetCursorPosY(Ui(34f))", "recency cards do not reserve a blank strip; card ribbons may overlap a small part of the logo");
+        DoesNotContain(ribbons, "artworkMin.X", "listing ribbon X coordinates are never anchored to plugin artwork");
+        Contains(ribbons, "var glyphCenter = new Vector2(centerX, min.Y + (height * 0.5f))", "robot/question and other glyphs are centered against the complete flag shape");
+        DoesNotContain(ribbons, "DrawArtworkStatusFlag", "the 0.9.2 all-status-on-left compact flag regression is removed");
         Contains(ribbons, "FontAwesomeIcon.SyncAlt", "available plugin updates are shown at the panel bottom-right");
         Contains(ribbons, "var min = panelMax - new Vector2(size + inset, size + inset)", "update glyph uses a consistent bottom-right inset");
         DoesNotContain(ribbons, "draw.AddCircleFilled(center, size * 0.53f", "card update indicator no longer draws a circular background");
@@ -277,8 +286,8 @@ internal static partial class RegressionCases
         Contains(ribbons, "GetAvailableUpdateVersion", "update indicator is based on the actual compatible update resolver");
         DoesNotContain(discover, "DrawDiscoverTopRightIndicators(plugin", "the old star/down-arrow top-right indicator is no longer rendered");
         Contains(discover, "showInstalledMarker: false", "Discover does not render the legacy circular installed marker over artwork");
-        Contains(discover, "ImGui.SetCursorPos(Ui(12f, 12f))", "rich-card artwork keeps scale-aware fixed geometry under the ribbon overlay");
-        Contains(discover, "ImGui.SetCursorPos(Ui(12f, 18f))", "list artwork keeps scale-aware fixed geometry under the ribbon overlay");
+        Contains(discover, "ImGui.SetCursorPos(Ui(12f, 12f))", "rich-card artwork keeps its normal top position beneath card-top ribbons");
+        Contains(discover, "ImGui.SetCursorPos(Ui(12f, 18f))", "horizontal-list artwork keeps its normal top position beneath card-top ribbons");
         DoesNotContain(discover, "installed ? 44f : 12f", "installed list entries never shift artwork to make room for the ribbon");
         DoesNotContain(discover, "var artworkX = installed ?", "installed rich cards never shift artwork to make room for the ribbon");
         Contains(discover, "DrawDalamudOfficialLogoBadge", "official listings retain the Dalamud logo status");

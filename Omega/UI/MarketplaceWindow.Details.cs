@@ -262,7 +262,7 @@ internal sealed partial class MarketplaceWindow
             .Where(v =>
                 v.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out _) &&
                 (v.MinimumDalamudVersion is null || v.MinimumDalamudVersion <= currentDalamudVersion) &&
-                IsSourceEnabledInOmega(v))
+                IsInstallSourceSelectable(v))
             // Never auto-prefer a package that Sigmascope already identified as the divergent
             // same-version artifact. A repository with known divergence elsewhere is also demoted
             // behind clean alternatives, but remains available for explicit reviewed selection.
@@ -289,12 +289,63 @@ internal sealed partial class MarketplaceWindow
         => GetInstallCandidates(plugin.InternalName, currentApi, currentDalamudVersion).FirstOrDefault()
            ?? ResolveDefaultVariant(plugin);
 
-    private bool IsSourceEnabledInOmega(MarketplacePlugin plugin)
+    private static bool IsInstallSourceSelectable(MarketplacePlugin plugin)
     {
         if (plugin.SourceIsOfficial)
             return true;
-        var source = FindConfiguredSource(plugin.SourceUrl);
-        return source?.Enabled == true;
+        return Uri.TryCreate(plugin.SourceUrl, UriKind.Absolute, out var sourceUri) &&
+               sourceUri.Scheme == Uri.UriSchemeHttps;
+    }
+
+    private string DescribeInstallUnavailability(
+        string internalName,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
+        var variants = catalog.GetMainVariants(internalName, currentApi);
+        if (variants.Count == 0)
+            return "Omega Definitions do not currently contain an install package for this plugin.";
+
+        var currentBuilds = variants
+            .Where(v => v.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out _))
+            .ToArray();
+        if (currentBuilds.Length > 0)
+        {
+            var minimum = currentBuilds
+                .Where(v => v.MinimumDalamudVersion is not null && v.MinimumDalamudVersion > currentDalamudVersion)
+                .Select(v => v.MinimumDalamudVersion!)
+                .OrderBy(v => v)
+                .FirstOrDefault();
+            if (minimum is not null)
+                return $"A downloadable API {currentApi} package exists, but it requires Dalamud {minimum}+ (current {currentDalamudVersion}).";
+
+            if (currentBuilds.All(v => !IsInstallSourceSelectable(v)))
+                return $"A downloadable API {currentApi} package exists, but its repository URL is missing or is not HTTPS.";
+        }
+
+        var testingOnly = variants.Any(v =>
+            v.TestingDalamudApiLevel == currentApi &&
+            v.TestingAssemblyVersion is not null &&
+            !string.IsNullOrWhiteSpace(v.DownloadLinkTesting));
+        if (!configuration.PreferTestingBuilds && testingOnly)
+            return $"Only a testing API {currentApi} package is advertised. Enable testing builds in Filters to make it installable.";
+
+        var apiMetadata = variants.Any(v =>
+            v.DalamudApiLevel == currentApi ||
+            v.TestingDalamudApiLevel == currentApi ||
+            (v.OmegaMinimumApiLevel is not null && v.OmegaMaximumApiLevel is not null &&
+             currentApi >= v.OmegaMinimumApiLevel && currentApi <= v.OmegaMaximumApiLevel));
+        if (apiMetadata)
+            return $"The plugin is marked compatible with API {currentApi}, but no downloadable package for that API is currently advertised by its known repositories.";
+
+        var highest = variants.Select(v => v.HighestKnownApiLevel).DefaultIfEmpty(0).Max();
+        return highest switch
+        {
+            0 => "The repository does not advertise an API level for an installable package.",
+            var api when api < currentApi => $"The newest known package targets API {api}; Omega currently needs API {currentApi}.",
+            var api when api > currentApi => $"The available package targets newer API {api}; Omega currently needs API {currentApi}.",
+            _ => $"No downloadable API {currentApi} package is currently advertised by the known repositories.",
+        };
     }
 
     private void OpenInstallChooser(MarketplacePlugin plugin)

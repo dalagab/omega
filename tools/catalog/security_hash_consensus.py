@@ -69,11 +69,10 @@ def canonicalize_current_security_by_artifact(db: sqlite3.Connection) -> dict[st
          WHERE c.status='complete' AND c.artifact_sha256<>'' AND v.active=1 AND p.active=1
          ORDER BY p.internal_name COLLATE NOCASE,c.assembly_version COLLATE NOCASE,c.artifact_sha256,c.variant_id
     """).fetchall()
-    groups: dict[tuple[str, str, str], list[sqlite3.Row]] = defaultdict(list)
+    groups: dict[tuple[str, str], list[sqlite3.Row]] = defaultdict(list)
     for row in rows:
         groups[(
             str(row["internal_name"] or "").casefold(),
-            str(row["assembly_version"] or "").casefold(),
             str(row["artifact_sha256"] or "").casefold(),
         )].append(row)
 
@@ -116,6 +115,100 @@ def canonicalize_current_security_by_artifact(db: sqlite3.Connection) -> dict[st
             updated += 1
     return {"mirroredArtifactGroups": mirrored_groups, "canonicalizedVariants": updated}
 
+
+
+def propagate_source_provenance_by_artifact(db: sqlite3.Connection) -> dict[str, int]:
+    """Share resolved original-source provenance across exact mirrored package bytes.
+
+    Distribution feeds are not source-code identities. If multiple active variants of
+    the same plugin/version carry identical artifact bytes and one scan has resolved a
+    public source repository, every mirror can safely inherit that *source association*.
+    Historical scan rows remain immutable; only the current convenience projection and
+    its bounded report summary are enriched. This does not set source-to-binary verified.
+    """
+    rows = db.execute("""
+        SELECT c.variant_id,c.artifact_sha256,c.assembly_version,c.source_available,
+               c.source_repository,c.source_commit,c.source_to_binary_verified,c.report_json,
+               p.internal_name,s.source_id,s.name AS source_name,s.url AS source_url
+          FROM plugin_security_current c
+          JOIN plugin_variants v ON v.variant_id=c.variant_id
+          JOIN plugins p ON p.plugin_id=v.plugin_id
+          JOIN sources s ON s.source_id=v.source_id
+         WHERE c.status='complete' AND c.artifact_sha256<>'' AND v.active=1 AND p.active=1
+         ORDER BY p.internal_name COLLATE NOCASE,c.assembly_version COLLATE NOCASE,c.artifact_sha256,c.variant_id
+    """).fetchall()
+    groups: dict[tuple[str, str], list[sqlite3.Row]] = defaultdict(list)
+    for row in rows:
+        groups[(
+            str(row["internal_name"] or "").casefold(),
+            str(row["artifact_sha256"] or "").casefold(),
+        )].append(row)
+
+    confidence_rank = {"none": 0, "low": 1, "medium": 2, "high": 3, "very-high": 4}
+
+    def donor_rank(row: sqlite3.Row) -> tuple[int, int, str, int]:
+        try:
+            report = json.loads(str(row["report_json"] or "{}"))
+        except json.JSONDecodeError:
+            report = {}
+        source = report.get("source") if isinstance(report.get("source"), dict) else {}
+        provenance = source.get("provenance") if isinstance(source.get("provenance"), dict) else {}
+        confidence = confidence_rank.get(str(provenance.get("confidence") or "none").casefold(), 0)
+        version_match = 1 if provenance.get("versionMatched") else 0
+        return (-confidence, -version_match, str(row["source_name"] or "").casefold(), int(row["variant_id"]))
+
+    groups_with_source = 0
+    propagated = 0
+    for (_internal, artifact_hash), members in groups.items():
+        donors = [row for row in members if int(row["source_available"] or 0) and str(row["source_repository"] or "")]
+        if not donors:
+            continue
+        groups_with_source += 1
+        donor = min(donors, key=donor_rank)
+        try:
+            donor_report = json.loads(str(donor["report_json"] or "{}"))
+        except json.JSONDecodeError:
+            donor_report = {}
+        donor_source = donor_report.get("source") if isinstance(donor_report.get("source"), dict) else {}
+        for member in members:
+            if int(member["variant_id"]) == int(donor["variant_id"]) or int(member["source_available"] or 0):
+                continue
+            try:
+                report = json.loads(str(member["report_json"] or "{}"))
+            except json.JSONDecodeError:
+                report = {}
+            inherited_source = json.loads(json.dumps(donor_source)) if donor_source else {
+                "available": True,
+                "repository": str(donor["source_repository"] or ""),
+                "commit": str(donor["source_commit"] or ""),
+            }
+            inherited_source["available"] = True
+            inherited_source["repository"] = str(donor["source_repository"] or "")
+            inherited_source["commit"] = str(donor["source_commit"] or "")
+            provenance = inherited_source.get("provenance") if isinstance(inherited_source.get("provenance"), dict) else {}
+            provenance = dict(provenance)
+            provenance.update({
+                "inheritedViaArtifact": True,
+                "inheritedArtifactSha256": artifact_hash,
+                "inheritedFromVariantId": int(donor["variant_id"]),
+                "distributionSource": str(member["source_url"] or ""),
+                "sourceToBinaryVerified": False,
+            })
+            inherited_source["provenance"] = provenance
+            inherited_source["sourceToBinaryVerified"] = False
+            report["source"] = inherited_source
+            db.execute("""
+                UPDATE plugin_security_current
+                   SET source_available=1,source_repository=?,source_commit=?,source_to_binary_verified=0,report_json=?
+                 WHERE variant_id=?
+            """, (
+                str(donor["source_repository"] or ""),
+                str(donor["source_commit"] or ""),
+                json.dumps(report, separators=(",", ":")),
+                int(member["variant_id"]),
+            ))
+            propagated += 1
+    return {"artifactGroupsWithResolvedSource": groups_with_source, "variantsInheritedSource": propagated}
 
 def refresh_cross_source_hash_findings(db: sqlite3.Connection) -> dict[str, int]:
     rows = db.execute("""

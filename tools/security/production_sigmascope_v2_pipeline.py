@@ -67,6 +67,7 @@ from security_evidence_v2 import (  # noqa: E402
     table_columns,
     table_exists,
     transport_security_row,
+    variant_index_summary,
     validate_snapshot,
 )
 
@@ -556,6 +557,8 @@ def _build_plugins_artifacts_indexes(candidate: Path) -> tuple[dict[str, Any], d
             "artifactSha256": artifact_sha,
             "analysisId": analysis_id,
             "variantPath": rel,
+            "variantSha256": sha256_file(path),
+            "summary": variant_index_summary(payload),
         })
         bucket = artifacts.setdefault(artifact_sha, {"artifactSha256": artifact_sha, "variants": [], "analyses": {}})
         bucket["variants"].append(variant_id)

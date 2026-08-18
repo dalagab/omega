@@ -165,13 +165,13 @@ internal sealed partial class MarketplaceWindow
         var cardMin = ImGui.GetWindowPos();
         var cardMax = cardMin + ImGui.GetWindowSize();
         var artworkClicked = DrawDiscoverRichCardHeader(
-            plugin, content, installedPlugin, currentApi, currentDalamudVersion, cardWidth);
+            plugin, content, installedPlugin, currentApi, currentDalamudVersion, cardWidth, cardMin, cardMax);
         var screenshotClicked = DrawDiscoverRichCardScreenshot(plugin.InternalName, content.Images[0], cardWidth);
 
         var hovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows);
         if (artworkClicked || (!screenshotClicked && hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left)))
             OpenPluginDetails(plugin);
-        DrawPluginPanelRibbons(plugin, installedPlugin, currentApi, currentDalamudVersion, cardMin, cardMax);
+        DrawPluginPanelUpdateState(plugin, installedPlugin, currentApi, currentDalamudVersion, cardMax);
         ImGui.EndChild();
         if (hovered)
         {
@@ -194,13 +194,16 @@ internal sealed partial class MarketplaceWindow
         IExposedPlugin? installedPlugin,
         int currentApi,
         Version currentDalamudVersion,
-        float cardWidth)
+        float cardWidth,
+        Vector2 cardMin,
+        Vector2 cardMax)
     {
         var installed = installedPlugin is not null;
         ImGui.SetCursorPos(Ui(12f, 12f));
         var artworkClicked = DrawPluginArtwork(
             plugin, installedPlugin, Ui(46f), Ui(46f), currentApi, currentDalamudVersion,
-            queueIfVisible: true, showOverlays: false, showInstalledMarker: false);
+            queueIfVisible: true, showOverlays: false, showInstalledMarker: false, showListingRibbons: true,
+            listingPanelMin: cardMin, listingPanelMax: cardMax);
         ImGui.SameLine(0f, Ui(10f));
         ImGui.BeginGroup();
         DrawDiscoverPluginTitle(Shorten(plugin.Name, 32), installed);
@@ -282,7 +285,8 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetCursorPos(Ui(12f, 18f));
         var artworkClicked = DrawPluginArtwork(
             plugin, installedPlugin, Ui(DiscoverListIconSize), Ui(DiscoverListIconSize), currentApi, currentDalamudVersion,
-            queueIfVisible: true, showOverlays: false, showInstalledMarker: false);
+            queueIfVisible: true, showOverlays: false, showInstalledMarker: false, showListingRibbons: true,
+            listingPanelMin: rowMin, listingPanelMax: rowMax);
         ImGui.SameLine(0f, Ui(16f));
         ImGui.BeginGroup();
         ImGui.SetCursorPosY(Ui(18f));
@@ -313,7 +317,7 @@ internal sealed partial class MarketplaceWindow
                 ImDrawFlags.None,
                 Ui(1.2f));
 
-        DrawPluginPanelRibbons(plugin, installedPlugin, currentApi, currentDalamudVersion, rowMin, rowMax);
+        DrawPluginPanelUpdateState(plugin, installedPlugin, currentApi, currentDalamudVersion, rowMax);
         ImGui.EndChild();
         ImGui.PopStyleColor(2);
         ImGui.PopStyleVar(2);
@@ -392,7 +396,7 @@ internal sealed partial class MarketplaceWindow
             DrawDiscoverStatusGlyph(
                 "↓",
                 new Vector4(0.88f, 0.18f, 0.20f, 1f),
-                $"No compatible API {currentApi} package is currently installable from the known sources.",
+                DescribeInstallUnavailability(plugin.InternalName, currentApi, currentDalamudVersion),
                 iconSize);
         }
         else if (content.IsEnhanced)

@@ -95,11 +95,61 @@ class MarketplaceProjectionTests(unittest.TestCase):
                                             security_capabilities_json,security_findings_json,security_dependencies_json
                                        FROM runtime_plugin_variants WHERE internal_name='Fixture' ORDER BY source_name""").fetchall()
                 self.assertEqual(2, len(rows))
-                signatures = {tuple(row[1:]) for row in rows}
-                self.assertEqual(1, len(signatures), "same artifact SHA must project one canonical security result")
+                static_signatures = {tuple(row[1:7]) for row in rows}
+                self.assertEqual(1, len(static_signatures), "same artifact SHA must project one canonical static security result")
                 self.assertEqual("caution", rows[0][2])
-                dependencies = json.loads(rows[0][7])
-                self.assertEqual(["BaselineDependency"], [item["name"] for item in dependencies])
+                dependencies_by_source = {row[0]: [item["name"] for item in json.loads(row[7])] for row in rows}
+                self.assertEqual(["BaselineDependency"], dependencies_by_source["Puni.sh Fixture"])
+                self.assertEqual(["MirrorDependency"], dependencies_by_source["Mirror"], "source/dependency evidence must not be overwritten by artifact-static canonicalization")
+
+    def test_same_artifact_mirrors_do_not_erase_variant_advisory_projection(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-marketplace-advisory-mirror-") as td:
+            root = Path(td)
+            evidence = root / "evidence.sqlite"
+            compact_sqlite_catalog.build_self_test_database(evidence)
+            with closing(sqlite3.connect(evidence)) as db:
+                db.execute("UPDATE sources SET name='Primary',url='https://primary.invalid/repo.json' WHERE source_id=1")
+                db.execute("UPDATE plugin_security_current SET artifact_sha256=? WHERE variant_id=1", ("c" * 64,))
+                db.execute("UPDATE plugin_security_scans SET artifact_sha256=? WHERE scan_id=1", ("c" * 64,))
+                db.execute("UPDATE plugin_security_dependencies SET kind='nuget',name='Risky.Package',version='1.2.3',resolved_version='1.2.3',requirement='required' WHERE dependency_id=1")
+                db.execute("""INSERT INTO plugin_security_dependency_resolutions(
+                    dependency_id,scan_id,source_plugin_id,source_variant_id,dependency_kind,dependency_name,version_requirement,
+                    normalized_name,component_key,requirement,resolution_status,version_status,target_plugin_id,target_variant_id,
+                    target_internal_name,target_variant_count,target_version,confidence,match_basis,evidence_json)
+                    VALUES(1,1,1,1,'nuget','Risky.Package','','risky.package','nuget:risky.package','required',
+                           'resolved-component','observed',NULL,NULL,'',0,'1.2.3','high','nuget-component','[]')""")
+                db.execute("""INSERT INTO plugin_security_dependency_advisory_matches(
+                    advisory_id,component_key,component_kind,component_name,affected_version,affected_range,fixed_version,
+                    severity,title,advisory_url,advisory_source,refreshed_at_utc)
+                    VALUES('OSV-MIRROR','nuget:risky.package','nuget','Risky.Package','1.2.3','','1.2.4',
+                           'high','Affected','https://osv.dev/vulnerability/OSV-MIRROR','OSV','')""")
+                db.execute("INSERT INTO sources(source_id,url,name,is_official) VALUES(2,'https://mirror.invalid/repo.json','Mirror',0)")
+                db.execute("""INSERT INTO plugin_variants(
+                    variant_id,plugin_id,source_id,source_entry_key,name,author,assembly_version,dalamud_api_level,
+                    download_link_install,first_seen_utc,last_seen_utc,active)
+                    VALUES(2,1,2,'Fixture-Mirror','Fixture','Mirror','1.0',15,'https://mirror.invalid/plugin.zip','','',1)""")
+                mirror_report = json.dumps({"findings": [], "capabilities": []}, separators=(",", ":"))
+                db.execute("""INSERT INTO plugin_security_scans(
+                    scan_id,plugin_id,variant_id,source_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,scanned_at_utc,
+                    highest_severity,informational_count,caution_count,high_count,critical_count,capabilities_json,source_available,source_repository,source_commit,
+                    source_to_binary_verified,report_json,error)
+                    VALUES(2,1,2,2,'1.0','stable','https://mirror.invalid/plugin.zip',?,'2.0.0','complete','2026-01-02T00:00:00Z',
+                           'none',0,0,0,0,'[]',0,'','',0,?, '')""", ("c" * 64, mirror_report))
+                db.execute("""INSERT INTO plugin_security_current(
+                    variant_id,scan_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,scanned_at_utc,highest_severity,
+                    informational_count,caution_count,high_count,critical_count,capabilities_json,findings_json,source_available,source_repository,source_commit,
+                    source_to_binary_verified,report_json,error)
+                    VALUES(2,2,'1.0','stable','https://mirror.invalid/plugin.zip',?,'2.0.0','complete','2026-01-02T00:00:00Z','none',
+                           0,0,0,0,'[]','[]',0,'','',0,?, '')""", ("c" * 64, mirror_report))
+                db.commit()
+            out = root / "marketplace.sqlite"
+            project_marketplace_catalog.project_database(evidence, out)
+            with closing(sqlite3.connect(out)) as db:
+                rows = db.execute("""SELECT source_name,security_known_advisory_count,security_known_advisory_highest_severity,security_risk_score
+                                       FROM runtime_plugin_variants WHERE internal_name='Fixture' ORDER BY source_name""").fetchall()
+        by_source = {row[0]: row[1:] for row in rows}
+        self.assertEqual((1, "high", project_marketplace_catalog._security_risk_score(0, 0, 0, 0, 25)), by_source["Primary"])
+        self.assertEqual((0, "none", 0), by_source["Mirror"], "artifact canonicalization must not copy a stale mirror's advisory counters over reproduced evidence")
 
     def test_completed_scan_history_backfills_missing_current_pointer(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-marketplace-history-backfill-") as td:

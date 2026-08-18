@@ -63,6 +63,14 @@ internal static partial class RegressionCases
         Contains(ui, "contentStartX + Math.Max(0f, contentWidth - buttonWidth)", "Filters button is anchored at the right edge of its owning content panel");
         Contains(ui, "ImGui.SetCursorPosX(contentStartX);", "right-aligned Filters control restores the full-width content origin before expansion");
         Contains(ui, "DrawInlineMarketplaceFilters(currentApi)", "full filter editor is hidden until Filters is expanded");
+        var contentFlow = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.cs"));
+        var filtersAt = contentFlow.IndexOf("DrawSearchAndCategoryButtons(currentApi)", StringComparison.Ordinal);
+        var headerAt = contentFlow.IndexOf("DrawContentHeader(versionInfo.Version, currentApi)", StringComparison.Ordinal);
+        var libraryTabsAt = contentFlow.IndexOf("DrawLibraryTabs(installed.Count)", StringComparison.Ordinal);
+        True(filtersAt >= 0 && headerAt > filtersAt && libraryTabsAt > headerAt, "Filters must be the top content control before page headings and Library controls");
+        var chromeSource = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
+        var updateBanner = Capture(chromeSource, @"private void DrawApplicationUpdateBanner\(\)\s*\{([\s\S]*?)\r?\n    \}");
+        Contains(updateBanner, "ImGuiStyleVar.ChildRounding, Ui(4f)", "Omega update notice uses a compact square-cornered panel");
         Contains(ui, "DrawSelectedFilterPills()", "active filter pills remain visible while the editor is collapsed");
         Contains(ui, "omega-inline-filters", "expanded filters render in the owning content panel rather than a modal");
         Contains(filters, "CalculateInlineFilterPanelHeight()", "Discover and Library derive inline filter height from the responsive layout");
@@ -137,7 +145,11 @@ internal static partial class RegressionCases
         Contains(ui, "ImGui.Button(actionLabel", "repository chooser keeps one explicit top action while allowing risk review to replace unsafe install");
         Contains(ui, "StartSelectedInstall", "selected source install flow");
         Contains(ui, "selectedNeedsRiskReview", "unacknowledged divergent repositories cannot be installed by the normal Install action");
-        Contains(ui, "OpenDalamudRepositoryRiskReviewFromInstall", "risky source selection routes to repository review instead of installing immediately");
+        Contains(ui, "OpenInstallRepositoryRiskReview", "risky source selection opens install-specific repository review instead of installing immediately");
+        Contains(ui, "DrawInstallRiskReviewModal", "risk review preserves install context and renders source evidence directly");
+        Contains(ui, "Acknowledge risk", "risk review requires an explicit acknowledgement action");
+        Contains(ui, "pendingInstallRiskAcknowledgementChecked", "risk acknowledgement requires an explicit user checkbox before proceeding");
+        DoesNotContain(ui, "OpenDalamudRepositoryRiskReviewFromInstall", "install risk review no longer discards context by jumping to Settings");
         Contains(ui, "pendingInstallSourceUrl = string.Empty", "opening the chooser does not inherit a potentially risky displayed repository as the implicit selection");
         Contains(ui, "ImGuiSelectableFlags.DontClosePopups", "choosing a repository does not close the chooser before Install");
         DoesNotContain(ui, "DrawInstallProviderFilters", "repository chooser does not add a redundant provider-filter row");
@@ -155,6 +167,10 @@ internal static partial class RegressionCases
         Contains(details, ".OrderBy(v => IsPluginPackageArtifactDivergent(v) ? 1 : 0)", "known divergent package variants are demoted before source provider preference");
         Contains(details, "divergentSources.Contains(NormalizeUrl(v.SourceUrl)) ? 1 : 0", "repositories with known package divergence are not auto-preferred when a clean alternative exists");
         Contains(awareness, "AcknowledgedRepositoryRiskByUrl", "risk acknowledgement is source-specific and invalidates when evidence changes");
+
+        Contains(details, "IsInstallSourceSelectable", "install candidates are not incorrectly blocked merely because an Omega source is disabled");
+        Contains(details, "DescribeInstallUnavailability", "unavailable API-compatible plugins expose a concrete reason");
+        Contains(ui, "ResolveOrCreateInstallSource", "explicit install can prepare a repository known only through Definitions");
 
         Contains(coordinator, "EnsureRepositoryReadyAsync", "hidden source preparation coordinator");
         Contains(coordinator, "EnsureIntegratedAsync", "Dalamud repository integration before install");

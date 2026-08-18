@@ -117,6 +117,19 @@ internal sealed partial class MarketplaceWindow
             .ToArray();
     }
 
+    private RepositoryRiskNotice? FindRepositoryRiskNotice(string sourceUrl)
+    {
+        var normalized = NormalizeUrl(sourceUrl);
+        var notice = repositoryRiskAllNotices.FirstOrDefault(x =>
+            NormalizeUrl(x.Url).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+        if (notice is not null)
+            return notice;
+
+        repositoryRiskAllNotices = BuildRepositoryRiskNotices(Plugin.PluginInterface.InstalledPlugins);
+        return repositoryRiskAllNotices.FirstOrDefault(x =>
+            NormalizeUrl(x.Url).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+    }
+
     private bool IsRepositoryRiskAcknowledged(RepositoryRiskNotice notice)
     {
         var normalized = NormalizeUrl(notice.Url);
@@ -204,6 +217,7 @@ internal sealed partial class MarketplaceWindow
             repositoryRiskDismissedFingerprint = repositoryRiskFingerprint;
             repositoryRiskPopupOpen = false;
             ImGui.CloseCurrentPopup();
+            settingsSection = SettingsSection.Repositories;
             sourceSection = SourceManagerSection.DalamudConfigured;
             sourceSearch = string.Empty;
             requestSettingsPopup = true;

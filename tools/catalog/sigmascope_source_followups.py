@@ -19,7 +19,7 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-from source_resolution import source_override_key
+from source_resolution import source_candidates, source_override_key
 
 
 SCHEMA = "omega.source-scan-followups.v2"
@@ -49,7 +49,8 @@ def followups(database: Path) -> dict:
         db.row_factory = sqlite3.Row
         rows = db.execute(
             """SELECT p.internal_name,v.variant_id,v.name,s.name AS source_name,s.url AS source_url,
-                      sc.artifact_url,sc.source_available,sc.report_json
+                      v.repo_url,v.download_link_install,v.download_link_update,v.download_link_testing,
+                      sc.assembly_version,sc.artifact_url,sc.source_available,sc.report_json
                    FROM plugin_security_current sc
                    JOIN plugin_variants v ON v.variant_id=sc.variant_id
                    JOIN plugins p ON p.plugin_id=v.plugin_id
@@ -61,21 +62,52 @@ def followups(database: Path) -> dict:
     # One follow-up per stable plugin/feed pair. Multiple historical/current package
     # variants in the same feed should not create duplicate human work.
     projected: dict[str, dict] = {}
-    resolved_keys: set[str] = set()
+    resolved: dict[str, dict] = {}
     for row in rows:
         internal_name = str(row["internal_name"] or "")
         source_url = str(row["source_url"] or "")
         override_key = source_override_key(internal_name, source_url)
-        if int(row["source_available"] or 0):
-            resolved_keys.add(f"omega-source-followup:{override_key}")
-            continue
+        key = f"omega-source-followup:{override_key}"
         try:
             report = json.loads(str(row["report_json"] or "{}"))
         except json.JSONDecodeError:
             report = {}
         source = report.get("source") if isinstance(report.get("source"), dict) else {}
+        if int(row["source_available"] or 0):
+            provenance = source.get("provenance") if isinstance(source.get("provenance"), dict) else {}
+            current = resolved.get(key)
+            candidate = {
+                "key": key,
+                "internalName": internal_name,
+                "catalogSource": str(row["source_name"] or ""),
+                "repository": str(source.get("repository") or ""),
+                "commit": str(source.get("commit") or ""),
+                "confidence": str(provenance.get("confidence") or ""),
+                "versionMatched": bool(provenance.get("versionMatched")),
+                "artifactOriginMatched": bool(provenance.get("artifactOriginMatched")),
+            }
+            if current is None or (not current.get("versionMatched") and candidate["versionMatched"]):
+                resolved[key] = candidate
+            continue
         error = str(source.get("error") or "")
         if is_not_found(error):
+            continue
+
+        # Do not ask a human for a repository that the current resolver can already
+        # derive from RepoUrl or package URLs. This is especially important for old
+        # Evidence-v2 rows whose compact legacy report predates a resolver upgrade: a
+        # later Sigmascope batch will scan the derived source automatically.
+        current_candidates = source_candidates(
+            str(row["repo_url"] or ""),
+            str(row["artifact_url"] or ""),
+            str(row["download_link_install"] or ""),
+            str(row["download_link_update"] or ""),
+            str(row["download_link_testing"] or ""),
+        )
+        attempted_candidates = [str(item) for item in source.get("candidates") or [] if str(item)]
+        attempted_repository = str(source.get("repository") or "")
+        no_candidate_error = "candidate" in error.casefold() and ("could not be derived" in error.casefold() or "could be derived" in error.casefold())
+        if current_candidates and not attempted_candidates and not attempted_repository and (no_candidate_error or not error):
             continue
 
         retryable = is_retryable(error)
@@ -84,12 +116,13 @@ def followups(database: Path) -> dict:
             "overrideKey": override_key,
             "variantId": int(row["variant_id"]),
             "internalName": internal_name,
+            "assemblyVersion": str(row["assembly_version"] or ""),
             "pluginName": str(row["name"] or ""),
             "catalogSource": str(row["source_name"] or ""),
             "catalogSourceUrl": source_url,
             "artifactUrl": str(row["artifact_url"] or ""),
             "attemptedRepository": str(source.get("repository") or ""),
-            "sourceCandidates": [str(item) for item in source.get("candidates") or [] if str(item)],
+            "sourceCandidates": attempted_candidates or current_candidates,
             "reason": error or "No public GitHub source repository could be resolved for scanning",
             "reasonCategory": "transient" if retryable else "source-missing",
             "actionable": not retryable,
@@ -103,7 +136,8 @@ def followups(database: Path) -> dict:
         "schema": SCHEMA,
         "count": len(items),
         "actionableCount": sum(1 for item in items if item["actionable"]),
-        "resolvedKeys": sorted(resolved_keys),
+        "resolvedKeys": sorted(resolved),
+        "resolved": [resolved[key] for key in sorted(resolved)],
         "followups": items,
     }
 

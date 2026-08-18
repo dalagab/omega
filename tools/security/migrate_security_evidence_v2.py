@@ -60,6 +60,7 @@ from security_evidence_v2 import (  # noqa: E402
     table_columns,
     table_exists,
     transport_security_row,
+    variant_index_summary,
     write_record_dataset,
 )
 
@@ -476,7 +477,7 @@ def migrate(
                     bucket = artifact_map.setdefault(artifact_sha, {"artifactSha256": artifact_sha, "analyses": {}, "variants": []})
                     bucket["analyses"][analysis_id] = {"path": analysis_path, "manifest": file_entry(output, output / analysis_path / "manifest.json", encoding="json")}
                     bucket["variants"].append(variant_id)
-                    plugin_index.append({"variantId": variant_id, "scanId": scan_id, "artifactSha256": artifact_sha, "analysisId": analysis_id, "variantPath": variant_path.relative_to(output).as_posix()})
+                    plugin_index.append({"variantId": variant_id, "scanId": scan_id, "artifactSha256": artifact_sha, "analysisId": analysis_id, "variantPath": variant_path.relative_to(output).as_posix(), "variantSha256": sha256_file(variant_path), "summary": variant_index_summary(payload)})
                     print(f"[{position}/{len(current_rows)}] variant {variant_id}: resume", flush=True)
                     continue
 
@@ -532,7 +533,7 @@ def migrate(
             if analysis_id:
                 bucket["analyses"][analysis_id] = {"path": analysis_path, "manifest": file_entry(output, output / analysis_path / "manifest.json", encoding="json")}
             bucket["variants"].append(variant_id)
-            plugin_index.append({"variantId": variant_id, "scanId": scan_id, "artifactSha256": artifact_sha, "analysisId": analysis_id, "variantPath": variant_path.relative_to(output).as_posix()})
+            plugin_index.append({"variantId": variant_id, "scanId": scan_id, "artifactSha256": artifact_sha, "analysisId": analysis_id, "variantPath": variant_path.relative_to(output).as_posix(), "variantSha256": sha256_file(variant_path), "summary": variant_index_summary(payload)})
             completed[key] = {"scanId": scan_id, "variantPath": variant_path.relative_to(output).as_posix(), "analysisId": analysis_id, "analysisPath": analysis_path}
             _save_state(output, state)
             print(f"[{position}/{len(current_rows)}] variant {variant_id}: scan {scan_id} -> {analysis_id[:12] or 'no-analysis'}", flush=True)

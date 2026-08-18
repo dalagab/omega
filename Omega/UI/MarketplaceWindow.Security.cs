@@ -10,16 +10,17 @@ internal sealed partial class MarketplaceWindow
 {
     private const string AboutPopupId = "About Omega###DalagabOmegaAbout";
 
-    private bool DrawSettingsHeader()
+    private void DrawSettingsGeneralTab()
     {
+        ImGui.TextUnformatted("Updates");
+        ImGui.TextDisabled("Check Omega, Definitions, and plugin-source metadata without leaving Settings.");
+        ImGui.Spacing();
         if (ImGui.Button(updates.IsRefreshing ? "Checking for updates…" : "Check for updates") && !updates.IsRefreshing)
             CheckForUpdates();
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Check for new Omega Definitions and refresh your added plugin sources.");
 
-        ImGui.SameLine();
-        DrawSettingsEulaShortcut();
-
+        ImGui.Spacing();
         if (selfUpdates.UpdateAvailable)
         {
             ImGui.TextColored(new Vector4(0.35f, 0.64f, 0.92f, 1f), $"Omega {selfUpdates.AvailableDisplayVersion} is available — open Updates to install through Dalamud.");
@@ -34,8 +35,14 @@ internal sealed partial class MarketplaceWindow
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(updates.LastOnlineError);
         }
+    }
 
-        ImGui.Separator();
+    private bool DrawSettingsLegalTab()
+    {
+        ImGui.TextUnformatted("Agreement");
+        ImGui.TextDisabled("Review the End User License Agreement accepted on first use.");
+        ImGui.Spacing();
+        DrawSettingsEulaShortcut();
         return eulaReviewOpen;
     }
 
@@ -175,6 +182,24 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextUnformatted("Definitions");
         ImGui.SameLine(0f, Ui(10f));
         ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), revision);
+        if (catalog.DatabaseSizeBytes > 0)
+        {
+            ImGui.SameLine(0f, Ui(8f));
+            ImGui.TextDisabled($"({FormatDefinitionsDatabaseSize(catalog.DatabaseSizeBytes)})");
+            if (ImGui.IsItemHovered())
+                SetReadableTooltip($"Local Omega Definitions database: {catalog.DatabaseSizeBytes:N0} bytes");
+        }
+    }
+
+    private static string FormatDefinitionsDatabaseSize(long bytes)
+    {
+        if (bytes < 1024L)
+            return $"{bytes} B";
+        if (bytes < 1024L * 1024L)
+            return $"{bytes / 1024d:0.0} KiB";
+        if (bytes < 1024L * 1024L * 1024L)
+            return $"{bytes / (1024d * 1024d):0.0} MiB";
+        return $"{bytes / (1024d * 1024d * 1024d):0.00} GiB";
     }
 
     private void DrawAboutProductPitch()

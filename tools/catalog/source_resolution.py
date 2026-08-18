@@ -1,14 +1,16 @@
-"""Resolve stable public source-repository identities from catalog metadata.
+"""Resolve stable public source-repository identities and Git ref hints from catalog metadata.
 
 PluginMaster entries frequently omit ``RepoUrl`` even when their package URL points
-at a GitHub release, raw file, or archive.  This module only derives canonical
-repository identities; it never fetches source code itself.
+at a GitHub release, raw file, tagged tree, or archive.  This module derives
+canonical repository identities plus bounded provenance hints; it never fetches or
+executes source code itself.
 """
 from __future__ import annotations
 
 import hashlib
 from pathlib import PurePosixPath
 import urllib.parse
+from typing import Iterable
 
 
 def github_repository_url(value: str) -> str:
@@ -37,13 +39,51 @@ def github_repository_url(value: str) -> str:
     return f"https://github.com/{owner}/{repo}"
 
 
+def github_ref_hint(value: str) -> str:
+    """Extract a bounded Git ref hint from common GitHub URLs.
+
+    The hint is deliberately advisory. Sigmascope still resolves it through the
+    GitHub commits API before reading source, and exact plugin-version tags are tried
+    ahead of mutable branch hints.
+    """
+    value = str(value or "").strip()
+    if not github_repository_url(value):
+        return ""
+    try:
+        parsed = urllib.parse.urlparse(value)
+    except ValueError:
+        return ""
+    host = (parsed.hostname or "").lower()
+    parts = [urllib.parse.unquote(part) for part in parsed.path.split("/") if part]
+    ref = ""
+    if host in {"github.com", "www.github.com"} and len(parts) >= 4:
+        marker = parts[2].casefold()
+        if marker in {"tree", "blob", "raw"}:
+            ref = parts[3]
+        elif marker == "releases" and len(parts) >= 5 and parts[3].casefold() == "download":
+            ref = parts[4]
+    elif host == "raw.githubusercontent.com" and len(parts) >= 3:
+        ref = parts[2]
+    elif host == "codeload.github.com" and len(parts) >= 4 and parts[2].casefold() in {"zip", "tar.gz", "legacy.zip", "legacy.tar.gz"}:
+        ref = parts[3]
+    elif host == "api.github.com" and len(parts) >= 4 and parts[0].casefold() == "repos":
+        query = urllib.parse.parse_qs(parsed.query)
+        ref = str((query.get("ref") or [""])[0])
+    if not ref:
+        return ""
+    ref = ref.strip()
+    if len(ref) > 256 or any(ord(ch) < 32 for ch in ref):
+        return ""
+    return ref
+
+
 def public_repository_url(value: str) -> str:
     """Return a stable public HTTPS Git repository candidate from metadata.
 
     GitHub forms are canonicalised first. Other public Git hosts retain their
     host and repository path, allowing Sigmascope's constrained smart-Git
     fallback to handle GitLab, Gitea, Forgejo, Bitbucket, and self-hosted hosts.
-    Artifact and manifest URLs are deliberately excluded.
+    Artifact and manifest URLs are deliberately excluded for non-GitHub hosts.
     """
     github = github_repository_url(value)
     if github:
@@ -66,17 +106,43 @@ def public_repository_url(value: str) -> str:
     return urllib.parse.urlunsplit(("https", authority, path, "", ""))
 
 
+def source_candidate_records(values: Iterable[tuple[str, str]]) -> list[dict[str, object]]:
+    """Return deduplicated source candidates with discovery/ref provenance.
+
+    ``values`` is an ordered sequence of ``(origin, url)`` pairs. Multiple pieces
+    of metadata resolving to the same repository are intentionally merged so a
+    RepoUrl and artifact URL agreeing on the same origin becomes explicit evidence.
+    """
+    records: list[dict[str, object]] = []
+    by_repository: dict[str, dict[str, object]] = {}
+    for origin, raw in values:
+        raw = str(raw or "").strip()
+        candidate = public_repository_url(raw)
+        if not candidate:
+            continue
+        key = candidate.casefold()
+        record = by_repository.get(key)
+        if record is None:
+            record = {"repository": candidate, "origins": [], "refHints": [], "urls": []}
+            by_repository[key] = record
+            records.append(record)
+        origins = record["origins"]
+        urls = record["urls"]
+        hints = record["refHints"]
+        if isinstance(origins, list) and origin and origin not in origins:
+            origins.append(origin)
+        if isinstance(urls, list) and raw and raw not in urls:
+            urls.append(raw)
+        hint = github_ref_hint(raw)
+        if isinstance(hints, list) and hint and hint not in hints:
+            hints.append(hint)
+    return records
+
+
 def source_candidates(*values: str) -> list[str]:
     """Return stable, deduplicated public HTTPS Git source candidates."""
-    candidates: list[str] = []
-    seen: set[str] = set()
-    for value in values:
-        candidate = public_repository_url(value)
-        lowered = candidate.lower()
-        if candidate and lowered not in seen:
-            candidates.append(candidate)
-            seen.add(lowered)
-    return candidates
+    records = source_candidate_records(("metadata", value) for value in values)
+    return [str(record["repository"]) for record in records]
 
 
 def source_override_key(internal_name: str, catalog_source_url: str) -> str:

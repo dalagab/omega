@@ -112,7 +112,8 @@ internal static partial class RegressionCases
         Contains(dependabot, "package-ecosystem: github-actions", "Dependabot watches workflow action dependencies");
 
         var settingsUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
-        Contains(settingsUi, "DrawSettingsHeader", "Settings keeps a shared user-facing header");
+        Contains(settingsUi, "DrawSettingsGeneralTab", "Settings keeps update controls in their own General tab");
+        Contains(settingsUi, "DrawSettingsLegalTab", "Settings keeps EULA controls in their own Legal tab");
         False(settingsUi.Contains("Project security", StringComparison.Ordinal), "developer security workflow status stays out of in-game Settings");
         False(settingsUi.Contains("CodeQL", StringComparison.Ordinal), "repository analysis-tool names stay out of in-game Settings");
         False(settingsUi.Contains("Runtime catalog", StringComparison.Ordinal), "catalog implementation state stays out of in-game Settings");

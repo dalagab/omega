@@ -142,5 +142,14 @@ class DotNetProjectContractTests(unittest.TestCase):
         self.assertNotIn('rowMax - new Vector2(0.5f, 0.5f)', navigation)
 
 
+    def test_definitions_database_size_is_cached_with_loaded_snapshot(self) -> None:
+        service = (common.ROOT / "Omega" / "Services" / "MarketplaceCatalogService.cs").read_text(encoding="utf-8")
+        refresh = (common.ROOT / "Omega" / "Services" / "MarketplaceCatalogService.Refresh.cs").read_text(encoding="utf-8")
+        store = (common.ROOT / "Omega" / "Services" / "SqliteCatalogStore.cs").read_text(encoding="utf-8")
+        self.assertIn("public long DatabaseSizeBytes { get; private set; }", service)
+        self.assertIn("DatabaseSizeBytes = store.DatabaseSizeBytes", refresh)
+        self.assertIn("new FileInfo(DatabasePath).Length", store)
+
+
 if __name__ == "__main__":
     unittest.main()

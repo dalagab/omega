@@ -17,12 +17,15 @@ internal sealed partial class MarketplaceWindow
         var keepOpen = settingsOpen;
         ImGui.SetNextWindowSize(UiModalSize(920f, 660f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal("Settings###DalagabOmegaSettings", ref keepOpen,
-                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse))
+                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse |
+                ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
         {
             settingsOpen = keepOpen;
             return;
         }
 
+        // The modal itself never scrolls. Keeping Omega chrome and tabs outside any scrolling
+        // child means the close cross remains visible regardless of repository-list position.
         if (DrawOmegaModalHeader("Settings", "settings"))
         {
             settingsOpen = false;
@@ -31,13 +34,47 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
+        DrawSettingsTabs();
+        ImGui.Separator();
+        ImGui.Spacing();
+
         var currentApi = Plugin.PluginInterface.Manifest.DalamudApiLevel;
-        if (DrawSettingsHeader())
+        switch (settingsSection)
         {
-            settingsOpen = keepOpen && settingsOpen;
-            ImGui.EndPopup();
-            return;
+            case SettingsSection.General:
+                DrawSettingsGeneralTab();
+                break;
+            case SettingsSection.Legal:
+                if (DrawSettingsLegalTab())
+                {
+                    settingsOpen = keepOpen && settingsOpen;
+                    ImGui.EndPopup();
+                    return;
+                }
+                break;
+            default:
+                DrawSettingsRepositoriesTab(currentApi);
+                break;
         }
+
+        settingsOpen = keepOpen && settingsOpen;
+        ImGui.EndPopup();
+    }
+
+    private void DrawSettingsTabs()
+    {
+        if (DrawRoundedButton("General", "settings-tab-general", Ui(112f, 32f), settingsSection == SettingsSection.General))
+            settingsSection = SettingsSection.General;
+        ImGui.SameLine(0f, Ui(8f));
+        if (DrawRoundedButton("Repositories", "settings-tab-repositories", Ui(142f, 32f), settingsSection == SettingsSection.Repositories))
+            settingsSection = SettingsSection.Repositories;
+        ImGui.SameLine(0f, Ui(8f));
+        if (DrawRoundedButton("Legal", "settings-tab-legal", Ui(104f, 32f), settingsSection == SettingsSection.Legal))
+            settingsSection = SettingsSection.Legal;
+    }
+
+    private void DrawSettingsRepositoriesTab(int currentApi)
+    {
         DrawSourcesHeader();
         if (addSourceOpen)
             DrawAddSourceTools();
@@ -46,8 +83,6 @@ internal sealed partial class MarketplaceWindow
         var statuses = catalog.GetRepositoryStatuses(currentApi)
             .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
         DrawSourcesTable(shownSources, statuses);
-        settingsOpen = keepOpen && settingsOpen;
-        ImGui.EndPopup();
     }
 
     private void DrawSourcesHeader()
@@ -147,27 +182,47 @@ internal sealed partial class MarketplaceWindow
         IReadOnlyDictionary<string, RepositoryCatalogStatus> statuses)
     {
         ImGui.Spacing();
-        if (!ImGui.BeginTable("omega-source-table", 5, ImGuiTableFlags.None, new Vector2(Math.Min(Ui(860f), ImGui.GetContentRegionAvail().X), Ui(addSourceOpen ? 230f : 360f)), 0f))
+        var tableHeight = Math.Max(Ui(160f), ImGui.GetContentRegionAvail().Y);
+        var tableFlags = ImGuiTableFlags.ScrollY | ImGuiTableFlags.RowBg |
+                         ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.SizingStretchProp;
+        var isDalamudView = sourceSection == SourceManagerSection.DalamudConfigured;
+        var columnCount = isDalamudView ? 7 : 5;
+        if (!ImGui.BeginTable("omega-source-table", columnCount, tableFlags,
+                new Vector2(Math.Min(Ui(920f), ImGui.GetContentRegionAvail().X), tableHeight), 0f))
             return;
 
-        ImGui.TableSetupColumn("Use");
-        ImGui.TableSetupColumn("Repository");
-        ImGui.TableSetupColumn("Plugins");
-        ImGui.TableSetupColumn("API");
-        ImGui.TableSetupColumn("State");
+        ImGui.TableSetupScrollFreeze(0, 1);
+        ImGui.TableSetupColumn("Use", ImGuiTableColumnFlags.WidthFixed, Ui(44f));
+        ImGui.TableSetupColumn("Repository", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn(isDalamudView ? "Available" : "Plugins", ImGuiTableColumnFlags.WidthFixed, Ui(64f));
+        if (isDalamudView)
+            ImGui.TableSetupColumn("Installed", ImGuiTableColumnFlags.WidthFixed, Ui(72f));
+        ImGui.TableSetupColumn("API", ImGuiTableColumnFlags.WidthFixed, Ui(52f));
+        ImGui.TableSetupColumn("State", ImGuiTableColumnFlags.WidthFixed, Ui(isDalamudView ? 150f : 120f));
+        if (isDalamudView)
+            ImGui.TableSetupColumn("Action", ImGuiTableColumnFlags.WidthFixed, Ui(82f));
         ImGui.TableHeadersRow();
         var dalamudRepositories = repositoryBridge.GetConfiguredRepositories()
             .ToDictionary(x => NormalizeUrl(x.Url), StringComparer.OrdinalIgnoreCase);
+        var installedUsage = isDalamudView
+            ? repositoryBridge.GetInstalledPluginUsageByRepository()
+            : new Dictionary<string, DalamudRepositoryUsage>(StringComparer.OrdinalIgnoreCase);
         foreach (var source in shownSources)
         {
-            statuses.TryGetValue(NormalizeUrl(source.Url), out var status);
-            dalamudRepositories.TryGetValue(NormalizeUrl(source.Url), out var dalamudRegistration);
-            DrawSourceRow(source, status, dalamudRegistration);
+            var normalized = NormalizeUrl(source.Url);
+            statuses.TryGetValue(normalized, out var status);
+            dalamudRepositories.TryGetValue(normalized, out var dalamudRegistration);
+            installedUsage.TryGetValue(normalized, out var usage);
+            DrawSourceRow(source, status, dalamudRegistration, usage ?? DalamudRepositoryUsage.Empty);
         }
         ImGui.EndTable();
     }
 
-    private void DrawSourceRow(RepositorySource source, RepositoryCatalogStatus? status, DalamudRepositoryRegistration? dalamudRegistration)
+    private void DrawSourceRow(
+        RepositorySource source,
+        RepositoryCatalogStatus? status,
+        DalamudRepositoryRegistration? dalamudRegistration,
+        DalamudRepositoryUsage usage)
     {
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -192,13 +247,57 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.TableSetColumnIndex(2);
         ImGui.Text(status?.PluginCount.ToString() ?? "—");
-        ImGui.TableSetColumnIndex(3);
-        ImGui.Text(status is null || status.HighestKnownApiLevel <= 0 ? "?" : status.HighestKnownApiLevel.ToString());
-        ImGui.TableSetColumnIndex(4);
+
+        var nextColumn = 3;
         if (sourceSection == SourceManagerSection.DalamudConfigured)
+        {
+            ImGui.TableSetColumnIndex(nextColumn++);
+            ImGui.TextUnformatted(usage.InstalledCount.ToString());
+            if (usage.InstalledCount > 0 && ImGui.IsItemHovered())
+                SetReadableTooltip($"Installed from this repository: {string.Join(", ", usage.PluginNames)}");
+        }
+
+        ImGui.TableSetColumnIndex(nextColumn++);
+        ImGui.Text(status is null || status.HighestKnownApiLevel <= 0 ? "?" : status.HighestKnownApiLevel.ToString());
+        ImGui.TableSetColumnIndex(nextColumn++);
+        if (sourceSection == SourceManagerSection.DalamudConfigured)
+        {
             DrawDalamudSourceReviewState(source, status, dalamudRegistration);
+            ImGui.TableSetColumnIndex(nextColumn);
+            DrawDalamudRepositoryRemoveAction(source, usage);
+        }
         else
+        {
             DrawSourceState(source, status, dalamudRegistration);
+        }
+    }
+
+    private void DrawDalamudRepositoryRemoveAction(RepositorySource source, DalamudRepositoryUsage usage)
+    {
+        var blockedByInstalledPlugins = usage.InstalledCount > 0;
+        var busy = repositoryTask is not null;
+        ImGui.BeginDisabled(blockedByInstalledPlugins || busy);
+        if (ImGui.SmallButton($"Remove##dalamud-remove-{StableId(source.Url)}"))
+            StartRepositoryTask(source, RepositoryTaskKind.Detach, repositoryBridge.RemoveIfUnusedAsync(source.Url));
+        ImGui.EndDisabled();
+
+        if (!ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            return;
+
+        if (blockedByInstalledPlugins)
+        {
+            var names = string.Join(", ", usage.PluginNames.Take(8));
+            var suffix = usage.PluginNames.Count > 8 ? $" (+{usage.PluginNames.Count - 8} more)" : string.Empty;
+            SetReadableTooltip($"Cannot remove this repository while {usage.InstalledCount} installed plugin(s) use it. {names}{suffix}");
+        }
+        else if (busy)
+        {
+            SetReadableTooltip("Another repository operation is still running.");
+        }
+        else
+        {
+            SetReadableTooltip("Remove this repository from Dalamud. The Omega source definition is kept so it can still be reviewed or re-added later.");
+        }
     }
 
     private void DrawDalamudSourceReviewState(

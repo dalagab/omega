@@ -10,33 +10,43 @@ python tools/security/developer_view.py
 
 By default it:
 
-1. reads the `security-evidence-latest` and `catalog-latest` GitHub releases;
-2. downloads the detailed evidence bundle and the small marketplace database into a user cache;
-3. verifies the published SHA-256 sidecars;
-4. safely extracts the SQLite databases;
-5. opens both databases read-only; and
-6. starts a localhost-only browser UI at `127.0.0.1:8765`.
+1. reads the atomic `index.json` from `https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/`;
+2. downloads only the lightweight plugin index needed to render/search the initial list;
+3. starts a localhost-only browser UI at `127.0.0.1:8765`;
+4. fetches a plugin variant, its analysis manifest, and individual evidence shards only when you open them;
+5. verifies published index/shard hashes when the v2 graph supplies them; and
+6. checks the online Evidence Revision every 60 seconds and offers **New evidence · Refresh** when Sigmascope publishes a newer snapshot.
 
-The detailed evidence database is intentionally large. Downloads use a resumable `.part` file, verify the published SHA-256, and invalidate the local cache when the release asset changes. Use `fetch` once if you prefer to download it before opening the UI:
+Viewed files are kept in a bounded, revision-scoped HTTP cache (128 MiB by default), so revisiting a plugin does not repeatedly hit GitHub. Change the bound with `--online-cache-mb`. The Developer View never clones the evidence branch and never downloads the complete evidence tree for normal browsing.
+
+Explicit online mode is also available:
+
+```bash
+python tools/security/developer_view.py serve-online
+```
+
+To preview a local, unpublished Security Evidence v2 JSON snapshot directly:
+
+```bash
+python tools/security/developer_view.py serve --evidence-v2 /path/to/security-evidence-v2
+```
+
+Historical v1/working SQLite inspection remains available when you explicitly supply a database. The older release-bundle `fetch` command is retained for forensic/rollback workflows:
 
 ```bash
 python tools/security/developer_view.py fetch
 python tools/security/developer_view.py serve --no-download --database /path/to/omega-security-evidence.sqlite --marketplace-database /path/to/omega-marketplace.sqlite
 ```
 
-To preview a local, un-published Security Evidence v2 JSON snapshot directly, without downloading or publishing anything:
+The online/local v2 browser deliberately disables the SQL console and marketplace-projection comparison because v2 is a sharded JSON evidence graph rather than a SQLite runtime database.
 
-```bash
-python tools/security/developer_view.py serve --evidence-v2 /path/to/security-evidence-v2
-```
-
-The v2 browser reads `index.json` and individual JSON evidence files on demand. It keeps the plugin/detail and evidence-browser views, but deliberately disables the SQL console and marketplace-projection comparison because v2 is a JSON evidence snapshot rather than a SQLite runtime database.
-
-A `GITHUB_TOKEN` or `GH_TOKEN` environment variable is optional and only used to authenticate GitHub API/download requests.
+A `GITHUB_TOKEN` or `GH_TOKEN` environment variable remains optional for the legacy release/API paths; normal raw published-v2 browsing does not require one.
 
 ## What can be inspected
 
 The UI exposes current scans per plugin/source variant, static findings and evidence, exact-version OSV matches, dependency resolutions/issues, IPC providers and consumers, required/feature/optional IPC semantics, permission candidates, automation evidence, source build scope, source-to-package comparisons, scan lineage and dependency drift. It also shows how many current rows were produced by the latest Sigmascope generation versus older Sigmascope generations, so zero-count feature cards can be interpreted in the context of incremental rescan coverage. Managed IL/native calls are loaded lazily because they can be large.
+
+Sigmascope 2.6.0 records source provenance separately from the repository feed that distributed a package. Source candidates are derived from plugin `RepoUrl`, package/download URLs and explicit overrides. For GitHub repositories, the artifact's embedded Dalamud manifest supplies the preferred AssemblyVersion and Sigmascope tries exact version tags before mutable branch refs, recording identity/version/origin/ref evidence. Exact artifact mirrors can inherit a resolved source association for the same plugin identity, but this never sets source-to-binary verification. Missing-source follow-up issues are therefore reconciliation state: resolver-known candidates are retried automatically and an issue closes only after current evidence reports an inspected source.
 
 The **Evidence browser** is the normal way to traverse the database: choose a grouped table, page through rows, inspect a row, and follow database relationship links into related tables. Summary cards jump directly to the relevant evidence table, and rows containing a plugin variant ID can jump back into the higher-level plugin conclusion view.
 

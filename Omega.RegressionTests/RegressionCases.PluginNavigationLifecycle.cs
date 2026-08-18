@@ -366,6 +366,13 @@ internal static partial class RegressionCases
         Contains(sources, "SourceManagerSection.DalamudConfigured", "source review has a dedicated view of every repository configured in Dalamud");
         Contains(sources, "repositoryBridge.GetConfiguredRepositories()", "Dalamud source review is driven by live Dalamud configuration rather than only Omega's filtered inventory");
         Contains(sources, "Acknowledge risk", "a divergent configured source can be acknowledged directly from source review");
+        Contains(sources, "Installed", "Dalamud repository review exposes installed plugin counts separately from available catalog plugins");
+        Contains(sources, "GetInstalledPluginUsageByRepository", "repository rows use Dalamud persisted installed-source provenance for usage counts");
+        Contains(sources, "RemoveIfUnusedAsync", "Dalamud repository rows expose the safe explicit removal path");
+        Contains(sources, "Cannot remove this repository while", "blocked removal explains installed plugin usage");
+        Contains(bridge, "plugin.Manifest.InstalledFromUrl", "repository usage is grounded in Dalamud's persisted installation source");
+        Contains(bridge, "RemoveIfUnusedAsync", "Dalamud repository bridge re-checks usage immediately before removal");
+        Contains(bridge, "GetInstalledPluginUsageByRepository();", "removal reuses the same installed-source mapping as the UI");
         Contains(awareness, "ImGuiWindowFlags.NoScrollbar", "repository warning modal does not show an unnecessary outer scrollbar");
 
         Contains(library, "DrawInstalledAuthorRepositoryLine", "Library renders repository provenance from the installed plugin rather than the marketplace baseline");

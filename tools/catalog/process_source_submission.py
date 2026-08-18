@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import defaultdict
 import hashlib
 import ipaddress
 import json
@@ -15,12 +16,14 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import enrich_metadata
+import sigmascope
 from source_resolution import source_candidates
 
 
 MARKER = "omega-source-submission"
 FOLLOWUP_RE = re.compile(r"omega-source-followup:([A-Za-z0-9_-]+)")
 INTERNAL_RE = re.compile(r"omega-source-internal:([^\s<>]+)")
+VERSION_RE = re.compile(r"omega-source-version:([^\s<>]*)")
 URL_RE = re.compile(r"https://[^\s<>()\[\]{}]+", re.IGNORECASE)
 OVERRIDES_SCHEMA = "omega.source-overrides.v1"
 MAX_SUBMITTED_PLUGINS = 5_000
@@ -136,28 +139,96 @@ def save_overrides(path: Path, overrides: dict[str, str]) -> None:
     path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 
 
-def process_followup(issue_body: str, comment_body: str, overrides_path: Path) -> dict:
+def issue_has_label(issue: dict, name: str) -> bool:
+    wanted = str(name or "").casefold()
+    for item in issue.get("labels") or []:
+        label = str(item.get("name") or "") if isinstance(item, dict) else str(item or "")
+        if label.casefold() == wanted:
+            return True
+    return False
+
+
+def validate_source_repository_identity(url: str, internal_name: str, assembly_version: str = "") -> dict:
+    """Use Sigmascope's bounded source reader to validate a submitted source mapping.
+
+    Community replies may only persist a security source override when the public
+    repository actually contains a Dalamud manifest matching the managed follow-up's
+    InternalName. Version matches raise provenance confidence but are not required:
+    historical tags are often absent even in the correct original repository.
+    """
+    candidate_hits: dict[str, list[str]] = defaultdict(list)
+    result = sigmascope._fetch_source_candidate(
+        url,
+        os.environ.get("GITHUB_TOKEN", ""),
+        candidate_hits,
+        internal_name,
+        internal_name,
+        assembly_version,
+        (),
+    )
+    provenance = result.get("provenance") if isinstance(result.get("provenance"), dict) else {}
+    return {
+        "ok": bool(result.get("available")) and bool(provenance.get("identityMatched")),
+        "repository": str(result.get("repository") or url),
+        "commit": str(result.get("commit") or ""),
+        "identityMatched": bool(provenance.get("identityMatched")),
+        "versionMatched": bool(provenance.get("versionMatched")),
+        "selectedRef": str(provenance.get("selectedRef") or ""),
+        "error": str(result.get("error") or "")[:500],
+    }
+
+
+def process_followup(issue: dict, comment_body: str, overrides_path: Path) -> dict:
+    issue_body = str(issue.get("body") or "")
     match = FOLLOWUP_RE.search(issue_body)
     if not match:
         return {}
+    if not issue_has_label(issue, "omega-source-followup"):
+        return {
+            "status": "rejected",
+            "kind": "override",
+            "message": "Source override markers are accepted only on Omega-managed source-followup issues",
+        }
     candidates = source_candidates(*submitted_urls(comment_body))
     candidates = [candidate for candidate in candidates if github_repository_is_public(candidate)]
     if not candidates:
-        return {"status": "needs-url", "message": "Reply with a public, readable GitHub repository URL for this plugin's source"}
-    overrides = load_overrides(overrides_path)
-    key, url = match.group(1), candidates[0]
+        return {"status": "needs-url", "kind": "override", "message": "Reply with a public, readable GitHub repository URL for this plugin's source"}
     internal_match = INTERNAL_RE.search(issue_body)
     internal_name = internal_match.group(1) if internal_match else ""
+    version_match = VERSION_RE.search(issue_body)
+    assembly_version = version_match.group(1) if version_match else ""
+    if not internal_name:
+        return {"status": "rejected", "kind": "override", "message": "Managed source follow-up is missing its plugin identity marker"}
+
+    validation = validate_source_repository_identity(candidates[0], internal_name, assembly_version)
+    if not validation["ok"]:
+        return {
+            "status": "rejected",
+            "kind": "override",
+            "url": candidates[0],
+            "internalName": internal_name,
+            "message": "The repository is public but Sigmascope could not confirm a matching Dalamud plugin identity in its source tree",
+            "validation": validation,
+        }
+
+    overrides = load_overrides(overrides_path)
+    key, url = match.group(1), str(validation.get("repository") or candidates[0])
     if overrides.get(key) == url:
-        return {"status": "already-added", "url": url, "overrideKey": key, "internalName": internal_name, "message": "This source override is already queued"}
+        return {
+            "status": "already-added", "kind": "override", "url": url, "overrideKey": key,
+            "internalName": internal_name, "message": "This validated source override is already queued", "validation": validation,
+        }
     overrides[key] = url
     save_overrides(overrides_path, overrides)
     return {
         "status": "accepted-override",
+        "kind": "override",
         "url": url,
         "overrideKey": key,
         "internalName": internal_name,
-        "message": "Queued as the public source repository for this plugin/source pair",
+        "assemblyVersion": assembly_version,
+        "validation": validation,
+        "message": "Validated and queued as the public source repository for this plugin/source pair",
     }
 
 
@@ -167,7 +238,7 @@ def process(payload: dict, path: Path, overrides_path: Path) -> dict:
     issue = payload.get("issue") if isinstance(payload.get("issue"), dict) else {}
     issue_body = str(issue.get("body") or "")
     comment_body = str((payload.get("comment") or {}).get("body") or "")
-    followup = process_followup(issue_body, comment_body, overrides_path)
+    followup = process_followup(issue, comment_body, overrides_path)
     if followup:
         return followup
 
@@ -179,7 +250,7 @@ def process(payload: dict, path: Path, overrides_path: Path) -> dict:
     existing_urls = {str(item.get("url") or "") for item in existing if isinstance(item, dict)}
     for url in urls:
         if url in existing_urls:
-            return {"status": "already-added", "url": url, "message": "This source is already collected"}
+            return {"status": "already-added", "kind": "feed", "url": url, "message": "This source is already collected"}
         # The normal PluginMaster parser is reused so submitted feeds must pass the
         # same JSON/root/identity rules as production catalog ingestion.
         result = enrich_metadata.fetch_source(
@@ -194,10 +265,10 @@ def process(payload: dict, path: Path, overrides_path: Path) -> dict:
             existing.sort(key=lambda item: str(item.get("url") or "").lower())
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
-            return {"status": "accepted", "url": url, "pluginCount": plugin_count, "message": "Validated as a Dalamud PluginMaster source"}
+            return {"status": "accepted", "kind": "feed", "url": url, "pluginCount": plugin_count, "message": "Validated and scraped as a Dalamud PluginMaster source"}
         if result.get("ok") and plugin_count > MAX_SUBMITTED_PLUGINS:
-            return {"status": "rejected", "message": f"Source contains {plugin_count} plugins, above the automatic submission limit of {MAX_SUBMITTED_PLUGINS}"}
-    return {"status": "rejected", "message": "No supplied URL was a readable Dalamud PluginMaster source"}
+            return {"status": "rejected", "kind": "feed", "message": f"Source contains {plugin_count} plugins, above the automatic submission limit of {MAX_SUBMITTED_PLUGINS}"}
+    return {"status": "rejected", "kind": "feed", "message": "No supplied URL was a readable Dalamud PluginMaster source"}
 
 
 def main() -> int:

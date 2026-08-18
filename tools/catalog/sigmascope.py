@@ -51,14 +51,14 @@ from pathlib import Path, PurePosixPath
 from typing import Iterable
 from catalog_revisions import read_meta as read_catalog_meta, update_candidate_revisions
 from security_endpoint_inventory import endpoint_candidates, endpoint_findings
-from security_hash_consensus import canonicalize_current_security_by_artifact, refresh_cross_source_hash_findings
+from security_hash_consensus import canonicalize_current_security_by_artifact, propagate_source_provenance_by_artifact, refresh_cross_source_hash_findings
 from security_path_access import external_hard_coded_paths
-from source_resolution import github_repository_url, source_candidates, source_override_key
+from source_resolution import github_repository_url, public_repository_url, source_candidate_records, source_candidates, source_override_key
 from public_git_source import PublicGitSource
 
 
 SIGMASCOPE_NAME = "Sigmascope"
-SIGMASCOPE_VERSION = "2.5.0"
+SIGMASCOPE_VERSION = "2.6.0"
 # Persisted SQLite columns and v1/v2 JSON contracts retain the historical scanner_version name.
 SCANNER_VERSION = SIGMASCOPE_VERSION
 SIGMASCOPE_LEDGER_SCHEMA = "omega.security-scan-ledger.v1"
@@ -1795,6 +1795,7 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
         "bundledManagedAssemblies": [],
         "bundledNativeLibraries": [],
         "managedMetadataErrors": [],
+        "pluginManifests": [],
     }
     if not data.startswith(b"PK"):
         text = decoded_views(data[:MAX_ENTRY_SCAN_BYTES])
@@ -1910,6 +1911,22 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
 
             if suffix in SOURCE_SUFFIXES:
                 text = sample.decode("utf-8", "ignore")
+                if suffix == ".json" and len(metadata["pluginManifests"]) < 32:
+                    try:
+                        manifest = json.loads(text)
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        manifest = None
+                    if isinstance(manifest, dict):
+                        manifest_internal = str(manifest.get("InternalName") or manifest.get("internalName") or "").strip()
+                        manifest_version = str(manifest.get("AssemblyVersion") or manifest.get("assemblyVersion") or manifest.get("TestingAssemblyVersion") or manifest.get("testingAssemblyVersion") or "").strip()
+                        if manifest_internal and manifest_version:
+                            metadata["pluginManifests"].append({
+                                "path": info.filename,
+                                "internalName": manifest_internal,
+                                "assemblyVersion": manifest_version,
+                                "repoUrl": str(manifest.get("RepoUrl") or manifest.get("repoUrl") or "").strip(),
+                                "author": str(manifest.get("Author") or manifest.get("author") or "").strip(),
+                            })
                 scan_source_text(info.filename, sample, text, intel, hits)
             else:
                 text = decoded_views(sample)
@@ -2004,10 +2021,15 @@ def _project_identity_score(project_path: str, text: str, internal_name: str, pl
     if "microsoft.net.sdk.web" in lower or "microsoft.aspnetcore" in lower:
         score -= 20
         reasons.append("web/server project")
+    declared_identities = {
+        re.sub(r"[^a-z0-9]", "", match.group(1).casefold())
+        for match in re.finditer(r"<(?:AssemblyName|RootNamespace)>\s*([^<]+?)\s*</(?:AssemblyName|RootNamespace)>", text, re.IGNORECASE)
+        if match.group(1).strip()
+    }
     for identity in identities:
         if not identity:
             continue
-        if normalized_stem == identity:
+        if normalized_stem == identity or identity in declared_identities:
             score += 16
             reasons.append("exact plugin identity")
             break
@@ -2087,6 +2109,7 @@ def select_plugin_source_scope(
 
     primary = ""
     confidence = "none"
+    source_identity_matched = False
     reason = "No confidently identifiable Dalamud plugin project was found; repository code is context-only."
     if scores:
         top_score, top_project, top_reasons = scores[0]
@@ -2096,6 +2119,7 @@ def select_plugin_source_scope(
         unambiguous = top_score > second_score or len(scores) == 1
         if unambiguous and ((strong_plugin_marker and top_score >= 10) or (identity_match and top_score >= 8)):
             primary = top_project
+            source_identity_matched = identity_match
             confidence = "high" if strong_plugin_marker and identity_match else "medium"
             reason = "Selected the plugin entry project from Dalamud build markers and plugin identity."
 
@@ -2164,6 +2188,7 @@ def select_plugin_source_scope(
         "schema": "omega.plugin-source-scope.v1",
         "mode": "plugin-build-graph" if primary else "repository-context-only",
         "confidence": confidence,
+        "identityMatched": source_identity_matched,
         "primaryProject": primary,
         "projectFiles": sorted(project_closure, key=str.casefold),
         "solutionFiles": relevant_solutions,
@@ -2177,8 +2202,137 @@ def select_plugin_source_scope(
     }
 
 
+
+def _source_ref_candidates(assembly_version: str, ref_hints: Iterable[str], default_branch: str) -> list[tuple[str, str]]:
+    """Return deterministic Git refs, preferring immutable version tags."""
+    ordered: list[tuple[str, str]] = []
+    seen: set[str] = set()
+
+    def add(ref: str, kind: str) -> None:
+        ref = str(ref or "").strip()
+        key = ref.casefold()
+        if not ref or key in seen or len(ref) > 256:
+            return
+        seen.add(key)
+        ordered.append((ref, kind))
+
+    version = str(assembly_version or "").strip()
+    if version:
+        add(version, "version-tag")
+        if not version.casefold().startswith("v"):
+            add(f"v{version}", "version-tag")
+    for hint in ref_hints:
+        add(str(hint or ""), "metadata-ref")
+    add(default_branch, "default-branch")
+    return ordered[:8]
+
+
+def _source_manifest_match(
+    paths: Iterable[str], read_file, internal_name: str, plugin_name: str, assembly_version: str,
+) -> dict:
+    """Find a bounded Dalamud manifest that ties a source tree to plugin identity/version."""
+    internal = str(internal_name or "").strip().casefold()
+    plugin = str(plugin_name or "").strip().casefold()
+    version = str(assembly_version or "").strip().casefold()
+    json_paths = [path for path in paths if Path(path).suffix.casefold() == ".json"]
+    json_paths.sort(key=lambda path: (
+        0 if internal and Path(path).stem.casefold() == internal else 1,
+        0 if plugin and Path(path).stem.casefold() == plugin else 1,
+        len(PurePosixPath(path).parts),
+        path.casefold(),
+    ))
+    best = {
+        "manifestPath": "", "internalName": "", "assemblyVersion": "", "repoUrl": "", "author": "",
+        "identityMatched": False, "versionMatched": False,
+    }
+    best_score = -1
+    for path in json_paths[:256]:
+        try:
+            raw = read_file(path)
+            if not raw or len(raw) > MAX_TEXT_SOURCE_BYTES:
+                continue
+            doc = json.loads(raw.decode("utf-8-sig", "ignore"))
+        except (OSError, ValueError, TypeError, json.JSONDecodeError, UnicodeError):
+            continue
+        if not isinstance(doc, dict):
+            continue
+        manifest_internal = str(doc.get("InternalName") or doc.get("internalName") or "").strip()
+        manifest_version = str(doc.get("AssemblyVersion") or doc.get("assemblyVersion") or "").strip()
+        testing_version = str(doc.get("TestingAssemblyVersion") or doc.get("testingAssemblyVersion") or "").strip()
+        name = str(doc.get("Name") or doc.get("name") or "").strip()
+        if not manifest_internal and not manifest_version:
+            continue
+        identity_matched = bool(internal and manifest_internal.casefold() == internal)
+        if not identity_matched and plugin and name:
+            identity_matched = name.casefold() == plugin
+        version_matched = bool(version and version in {manifest_version.casefold(), testing_version.casefold()})
+        score = (4 if identity_matched else 0) + (4 if version_matched else 0)
+        if score > best_score:
+            best_score = score
+            best = {
+                "manifestPath": path,
+                "internalName": manifest_internal,
+                "assemblyVersion": manifest_version or testing_version,
+                "repoUrl": str(doc.get("RepoUrl") or doc.get("repoUrl") or "").strip(),
+                "author": str(doc.get("Author") or doc.get("author") or "").strip(),
+                "identityMatched": identity_matched,
+                "versionMatched": version_matched,
+            }
+        if identity_matched and (version_matched or not version):
+            break
+    return best
+
+
+def _inspect_github_source_archive(
+    source_bytes: bytes, hits: dict[str, list[str]], internal_name: str, plugin_name: str, assembly_version: str,
+) -> tuple[dict, dict, int, dict]:
+    intel = empty_dependency_intelligence("source")
+    intel["fingerprints"]["sourceArchiveSha256"] = sha256_bytes(source_bytes)
+    files_scanned = 0
+    total_text = 0
+    with zipfile.ZipFile(io.BytesIO(source_bytes)) as archive:
+        source_entries: dict[str, zipfile.ZipInfo] = {}
+        descriptor_text: dict[str, str] = {}
+        for info in archive.infolist():
+            if info.is_dir() or not safe_member_name(info.filename):
+                continue
+            suffix = Path(info.filename).suffix.lower()
+            if suffix not in SOURCE_SUFFIXES or info.file_size <= 0 or info.file_size > MAX_TEXT_SOURCE_BYTES:
+                continue
+            parts_name = PurePosixPath(info.filename).parts
+            logical_name = "/".join(parts_name[1:]) if len(parts_name) > 1 else info.filename
+            source_entries[logical_name] = info
+            if suffix in {".csproj", ".sln", ".props", ".targets"}:
+                with archive.open(info) as stream:
+                    descriptor_text[logical_name] = stream.read(MAX_TEXT_SOURCE_BYTES).decode("utf-8", "ignore")
+
+        def read_file(path: str) -> bytes:
+            info = source_entries.get(path)
+            if info is None:
+                return b""
+            with archive.open(info) as stream:
+                return stream.read(MAX_TEXT_SOURCE_BYTES)
+
+        manifest = _source_manifest_match(source_entries, read_file, internal_name, plugin_name, assembly_version)
+        scope = select_plugin_source_scope(set(source_entries), descriptor_text, internal_name, plugin_name)
+        critical_paths = set(scope["criticalPaths"])
+        for logical_name in sorted(critical_paths, key=str.casefold):
+            if files_scanned >= 500 or total_text >= MAX_SOURCE_TEXT_TOTAL:
+                break
+            raw = read_file(logical_name)
+            if not raw:
+                continue
+            text = raw.decode("utf-8", "ignore")
+            scan_source_text(logical_name, raw, text, intel, hits)
+            files_scanned += 1
+            total_text += len(raw)
+    finalize_intelligence(intel)
+    return intel, scope, files_scanned, manifest
+
+
 def _fetch_source_candidate(
     repo_url: str, token: str, hits: dict[str, list[str]], internal_name: str = "", plugin_name: str = "",
+    assembly_version: str = "", ref_hints: Iterable[str] = (),
 ) -> dict:
     parts = github_repo_parts(repo_url)
     intel = empty_dependency_intelligence("source")
@@ -2187,84 +2341,98 @@ def _fetch_source_candidate(
             "available": False, "repository": repo_url, "commit": "", "branch": "", "filesScanned": 0,
             "treeSha256": "", "dependencyIntelligence": finalize_intelligence(intel),
             "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "No supported source repository URL."},
+            "provenance": {"schema": "omega.plugin-source-provenance.v1", "identityMatched": False, "versionMatched": False},
             "error": "No supported GitHub repository URL",
         }
     owner, repo = parts
+    canonical_repo = f"https://github.com/{owner}/{repo}"
     api_url = f"https://api.github.com/repos/{owner}/{repo}"
     headers = {"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(api_url, headers=headers)
+    failures: list[str] = []
     try:
         with urllib.request.urlopen(req, timeout=20) as response:
             meta = json.load(response)
-        branch = str(meta.get("default_branch") or "main")
-        commit_req = urllib.request.Request(f"{api_url}/commits/{urllib.parse.quote(branch)}", headers=headers)
-        with urllib.request.urlopen(commit_req, timeout=20) as response:
-            commit = json.load(response)
-        sha = str(commit.get("sha") or "")
-        tree_sha = str(((commit.get("commit") or {}).get("tree") or {}).get("sha") or "")
-        archive_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/{sha or branch}"
-        source_bytes, _ = request_bytes(archive_url, MAX_SOURCE_BYTES, token)
-        intel["fingerprints"]["sourceArchiveSha256"] = sha256_bytes(source_bytes)
-        files_scanned = 0
-        total_text = 0
-        with zipfile.ZipFile(io.BytesIO(source_bytes)) as archive:
-            source_entries: dict[str, zipfile.ZipInfo] = {}
-            descriptor_text: dict[str, str] = {}
-            for info in archive.infolist():
-                if info.is_dir() or not safe_member_name(info.filename):
-                    continue
-                suffix = Path(info.filename).suffix.lower()
-                if suffix not in SOURCE_SUFFIXES or info.file_size <= 0 or info.file_size > MAX_TEXT_SOURCE_BYTES:
-                    continue
-                # GitHub zipballs prefix every path with owner-repo-sha/. Remove
-                # that unstable transport directory from evidence/fingerprints.
-                parts_name = PurePosixPath(info.filename).parts
-                logical_name = "/".join(parts_name[1:]) if len(parts_name) > 1 else info.filename
-                source_entries[logical_name] = info
-                if suffix in {".csproj", ".sln", ".props", ".targets"}:
-                    with archive.open(info) as stream:
-                        descriptor_text[logical_name] = stream.read(MAX_TEXT_SOURCE_BYTES).decode("utf-8", "ignore")
-
-            scope = select_plugin_source_scope(set(source_entries), descriptor_text, internal_name, plugin_name)
-            critical_paths = set(scope["criticalPaths"])
-            for logical_name in sorted(critical_paths, key=str.casefold):
-                if files_scanned >= 500 or total_text >= MAX_SOURCE_TEXT_TOTAL:
+        default_branch = str(meta.get("default_branch") or "main")
+        best: tuple[int, dict, dict[str, list[str]]] | None = None
+        for ref, ref_kind in _source_ref_candidates(assembly_version, ref_hints, default_branch):
+            ref_hits: dict[str, list[str]] = defaultdict(list)
+            try:
+                commit_req = urllib.request.Request(
+                    f"{api_url}/commits/{urllib.parse.quote(ref, safe='')}", headers=headers,
+                )
+                with urllib.request.urlopen(commit_req, timeout=20) as response:
+                    commit = json.load(response)
+                sha = str(commit.get("sha") or "")
+                tree_sha = str(((commit.get("commit") or {}).get("tree") or {}).get("sha") or "")
+                archive_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/{sha or urllib.parse.quote(ref, safe='')}"
+                source_bytes, _ = request_bytes(archive_url, MAX_SOURCE_BYTES, token)
+                source_intel, scope, files_scanned, manifest = _inspect_github_source_archive(
+                    source_bytes, ref_hits, internal_name, plugin_name, assembly_version,
+                )
+                manifest_repo = github_repository_url(str(manifest.get("repoUrl") or ""))
+                manifest_repo_matched = bool(manifest_repo and manifest_repo.casefold() == canonical_repo.casefold())
+                provenance = {
+                    "schema": "omega.plugin-source-provenance.v1",
+                    "requestedAssemblyVersion": str(assembly_version or ""),
+                    "selectedRef": ref,
+                    "selectedRefKind": ref_kind,
+                    "manifestPath": str(manifest.get("manifestPath") or ""),
+                    "manifestInternalName": str(manifest.get("internalName") or ""),
+                    "manifestAssemblyVersion": str(manifest.get("assemblyVersion") or ""),
+                    "manifestRepoUrl": str(manifest.get("repoUrl") or ""),
+                    "identityMatched": bool(manifest.get("identityMatched")) or bool(scope.get("identityMatched")),
+                    "versionMatched": bool(manifest.get("versionMatched")),
+                    "manifestRepositoryMatched": manifest_repo_matched,
+                }
+                result = {
+                    "available": True,
+                    "repository": canonical_repo,
+                    "commit": sha,
+                    "branch": ref,
+                    "treeSha256": tree_sha,
+                    "filesScanned": files_scanned,
+                    "scope": scope,
+                    "dependencyIntelligence": source_intel,
+                    "provenance": provenance,
+                    "error": "",
+                }
+                score = (
+                    (8 if provenance["identityMatched"] else 0) +
+                    (8 if provenance["versionMatched"] else 0) +
+                    (2 if provenance["manifestRepositoryMatched"] else 0) +
+                    (1 if scope.get("mode") == "plugin-build-graph" else 0)
+                )
+                if best is None or score > best[0]:
+                    best = (score, result, ref_hits)
+                if provenance["identityMatched"] and (provenance["versionMatched"] or not assembly_version):
                     break
-                info = source_entries.get(logical_name)
-                if info is None:
-                    continue
-                with archive.open(info) as stream:
-                    raw = stream.read(MAX_TEXT_SOURCE_BYTES)
-                text = raw.decode("utf-8", "ignore")
-                scan_source_text(logical_name, raw, text, intel, hits)
-                files_scanned += 1
-                total_text += len(raw)
-        finalize_intelligence(intel)
-        return {
-            "available": True,
-            "repository": f"https://github.com/{owner}/{repo}",
-            "commit": sha,
-            "branch": branch,
-            "treeSha256": tree_sha,
-            "filesScanned": files_scanned,
-            "scope": scope,
-            "dependencyIntelligence": intel,
-            "error": "",
-        }
+            except Exception as exc:
+                failures.append(f"{ref}: {str(exc)[:220]}")
+        if best is None:
+            raise RuntimeError("; ".join(failures) or "No candidate Git ref could be inspected")
+        _score, result, selected_hits = best
+        for rule_id, evidence in selected_hits.items():
+            for item in evidence:
+                if item not in hits[rule_id]:
+                    hits[rule_id].append(item)
+        return result
     except Exception as exc:
         finalize_intelligence(intel)
         return {
             "available": False, "repository": repo_url, "commit": "", "branch": "", "treeSha256": "",
             "filesScanned": 0, "dependencyIntelligence": intel,
             "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "Source repository could not be inspected."},
-            "error": str(exc)[:500],
+            "provenance": {"schema": "omega.plugin-source-provenance.v1", "identityMatched": False, "versionMatched": False},
+            "error": str(exc)[:1000],
         }
 
 
 def _fetch_public_git_source_candidate(
     repo_url: str, _token: str, hits: dict[str, list[str]], internal_name: str = "", plugin_name: str = "",
+    assembly_version: str = "", _ref_hints: Iterable[str] = (),
 ) -> dict:
     """Inspect a public HTTPS Git remote without executing or checking out its code."""
     intel = empty_dependency_intelligence("source")
@@ -2279,6 +2447,13 @@ def _fetch_public_git_source_candidate(
                 for path in source_entries
                 if Path(path).suffix.lower() in {".csproj", ".sln", ".props", ".targets"}
             }
+            manifest = _source_manifest_match(
+                source_entries,
+                lambda path: repository.read_file(path, MAX_TEXT_SOURCE_BYTES),
+                internal_name,
+                plugin_name,
+                assembly_version,
+            )
             scope = select_plugin_source_scope(set(source_entries), descriptor_text, internal_name, plugin_name)
             files_scanned = 0
             total_text = 0
@@ -2297,7 +2472,21 @@ def _fetch_public_git_source_candidate(
         return {
             "available": True, "repository": repository.repository, "commit": repository.commit, "branch": repository.branch,
             "treeSha256": repository.tree_sha, "filesScanned": files_scanned, "scope": scope,
-            "dependencyIntelligence": intel, "error": "",
+            "dependencyIntelligence": intel,
+            "provenance": {
+                "schema": "omega.plugin-source-provenance.v1",
+                "requestedAssemblyVersion": str(assembly_version or ""),
+                "selectedRef": repository.branch,
+                "selectedRefKind": "git-head",
+                "manifestPath": str(manifest.get("manifestPath") or ""),
+                "manifestInternalName": str(manifest.get("internalName") or ""),
+                "manifestAssemblyVersion": str(manifest.get("assemblyVersion") or ""),
+                "manifestRepoUrl": str(manifest.get("repoUrl") or ""),
+                "identityMatched": bool(manifest.get("identityMatched")) or bool(scope.get("identityMatched")),
+                "versionMatched": bool(manifest.get("versionMatched")),
+                "manifestRepositoryMatched": public_repository_url(str(manifest.get("repoUrl") or "")).casefold() == repository.repository.casefold() if manifest.get("repoUrl") else False,
+            },
+            "error": "",
         }
     except Exception as exc:
         finalize_intelligence(intel)
@@ -2305,45 +2494,105 @@ def _fetch_public_git_source_candidate(
             "available": False, "repository": repo_url, "commit": "", "branch": "", "treeSha256": "", "filesScanned": 0,
             "dependencyIntelligence": intel,
             "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "Public Git source repository could not be inspected."},
+            "provenance": {"schema": "omega.plugin-source-provenance.v1", "identityMatched": False, "versionMatched": False},
             "error": str(exc)[:500],
         }
 
 
 def fetch_source(
-    candidate_urls: list[str], token: str, hits: dict[str, list[str]], internal_name: str = "", plugin_name: str = "",
+    candidate_urls: list[object], token: str, hits: dict[str, list[str]], internal_name: str = "", plugin_name: str = "",
+    assembly_version: str = "", artifact_url: str = "", resolved_artifact_url: str = "",
 ) -> dict:
     """Try metadata-derived public Git repositories in deterministic priority order."""
     intel = empty_dependency_intelligence("source")
-    if not candidate_urls:
+    normalized: list[dict[str, object]] = []
+    for item in candidate_urls:
+        if isinstance(item, dict):
+            repository = str(item.get("repository") or "")
+            if repository:
+                normalized.append({
+                    "repository": repository,
+                    "origins": [str(value) for value in item.get("origins") or [] if str(value)],
+                    "refHints": [str(value) for value in item.get("refHints") or [] if str(value)],
+                    "urls": [str(value) for value in item.get("urls") or [] if str(value)],
+                })
+        else:
+            repository = str(item or "")
+            if repository:
+                normalized.append({"repository": repository, "origins": [], "refHints": [], "urls": [repository]})
+    if not normalized:
         return {
             "available": False, "repository": "", "commit": "", "branch": "", "treeSha256": "",
             "filesScanned": 0, "dependencyIntelligence": finalize_intelligence(intel),
             "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "No public source repository URL could be derived."},
+            "provenance": {"schema": "omega.plugin-source-provenance.v1", "confidence": "none", "identityMatched": False, "versionMatched": False, "artifactOriginMatched": False},
             "candidates": [],
             "error": "No public source repository URL could be derived",
         }
     failures: list[str] = []
     last: dict | None = None
-    for candidate in candidate_urls:
+    repositories = [str(item["repository"]) for item in normalized]
+    artifact_repositories = {
+        github_repository_url(value).casefold()
+        for value in (artifact_url, resolved_artifact_url)
+        if github_repository_url(value)
+    }
+    for candidate in normalized:
+        repository = str(candidate["repository"])
         candidate_hits: dict[str, list[str]] = defaultdict(list)
-        fetcher = _fetch_source_candidate if github_repo_parts(candidate) is not None else _fetch_public_git_source_candidate
-        if internal_name or plugin_name:
-            result = fetcher(candidate, token, candidate_hits, internal_name, plugin_name)
+        fetcher = _fetch_source_candidate if github_repo_parts(repository) is not None else _fetch_public_git_source_candidate
+        if internal_name or plugin_name or assembly_version:
+            result = fetcher(
+                repository, token, candidate_hits, internal_name, plugin_name, assembly_version, candidate.get("refHints") or [],
+            )
         else:
-            result = fetcher(candidate, token, candidate_hits)
-        result["candidates"] = list(candidate_urls)
+            result = fetcher(repository, token, candidate_hits)
+        result["candidates"] = repositories
         if result["available"]:
+            provenance = dict(result.get("provenance") or {})
+            # A reachable repository is not automatically this plugin's source. When
+            # plugin identity is known, continue through the candidate list until a
+            # Dalamud manifest/source tree actually matches that identity. This lets
+            # artifact-origin candidates recover from stale or incorrect RepoUrl data.
+            if (internal_name or plugin_name) and not bool(provenance.get("identityMatched")):
+                failures.append(f"{repository}: repository inspected but plugin identity did not match")
+                last = result
+                continue
+            origins = [str(value) for value in candidate.get("origins") or [] if str(value)]
+            artifact_origin_matched = repository.casefold() in artifact_repositories or any(origin.startswith("artifact-") for origin in origins)
+            repo_url_matched = "repo-url" in origins or "override" in origins
+            identity_matched = bool(provenance.get("identityMatched"))
+            version_matched = bool(provenance.get("versionMatched"))
+            if identity_matched and version_matched and artifact_origin_matched:
+                confidence = "very-high"
+            elif identity_matched and (artifact_origin_matched or repo_url_matched):
+                confidence = "high"
+            elif identity_matched or artifact_origin_matched or repo_url_matched:
+                confidence = "medium"
+            else:
+                confidence = "low"
+            provenance.update({
+                "schema": "omega.plugin-source-provenance.v1",
+                "confidence": confidence,
+                "discoveryOrigins": origins,
+                "candidateUrls": [str(value) for value in candidate.get("urls") or [] if str(value)][:16],
+                "artifactOriginMatched": artifact_origin_matched,
+                "repoUrlMatched": repo_url_matched,
+                "originMatched": artifact_origin_matched or repo_url_matched,
+                "sourceToBinaryVerified": False,
+            })
+            result["provenance"] = provenance
             for rule_id, evidence in candidate_hits.items():
                 for item in evidence:
                     if item not in hits[rule_id]:
                         hits[rule_id].append(item)
             return result
-        failures.append(f"{candidate}: {result.get('error') or 'unavailable'}")
+        failures.append(f"{repository}: {result.get('error') or 'unavailable'}")
         last = result
     assert last is not None
+    last["candidates"] = repositories
     last["error"] = "; ".join(failures)[:1000]
     return last
-
 
 def merge_dependency_intelligence(*items: dict) -> dict:
     combined = empty_dependency_intelligence("combined")
@@ -4180,9 +4429,11 @@ def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: s
     if max_scans <= 0:
         return []
     now = dt.datetime.now(dt.timezone.utc)
-    rows = db.execute("""
+    variant_columns = {str(row[1]).casefold() for row in db.execute("PRAGMA table_info(plugin_variants)")}
+    update_projection = "v.download_link_update" if "download_link_update" in variant_columns else "'' AS download_link_update"
+    rows = db.execute(f"""
         SELECT v.variant_id,v.plugin_id,v.source_id,p.internal_name,v.name,v.author,v.assembly_version,
-               v.testing_assembly_version,v.download_link_install,v.download_link_testing,v.repo_url,
+               v.testing_assembly_version,v.download_link_install,{update_projection},v.download_link_testing,v.repo_url,
                s.name AS source_name,s.url AS source_url,s.source_repo_url,sc.status AS current_status,sc.scanned_at_utc AS current_scanned_at_utc,
                sc.scanner_version AS current_scanner_version,sc.artifact_url AS current_artifact_url,
                sc.assembly_version AS current_assembly_version
@@ -4453,21 +4704,37 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool, source_override: s
         finalize_intelligence(artifact_intel)
         package_meta["dependencyIntelligence"] = artifact_intel
         base["package"] = package_meta
+        artifact_manifest = next((
+            item for item in package_meta.get("pluginManifests") or []
+            if str(item.get("internalName") or "").casefold() == str(row["internal_name"] or "").casefold()
+        ), None)
+        source_version = str((artifact_manifest or {}).get("assemblyVersion") or version)
+        base["artifactIdentity"] = {
+            "catalogAssemblyVersion": version,
+            "artifactAssemblyVersion": source_version,
+            "manifestPath": str((artifact_manifest or {}).get("path") or ""),
+            "versionMatchesCatalog": not source_version or not version or source_version.casefold() == version.casefold(),
+        }
         findings, capabilities = finding_payload(artifact_hits, package_meta)
 
         source_intel = empty_source_intel
         source_findings: list[dict] = []
-        candidates = source_candidates(
-            source_override,
-            str(row["repo_url"] or ""),
-            str(row["download_link_install"] or ""),
-            str(row["download_link_testing"] or ""),
-        )
+        candidate_records = source_candidate_records((
+            ("override", source_override),
+            ("repo-url", str(row["repo_url"] or "")),
+            ("artifact-resolved", str(final_url or "")),
+            ("artifact-install", str(row["download_link_install"] or "")),
+            ("artifact-update", str(row["download_link_update"] or "")),
+            ("artifact-testing", str(row["download_link_testing"] or "")),
+        ))
+        candidates = [str(item.get("repository") or "") for item in candidate_records if str(item.get("repository") or "")]
         base["source"]["candidates"] = candidates
+        base["source"]["candidateEvidence"] = candidate_records
         if scan_source and candidates:
             source_hits: dict[str, list[str]] = defaultdict(list)
             base["source"] = fetch_source(
-                candidates, token, source_hits, str(row["internal_name"] or ""), str(row["name"] or ""),
+                candidate_records, token, source_hits, str(row["internal_name"] or ""), str(row["name"] or ""),
+                source_version, url, final_url,
             )
             base["source"]["sourceToBinaryVerified"] = False
             source_intel = base["source"].get("dependencyIntelligence") or empty_source_intel
@@ -4617,6 +4884,7 @@ def run(args: argparse.Namespace) -> dict:
             for key, value in coverage_meta.items():
                 db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES(?,?)", (key, str(value)))
             summary["publicAdvisoryCoverage"] = dict(advisory_coverage)
+        summary["artifactSourceProvenance"] = propagate_source_provenance_by_artifact(db)
         summary["artifactSecurityCanonicalization"] = canonicalize_current_security_by_artifact(db)
         summary["crossSourceHashConsensus"] = refresh_cross_source_hash_findings(db)
         recreate_runtime_view(db)

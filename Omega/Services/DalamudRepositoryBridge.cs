@@ -27,6 +27,12 @@ internal sealed record DalamudRepositoryState(bool Available, bool Present, bool
 
 internal sealed record DalamudRepositoryRegistration(string Url, bool Enabled);
 
+internal sealed record DalamudRepositoryUsage(int InstalledCount, IReadOnlyList<string> PluginNames)
+{
+    public static readonly DalamudRepositoryUsage Empty = new(0, Array.Empty<string>());
+}
+
+
 /// <summary>
 /// Isolates Omega's API-15 reflection access to Dalamud's third-party repository configuration.
 /// Omega never edits files directly; it mutates the live DalamudConfiguration object, queues a save,
@@ -60,6 +66,35 @@ internal sealed class DalamudRepositoryBridge
         {
             Plugin.Log.Debug(ex, "Omega could not enumerate Dalamud third-party repositories.");
             return [];
+        }
+    }
+
+    public IReadOnlyDictionary<string, DalamudRepositoryUsage> GetInstalledPluginUsageByRepository()
+    {
+        try
+        {
+            return Plugin.PluginInterface.InstalledPlugins
+                .Select(plugin => new
+                {
+                    Url = NormalizeUrl(plugin.Manifest.InstalledFromUrl ?? string.Empty),
+                    Name = string.IsNullOrWhiteSpace(plugin.Name) ? plugin.InternalName : plugin.Name,
+                })
+                .Where(item => !string.IsNullOrWhiteSpace(item.Url))
+                .GroupBy(item => item.Url, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => new DalamudRepositoryUsage(
+                        group.Count(),
+                        group.Select(item => item.Name)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                            .ToArray()),
+                    StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Debug(ex, "Omega could not map installed plugins to Dalamud repositories.");
+            return new Dictionary<string, DalamudRepositoryUsage>(StringComparer.OrdinalIgnoreCase);
         }
     }
 
@@ -220,6 +255,60 @@ internal sealed class DalamudRepositoryBridge
         {
             Plugin.Log.Warning(ex, "Failed to update Dalamud repository state for {Repository}", url);
             return new RepositoryBridgeResult(RepositoryBridgeOutcome.Failed, $"Could not update Dalamud repository state: {ex.GetBaseException().Message}");
+        }
+    }
+
+    /// <summary>
+    /// Removes a user-selected third-party repository only when no currently installed plugin
+    /// points at it through Dalamud's persisted InstalledFromUrl provenance. The usage check is
+    /// repeated inside the bridge immediately before the configuration mutation so UI state
+    /// cannot race a plugin install.
+    /// </summary>
+    public async Task<RepositoryBridgeResult> RemoveIfUnusedAsync(string url, CancellationToken cancellationToken = default)
+    {
+        if (!TryNormalizeUrl(url, out var normalized, out var error))
+            return new RepositoryBridgeResult(RepositoryBridgeOutcome.InvalidUrl, error);
+
+        try
+        {
+            var usage = GetInstalledPluginUsageByRepository();
+            if (usage.TryGetValue(normalized, out var inUse) && inUse.InstalledCount > 0)
+            {
+                var names = string.Join(", ", inUse.PluginNames.Take(6));
+                var suffix = inUse.PluginNames.Count > 6 ? $" (+{inUse.PluginNames.Count - 6} more)" : string.Empty;
+                return new RepositoryBridgeResult(
+                    RepositoryBridgeOutcome.Failed,
+                    $"Cannot remove this repository while {inUse.InstalledCount} installed plugin(s) use it: {names}{suffix}");
+            }
+
+            var context = ResolveContext();
+            var existing = FindRepositorySetting(context.RepositoryList, normalized);
+            if (existing is null)
+                return new RepositoryBridgeResult(RepositoryBridgeOutcome.Removed, "Repository was already absent from Dalamud.");
+
+            var index = context.RepositoryList.IndexOf(existing);
+            context.RepositoryList.Remove(existing);
+            QueueSave(context.Configuration);
+            try
+            {
+                await RefreshDalamudRepositoriesAsync(context.PluginManager, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                if (index >= 0 && index <= context.RepositoryList.Count)
+                    context.RepositoryList.Insert(index, existing);
+                else
+                    context.RepositoryList.Add(existing);
+                QueueSave(context.Configuration);
+                throw;
+            }
+
+            return new RepositoryBridgeResult(RepositoryBridgeOutcome.Removed, "Repository removed from Dalamud.");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Failed to remove unused Dalamud repository {Repository}", url);
+            return new RepositoryBridgeResult(RepositoryBridgeOutcome.Failed, $"Could not remove Dalamud repository: {ex.GetBaseException().Message}");
         }
     }
 

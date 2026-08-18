@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from contextlib import closing
+import gzip
+import hashlib
+import io
 import importlib.util
 import json
 import sqlite3
@@ -371,6 +374,151 @@ class SecurityDeveloperViewTests(unittest.TestCase):
             finally:
                 inspector.close()
 
+
+    def test_online_v2_developer_view_fetches_indexes_then_evidence_lazily(self) -> None:
+        class Response:
+            def __init__(self, data: bytes):
+                self.data = io.BytesIO(data)
+                self.headers = {"Content-Length": str(len(data))}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, n: int = -1) -> bytes: return self.data.read(n)
+
+        def packed(value) -> bytes:
+            return (json.dumps(value, sort_keys=True) + "\n").encode("utf-8")
+
+        finding_bytes = gzip.compress((json.dumps({"rule_id": "network.endpoint", "severity": "caution", "title": "Network endpoint"}) + "\n").encode("utf-8"))
+        manifest = {"datasets": {"findings": {"records": 1, "files": [{"path": "artifacts/aa/analysis/findings.jsonl.gz", "encoding": "jsonl+gzip", "sha256": hashlib.sha256(finding_bytes).hexdigest()}]}}}
+        variant = {
+            "schema": "omega.security-evidence.variant.v2", "formatVersion": 2, "variantId": 1,
+            "pluginId": 1, "sourceId": 1,
+            "plugin": {"plugin_id": 1, "internal_name": "Fixture", "canonical_name": "Fixture"},
+            "variant": {"variant_id": 1, "name": "Fixture", "author": "Test", "assembly_version": "1.0.0"},
+            "source": {"source_id": 1, "name": "Fixture feed", "url": "https://example.invalid/repo.json"},
+            "current": {"variant_id": 1, "scan_id": 7, "status": "complete", "highest_severity": "caution", "caution_count": 1, "scanner_version": "2.5.0", "scanned_at_utc": "2026-08-18T08:00:00Z"},
+            "analysis": {"analysisId": "a" * 64, "path": "artifacts/aa/analysis", "artifactSha256": "b" * 64}, "derived": {},
+        }
+        variant_bytes = packed(variant)
+        plugins = {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": [{
+            "variantId": 1, "scanId": 7, "artifactSha256": "b" * 64, "analysisId": "a" * 64,
+            "variantPath": "variants/0000/1.json", "variantSha256": hashlib.sha256(variant_bytes).hexdigest(),
+            "summary": {"plugin_id": 1, "internal_name": "Fixture", "canonical_name": "Fixture", "name": "Fixture", "author": "Test", "assembly_version": "1.0.0", "source_name": "Fixture feed", "source_url": "https://example.invalid/repo.json", "scan_id": 7, "scan_status": "complete", "highest_severity": "caution", "caution_count": 1, "scanned_at_utc": "2026-08-18T08:00:00Z", "scanner_version": "2.5.0"},
+        }]}
+        plugin_bytes = packed(plugins)
+        root = {"schema": "omega.security-evidence.v2", "formatVersion": 2, "generatedAtUtc": "2026-08-18T08:01:00Z", "engine": {"name": "Sigmascope", "version": "2.5.0"}, "counts": {"currentVariants": 1}, "revisions": {"evidenceRevision": "ev-v2-1111111111111111"}, "indexes": {"plugins": {"path": "indexes/plugins.json", "sha256": hashlib.sha256(plugin_bytes).hexdigest()}}}
+        base = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
+        files = {
+            base + "index.json": packed(root),
+            base + "indexes/plugins.json": plugin_bytes,
+            base + "variants/0000/1.json": variant_bytes,
+            base + "artifacts/aa/analysis/manifest.json": packed(manifest),
+            base + "artifacts/aa/analysis/findings.jsonl.gz": finding_bytes,
+        }
+        requests: list[str] = []
+        def fake_urlopen(request, timeout=0):
+            del timeout
+            url = request.full_url
+            requests.append(url)
+            if url not in files:
+                raise AssertionError(f"unexpected remote fetch: {url}")
+            return Response(files[url])
+
+        with tempfile.TemporaryDirectory() as td:
+            inspector = V2SigmascopeInspector.online(base_url=base, cache_dir=Path(td) / "cache", cache_limit_bytes=8 * 1024 * 1024, urlopen=fake_urlopen)
+            try:
+                self.assertEqual([base + "index.json", base + "indexes/plugins.json"], requests)
+                self.assertEqual("Fixture", inspector.list_plugins()[0]["canonical_name"])
+                self.assertEqual(2, len(requests), "plugin list must not fetch per-variant evidence")
+                summary = inspector.summary()
+                self.assertTrue(summary["indexSummaryAvailable"])
+                self.assertEqual(1, summary["counts"]["findings"])
+                detail = inspector.plugin_detail(1)
+                self.assertTrue(detail["lazyDatasets"])
+                self.assertEqual(1, detail["datasetCounts"]["findings"])
+                self.assertIn(base + "variants/0000/1.json", requests)
+                self.assertIn(base + "artifacts/aa/analysis/manifest.json", requests)
+                self.assertNotIn(base + "artifacts/aa/analysis/findings.jsonl.gz", requests)
+                rows = inspector.plugin_dataset(1, "findings")
+                self.assertEqual("network.endpoint", rows[0]["rule_id"])
+                self.assertIn(base + "artifacts/aa/analysis/findings.jsonl.gz", requests)
+                before = len(requests)
+                self.assertEqual("network.endpoint", inspector.plugin_dataset(1, "findings")[0]["rule_id"])
+                self.assertEqual(before, len(requests), "viewed shards should reuse bounded local cache")
+            finally:
+                inspector.close()
+
+    def test_online_v2_revision_check_and_refresh_switches_snapshot_namespace(self) -> None:
+        class Response:
+            def __init__(self, data: bytes): self.data = io.BytesIO(data); self.headers = {"Content-Length": str(len(data))}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, n: int = -1) -> bytes: return self.data.read(n)
+        def packed(value) -> bytes: return (json.dumps(value, sort_keys=True) + "\n").encode()
+        base = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
+        plugins = {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": []}
+        plugin_bytes = packed(plugins)
+        state = {"revision": "ev-v2-1111111111111111"}
+        def root_bytes(): return packed({"schema": "omega.security-evidence.v2", "formatVersion": 2, "revisions": {"evidenceRevision": state["revision"]}, "indexes": {"plugins": {"path": "indexes/plugins.json", "sha256": hashlib.sha256(plugin_bytes).hexdigest()}}})
+        def fake_urlopen(request, timeout=0):
+            del timeout
+            if request.full_url == base + "index.json": return Response(root_bytes())
+            if request.full_url == base + "indexes/plugins.json": return Response(plugin_bytes)
+            raise AssertionError(request.full_url)
+        with tempfile.TemporaryDirectory() as td:
+            inspector = V2SigmascopeInspector.online(base_url=base, cache_dir=Path(td), urlopen=fake_urlopen)
+            try:
+                state["revision"] = "ev-v2-2222222222222222"
+                status = inspector.source_status(check_remote=True)
+                self.assertTrue(status["updateAvailable"])
+                self.assertEqual("ev-v2-1111111111111111", status["currentRevision"])
+                refreshed = inspector.refresh_online()
+                self.assertFalse(refreshed["updateAvailable"])
+                self.assertEqual("ev-v2-2222222222222222", refreshed["currentRevision"])
+            finally:
+                inspector.close()
+
+
+
+    def test_online_v2_remains_compatible_with_pre_summary_published_index(self) -> None:
+        class Response:
+            def __init__(self, data: bytes): self.data = io.BytesIO(data); self.headers = {"Content-Length": str(len(data))}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, n: int = -1) -> bytes: return self.data.read(n)
+        def packed(value) -> bytes: return (json.dumps(value, sort_keys=True) + "\n").encode()
+        base = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
+        plugins = {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": [{"variantId": 1, "scanId": 5, "artifactSha256": "a" * 64, "analysisId": "b" * 64, "variantPath": "variants/0000/1.json"}]}
+        identities = {"schema": "omega.security-evidence.identities.v2", "plugins": [{"plugin_id": 1, "internal_name": "LegacyFixture", "canonical_name": "Legacy Fixture"}], "plugin_variants": [{"variant_id": 1, "plugin_id": 1, "source_id": 1, "name": "Legacy Fixture", "author": "Test", "assembly_version": "1.0"}], "sources": [{"source_id": 1, "name": "Legacy feed", "url": "https://example.invalid/feed"}]}
+        pb, ib = packed(plugins), packed(identities)
+        root = {"schema": "omega.security-evidence.v2", "formatVersion": 2, "revisions": {"evidenceRevision": "ev-v2-legacy0000000000"}, "indexes": {"plugins": {"path": "indexes/plugins.json", "sha256": hashlib.sha256(pb).hexdigest()}, "identities": {"path": "indexes/identities.json", "sha256": hashlib.sha256(ib).hexdigest()}}}
+        files = {base + "index.json": packed(root), base + "indexes/plugins.json": pb, base + "indexes/identities.json": ib}
+        requests=[]
+        def fake_urlopen(request, timeout=0):
+            del timeout
+            requests.append(request.full_url)
+            if request.full_url not in files: raise AssertionError(f"legacy online view unexpectedly fetched {request.full_url}")
+            return Response(files[request.full_url])
+        with tempfile.TemporaryDirectory() as td:
+            inspector = V2SigmascopeInspector.online(base_url=base, cache_dir=Path(td), urlopen=fake_urlopen)
+            try:
+                row = inspector.list_plugins()[0]
+                self.assertEqual("Legacy Fixture", row["canonical_name"])
+                self.assertEqual("published", row["scan_status"])
+                self.assertEqual("unknown", row["highest_severity"])
+                self.assertEqual(3, len(requests))
+                self.assertFalse(inspector.summary()["indexSummaryAvailable"])
+            finally:
+                inspector.close()
+
+    def test_default_developer_view_mode_is_online_v2_without_full_release_download(self) -> None:
+        fake = mock.Mock()
+        fake.evidence_path = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
+        with mock.patch.object(view.V2SigmascopeInspector, "online", return_value=fake) as online, mock.patch.object(view, "serve", return_value=0) as serve_mock, mock.patch.object(view, "fetch_latest") as fetch_mock:
+            self.assertEqual(0, view.main(["--no-browser"]))
+        online.assert_called_once()
+        serve_mock.assert_called_once()
+        fetch_mock.assert_not_called()
+
     def test_developer_view_uses_explicit_controls_and_click_through_evidence_browser(self) -> None:
         self.assertIn("Evidence browser", view.HTML)
         self.assertIn("No SQL required", view.HTML)
@@ -381,6 +529,11 @@ class SecurityDeveloperViewTests(unittest.TestCase):
         source = MODULE_PATH.read_text(encoding="utf-8")
         self.assertIn('parsed.path == "/api/tables"', source)
         self.assertIn('parsed.path == "/api/table"', source)
+        self.assertIn('parsed.path == "/api/source"', source)
+        self.assertIn('parsed.path == "/api/dataset"', source)
+        self.assertIn('path == "/api/refresh"', source)
+        self.assertIn('serve-online', source)
+        self.assertIn('setInterval(checkEvidenceRevision,60000)', source)
 
 if __name__ == "__main__":
     unittest.main()

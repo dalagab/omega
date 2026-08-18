@@ -108,6 +108,20 @@ jobs:
           --github-output "$GITHUB_OUTPUT"
       - name: Validate small client marketplace candidate
         run: python tools/catalog/validate_marketplace_catalog.py --root catalog/publication-output
+      - name: Project public-source coverage follow-ups
+        run: >-
+          python tools/catalog/sigmascope_source_followups.py
+          --database catalog/security-v2-work/omega-security-v2-working.sqlite
+          --output catalog/security-v2-work/sigmascope-source-followups.json
+      - name: Reconcile actionable source follow-up issues
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/catalog/create_source_followup_issues.py
+          --input catalog/security-v2-work/sigmascope-source-followups.json
+          --repository ${{ github.repository }}
+          --max-new 25
       - name: Reproduce security conclusions with independent developer audit
         shell: bash
         run: |
@@ -127,20 +141,6 @@ jobs:
             fi
             exit "$status"
           fi
-      - name: Project public-source coverage follow-ups
-        run: >-
-          python tools/catalog/sigmascope_source_followups.py
-          --database catalog/security-v2-work/omega-security-v2-working.sqlite
-          --output catalog/security-v2-work/sigmascope-source-followups.json
-      - name: Reconcile actionable source follow-up issues
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          python tools/catalog/create_source_followup_issues.py
-          --input catalog/security-v2-work/sigmascope-source-followups.json
-          --repository ${{ github.repository }}
-          --max-new 25
       - name: Publish validated Security Evidence v2 snapshot atomically
         if: steps.v2.outputs.publish_v2 == 'true'
         env:

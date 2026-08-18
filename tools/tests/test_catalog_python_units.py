@@ -105,10 +105,39 @@ class CatalogPythonUnitTests(unittest.TestCase):
             ["https://git.honse.farm/astraea/honse-farm"],
             source_resolution.source_candidates("https://git.honse.farm/astraea/honse-farm", "https://downloads.honse.farm/main/honsefarm.zip"),
         )
+        auto_visor = source_resolution.source_candidate_records((
+            ("repo-url", "https://github.com/Ottermandias/AutoVisor/tree/1.2.0.2"),
+            ("artifact-install", "https://github.com/Ottermandias/AutoVisor/raw/master/AutoVisor.zip"),
+        ))
+        self.assertEqual(1, len(auto_visor))
+        self.assertEqual("https://github.com/Ottermandias/AutoVisor", auto_visor[0]["repository"])
+        self.assertEqual(["repo-url", "artifact-install"], auto_visor[0]["origins"])
+        self.assertEqual(["1.2.0.2", "master"], auto_visor[0]["refHints"])
+        self.assertEqual("1.2.0.2", source_resolution.github_ref_hint("https://github.com/Ottermandias/AutoVisor/tree/1.2.0.2"))
         first = source_resolution.source_override_key("Plugin", "https://example.invalid/feed.json")
         second = source_resolution.source_override_key("plugin", "https://example.invalid/feed.json")
         self.assertEqual(first, second)
         self.assertTrue(first.startswith("src-"))
+
+    def test_sigmascope_prefers_exact_version_source_refs_and_matches_dalamud_manifest(self) -> None:
+        self.assertEqual(
+            [("1.2.0.2", "version-tag"), ("v1.2.0.2", "version-tag"), ("master", "metadata-ref")],
+            sigmascope._source_ref_candidates("1.2.0.2", ["master"], "master"),
+        )
+        files = {
+            "AutoVisor.json": json.dumps({
+                "InternalName": "AutoVisor",
+                "AssemblyVersion": "1.2.0.2",
+                "RepoUrl": "https://github.com/Ottermandias/AutoVisor",
+            }).encode(),
+            "other.json": b'{"name":"other"}',
+        }
+        match = sigmascope._source_manifest_match(
+            files, lambda path: files[path], "AutoVisor", "AutoVisor", "1.2.0.2",
+        )
+        self.assertTrue(match["identityMatched"])
+        self.assertTrue(match["versionMatched"])
+        self.assertEqual("AutoVisor.json", match["manifestPath"])
 
     def test_source_followup_issue_keys_are_parseable_after_gap_resolution(self) -> None:
         self.assertEqual(
@@ -132,17 +161,17 @@ class CatalogPythonUnitTests(unittest.TestCase):
                 db.executescript("""
                     CREATE TABLE plugins(plugin_id INTEGER PRIMARY KEY, internal_name TEXT);
                     CREATE TABLE sources(source_id INTEGER PRIMARY KEY, name TEXT, url TEXT);
-                    CREATE TABLE plugin_variants(variant_id INTEGER PRIMARY KEY, plugin_id INTEGER, source_id INTEGER, name TEXT);
-                    CREATE TABLE plugin_security_current(variant_id INTEGER PRIMARY KEY, status TEXT, source_available INTEGER, artifact_url TEXT, report_json TEXT);
+                    CREATE TABLE plugin_variants(variant_id INTEGER PRIMARY KEY, plugin_id INTEGER, source_id INTEGER, name TEXT, repo_url TEXT DEFAULT '', download_link_install TEXT DEFAULT '', download_link_update TEXT DEFAULT '', download_link_testing TEXT DEFAULT '');
+                    CREATE TABLE plugin_security_current(variant_id INTEGER PRIMARY KEY, status TEXT, source_available INTEGER, assembly_version TEXT, artifact_url TEXT, report_json TEXT);
                 """)
                 db.execute("INSERT INTO plugins VALUES(1,'Example')")
                 db.execute("INSERT INTO sources VALUES(1,'Repo','https://example.invalid/repo.json')")
-                db.execute("INSERT INTO plugin_variants VALUES(10,1,1,'Example')")
-                db.execute("INSERT INTO plugin_variants VALUES(11,1,1,'Example')")
-                db.execute("INSERT INTO plugin_variants VALUES(12,1,1,'Example')")
-                db.execute("INSERT INTO plugin_security_current VALUES(10,'complete',0,'https://example.invalid/a.zip',?)", (json.dumps({"source":{"error":"No GitHub source candidate could be derived","candidates":[]}}),))
-                db.execute("INSERT INTO plugin_security_current VALUES(11,'complete',0,'https://example.invalid/b.zip',?)", (json.dumps({"source":{"error":"HTTP Error 429: Too Many Requests","candidates":["https://github.com/example/Example"]}}),))
-                db.execute("INSERT INTO plugin_security_current VALUES(12,'complete',1,'https://example.invalid/c.zip',?)", (json.dumps({"source":{"error":"","candidates":["https://github.com/example/Example"]}}),))
+                db.execute("INSERT INTO plugin_variants(variant_id,plugin_id,source_id,name) VALUES(10,1,1,'Example')")
+                db.execute("INSERT INTO plugin_variants(variant_id,plugin_id,source_id,name) VALUES(11,1,1,'Example')")
+                db.execute("INSERT INTO plugin_variants(variant_id,plugin_id,source_id,name) VALUES(12,1,1,'Example')")
+                db.execute("INSERT INTO plugin_security_current VALUES(10,'complete',0,'1.0','https://example.invalid/a.zip',?)", (json.dumps({"source":{"error":"No GitHub source candidate could be derived","candidates":[]}}),))
+                db.execute("INSERT INTO plugin_security_current VALUES(11,'complete',0,'1.0','https://example.invalid/b.zip',?)", (json.dumps({"source":{"error":"HTTP Error 429: Too Many Requests","candidates":["https://github.com/example/Example"]}}),))
+                db.execute("INSERT INTO plugin_security_current VALUES(12,'complete',1,'1.0','https://example.invalid/c.zip',?)", (json.dumps({"source":{"available":True,"repository":"https://github.com/example/Example","commit":"abc123","error":"","candidates":["https://github.com/example/Example"]}}),))
                 db.commit()
             document = sigmascope_source_followups.followups(database)
         self.assertEqual(1, document["count"])
@@ -150,6 +179,35 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertTrue(document["followups"][0]["actionable"])
         self.assertTrue(document["followups"][0]["overrideKey"].startswith("src-"))
         self.assertEqual([document["followups"][0]["key"]], document["resolvedKeys"])
+        self.assertEqual(1, len(document["resolved"]))
+
+    def test_source_followup_does_not_open_human_issue_when_current_metadata_can_resolve_source(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            database = Path(td) / "evidence.sqlite"
+            with closing(sqlite3.connect(database)) as db:
+                db.executescript("""
+                    CREATE TABLE plugins(plugin_id INTEGER PRIMARY KEY, internal_name TEXT);
+                    CREATE TABLE sources(source_id INTEGER PRIMARY KEY, name TEXT, url TEXT);
+                    CREATE TABLE plugin_variants(
+                        variant_id INTEGER PRIMARY KEY, plugin_id INTEGER, source_id INTEGER, name TEXT, repo_url TEXT,
+                        download_link_install TEXT, download_link_update TEXT, download_link_testing TEXT);
+                    CREATE TABLE plugin_security_current(variant_id INTEGER PRIMARY KEY, status TEXT, source_available INTEGER, assembly_version TEXT, artifact_url TEXT, report_json TEXT);
+                """)
+                db.execute("INSERT INTO plugins VALUES(1,'AutoVisor')")
+                db.execute("INSERT INTO sources VALUES(1,'Mirror','https://example.invalid/repo.json')")
+                db.execute(
+                    "INSERT INTO plugin_variants VALUES(10,1,1,'AutoVisor','',?,?,?)",
+                    ('https://github.com/Ottermandias/AutoVisor/raw/master/AutoVisor.zip', '', ''),
+                )
+                db.execute(
+                    "INSERT INTO plugin_security_current VALUES(10,'complete',0,'1.2.3.0',?,?)",
+                    ('https://github.com/Ottermandias/AutoVisor/raw/master/AutoVisor.zip', json.dumps({
+                        "source": {"error": "No GitHub source candidate could be derived from plugin metadata or download links", "candidates": []}
+                    })),
+                )
+                db.commit()
+            document = sigmascope_source_followups.followups(database)
+        self.assertEqual(0, document["count"], "resolver-known GitHub origins should be rescanned automatically, not turned into source-needed issues")
 
     def test_source_followup_reconciliation_closes_only_confirmed_source_coverage(self) -> None:
         existing = [
@@ -187,6 +245,35 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertTrue(result["available"])
         self.assertNotIn("failed-candidate", hits["network.http"])
         self.assertIn("successful-candidate", hits["filesystem.write"])
+
+    def test_source_candidate_failover_skips_reachable_repository_with_wrong_plugin_identity(self) -> None:
+        calls: list[str] = []
+
+        def fake_fetch(url, _token, hits, *_args):
+            calls.append(url)
+            identity_matched = url.endswith("/correct")
+            hits["network.http"].append("correct-evidence" if identity_matched else "wrong-evidence")
+            return {
+                "available": True,
+                "repository": url,
+                "commit": "abc",
+                "error": "",
+                "dependencyIntelligence": sigmascope.empty_dependency_intelligence("source"),
+                "provenance": {"identityMatched": identity_matched, "versionMatched": identity_matched},
+            }
+
+        hits = defaultdict(list)
+        records = [
+            {"repository": "https://github.com/example/wrong", "origins": ["repo-url"], "refHints": [], "urls": []},
+            {"repository": "https://github.com/example/correct", "origins": ["artifact-install"], "refHints": [], "urls": []},
+        ]
+        with mock.patch.object(sigmascope, "_fetch_source_candidate", side_effect=fake_fetch):
+            result = sigmascope.fetch_source(records, "", hits, "Example", "Example", "1.0.0", "https://github.com/example/correct/raw/main/Plugin.zip")
+        self.assertEqual(["https://github.com/example/wrong", "https://github.com/example/correct"], calls)
+        self.assertEqual("https://github.com/example/correct", result["repository"])
+        self.assertNotIn("wrong-evidence", hits["network.http"])
+        self.assertIn("correct-evidence", hits["network.http"])
+        self.assertTrue(result["provenance"]["artifactOriginMatched"])
 
     def test_self_hosted_public_git_source_is_scanned_without_github_api(self) -> None:
         class FakeRepository:
@@ -321,18 +408,42 @@ class CatalogPythonUnitTests(unittest.TestCase):
             handler.redirect_request(request, None, 302, "Found", {}, "https://127.0.0.1/private.json")
 
     def test_source_followup_reply_persists_stable_plugin_source_override(self) -> None:
-        with mock.patch.object(process_source_submission.socket, "getaddrinfo", return_value=[(None, None, None, None, ("8.8.8.8", 443))]), mock.patch.object(process_source_submission, "github_repository_is_public", return_value=True), tempfile.TemporaryDirectory() as td:
+        validation = {
+            "ok": True, "repository": "https://github.com/example/Plugin", "commit": "abc123",
+            "identityMatched": True, "versionMatched": True, "selectedRef": "1.2.3", "error": "",
+        }
+        with mock.patch.object(process_source_submission.socket, "getaddrinfo", return_value=[(None, None, None, None, ("8.8.8.8", 443))]), mock.patch.object(process_source_submission, "github_repository_is_public", return_value=True), mock.patch.object(process_source_submission, "validate_source_repository_identity", return_value=validation), tempfile.TemporaryDirectory() as td:
             root = Path(td)
             key = "src-0123456789abcdefabcd"
             outcome = process_source_submission.process(
-                {"issue": {"title": "Source needed: Example", "body": f"<!-- omega-source-submission -->\n<!-- omega-source-followup:{key} -->\n<!-- omega-source-internal:ExamplePlugin -->"}, "comment": {"body": "https://github.com/example/Plugin"}},
+                {"issue": {
+                    "title": "Source needed: Example",
+                    "labels": [{"name": "omega-source-followup"}],
+                    "body": f"<!-- omega-source-submission -->\n<!-- omega-source-followup:{key} -->\n<!-- omega-source-internal:ExamplePlugin -->\n<!-- omega-source-version:1.2.3 -->",
+                }, "comment": {"body": "https://github.com/example/Plugin"}},
                 root / "community-sources.json",
                 root / "source-overrides.json",
             )
             document = json.loads((root / "source-overrides.json").read_text(encoding="utf-8"))
         self.assertEqual("accepted-override", outcome["status"])
         self.assertEqual("ExamplePlugin", outcome["internalName"])
+        self.assertTrue(outcome["validation"]["identityMatched"])
         self.assertEqual("https://github.com/example/Plugin", document["overrides"][key])
+
+    def test_forged_source_followup_marker_cannot_persist_override_without_managed_label(self) -> None:
+        with mock.patch.object(process_source_submission.socket, "getaddrinfo", return_value=[(None, None, None, None, ("8.8.8.8", 443))]), tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            outcome = process_source_submission.process(
+                {"issue": {
+                    "title": "Source submission: forged",
+                    "body": "<!-- omega-source-submission -->\n<!-- omega-source-followup:src-forged -->\n<!-- omega-source-internal:ExamplePlugin -->",
+                }, "comment": {"body": "https://github.com/example/Plugin"}},
+                root / "community-sources.json",
+                root / "source-overrides.json",
+            )
+        self.assertEqual("rejected", outcome["status"])
+        self.assertEqual("override", outcome["kind"])
+        self.assertFalse((root / "source-overrides.json").exists())
 
     def test_pluginmaster_fetch_is_bounded(self) -> None:
         class FakeResponse:
@@ -621,6 +732,40 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertIn("Artifact differs from stable package baseline", outlier["findings_json"])
         self.assertNotIn("artifact.cross-source-hash-mismatch", resolved["findings_json"])
         self.assertNotIn("Cross-source hash comparison", resolved["capabilities_json"])
+
+    def test_exact_artifact_mirrors_inherit_resolved_original_source_provenance(self) -> None:
+        with closing(sqlite3.connect(":memory:")) as db:
+            db.row_factory = sqlite3.Row
+            db.executescript(build_sqlite_catalog.SCHEMA_SQL)
+            sigmascope.ensure_schema(db)
+            db.execute("INSERT INTO plugins(plugin_id,internal_name,canonical_name,first_seen_utc,last_seen_utc,active) VALUES(1,'AutoVisor','AutoVisor','','',1)")
+            db.execute("INSERT INTO sources(source_id,url,name) VALUES(1,'https://original.invalid/repo.json','Original feed')")
+            db.execute("INSERT INTO sources(source_id,url,name) VALUES(2,'https://mirror.invalid/repo.json','Mirror feed')")
+            for variant_id, source_id in ((1, 1), (2, 2)):
+                db.execute("INSERT INTO plugin_variants(variant_id,plugin_id,source_id,source_entry_key,assembly_version,first_seen_utc,last_seen_utc,active) VALUES(?,?,?,?,?,?,?,1)", (variant_id, 1, source_id, f'AutoVisor-{variant_id}', '1.2.0.2', '', ''))
+            donor_report = json.dumps({
+                "source": {
+                    "available": True,
+                    "repository": "https://github.com/Ottermandias/AutoVisor",
+                    "commit": "abc123",
+                    "provenance": {"confidence": "very-high", "identityMatched": True, "versionMatched": True, "artifactOriginMatched": True},
+                }
+            }, separators=(",", ":"))
+            missing_report = json.dumps({"source": {"available": False, "error": "No source"}}, separators=(",", ":"))
+            db.execute("INSERT INTO plugin_security_scans(scan_id,plugin_id,variant_id,source_id,assembly_version,artifact_sha256,status,report_json) VALUES(1,1,1,1,'1.2.0.2',?,'complete',?)", ('a' * 64, donor_report))
+            db.execute("INSERT INTO plugin_security_scans(scan_id,plugin_id,variant_id,source_id,assembly_version,artifact_sha256,status,report_json) VALUES(2,1,2,2,'1.2.0.2',?,'complete',?)", ('a' * 64, missing_report))
+            db.execute("INSERT INTO plugin_security_current(variant_id,scan_id,assembly_version,artifact_sha256,status,source_available,source_repository,source_commit,report_json) VALUES(1,1,'1.2.0.2',?,'complete',1,?,?,?)", ('a' * 64, 'https://github.com/Ottermandias/AutoVisor', 'abc123', donor_report))
+            db.execute("INSERT INTO plugin_security_current(variant_id,scan_id,assembly_version,artifact_sha256,status,source_available,source_repository,source_commit,report_json) VALUES(2,2,'1.2.0.2',?,'complete',0,'','',?)", ('a' * 64, missing_report))
+            summary = security_hash_consensus.propagate_source_provenance_by_artifact(db)
+            row = db.execute("SELECT source_available,source_repository,source_commit,source_to_binary_verified,report_json FROM plugin_security_current WHERE variant_id=2").fetchone()
+        self.assertEqual(1, summary["variantsInheritedSource"])
+        self.assertEqual(1, row["source_available"])
+        self.assertEqual("https://github.com/Ottermandias/AutoVisor", row["source_repository"])
+        self.assertEqual("abc123", row["source_commit"])
+        self.assertEqual(0, row["source_to_binary_verified"])
+        inherited = json.loads(row["report_json"])["source"]["provenance"]
+        self.assertTrue(inherited["inheritedViaArtifact"])
+        self.assertEqual(1, inherited["inheritedFromVariantId"])
 
     def test_stable_source_classification_is_explicit_not_catalog_size_based(self) -> None:
         self.assertEqual("Dalamud", source_stability.classify_stable_source("Dalamud official", "", True).label)

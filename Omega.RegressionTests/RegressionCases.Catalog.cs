@@ -303,7 +303,10 @@ internal static partial class RegressionCases
         Contains(ui, "source-enabled-", "repository enable checkbox");
         Contains(ui, "\"Stale\"", "stale repository status");
         Contains(ui, "catalog.LoadCached(configuration.Repositories)", "deselecting a repository immediately rebuilds local catalog");
-        Contains(ui, "ImGui.BeginTable(\"omega-source-table\", 5, ImGuiTableFlags.None, new Vector2(Math.Min(Ui(860f), ImGui.GetContentRegionAvail().X), Ui(addSourceOpen ? 230f : 360f)), 0f)", "API-15 BeginTable overload includes flags and shrinks while add-source tools are open");
+        Contains(ui, "ImGuiTableFlags.ScrollY", "repository table owns its own vertical scrolling");
+        Contains(ui, "ImGui.TableSetupScrollFreeze(0, 1)", "repository table keeps its header visible while scrolling");
+        Contains(ui, "settings-tab-repositories", "Repositories is a fixed top-level Settings tab");
+        Contains(ui, "ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse", "Settings modal itself does not scroll its close control out of view");
         False(ui.Contains("[Curated (", StringComparison.Ordinal), "selected Curated tab must not use decorative brackets");
         var addTools = ui.IndexOf("DrawAddSourceTools();", StringComparison.Ordinal);
         var sourceTable = ui.IndexOf("DrawSourcesTable(shownSources, statuses);", StringComparison.Ordinal);

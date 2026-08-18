@@ -15,6 +15,7 @@ internal sealed partial class MarketplaceCatalogService
                 CatalogRevision = string.Empty;
                 SecurityRevision = string.Empty;
                 EvidenceRevision = string.Empty;
+                DatabaseSizeBytes = 0L;
                 RevisionUpdatedAtUtc = null;
                 CatalogChangelogEntryCount = 0;
                 changelogHistoryByInternalName = new Dictionary<string, IReadOnlyList<MarketplaceChangelogEntry>>(StringComparer.OrdinalIgnoreCase);
@@ -148,6 +149,7 @@ internal sealed partial class MarketplaceCatalogService
             CatalogRevision = snapshot.CatalogRevision;
             SecurityRevision = snapshot.SecurityRevision;
             EvidenceRevision = snapshot.EvidenceRevision;
+            DatabaseSizeBytes = store.DatabaseSizeBytes;
             RevisionUpdatedAtUtc = snapshot.RevisionUpdatedAtUtc;
             CatalogChangelogEntryCount = snapshot.ChangelogEntryCount;
             changelogHistoryByInternalName = snapshot.PluginChangelogHistory;

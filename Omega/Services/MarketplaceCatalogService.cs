@@ -264,6 +264,7 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
     public string CatalogRevision { get; private set; } = string.Empty;
     public string SecurityRevision { get; private set; } = string.Empty;
     public string EvidenceRevision { get; private set; } = string.Empty;
+    public long DatabaseSizeBytes { get; private set; }
     public DateTimeOffset? RevisionUpdatedAtUtc { get; private set; }
     public int CatalogChangelogEntryCount { get; private set; }
     public string LastError { get; private set; } = string.Empty;

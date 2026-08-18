@@ -5,7 +5,7 @@ internal static partial class RegressionCases
     internal static void TestPluginSecurityIntelligenceContract()
     {
         var sigmascope = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "sigmascope.py"));
-        Contains(sigmascope, "SIGMASCOPE_VERSION = \"2.5.0\"", "Sigmascope version is explicit so stale evidence can be refreshed");
+        Contains(sigmascope, "SIGMASCOPE_VERSION = \"2.6.0\"", "Sigmascope version is explicit so stale evidence can be refreshed");
         Contains(sigmascope, "Only HTTPS downloads are scanned", "Sigmascope refuses insecure artifact transports");
         Contains(sigmascope, "MAX_ARTIFACT_BYTES", "artifact downloads are bounded");
         Contains(sigmascope, "MAX_ARTIFACT_BYTES = 256 * 1024 * 1024", "artifact download ceiling accommodates large production plugin packages while remaining bounded");
@@ -17,7 +17,10 @@ internal static partial class RegressionCases
         Contains(sigmascope, "never", "Sigmascope documents its no-execution trust boundary");
         Contains(sigmascope, "compound.network-execute", "compound network/process risk is surfaced");
         Contains(sigmascope, "sourceToBinaryVerified", "source inspection does not imply source-to-binary verification");
-        Contains(sigmascope, "source_candidates(", "source scanning derives GitHub repositories from more than RepoUrl");
+        Contains(sigmascope, "source_candidate_records(", "source scanning retains repository, artifact-origin, and Git-ref provenance instead of relying only on RepoUrl");
+        Contains(sigmascope, "_source_ref_candidates", "source scanning prefers immutable exact-version refs before mutable branch heads");
+        Contains(sigmascope, "artifactIdentity", "artifact manifests can supply the plugin version used for source-ref resolution");
+        Contains(sigmascope, "propagate_source_provenance_by_artifact", "exact package mirrors can inherit a resolved original-source association without claiming reproducible build verification");
         Contains(sigmascope, "select_plugin_source_scope", "monorepo source scans are narrowed to the actual plugin build graph");
         Contains(sigmascope, "repository-context-only", "unrelated repository projects remain context instead of becoming plugin security evidence");
         Contains(sigmascope, "contextProjects", "sibling server and tooling projects remain visible as non-critical repository context");
@@ -325,6 +328,8 @@ internal static partial class RegressionCases
         Contains(projector, "adv.affected_version", "known-risk projection is scoped to the exact affected dependency version");
         Contains(projector, "security_risk_score", "the compact Definitions database carries Omega's bounded internal risk score");
         Contains(projector, "advisory_points", "known advisories explicitly add weight to the internal risk score");
+        Contains(projector, "Canonicalize only artifact-intrinsic static conclusions", "artifact canonicalization does not overwrite repository-specific dependency/advisory projections");
+        Contains(projector, "advisory_summaries.get(variant_id", "risk is recomputed per repository variant after static artifact canonicalization");
         Contains(projector, "relationshipConfidence", "Definitions project bounded IPC relationship confidence");
         Contains(projector, "relationshipReason", "Definitions project a bounded IPC relationship explanation without forensic evidence tables");
 

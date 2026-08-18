@@ -447,7 +447,7 @@ internal sealed partial class MarketplaceWindow
         {
             DrawProductActionButton("Unavailable", $"product-unavailable-{plugin.InternalName}", enabled: false, accent: false);
             ImGui.SameLine(0f, Ui(10f));
-            ImGui.TextDisabled($"No compatible API {currentApi} package is available.");
+            ImGui.TextDisabled(DescribeInstallUnavailability(plugin.InternalName, currentApi, currentDalamudVersion));
             return;
         }
 

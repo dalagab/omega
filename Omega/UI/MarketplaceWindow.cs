@@ -78,6 +78,13 @@ internal enum SourceManagerSection
     DalamudConfigured,
 }
 
+internal enum SettingsSection
+{
+    General,
+    Repositories,
+    Legal,
+}
+
 internal sealed partial class MarketplaceWindow : Window, IDisposable
 {
     private static readonly string[] PromotedInternalNames =
@@ -153,10 +160,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private bool settingsOpen;
     private bool aboutOpen;
     private bool installPopupOpen;
+    private bool installRiskPopupOpen;
     private bool updateMigrationPopupOpen;
     private bool uninstallPopupOpen;
     private bool addSourceOpen;
     private bool requestInstallPopup;
+    private bool requestInstallRiskPopup;
     private bool requestUpdateMigrationPopup;
     private bool requestUninstallPopup;
     private bool requestSettingsPopup;
@@ -176,8 +185,11 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private Vector2 expandedWindowPosition;
     private bool migrateLegacyFullscreenGeometry;
 
+    private SettingsSection settingsSection = SettingsSection.Repositories;
     private SourceManagerSection sourceSection = SourceManagerSection.Curated;
     private string sourceSearch = string.Empty;
+    private string pendingInstallRiskSourceUrl = string.Empty;
+    private bool pendingInstallRiskAcknowledgementChecked;
     private string newRepositoryName = string.Empty;
     private string newRepositoryUrl = string.Empty;
     private bool integrateNewRepositoryWithDalamud = true;
@@ -336,14 +348,20 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
 
         ImGui.SameLine(0f, Ui(12f));
         ImGui.BeginChild("omega-app-content", Vector2.Zero, false, ImGuiWindowFlags.NoScrollbar);
+        // Filters always own the top edge of a page when that page supports filtering.
+        // Page identity, Library controls, and Updates/download content sit underneath.
+        if (ShouldDrawMarketplaceFilters())
+        {
+            DrawSearchAndCategoryButtons(currentApi);
+            ImGui.Spacing();
+        }
+
         if (activeView is MarketplaceView.Library or MarketplaceView.Updates)
             DrawContentHeader(versionInfo.Version, currentApi);
 
         if (activeView == MarketplaceView.Library)
             DrawLibraryTabs(installed.Count);
 
-        if (ShouldDrawMarketplaceFilters())
-            DrawSearchAndCategoryButtons(currentApi);
         if (activeView != MarketplaceView.Spotlight)
             ImGui.Spacing();
 
@@ -354,6 +372,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
 
         OpenRequestedPopups();
         DrawInstallModal(currentApi, versionInfo.Version);
+        DrawInstallRiskReviewModal(currentApi, versionInfo.Version);
         DrawUpdateMigrationModal(currentApi, versionInfo.Version);
         DrawUninstallModal();
         DrawSettingsModal();
@@ -374,6 +393,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         {
             ImGui.OpenPopup("Choose repository###DalagabOmegaInstall");
             requestInstallPopup = false;
+        }
+
+        if (requestInstallRiskPopup)
+        {
+            ImGui.OpenPopup(InstallRiskPopupId);
+            requestInstallRiskPopup = false;
         }
 
         if (requestUpdateMigrationPopup)

@@ -93,6 +93,11 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             first = json.loads((output / "variants" / "0000" / "1.json").read_text(encoding="utf-8"))
             second = json.loads((output / "variants" / "0000" / "2.json").read_text(encoding="utf-8"))
             self.assertEqual(first["analysis"]["analysisId"], second["analysis"]["analysisId"])
+            plugins_index = json.loads((output / "indexes" / "plugins.json").read_text(encoding="utf-8"))
+            first_index = next(row for row in plugins_index["currentVariants"] if row["variantId"] == 1)
+            self.assertEqual(64, len(first_index["variantSha256"]))
+            self.assertEqual("FixturePlugin", first_index["summary"]["canonical_name"])
+            self.assertEqual("high", first_index["summary"]["highest_severity"])
             report = validate(database, output)
             self.assertTrue(report["ok"], report)
             publication = preflight(output)
@@ -110,6 +115,15 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
                     "repository": "https://example.invalid/source",
                     "commit": "abc123",
                     "error": "temporary source lookup failure",
+                    "candidates": ["https://github.com/example/Plugin"],
+                    "provenance": {
+                        "schema": "omega.plugin-source-provenance.v1",
+                        "confidence": "very-high",
+                        "selectedRef": "1.2.0.2",
+                        "identityMatched": True,
+                        "versionMatched": True,
+                        "artifactOriginMatched": True,
+                    },
                     "dependencyIntelligence": {"fingerprints": {"relevantSourceSha256": "b" * 64}},
                 },
                 "highestSeverity": "caution",
@@ -139,6 +153,9 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
                     "b" * 64,
                 )
                 self.assertEqual(report["source"]["error"], "temporary source lookup failure")
+                self.assertEqual(report["source"]["candidates"], ["https://github.com/example/Plugin"])
+                self.assertEqual(report["source"]["provenance"]["confidence"], "very-high")
+                self.assertTrue(report["source"]["provenance"]["versionMatched"])
                 self.assertEqual(report["automation"]["level"], "ui")
                 self.assertEqual(report["highestSeverity"], "caution")
                 self.assertEqual(report["counts"], {"informational": 1, "caution": 2, "high": 0, "critical": 0})

@@ -121,14 +121,19 @@ internal sealed partial class MarketplaceWindow
 
         var cardMin = ImGui.GetWindowPos();
         var cardMax = cardMin + ImGui.GetWindowSize();
+        var artworkSize = Ui(SpotlightShelfArtworkSize);
+        var artworkLayoutWidth = ImGui.GetContentRegionAvail().X;
         var artworkClicked = DrawPluginArtwork(
             plugin,
-            null,
-            Ui(SpotlightShelfArtworkSize),
-            ImGui.GetContentRegionAvail().X,
+            installedPlugin,
+            artworkSize,
+            artworkLayoutWidth,
             currentApi,
             currentDalamudVersion,
-            showOverlays: false);
+            showOverlays: false,
+            showListingRibbons: true,
+            listingPanelMin: cardMin,
+            listingPanelMax: cardMax);
 
         ImGui.Spacing();
         CenterText(Shorten(plugin.Name, 24));
@@ -137,7 +142,7 @@ internal sealed partial class MarketplaceWindow
         var clicked = ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
         if (ImGui.IsWindowHovered())
             SetReadableTooltip("Open in Discover");
-        DrawPluginPanelRibbons(plugin, installedPlugin, currentApi, currentDalamudVersion, cardMin, cardMax);
+        DrawPluginPanelUpdateState(plugin, installedPlugin, currentApi, currentDalamudVersion, cardMax);
         ImGui.EndChild();
         PopUnavailableListingStyle(availabilityStyle);
 

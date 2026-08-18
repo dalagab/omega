@@ -495,7 +495,7 @@ internal sealed partial class MarketplaceWindow
             return new(
                 false,
                 false,
-                $"Direct control is unavailable because this plugin is managed by: {names}. Open a collection below to change its state.",
+                $"Managed by collection{(named.Length == 1 ? string.Empty : "s")}: {names}. Open Library > Collections to change its state.",
                 null,
                 memberships);
         }

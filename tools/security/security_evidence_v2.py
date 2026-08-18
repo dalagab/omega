@@ -64,6 +64,8 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
     report = raw if isinstance(raw, dict) else {}
 
     source = report.get("source") if isinstance(report.get("source"), dict) else {}
+    source_provenance = source.get("provenance") if isinstance(source.get("provenance"), dict) else {}
+    source_candidates = source.get("candidates") if isinstance(source.get("candidates"), list) else []
     source_intel = source.get("dependencyIntelligence") if isinstance(source.get("dependencyIntelligence"), dict) else {}
     source_fingerprints = source_intel.get("fingerprints") if isinstance(source_intel.get("fingerprints"), dict) else {}
     package = report.get("package") if isinstance(report.get("package"), dict) else {}
@@ -126,6 +128,18 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
             "commit": _bounded_text(row.get("source_commit") or source.get("commit") or "", 512),
             "branch": _bounded_text(source.get("branch"), 512),
             "treeSha256": _bounded_text(source.get("treeSha256"), 128),
+            "candidates": [_bounded_text(item, 8192) for item in source_candidates[:16] if str(item or "")],
+            "provenance": {
+                key: source_provenance.get(key)
+                for key in (
+                    "schema", "confidence", "requestedAssemblyVersion", "selectedRef", "selectedRefKind",
+                    "manifestPath", "manifestInternalName", "manifestAssemblyVersion", "manifestRepoUrl",
+                    "identityMatched", "versionMatched", "manifestRepositoryMatched", "artifactOriginMatched",
+                    "repoUrlMatched", "originMatched", "sourceToBinaryVerified", "inheritedViaArtifact",
+                    "inheritedArtifactSha256", "inheritedFromVariantId", "distributionSource",
+                )
+                if key in source_provenance
+            },
             "error": _bounded_text(source.get("error"), 8192),
             "dependencyIntelligence": {
                 "fingerprints": {
@@ -220,6 +234,52 @@ def normalize_value(key: str, value: Any) -> Any:
             # Preserve malformed legacy evidence exactly instead of inventing data.
             return value
     return value
+
+
+def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the small identity/current projection used by the online Developer View.
+
+    The summary intentionally contains no detailed findings, calls, symbols or source text.
+    Those remain in the variant/analysis graph and are fetched lazily by developers.
+    """
+    plugin = payload.get("plugin") if isinstance(payload.get("plugin"), dict) else {}
+    variant = payload.get("variant") if isinstance(payload.get("variant"), dict) else {}
+    source = payload.get("source") if isinstance(payload.get("source"), dict) else {}
+    current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
+    report = current.get("report_json") if isinstance(current.get("report_json"), dict) else {}
+    report_source = report.get("source") if isinstance(report.get("source"), dict) else {}
+    provenance = report_source.get("provenance") if isinstance(report_source.get("provenance"), dict) else {}
+    return {
+        "plugin_id": int(payload.get("pluginId") or plugin.get("plugin_id") or variant.get("plugin_id") or 0),
+        "source_id": int(payload.get("sourceId") or source.get("source_id") or variant.get("source_id") or 0),
+        "internal_name": str(plugin.get("internal_name") or ""),
+        "canonical_name": str(plugin.get("canonical_name") or variant.get("name") or plugin.get("internal_name") or ""),
+        "name": str(variant.get("name") or plugin.get("canonical_name") or plugin.get("internal_name") or ""),
+        "author": str(variant.get("author") or ""),
+        "assembly_version": str(variant.get("assembly_version") or current.get("assembly_version") or ""),
+        "source_name": str(source.get("name") or ""),
+        "source_url": str(source.get("url") or ""),
+        "source_provider": str(source.get("provider") or ""),
+        "scan_id": int(current.get("scan_id") or 0),
+        "scanner_version": str(current.get("scanner_version") or ""),
+        "scan_status": str(current.get("status") or "unscanned"),
+        "scanned_at_utc": str(current.get("scanned_at_utc") or ""),
+        "highest_severity": str(current.get("highest_severity") or "none"),
+        "informational_count": int(current.get("informational_count") or 0),
+        "caution_count": int(current.get("caution_count") or 0),
+        "high_count": int(current.get("high_count") or 0),
+        "critical_count": int(current.get("critical_count") or 0),
+        "automation_level": str(current.get("automation_level") or "none"),
+        "artifact_sha256": str(current.get("artifact_sha256") or "").strip().lower(),
+        "source_available": int(current.get("source_available") or 0),
+        "source_repository": str(current.get("source_repository") or ""),
+        "source_commit": str(current.get("source_commit") or ""),
+        "source_provenance_confidence": str(provenance.get("confidence") or ""),
+        "source_identity_matched": bool(provenance.get("identityMatched")),
+        "source_version_matched": bool(provenance.get("versionMatched")),
+        "source_artifact_origin_matched": bool(provenance.get("artifactOriginMatched")),
+        "source_selected_ref": str(provenance.get("selectedRef") or ""),
+    }
 
 
 def normalize_row(row: sqlite3.Row | dict[str, Any], *, exclude: Iterable[str] = ()) -> dict[str, Any]:
@@ -743,6 +803,12 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
             payload = read_json_file(root, variant_path)
             if int(payload.get("variantId") or 0) != variant_id:
                 errors.append(f"variant {variant_id} identity mismatch in {variant_path}")
+            declared_variant_sha = str(entry.get("variantSha256") or "").strip().lower()
+            if declared_variant_sha and declared_variant_sha != sha256_file(root / variant_path):
+                errors.append(f"variant {variant_id} plugins index descriptor SHA mismatch")
+            declared_summary = entry.get("summary")
+            if declared_summary is not None and declared_summary != variant_index_summary(payload):
+                errors.append(f"variant {variant_id} plugins index summary mismatch")
             current = payload.get("current") or {}
             analysis = payload.get("analysis") or {}
             analysis_id = str(analysis.get("analysisId") or "")

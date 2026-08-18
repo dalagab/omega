@@ -476,15 +476,24 @@ def create_marketplace_security_current(db: sqlite3.Connection) -> None:
             (encoded, total_count, variant_id),
         )
     advisory_summaries = build_advisory_risk_summaries(db, "marketplace_security_current")
+    for variant_id, (advisory_count, advisory_severity, _advisory_points) in advisory_summaries.items():
+        db.execute(
+            "UPDATE marketplace_security_current SET known_advisory_count=?,known_advisory_highest_severity=? WHERE variant_id=?",
+            (advisory_count, advisory_severity, variant_id),
+        )
+
+    # Canonicalize only artifact-intrinsic static conclusions. Dependency/advisory
+    # projections can legitimately differ until all mirrors have inherited the same
+    # resolved original-source evidence; copying one mirror's derived zero counters
+    # over another can erase a known advisory. Recompute risk only after the static
+    # conclusion has been canonicalized so its score combines canonical static counts
+    # with each variant's independently reproduced advisory evidence.
+    canonicalize_marketplace_security_by_artifact(db)
     for row in db.execute("SELECT variant_id,informational_count,caution_count,high_count,critical_count FROM marketplace_security_current").fetchall():
         variant_id = int(row[0])
-        advisory_count, advisory_severity, advisory_points = advisory_summaries.get(variant_id, (0, "none", 0))
+        _advisory_count, _advisory_severity, advisory_points = advisory_summaries.get(variant_id, (0, "none", 0))
         risk_score = _security_risk_score(int(row[1] or 0), int(row[2] or 0), int(row[3] or 0), int(row[4] or 0), advisory_points)
-        db.execute(
-            "UPDATE marketplace_security_current SET known_advisory_count=?,known_advisory_highest_severity=?,risk_score=? WHERE variant_id=?",
-            (advisory_count, advisory_severity, risk_score, variant_id),
-        )
-    canonicalize_marketplace_security_by_artifact(db)
+        db.execute("UPDATE marketplace_security_current SET risk_score=? WHERE variant_id=?", (risk_score, variant_id))
     validate_artifact_security_consistency(db)
 
 
@@ -699,12 +708,9 @@ def canonicalize_marketplace_security_by_artifact(db: sqlite3.Connection) -> dic
         groups.setdefault(key, []).append(row)
 
     fields = (
-        "scan_id", "scanner_version", "status", "scanned_at_utc", "highest_severity",
+        "scanner_version", "status", "highest_severity",
         "informational_count", "caution_count", "high_count", "critical_count", "capabilities_json",
-        "automation_level", "automation_capabilities_json", "findings_json", "dependencies_json",
-        "dependency_total_count", "known_advisory_count", "known_advisory_highest_severity", "risk_score",
-        "source_available", "source_repository", "source_commit",
-        "source_to_binary_verified", "error",
+        "automation_level", "automation_capabilities_json", "findings_json",
     )
     updated = 0
     mirrored_groups = 0
@@ -749,8 +755,7 @@ def validate_artifact_security_consistency(db: sqlite3.Connection) -> None:
                    m.status || '|' || m.highest_severity || '|' || m.informational_count || '|' ||
                    m.caution_count || '|' || m.high_count || '|' || m.critical_count || '|' ||
                    m.capabilities_json || '|' || m.automation_level || '|' || m.automation_capabilities_json || '|' ||
-                   m.findings_json || '|' || m.dependencies_json || '|' || m.dependency_total_count || '|' ||
-                   m.known_advisory_count || '|' || m.known_advisory_highest_severity || '|' || m.risk_score
+                   m.findings_json
                )) AS signatures
           FROM marketplace_security_current m
           JOIN plugin_variants v ON v.variant_id=m.variant_id

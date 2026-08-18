@@ -30,7 +30,6 @@ jobs:
       issues: write
     outputs:
       status: ${{ steps.outcome.outputs.status }}
-      trusted: ${{ steps.trust.outputs.trusted }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -39,26 +38,6 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - id: trust
-        name: Classify whether this event may persist source metadata
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          ISSUE_ASSOCIATION: ${{ github.event.issue.author_association || '' }}
-          COMMENT_ASSOCIATION: ${{ github.event.comment.author_association || '' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          trusted=false
-          association="$ISSUE_ASSOCIATION"
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            trusted=true
-          elif [ "$EVENT_NAME" = "issue_comment" ]; then
-            association="$COMMENT_ASSOCIATION"
-          fi
-          case "$association" in
-            OWNER|MEMBER|COLLABORATOR) trusted=true ;;
-          esac
-          printf 'trusted=%s\n' "$trusted" >> "$GITHUB_OUTPUT"
       - name: Validate submitted source data
         env:
           SUBMITTED_SOURCE_URL: ${{ inputs.source_url || '' }}
@@ -77,21 +56,6 @@ jobs:
           set -euo pipefail
           status="$(jq -r .status source-submission-result.json)"
           printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
-      - name: Comment when validated metadata needs maintainer approval
-        if: ${{ github.event_name != 'workflow_dispatch' && steps.trust.outputs.trusted != 'true' && (steps.outcome.outputs.status == 'accepted' || steps.outcome.outputs.status == 'accepted-override') }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          status="$(jq -r .status source-submission-result.json)"
-          if [ "$status" = "accepted-override" ]; then
-            printf 'Omega validated this public source repository, but community replies cannot modify security source mappings directly. A repository maintainer must repeat the repository URL in a reply to approve and persist it.\n' > comment.md
-          else
-            printf 'Omega validated this PluginMaster source. A repository maintainer must reply on this issue to approve and persist the source before the catalog pipeline is queued.\n' > comment.md
-          fi
-          gh issue comment "$ISSUE_NUMBER" --body-file comment.md
       - name: Comment when no repository change will be made
         if: ${{ github.event_name != 'workflow_dispatch' && steps.outcome.outputs.status != 'accepted' && steps.outcome.outputs.status != 'accepted-override' }}
         env:
@@ -119,7 +83,7 @@ jobs:
 
   persist:
     needs: validate
-    if: ${{ needs.validate.outputs.trusted == 'true' && (needs.validate.outputs.status == 'accepted' || needs.validate.outputs.status == 'accepted-override') }}
+    if: ${{ needs.validate.outputs.status == 'accepted' || needs.validate.outputs.status == 'accepted-override' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     permissions:
@@ -187,10 +151,11 @@ jobs:
           set -euo pipefail
           status="$(jq -r .status source-submission-result.json)"
           if [ "$status" = "accepted" ]; then
-            printf 'Omega accepted this PluginMaster source. The catalog builder and normal security pipeline have been queued.\n' > comment.md
+            printf 'Omega validated and scraped this PluginMaster source, persisted it disabled-by-default, and queued the catalog builder. The source will now be part of normal recurring catalog scans.\n' > comment.md
+            gh issue close "$ISSUE_NUMBER" --comment "$(cat comment.md)"
           elif [ "$status" = "accepted-override" ]; then
-            printf 'Omega accepted this public source-repository override and queued a targeted security rescan.\n' > comment.md
+            printf 'Omega validated this public source repository against the plugin identity, persisted the source-repository override, and queued a targeted security rescan. This issue will close automatically only after Sigmascope successfully inspects that source.\n' > comment.md
+            gh issue comment "$ISSUE_NUMBER" --body-file comment.md
           else
             exit 0
           fi
-          gh issue comment "$ISSUE_NUMBER" --body-file comment.md

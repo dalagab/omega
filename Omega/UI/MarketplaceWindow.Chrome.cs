@@ -261,6 +261,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.035f, 0.09f, 0.18f, 0.76f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.12f, 0.42f, 0.78f, 0.78f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Ui(4f));
         ImGui.BeginChild("omega-application-update-banner", new Vector2(0f, Ui(72f)), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         ImGui.TextUnformatted($"Omega {selfUpdates.AvailableDisplayVersion} is available");
@@ -269,6 +270,7 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.Button("Open Dalamud updates"))
             Plugin.PluginInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.UpdateablePlugins, "Omega");
         ImGui.EndChild();
+        ImGui.PopStyleVar();
         ImGui.PopStyleColor(2);
         ImGui.Spacing();
     }

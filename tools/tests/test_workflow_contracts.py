@@ -98,6 +98,11 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("security-evidence-latest", text)
         self.assertNotIn("omega-security-evidence.sqlite.zip", text)
         self.assertNotIn("omega-security-catalog", text)
+        self.assertLess(
+            text.index("Reconcile actionable source follow-up issues"),
+            text.index("Reproduce security conclusions with independent developer audit"),
+            "resolved source issues must close even when a later independent audit blocks publication",
+        )
 
 
 
@@ -128,15 +133,14 @@ class WorkflowContractTests(unittest.TestCase):
             "sources/source-overrides.json",
             "persist-credentials: false",
             "needs: validate",
-            "trusted: ${{ steps.trust.outputs.trusted }}",
-            "OWNER|MEMBER|COLLABORATOR",
-            "needs.validate.outputs.trusted == 'true'",
-            "maintainer approval",
+            "needs.validate.outputs.status == 'accepted'",
             "contents: write",
             "actions: write",
             "gh workflow run catalog-builder.yml",
             "gh workflow run sigmascope.yml",
             'internal_names="$internal"',
+            'gh issue close "$ISSUE_NUMBER"',
+            "persisted it disabled-by-default",
         )
         validate_start = text.index("  validate:")
         persist_start = text.index("\n  persist:\n")
@@ -145,7 +149,8 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("contents: read", validate_block)
         self.assertNotIn("contents: write", validate_block)
         self.assertIn("contents: write", persist_block)
-        self.assertIn("needs.validate.outputs.trusted == 'true'", persist_block)
+        self.assertIn("needs.validate.outputs.status == 'accepted'", persist_block)
+        self.assertIn("needs.validate.outputs.status == 'accepted' || needs.validate.outputs.status == 'accepted-override'", persist_block)
         self.assertIn("Revalidate and materialize the accepted source change", persist_block)
 
     def test_catalog_builder_ingests_community_source_metadata_explicitly(self) -> None:

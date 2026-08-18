@@ -40,6 +40,21 @@ internal sealed class SqliteCatalogStore
 
     public bool Exists => File.Exists(DatabasePath);
 
+    public long DatabaseSizeBytes
+    {
+        get
+        {
+            try
+            {
+                return Exists ? new FileInfo(DatabasePath).Length : 0L;
+            }
+            catch
+            {
+                return 0L;
+            }
+        }
+    }
+
     public SqliteCatalogSnapshot ReadSnapshot()
     {
         lock (sync)
