@@ -82,6 +82,9 @@ def build(
     definitions_index = json.loads((definitions_root / "index.json").read_text(encoding="utf-8"))
     evidence_index = json.loads((evidence_root / "index.json").read_text(encoding="utf-8"))
     evidence_revisions = evidence_index.get("revisions") or {}
+    catalog_identity_epoch = str(catalog_index.get("identityEpoch") or "")
+    evidence_identity_epoch = str(evidence_revisions.get("catalogIdentityEpoch") or "")
+    evidence_compatible = bool(not catalog_identity_epoch or evidence_identity_epoch == catalog_identity_epoch)
 
     base_db = output / "omega-catalog-base.sqlite"
     work_db = output / "omega-marketplace-work.sqlite"
@@ -91,7 +94,10 @@ def build(
         base_db,
         definitions_revision=str(definitions_index.get("definitionsRevision") or ""),
     )
-    materialized = materialize_current_state(base_db, evidence_root, work_db)
+    materialized = materialize_current_state(base_db, evidence_root, work_db, include_evidence=evidence_compatible)
+    materialized["catalogIdentityEpoch"] = catalog_identity_epoch
+    materialized["availableEvidenceIdentityEpoch"] = evidence_identity_epoch
+    materialized["evidenceCompatible"] = evidence_compatible
 
     # The daily database must represent today's frozen Definitions even when the latest
     # Security Evidence v2 snapshot was produced against yesterday's advisory payload.
@@ -105,18 +111,25 @@ def build(
         db.row_factory = sqlite3.Row
         definitions_projection = sigmascope.refresh_current_security_projection(db, advisories, advisory_coverage)
         compiled_security_revision = semantic_security_revision(db)
-        source_security_revision = str(evidence_revisions.get("securityRevision") or "")
+        available_source_security_revision = str(evidence_revisions.get("securityRevision") or "")
+        available_evidence_revision = str(evidence_revisions.get("evidenceRevision") or "")
+        source_security_revision = available_source_security_revision if evidence_compatible else ""
+        evidence_revision = available_evidence_revision if evidence_compatible else ""
         meta = {
             "catalog_revision": str(catalog_index.get("catalogRevision") or ""),
             "catalog_json_revision": str(catalog_index.get("catalogRevision") or ""),
             "catalog_base_revision": str(catalog_index.get("catalogBaseRevision") or ""),
+            "catalog_identity_epoch": catalog_identity_epoch,
             "definitions_revision": str(definitions_index.get("definitionsRevision") or ""),
             "definitions_source_commit": str(definitions_index.get("sourceCommit") or ""),
             "definitions_rule_set_revision": str(definitions_index.get("ruleSetRevision") or ""),
             "security_revision": compiled_security_revision,
             "source_security_revision": source_security_revision,
-            "evidence_revision": str(evidence_revisions.get("evidenceRevision") or ""),
-            "security_evidence_revision": str(evidence_revisions.get("evidenceRevision") or ""),
+            "evidence_revision": evidence_revision,
+            "security_evidence_revision": evidence_revision,
+            "available_evidence_revision": available_evidence_revision,
+            "available_evidence_identity_epoch": evidence_identity_epoch,
+            "evidence_compatible": "1" if evidence_compatible else "0",
             "marketplace_compiled_at_utc": utc_now(),
         }
         for key, value in meta.items():
@@ -148,11 +161,13 @@ def build(
         "detailedSecurityEvidenceIncluded": False,
         "catalogRevision": str(catalog_index.get("catalogRevision") or ""),
         "catalogBaseRevision": str(catalog_index.get("catalogBaseRevision") or ""),
+        "catalogIdentityEpoch": catalog_identity_epoch,
         "definitionsRevision": str(definitions_index.get("definitionsRevision") or ""),
         "definitionsSourceCommit": str(definitions_index.get("sourceCommit") or ""),
         "securityRevision": compiled_security_revision,
         "sourceSecurityRevision": source_security_revision,
-        "evidenceRevision": str(evidence_revisions.get("evidenceRevision") or ""),
+        "evidenceRevision": evidence_revision,
+        "evidenceCompatible": evidence_compatible,
         "evidenceIndexUrl": evidence_index_url,
         "pluginCount": logical_plugins,
         "variantCount": active_variants,
@@ -169,6 +184,10 @@ def build(
             "securityRevision": descriptor["securityRevision"],
             "sourceSecurityRevision": descriptor["sourceSecurityRevision"],
             "evidenceRevision": descriptor["evidenceRevision"],
+            "catalogIdentityEpoch": catalog_identity_epoch,
+            "availableEvidenceRevision": available_evidence_revision,
+            "availableEvidenceIdentityEpoch": evidence_identity_epoch,
+            "evidenceCompatible": evidence_compatible,
         },
         "output": {
             "database": marketplace_db.name,

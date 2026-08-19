@@ -242,7 +242,7 @@ def _current_variant_entries(evidence: Path) -> list[dict[str, Any]]:
     return [item for item in (plugins.get("currentVariants") or []) if isinstance(item, dict)]
 
 
-def materialize_current_state(base_database: Path, evidence: Path, work_database: Path) -> dict[str, Any]:
+def materialize_current_state(base_database: Path, evidence: Path, work_database: Path, *, include_evidence: bool = True) -> dict[str, Any]:
     """Build the bounded mutable state DB used by Sigmascope/projector/audit.
 
     Large symbols/calls/reachability/import collections are intentionally *not*
@@ -261,7 +261,7 @@ def materialize_current_state(base_database: Path, evidence: Path, work_database
     temp.unlink(missing_ok=True)
     shutil.copy2(base_database, temp)
 
-    current_entries = _current_variant_entries(evidence)
+    current_entries = _current_variant_entries(evidence) if include_evidence else []
     loaded_variants = 0
     loaded_datasets: dict[str, int] = {name: 0 for name in SMALL_ANALYSIS_DATASETS}
     with closing(sqlite3.connect(temp)) as db:
@@ -314,6 +314,7 @@ def materialize_current_state(base_database: Path, evidence: Path, work_database
             raise RuntimeError(f"materialized v2 working database failed integrity check: {integrity}")
     os.replace(temp, work_database)
     return {
+        "evidenceInherited": bool(include_evidence),
         "currentVariantsAvailable": len(current_entries),
         "currentVariantsMaterialized": loaded_variants,
         "datasets": loaded_datasets,
@@ -821,6 +822,7 @@ def rebuild_candidate_indexes(
             "engineVersion": sigmascope.SIGMASCOPE_VERSION,
             "scannerVersion": sigmascope.SCANNER_VERSION,
             "catalogDataRevision": scan_context.get("catalogDataRevision", ""),
+            "catalogIdentityEpoch": scan_context.get("catalogIdentityEpoch", ""),
             "definitionsRevision": scan_context.get("definitionsRevision", ""),
             "previousIndexSha256": scan_context.get("previousIndexSha256", ""),
             "scan": scan_context,
@@ -830,6 +832,7 @@ def rebuild_candidate_indexes(
             "baseRevision": base_revision,
             "catalogRevision": catalog_revision,
             "catalogDataRevision": scan_context.get("catalogDataRevision", ""),
+            "catalogIdentityEpoch": scan_context.get("catalogIdentityEpoch", ""),
             "definitionsRevision": scan_context.get("definitionsRevision", ""),
             "securityRevision": security_revision,
             "evidenceRevision": evidence_revision,
@@ -991,13 +994,32 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     previous_index = read_json_file(current_evidence, "index.json")
     previous_index_sha = sha256_file(current_evidence / "index.json")
 
-    work_database = work_dir / "omega-security-v2-working.sqlite"
-    materialized = materialize_current_state(base_database, current_evidence, work_database)
-    before_current = _current_rows(work_database)
-
     queue_seed_arg = getattr(args, "queue_seed", None)
     queue_seed_path = queue_seed_arg.resolve() if queue_seed_arg else None
     queue_enabled = queue_seed_path is not None
+    preloaded_queue_seed: dict[str, Any] = {}
+    if queue_enabled:
+        if not queue_seed_path.is_file():
+            raise RuntimeError(f"frozen scan queue seed is missing: {queue_seed_path}")
+        preloaded_queue_seed = json.loads(queue_seed_path.read_text(encoding="utf-8"))
+        if preloaded_queue_seed.get("schema") != scan_queue.SEED_SCHEMA:
+            raise RuntimeError("frozen scan queue seed has an unsupported schema")
+
+    queue_identity_epoch = str(preloaded_queue_seed.get("catalogIdentityEpoch") or "")
+    previous_identity_epoch = str((previous_index.get("revisions") or {}).get("catalogIdentityEpoch") or "")
+    baseline_security_rebuild = bool(preloaded_queue_seed.get("baselineSecurityRebuild")) or bool(
+        queue_identity_epoch and previous_identity_epoch != queue_identity_epoch
+    )
+
+    work_database = work_dir / "omega-security-v2-working.sqlite"
+    materialized = materialize_current_state(
+        base_database, current_evidence, work_database, include_evidence=not baseline_security_rebuild
+    )
+    materialized["catalogIdentityEpoch"] = queue_identity_epoch
+    materialized["previousEvidenceIdentityEpoch"] = previous_identity_epoch
+    materialized["baselineSecurityRebuild"] = baseline_security_rebuild
+    before_current = _current_rows(work_database)
+
     queue_state: dict[str, Any] | None = None
     leased_queue_item: dict[str, Any] | None = None
     queue_state_before = b""
@@ -1005,11 +1027,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     selected_internal_names = str(args.internal_names or "")
     scan_provenance: dict[str, Any] = {}
     if queue_enabled:
-        if not queue_seed_path.is_file():
-            raise RuntimeError(f"frozen scan queue seed is missing: {queue_seed_path}")
-        queue_seed = json.loads(queue_seed_path.read_text(encoding="utf-8"))
-        if queue_seed.get("schema") != scan_queue.SEED_SCHEMA:
-            raise RuntimeError("frozen scan queue seed has an unsupported schema")
+        queue_seed = preloaded_queue_seed
         for key, expected in (
             ("catalogRevision", str(getattr(args, "catalog_revision", "") or "")),
             ("definitionsRevision", str(getattr(args, "definitions_revision", "") or "")),
@@ -1018,7 +1036,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         ):
             if expected and str(queue_seed.get(key) or "") != expected:
                 raise RuntimeError(f"frozen scan queue {key} mismatch: {queue_seed.get(key)!r} != {expected!r}")
-        previous_queue_state = scan_queue.load_state(current_evidence / "scanner-queue.json")
+        previous_queue_state = {} if baseline_security_rebuild else scan_queue.load_state(current_evidence / "scanner-queue.json")
         queue_state = scan_queue.sync_state(queue_seed, previous_queue_state)
         with closing(sqlite3.connect(work_database)) as queue_db:
             queue_db.row_factory = sqlite3.Row
@@ -1036,6 +1054,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             scan_provenance = {
                 "schema": "omega.sigmascope.scan-provenance.v1",
                 "catalogRevision": str(queue_seed.get("catalogRevision") or ""),
+                "catalogIdentityEpoch": str(queue_seed.get("catalogIdentityEpoch") or ""),
                 "definitionsRevision": str(queue_seed.get("definitionsRevision") or ""),
                 "definitionsSourceCommit": str(getattr(args, "definitions_source_commit", "") or ""),
                 "ruleSetRevision": str(queue_seed.get("ruleSetRevision") or ""),
@@ -1046,6 +1065,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 "reasons": list(leased_queue_item.get("reasons") or []),
                 "attemptId": str(latest_attempt.get("attemptId") or ""),
                 "attemptNumber": int(latest_attempt.get("attemptNumber") or 0),
+                "baselineSecurityRebuild": baseline_security_rebuild,
             }
         queue_state_before = scan_queue.canonical(previous_queue_state)
 
@@ -1197,6 +1217,8 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "maxScans": args.max_scans,
         "rescanAfterHours": args.rescan_after_hours,
         "catalogDataRevision": str(getattr(args, "catalog_revision", "") or ""),
+        "catalogIdentityEpoch": queue_identity_epoch,
+        "baselineSecurityRebuild": baseline_security_rebuild,
         "definitionsRevision": str(getattr(args, "definitions_revision", "") or ""),
         "ruleSetRevision": str(getattr(args, "rule_set_revision", "") or ""),
         "queueSeedRevision": str((queue_state or {}).get("queueSeedRevision") or ""),

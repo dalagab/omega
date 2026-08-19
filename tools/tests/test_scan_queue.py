@@ -36,7 +36,7 @@ class ScanQueueTests(unittest.TestCase):
         }), encoding="utf-8")
         return target
 
-    def _evidence(self, root: Path, current: dict | None = None, *, variant_id: int = 0) -> Path:
+    def _evidence(self, root: Path, current: dict | None = None, *, variant_id: int = 0, identity_epoch: str | None = None) -> Path:
         target = root / "evidence"
         (target / "indexes").mkdir(parents=True, exist_ok=True)
         entries = []
@@ -46,8 +46,11 @@ class ScanQueueTests(unittest.TestCase):
             (target / variant_path).write_text(json.dumps({"variantId": variant_id, "current": current}), encoding="utf-8")
             entries.append({"variantId": variant_id, "variantPath": variant_path})
         (target / "indexes" / "plugins.json").write_text(json.dumps({"currentVariants": entries}), encoding="utf-8")
+        if identity_epoch is None:
+            identity_epoch = catalog_json_store.IDENTITY_EPOCH
         (target / "index.json").write_text(json.dumps({
             "schema": "omega.security-evidence.v2",
+            "revisions": {"catalogIdentityEpoch": identity_epoch},
             "indexes": {"plugins": {"path": "indexes/plugins.json"}},
         }), encoding="utf-8")
         return target
@@ -68,6 +71,28 @@ class ScanQueueTests(unittest.TestCase):
             self.assertGreater(seed["counts"]["queued"], 0)
             self.assertTrue(all("new_variant" in item["reasons"] for item in seed["items"]))
             self.assertTrue(all(item["targetFingerprint"].startswith("scan-target-v1-") for item in seed["items"]))
+
+
+    def test_identity_epoch_mismatch_creates_clean_baseline_queue(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-queue-baseline-") as td:
+            root = Path(td)
+            catalog, variant = self._catalog(root)
+            current = {
+                "scan_id": 9, "status": "complete", "scanned_at_utc": "2026-08-19T09:00:00Z",
+                "artifact_url": "https://wrong.invalid/old-id-collision.zip",
+                "assembly_version": "99.0.0", "artifact_sha256": "a" * 64,
+                "source_available": 1, "report_json": {"scanProvenance": {"ruleSetRevision": "rules-v1-fixture"}},
+            }
+            evidence = self._evidence(root, current, variant_id=variant["variantId"], identity_epoch="legacy-sqlite-identities")
+            seed = scan_queue.build_seed(
+                catalog_root=catalog, definitions_root=self._definitions(root), evidence_root=evidence,
+                output=root / "queue.json", now=NOW,
+            )
+            self.assertTrue(seed["baselineSecurityRebuild"])
+            self.assertEqual("legacy-sqlite-identities", seed["previousEvidenceIdentityEpoch"])
+            self.assertEqual(seed["counts"]["queued"], seed["counts"]["baseline_scan"])
+            self.assertTrue(all(item["primaryReason"] == "baseline_scan" for item in seed["items"]))
+            self.assertTrue(all("artifact_changed" not in item["reasons"] for item in seed["items"]))
 
     def test_osv_only_definitions_change_does_not_force_artifact_rescan_but_rule_change_does(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-queue-rules-") as td:

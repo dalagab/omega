@@ -29,6 +29,7 @@ from catalog_revisions import read_meta, write_meta  # noqa: E402
 
 SCHEMA = "omega.catalog-json.v1"
 FORMAT_VERSION = 1
+IDENTITY_EPOCH = "omega-catalog-identity-v1"
 MAX_FILE_BYTES = 16 * 1024 * 1024
 BASE_TABLES = (
     "sources",
@@ -223,6 +224,7 @@ def export_snapshot(database: Path, output: Path, *, source_commit: str = "") ->
             "schemaName": build_sqlite_catalog.SCHEMA_NAME,
             "catalogBaseRevision": base_revision,
             "catalogRevision": catalog_revision,
+            "identityEpoch": IDENTITY_EPOCH,
             "sourceCommit": source_commit,
         }
         meta_file = write_json(output / "meta.json", {"schema": "omega.catalog-json.meta.v1", **meta})
@@ -241,6 +243,7 @@ def export_snapshot(database: Path, output: Path, *, source_commit: str = "") ->
         "formatVersion": FORMAT_VERSION,
         "catalogRevision": catalog_revision,
         "catalogBaseRevision": base_revision,
+        "identityEpoch": IDENTITY_EPOCH,
         "sourceCommit": source_commit,
         "counts": counts,
         "files": [{"path": row["path"], "sha256": row["sha256"]} for row in sorted(files, key=lambda item: item["path"])],
@@ -275,6 +278,8 @@ def validate_snapshot(root: Path) -> dict[str, Any]:
         return {"schema": "omega.catalog-json.validation.v1", "ok": False, "errors": [f"index unreadable: {type(exc).__name__}: {exc}"]}
     if index.get("schema") != SCHEMA:
         errors.append(f"unsupported schema: {index.get('schema')!r}")
+    if str(index.get("identityEpoch") or "") != IDENTITY_EPOCH:
+        errors.append(f"unsupported catalog identity epoch: {index.get('identityEpoch')!r}")
     seen: set[str] = set()
     for item in index.get("files") or []:
         if not isinstance(item, dict):
@@ -381,6 +386,7 @@ def materialize_snapshot(root: Path, database: Path, *, definitions_revision: st
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('schema_name',?)", (build_sqlite_catalog.SCHEMA_NAME,))
         write_meta(db, "catalog_base_revision", str(meta.get("catalogBaseRevision") or index.get("catalogBaseRevision") or ""))
         write_meta(db, "catalog_json_revision", str(index.get("catalogRevision") or ""))
+        write_meta(db, "catalog_identity_epoch", str(index.get("identityEpoch") or ""))
         write_meta(db, "catalog_source_commit", str(index.get("sourceCommit") or ""))
         if definitions_revision:
             write_meta(db, "definitions_revision", definitions_revision)

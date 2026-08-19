@@ -27,6 +27,7 @@ class CatalogJsonSnapshotTests(unittest.TestCase):
             validation = catalog_json_store.validate_snapshot(snapshot)
             self.assertTrue(validation["ok"], validation)
             self.assertEqual("fixture-commit", index["sourceCommit"])
+            self.assertEqual(catalog_json_store.IDENTITY_EPOCH, index["identityEpoch"])
 
             materialized = root / "materialized.sqlite"
             report = catalog_json_store.materialize_snapshot(snapshot, materialized, definitions_revision="defs-fixture")
@@ -41,6 +42,7 @@ class CatalogJsonSnapshotTests(unittest.TestCase):
                     target_rows = target.execute(f'SELECT * FROM "{table}"').fetchall()
                     self.assertEqual(sorted(source_rows, key=repr), sorted(target_rows, key=repr), table)
                 self.assertEqual("defs-fixture", target.execute("SELECT value FROM catalog_meta WHERE key='definitions_revision'").fetchone()[0])
+                self.assertEqual(catalog_json_store.IDENTITY_EPOCH, target.execute("SELECT value FROM catalog_meta WHERE key='catalog_identity_epoch'").fetchone()[0])
 
             plugin_index = json.loads((snapshot / "plugins" / "index.json").read_text(encoding="utf-8"))
             active_variants = sum(int(row.get("activeVariantCount") or 0) for row in plugin_index["plugins"] if row.get("active"))

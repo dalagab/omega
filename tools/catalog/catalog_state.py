@@ -5,6 +5,7 @@ The branch carries two immutable inputs for a scanner day:
   catalog/      canonical marketplace JSON
   definitions/  frozen scanner definitions and advisory data
   scan-queue.json immutable queue seed for the daily scanner cycle
+  source-inventory.json validated discovery/canonical source coverage report
 
 The dedicated branch is a bounded atomic current snapshot, mirroring the publication
 style of Security Evidence v2. Semantic revision IDs name the frozen inputs without
@@ -42,7 +43,7 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def assemble(*, catalog: Path, definitions: Path, output: Path, queue_seed: Path | None = None) -> dict[str, Any]:
+def assemble(*, catalog: Path, definitions: Path, output: Path, queue_seed: Path | None = None, source_inventory: Path | None = None) -> dict[str, Any]:
     catalog = catalog.resolve()
     definitions = definitions.resolve()
     output = output.resolve()
@@ -66,6 +67,16 @@ def assemble(*, catalog: Path, definitions: Path, output: Path, queue_seed: Path
             raise RuntimeError("scan queue seed has an unsupported schema")
         shutil.copy2(queue_seed, output / "scan-queue.json")
         queue_seed_sha = sha256_file(output / "scan-queue.json")
+
+    source_inventory_doc: dict[str, Any] = {}
+    source_inventory_sha = ""
+    if source_inventory is not None:
+        source_inventory = source_inventory.resolve()
+        source_inventory_doc = json.loads(source_inventory.read_text(encoding="utf-8"))
+        if source_inventory_doc.get("schema") != "omega.catalog-source-inventory.validation.v1" or not source_inventory_doc.get("ok"):
+            raise RuntimeError("source inventory report is missing, invalid, or failed")
+        shutil.copy2(source_inventory, output / "source-inventory.json")
+        source_inventory_sha = sha256_file(output / "source-inventory.json")
     catalog_sha = sha256_file(output / "catalog" / "index.json")
     definitions_sha = sha256_file(output / "definitions" / "index.json")
     pair = f"{catalog_index.get('catalogRevision','')}\n{definitions_index.get('definitionsRevision','')}\n{queue_seed_doc.get('queueSeedRevision','')}\n"
@@ -76,6 +87,7 @@ def assemble(*, catalog: Path, definitions: Path, output: Path, queue_seed: Path
         "stateRevision": state_revision,
         "catalog": {
             "revision": str(catalog_index.get("catalogRevision") or ""),
+            "identityEpoch": str(catalog_index.get("identityEpoch") or ""),
             "path": "catalog/index.json",
             "sha256": catalog_sha,
             "counts": catalog_index.get("counts") or {},
@@ -96,6 +108,15 @@ def assemble(*, catalog: Path, definitions: Path, output: Path, queue_seed: Path
             "queued": int((queue_seed_doc.get("counts") or {}).get("queued") or 0),
             "ruleSetRevision": str(queue_seed_doc.get("ruleSetRevision") or ""),
             "definitionsSourceCommit": str(queue_seed_doc.get("definitionsSourceCommit") or ""),
+            "catalogIdentityEpoch": str(queue_seed_doc.get("catalogIdentityEpoch") or ""),
+            "baselineSecurityRebuild": bool(queue_seed_doc.get("baselineSecurityRebuild")),
+        }
+    if source_inventory_doc:
+        root["sourceInventory"] = {
+            "path": "source-inventory.json",
+            "sha256": source_inventory_sha,
+            "counts": source_inventory_doc.get("counts") or {},
+            "coverage": source_inventory_doc.get("coverage") or {},
         }
     (output / "index.json").write_text(json.dumps(root, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     return root
@@ -110,8 +131,8 @@ def validate(root: Path) -> dict[str, Any]:
         return {"schema": "omega.catalog-state.validation.v1", "ok": False, "errors": [str(exc)]}
     if index.get("schema") != SCHEMA:
         errors.append(f"unsupported schema: {index.get('schema')!r}")
-    for key in ("catalog", "definitions", "scanQueue"):
-        if key == "scanQueue" and key not in index:
+    for key in ("catalog", "definitions", "scanQueue", "sourceInventory"):
+        if key in ("scanQueue", "sourceInventory") and key not in index:
             continue
         item = index.get(key) or {}
         path = root / str(item.get("path") or "")
@@ -138,6 +159,8 @@ def validate(root: Path) -> dict[str, Any]:
                 errors.append("scan queue seed schema mismatch")
             if str(queue.get("catalogRevision") or "") != str((index.get("catalog") or {}).get("revision") or ""):
                 errors.append("scan queue catalog revision mismatch")
+            if str(queue.get("catalogIdentityEpoch") or "") != str((index.get("catalog") or {}).get("identityEpoch") or ""):
+                errors.append("scan queue catalog identity epoch mismatch")
             if str(queue.get("definitionsRevision") or "") != str((index.get("definitions") or {}).get("revision") or ""):
                 errors.append("scan queue Definitions revision mismatch")
             if str(queue.get("ruleSetRevision") or "") != str((index.get("definitions") or {}).get("ruleSetRevision") or ""):
@@ -146,6 +169,16 @@ def validate(root: Path) -> dict[str, Any]:
                 errors.append("scan queue Definitions source commit mismatch")
             if str(queue.get("queueSeedRevision") or "") != str(queue_meta.get("revision") or ""):
                 errors.append("scan queue seed revision mismatch")
+        source_meta = index.get("sourceInventory") or {}
+        if source_meta:
+            source_report = json.loads((root / "source-inventory.json").read_text(encoding="utf-8"))
+            if source_report.get("schema") != "omega.catalog-source-inventory.validation.v1" or not source_report.get("ok"):
+                errors.append("source inventory validation report is not successful")
+            canonical_sources = int(((index.get("catalog") or {}).get("counts") or {}).get("sources") or 0)
+            reported_sources = int((source_report.get("counts") or {}).get("canonical") or 0)
+            if canonical_sources != reported_sources:
+                errors.append("source inventory canonical source count mismatch")
+
         for key in ("osv", "reputation"):
             payload = defs.get(key) or {}
             relative = str(payload.get("path") or "")
@@ -175,10 +208,11 @@ def main() -> int:
     build.add_argument("--definitions", type=Path, required=True)
     build.add_argument("--output", type=Path, required=True)
     build.add_argument("--queue-seed", type=Path)
+    build.add_argument("--source-inventory", type=Path)
     check = sub.add_parser("validate")
     check.add_argument("--root", type=Path, required=True)
     args = parser.parse_args()
-    result = assemble(catalog=args.catalog, definitions=args.definitions, output=args.output, queue_seed=args.queue_seed) if args.command == "assemble" else validate(args.root)
+    result = assemble(catalog=args.catalog, definitions=args.definitions, output=args.output, queue_seed=args.queue_seed, source_inventory=args.source_inventory) if args.command == "assemble" else validate(args.root)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok", True) else 1
 

@@ -109,6 +109,9 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
 
             catalog_root = root / "catalog"
             catalog_json_store.export_snapshot(database, catalog_root, source_commit="fixture")
+            evidence_index = json.loads((evidence / "index.json").read_text(encoding="utf-8"))
+            evidence_index.setdefault("revisions", {})["catalogIdentityEpoch"] = catalog_json_store.IDENTITY_EPOCH
+            (evidence / "index.json").write_text(json.dumps(evidence_index), encoding="utf-8")
             advisory_file = root / "today-osv.json"
             advisory_file.write_text(json.dumps({
                 "schema": "omega.public-advisories.v1",
@@ -160,6 +163,48 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertEqual(0, result["definitionsProjectionRefresh"]["dependencyGraph"]["dependencies"] - 1)
             # The compiler refreshed derived state only; immutable artifact scan history stayed one row.
             self.assertEqual(1, result["materializedEvidence"]["currentVariantsMaterialized"])
+
+
+    def test_daily_marketplace_compiler_ignores_incompatible_legacy_security_ids(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-daily-clean-security-baseline-") as td:
+            root = Path(td)
+            database, _variant_id, _ = self.make_catalog_with_security(root)
+            evidence = root / "legacy-evidence"
+            migrate(database, evidence, reset=True)
+            legacy_index = json.loads((evidence / "index.json").read_text(encoding="utf-8"))
+            self.assertFalse((legacy_index.get("revisions") or {}).get("catalogIdentityEpoch"))
+
+            catalog_root = root / "catalog"
+            catalog_json_store.export_snapshot(database, catalog_root, source_commit="fixture")
+            advisory_file = root / "empty-osv.json"
+            advisory_file.write_text(json.dumps({
+                "schema": "omega.public-advisories.v1", "generatedAtUtc": "2026-08-19T00:00:00Z",
+                "source": "OSV", "ecosystem": "NuGet", "queriedPackages": 1, "matchedPackages": 0,
+                "queriedPackageVersionPairs": [{"name": "Example.Package", "version": "1.2.3"}],
+                "advisories": [],
+            }), encoding="utf-8")
+            definitions_root = root / "definitions"
+            definitions_snapshot.build_snapshot(
+                repo_root=common.ROOT, evidence_root=evidence, output=definitions_root,
+                source_commit="fixture", advisories_input=advisory_file,
+            )
+            output = root / "compiled"
+            result = compile_marketplace_snapshot.build(
+                catalog_root=catalog_root, definitions_root=definitions_root, evidence_root=evidence,
+                output=output, download_url="https://example.invalid/omega-marketplace.sqlite.zip",
+                evidence_index_url="https://example.invalid/security-evidence-v2/index.json",
+            )
+            descriptor = json.loads((output / "catalog.json").read_text(encoding="utf-8"))
+            self.assertFalse(descriptor["evidenceCompatible"])
+            self.assertEqual("", descriptor["evidenceRevision"])
+            self.assertEqual(0, result["materializedEvidence"]["currentVariantsMaterialized"])
+            self.assertFalse(result["materializedEvidence"]["evidenceInherited"])
+            with closing(sqlite3.connect(output / "omega-marketplace.sqlite")) as db:
+                self.assertEqual(0, db.execute("SELECT COUNT(*) FROM marketplace_security_current").fetchone()[0])
+                meta = {str(k): str(v) for k, v in db.execute("SELECT key,value FROM catalog_meta")}
+            self.assertEqual(catalog_json_store.IDENTITY_EPOCH, meta["catalog_identity_epoch"])
+            self.assertEqual("0", meta["evidence_compatible"])
+            self.assertEqual("", meta["evidence_revision"])
 
     def test_v2_sqlite_test_connections_are_windows_cleanup_safe(self) -> None:
         # sqlite3.Connection.__exit__ commits/rolls back but does not close the handle.
@@ -600,6 +645,122 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertEqual("defs-v1-fixture", provenance["definitionsRevision"] )
             self.assertEqual("rule_set_changed", provenance["primaryReason"] )
 
+
+    def test_first_baseline_worker_establishes_new_identity_epoch_and_discards_legacy_evidence(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-first-baseline-worker-") as td:
+            root = Path(td)
+            database, variant_id, _plugin_id = self.make_catalog_with_security(root)
+            legacy_evidence = root / "legacy-evidence"
+            migrate(database, legacy_evidence, reset=True)
+            legacy_index = json.loads((legacy_evidence / "index.json").read_text(encoding="utf-8"))
+            self.assertFalse((legacy_index.get("revisions") or {}).get("catalogIdentityEpoch"))
+            self.assertEqual(1, int((legacy_index.get("counts") or {}).get("currentVariants") or 0))
+
+            # The clean canonical epoch deliberately starts from catalog identity only.
+            base = root / "base.sqlite"
+            shutil.copy2(database, base)
+            with closing(sqlite3.connect(base)) as db:
+                sigmascope.ensure_schema(db)
+                db.execute("PRAGMA foreign_keys=OFF")
+                for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
+                    db.execute(f'DELETE FROM "{row[0]}"')
+                db.execute("PRAGMA foreign_keys=ON")
+                variant = db.execute(
+                    "SELECT v.variant_id,v.plugin_id,v.source_id,p.internal_name,v.name,s.name,v.assembly_version,v.download_link_install "
+                    "FROM plugin_variants v JOIN plugins p ON p.plugin_id=v.plugin_id JOIN sources s ON s.source_id=v.source_id "
+                    "WHERE v.variant_id=?", (variant_id,)
+                ).fetchone()
+                db.commit()
+
+            queue_seed = root / "scan-queue.json"
+            queue_seed.write_text(json.dumps({
+                "schema": scan_queue.SEED_SCHEMA,
+                "queueSeedRevision": "queue-seed-v1-baseline-fixture",
+                "catalogRevision": "cat-json-v1-baseline-fixture",
+                "catalogIdentityEpoch": catalog_json_store.IDENTITY_EPOCH,
+                "definitionsRevision": "defs-v1-baseline-fixture",
+                "definitionsSourceCommit": "fixture-commit",
+                "ruleSetRevision": "rules-v1-baseline-fixture",
+                "baselineSecurityRebuild": True,
+                "previousEvidenceIdentityEpoch": "",
+                "rescanAfterHours": 168,
+                "counts": {"queued": 1},
+                "items": [{
+                    "queueKey": f"variant-{variant_id}",
+                    "targetFingerprint": "scan-target-v1-baseline-fixture",
+                    "variantId": variant_id,
+                    "pluginId": int(variant[1]),
+                    "sourceId": int(variant[2]),
+                    "internalName": str(variant[3]),
+                    "name": str(variant[4]),
+                    "sourceName": str(variant[5]),
+                    "assemblyVersion": str(variant[6]),
+                    "artifactChannel": "stable",
+                    "artifactUrl": str(variant[7]),
+                    "catalogRevision": "cat-json-v1-baseline-fixture",
+                    "catalogIdentityEpoch": catalog_json_store.IDENTITY_EPOCH,
+                    "definitionsRevision": "defs-v1-baseline-fixture",
+                    "ruleSetRevision": "rules-v1-baseline-fixture",
+                    "reasons": ["baseline_scan"],
+                    "primaryReason": "baseline_scan",
+                    "priority": 950,
+                    "currentScanId": 0,
+                    "currentScannedAtUtc": "",
+                    "currentArtifactSha256": "",
+                    "enqueuedAtUtc": "2026-08-19T00:00:00Z",
+                }],
+            }), encoding="utf-8")
+
+            artifact_buffer = io.BytesIO()
+            with zipfile.ZipFile(artifact_buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("fixture.txt", "new identity epoch baseline")
+            artifact = artifact_buffer.getvalue()
+            args = SimpleNamespace(
+                base_database=base, descriptor=None, current_evidence=legacy_evidence,
+                candidate_evidence=root / "candidate", work_dir=root / "work", publication_output=None,
+                previous_marketplace_descriptor=None, marketplace_download_url="",
+                evidence_index_url="https://example.invalid/security-evidence-v2/index.json",
+                source_overrides=common.ROOT / "sources" / "source-overrides.json", max_scans=1,
+                rescan_after_hours=168, max_batch_seconds=0, internal_names="", variant_ids="", skip_source=True,
+                osv_timeout=1.0, max_osv_packages=2000, github_output=None, skip_marketplace=True,
+                frozen_advisories=None, catalog_revision="cat-json-v1-baseline-fixture",
+                definitions_revision="defs-v1-baseline-fixture", definitions_source_commit="fixture-commit",
+                rule_set_revision="rules-v1-baseline-fixture", queue_seed=queue_seed,
+            )
+
+            def fake_collect(index_path, output, timeout=20.0, max_packages=2000):
+                import collect_public_advisories
+                packages = collect_public_advisories.observed_nuget_index(Path(index_path), max_packages)
+                document = {
+                    "schema": "omega.public-advisories.v1", "generatedAtUtc": "2026-08-19T00:00:00Z",
+                    "source": "OSV", "ecosystem": "NuGet", "queriedPackages": len(packages),
+                    "matchedPackages": 0, "advisories": [],
+                }
+                Path(output).write_text(json.dumps(document), encoding="utf-8")
+                return document
+
+            with patch("sigmascope.request_bytes", return_value=(artifact, str(variant[7]))), \
+                 patch("production_sigmascope_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=fake_collect):
+                result = run_pipeline(args)
+
+            self.assertTrue(result["materialized"]["baselineSecurityRebuild"])
+            self.assertFalse(result["materialized"]["evidenceInherited"])
+            self.assertEqual(0, result["materialized"]["currentVariantsMaterialized"])
+            self.assertEqual("baseline_scan", result["queue"]["leased"]["primaryReason"])
+            self.assertEqual([variant_id], result["successfulVariantIds"])
+
+            root_index = json.loads((root / "candidate" / "index.json").read_text(encoding="utf-8"))
+            self.assertEqual(catalog_json_store.IDENTITY_EPOCH, root_index["revisions"]["catalogIdentityEpoch"])
+            self.assertTrue(root_index["source"]["scan"]["baselineSecurityRebuild"])
+            self.assertEqual(1, int(root_index["counts"]["currentVariants"]))
+
+            variant_files = list((root / "candidate" / "variants").rglob("*.json"))
+            self.assertEqual(1, len(variant_files), "legacy variant descriptors must not survive the epoch reset")
+            payload = json.loads(variant_files[0].read_text(encoding="utf-8"))
+            provenance = payload["current"]["report_json"]["scanProvenance"]
+            self.assertEqual(catalog_json_store.IDENTITY_EPOCH, provenance["catalogIdentityEpoch"])
+            self.assertTrue(provenance["baselineSecurityRebuild"])
+            self.assertEqual("baseline_scan", provenance["primaryReason"])
 
     def test_osv_gate_rejects_candidate_when_exact_nuget_versions_are_not_queried(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-osv-gate-") as td:

@@ -133,8 +133,8 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
         "scanProvenance": {
             key: scan_provenance.get(key)
             for key in (
-                "schema", "catalogRevision", "definitionsRevision", "definitionsSourceCommit", "ruleSetRevision",
-                "queueSeedRevision", "queueKey", "targetFingerprint", "primaryReason",
+                "schema", "catalogRevision", "catalogIdentityEpoch", "definitionsRevision", "definitionsSourceCommit", "ruleSetRevision",
+                "queueSeedRevision", "queueKey", "targetFingerprint", "primaryReason", "baselineSecurityRebuild",
                 "reasons", "attemptId", "attemptNumber", "variantId",
             )
             if key in scan_provenance

@@ -55,6 +55,7 @@ class ProductionReleaseHygieneTests(unittest.TestCase):
             "tools/catalog/definitions_snapshot.py",
             "tools/catalog/catalog_state.py",
             "tools/catalog/publish_catalog_state.py",
+            "tools/catalog/source_inventory_guard.py",
             "tools/catalog/compile_marketplace_snapshot.py",
             "tools/security/production_sigmascope_v2_pipeline.py",
             "tools/release/generate_pluginmaster.py",

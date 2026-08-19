@@ -21,6 +21,11 @@ on:
         type: string
         required: false
         default: "168"
+      allow_source_removal:
+        description: "Allow an intentional removal from the previously canonical source registry"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write
@@ -225,6 +230,21 @@ jobs:
           --database catalog/normalized/omega-catalog.sqlite
           --output catalog/state-catalog
           --source-commit "${{ github.sha }}"
+      - name: Validate canonical source inventory and retention
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --raw catalog/raw-sources.json
+            --enriched catalog/enriched-sources.json
+            --catalog-root catalog/state-catalog
+            --curated sources/curated-sources.json
+            --community sources/community-sources.json
+            --previous-catalog-root catalog/previous-state/catalog
+            --report catalog/source-inventory.json
+          )
+          if [ "${{ inputs.allow_source_removal || false }}" = "true" ]; then args+=(--allow-source-removal); fi
+          python tools/catalog/source_inventory_guard.py "${args[@]}"
       - name: Freeze daily Definitions and OSV data
         run: >-
           python tools/catalog/definitions_snapshot.py build
@@ -247,6 +267,7 @@ jobs:
             --catalog catalog/state-catalog \
             --definitions catalog/state-definitions \
             --queue-seed catalog/state-scan-queue.json \
+            --source-inventory catalog/source-inventory.json \
             --output catalog/state
           python tools/catalog/catalog_state.py validate --root catalog/state
       - name: Compile daily Omega marketplace database from JSON + Evidence v2
@@ -291,6 +312,7 @@ jobs:
             catalog/state/catalog/index.json
             catalog/state/definitions/index.json
             catalog/state/scan-queue.json
+            catalog/state/source-inventory.json
             catalog/client-dist/catalog.json
             catalog/client-dist/database-build.json
           retention-days: 30

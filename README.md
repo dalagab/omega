@@ -1,73 +1,81 @@
 # Omega
 
-Omega is an open-source in-game marketplace for Dalamud plugins, developed by the Dalagab Group. This branch contains the production application source, regression suite, catalog/Sigmascope tooling, source definitions, and release automation. The public website is maintained separately on the `website` branch.
+**Omega is a plugin marketplace for Dalamud.**
 
-## Security policy
+Think of it like this:
 
-Vulnerability reporting and the retained Sigmascope/security architecture are documented in [`SECURITY.md`](SECURITY.md).
+- **Dalamud** is the thing that installs and updates plugins.
+- **Omega** helps you find plugins and understand what you are looking at.
+- When you choose to install something, **Dalamud still does the installing**.
 
-## Build Omega
+That is basically it.
 
-Omega uses the Dalamud .NET SDK. On a Windows development system with Dalamud installed:
+## I just want to install Omega
 
-```powershell
-dotnet build .\Omega.sln -c Debug
-```
+Go here:
 
-Building the solution also builds and runs `Omega.RegressionTests`. ZipRunner is the authoritative project build gate used during Omega development.
+**https://dalagab.github.io/omega/#install**
 
-The main application project is `Omega/DalagabOmega.csproj`. Required runtime assets such as the application icons, Sigmascope banner, EULA, source definitions, and catalog endpoint are copied by that project or obtained by the release workflow where appropriate.
+The installation page has the current Omega repository link, a copy button, and the steps for adding it to Dalamud.
 
-## Regression testing
+We intentionally keep the actual repository URL on the website instead of copying it into this README, so there is one obvious place to find the current installation instructions.
 
-The C# regression runner is part of `Omega.sln` and validates application behavior and repository contracts. Repository-side Python regressions can be run with:
+## What does Omega do?
 
-```bash
-python -m unittest discover -s tools/tests -p 'test_*.py' -v
-```
+Omega looks at public Dalamud plugin repositories and puts the plugins it can find into one in-game marketplace.
 
-The regression workflow also exercises the catalog and Sigmascope self-tests used by production automation.
+It can show things such as:
 
-## Catalog and Sigmascope
+- what a plugin does;
+- who made it;
+- where it comes from;
+- which repository or repositories publish it;
+- available versions;
+- dependencies;
+- changelogs and project links;
+- security information collected by Sigmascope.
 
-`tools/catalog/` contains catalog discovery, normalization, projection, dependency analysis, source resolution, and Sigmascope collection helpers. `tools/security/` contains Security Evidence v2 validation, publication, migration, audit, and developer-inspection tooling.
+Omega does **not** replace Dalamud's plugin installer.
 
-The canonical Sigmascope entry points include:
+## Is every plugin in Omega safe?
 
-- `tools/catalog/sigmascope.py`
-- `tools/catalog/sigmascope_source_followups.py`
-- `tools/security/production_sigmascope_v2_pipeline.py`
-- `tools/security/local_sigmascope_v2_test.py`
+No.
 
-Sigmascope is deterministic/static evidence gathering. It does not use an LLM to scan, score, or decide whether a plugin is trustworthy.
+Omega tries to give you **more information**, not make the decision for you.
 
-Source feeds and source-resolution overrides live under `sources/`. The client-facing catalog endpoint is defined in `catalog/catalog-endpoint.json`. Generated catalog state is not committed to `main`: the daily/manual catalog workflow publishes a canonical sharded JSON snapshot plus a frozen Definitions snapshot to the dedicated `catalog-data` branch, then compiles the exact `omega-marketplace.sqlite` consumed by Omega. SQLite is therefore a bounded client projection, not the authoritative catalog store.
+A plugin appearing in Omega does not mean it is approved, recommended, or guaranteed to be safe. Omega can show public information and static security evidence, but you still choose what you install.
 
-Sigmascope runs independently every 15 minutes against the active `catalog-data` snapshot. The daily snapshot includes an immutable deterministic queue seed with explicit reasons such as new variant, artifact change, source review, scanner-rule change, periodic revalidation, or manual review. Workers persist bounded lease/retry progress in Security Evidence v2, pin the scanner code to the snapshot's Definitions source commit, use its frozen OSV query/result set, process at most one queue item, and record catalog/Definitions/rule-set/source-commit provenance on the resulting evidence. Continuous scanner runs never publish a new Omega client database; client-visible catalog/Definitions publication is daily unless an operator deliberately runs the catalog workflow manually.
+## What is Sigmascope?
 
-The daily client compiler reapplies the day's frozen Definitions-derived advisory/catalog conclusions to the latest validated evidence without rescanning artifacts. The compiled database therefore carries its own truthful security revision plus the source Security Evidence revision it was built from.
+Sigmascope is Omega's security scanner.
 
-## Omega repository metadata
+It examines plugin packages and available source code as **data**. It does not load or run the plugins it scans.
 
-`.omega/index.json` is intentional production metadata. Omega's enrichment/scraping pipeline can read it when indexing this repository, including the project banner referenced by `OmegaBannerUrl`. It must not be removed as website-only material.
+Its job is to collect useful evidence — things like dependencies, capabilities, endpoints, hashes, and other indicators — so Omega can show you more context before you make a choice.
 
-## Release and repository feed
+## Where is the website?
 
-`repository/pluginmaster.template.json` is the release template. The tagged release workflow builds `Omega.zip`, verifies the packaged manifest/version, generates the published PluginMaster from the actual artifact, and publishes immutable versioned release assets before updating the stable feed.
+**https://dalagab.github.io/omega/**
 
-The source-tree `repository/pluginmaster.json` is a release-managed compatibility mirror and should not be manually advanced for ordinary work builds.
 
-## Source layout
+## I am a developer
 
-- `Omega/` — Dalamud plugin source.
-- `Omega.RegressionTests/` — C# regression runner.
-- `tools/catalog/` — catalog and source-processing pipeline.
-- `tools/security/` — Sigmascope/Security Evidence v2 pipeline.
-- `tools/release/` — release metadata generation.
-- `tools/tests/` — deterministic Python regression tests.
-- `sources/` — known repository feeds and source overrides.
-- `repository/` — Dalamud repository publication metadata.
-- `.omega/` — scrapeable Omega repository metadata.
-- `.github/workflows/` — retained production catalog, Sigmascope, regression, source-intake, and release workflows.
+You are in the right repository.
 
-Website HTML, Tailwind/Node tooling, website tests, and the retired external installation scripts intentionally do not live in this production source package.
+The production source, tests, catalog tooling, Sigmascope tooling, source definitions, and release automation live here.
+
+A few useful places to start:
+
+- `Omega/` — the Dalamud plugin.
+- `Omega.RegressionTests/` — C# regression tests.
+- `tools/catalog/` — catalog collection and database generation.
+- `tools/security/` — Sigmascope and Security Evidence tooling.
+- `sources/` — known plugin repository sources.
+- `SECURITY.md` — security architecture and reporting information.
+- `CHANGELOG.md` — development and release changes.
+
+The public website is maintained separately on the `website` branch.
+
+## One last thing
+
+Omega is an independent community project. It is not affiliated with Square Enix, Dalamud, XIVLauncher, or FINAL FANTASY XIV.

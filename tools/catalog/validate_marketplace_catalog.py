@@ -78,6 +78,7 @@ def validate_bytes(descriptor_bytes: bytes, bundle: bytes) -> dict:
                 raise RuntimeError("marketplace database role metadata is invalid")
             revision_pairs = (
                 ("catalog_revision", "catalogRevision", "catalog"),
+                ("catalog_identity_epoch", "catalogIdentityEpoch", "catalog identity epoch"),
                 ("definitions_revision", "definitionsRevision", "Definitions"),
                 ("security_revision", "securityRevision", "security"),
                 ("evidence_revision", "evidenceRevision", "evidence"),

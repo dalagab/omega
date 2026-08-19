@@ -4,6 +4,12 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
+<sub>work build: 0.9.26</sub>
+- Treat the new canonical catalog as an explicit identity epoch so a from-zero database rebuild cannot accidentally attach legacy Sigmascope evidence by colliding numeric plugin/variant IDs.
+- When the evidence epoch is incompatible, compile Omega with no inherited detailed security rows and seed the one-item scanner queue with explicit `baseline_scan` work; the first successful worker establishes the new Evidence v2 epoch.
+- Add fail-closed source-inventory validation around daily publication so every discovered and configured source remains represented in canonical JSON, unreachable repositories remain known catalog sources, and deliberate source removal requires an explicit manual override.
+- Publish the source-inventory validation report with `catalog-data` for developer/security inspection.
+
 <sub>work build: 0.9.25</sub>
 - Update the Windows/C# regression contracts to the completed daily JSON/Definitions + 15-minute queue architecture after ZipRunner proved the plugin itself compiles but six pre-refactor workflow expectations were stale.
 - Keep the regression suite strict: daily client publication, frozen catalog/Definitions inputs, persistent queue ownership, and Sigmascope evidence-only publication are now asserted directly rather than removing the old checks.

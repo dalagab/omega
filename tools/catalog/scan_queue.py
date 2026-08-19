@@ -37,6 +37,7 @@ MAX_RECENT_ATTEMPTS = 16
 
 REASON_PRIORITIES = {
     "manual": 1000,
+    "baseline_scan": 950,
     "new_variant": 900,
     "artifact_changed": 850,
     "source_review_due": 800,
@@ -164,6 +165,13 @@ def catalog_variants(catalog_root: Path) -> list[dict[str, Any]]:
     return sorted(result, key=lambda row: (str(row["internalName"]).casefold(), str(row["sourceName"]).casefold(), int(row["variantId"])))
 
 
+
+
+def evidence_identity_epoch(evidence_root: Path) -> str:
+    index = read_json(evidence_root / "index.json", {}) or {}
+    revisions = index.get("revisions") if isinstance(index.get("revisions"), dict) else {}
+    return str((revisions or {}).get("catalogIdentityEpoch") or index.get("catalogIdentityEpoch") or "")
+
 def evidence_current(evidence_root: Path) -> dict[int, dict[str, Any]]:
     if not (evidence_root / "index.json").is_file():
         return {}
@@ -247,6 +255,7 @@ def _queue_item(
     reasons: list[str],
     *,
     catalog_revision: str,
+    catalog_identity_epoch: str,
     definitions_revision: str,
     rule_set_revision: str,
     generated_at: str,
@@ -266,6 +275,7 @@ def _queue_item(
         "artifactChannel": str(variant.get("artifactChannel") or ""),
         "artifactUrl": str(variant.get("artifactUrl") or ""),
         "catalogRevision": catalog_revision,
+        "catalogIdentityEpoch": catalog_identity_epoch,
         "definitionsRevision": definitions_revision,
         "ruleSetRevision": rule_set_revision,
         "reasons": ordered,
@@ -292,14 +302,17 @@ def build_seed(
     catalog_index = read_json(catalog_root / "index.json", {}) or {}
     definitions_index = read_json(definitions_root / "index.json", {}) or {}
     catalog_revision = str(catalog_index.get("catalogRevision") or "")
+    catalog_identity_epoch = str(catalog_index.get("identityEpoch") or "")
     definitions_revision = str(definitions_index.get("definitionsRevision") or "")
     rule_set_revision = str(definitions_index.get("ruleSetRevision") or "")
     definitions_source_commit = str(definitions_index.get("sourceCommit") or "")
-    current = evidence_current(evidence_root)
+    previous_evidence_identity_epoch = evidence_identity_epoch(evidence_root)
+    baseline_security_rebuild = bool(catalog_identity_epoch and previous_evidence_identity_epoch != catalog_identity_epoch)
+    current = {} if baseline_security_rebuild else evidence_current(evidence_root)
     items: list[dict[str, Any]] = []
     counts = {reason: 0 for reason in REASON_PRIORITIES}
     for variant in catalog_variants(catalog_root):
-        reasons = due_reasons(
+        reasons = ["baseline_scan"] if baseline_security_rebuild else due_reasons(
             variant,
             current.get(int(variant["variantId"])),
             rule_set_revision=rule_set_revision,
@@ -313,6 +326,7 @@ def build_seed(
             current.get(int(variant["variantId"])),
             reasons,
             catalog_revision=catalog_revision,
+            catalog_identity_epoch=catalog_identity_epoch,
             definitions_revision=definitions_revision,
             rule_set_revision=rule_set_revision,
             generated_at=generated,
@@ -324,8 +338,10 @@ def build_seed(
     semantic = {
         "schema": SEED_SCHEMA,
         "catalogRevision": catalog_revision,
+        "catalogIdentityEpoch": catalog_identity_epoch,
         "definitionsRevision": definitions_revision,
         "ruleSetRevision": rule_set_revision,
+        "baselineSecurityRebuild": baseline_security_rebuild,
         "rescanAfterHours": int(rescan_after_hours),
         "items": [
             {
@@ -340,8 +356,11 @@ def build_seed(
         "queueSeedRevision": f"queue-seed-v1-{digest(semantic)[:16]}",
         "generatedAtUtc": generated,
         "catalogRevision": catalog_revision,
+        "catalogIdentityEpoch": catalog_identity_epoch,
         "definitionsRevision": definitions_revision,
         "definitionsSourceCommit": definitions_source_commit,
+        "baselineSecurityRebuild": baseline_security_rebuild,
+        "previousEvidenceIdentityEpoch": previous_evidence_identity_epoch,
         "ruleSetRevision": rule_set_revision,
         "rescanAfterHours": int(rescan_after_hours),
         "counts": {**counts, "queued": len(items)},
@@ -399,6 +418,8 @@ def sync_state(seed: dict[str, Any], previous: dict[str, Any] | None, *, now: dt
         "schema": STATE_SCHEMA,
         "queueSeedRevision": str(seed.get("queueSeedRevision") or ""),
         "catalogRevision": str(seed.get("catalogRevision") or ""),
+        "catalogIdentityEpoch": str(seed.get("catalogIdentityEpoch") or ""),
+        "baselineSecurityRebuild": bool(seed.get("baselineSecurityRebuild")),
         "definitionsRevision": str(seed.get("definitionsRevision") or ""),
         "ruleSetRevision": str(seed.get("ruleSetRevision") or ""),
         "updatedAtUtc": str(previous.get("updatedAtUtc") or "") if same_seed else utc_now(now_dt),
@@ -458,6 +479,7 @@ def add_manual_items_from_database(
             current,
             reasons,
             catalog_revision=str(state.get("catalogRevision") or ""),
+            catalog_identity_epoch=str(state.get("catalogIdentityEpoch") or ""),
             definitions_revision=str(state.get("definitionsRevision") or ""),
             rule_set_revision=str(state.get("ruleSetRevision") or ""),
             generated_at=utc_now(now_dt),
@@ -582,6 +604,8 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
         "schema": "omega.sigmascope.queue-summary.v1",
         "queueSeedRevision": str(state.get("queueSeedRevision") or ""),
         "catalogRevision": str(state.get("catalogRevision") or ""),
+        "catalogIdentityEpoch": str(state.get("catalogIdentityEpoch") or ""),
+        "baselineSecurityRebuild": bool(state.get("baselineSecurityRebuild")),
         "definitionsRevision": str(state.get("definitionsRevision") or ""),
         "ruleSetRevision": str(state.get("ruleSetRevision") or ""),
         "states": counts,
