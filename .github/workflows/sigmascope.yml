@@ -1,8 +1,7 @@
-name: Omega Sigmascope continuous worker
+name: Omega security services · Sigmascope launcher
 
 on:
   schedule:
-    # One bounded queue selection every 15 minutes against the day's frozen inputs.
     - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
@@ -12,168 +11,13 @@ on:
         required: false
         default: ""
 
-concurrency:
-  group: omega-sigmascope
-  cancel-in-progress: false
+permissions:
+  contents: write
+  issues: write
 
 jobs:
-  scan:
-    name: Process one Sigmascope candidate against frozen daily inputs
-    runs-on: ubuntu-latest
-    timeout-minutes: 75
-    env:
-      OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
-    permissions:
-      contents: write
-      issues: write
-    steps:
-      - name: Checkout workflow repository for publication transport
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-          persist-credentials: true
-      - name: Checkout frozen catalog and Definitions state
-        uses: actions/checkout@v6
-        with:
-          ref: catalog-data
-          path: catalog/active-state
-          fetch-depth: 1
-          persist-credentials: false
-      - name: Resolve frozen Definitions and worker bundle identity
-        id: frozen
-        shell: bash
-        run: |
-          set -euo pipefail
-          catalog_revision="$(python -c "import json; print(json.load(open('catalog/active-state/catalog/index.json'))['catalogRevision'])")"
-          definitions_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['definitionsRevision'])")"
-          rule_set_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['ruleSetRevision'])")"
-          scanner_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['scannerRevision'])")"
-          artifact_analysis_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['artifactAnalysisRevision'])")"
-          source_analysis_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['sourceAnalysisRevision'])")"
-          scanner_bundle_sha256="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['scannerBundle']['sha256'])")"
-          advisory_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['advisoryRevision'])")"
-          test -n "$scanner_revision"
-          test -n "$artifact_analysis_revision"
-          test -n "$source_analysis_revision"
-          test -n "$scanner_bundle_sha256"
-          test -n "$advisory_revision"
-          printf 'catalog_revision=%s\n' "$catalog_revision" >> "$GITHUB_OUTPUT"
-          printf 'definitions_revision=%s\n' "$definitions_revision" >> "$GITHUB_OUTPUT"
-          printf 'rule_set_revision=%s\n' "$rule_set_revision" >> "$GITHUB_OUTPUT"
-          printf 'scanner_revision=%s\n' "$scanner_revision" >> "$GITHUB_OUTPUT"
-          printf 'artifact_analysis_revision=%s\n' "$artifact_analysis_revision" >> "$GITHUB_OUTPUT"
-          printf 'source_analysis_revision=%s\n' "$source_analysis_revision" >> "$GITHUB_OUTPUT"
-          printf 'scanner_bundle_sha256=%s\n' "$scanner_bundle_sha256" >> "$GITHUB_OUTPUT"
-          printf 'advisory_revision=%s\n' "$advisory_revision" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-      - name: Verify frozen worker bundle before execution
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -c "import hashlib,json,pathlib; r=pathlib.Path('catalog/active-state/definitions'); i=json.load(open(r/'index.json')); m=r/i['scannerBundle']['manifestPath']; assert hashlib.sha256(m.read_bytes()).hexdigest()==i['scannerBundle']['sha256'], 'worker bundle manifest SHA-256 mismatch'"
-          python "$OMEGA_FROZEN_WORKER/tools/catalog/definitions_snapshot.py" verify --definitions-root catalog/active-state/definitions
-      - name: Checkout last-known-good Security Evidence v2 snapshot
-        uses: actions/checkout@v6
-        with:
-          ref: security-evidence-v2
-          path: catalog/security-v2-current
-          fetch-depth: 1
-          persist-credentials: false
-      - name: Run scanner self-tests
-        run: |
-          python "$OMEGA_FROZEN_WORKER/tools/catalog/sigmascope.py" --self-test
-          python "$OMEGA_FROZEN_WORKER/tools/catalog/sigmascope.py" --hardening-self-test
-          python "$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py" --self-test
-      - name: Materialize the frozen canonical catalog for this worker
-        run: >-
-          python "$OMEGA_FROZEN_WORKER/tools/catalog/catalog_json_store.py" materialize
-          --root catalog/active-state/catalog
-          --database catalog/security-input/omega-catalog.sqlite
-          --definitions-revision "${{ steps.frozen.outputs.definitions_revision }}"
-      - name: Examine one due variant and build Evidence v2 candidate
-        id: v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          python "$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
-          --base-database catalog/security-input/omega-catalog.sqlite
-          --current-evidence catalog/security-v2-current
-          --candidate-evidence catalog/security-v2-candidate
-          --work-dir catalog/security-v2-work
-          --skip-marketplace
-          --frozen-advisories catalog/active-state/definitions/osv-advisories.json
-          --catalog-revision "${{ steps.frozen.outputs.catalog_revision }}"
-          --definitions-revision "${{ steps.frozen.outputs.definitions_revision }}"
-          --scanner-revision "${{ steps.frozen.outputs.scanner_revision }}"
-          --artifact-analysis-revision "${{ steps.frozen.outputs.artifact_analysis_revision }}"
-          --source-analysis-revision "${{ steps.frozen.outputs.source_analysis_revision }}"
-          --scanner-bundle-sha256 "${{ steps.frozen.outputs.scanner_bundle_sha256 }}"
-          --rule-set-revision "${{ steps.frozen.outputs.rule_set_revision }}"
-          --advisory-revision "${{ steps.frozen.outputs.advisory_revision }}"
-          --queue-seed catalog/active-state/scan-queue.json
-          --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json"
-          --max-scans 1
-          --max-batch-seconds 3300
-          --internal-names "${{ inputs.internal_names || '' }}"
-          --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"
-          --github-output "$GITHUB_OUTPUT"
-      - name: Project public-source coverage follow-ups
-        run: >-
-          python "$OMEGA_FROZEN_WORKER/tools/catalog/sigmascope_source_followups.py"
-          --database catalog/security-v2-work/omega-security-v2-working.sqlite
-          --output catalog/security-v2-work/sigmascope-source-followups.json
-      - name: Reconcile actionable source follow-up issues
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          python "$OMEGA_FROZEN_WORKER/tools/catalog/create_source_followup_issues.py"
-          --input catalog/security-v2-work/sigmascope-source-followups.json
-          --repository ${{ github.repository }}
-          --max-new 25
-      - name: Reproduce security conclusions with independent developer audit
-        shell: bash
-        run: |
-          set -euo pipefail
-          audit=catalog/security-v2-work/security-developer-audit.json
-          set +e
-          python "$OMEGA_FROZEN_WORKER/tools/security/developer_view.py" audit \
-            --no-download \
-            --database catalog/security-v2-work/omega-security-v2-working.sqlite \
-            --json > "$audit"
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ]; then
-            if [ -s "$audit" ]; then python "$OMEGA_FROZEN_WORKER/tools/security/print_sigmascope_audit_failures.py" "$audit" --limit 20 || true; fi
-            exit "$status"
-          fi
-      - name: Publish validated Security Evidence v2 snapshot atomically
-        if: steps.v2.outputs.publish_v2 == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          gh auth setup-git
-          python "$OMEGA_FROZEN_WORKER/tools/security/publish_security_evidence_v2.py" \
-            --input catalog/security-v2-candidate \
-            --repo . \
-            --branch security-evidence-v2 \
-            --snapshot-validation-report catalog/security-v2-candidate/validation-report.json \
-            --audit-report catalog/security-v2-work/security-developer-audit.json \
-            --push
-      - name: Upload worker diagnostics
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: omega-sigmascope-worker-diagnostics
-          path: |
-            catalog/security-v2-work/production-sigmascope-v2-report.json
-            catalog/security-v2-work/*.json
-            catalog/security-v2-candidate/index.json
-            catalog/security-v2-candidate/scanner-queue.json
-            catalog/security-v2-candidate/validation-report.json
-          if-no-files-found: warn
-          retention-days: 30
+  call-security-branch:
+    uses: dalagab/omega/.github/workflows/sigmascope.yml@sigmascope
+    with:
+      internal_names: ${{ inputs.internal_names || '' }}
+    secrets: inherit

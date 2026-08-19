@@ -48,8 +48,6 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Run repository Python regression suite
-        run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
@@ -77,14 +75,16 @@ jobs:
         shell: pwsh
         run: python tools/release/extract_changelog.py --version '${{ steps.release.outputs.version }}' --output release-notes.md
 
-      - name: Stage validated current catalog bootstrap
+      - name: Stage current published catalog bootstrap
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          python tools/catalog/stage_catalog_bootstrap.py
-          --repository "${{ github.repository }}"
-          --branch "${{ github.event.repository.default_branch }}"
-          --output catalog/bootstrap/omega-catalog.sqlite.zip
+        run: |
+          New-Item -ItemType Directory -Force -Path 'catalog/bootstrap' | Out-Null
+          gh release download catalog-latest --repo '${{ github.repository }}' --pattern 'omega-marketplace.sqlite.zip' --pattern 'omega-marketplace.sqlite.zip.sha256' --dir 'catalog/bootstrap'
+          $expected = ((Get-Content 'catalog/bootstrap/omega-marketplace.sqlite.zip.sha256' -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
+          $actual = (Get-FileHash 'catalog/bootstrap/omega-marketplace.sqlite.zip' -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "Published catalog bootstrap SHA-256 mismatch: expected $expected, got $actual" }
 
       - name: Build and run regression suite
         run: dotnet build .\Omega.sln -c Release

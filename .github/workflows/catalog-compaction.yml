@@ -1,34 +1,12 @@
-name: Omega legacy SQLite catalog compactor (disabled)
+name: Omega security services · legacy compactor launcher
 
 on:
   workflow_dispatch:
 
-# Security Evidence v2 replaced the giant detailed SQLite handoff in Omega 0.8.80.
-# This workflow is intentionally retained as a manual compatibility/self-test entry
-# while the archived security-evidence-latest SQLite release remains available for
-# rollback and historical inspection. It never publishes production data.
+permissions:
+  contents: read
 
 jobs:
-  compatibility:
-    name: Legacy compactor compatibility self-tests only
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-      - name: Run repository Python regression suite
-        run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
-      - name: Self-test legacy evidence compaction
-        run: python tools/catalog/compact_sqlite_catalog.py --self-test
-      - name: Self-test marketplace projection
-        run: python tools/catalog/project_marketplace_catalog.py --self-test
-      - name: Explain retirement state
-        run: |
-          echo "The v1 SQLite evidence release is archival only."
-          echo "Production scanning/publication now runs through sigmascope.yml and security-evidence-v2."
+  call-security-branch:
+    uses: dalagab/omega/.github/workflows/catalog-compaction.yml@sigmascope
+    secrets: inherit
