@@ -65,6 +65,12 @@ PRESERVED_TABLES = (
     "plugin_security_scan_lineage",
     "plugin_security_dependency_drift",
     "plugin_security_source_artifact_comparisons",
+    "artifact_blobs",
+    "source_repositories",
+    "source_revisions",
+    "artifact_source_attributions",
+    "artifact_analyses",
+    "source_analyses",
 )
 
 
@@ -186,6 +192,9 @@ def build_compact_summary(row: sqlite3.Row) -> str:
             "treeSha256": source.get("treeSha256", ""),
             "filesScanned": _countish(source.get("filesScanned")),
             "sourceToBinaryVerified": bool(row["source_to_binary_verified"]),
+            "attribution": source.get("attribution") if isinstance(source.get("attribution"), dict) else {
+                "schema": "omega.artifact-source-attribution.v1", "confidence": 0, "coverageLabel": "Unresolved", "basis": []
+            },
         },
         "package": package_summary,
         "intelligence": {

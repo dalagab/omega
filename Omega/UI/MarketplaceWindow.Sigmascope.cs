@@ -150,19 +150,27 @@ internal sealed partial class MarketplaceWindow
 
     private static void DrawPublicSourceAvailabilityBadge(MarketplacePlugin plugin)
     {
-        if (plugin.SecuritySourceAvailable)
+        var confidence = plugin.SecuritySourceAttributionConfidence;
+        var coverage = confidence > 0 && !string.IsNullOrWhiteSpace(plugin.SecurityReviewCoverageLabel)
+            ? plugin.SecurityReviewCoverageLabel
+            : "Artifact only";
+        var color = confidence >= 70
+            ? new Vector4(0.10f, 0.30f, 0.36f, 0.96f)
+            : new Vector4(0.25f, 0.25f, 0.27f, 0.94f);
+        DrawDiscoverTextBadge($"Review: {coverage}", color);
+        if (!ImGui.IsItemHovered())
+            return;
+
+        if (confidence <= 0)
         {
-            DrawDiscoverTextBadge("Source: public source inspected", new Vector4(0.10f, 0.30f, 0.36f, 0.96f));
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(plugin.SecuritySourceToBinaryVerified
-                    ? "Public source was inspected and the published package was verified against that source."
-                    : "Public source was inspected, but the published package was not verified to match that source.");
+            ImGui.SetTooltip("The distributed artifact was analyzed, but Omega has no source attribution for this exact package. This is review coverage, not a security finding, and does not imply anything about the developer's source-disclosure intent.");
             return;
         }
 
-        DrawDiscoverTextBadge("Source: public source unavailable.", new Vector4(0.25f, 0.25f, 0.27f, 0.94f));
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("No public source was available to Sigmascope for this repository package analysis.");
+        var basis = plugin.SecuritySourceAttributionBasis.Count > 0
+            ? $" Basis: {string.Join(", ", plugin.SecuritySourceAttributionBasis)}."
+            : string.Empty;
+        ImGui.SetTooltip($"Source attribution strength {confidence}. This is an ordinal evidence level, not a probability.{basis}");
     }
 
     private static void DrawKnownRiskBadge(MarketplacePlugin plugin)
@@ -247,15 +255,16 @@ internal sealed partial class MarketplaceWindow
         ImGui.Dummy(new Vector2(Ui(1f), Ui(12f)));
         ImGui.Separator();
         ImGui.Spacing();
-        if (plugin.SecuritySourceAvailable)
+        ImGui.TextDisabled($"Review coverage: {(plugin.SecuritySourceAttributionConfidence > 0 ? plugin.SecurityReviewCoverageLabel : "Artifact only")}");
+        if (plugin.SecuritySourceAttributionConfidence > 0)
         {
-            ImGui.TextDisabled("Public source was also inspected.");
-            if (!plugin.SecuritySourceToBinaryVerified)
+            ImGui.TextDisabled($"Source attribution strength: {plugin.SecuritySourceAttributionConfidence} (ordinal evidence level, not a probability).");
+            if (plugin.SecuritySourceAttributionConfidence < 100)
                 ImGui.TextDisabled("The published package was not verified to match that source.");
         }
         else
         {
-            ImGui.TextDisabled("No public source was available to Sigmascope for this analysis.");
+            ImGui.TextDisabled("Source attribution is unresolved. This is not a security finding and does not imply anything about the developer's source-disclosure intent.");
         }
         DrawSigmascopeDisclaimer();
         ImGui.Unindent(14f);

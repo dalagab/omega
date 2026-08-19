@@ -250,7 +250,8 @@ internal static partial class RegressionCases
         Contains(artwork, "selectedPlugin = ResolveDefaultVariant(plugin)", "fresh product-page navigation starts from the same deterministic default package as listing security");
         Contains(security, "ResolveSigmascopeVisual", "the product page retains the exact-package security resolver");
         Contains(security, "DrawProductSigmascopeSummary", "the product hero consumes the shared exact-package security result");
-        Contains(ribbons, "FontAwesomeIcon.Lock", "a lock is the closed/unavailable-source ribbon status");
+        Contains(ribbons, "FontAwesomeIcon.Question", "unresolved source attribution uses a neutral question ribbon rather than implying closed source");
+        DoesNotContain(ribbons, "shown as closed source", "missing source attribution is never presented as author-declared closed source");
         Contains(ribbons, "FontAwesomeIcon.Star", "a star is the public-source indexed ribbon status");
         Contains(ribbons, "highestKnownApi > 0 && highestKnownApi < currentApi", "out-of-date public-source packages are detected against the current Dalamud API");
         Contains(ribbons, "0.98f, 0.14f, 0.18f", "an out-of-date indexed package receives a red star glyph");

@@ -5,7 +5,7 @@ internal static partial class RegressionCases
     internal static void TestPluginSecurityIntelligenceContract()
     {
         var sigmascope = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "sigmascope.py"));
-        Contains(sigmascope, "SIGMASCOPE_VERSION = \"2.6.0\"", "Sigmascope version is explicit so stale evidence can be refreshed");
+        Contains(sigmascope, "SIGMASCOPE_VERSION = \"2.9.0\"", "Sigmascope version is explicit so stale evidence can be refreshed");
         Contains(sigmascope, "Only HTTPS downloads are scanned", "Sigmascope refuses insecure artifact transports");
         Contains(sigmascope, "MAX_ARTIFACT_BYTES", "artifact downloads are bounded");
         Contains(sigmascope, "MAX_ARTIFACT_BYTES = 256 * 1024 * 1024", "artifact download ceiling accommodates large production plugin packages while remaining bounded");
@@ -22,6 +22,12 @@ internal static partial class RegressionCases
         Contains(sigmascope, "artifactIdentity", "artifact manifests can supply the plugin version used for source-ref resolution");
         Contains(sigmascope, "propagate_source_provenance_by_artifact", "exact package mirrors can inherit a resolved original-source association without claiming reproducible build verification");
         Contains(sigmascope, "select_plugin_source_scope", "monorepo source scans are narrowed to the actual plugin build graph");
+        Contains(sigmascope, "/git/trees/", "GitHub source retrieval enumerates immutable tree metadata instead of downloading repository archives");
+        Contains(sigmascope, "/git/blobs/", "GitHub source retrieval fetches only selected immutable blobs");
+        False(sigmascope.Contains("/zipball/", StringComparison.Ordinal), "Sigmascope must not download GitHub source archives");
+        var publicGitSource = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "public_git_source.py"));
+        Contains(publicGitSource, "--filter=blob:none", "generic public Git source retrieval uses strict blobless partial fetches");
+        False(publicGitSource.Contains("\"clone\"", StringComparison.Ordinal), "generic public Git retrieval must not clone or checkout whole repositories");
         Contains(sigmascope, "repository-context-only", "unrelated repository projects remain context instead of becoming plugin security evidence");
         Contains(sigmascope, "contextProjects", "sibling server and tooling projects remain visible as non-critical repository context");
         Contains(sigmascope, "project_closure", "plugin source scope follows transitive project references instead of traversing the whole repository");
@@ -138,7 +144,7 @@ internal static partial class RegressionCases
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "sigmascope.yml"));
         var normalizedWorkflow = workflow.ReplaceLineEndings("\n");
         Contains(normalizedWorkflow, "name: Omega Sigmascope continuous worker", "Sigmascope is a continuous evidence worker rather than a client publisher");
-        Contains(normalizedWorkflow, "cron: \"*/15 * * * *\"", "Sigmascope leases one bounded queue item every fifteen minutes");
+        Contains(normalizedWorkflow, "cron: \"*/15 * * * *\"", "Sigmascope processes one bounded queue item every fifteen minutes");
         Contains(normalizedWorkflow, "ref: catalog-data", "Sigmascope consumes the current frozen canonical catalog/Definitions snapshot");
         Contains(normalizedWorkflow, "path: catalog/active-state", "frozen canonical state is isolated from the scanner checkout");
         Contains(normalizedWorkflow, "ref: security-evidence-v2", "Sigmascope begins from the last-known-good detailed evidence snapshot");
@@ -154,11 +160,13 @@ internal static partial class RegressionCases
         Contains(normalizedWorkflow, "--definitions-revision", "scan provenance records the exact frozen Definitions Revision");
         Contains(normalizedWorkflow, "--scanner-revision", "scan provenance records the exact frozen worker implementation revision");
         Contains(normalizedWorkflow, "--scanner-bundle-sha256", "scan provenance records the frozen worker manifest hash");
+        Contains(normalizedWorkflow, "--artifact-analysis-revision", "artifact rescan identity is narrower than the complete frozen worker bundle");
+        Contains(normalizedWorkflow, "--source-analysis-revision", "source rescan identity is narrower than the complete frozen worker bundle");
         False(normalizedWorkflow.Contains("--definitions-source-commit", StringComparison.Ordinal), "development commit provenance is not an execution dependency");
         Contains(normalizedWorkflow, "--rule-set-revision", "scan provenance records the scanner rule-set revision independently");
         Contains(normalizedWorkflow, "--queue-seed catalog/active-state/scan-queue.json", "production selection is owned by the immutable daily queue seed");
         Contains(normalizedWorkflow, "--max-scans 1", "each scheduled worker is bounded to one exact candidate");
-        Contains(normalizedWorkflow, "--rescan-after-hours 168", "unchanged artifacts remain eligible for periodic revalidation through the queue seed");
+        False(normalizedWorkflow.Contains("--rescan-after-hours", StringComparison.Ordinal), "production scheduling is event-driven rather than age/TTL driven");
         Contains(normalizedWorkflow, "contents: write", "final validated v2 snapshot publication has repository write permission");
         Contains(workflow, "publish_security_evidence_v2.py", "validated v2 publication is an explicit final step");
         Contains(workflow, "--snapshot-validation-report", "v2 push requires intrinsic snapshot validation");
@@ -173,10 +181,27 @@ internal static partial class RegressionCases
         var productionV2Pipeline = File.ReadAllText(Path.Combine(Root, "tools", "security", "production_sigmascope_v2_pipeline.py"));
         Contains(productionV2Pipeline, "frozen-definitions", "production worker distinguishes frozen Definitions coverage from live lookups");
         Contains(productionV2Pipeline, "notCoveredByFrozenDefinitions", "new dependency observations outside the daily OSV universe remain explicit");
-        Contains(productionV2Pipeline, "scan_queue.lease_next", "production scanner leases work from persistent queue state");
-        Contains(productionV2Pipeline, "scan_queue.finish_lease", "queue attempts are completed or backed off explicitly");
+        Contains(productionV2Pipeline, "scan_queue.select_next", "production scanner selects one item from persistent queue state under the workflow concurrency lock");
+        Contains(productionV2Pipeline, "scan_queue.finish_attempt", "queue attempts are completed or backed off explicitly without leases");
         Contains(productionV2Pipeline, "queueSeedRevision", "evidence publication records the queue seed provenance");
         Contains(productionV2Pipeline, "primaryReason", "evidence publication records why the variant was scanned");
+        Contains(productionV2Pipeline, "work_type == \"artifact\"", "artifact queue work forces source resolution off instead of coupling source availability to binary scanning");
+        Contains(productionV2Pipeline, "scan_queue.enqueue_source_followup", "a completed artifact item schedules source resolution as a separate later work item");
+        var scanQueue = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "scan_queue.py"));
+        Contains(scanQueue, "\"workType\": \"artifact\"", "daily security queue identifies artifact work explicitly");
+        Contains(scanQueue, "artifact-target-v2-", "artifact queue fingerprints are namespaced independently from source work");
+        Contains(scanQueue, "artifact_analysis_revision", "artifact scheduling is driven by the narrow artifact-analysis revision");
+        Contains(scanQueue, "\"workType\": \"source\"", "source resolution has its own typed queue work");
+        Contains(scanQueue, "source-target-v2-", "source work has an independent target fingerprint namespace");
+        Contains(scanQueue, "source_analysis_revision", "source scheduling is driven by the narrow source-analysis revision");
+        Contains(scanQueue, "source_revision_changed", "default-branch source work is evented by observed immutable revision changes");
+        Contains(scanQueue, "\"workType\": \"advisory\"", "advisory projection has its own typed queue work");
+        Contains(scanQueue, "advisory-target-v1-", "advisory projection has an independent global fingerprint namespace");
+        False(scanQueue.Contains("periodic_revalidation", StringComparison.Ordinal), "plugin age never creates security work");
+        False(scanQueue.Contains("def lease_next", StringComparison.Ordinal), "single-worker queue contains no distributed lease selector");
+        False(scanQueue.Contains("def finish_lease", StringComparison.Ordinal), "single-worker queue contains no lease completion API");
+        Contains(scanQueue, "enqueue_source_followup", "artifact completion can enqueue an asynchronous source follow-up without reopening artifact work");
+        False(scanQueue.Contains("reasons.append(\"source_review_due\")", StringComparison.Ordinal), "source review state cannot requeue artifact analysis");
         Contains(sigmascope, ".deps.json", "packaged .deps.json files are inspected for exact resolved NuGet package versions");
         var securityValidator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_security_catalog.py"));
         Contains(securityValidator, "plugin_security_dependencies", "validator checks dependency intelligence persistence");
@@ -202,6 +227,19 @@ internal static partial class RegressionCases
         Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_security_scans", "catalog schema preserves Sigmascope analysis history in the legacy security scan table");
         Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_security_findings", "catalog schema stores individual findings");
         Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_security_current", "catalog schema stores current per-variant security state");
+        Contains(builder, "CREATE TABLE IF NOT EXISTS manifest_observations", "catalog stores manifest publication observations separately from downloaded artifacts");
+        Contains(builder, "CREATE TABLE IF NOT EXISTS source_repositories", "catalog stores canonical source repository identities separately from manifest feeds");
+        Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_identity_aliases", "catalog stores normalized identity aliases without making any single alias authoritative");
+        Contains(sigmascope, "CREATE TABLE IF NOT EXISTS artifact_blobs", "Sigmascope gives downloaded package bytes their own SHA-256 identity");
+        Contains(sigmascope, "analysis_payload_json", "artifact analyses keep a reusable local payload while Evidence v2 transports normalized evidence");
+        Contains(sigmascope, "clone-normalized-evidence", "later workers can reuse normalized Evidence v2 rows after proving the same artifact SHA-256");
+        Contains(sigmascope, "artifactAnalysisReused", "artifact reuse is explicit in scanner results rather than silently skipping work");
+        Contains(sigmascope, "def scan_source_row", "source-only work starts from completed artifact evidence instead of redownloading the plugin package");
+        Contains(sigmascope, "analyze=False", "source resolution can establish repository/ref identity before source-body analysis");
+        Contains(sigmascope, "sourceAnalysisReused", "source-analysis reuse is explicit and independently auditable");
+        Contains(sigmascope, "CREATE TABLE IF NOT EXISTS source_revisions", "Sigmascope stores immutable source revisions separately from artifacts");
+        Contains(sigmascope, "CREATE TABLE IF NOT EXISTS artifact_source_attributions", "artifact-to-source relationships carry explicit attribution evidence");
+        Contains(sigmascope, "confidence IN (0,40,70,95,100)", "source attribution uses the machine confidence ladder rather than prose-only trust");
         Contains(builder, "security_status", "runtime catalog view exposes security state to Omega");
         Contains(builder, "catalog_base_revision", "catalog builder computes a stable semantic base revision");
         var revisions = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "catalog_revisions.py"));
@@ -220,6 +258,12 @@ internal static partial class RegressionCases
         Contains(store, "evidence_revision", "runtime reads server-side Evidence Revision metadata without downloading evidence");
         Contains(store, "security_dependencies_json", "runtime reads the bounded dependency summary from Definitions");
         Contains(store, "ReadDependencies", "runtime deserializes structured dependency summaries");
+        Contains(store, "SecuritySourceAttributionConfidence", "runtime reads source attribution strength independently of security severity");
+        Contains(store, "SecurityReviewCoverageLabel", "runtime exposes review coverage as its own presentation dimension");
+        var securityUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sigmascope.cs"));
+        Contains(securityUi, "Review: {coverage}", "product UI presents review coverage separately from security severity");
+        Contains(securityUi, "not a probability", "attribution confidence is explicitly described as an ordinal evidence level");
+        DoesNotContain(securityUi, "closed source", "source-unavailable evidence never infers developer intent as closed source");
         var dependencyModel = File.ReadAllText(Path.Combine(Root, "Omega", "Models", "MarketplaceDependency.cs"));
         Contains(dependencyModel, "TargetInternalName", "dependency summaries retain resolved Omega plugin targets");
         Contains(dependencyModel, "WarningSeverity", "dependency summaries retain warning/advisory severity without detailed evidence");
@@ -350,7 +394,6 @@ internal static partial class RegressionCases
         Contains(projector, "relationshipReason", "Definitions project a bounded IPC relationship explanation without forensic evidence tables");
 
         var discoverUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
-        var securityUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sigmascope.cs"));
         var installUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Install.cs"));
         Contains(installUi, "Required provider not installed", "install chooser warns when a high-confidence required IPC provider is missing");
         Contains(installUi, "View provider", "install warning can route the user to a resolved required provider");

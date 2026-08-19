@@ -61,6 +61,7 @@ from security_evidence_v2 import (  # noqa: E402
     normalize_row,
     read_dataset_rows,
     read_json_file,
+    read_record_dataset,
     write_record_dataset,
     safe_relpath,
     sha256_bytes,
@@ -242,6 +243,44 @@ def _current_variant_entries(evidence: Path) -> list[dict[str, Any]]:
     return [item for item in (plugins.get("currentVariants") or []) if isinstance(item, dict)]
 
 
+def _restore_source_analysis_cache(db: sqlite3.Connection, evidence: Path, payload: dict[str, Any], scan_id: int) -> int:
+    descriptor = ((payload.get("derivedEvidence") or {}).get("sourceAnalysisCache") or {}) if isinstance(payload, dict) else {}
+    if not isinstance(descriptor, dict) or not descriptor.get("files"):
+        return 0
+    rows = read_record_dataset(evidence, descriptor)
+    restored = 0
+    for record in rows:
+        if str(record.get("schema") or "") != SOURCE_ANALYSIS_CACHE_SCHEMA:
+            continue
+        analysis_payload = record.get("analysisPayload") if isinstance(record.get("analysisPayload"), dict) else {}
+        encoded = canonical_json_bytes(analysis_payload)
+        if str(record.get("analysisPayloadSha256") or "").lower() != sha256_bytes(encoded):
+            raise RuntimeError("source-analysis cache payload SHA-256 mismatch during materialization")
+        source_revision = str(record.get("sourceRevisionKey") or "").strip()
+        source_root = str(record.get("sourceRootPath") or "")
+        scanner_version = str(record.get("scannerVersion") or sigmascope.SCANNER_VERSION)
+        analysis_revision = str(record.get("sourceAnalysisRevision") or "").strip()
+        if (
+            not source_revision or not analysis_revision
+            or str(analysis_payload.get("schema") or "") != sigmascope.SOURCE_ANALYSIS_SCHEMA
+            or not bool(analysis_payload.get("analysisComplete"))
+            or str(analysis_payload.get("sourceRevisionKey") or "") != source_revision
+            or str(analysis_payload.get("sourceRootPath") or "") != source_root
+        ):
+            raise RuntimeError("source-analysis cache is incomplete or identity-inconsistent")
+        db.execute(
+            """INSERT INTO source_analyses(
+                   source_revision_key,source_root_path,scanner_version,definitions_revision,representative_scan_id,status,
+                   analyzed_at_utc,last_used_at_utc,reuse_count,analysis_payload_json)
+               VALUES(?,?,?,?,?,'complete','','',0,?)
+               ON CONFLICT(source_revision_key,source_root_path,scanner_version,definitions_revision) DO UPDATE SET
+                   representative_scan_id=excluded.representative_scan_id,status='complete',analysis_payload_json=excluded.analysis_payload_json""",
+            (source_revision, source_root, scanner_version, analysis_revision, scan_id, json.dumps(analysis_payload, ensure_ascii=False, separators=(",", ":"))),
+        )
+        restored += 1
+    return restored
+
+
 def materialize_current_state(base_database: Path, evidence: Path, work_database: Path, *, include_evidence: bool = True) -> dict[str, Any]:
     """Build the bounded mutable state DB used by Sigmascope/projector/audit.
 
@@ -263,7 +302,9 @@ def materialize_current_state(base_database: Path, evidence: Path, work_database
 
     current_entries = _current_variant_entries(evidence) if include_evidence else []
     loaded_variants = 0
+    source_analysis_caches_restored = 0
     loaded_datasets: dict[str, int] = {name: 0 for name in SMALL_ANALYSIS_DATASETS}
+    cached_source_payloads: list[tuple[dict[str, Any], int]] = []
     with closing(sqlite3.connect(temp)) as db:
         db.row_factory = sqlite3.Row
         _drop_security_state(db)
@@ -300,8 +341,14 @@ def materialize_current_state(base_database: Path, evidence: Path, work_database
                 if pk:
                     row.pop(pk, None)
                 _insert_mapping(db, "plugin_security_source_artifact_comparisons", row)
+            cached_source_payloads.append((payload, scan_id))
             loaded_variants += 1
 
+        # Reconstruct the new artifact/source identity contracts from the compact
+        # current Evidence v2 payload before derived graph projections are rebuilt.
+        identity_contracts = sigmascope.rebuild_artifact_source_contracts(db)
+        for cached_payload, cached_scan_id in cached_source_payloads:
+            source_analysis_caches_restored += _restore_source_analysis_cache(db, evidence, cached_payload, cached_scan_id)
         # Derived dependency/IPC/advisory tables are deliberately rebuilt from current
         # primitive evidence rather than trusting migrated transport IDs.
         sigmascope.refresh_dependency_graph(db, [])
@@ -319,6 +366,8 @@ def materialize_current_state(base_database: Path, evidence: Path, work_database
         "currentVariantsMaterialized": loaded_variants,
         "datasets": loaded_datasets,
         "databaseBytes": work_database.stat().st_size,
+        "artifactSourceContractsRebuilt": identity_contracts,
+        "sourceAnalysisCachesRestored": source_analysis_caches_restored,
     }
 
 
@@ -328,7 +377,6 @@ def _sigmascope_args(
     *,
     report_name: str,
     max_scans: int,
-    rescan_after_hours: int,
     max_batch_seconds: int,
     internal_names: str,
     variant_ids: str = "",
@@ -345,7 +393,10 @@ def _sigmascope_args(
         ledger="",  # v2 current scan timestamps are the operational freshness state.
         max_scans=max_scans,
         max_batch_seconds=max_batch_seconds,
-        rescan_after_hours=rescan_after_hours,
+        # Production selection is owned by the typed persistent queue. Keep the
+        # legacy Sigmascope age scheduler effectively disabled for compatibility
+        # invocations that do not supply an exact variant ID.
+        rescan_after_hours=10**9,
         internal_names=internal_names,
         variant_ids=variant_ids,
         scan_provenance=dict(scan_provenance or {}),
@@ -494,7 +545,9 @@ DERIVED_DATASETS: dict[str, str] = {
     "dependencyResolutions": "dependency-resolutions",
     "dependencyIssues": "dependency-issues",
     "advisoryMatches": "advisory-matches",
+    "sourceAnalysisCache": "source-analysis-cache",
 }
+SOURCE_ANALYSIS_CACHE_SCHEMA = "omega.security-evidence.source-analysis-cache.v1"
 
 
 def _graph_derived(db: sqlite3.Connection, scan_id: int, variant_id: int) -> dict[str, list[dict[str, Any]]]:
@@ -562,7 +615,19 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
             for name in DERIVED_DATASETS:
                 derived.pop(name, None)
             payload["derived"] = derived
-            payload["derivedEvidence"] = _write_variant_derived_datasets(candidate, variant_id, graph_derived)
+            existing_evidence = dict(payload.get("derivedEvidence") or {})
+            written = _write_variant_derived_datasets(candidate, variant_id, graph_derived)
+            # If this working DB contains a complete source analysis (fresh scan or
+            # restored cache), rewrite its cache descriptor. Otherwise retain an
+            # already-published cache descriptor for unchanged evidence.
+            source_cache = written.pop("sourceAnalysisCache", None)
+            if isinstance(source_cache, dict) and int(source_cache.get("records") or 0) > 0:
+                existing_evidence["sourceAnalysisCache"] = source_cache
+            elif "sourceAnalysisCache" not in existing_evidence and isinstance(source_cache, dict):
+                existing_evidence["sourceAnalysisCache"] = source_cache
+            for name, descriptor in written.items():
+                existing_evidence[name] = descriptor
+            payload["derivedEvidence"] = existing_evidence
             write_json(path, payload)
             updated_variants += 1
             analysis_path = str((payload.get("analysis") or {}).get("path") or "")
@@ -824,6 +889,9 @@ def rebuild_candidate_indexes(
             "catalogDataRevision": scan_context.get("catalogDataRevision", ""),
             "catalogIdentityEpoch": scan_context.get("catalogIdentityEpoch", ""),
             "definitionsRevision": scan_context.get("definitionsRevision", ""),
+            "artifactAnalysisRevision": scan_context.get("artifactAnalysisRevision", ""),
+            "sourceAnalysisRevision": scan_context.get("sourceAnalysisRevision", ""),
+            "advisoryRevision": scan_context.get("advisoryRevision", ""),
             "previousIndexSha256": scan_context.get("previousIndexSha256", ""),
             "scan": scan_context,
             "osv": osv_coverage,
@@ -834,6 +902,9 @@ def rebuild_candidate_indexes(
             "catalogDataRevision": scan_context.get("catalogDataRevision", ""),
             "catalogIdentityEpoch": scan_context.get("catalogIdentityEpoch", ""),
             "definitionsRevision": scan_context.get("definitionsRevision", ""),
+            "artifactAnalysisRevision": scan_context.get("artifactAnalysisRevision", ""),
+            "sourceAnalysisRevision": scan_context.get("sourceAnalysisRevision", ""),
+            "advisoryRevision": scan_context.get("advisoryRevision", ""),
             "securityRevision": security_revision,
             "evidenceRevision": evidence_revision,
             "previousCatalogRevision": str(previous_revisions.get("catalogRevision") or ""),
@@ -1051,19 +1122,23 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     before_current = _current_rows(work_database)
 
     queue_state: dict[str, Any] | None = None
-    leased_queue_item: dict[str, Any] | None = None
+    selected_queue_item: dict[str, Any] | None = None
     queue_state_before = b""
     selected_variant_ids = str(getattr(args, "variant_ids", "") or "")
     selected_internal_names = str(args.internal_names or "")
     scan_provenance: dict[str, Any] = {}
+    work_type = "combined"
     if queue_enabled:
         queue_seed = preloaded_queue_seed
         for key, expected in (
             ("catalogRevision", str(getattr(args, "catalog_revision", "") or "")),
             ("definitionsRevision", str(getattr(args, "definitions_revision", "") or "")),
             ("scannerRevision", str(getattr(args, "scanner_revision", "") or "")),
+            ("artifactAnalysisRevision", str(getattr(args, "artifact_analysis_revision", "") or "")),
+            ("sourceAnalysisRevision", str(getattr(args, "source_analysis_revision", "") or "")),
             ("scannerBundleSha256", str(getattr(args, "scanner_bundle_sha256", "") or "")),
             ("ruleSetRevision", str(getattr(args, "rule_set_revision", "") or "")),
+            ("advisoryRevision", str(getattr(args, "advisory_revision", "") or "")),
         ):
             if expected and str(queue_seed.get(key) or "") != expected:
                 raise RuntimeError(f"frozen scan queue {key} mismatch: {queue_seed.get(key)!r} != {expected!r}")
@@ -1076,25 +1151,34 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 queue_db,
                 [item.strip() for item in selected_internal_names.split(",") if item.strip()],
             )
-        leased_queue_item = scan_queue.lease_next(queue_state)
-        selected_variant_ids = str(int((leased_queue_item or {}).get("variantId") or 0)) if leased_queue_item else ""
+        selected_queue_item = scan_queue.select_next(queue_state)
+        selected_variant_ids = str(int((selected_queue_item or {}).get("variantId") or 0)) if selected_queue_item else ""
         selected_internal_names = ""
-        if leased_queue_item:
-            recent_attempts = leased_queue_item.get("recentAttempts") or []
+        if selected_queue_item:
+            work_type = str(selected_queue_item.get("workType") or "artifact")
+            recent_attempts = selected_queue_item.get("recentAttempts") or []
             latest_attempt = recent_attempts[-1] if recent_attempts and isinstance(recent_attempts[-1], dict) else {}
             scan_provenance = {
                 "schema": "omega.sigmascope.scan-provenance.v1",
                 "catalogRevision": str(queue_seed.get("catalogRevision") or ""),
                 "catalogIdentityEpoch": str(queue_seed.get("catalogIdentityEpoch") or ""),
                 "definitionsRevision": str(queue_seed.get("definitionsRevision") or ""),
+                "advisoryRevision": str(queue_seed.get("advisoryRevision") or ""),
                 "scannerRevision": str(getattr(args, "scanner_revision", "") or ""),
                 "scannerBundleSha256": str(getattr(args, "scanner_bundle_sha256", "") or ""),
+                "artifactAnalysisRevision": str(queue_seed.get("artifactAnalysisRevision") or getattr(args, "artifact_analysis_revision", "") or ""),
+                "sourceAnalysisRevision": str(queue_seed.get("sourceAnalysisRevision") or getattr(args, "source_analysis_revision", "") or ""),
+                "sourceObservationRevision": str(queue_seed.get("sourceObservationRevision") or ""),
+                "observedSourceRepository": str(selected_queue_item.get("observedSourceRepository") or ""),
+                "observedSourceCommit": str(selected_queue_item.get("observedSourceCommit") or ""),
+                "observedSourceRef": str(selected_queue_item.get("observedSourceRef") or ""),
                 "ruleSetRevision": str(queue_seed.get("ruleSetRevision") or ""),
                 "queueSeedRevision": str(queue_seed.get("queueSeedRevision") or ""),
-                "queueKey": str(leased_queue_item.get("queueKey") or ""),
-                "targetFingerprint": str(leased_queue_item.get("targetFingerprint") or ""),
-                "primaryReason": str(leased_queue_item.get("primaryReason") or ""),
-                "reasons": list(leased_queue_item.get("reasons") or []),
+                "queueKey": str(selected_queue_item.get("queueKey") or ""),
+                "workType": work_type,
+                "targetFingerprint": str(selected_queue_item.get("targetFingerprint") or ""),
+                "primaryReason": str(selected_queue_item.get("primaryReason") or ""),
+                "reasons": list(selected_queue_item.get("reasons") or []),
                 "attemptId": str(latest_attempt.get("attemptId") or ""),
                 "attemptNumber": int(latest_attempt.get("attemptNumber") or 0),
                 "baselineSecurityRebuild": baseline_security_rebuild,
@@ -1108,15 +1192,14 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         work_database,
         work_dir,
         report_name="sigmascope-report.json",
-        max_scans=1 if queue_enabled and leased_queue_item else (0 if queue_enabled else args.max_scans),
-        rescan_after_hours=args.rescan_after_hours,
+        max_scans=(1 if queue_enabled and selected_queue_item and work_type in {"artifact", "source"} else (0 if queue_enabled else args.max_scans)),
         max_batch_seconds=args.max_batch_seconds,
         internal_names=selected_internal_names,
         variant_ids=selected_variant_ids,
         scan_provenance=scan_provenance,
         advisories=None,
         source_overrides=source_overrides,
-        skip_source=args.skip_source,
+        skip_source=bool(args.skip_source or work_type == "artifact"),
     )
     scan_report = sigmascope.run(scan_args)
     successful, failed = _restore_last_known_good(work_database, before_current)
@@ -1131,20 +1214,25 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     }
     failed = sorted(set(failed) | reported_failed)
 
-    if queue_enabled and queue_state is not None and leased_queue_item is not None:
-        leased_variant_id = int(leased_queue_item.get("variantId") or 0)
-        attempted = next((item for item in (scan_report.get("plugins") or []) if isinstance(item, dict) and int(item.get("variantId") or 0) == leased_variant_id), None)
+    if queue_enabled and queue_state is not None and selected_queue_item is not None and work_type in {"artifact", "source"}:
+        selected_variant_id = int(selected_queue_item.get("variantId") or 0)
+        attempted = next((item for item in (scan_report.get("plugins") or []) if isinstance(item, dict) and int(item.get("variantId") or 0) == selected_variant_id), None)
         if attempted is None:
-            scan_queue.finish_lease(queue_state, leased_queue_item, status="failed", error="leased queue item produced no scan result")
+            scan_queue.finish_attempt(queue_state, selected_queue_item, status="failed", error="selected queue item produced no scan result")
         else:
-            scan_queue.finish_lease(
+            attempted_status = "complete" if str(attempted.get("status") or "") == "complete" else "failed"
+            current_after = _current_rows(work_database)
+            current_row = current_after.get(selected_variant_id) or {}
+            scan_queue.finish_attempt(
                 queue_state,
-                leased_queue_item,
-                status="complete" if str(attempted.get("status") or "") == "complete" else "failed",
+                selected_queue_item,
+                status=attempted_status,
                 error=str(attempted.get("error") or ""),
                 artifact_sha256=str(attempted.get("artifactSha256") or ""),
-                scan_id=int((_current_rows(work_database).get(leased_variant_id) or {}).get("scan_id") or 0),
+                scan_id=int(current_row.get("scan_id") or 0),
             )
+            if attempted_status == "complete" and work_type == "artifact":
+                scan_queue.enqueue_source_followup(queue_state, selected_queue_item, current_row)
 
     # OSV consumes the explicit v2 NuGet package/version contract rather than
     # querying the mutable SQLite working projection directly. Build that bounded
@@ -1178,7 +1266,6 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         work_dir,
         report_name="sigmascope-advisory-refresh-report.json",
         max_scans=0,
-        rescan_after_hours=args.rescan_after_hours,
         max_batch_seconds=0,
         internal_names=args.internal_names,
         variant_ids="",
@@ -1187,6 +1274,8 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         skip_source=True,
     )
     refresh_report = sigmascope.run(refresh_args)
+    if queue_enabled and queue_state is not None and selected_queue_item is not None and work_type == "advisory":
+        scan_queue.finish_attempt(queue_state, selected_queue_item, status="complete")
     summary = summarize_database(work_database)
     diagnostics = _dependency_diagnostics(work_database)
     observed_nuget_pairs = int(summary.get("nugetPackageVersionPairs") or 0)
@@ -1256,21 +1345,24 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "failedRetained": len(failed),
         "failedVariantIds": failed,
         "maxScans": args.max_scans,
-        "rescanAfterHours": args.rescan_after_hours,
         "catalogDataRevision": str(getattr(args, "catalog_revision", "") or ""),
         "catalogIdentityEpoch": queue_identity_epoch,
         "baselineSecurityRebuild": baseline_security_rebuild,
         "definitionsRevision": str(getattr(args, "definitions_revision", "") or ""),
+        "advisoryRevision": str(getattr(args, "advisory_revision", "") or ""),
         "scannerRevision": str(getattr(args, "scanner_revision", "") or ""),
         "scannerBundleSha256": str(getattr(args, "scanner_bundle_sha256", "") or ""),
+        "artifactAnalysisRevision": str(getattr(args, "artifact_analysis_revision", "") or ""),
+        "sourceAnalysisRevision": str(getattr(args, "source_analysis_revision", "") or ""),
         "ruleSetRevision": str(getattr(args, "rule_set_revision", "") or ""),
         "queueSeedRevision": str((queue_state or {}).get("queueSeedRevision") or ""),
-        "queueLease": {
-            "variantId": int((leased_queue_item or {}).get("variantId") or 0),
-            "primaryReason": str((leased_queue_item or {}).get("primaryReason") or ""),
-            "reasons": list((leased_queue_item or {}).get("reasons") or []),
-            "attemptCount": int((leased_queue_item or {}).get("attemptCount") or 0),
-        } if leased_queue_item else {},
+        "queueWork": {
+            "variantId": int((selected_queue_item or {}).get("variantId") or 0),
+            "workType": str((selected_queue_item or {}).get("workType") or "artifact"),
+            "primaryReason": str((selected_queue_item or {}).get("primaryReason") or ""),
+            "reasons": list((selected_queue_item or {}).get("reasons") or []),
+            "attemptCount": int((selected_queue_item or {}).get("attemptCount") or 0),
+        } if selected_queue_item else {},
         "advisoryMode": advisory_mode,
     }
     osv_coverage = {
@@ -1286,6 +1378,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "notQueriedByLimit": max(0, observed_nuget_pairs - expected_osv) if frozen_advisories is None else 0,
         "notCoveredByFrozenDefinitions": len(uncovered_pairs),
         "definitionsRevision": str(getattr(args, "definitions_revision", "") or ""),
+        "advisoryRevision": str(getattr(args, "advisory_revision", "") or ""),
         "mode": advisory_mode,
         "queryGate": "pass" if (not expected_osv or queried_osv >= expected_osv) else "fail",
     }
@@ -1357,6 +1450,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "gate": "pass" if (not expected_osv or queried_osv >= expected_osv) else "fail",
             "mode": advisory_mode,
             "definitionsRevision": str(getattr(args, "definitions_revision", "") or ""),
+            "advisoryRevision": str(getattr(args, "advisory_revision", "") or ""),
             "notCoveredByFrozenDefinitions": len(uncovered_pairs),
         },
         "candidate": {
@@ -1370,7 +1464,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "marketplace": marketplace_report,
         "queue": {
             "enabled": queue_enabled,
-            "leased": leased_queue_item or {},
+            "selected": selected_queue_item or {},
             "stateChanged": queue_state_changed,
             "summary": scan_queue.state_summary(queue_state) if queue_state is not None else {},
         },
@@ -1421,12 +1515,14 @@ def main() -> int:
     parser.add_argument("--catalog-revision", default="", help="Canonical JSON catalog revision used for this worker")
     parser.add_argument("--definitions-revision", default="", help="Frozen Definitions revision used for this worker")
     parser.add_argument("--scanner-revision", default="", help="Frozen self-contained worker bundle revision")
+    parser.add_argument("--artifact-analysis-revision", default="", help="Narrow frozen artifact-analysis semantic revision")
+    parser.add_argument("--source-analysis-revision", default="", help="Narrow frozen source-analysis semantic revision")
     parser.add_argument("--scanner-bundle-sha256", default="", help="SHA-256 of the frozen worker bundle manifest")
     parser.add_argument("--rule-set-revision", default="", help="Frozen scanner rule-set revision; distinct from advisory-only Definitions changes")
+    parser.add_argument("--advisory-revision", default="", help="Frozen OSV/advisory projection revision")
     parser.add_argument("--queue-seed", type=Path, help="Immutable daily scan queue seed from catalog-data")
     parser.add_argument("--source-overrides", type=Path, default=TOOLS_DIR.parent / "sources" / "source-overrides.json")
     parser.add_argument("--max-scans", type=int, default=DEFAULT_MAX_SCANS)
-    parser.add_argument("--rescan-after-hours", type=int, default=DEFAULT_RESCAN_HOURS)
     parser.add_argument("--max-batch-seconds", type=int, default=DEFAULT_MAX_BATCH_SECONDS)
     parser.add_argument("--internal-names", default="")
     parser.add_argument("--variant-ids", default="", help="Optional exact variant IDs; normally supplied by the persistent queue")

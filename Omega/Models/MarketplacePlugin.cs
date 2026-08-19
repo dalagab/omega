@@ -65,6 +65,10 @@ public sealed class MarketplacePlugin
     public bool SecuritySourceAvailable { get; init; }
     public string SecuritySourceRepository { get; init; } = string.Empty;
     public string SecuritySourceCommit { get; init; } = string.Empty;
+    // Independent review/source coverage. This is not a security severity or probability.
+    public int SecuritySourceAttributionConfidence { get; init; }
+    public IReadOnlyList<string> SecuritySourceAttributionBasis { get; init; } = [];
+    public string SecurityReviewCoverageLabel { get; init; } = "Unresolved";
     public bool SecuritySourceToBinaryVerified { get; init; }
     public string SecurityError { get; init; } = string.Empty;
     public bool HasCompletedSecurityScan => SecurityStatus.Equals("complete", StringComparison.OrdinalIgnoreCase);

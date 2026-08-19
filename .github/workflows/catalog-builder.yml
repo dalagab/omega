@@ -198,15 +198,21 @@ jobs:
           path: catalog/previous-state
           fetch-depth: 1
           persist-credentials: false
-      - name: Materialize previous canonical JSON as normalization seed
+      - name: Materialize compatible previous canonical JSON as normalization seed
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
           if [ -f catalog/previous-state/catalog/index.json ]; then
-            python tools/catalog/catalog_json_store.py materialize \
-              --root catalog/previous-state/catalog \
-              --database catalog/seed/omega-catalog.sqlite
+            if python tools/catalog/catalog_json_store.py identity-compatible \
+              --root catalog/previous-state/catalog > catalog/previous-seed-identity.json; then
+              python tools/catalog/catalog_json_store.py materialize \
+                --root catalog/previous-state/catalog \
+                --database catalog/seed/omega-catalog.sqlite
+            else
+              cat catalog/previous-seed-identity.json
+              echo "::notice::Previous canonical catalog uses a legacy/incompatible identity epoch; rebuilding normalization state without a catalog seed."
+            fi
           fi
       - name: Normalize discovery into a temporary relational working catalog
         shell: bash
@@ -245,6 +251,13 @@ jobs:
           )
           if [ "${{ inputs.allow_source_removal || false }}" = "true" ]; then args+=(--allow-source-removal); fi
           python tools/catalog/source_inventory_guard.py "${args[@]}"
+      - name: Observe public source HEAD revisions without fetching source bodies
+        run: >-
+          python tools/catalog/source_revision_observer.py
+          --catalog-root catalog/state-catalog
+          --output catalog/source-revision-observations.json
+          --timeout 12
+          --concurrency 16
       - name: Freeze daily Definitions and OSV data
         run: >-
           python tools/catalog/definitions_snapshot.py build
@@ -252,6 +265,7 @@ jobs:
           --evidence-root catalog/security-v2-current
           --output catalog/state-definitions
           --built-from-dev-commit "${{ github.sha }}"
+          --source-observations catalog/source-revision-observations.json
           --timeout ${{ inputs.timeout || '20' }}
       - name: Build deterministic daily Sigmascope queue seed
         run: >-
@@ -260,7 +274,6 @@ jobs:
           --definitions-root catalog/state-definitions
           --evidence-root catalog/security-v2-current
           --output catalog/state-scan-queue.json
-          --rescan-after-hours 168
       - name: Assemble and validate named catalog/Definitions snapshot
         run: |
           python tools/catalog/catalog_state.py assemble \
@@ -312,6 +325,7 @@ jobs:
             catalog/state/catalog/index.json
             catalog/state/definitions/index.json
             catalog/state/definitions/worker/manifest.json
+            catalog/state/definitions/source-revisions.json
             catalog/state/scan-queue.json
             catalog/state/source-inventory.json
             catalog/client-dist/catalog.json

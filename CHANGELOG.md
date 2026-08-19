@@ -4,6 +4,56 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
+<sub>work build: 0.9.35</sub>
+- Upgrade Sigmascope to 2.9.0 and replace GitHub source ZIP/archive inspection with immutable commit/tree metadata plus selected Git blob retrieval; no repository archive is downloaded.
+- Replace generic public-Git shallow-clone fallback with strict `blob:none` partial fetches, no checkout, and lazy selected-blob hydration; refuse servers that ignore object filtering rather than silently downloading complete source bodies.
+- Add complete `sourceAnalysisCache` transport records to Security Evidence v2 with source revision/root, source-analysis revision, scanner version, and canonical payload SHA-256 validation.
+- Restore complete source-analysis caches after Evidence v2 materialization so a later worker can resolve the same immutable source revision and reuse source analysis without fetching source bodies again.
+- Preserve source-analysis cache as transport-only data outside v1 semantic-parity comparison while validating it intrinsically and keeping artifact/source findings in their normalized Evidence v2 datasets.
+
+<sub>work build: 0.9.34</sub>
+- Separate complete frozen-worker execution identity from semantic artifact/source invalidation with `artifactAnalysisRevision` and `sourceAnalysisRevision`; scheduler/publisher-only edits no longer force plugin rescans.
+- Calculate Python analysis revisions from normalized AST semantics so comments/formatting do not invalidate analysis while relevant code changes still do.
+- Add refs-only daily public-source HEAD observation and queue `source_revision_changed` only when confidence-40/default-branch attribution moves to a different immutable commit.
+- Carry narrow analysis/source-observation revisions through Definitions, queue state, Evidence v2, state descriptors and client metadata.
+- Fix catalog state assembly to validate the production queue-seed/state v2 schema introduced by 0.9.33.
+
+<sub>work build: 0.9.33</sub>
+- Replace generic age/TTL security revalidation with typed event-driven queue work: artifact, source, and global advisory projection items now have independent fingerprints and reasons.
+- Introduce Sigmascope queue seed/state/attempt v2 and remove lease IDs, lease expiry, stale-lease recovery, and `periodic_revalidation`; the single workflow concurrency lock now uses crash-safe `select_next` / `finish_attempt` state transitions.
+- Freeze an explicit `advisoryRevision` with daily Definitions and enqueue one `advisory_changed` projection item when the frozen OSV universe changes, without downloading plugin artifacts or fetching source.
+- Keep actual failure retry/backoff, manual work, baseline/new/artifact/scanner/rule/source triggers, and dynamically enqueued source follow-ups while preventing source-review state from making artifact scans due.
+- Preserve backward reads of queue-state v1 in published Evidence v2 while all newly generated daily/candidate queue state uses v2; remove `--rescan-after-hours` from production workflows and the production pipeline.
+
+<sub>work build: 0.9.32</sub>
+- Upgrade Sigmascope to 2.8.0 and add an independent `workType: source` queue path that runs only after artifact evidence exists; source work never redownloads or reparses the plugin artifact.
+- Let each completed artifact queue item enqueue a higher-priority asynchronous source follow-up, while daily queue generation can recover unresolved source work from already-published artifact evidence.
+- Split source resolution from source text analysis inside Sigmascope: first resolve repository/ref/immutable commit and plugin root without scanning source bodies, then analyze source only when no compatible source-analysis cache exists.
+- Key source analyses by immutable source revision + plugin root + frozen scanner/rule revision, preserve numeric attribution confidence/basis, and reuse complete source analysis safely inside the materialized worker database.
+- Keep artifact and source failure domains separate: source work starts from the last complete artifact current pointer and publishes a new compatibility projection without reopening artifact analysis.
+- Carry source-analysis revision/reuse provenance through the compact Evidence v2 report while deliberately refusing incomplete transport-reconstructed source caches.
+
+<sub>work build: 0.9.31</sub>
+- Split Sigmascope's execution path so the production queue emits explicit `workType: artifact` jobs; artifact scanning never waits for source resolution and source-review state can no longer trigger redundant binary rescans.
+- Upgrade Sigmascope to 2.7.0 and namespace artifact work by frozen `scannerRevision` + `ruleSetRevision`, so scanner implementation changes invalidate only affected artifact analysis while OSV-only Definitions updates remain projection-only.
+- Add SHA-256-gated artifact-analysis reuse: every target still downloads and hashes its own package, but once identical bytes are proven, normalized findings/dependencies/managed-code evidence can be reused instead of reparsing the archive.
+- Preserve deduplication across Evidence v2 publication boundaries by cloning normalized representative-scan datasets when the large local artifact-analysis payload is no longer present.
+- Record artifact reuse explicitly (`artifactAnalysisReused`, representative scan ID, reuse count) and keep source attribution unresolved/neutral for artifact-only jobs.
+
+<sub>work build: 0.9.30</sub>
+- Establish the artifact/source identity foundation: catalog manifest observations are stored separately from source repository candidates, while downloaded package bytes receive SHA-256 artifact identities in Sigmascope.
+- Add canonical source repository/alias identities, immutable source revisions, artifact↔source attribution records, and plugin identity aliases whose collisions resolve to `ambiguous` instead of automatic attribution.
+- Introduce machine source-attribution levels 0/40/70/95/100 with basis codes; 100 remains reserved for reproducible source-to-artifact proof and confidence is explicitly ordinal rather than probabilistic.
+- Persist compatibility artifact/source analysis identities through Evidence v2 so later artifact and source workers can deduplicate independently without another identity migration.
+- Separate review/source coverage from security severity in the marketplace projection and UI; unresolved source attribution is shown as artifact-only review coverage and never inferred as developer-declared closed source.
+- Preserve stable/testing/staging manifest channel observations independently so later scheduling and presentation can treat STAGING churn separately.
+
+<sub>work build: 0.9.29</sub>
+- Fix the first live 0.9.28 daily migration failure: a pre-identity-epoch `catalog-data` snapshot is now detected before normalization seeding and deliberately skipped instead of being passed into the strict current-epoch materializer.
+- Keep canonical validation fail-closed: legacy/missing identity epochs still cannot be materialized, published, or consumed as current state; only the optional seed step may continue without them.
+- Add an explicit identity-compatibility probe and regression coverage that forbids an `--allow-legacy-identity` escape hatch.
+- Preserve the legacy snapshot for source-retention auditing even when it is not eligible to seed catalog IDs/state.
+
 <sub>work build: 0.9.28</sub>
 - Freeze a self-contained Sigmascope worker bundle (`tools/catalog`, `tools/security`, and source overrides) into each daily Definitions snapshot on `catalog-data`.
 - Replace historical development-commit execution with immutable `scannerRevision` + worker-manifest SHA-256 provenance; `builtFromDevCommit` is retained only as optional build provenance.

@@ -145,9 +145,9 @@ internal sealed partial class MarketplaceWindow
         {
             return new SigmascopeRibbonVisual(
                 background,
-                FontAwesomeIcon.Lock,
+                FontAwesomeIcon.Question,
                 0xFFFFFFFF,
-                $"{SigmascopeRibbonLabel(severity)} Sigmascope finding level. Public source was unavailable to Sigmascope for this package, so it is shown as closed source.");
+                $"{SigmascopeRibbonLabel(severity)} Sigmascope finding level. Artifact analysis is available, but source attribution is unresolved. This does not imply anything about the developer's source-disclosure intent.");
         }
 
         var highestKnownApi = HighestKnownApiFor(plugin.InternalName, currentApi);

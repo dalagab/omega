@@ -235,6 +235,10 @@ def validate(database: Path, evidence: Path, *, quick: bool = False) -> dict[str
             _compare_exact(f"variant {variant_id} source identity", source, payload.get("source"), errors)
             actual_derived = dict(payload.get("derived") or {})
             for name, descriptor in (payload.get("derivedEvidence") or {}).items():
+                if name == "sourceAnalysisCache":
+                    # Transport cache has no v1 relational equivalent; its intrinsic
+                    # identity/digest contract is validated by security_evidence_v2.
+                    continue
                 if isinstance(descriptor, dict):
                     actual_derived[name] = read_record_dataset(evidence, descriptor)
             _compare_exact(f"variant {variant_id} derived evidence", _expected_derived(db, scan_id), actual_derived, errors)

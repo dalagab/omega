@@ -20,6 +20,9 @@ internal static partial class RegressionCases
         Contains(workflow, "scrape_websites_incremental.py", "incremental website enrichment step");
         Contains(workflow, "build_sqlite_catalog.py", "temporary relational normalization step remains available");
         Contains(workflow, "catalog_json_store.py export", "canonical public catalog is exported as sharded JSON");
+        Contains(workflow, "identity-compatible", "legacy pre-identity-epoch catalog state is detected before optional normalization seeding");
+        Contains(workflow, "legacy/incompatible identity epoch", "incompatible legacy catalog state is skipped as a seed instead of blocking the clean rebuild");
+        False(workflow.Contains("--allow-legacy-identity", StringComparison.Ordinal), "strict current-epoch materialization is never weakened for migration");
         Contains(workflow, "definitions_snapshot.py build", "daily Definitions and OSV inputs are frozen once");
         Contains(workflow, "scan_queue.py build-seed", "daily snapshot includes a deterministic Sigmascope queue seed");
         Contains(workflow, "catalog_state.py assemble", "catalog JSON, Definitions and queue are assembled into one named state");
@@ -51,6 +54,7 @@ internal static partial class RegressionCases
 
         var jsonStore = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "catalog_json_store.py"));
         Contains(jsonStore, "omega.catalog-json.v1", "canonical JSON catalog format has an explicit schema");
+        Contains(jsonStore, "omega.catalog-json.identity-compatibility.v1", "catalog migration exposes a bounded identity compatibility probe separate from strict validation");
         var definitions = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "definitions_snapshot.py"));
         Contains(definitions, "ruleSetRevision", "Definitions distinguish scanner-rule changes from data-only changes");
         Contains(definitions, "queriedPackageVersionPairs", "Definitions freeze the exact OSV query universe");

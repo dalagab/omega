@@ -31,6 +31,7 @@ TOOLS_DIR = SCRIPT_DIR.parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+import analysis_revision  # noqa: E402
 import collect_public_advisories  # noqa: E402
 import sigmascope  # noqa: E402
 
@@ -207,6 +208,7 @@ def verify_worker_bundle(definitions_root: Path, descriptor: dict[str, Any]) -> 
 
 def definitions_revision(
     *, scanner_version: str, scanner_revision: str, scanner_rule_revision: str, fingerprints: dict[str, str],
+    artifact_analysis_revision: str, source_analysis_revision: str, source_observation_revision: str,
     osv_document: dict[str, Any], reputation: dict[str, Any],
 ) -> str:
     semantic = {
@@ -214,6 +216,9 @@ def definitions_revision(
         "formatVersion": FORMAT_VERSION,
         "scannerVersion": scanner_version,
         "scannerRevision": scanner_revision,
+        "artifactAnalysisRevision": artifact_analysis_revision,
+        "sourceAnalysisRevision": source_analysis_revision,
+        "sourceObservationRevision": source_observation_revision,
         "ruleSetRevision": scanner_rule_revision,
         "ruleFiles": fingerprints,
         "osv": _semantic_osv(osv_document),
@@ -244,6 +249,30 @@ def _semantic_osv(document: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+def _semantic_source_observations(document: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema": str(document.get("schema") or "omega.source-revision-observations.v1"),
+        "repositories": sorted(
+            [
+                {
+                    "repositoryKey": str(item.get("repositoryKey") or ""),
+                    "repository": str(item.get("repository") or ""),
+                    "status": str(item.get("status") or ""),
+                    "defaultRef": str(item.get("defaultRef") or ""),
+                    "commitSha": str(item.get("commitSha") or "").lower(),
+                }
+                for item in document.get("repositories") or []
+                if isinstance(item, dict) and str(item.get("repository") or "")
+            ],
+            key=lambda item: item["repository"].casefold(),
+        ),
+    }
+
+
+def source_observation_revision(document: dict[str, Any]) -> str:
+    return f"source-observations-v1-{sha256_bytes(canonical(_semantic_source_observations(document)))[:16]}"
+
 def build_snapshot(
     *,
     repo_root: Path,
@@ -251,6 +280,7 @@ def build_snapshot(
     output: Path,
     source_commit: str = "",
     advisories_input: Path | None = None,
+    source_observations_input: Path | None = None,
     timeout: float = 20.0,
     max_packages: int = 2000,
 ) -> dict[str, Any]:
@@ -263,6 +293,9 @@ def build_snapshot(
     scanner_rule_revision = rule_set_revision(fingerprints)
     worker_bundle = build_worker_bundle(repo_root, output)
     scanner_revision = str(worker_bundle["scannerRevision"])
+    analysis_revisions = analysis_revision.compute(repo_root)
+    artifact_analysis_revision = str(analysis_revisions["artifactAnalysisRevision"])
+    source_analysis_revision = str(analysis_revisions["sourceAnalysisRevision"])
 
     evidence_index_path = evidence_root / "index.json"
     evidence_index = json.loads(evidence_index_path.read_text(encoding="utf-8")) if evidence_index_path.is_file() else {}
@@ -300,6 +333,24 @@ def build_snapshot(
     document["queriedPackageVersionPairs"] = queried_pairs
     osv_path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
+    source_observations_path = output / "source-revisions.json"
+    if source_observations_input is not None and source_observations_input.is_file():
+        source_observations_document = json.loads(source_observations_input.read_text(encoding="utf-8"))
+        if source_observations_document.get("schema") != "omega.source-revision-observations.v1":
+            raise RuntimeError("source revision observations use an unsupported schema")
+    else:
+        source_observations_document = {
+            "schema": "omega.source-revision-observations.v1",
+            "generatedAtUtc": utc_now(),
+            "counts": {"repositories": 0, "observed": 0, "failed": 0},
+            "repositories": [],
+        }
+    source_observations_revision = source_observation_revision(source_observations_document)
+    source_observations_document["revision"] = source_observations_revision
+    source_observations_path.write_text(
+        json.dumps(source_observations_document, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
+
     reputation = {
         "schema": "omega.reputation-definitions.v1",
         "feeds": [],
@@ -313,9 +364,13 @@ def build_snapshot(
         scanner_revision=scanner_revision,
         scanner_rule_revision=scanner_rule_revision,
         fingerprints=fingerprints,
+        artifact_analysis_revision=artifact_analysis_revision,
+        source_analysis_revision=source_analysis_revision,
+        source_observation_revision=source_observations_revision,
         osv_document=document,
         reputation=reputation,
     )
+    advisory_revision = f"osv-v1-{sha256_bytes(canonical(_semantic_osv(document)))[:16]}"
     index = {
         "schema": SCHEMA,
         "formatVersion": FORMAT_VERSION,
@@ -325,8 +380,12 @@ def build_snapshot(
         "scannerVersion": sigmascope.SCANNER_VERSION,
         "scannerRevision": scanner_revision,
         "scannerBundle": worker_bundle,
+        "artifactAnalysisRevision": artifact_analysis_revision,
+        "sourceAnalysisRevision": source_analysis_revision,
+        "sourceObservationRevision": source_observations_revision,
         "sourceEvidenceRevision": evidence_revision,
         "ruleSetRevision": scanner_rule_revision,
+        "advisoryRevision": advisory_revision,
         "ruleFiles": fingerprints,
         "osv": {
             "path": "osv-advisories.json",
@@ -334,6 +393,12 @@ def build_snapshot(
             "queriedPackages": int(document.get("queriedPackages") or 0),
             "matchedPackages": int(document.get("matchedPackages") or 0),
             "semanticSha256": sha256_bytes(canonical(_semantic_osv(document))),
+        },
+        "sourceObservations": {
+            "path": "source-revisions.json",
+            "sha256": sha256_file(source_observations_path),
+            "revision": source_observations_revision,
+            "counts": source_observations_document.get("counts") or {},
         },
         "reputation": {
             "path": "reputation.json",
@@ -380,17 +445,56 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
                 payloads[key] = value if isinstance(value, dict) else {}
             except Exception as exc:
                 errors.append(f"definitions payload unreadable: {rel}: {type(exc).__name__}: {exc}")
+    source_observations_item = index.get("sourceObservations") if isinstance(index.get("sourceObservations"), dict) else {}
+    source_observations_rel = str(source_observations_item.get("path") or "")
+    source_observations_path = definitions_root / source_observations_rel
+    source_observations_document: dict[str, Any] = {}
+    if not source_observations_rel or not source_observations_path.is_file():
+        errors.append("definitions source revision observations payload missing")
+    elif sha256_file(source_observations_path) != str(source_observations_item.get("sha256") or ""):
+        errors.append("definitions source revision observations payload hash mismatch")
+    else:
+        try:
+            value = json.loads(source_observations_path.read_text(encoding="utf-8"))
+            source_observations_document = value if isinstance(value, dict) else {}
+        except Exception as exc:
+            errors.append(f"definitions source revision observations unreadable: {type(exc).__name__}: {exc}")
+    expected_source_observation_revision = source_observation_revision(source_observations_document) if source_observations_document else ""
+    if expected_source_observation_revision != str(index.get("sourceObservationRevision") or ""):
+        errors.append("source observation revision does not match frozen ref observations")
+    if expected_source_observation_revision != str(source_observations_item.get("revision") or ""):
+        errors.append("source observation descriptor revision mismatch")
+
+    frozen_analysis_revisions: dict[str, Any] = {}
+    try:
+        frozen_analysis_revisions = analysis_revision.compute(bundle_root)
+    except Exception as exc:
+        errors.append(f"analysis revision computation failed: {type(exc).__name__}: {exc}")
+    expected_artifact_analysis_revision = str(frozen_analysis_revisions.get("artifactAnalysisRevision") or "")
+    expected_source_analysis_revision = str(frozen_analysis_revisions.get("sourceAnalysisRevision") or "")
+    if expected_artifact_analysis_revision != str(index.get("artifactAnalysisRevision") or ""):
+        errors.append("artifact analysis revision does not match frozen analysis code")
+    if expected_source_analysis_revision != str(index.get("sourceAnalysisRevision") or ""):
+        errors.append("source analysis revision does not match frozen analysis code")
+
     scanner_version = str(index.get("scannerVersion") or "")
     fingerprints = {str(k): str(v) for k, v in (index.get("ruleFiles") or {}).items()}
     expected_rule_set = rule_set_revision(fingerprints, scanner_version=scanner_version) if fingerprints else ""
     if expected_rule_set != str(index.get("ruleSetRevision") or ""):
         errors.append("rule-set revision does not match frozen scanner rule files")
+    if "osv" in payloads:
+        expected_advisory_revision = f"osv-v1-{sha256_bytes(canonical(_semantic_osv(payloads["osv"])))[:16]}"
+        if expected_advisory_revision != str(index.get("advisoryRevision") or ""):
+            errors.append("advisory revision does not match frozen OSV payload")
     if "osv" in payloads and "reputation" in payloads and expected_rule_set:
         expected_definitions = definitions_revision(
             scanner_version=scanner_version,
             scanner_revision=str(index.get("scannerRevision") or ""),
             scanner_rule_revision=expected_rule_set,
             fingerprints=fingerprints,
+            artifact_analysis_revision=expected_artifact_analysis_revision,
+            source_analysis_revision=expected_source_analysis_revision,
+            source_observation_revision=expected_source_observation_revision,
             osv_document=payloads["osv"],
             reputation=payloads["reputation"],
         )
@@ -402,7 +506,11 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
         "definitionsRevision": str(index.get("definitionsRevision") or ""),
         "ruleSetRevision": str(index.get("ruleSetRevision") or ""),
         "scannerRevision": str(index.get("scannerRevision") or ""),
+        "artifactAnalysisRevision": str(index.get("artifactAnalysisRevision") or ""),
+        "sourceAnalysisRevision": str(index.get("sourceAnalysisRevision") or ""),
+        "sourceObservationRevision": str(index.get("sourceObservationRevision") or ""),
         "scannerBundleSha256": str((index.get("scannerBundle") or {}).get("sha256") or ""),
+        "advisoryRevision": str(index.get("advisoryRevision") or ""),
         "builtFromDevCommit": str(index.get("builtFromDevCommit") or ""),
         "errors": errors,
     }
@@ -417,6 +525,7 @@ def main() -> int:
     build.add_argument("--output", type=Path, required=True)
     build.add_argument("--built-from-dev-commit", "--source-commit", dest="source_commit", default="", help="Optional development provenance only; never an execution dependency")
     build.add_argument("--advisories-input", type=Path)
+    build.add_argument("--source-observations", dest="source_observations_input", type=Path)
     build.add_argument("--timeout", type=float, default=20.0)
     build.add_argument("--max-packages", type=int, default=2000)
     verify = sub.add_parser("verify")
@@ -429,6 +538,7 @@ def main() -> int:
             output=args.output,
             source_commit=args.source_commit,
             advisories_input=args.advisories_input,
+            source_observations_input=args.source_observations_input,
             timeout=args.timeout,
             max_packages=args.max_packages,
         )

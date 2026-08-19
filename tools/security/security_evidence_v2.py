@@ -65,10 +65,12 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
 
     source = report.get("source") if isinstance(report.get("source"), dict) else {}
     source_provenance = source.get("provenance") if isinstance(source.get("provenance"), dict) else {}
+    source_attribution = source.get("attribution") if isinstance(source.get("attribution"), dict) else {}
     source_candidates = source.get("candidates") if isinstance(source.get("candidates"), list) else []
     source_intel = source.get("dependencyIntelligence") if isinstance(source.get("dependencyIntelligence"), dict) else {}
     source_fingerprints = source_intel.get("fingerprints") if isinstance(source_intel.get("fingerprints"), dict) else {}
     package = report.get("package") if isinstance(report.get("package"), dict) else {}
+    artifact_identity = report.get("artifactIdentity") if isinstance(report.get("artifactIdentity"), dict) else {}
     automation = report.get("automation") if isinstance(report.get("automation"), dict) else {}
     intelligence = report.get("dependencyIntelligence") if isinstance(report.get("dependencyIntelligence"), dict) else {}
     if not intelligence and isinstance(report.get("intelligence"), dict):
@@ -133,13 +135,25 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
         "scanProvenance": {
             key: scan_provenance.get(key)
             for key in (
-                "schema", "catalogRevision", "catalogIdentityEpoch", "definitionsRevision", "scannerRevision", "scannerBundleSha256", "definitionsSourceCommit", "ruleSetRevision",
-                "queueSeedRevision", "queueKey", "targetFingerprint", "primaryReason", "baselineSecurityRebuild",
-                "reasons", "attemptId", "attemptNumber", "variantId",
+                "schema", "catalogRevision", "catalogIdentityEpoch", "definitionsRevision", "scannerRevision", "scannerBundleSha256", "definitionsSourceCommit", "artifactAnalysisRevision", "sourceAnalysisRevision", "sourceObservationRevision", "ruleSetRevision",
+                "queueSeedRevision", "queueKey", "workType", "targetFingerprint", "primaryReason", "baselineSecurityRebuild",
+                "reasons", "attemptId", "attemptNumber", "variantId", "observedSourceRepository", "observedSourceCommit", "observedSourceRef",
             )
             if key in scan_provenance
         },
         "scannedAtUtc": str(row.get("scanned_at_utc") or report.get("scannedAtUtc") or ""),
+        "workType": str(report.get("workType") or scan_provenance.get("workType") or ""),
+        "artifactAnalysisRevision": str(report.get("artifactAnalysisRevision") or scan_provenance.get("artifactAnalysisRevision") or scan_provenance.get("ruleSetRevision") or ""),
+        "artifactAnalysisReused": bool(report.get("artifactAnalysisReused")),
+        "artifactAnalysisRepresentativeScanId": int(report.get("artifactAnalysisRepresentativeScanId") or 0),
+        "sourceAnalysisRevision": str(report.get("sourceAnalysisRevision") or ""),
+        "sourceAnalysisReused": bool(report.get("sourceAnalysisReused")),
+        "sourceAnalysisRepresentativeScanId": int(report.get("sourceAnalysisRepresentativeScanId") or 0),
+        "artifactBytes": int(report.get("artifactBytes") or 0),
+        "artifactIdentity": {
+            "artifactAssemblyVersion": _bounded_text(artifact_identity.get("artifactAssemblyVersion"), 512),
+            "manifestPath": _bounded_text(artifact_identity.get("manifestPath"), 2048),
+        },
         "status": str(row.get("status") or report.get("status") or ""),
         "highestSeverity": highest,
         "counts": counts,
@@ -151,6 +165,12 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
             "branch": _bounded_text(source.get("branch"), 512),
             "treeSha256": _bounded_text(source.get("treeSha256"), 128),
             "candidates": [_bounded_text(item, 8192) for item in source_candidates[:16] if str(item or "")],
+            "attribution": {
+                "schema": str(source_attribution.get("schema") or "omega.artifact-source-attribution.v1"),
+                "confidence": int(source_attribution.get("confidence") or 0),
+                "coverageLabel": _bounded_text(source_attribution.get("coverageLabel"), 256),
+                "basis": [str(item) for item in (source_attribution.get("basis") or [])[:16] if str(item)],
+            },
             "provenance": {
                 key: source_provenance.get(key)
                 for key in (
@@ -272,6 +292,7 @@ def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
     report = current.get("report_json") if isinstance(current.get("report_json"), dict) else {}
     report_source = report.get("source") if isinstance(report.get("source"), dict) else {}
     provenance = report_source.get("provenance") if isinstance(report_source.get("provenance"), dict) else {}
+    attribution = report_source.get("attribution") if isinstance(report_source.get("attribution"), dict) else {}
     scan_provenance = report.get("scanProvenance") if isinstance(report.get("scanProvenance"), dict) else {}
     return {
         "plugin_id": int(payload.get("pluginId") or plugin.get("plugin_id") or variant.get("plugin_id") or 0),
@@ -299,6 +320,9 @@ def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "source_repository": str(current.get("source_repository") or ""),
         "source_commit": str(current.get("source_commit") or ""),
         "source_provenance_confidence": str(provenance.get("confidence") or ""),
+        "source_attribution_confidence": int(attribution.get("confidence") or 0),
+        "source_attribution_basis": list(attribution.get("basis") or []),
+        "source_coverage_label": str(attribution.get("coverageLabel") or "Unresolved"),
         "source_identity_matched": bool(provenance.get("identityMatched")),
         "source_version_matched": bool(provenance.get("versionMatched")),
         "source_artifact_origin_matched": bool(provenance.get("artifactOriginMatched")),
@@ -308,6 +332,9 @@ def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "definitions_source_commit": str(scan_provenance.get("definitionsSourceCommit") or ""),
         "scanner_revision": str(scan_provenance.get("scannerRevision") or ""),
         "scanner_bundle_sha256": str(scan_provenance.get("scannerBundleSha256") or ""),
+        "artifact_analysis_revision": str(report.get("artifactAnalysisRevision") or scan_provenance.get("artifactAnalysisRevision") or ""),
+        "source_analysis_revision": str(report.get("sourceAnalysisRevision") or scan_provenance.get("sourceAnalysisRevision") or ""),
+        "source_observation_revision": str(scan_provenance.get("sourceObservationRevision") or ""),
         "rule_set_revision": str(scan_provenance.get("ruleSetRevision") or ""),
         "scan_queue_reason": str(scan_provenance.get("primaryReason") or ""),
         "scan_queue_seed_revision": str(scan_provenance.get("queueSeedRevision") or ""),
@@ -747,7 +774,10 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
             errors.extend(f"scannerQueue: {item}" for item in verify_file_entry(root, scanner_queue, max_bytes=MAX_PUBLISH_FILE_BYTES))
             try:
                 queue_doc = read_json_file(root, str(scanner_queue.get("path") or ""))
-                if queue_doc.get("schema") != "omega.sigmascope.queue-state.v1":
+                if queue_doc.get("schema") not in {
+                    "omega.sigmascope.queue-state.v1",
+                    "omega.sigmascope.queue-state.v2",
+                }:
                     errors.append("scannerQueue payload has an unsupported schema")
             except Exception as exc:
                 errors.append(f"scannerQueue unreadable: {type(exc).__name__}: {exc}")
@@ -855,6 +885,23 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
             if declared_summary is not None and declared_summary != variant_index_summary(payload):
                 errors.append(f"variant {variant_id} plugins index summary mismatch")
             current = payload.get("current") or {}
+            report = current.get("report_json") if isinstance(current.get("report_json"), dict) else {}
+            report_source = report.get("source") if isinstance(report.get("source"), dict) else {}
+            attribution = report_source.get("attribution") if isinstance(report_source.get("attribution"), dict) else {}
+            if attribution:
+                try:
+                    confidence = int(attribution.get("confidence") or 0)
+                except (TypeError, ValueError):
+                    confidence = -1
+                if confidence not in {0, 40, 70, 95, 100}:
+                    errors.append(f"variant {variant_id} source attribution has unsupported confidence {confidence}")
+                basis = attribution.get("basis")
+                if basis is not None and (not isinstance(basis, list) or any(not isinstance(item, str) for item in basis)):
+                    errors.append(f"variant {variant_id} source attribution basis is malformed")
+                if confidence == 100 and (not isinstance(basis, list) or "reproducible_build" not in basis):
+                    errors.append(f"variant {variant_id} confidence 100 lacks reproducible source-to-artifact proof basis")
+                if confidence == 95 and (not isinstance(basis, list) or "pinned_commit" not in basis):
+                    errors.append(f"variant {variant_id} confidence 95 lacks pinned commit basis")
             analysis = payload.get("analysis") or {}
             analysis_id = str(analysis.get("analysisId") or "")
             analysis_path = str(analysis.get("path") or "")
@@ -874,6 +921,29 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                         errors.append(f"variant {variant_id} derived dataset {dataset_name} is not an object")
                         continue
                     validate_record_descriptor(f"variant {variant_id}/derived/{dataset_name}", dataset)
+                    if dataset_name == "sourceAnalysisCache":
+                        try:
+                            cache_rows = read_record_dataset(root, dataset)
+                            if len(cache_rows) > 1:
+                                errors.append(f"variant {variant_id} source-analysis cache has more than one record")
+                            for cache in cache_rows:
+                                if str(cache.get("schema") or "") != "omega.security-evidence.source-analysis-cache.v1":
+                                    errors.append(f"variant {variant_id} source-analysis cache schema is invalid")
+                                    continue
+                                payload_value = cache.get("analysisPayload") if isinstance(cache.get("analysisPayload"), dict) else {}
+                                payload_sha = sha256_bytes(canonical_json_bytes(payload_value))
+                                if str(cache.get("analysisPayloadSha256") or "").lower() != payload_sha:
+                                    errors.append(f"variant {variant_id} source-analysis cache payload digest mismatch")
+                                if str(payload_value.get("schema") or "") != "omega.sigmascope.source-analysis.v1" or not bool(payload_value.get("analysisComplete")):
+                                    errors.append(f"variant {variant_id} source-analysis cache is incomplete")
+                                if str(cache.get("sourceRevisionKey") or "") != str(payload_value.get("sourceRevisionKey") or ""):
+                                    errors.append(f"variant {variant_id} source-analysis cache revision identity mismatch")
+                                if str(cache.get("sourceRootPath") or "") != str(payload_value.get("sourceRootPath") or ""):
+                                    errors.append(f"variant {variant_id} source-analysis cache root identity mismatch")
+                                if not str(cache.get("sourceAnalysisRevision") or ""):
+                                    errors.append(f"variant {variant_id} source-analysis cache lacks analysis revision")
+                        except Exception as exc:
+                            errors.append(f"variant {variant_id} source-analysis cache cannot be read: {type(exc).__name__}: {exc}")
 
             if str(current.get("status") or "") == "complete":
                 if not analysis_id or not analysis_path:

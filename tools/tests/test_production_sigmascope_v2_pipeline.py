@@ -39,7 +39,7 @@ from production_sigmascope_v2_pipeline import (
     run_pipeline,
     synchronize_candidate,
 )
-from security_evidence_v2 import validate_snapshot
+from security_evidence_v2 import read_record_dataset, validate_snapshot
 
 
 class ProductionSecurityV2PipelineTests(unittest.TestCase):
@@ -546,7 +546,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertTrue(any(row.get("kind") == "nuget-resolved" and row.get("name") == "Example.Package" and row.get("resolved_version") == "9.8.7" for row in dependency_rows))
 
 
-    def test_persistent_queue_leases_exact_variant_and_records_provenance(self) -> None:
+    def test_persistent_queue_selects_exact_variant_and_records_provenance(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-queue-pipeline-") as td:
             root = Path(td)
             database, variant_id, _plugin_id = self.make_catalog_with_security(root)
@@ -576,11 +576,14 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 "scannerRevision": "scanner-v1-fixture",
                 "scannerBundleSha256": "b" * 64,
                 "ruleSetRevision": "rules-v1-fixture",
-                "rescanAfterHours": 168,
+                "artifactAnalysisRevision": "artifact-analysis-v1-fixture",
+                "sourceAnalysisRevision": "source-analysis-v1-fixture",
+                "sourceObservationRevision": "source-observations-v1-fixture",
                 "counts": {"queued": 1},
                 "items": [{
                     "queueKey": f"variant-{variant_id}",
-                    "targetFingerprint": "scan-target-v1-fixture",
+                    "workType": "artifact",
+                    "targetFingerprint": "artifact-target-v2-fixture",
                     "variantId": variant_id,
                     "pluginId": int(variant[1]),
                     "sourceId": int(variant[2]),
@@ -590,12 +593,16 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                     "assemblyVersion": str(variant[6]),
                     "artifactChannel": "stable",
                     "artifactUrl": str(variant[7]),
+                    "repositoryUrl": "https://github.com/example/plugin",
+                    "sourceRepositoryUrl": "",
                     "catalogRevision": "cat-json-v1-fixture",
                     "definitionsRevision": "defs-v1-fixture",
+                    "artifactAnalysisRevision": "artifact-analysis-v1-fixture",
+                    "sourceAnalysisRevision": "source-analysis-v1-fixture",
                     "ruleSetRevision": "rules-v1-fixture",
-                    "reasons": ["rule_set_changed"],
-                    "primaryReason": "rule_set_changed",
-                    "priority": 700,
+                    "reasons": ["artifact_analysis_changed"],
+                    "primaryReason": "artifact_analysis_changed",
+                    "priority": 750,
                     "currentScanId": 9001,
                     "currentScannedAtUtc": "2026-08-17T00:00:00Z",
                     "currentArtifactSha256": "a" * 64,
@@ -617,6 +624,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 osv_timeout=1.0, max_osv_packages=2000, github_output=None, skip_marketplace=True,
                 frozen_advisories=None, catalog_revision="cat-json-v1-fixture", definitions_revision="defs-v1-fixture",
                 scanner_revision="scanner-v1-fixture", scanner_bundle_sha256="b" * 64,
+                artifact_analysis_revision="artifact-analysis-v1-fixture", source_analysis_revision="source-analysis-v1-fixture",
                 rule_set_revision="rules-v1-fixture", queue_seed=queue_seed,
             )
 
@@ -635,11 +643,16 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                  patch("production_sigmascope_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=fake_collect):
                 result = run_pipeline(args)
 
-            self.assertEqual(variant_id, int(result["queue"]["leased"]["variantId"]))
-            self.assertEqual("rule_set_changed", result["queue"]["leased"]["primaryReason"] )
+            self.assertEqual(variant_id, int(result["queue"]["selected"]["variantId"]))
+            self.assertEqual("artifact_analysis_changed", result["queue"]["selected"]["primaryReason"] )
             self.assertTrue(result["queue"]["stateChanged"])
             queue_state = json.loads((root / "candidate" / "scanner-queue.json").read_text(encoding="utf-8"))
             self.assertEqual("complete", queue_state["items"][f"variant-{variant_id}"]["state"] )
+            source_followup = queue_state["items"].get(f"source-variant-{variant_id}")
+            self.assertIsNotNone(source_followup)
+            self.assertEqual("source", source_followup["workType"])
+            self.assertEqual("pending", source_followup["state"])
+            self.assertGreater(int(source_followup["priority"]), int(queue_state["items"][f"variant-{variant_id}"]["priority"]))
             root_index = json.loads((root / "candidate" / "index.json").read_text(encoding="utf-8"))
             self.assertEqual(scan_queue.STATE_SCHEMA, root_index["scannerQueue"]["schema"] )
             variant_file = next((root / "candidate" / "variants").rglob(f"{variant_id}.json"))
@@ -649,7 +662,248 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertEqual("defs-v1-fixture", provenance["definitionsRevision"] )
             self.assertEqual("scanner-v1-fixture", provenance["scannerRevision"] )
             self.assertEqual("b" * 64, provenance["scannerBundleSha256"] )
-            self.assertEqual("rule_set_changed", provenance["primaryReason"] )
+            self.assertEqual("artifact-analysis-v1-fixture", provenance["artifactAnalysisRevision"] )
+            self.assertEqual("source-analysis-v1-fixture", provenance["sourceAnalysisRevision"] )
+            self.assertEqual("artifact_analysis_changed", provenance["primaryReason"] )
+            self.assertEqual("artifact", provenance["workType"] )
+            self.assertEqual("artifact", payload["current"]["report_json"]["workType"] )
+            self.assertFalse(payload["current"]["report_json"]["source"]["available"] )
+
+
+    def test_source_queue_worker_attaches_source_without_artifact_download(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-source-queue-") as td:
+            root = Path(td)
+            database, variant_id, _plugin_id = self.make_catalog_with_security(root)
+            with closing(sqlite3.connect(database)) as db:
+                db.row_factory = sqlite3.Row
+                variant = db.execute(
+                    "SELECT v.variant_id,v.plugin_id,v.source_id,p.internal_name,v.name,s.name,v.assembly_version,v.download_link_install "
+                    "FROM plugin_variants v JOIN plugins p ON p.plugin_id=v.plugin_id JOIN sources s ON s.source_id=v.source_id "
+                    "WHERE v.variant_id=?", (variant_id,)
+                ).fetchone()
+                report = {
+                    "schema": "omega.plugin-security.scan.v1", "workType": "artifact", "artifactSha256": "a" * 64,
+                    "artifactAnalysisRevision": "scanner-v1-fixture+rules-v1-fixture", "resolvedArtifactUrl": str(variant[7]),
+                    "source": {"available": False, "repository": "https://github.com/example/plugin", "commit": "", "attribution": {"confidence": 0}},
+                    "findings": [{"ruleId": "fixture.rule", "severity": "caution", "category": "fixture", "title": "Fixture", "description": "Fixture finding", "evidence": ["fixture"]}],
+                    "capabilities": [], "automation": {"level": "none", "capabilities": [], "findings": []},
+                    "dependencyIntelligence": sigmascope.empty_dependency_intelligence("artifact"),
+                    "scanProvenance": {"scannerRevision": "scanner-v1-fixture", "ruleSetRevision": "rules-v1-fixture"},
+                }
+                db.execute("UPDATE plugin_security_scans SET source_available=0,source_repository=?,source_commit='',report_json=? WHERE scan_id=9001",
+                           ("https://github.com/example/plugin", json.dumps(report)))
+                db.execute("UPDATE plugin_security_current SET source_available=0,source_repository=?,source_commit='',report_json=? WHERE variant_id=?",
+                           ("https://github.com/example/plugin", json.dumps(report), variant_id))
+                db.commit()
+            evidence = root / "evidence"
+            migrate(database, evidence, reset=True)
+            evidence_index = json.loads((evidence / "index.json").read_text(encoding="utf-8"))
+            evidence_index.setdefault("revisions", {})["catalogIdentityEpoch"] = catalog_json_store.IDENTITY_EPOCH
+            (evidence / "index.json").write_text(json.dumps(evidence_index), encoding="utf-8")
+            base = root / "base.sqlite"
+            shutil.copy2(database, base)
+            queue_seed = root / "source-queue.json"
+            queue_seed.write_text(json.dumps({
+                "schema": scan_queue.SEED_SCHEMA, "queueSeedRevision": "queue-seed-v1-source", "catalogRevision": "cat-json-v1-source",
+                "catalogIdentityEpoch": catalog_json_store.IDENTITY_EPOCH, "definitionsRevision": "defs-v1-source",
+                "scannerRevision": "scanner-v1-fixture", "scannerBundleSha256": "c" * 64, "ruleSetRevision": "rules-v1-fixture",
+                "artifactAnalysisRevision": "artifact-analysis-v1-fixture", "sourceAnalysisRevision": "source-analysis-v1-fixture",
+                "sourceObservationRevision": "source-observations-v1-fixture",
+                "baselineSecurityRebuild": False, "rescanAfterHours": 168, "counts": {"queued": 1},
+                "items": [{
+                    "queueKey": f"source-variant-{variant_id}", "workType": "source", "targetFingerprint": "source-target-v2-fixture",
+                    "variantId": variant_id, "pluginId": int(variant[1]), "sourceId": int(variant[2]), "internalName": str(variant[3]),
+                    "name": str(variant[4]), "sourceName": str(variant[5]), "assemblyVersion": str(variant[6]), "artifactChannel": "stable",
+                    "artifactUrl": str(variant[7]), "repositoryUrl": "https://github.com/example/plugin", "sourceRepositoryUrl": "",
+                    "catalogRevision": "cat-json-v1-source", "catalogIdentityEpoch": catalog_json_store.IDENTITY_EPOCH,
+                    "definitionsRevision": "defs-v1-source", "scannerRevision": "scanner-v1-fixture", "ruleSetRevision": "rules-v1-fixture",
+                    "artifactAnalysisRevision": "artifact-analysis-v1-fixture", "sourceAnalysisRevision": "source-analysis-v1-fixture",
+                    "reasons": ["source_followup"], "primaryReason": "source_followup", "priority": 925,
+                    "currentScanId": 9001, "currentScannedAtUtc": "2026-08-17T00:00:00Z", "currentArtifactSha256": "a" * 64,
+                    "enqueuedAtUtc": "2026-08-19T00:00:00Z",
+                }],
+            }), encoding="utf-8")
+            args = SimpleNamespace(
+                base_database=base, descriptor=None, current_evidence=evidence, candidate_evidence=root / "candidate", work_dir=root / "work",
+                publication_output=None, previous_marketplace_descriptor=None, marketplace_download_url="",
+                evidence_index_url="https://example.invalid/security-evidence-v2/index.json",
+                source_overrides=common.ROOT / "sources" / "source-overrides.json", max_scans=1, rescan_after_hours=168,
+                max_batch_seconds=0, internal_names="", variant_ids="", skip_source=False, osv_timeout=1.0, max_osv_packages=2000,
+                github_output=None, skip_marketplace=True, frozen_advisories=None, catalog_revision="cat-json-v1-source",
+                definitions_revision="defs-v1-source", scanner_revision="scanner-v1-fixture", scanner_bundle_sha256="c" * 64,
+                artifact_analysis_revision="artifact-analysis-v1-fixture", source_analysis_revision="source-analysis-v1-fixture",
+                rule_set_revision="rules-v1-fixture", queue_seed=queue_seed,
+            )
+            source = {
+                "available": True, "repository": "https://github.com/example/plugin", "commit": "b" * 40, "branch": "v1.0.0",
+                "treeSha256": "d" * 40, "filesScanned": 2, "dependencyIntelligence": sigmascope.empty_dependency_intelligence("source"),
+                "scope": {"primaryProject": "src/Plugin/Plugin.csproj"},
+                "provenance": {"identityMatched": True, "versionMatched": True, "selectedRefKind": "version-tag", "selectedRef": "v1.0.0"}, "error": "",
+            }
+            def fake_collect(index_path, output, timeout=20.0, max_packages=2000):
+                import collect_public_advisories
+                packages = collect_public_advisories.observed_nuget_index(Path(index_path), max_packages)
+                document = {"schema": "omega.public-advisories.v1", "generatedAtUtc": "2026-08-19T00:00:00Z", "source": "OSV", "ecosystem": "NuGet",
+                            "queriedPackages": len(packages), "matchedPackages": 0, "advisories": []}
+                Path(output).write_text(json.dumps(document), encoding="utf-8")
+                return document
+            with patch("sigmascope.request_bytes", side_effect=AssertionError("source work must not download plugin artifact")), \
+                 patch("sigmascope.fetch_source", side_effect=[dict(source), dict(source)]) as fetch, \
+                 patch("production_sigmascope_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=fake_collect):
+                result = run_pipeline(args)
+            self.assertEqual("source", result["queue"]["selected"]["workType"])
+            self.assertEqual(2, fetch.call_count)
+            queue_state = json.loads((root / "candidate" / "scanner-queue.json").read_text(encoding="utf-8"))
+            self.assertEqual("complete", queue_state["items"][f"source-variant-{variant_id}"]["state"])
+            variant_file = next((root / "candidate" / "variants").rglob(f"{variant_id}.json"))
+            payload = json.loads(variant_file.read_text(encoding="utf-8"))
+            current = payload["current"]
+            self.assertEqual("a" * 64, current["artifact_sha256"])
+            self.assertTrue(current["source_available"])
+            self.assertEqual("source", current["report_json"]["workType"])
+            self.assertEqual(70, current["report_json"]["source"]["attribution"]["confidence"])
+            cache_descriptor = payload["derivedEvidence"]["sourceAnalysisCache"]
+            cache_rows = read_record_dataset(root / "candidate", cache_descriptor)
+            self.assertEqual(1, len(cache_rows))
+            self.assertTrue(cache_rows[0]["analysisPayload"]["analysisComplete"])
+            self.assertEqual("source-analysis-v1-fixture", cache_rows[0]["sourceAnalysisRevision"])
+
+            # Simulate the next 15-minute worker: materialize compact Evidence v2, then
+            # resolve the same immutable source revision.  The source body must not be
+            # inspected again because the complete source-analysis payload survived transport.
+            transported_db = root / "transported-source-cache.sqlite"
+            materialized = materialize_current_state(base, root / "candidate", transported_db)
+            self.assertGreaterEqual(int(materialized["sourceAnalysisCachesRestored"]), 1)
+            with closing(sqlite3.connect(transported_db)) as transported:
+                transported.row_factory = sqlite3.Row
+                complete_cache = transported.execute(
+                    "SELECT status,analysis_payload_json FROM source_analyses WHERE definitions_revision='source-analysis-v1-fixture' AND status='complete' AND source_root_path='src/Plugin'"
+                ).fetchone()
+                self.assertIsNotNone(complete_cache)
+                self.assertEqual("complete", complete_cache["status"])
+                self.assertTrue(json.loads(complete_cache["analysis_payload_json"])["analysisComplete"])
+                source_row = transported.execute("""
+                    SELECT v.variant_id,v.plugin_id,v.source_id,p.internal_name,v.name,v.author,v.assembly_version,
+                           v.testing_assembly_version,v.download_link_install,v.download_link_update,v.download_link_testing,v.repo_url,
+                           s.name AS source_name,s.url AS source_url,s.source_repo_url
+                      FROM plugin_variants v JOIN plugins p ON p.plugin_id=v.plugin_id JOIN sources s ON s.source_id=v.source_id
+                     WHERE v.variant_id=?
+                """, (variant_id,)).fetchone()
+                def resolve_only(*_args, **kwargs):
+                    if kwargs.get("analyze", True):
+                        raise AssertionError("transported complete source analysis must not fetch source bodies again")
+                    return dict(source)
+                with patch("sigmascope.fetch_source", side_effect=resolve_only) as transported_fetch:
+                    reused = sigmascope.scan_source_row(
+                        source_row, token="", db=transported, source_analysis_revision="source-analysis-v1-fixture"
+                    )
+                self.assertEqual(1, transported_fetch.call_count)
+                self.assertTrue(reused["sourceAnalysisReused"])
+
+            with closing(sqlite3.connect(root / "work" / "omega-security-v2-working.sqlite")) as check_db:
+                artifact_dependencies = check_db.execute(
+                    "SELECT COUNT(*) FROM plugin_security_dependencies d JOIN plugin_security_current c ON c.scan_id=d.scan_id WHERE c.variant_id=? AND d.origin='artifact'",
+                    (variant_id,),
+                ).fetchone()[0]
+                self.assertGreaterEqual(artifact_dependencies, 1, "source projection must preserve normalized artifact dependency evidence")
+
+
+    def test_advisory_queue_reprojects_without_artifact_or_source_scan(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-advisory-queue-") as td:
+            root = Path(td)
+            database, _variant_id, _plugin_id = self.make_catalog_with_security(root)
+            evidence = root / "evidence"
+            migrate(database, evidence, reset=True)
+            evidence_index = json.loads((evidence / "index.json").read_text(encoding="utf-8"))
+            evidence_index.setdefault("revisions", {})["catalogIdentityEpoch"] = catalog_json_store.IDENTITY_EPOCH
+            evidence_index["revisions"]["advisoryRevision"] = "osv-v1-old"
+            (evidence / "index.json").write_text(json.dumps(evidence_index), encoding="utf-8")
+            base = root / "base.sqlite"
+            shutil.copy2(database, base)
+
+            queue_seed = root / "advisory-queue.json"
+            queue_seed.write_text(json.dumps({
+                "schema": scan_queue.SEED_SCHEMA,
+                "queueSeedRevision": "queue-seed-v2-advisory",
+                "catalogRevision": "cat-json-v1-advisory",
+                "catalogIdentityEpoch": catalog_json_store.IDENTITY_EPOCH,
+                "definitionsRevision": "defs-v1-advisory",
+                "scannerRevision": "scanner-v1-fixture",
+                "scannerBundleSha256": "d" * 64,
+                "ruleSetRevision": "rules-v1-fixture",
+                "advisoryRevision": "osv-v1-new",
+                "baselineSecurityRebuild": False,
+                "counts": {"queued": 1, "advisory_changed": 1},
+                "items": [{
+                    "queueKey": "advisory-projection",
+                    "workType": "advisory",
+                    "targetFingerprint": "advisory-target-v1-fixture",
+                    "variantId": 0,
+                    "pluginId": 0,
+                    "sourceId": 0,
+                    "internalName": "",
+                    "name": "Frozen advisory projection",
+                    "sourceName": "",
+                    "assemblyVersion": "",
+                    "artifactChannel": "",
+                    "artifactUrl": "",
+                    "repositoryUrl": "",
+                    "sourceRepositoryUrl": "",
+                    "catalogRevision": "cat-json-v1-advisory",
+                    "catalogIdentityEpoch": catalog_json_store.IDENTITY_EPOCH,
+                    "definitionsRevision": "defs-v1-advisory",
+                    "scannerRevision": "scanner-v1-fixture",
+                    "scannerBundleSha256": "d" * 64,
+                    "ruleSetRevision": "rules-v1-fixture",
+                    "advisoryRevision": "osv-v1-new",
+                    "previousAdvisoryRevision": "osv-v1-old",
+                    "reasons": ["advisory_changed"],
+                    "primaryReason": "advisory_changed",
+                    "priority": 800,
+                    "currentScanId": 0,
+                    "currentScannedAtUtc": "",
+                    "currentArtifactSha256": "",
+                    "enqueuedAtUtc": "2026-08-19T00:00:00Z",
+                }],
+            }), encoding="utf-8")
+
+            frozen = root / "osv-advisories.json"
+            frozen.write_text(json.dumps({
+                "schema": "omega.public-advisories.v1",
+                "generatedAtUtc": "2026-08-19T00:00:00Z",
+                "source": "OSV",
+                "ecosystem": "NuGet",
+                "queriedPackages": 0,
+                "matchedPackages": 0,
+                "queriedPackageVersionPairs": [],
+                "advisories": [],
+            }), encoding="utf-8")
+
+            args = SimpleNamespace(
+                base_database=base, descriptor=None, current_evidence=evidence,
+                candidate_evidence=root / "candidate", work_dir=root / "work", publication_output=None,
+                previous_marketplace_descriptor=None, marketplace_download_url="",
+                evidence_index_url="https://example.invalid/security-evidence-v2/index.json",
+                source_overrides=common.ROOT / "sources" / "source-overrides.json",
+                max_scans=1, max_batch_seconds=0, internal_names="", variant_ids="", skip_source=False,
+                osv_timeout=1.0, max_osv_packages=2000, github_output=None, skip_marketplace=True,
+                frozen_advisories=frozen, catalog_revision="cat-json-v1-advisory",
+                definitions_revision="defs-v1-advisory", scanner_revision="scanner-v1-fixture",
+                scanner_bundle_sha256="d" * 64, rule_set_revision="rules-v1-fixture",
+                advisory_revision="osv-v1-new", queue_seed=queue_seed,
+            )
+
+            with patch("sigmascope.request_bytes", side_effect=AssertionError("advisory work must not download plugin artifacts")), \
+                 patch("sigmascope.fetch_source", side_effect=AssertionError("advisory work must not fetch source")):
+                result = run_pipeline(args)
+
+            self.assertEqual("advisory", result["queue"]["selected"]["workType"])
+            self.assertEqual(0, result["scan"]["selected"])
+            queue_state = json.loads((root / "candidate" / "scanner-queue.json").read_text(encoding="utf-8"))
+            self.assertEqual("complete", queue_state["items"]["advisory-projection"]["state"])
+            root_index = json.loads((root / "candidate" / "index.json").read_text(encoding="utf-8"))
+            self.assertEqual("osv-v1-new", root_index["revisions"]["advisoryRevision"])
+            self.assertTrue(result["publicationRequired"])
 
 
     def test_first_baseline_worker_establishes_new_identity_epoch_and_discards_legacy_evidence(self) -> None:
@@ -781,7 +1035,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertTrue(result["materialized"]["baselineSecurityRebuild"])
             self.assertFalse(result["materialized"]["evidenceInherited"])
             self.assertEqual(0, result["materialized"]["currentVariantsMaterialized"])
-            self.assertEqual("baseline_scan", result["queue"]["leased"]["primaryReason"])
+            self.assertEqual("baseline_scan", result["queue"]["selected"]["primaryReason"])
             self.assertEqual([variant_id], result["successfulVariantIds"])
 
             root_index = json.loads((root / "candidate" / "index.json").read_text(encoding="utf-8"))
@@ -812,7 +1066,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertTrue(second["materialized"]["queueSeedRequestedBaseline"])
             self.assertTrue(second["materialized"]["evidenceInherited"])
             self.assertEqual(1, second["materialized"]["currentVariantsMaterialized"])
-            self.assertEqual({}, second["queue"]["leased"], "completed baseline target must not be leased again")
+            self.assertEqual({}, second["queue"]["selected"], "completed baseline target must not be leased again")
             self.assertEqual(1, int((second["queue"]["summary"].get("states") or {}).get("complete") or 0))
 
             # Conversely, same-epoch evidence is authoritative and remains fail-closed.

@@ -42,6 +42,7 @@ ARTIFACT_CANONICAL_RUNTIME_COLUMNS = {
     "security_findings_json", "security_dependencies_json", "security_dependency_total_count",
     "security_known_advisory_count", "security_known_advisory_highest_severity", "security_risk_score",
     "security_source_available", "security_source_repository", "security_source_commit",
+    "security_source_attribution_confidence", "security_source_attribution_basis_json", "security_review_coverage_label",
     "security_source_to_binary_verified", "security_error",
 }
 
@@ -66,6 +67,11 @@ DETAILED_SECURITY_TABLES = (
     "plugin_security_permission_candidates",
     "plugin_security_automation_capabilities",
     "plugin_security_current",
+    "artifact_blobs",
+    "source_revisions",
+    "artifact_source_attributions",
+    "artifact_analyses",
+    "source_analyses",
 )
 
 
@@ -414,6 +420,35 @@ def build_advisory_risk_summaries(db: sqlite3.Connection, current_table: str = "
     return summaries
 
 
+def _source_attribution_projection(report_json: str) -> tuple[int, str, str]:
+    try:
+        report = json.loads(report_json or "{}")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        report = {}
+    source = report.get("source") if isinstance(report, dict) and isinstance(report.get("source"), dict) else {}
+    attribution = source.get("attribution") if isinstance(source.get("attribution"), dict) else {}
+    try:
+        confidence = int(attribution.get("confidence") or 0)
+    except (TypeError, ValueError):
+        confidence = 0
+    if confidence not in {0, 40, 70, 95, 100}:
+        confidence = 0
+    basis = attribution.get("basis") if isinstance(attribution.get("basis"), list) else []
+    label = str(attribution.get("coverageLabel") or ({0: "Unresolved", 40: "Current source found", 70: "Version-correlated source", 95: "Commit-pinned source", 100: "Reproducibly verified"}.get(confidence, "Unresolved")))
+    return confidence, json.dumps([str(item) for item in basis if str(item)], separators=(",", ":")), label
+
+
+def refresh_marketplace_source_attribution(db: sqlite3.Connection) -> None:
+    rows = db.execute("SELECT variant_id,scan_id FROM marketplace_security_current ORDER BY variant_id").fetchall()
+    for variant_id, scan_id in rows:
+        scan = db.execute("SELECT report_json FROM plugin_security_scans WHERE scan_id=?", (int(scan_id or 0),)).fetchone()
+        confidence, basis_json, label = _source_attribution_projection(str(scan[0] or "{}") if scan else "{}")
+        db.execute(
+            "UPDATE marketplace_security_current SET source_attribution_confidence=?,source_attribution_basis_json=?,review_coverage_label=? WHERE variant_id=?",
+            (confidence, basis_json, label, int(variant_id)),
+        )
+
+
 def create_marketplace_security_current(db: sqlite3.Connection) -> None:
     db.execute("DROP TABLE IF EXISTS marketplace_security_current")
     db.execute(
@@ -445,6 +480,9 @@ def create_marketplace_security_current(db: sqlite3.Connection) -> None:
             source_available INTEGER NOT NULL DEFAULT 0,
             source_repository TEXT NOT NULL DEFAULT '',
             source_commit TEXT NOT NULL DEFAULT '',
+            source_attribution_confidence INTEGER NOT NULL DEFAULT 0,
+            source_attribution_basis_json TEXT NOT NULL DEFAULT '[]',
+            review_coverage_label TEXT NOT NULL DEFAULT 'Unresolved',
             source_to_binary_verified INTEGER NOT NULL DEFAULT 0,
             error TEXT NOT NULL DEFAULT ''
         )
@@ -470,6 +508,7 @@ def create_marketplace_security_current(db: sqlite3.Connection) -> None:
     # Recover the artifact/current identity before projecting dependencies so recovered mirrors
     # inherit the exact scan's plugin/IPC dependency summary too.
     backfill_marketplace_security_from_completed_scans(db)
+    refresh_marketplace_source_attribution(db)
     for variant_id, (total_count, encoded) in build_dependency_summaries(db, "marketplace_security_current").items():
         db.execute(
             "UPDATE marketplace_security_current SET dependencies_json=?,dependency_total_count=? WHERE variant_id=?",
@@ -813,6 +852,9 @@ def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
              COALESCE(sc.risk_score,0) AS security_risk_score,
              COALESCE(sc.source_available,0) AS security_source_available,
              COALESCE(sc.source_repository,'') AS security_source_repository,COALESCE(sc.source_commit,'') AS security_source_commit,
+             COALESCE(sc.source_attribution_confidence,0) AS security_source_attribution_confidence,
+             COALESCE(sc.source_attribution_basis_json,'[]') AS security_source_attribution_basis_json,
+             COALESCE(sc.review_coverage_label,'Unresolved') AS security_review_coverage_label,
              COALESCE(sc.source_to_binary_verified,0) AS security_source_to_binary_verified,COALESCE(sc.error,'') AS security_error
            FROM plugin_variants v
            JOIN plugins p ON p.plugin_id=v.plugin_id

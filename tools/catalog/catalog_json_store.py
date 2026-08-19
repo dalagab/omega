@@ -40,6 +40,11 @@ BASE_TABLES = (
     "websites",
     "presentation",
     "plugin_search",
+    "manifest_observations",
+    "source_repositories",
+    "source_repository_aliases",
+    "manifest_source_candidates",
+    "plugin_identity_aliases",
 )
 
 
@@ -112,6 +117,11 @@ def export_snapshot(database: Path, output: Path, *, source_commit: str = "") ->
         images = _rows(db, "plugin_images", order="image_id")
         presentations = {int(row["plugin_id"]): row for row in _rows(db, "presentation", order="plugin_id")}
         searches = {int(row["plugin_id"]): row for row in _rows(db, "plugin_search", order="plugin_id")}
+        manifest_observations = _rows(db, "manifest_observations", order="observation_id")
+        source_repositories = _rows(db, "source_repositories", order="repository_key")
+        source_repository_aliases = _rows(db, "source_repository_aliases", order="repository_key,alias_url COLLATE NOCASE")
+        manifest_source_candidates = _rows(db, "manifest_source_candidates", order="observation_id,repository_key")
+        plugin_identity_aliases = _rows(db, "plugin_identity_aliases", order="plugin_id,alias_type,normalized_value COLLATE NOCASE")
 
         variants_by_plugin: dict[int, list[dict[str, Any]]] = {}
         tags_by_variant: dict[int, list[dict[str, Any]]] = {}
@@ -219,6 +229,17 @@ def export_snapshot(database: Path, output: Path, *, source_commit: str = "") ->
         plugin_index_file["path"] = "plugins/index.json"
         files.append(plugin_index_file)
 
+        identity_model_file = write_json(output / "identity" / "model.json", {
+            "schema": "omega.catalog-json.identity-model.v1",
+            "manifestObservations": manifest_observations,
+            "sourceRepositories": source_repositories,
+            "sourceRepositoryAliases": source_repository_aliases,
+            "manifestSourceCandidates": manifest_source_candidates,
+            "pluginIdentityAliases": plugin_identity_aliases,
+        })
+        identity_model_file["path"] = "identity/model.json"
+        files.append(identity_model_file)
+
         meta = {
             "schemaVersion": str(build_sqlite_catalog.SCHEMA_VERSION),
             "schemaName": build_sqlite_catalog.SCHEMA_NAME,
@@ -236,6 +257,9 @@ def export_snapshot(database: Path, output: Path, *, source_commit: str = "") ->
             "variants": sum(1 for row in variants if int(row.get("active") or 0) == 1),
             "sources": len(sources),
             "websites": sum(1 for row in websites if int(row.get("ok") or 0) == 1),
+            "manifestObservations": sum(1 for row in manifest_observations if int(row.get("active") or 0) == 1),
+            "sourceRepositories": len(source_repositories),
+            "identityAliases": sum(1 for row in plugin_identity_aliases if int(row.get("active") or 0) == 1),
         }
 
     semantic_manifest = {
@@ -267,6 +291,39 @@ def _read_json(root: Path, relative: str, expected_sha256: str = "") -> Any:
     if expected_sha256 and sha256_bytes(data) != expected_sha256:
         raise ValueError(f"catalog JSON SHA-256 mismatch: {relative}")
     return json.loads(data.decode("utf-8"))
+
+
+def identity_compatibility(root: Path) -> dict[str, Any]:
+    """Report whether a snapshot belongs to the current catalog identity epoch.
+
+    This is intentionally lighter than full snapshot validation. It exists for the
+    daily migration boundary where an older canonical snapshot may be useful as an
+    optional normalization seed. An incompatible epoch must never be materialized,
+    but it also must not block a deliberate clean rebuild.
+    """
+    root = root.resolve()
+    try:
+        index = _read_json(root, "index.json")
+    except Exception as exc:
+        return {
+            "schema": "omega.catalog-json.identity-compatibility.v1",
+            "ok": False,
+            "compatible": False,
+            "expectedIdentityEpoch": IDENTITY_EPOCH,
+            "actualIdentityEpoch": "",
+            "error": f"index unreadable: {type(exc).__name__}: {exc}",
+        }
+    actual = str(index.get("identityEpoch") or "")
+    compatible = index.get("schema") == SCHEMA and actual == IDENTITY_EPOCH
+    return {
+        "schema": "omega.catalog-json.identity-compatibility.v1",
+        "ok": compatible,
+        "compatible": compatible,
+        "catalogSchema": str(index.get("schema") or ""),
+        "catalogRevision": str(index.get("catalogRevision") or ""),
+        "expectedIdentityEpoch": IDENTITY_EPOCH,
+        "actualIdentityEpoch": actual,
+    }
 
 
 def validate_snapshot(root: Path) -> dict[str, Any]:
@@ -310,6 +367,13 @@ def validate_snapshot(root: Path) -> dict[str, Any]:
             errors.append(f"variant count mismatch: index={counts.get('variants')}, records={variants}")
         if len(source_index.get("sources") or []) != int(counts.get("sources") or 0):
             errors.append("source count mismatch")
+        identity = _read_json(root, "identity/model.json")
+        if identity.get("schema") != "omega.catalog-json.identity-model.v1":
+            errors.append("identity model schema mismatch")
+        if sum(1 for row in identity.get("manifestObservations") or [] if int(row.get("active") or 0) == 1) != int(counts.get("manifestObservations") or 0):
+            errors.append("manifest observation count mismatch")
+        if len(identity.get("sourceRepositories") or []) != int(counts.get("sourceRepositories") or 0):
+            errors.append("source repository count mismatch")
     except Exception as exc:
         errors.append(f"index cross-check failed: {type(exc).__name__}: {exc}")
     return {
@@ -376,6 +440,12 @@ def materialize_snapshot(root: Path, database: Path, *, definitions_revision: st
             if isinstance(payload.get("search"), dict):
                 searches.append(payload["search"])
         _insert_rows(db, "plugin_variants", variants)
+        identity = _read_json(root, "identity/model.json")
+        _insert_rows(db, "manifest_observations", identity.get("manifestObservations") or [])
+        _insert_rows(db, "source_repositories", identity.get("sourceRepositories") or [])
+        _insert_rows(db, "source_repository_aliases", identity.get("sourceRepositoryAliases") or [])
+        _insert_rows(db, "manifest_source_candidates", identity.get("manifestSourceCandidates") or [])
+        _insert_rows(db, "plugin_identity_aliases", identity.get("pluginIdentityAliases") or [])
         _insert_rows(db, "plugin_tags", tags)
         _insert_rows(db, "plugin_images", images)
         _insert_rows(db, "presentation", presentation)
@@ -421,6 +491,8 @@ def _main() -> int:
     export.add_argument("--built-from-dev-commit", "--source-commit", dest="source_commit", default="", help="Optional development provenance only; never an execution dependency")
     validate = sub.add_parser("validate")
     validate.add_argument("--root", required=True, type=Path)
+    identity = sub.add_parser("identity-compatible")
+    identity.add_argument("--root", required=True, type=Path)
     materialize = sub.add_parser("materialize")
     materialize.add_argument("--root", required=True, type=Path)
     materialize.add_argument("--database", required=True, type=Path)
@@ -431,6 +503,11 @@ def _main() -> int:
     elif args.command == "validate":
         result = validate_snapshot(args.root)
         if not result.get("ok"):
+            print(json.dumps(result, indent=2))
+            return 1
+    elif args.command == "identity-compatible":
+        result = identity_compatibility(args.root)
+        if not result.get("compatible"):
             print(json.dumps(result, indent=2))
             return 1
     else:

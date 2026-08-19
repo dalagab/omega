@@ -64,7 +64,7 @@ def assemble(*, catalog: Path, definitions: Path, output: Path, queue_seed: Path
     if queue_seed is not None:
         queue_seed = queue_seed.resolve()
         queue_seed_doc = json.loads(queue_seed.read_text(encoding="utf-8"))
-        if queue_seed_doc.get("schema") != "omega.sigmascope.queue-seed.v1":
+        if queue_seed_doc.get("schema") != "omega.sigmascope.queue-seed.v2":
             raise RuntimeError("scan queue seed has an unsupported schema")
         shutil.copy2(queue_seed, output / "scan-queue.json")
         queue_seed_sha = sha256_file(output / "scan-queue.json")
@@ -97,6 +97,9 @@ def assemble(*, catalog: Path, definitions: Path, output: Path, queue_seed: Path
             "revision": str(definitions_index.get("definitionsRevision") or ""),
             "scannerRevision": str(definitions_index.get("scannerRevision") or ""),
             "scannerBundleSha256": str((definitions_index.get("scannerBundle") or {}).get("sha256") or ""),
+            "artifactAnalysisRevision": str(definitions_index.get("artifactAnalysisRevision") or ""),
+            "sourceAnalysisRevision": str(definitions_index.get("sourceAnalysisRevision") or ""),
+            "sourceObservationRevision": str(definitions_index.get("sourceObservationRevision") or ""),
             "ruleSetRevision": str(definitions_index.get("ruleSetRevision") or ""),
             "builtFromDevCommit": str(definitions_index.get("builtFromDevCommit") or ""),
             "path": "definitions/index.json",
@@ -111,6 +114,9 @@ def assemble(*, catalog: Path, definitions: Path, output: Path, queue_seed: Path
             "queued": int((queue_seed_doc.get("counts") or {}).get("queued") or 0),
             "ruleSetRevision": str(queue_seed_doc.get("ruleSetRevision") or ""),
             "scannerRevision": str(queue_seed_doc.get("scannerRevision") or ""),
+            "artifactAnalysisRevision": str(queue_seed_doc.get("artifactAnalysisRevision") or ""),
+            "sourceAnalysisRevision": str(queue_seed_doc.get("sourceAnalysisRevision") or ""),
+            "sourceObservationRevision": str(queue_seed_doc.get("sourceObservationRevision") or ""),
             "scannerBundleSha256": str(queue_seed_doc.get("scannerBundleSha256") or ""),
             "catalogIdentityEpoch": str(queue_seed_doc.get("catalogIdentityEpoch") or ""),
             "baselineSecurityRebuild": bool(queue_seed_doc.get("baselineSecurityRebuild")),
@@ -166,7 +172,7 @@ def validate(root: Path) -> dict[str, Any]:
         queue_meta = index.get("scanQueue") or {}
         if queue_meta:
             queue = json.loads((root / "scan-queue.json").read_text(encoding="utf-8"))
-            if queue.get("schema") != "omega.sigmascope.queue-seed.v1":
+            if queue.get("schema") != "omega.sigmascope.queue-seed.v2":
                 errors.append("scan queue seed schema mismatch")
             if str(queue.get("catalogRevision") or "") != str((index.get("catalog") or {}).get("revision") or ""):
                 errors.append("scan queue catalog revision mismatch")
@@ -178,6 +184,12 @@ def validate(root: Path) -> dict[str, Any]:
                 errors.append("scan queue rule-set revision mismatch")
             if str(queue.get("scannerRevision") or "") != str((index.get("definitions") or {}).get("scannerRevision") or ""):
                 errors.append("scan queue scanner revision mismatch")
+            if str(queue.get("artifactAnalysisRevision") or "") != str((index.get("definitions") or {}).get("artifactAnalysisRevision") or ""):
+                errors.append("scan queue artifact analysis revision mismatch")
+            if str(queue.get("sourceAnalysisRevision") or "") != str((index.get("definitions") or {}).get("sourceAnalysisRevision") or ""):
+                errors.append("scan queue source analysis revision mismatch")
+            if str(queue.get("sourceObservationRevision") or "") != str((index.get("definitions") or {}).get("sourceObservationRevision") or ""):
+                errors.append("scan queue source observation revision mismatch")
             if str(queue.get("scannerBundleSha256") or "") != str((index.get("definitions") or {}).get("scannerBundleSha256") or ""):
                 errors.append("scan queue scanner bundle SHA-256 mismatch")
             if str(queue.get("queueSeedRevision") or "") != str(queue_meta.get("revision") or ""):

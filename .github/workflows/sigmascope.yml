@@ -48,14 +48,23 @@ jobs:
           definitions_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['definitionsRevision'])")"
           rule_set_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['ruleSetRevision'])")"
           scanner_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['scannerRevision'])")"
+          artifact_analysis_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['artifactAnalysisRevision'])")"
+          source_analysis_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['sourceAnalysisRevision'])")"
           scanner_bundle_sha256="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['scannerBundle']['sha256'])")"
+          advisory_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['advisoryRevision'])")"
           test -n "$scanner_revision"
+          test -n "$artifact_analysis_revision"
+          test -n "$source_analysis_revision"
           test -n "$scanner_bundle_sha256"
+          test -n "$advisory_revision"
           printf 'catalog_revision=%s\n' "$catalog_revision" >> "$GITHUB_OUTPUT"
           printf 'definitions_revision=%s\n' "$definitions_revision" >> "$GITHUB_OUTPUT"
           printf 'rule_set_revision=%s\n' "$rule_set_revision" >> "$GITHUB_OUTPUT"
           printf 'scanner_revision=%s\n' "$scanner_revision" >> "$GITHUB_OUTPUT"
+          printf 'artifact_analysis_revision=%s\n' "$artifact_analysis_revision" >> "$GITHUB_OUTPUT"
+          printf 'source_analysis_revision=%s\n' "$source_analysis_revision" >> "$GITHUB_OUTPUT"
           printf 'scanner_bundle_sha256=%s\n' "$scanner_bundle_sha256" >> "$GITHUB_OUTPUT"
+          printf 'advisory_revision=%s\n' "$advisory_revision" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -98,13 +107,15 @@ jobs:
           --catalog-revision "${{ steps.frozen.outputs.catalog_revision }}"
           --definitions-revision "${{ steps.frozen.outputs.definitions_revision }}"
           --scanner-revision "${{ steps.frozen.outputs.scanner_revision }}"
+          --artifact-analysis-revision "${{ steps.frozen.outputs.artifact_analysis_revision }}"
+          --source-analysis-revision "${{ steps.frozen.outputs.source_analysis_revision }}"
           --scanner-bundle-sha256 "${{ steps.frozen.outputs.scanner_bundle_sha256 }}"
           --rule-set-revision "${{ steps.frozen.outputs.rule_set_revision }}"
+          --advisory-revision "${{ steps.frozen.outputs.advisory_revision }}"
           --queue-seed catalog/active-state/scan-queue.json
           --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json"
           --max-scans 1
           --max-batch-seconds 3300
-          --rescan-after-hours 168
           --internal-names "${{ inputs.internal_names || '' }}"
           --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"
           --github-output "$GITHUB_OUTPUT"

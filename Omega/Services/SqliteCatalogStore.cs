@@ -262,6 +262,15 @@ internal sealed class SqliteCatalogStore
         var riskScoreProjection = runtimeColumns.Contains("security_risk_score")
             ? "security_risk_score"
             : "0 AS security_risk_score";
+        var sourceAttributionConfidenceProjection = runtimeColumns.Contains("security_source_attribution_confidence")
+            ? "security_source_attribution_confidence"
+            : "0 AS security_source_attribution_confidence";
+        var sourceAttributionBasisProjection = runtimeColumns.Contains("security_source_attribution_basis_json")
+            ? "security_source_attribution_basis_json"
+            : "'[]' AS security_source_attribution_basis_json";
+        var reviewCoverageLabelProjection = runtimeColumns.Contains("security_review_coverage_label")
+            ? "security_review_coverage_label"
+            : "'Unresolved' AS security_review_coverage_label";
         var securityProjection = hasSecurityProjection
             ? $"""
                    security_status,security_scanned_at_utc,security_artifact_sha256,security_scanner_version,
@@ -291,7 +300,8 @@ internal sealed class SqliteCatalogStore
                    dip17_channel,source_name,source_url,source_is_official,website_url,website_title,
                    website_description,{websiteReadmeProjection},website_image_urls_json,website_enriched,{adultContentProjection},
                    {securityProjection},
-                   {authorsProjection},{websiteLinksProjection},{omegaBannerProjection},{catalogPluginIdProjection}
+                   {authorsProjection},{websiteLinksProjection},{omegaBannerProjection},{catalogPluginIdProjection},
+                   {sourceAttributionConfidenceProjection},{sourceAttributionBasisProjection},{reviewCoverageLabelProjection}
               FROM runtime_plugin_variants;
             """;
         using var reader = command.ExecuteReader();
@@ -362,6 +372,9 @@ internal sealed class SqliteCatalogStore
                 OmegaProjectLinks = ReadProjectLinks(GetString(reader, 59, "[]")),
                 OmegaBannerUrl = GetString(reader, 60),
                 CatalogPluginId = GetLong(reader, 61),
+                SecuritySourceAttributionConfidence = GetInt(reader, 62),
+                SecuritySourceAttributionBasis = ReadStrings(GetString(reader, 63, "[]")),
+                SecurityReviewCoverageLabel = GetString(reader, 64, "Unresolved"),
             });
         }
         return result;

@@ -69,7 +69,9 @@ DERIVED_DATASETS = {
     "dependencyResolutions": "dependency-resolutions",
     "dependencyIssues": "dependency-issues",
     "advisoryMatches": "advisory-matches",
+    "sourceAnalysisCache": "source-analysis-cache",
 }
+SOURCE_ANALYSIS_CACHE_SCHEMA = "omega.security-evidence.source-analysis-cache.v1"
 
 
 def utc_now() -> str:
@@ -287,6 +289,50 @@ def _export_analysis(
             shutil.rmtree(stage, ignore_errors=True)
 
 
+def _source_analysis_cache_rows(db: sqlite3.Connection, scan_id: int) -> list[dict[str, Any]]:
+    row = db.execute("SELECT report_json FROM plugin_security_scans WHERE scan_id=?", (scan_id,)).fetchone()
+    if row is None:
+        return []
+    try:
+        report = json.loads(str(row["report_json"] or "{}"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        report = {}
+    if not isinstance(report, dict):
+        return []
+    payload = report.get("sourceAnalysis") if isinstance(report.get("sourceAnalysis"), dict) else {}
+    if not payload or not bool(payload.get("analysisComplete")):
+        representative = int(report.get("sourceAnalysisRepresentativeScanId") or 0)
+        if representative > 0 and table_exists(db, "source_analyses"):
+            cached = db.execute(
+                "SELECT scanner_version,definitions_revision,analysis_payload_json FROM source_analyses WHERE representative_scan_id=? AND status='complete' ORDER BY last_used_at_utc DESC LIMIT 1",
+                (representative,),
+            ).fetchone()
+            if cached is not None:
+                try:
+                    candidate = json.loads(str(cached["analysis_payload_json"] or "{}"))
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    candidate = {}
+                if isinstance(candidate, dict) and bool(candidate.get("analysisComplete")):
+                    payload = candidate
+    if not payload or str(payload.get("schema") or "") != "omega.sigmascope.source-analysis.v1" or not bool(payload.get("analysisComplete")):
+        return []
+    source_revision = str(payload.get("sourceRevisionKey") or "").strip()
+    source_root = str(payload.get("sourceRootPath") or "")
+    revision = str(report.get("sourceAnalysisRevision") or "").strip()
+    if not source_revision or not revision:
+        return []
+    encoded = canonical_json_bytes(payload)
+    return [{
+        "schema": SOURCE_ANALYSIS_CACHE_SCHEMA,
+        "sourceRevisionKey": source_revision,
+        "sourceRootPath": source_root,
+        "scannerVersion": str(report.get("scannerVersion") or ""),
+        "sourceAnalysisRevision": revision,
+        "analysisPayloadSha256": sha256_bytes(encoded),
+        "analysisPayload": payload,
+    }]
+
+
 def _derived_for_variant(db: sqlite3.Connection, scan_id: int, variant_id: int) -> dict[str, Any]:
     result: dict[str, Any] = {}
     if table_exists(db, "plugin_security_dependency_resolutions") and table_exists(db, "plugin_security_dependencies"):
@@ -324,6 +370,7 @@ def _derived_for_variant(db: sqlite3.Connection, scan_id: int, variant_id: int) 
         """, (scan_id,))
     else:
         result["advisoryMatches"] = []
+    result["sourceAnalysisCache"] = _source_analysis_cache_rows(db, scan_id)
     return result
 
 

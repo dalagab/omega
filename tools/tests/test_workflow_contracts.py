@@ -27,8 +27,13 @@ class WorkflowContractTests(unittest.TestCase):
             "ref: catalog-data",
             "catalog_json_store.py",
             "catalog_json_store.py export",
+            "identity-compatible",
+            "legacy/incompatible identity epoch",
             "source_inventory_guard.py",
             "--report catalog/source-inventory.json",
+            "Observe public source HEAD revisions without fetching source bodies",
+            "source_revision_observer.py",
+            "--source-observations catalog/source-revision-observations.json",
             "definitions_snapshot.py build",
             "scan_queue.py build-seed",
             "--output catalog/state-scan-queue.json",
@@ -56,6 +61,7 @@ class WorkflowContractTests(unittest.TestCase):
             "publish frozen online inputs immediately before the matching client DB",
         )
         self.assertNotRegex(text, r"(?m)^  push:\s*$", "ordinary source pushes must not create client-visible catalog churn")
+        self.assertNotIn("--allow-legacy-identity", text, "legacy catalog snapshots may be skipped as seeds but must never be materialized by weakening validation")
         self.assertNotIn("security-evidence-latest", text)
         self.assertNotIn("omega-security-evidence.sqlite.zip", text)
 
@@ -89,10 +95,12 @@ class WorkflowContractTests(unittest.TestCase):
             '--definitions-revision "${{ steps.frozen.outputs.definitions_revision }}"',
             '--scanner-revision "${{ steps.frozen.outputs.scanner_revision }}"',
             '--scanner-bundle-sha256 "${{ steps.frozen.outputs.scanner_bundle_sha256 }}"',
+            '--artifact-analysis-revision "${{ steps.frozen.outputs.artifact_analysis_revision }}"',
+            '--source-analysis-revision "${{ steps.frozen.outputs.source_analysis_revision }}"',
             '--rule-set-revision "${{ steps.frozen.outputs.rule_set_revision }}"',
+            '--advisory-revision "${{ steps.frozen.outputs.advisory_revision }}"',
             "--queue-seed catalog/active-state/scan-queue.json",
             "--max-scans 1",
-            "--rescan-after-hours 168",
             "publish_security_evidence_v2.py",
             "--branch security-evidence-v2",
             "developer_view.py",
@@ -100,6 +108,7 @@ class WorkflowContractTests(unittest.TestCase):
             "continue-on-error: true",
         )
         self.assertNotIn("workflow_run:", text)
+        self.assertNotIn("--rescan-after-hours", text, "production scheduling is event-driven, not age/TTL driven")
         self.assertNotIn("gh release upload catalog-latest", text, "continuous scanner must never publish the client DB")
         self.assertNotIn("validate_marketplace_catalog.py", text, "continuous scanner no longer builds a client projection")
         self.assertNotIn("omega-marketplace.sqlite.zip", text)
@@ -126,6 +135,11 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("ruleSetRevision", definitions)
         self.assertIn("WORKER_BUNDLE_SCHEMA", definitions)
         self.assertIn("scannerRevision", definitions)
+        self.assertIn("artifactAnalysisRevision", definitions)
+        self.assertIn("sourceAnalysisRevision", definitions)
+        self.assertIn("sourceObservationRevision", definitions)
+        self.assertIn("source-revisions.json", definitions)
+        self.assertIn("analysis_revision.compute", definitions)
         self.assertIn("scannerBundle", definitions)
         self.assertIn("builtFromDevCommit", definitions)
         self.assertNotIn('"sourceCommit": source_commit', definitions)

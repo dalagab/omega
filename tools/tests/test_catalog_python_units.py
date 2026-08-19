@@ -774,7 +774,7 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertEqual("Combat Reborn", source_stability.classify_stable_source("Combat Reborn", "https://github.com/FFXIV-CombatReborn/CombatRebornRepo", False).label)
         self.assertIsNone(source_stability.classify_stable_source("Huge community repo", "https://example.invalid/huge.json", False))
 
-    def test_due_scan_order_prioritizes_declared_but_unreviewed_source(self) -> None:
+    def test_declared_but_unreviewed_source_does_not_make_artifact_scan_due(self) -> None:
         with sqlite3.connect(":memory:") as db:
             db.row_factory = sqlite3.Row
             db.executescript("""
@@ -841,11 +841,10 @@ class CatalogPythonUnitTests(unittest.TestCase):
             )
 
             due = sigmascope.due_rows(db, 1, 0, set())
-            self.assertEqual(1, len(due))
             self.assertEqual(
-                "NeedsSourceReview",
-                due[0]["internal_name"],
-                "declared source lacking a successful review is selected before routine complete rescans",
+                [],
+                due,
+                "declared-but-unreviewed source is source-queue work and must not make artifact scanning due",
             )
 
     def test_public_advisory_collector_normalizes_osv_matches_for_observed_nuget_versions(self) -> None:

@@ -51,6 +51,41 @@ class CatalogJsonSnapshotTests(unittest.TestCase):
             self.assertEqual(index["counts"]["variants"], active_variants)
             self.assertTrue(all("activeVariantIds" in row for row in plugin_index["plugins"]))
 
+    def test_legacy_identity_snapshot_is_detected_as_optional_seed_but_never_materialized(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-catalog-identity-migration-") as td:
+            root = Path(td)
+            curated, raw, enriched, websites = test_sqlite_catalog.fixture_documents(root)
+            built = root / "built"
+            test_sqlite_catalog.run_builder(common.ROOT, built, curated, raw, enriched, websites)
+            snapshot = root / "catalog-json"
+            catalog_json_store.export_snapshot(built / "omega-catalog.sqlite", snapshot, source_commit="fixture-dev")
+
+            current = catalog_json_store.identity_compatibility(snapshot)
+            self.assertTrue(current["compatible"], current)
+            self.assertEqual(catalog_json_store.IDENTITY_EPOCH, current["actualIdentityEpoch"])
+
+            index_path = snapshot / "index.json"
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            index.pop("identityEpoch", None)
+            index_path.write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+
+            legacy = catalog_json_store.identity_compatibility(snapshot)
+            self.assertFalse(legacy["compatible"], legacy)
+            self.assertEqual("", legacy["actualIdentityEpoch"])
+            self.assertEqual(catalog_json_store.IDENTITY_EPOCH, legacy["expectedIdentityEpoch"])
+
+            with self.assertRaisesRegex(RuntimeError, "unsupported catalog identity epoch"):
+                catalog_json_store.materialize_snapshot(snapshot, root / "must-not-materialize.sqlite")
+
+            result = subprocess.run(
+                [sys.executable, str(common.ROOT / "tools" / "catalog" / "catalog_json_store.py"), "identity-compatible", "--root", str(snapshot)],
+                cwd=common.ROOT,
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("expectedIdentityEpoch", result.stdout)
+
     def test_definitions_revision_includes_exact_osv_query_identities(self) -> None:
         def evidence(root: Path, name: str) -> Path:
             target = root / name

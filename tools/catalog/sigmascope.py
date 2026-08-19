@@ -27,6 +27,8 @@ from __future__ import annotations
 
 from contextlib import closing
 import argparse
+import base64
+import copy
 import dataclasses
 import datetime as dt
 import fnmatch
@@ -54,13 +56,18 @@ from security_endpoint_inventory import endpoint_candidates, endpoint_findings
 from security_hash_consensus import canonicalize_current_security_by_artifact, propagate_source_provenance_by_artifact, refresh_cross_source_hash_findings
 from security_path_access import external_hard_coded_paths
 from source_resolution import github_repository_url, public_repository_url, source_candidate_records, source_candidates, source_override_key
-from public_git_source import PublicGitSource
+from public_git_source import MAX_GIT_TREE_ENTRIES, PublicGitSource
+from artifact_source_model import (
+    attribution_from_source_result, attribution_key, basis_json, repository_key, source_revision_key,
+)
 
 
 SIGMASCOPE_NAME = "Sigmascope"
-SIGMASCOPE_VERSION = "2.6.0"
+SIGMASCOPE_VERSION = "2.9.0"
 # Persisted SQLite columns and v1/v2 JSON contracts retain the historical scanner_version name.
 SCANNER_VERSION = SIGMASCOPE_VERSION
+ARTIFACT_ANALYSIS_SCHEMA = "omega.sigmascope.artifact-analysis.v1"
+SOURCE_ANALYSIS_SCHEMA = "omega.sigmascope.source-analysis.v1"
 SIGMASCOPE_LEDGER_SCHEMA = "omega.security-scan-ledger.v1"
 SECURITY_LEDGER_SCHEMA = SIGMASCOPE_LEDGER_SCHEMA
 MAX_ARTIFACT_BYTES = 256 * 1024 * 1024
@@ -2283,56 +2290,115 @@ def _source_manifest_match(
     return best
 
 
-def _inspect_github_source_archive(
-    source_bytes: bytes, hits: dict[str, list[str]], internal_name: str, plugin_name: str, assembly_version: str,
+def _inspect_source_tree(
+    source_entries: dict[str, int], read_file, hits: dict[str, list[str]], internal_name: str, plugin_name: str,
+    assembly_version: str, *, analyze: bool = True,
 ) -> tuple[dict, dict, int, dict]:
+    """Inspect only selected text blobs from immutable source-tree metadata."""
     intel = empty_dependency_intelligence("source")
-    intel["fingerprints"]["sourceArchiveSha256"] = sha256_bytes(source_bytes)
+    descriptor_paths = [
+        path for path in source_entries
+        if Path(path).suffix.lower() in {".csproj", ".sln", ".props", ".targets"}
+    ]
+    identity_tokens = [
+        re.sub(r"[^a-z0-9]+", "", value.casefold())
+        for value in (internal_name, plugin_name)
+        if str(value or "").strip()
+    ]
+    descriptor_paths.sort(key=lambda path: (
+        0 if any(token and token in re.sub(r"[^a-z0-9]+", "", path.casefold()) for token in identity_tokens) else 1,
+        len(PurePosixPath(path).parts),
+        path.casefold(),
+    ))
+    descriptor_text: dict[str, str] = {}
+    for path in descriptor_paths[:256]:
+        raw = read_file(path)
+        if raw:
+            descriptor_text[path] = raw.decode("utf-8", "ignore")
+
+    manifest = _source_manifest_match(source_entries, read_file, internal_name, plugin_name, assembly_version)
+    scope = select_plugin_source_scope(set(source_entries), descriptor_text, internal_name, plugin_name)
     files_scanned = 0
     total_text = 0
-    with zipfile.ZipFile(io.BytesIO(source_bytes)) as archive:
-        source_entries: dict[str, zipfile.ZipInfo] = {}
-        descriptor_text: dict[str, str] = {}
-        for info in archive.infolist():
-            if info.is_dir() or not safe_member_name(info.filename):
-                continue
-            suffix = Path(info.filename).suffix.lower()
-            if suffix not in SOURCE_SUFFIXES or info.file_size <= 0 or info.file_size > MAX_TEXT_SOURCE_BYTES:
-                continue
-            parts_name = PurePosixPath(info.filename).parts
-            logical_name = "/".join(parts_name[1:]) if len(parts_name) > 1 else info.filename
-            source_entries[logical_name] = info
-            if suffix in {".csproj", ".sln", ".props", ".targets"}:
-                with archive.open(info) as stream:
-                    descriptor_text[logical_name] = stream.read(MAX_TEXT_SOURCE_BYTES).decode("utf-8", "ignore")
-
-        def read_file(path: str) -> bytes:
-            info = source_entries.get(path)
-            if info is None:
-                return b""
-            with archive.open(info) as stream:
-                return stream.read(MAX_TEXT_SOURCE_BYTES)
-
-        manifest = _source_manifest_match(source_entries, read_file, internal_name, plugin_name, assembly_version)
-        scope = select_plugin_source_scope(set(source_entries), descriptor_text, internal_name, plugin_name)
-        critical_paths = set(scope["criticalPaths"])
-        for logical_name in sorted(critical_paths, key=str.casefold):
+    if analyze:
+        for logical_name in sorted(scope["criticalPaths"], key=str.casefold):
             if files_scanned >= 500 or total_text >= MAX_SOURCE_TEXT_TOTAL:
                 break
+            if logical_name not in source_entries:
+                continue
             raw = read_file(logical_name)
             if not raw:
                 continue
-            text = raw.decode("utf-8", "ignore")
-            scan_source_text(logical_name, raw, text, intel, hits)
+            scan_source_text(logical_name, raw, raw.decode("utf-8", "ignore"), intel, hits)
             files_scanned += 1
             total_text += len(raw)
     finalize_intelligence(intel)
     return intel, scope, files_scanned, manifest
 
 
+def _github_json(url: str, headers: dict[str, str], *, timeout: float = 20.0) -> dict:
+    request = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        payload = json.load(response)
+    if not isinstance(payload, dict):
+        raise RuntimeError("GitHub source API returned a non-object response")
+    return payload
+
+
+def _github_source_tree(api_url: str, tree_sha: str, headers: dict[str, str]) -> tuple[dict[str, int], dict[str, str], object, dict[str, int]]:
+    tree = _github_json(f"{api_url}/git/trees/{urllib.parse.quote(tree_sha, safe='')}?recursive=1", headers)
+    if bool(tree.get("truncated")):
+        raise RuntimeError("GitHub source tree was truncated; refusing incomplete broad-tree attribution")
+    records = tree.get("tree") if isinstance(tree.get("tree"), list) else []
+    if len(records) > MAX_GIT_TREE_ENTRIES:
+        raise RuntimeError(f"GitHub source tree exceeds hard limit {MAX_GIT_TREE_ENTRIES}")
+    source_entries: dict[str, int] = {}
+    blob_ids: dict[str, str] = {}
+    for item in records:
+        if not isinstance(item, dict) or str(item.get("type") or "") != "blob":
+            continue
+        path = str(item.get("path") or "")
+        suffix = Path(path).suffix.lower()
+        try:
+            size = int(item.get("size") or 0)
+        except (TypeError, ValueError):
+            size = 0
+        blob_sha = str(item.get("sha") or "").strip().lower()
+        if suffix not in SOURCE_SUFFIXES or size <= 0 or size > MAX_TEXT_SOURCE_BYTES:
+            continue
+        if not safe_member_name(path) or len(blob_sha) != 40:
+            continue
+        source_entries[path] = size
+        blob_ids[path] = blob_sha
+
+    cache: dict[str, bytes] = {}
+    stats = {"blobsRead": 0, "blobBytes": 0}
+    def read_file(path: str) -> bytes:
+        if path in cache:
+            return cache[path]
+        size = int(source_entries.get(path) or 0)
+        blob_sha = blob_ids.get(path, "")
+        if size <= 0 or size > MAX_TEXT_SOURCE_BYTES or not blob_sha:
+            return b""
+        payload = _github_json(f"{api_url}/git/blobs/{urllib.parse.quote(blob_sha, safe='')}", headers)
+        if str(payload.get("encoding") or "").casefold() != "base64":
+            raise RuntimeError(f"GitHub source blob has unsupported encoding: {path}")
+        try:
+            raw = base64.b64decode(str(payload.get("content") or ""), validate=False)
+        except Exception as exc:
+            raise RuntimeError(f"GitHub source blob could not be decoded: {path}") from exc
+        if len(raw) != size or len(raw) > MAX_TEXT_SOURCE_BYTES:
+            raise RuntimeError(f"GitHub source blob size mismatch: {path}")
+        cache[path] = raw
+        stats["blobsRead"] += 1
+        stats["blobBytes"] += len(raw)
+        return raw
+
+    return source_entries, blob_ids, read_file, stats
+
 def _fetch_source_candidate(
     repo_url: str, token: str, hits: dict[str, list[str]], internal_name: str = "", plugin_name: str = "",
-    assembly_version: str = "", ref_hints: Iterable[str] = (),
+    assembly_version: str = "", ref_hints: Iterable[str] = (), *, analyze: bool = True,
 ) -> dict:
     parts = github_repo_parts(repo_url)
     intel = empty_dependency_intelligence("source")
@@ -2367,10 +2433,11 @@ def _fetch_source_candidate(
                     commit = json.load(response)
                 sha = str(commit.get("sha") or "")
                 tree_sha = str(((commit.get("commit") or {}).get("tree") or {}).get("sha") or "")
-                archive_url = f"https://api.github.com/repos/{owner}/{repo}/zipball/{sha or urllib.parse.quote(ref, safe='')}"
-                source_bytes, _ = request_bytes(archive_url, MAX_SOURCE_BYTES, token)
-                source_intel, scope, files_scanned, manifest = _inspect_github_source_archive(
-                    source_bytes, ref_hits, internal_name, plugin_name, assembly_version,
+                if not sha or not tree_sha:
+                    raise RuntimeError("GitHub commit response did not provide immutable commit/tree identity")
+                source_entries, _blob_ids, read_file, retrieval_stats = _github_source_tree(api_url, tree_sha, headers)
+                source_intel, scope, files_scanned, manifest = _inspect_source_tree(
+                    source_entries, read_file, ref_hits, internal_name, plugin_name, assembly_version, analyze=analyze,
                 )
                 manifest_repo = github_repository_url(str(manifest.get("repoUrl") or ""))
                 manifest_repo_matched = bool(manifest_repo and manifest_repo.casefold() == canonical_repo.casefold())
@@ -2396,6 +2463,11 @@ def _fetch_source_candidate(
                     "filesScanned": files_scanned,
                     "scope": scope,
                     "dependencyIntelligence": source_intel,
+                    "retrieval": {
+                        "schema": "omega.source-retrieval.v1", "mode": "github-tree-selected-blobs",
+                        "treeEntries": len(source_entries), "blobsRead": int(retrieval_stats.get("blobsRead") or 0),
+                        "blobBytes": int(retrieval_stats.get("blobBytes") or 0), "checkout": False,
+                    },
                     "provenance": provenance,
                     "error": "",
                 }
@@ -2432,76 +2504,67 @@ def _fetch_source_candidate(
 
 def _fetch_public_git_source_candidate(
     repo_url: str, _token: str, hits: dict[str, list[str]], internal_name: str = "", plugin_name: str = "",
-    assembly_version: str = "", _ref_hints: Iterable[str] = (),
+    assembly_version: str = "", _ref_hints: Iterable[str] = (), *, analyze: bool = True,
 ) -> dict:
-    """Inspect a public HTTPS Git remote without executing or checking out its code."""
+    """Inspect a public HTTPS Git remote through strict blobless partial retrieval."""
     intel = empty_dependency_intelligence("source")
     try:
         with PublicGitSource(repo_url) as repository:
             source_entries = {
-                path: size for path, size in repository.files.items()
-                if Path(path).suffix.lower() in SOURCE_SUFFIXES and 0 < size <= MAX_TEXT_SOURCE_BYTES
+                path: MAX_TEXT_SOURCE_BYTES for path in repository.files
+                if Path(path).suffix.lower() in SOURCE_SUFFIXES
             }
-            descriptor_text = {
-                path: repository.read_file(path, MAX_TEXT_SOURCE_BYTES).decode("utf-8", "ignore")
-                for path in source_entries
-                if Path(path).suffix.lower() in {".csproj", ".sln", ".props", ".targets"}
-            }
-            manifest = _source_manifest_match(
+            source_intel, scope, files_scanned, manifest = _inspect_source_tree(
                 source_entries,
                 lambda path: repository.read_file(path, MAX_TEXT_SOURCE_BYTES),
+                hits,
                 internal_name,
                 plugin_name,
                 assembly_version,
+                analyze=analyze,
             )
-            scope = select_plugin_source_scope(set(source_entries), descriptor_text, internal_name, plugin_name)
-            files_scanned = 0
-            total_text = 0
-            for logical_name in sorted(scope["criticalPaths"], key=str.casefold):
-                if files_scanned >= 500 or total_text >= MAX_SOURCE_TEXT_TOTAL:
-                    break
-                if logical_name not in source_entries:
-                    continue
-                raw = repository.read_file(logical_name, MAX_TEXT_SOURCE_BYTES)
-                if not raw:
-                    continue
-                scan_source_text(logical_name, raw, raw.decode("utf-8", "ignore"), intel, hits)
-                files_scanned += 1
-                total_text += len(raw)
-        finalize_intelligence(intel)
-        return {
-            "available": True, "repository": repository.repository, "commit": repository.commit, "branch": repository.branch,
-            "treeSha256": repository.tree_sha, "filesScanned": files_scanned, "scope": scope,
-            "dependencyIntelligence": intel,
-            "provenance": {
-                "schema": "omega.plugin-source-provenance.v1",
-                "requestedAssemblyVersion": str(assembly_version or ""),
-                "selectedRef": repository.branch,
-                "selectedRefKind": "git-head",
-                "manifestPath": str(manifest.get("manifestPath") or ""),
-                "manifestInternalName": str(manifest.get("internalName") or ""),
-                "manifestAssemblyVersion": str(manifest.get("assemblyVersion") or ""),
-                "manifestRepoUrl": str(manifest.get("repoUrl") or ""),
-                "identityMatched": bool(manifest.get("identityMatched")) or bool(scope.get("identityMatched")),
-                "versionMatched": bool(manifest.get("versionMatched")),
-                "manifestRepositoryMatched": public_repository_url(str(manifest.get("repoUrl") or "")).casefold() == repository.repository.casefold() if manifest.get("repoUrl") else False,
-            },
-            "error": "",
-        }
+            intel = source_intel
+            retrieval = {
+                "schema": "omega.source-retrieval.v1",
+                "mode": "git-partial-blob-none",
+                "treeEntries": len(repository.files),
+                "blobsRead": int(getattr(repository, "blobs_read", 0) or 0),
+                "blobBytes": int(getattr(repository, "blob_bytes", 0) or 0),
+                "checkout": False,
+            }
+            return {
+                "available": True, "repository": repository.repository, "commit": repository.commit, "branch": repository.branch,
+                "treeSha256": repository.tree_sha, "filesScanned": files_scanned, "scope": scope,
+                "dependencyIntelligence": intel, "retrieval": retrieval,
+                "provenance": {
+                    "schema": "omega.plugin-source-provenance.v1",
+                    "requestedAssemblyVersion": str(assembly_version or ""),
+                    "selectedRef": repository.branch,
+                    "selectedRefKind": "git-head",
+                    "manifestPath": str(manifest.get("manifestPath") or ""),
+                    "manifestInternalName": str(manifest.get("internalName") or ""),
+                    "manifestAssemblyVersion": str(manifest.get("assemblyVersion") or ""),
+                    "manifestRepoUrl": str(manifest.get("repoUrl") or ""),
+                    "identityMatched": bool(manifest.get("identityMatched")) or bool(scope.get("identityMatched")),
+                    "versionMatched": bool(manifest.get("versionMatched")),
+                    "manifestRepositoryMatched": public_repository_url(str(manifest.get("repoUrl") or "")).casefold() == repository.repository.casefold() if manifest.get("repoUrl") else False,
+                },
+                "error": "",
+            }
     except Exception as exc:
         finalize_intelligence(intel)
         return {
             "available": False, "repository": repo_url, "commit": "", "branch": "", "treeSha256": "", "filesScanned": 0,
             "dependencyIntelligence": intel,
-            "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "Public Git source repository could not be inspected."},
+            "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "Public Git source repository could not be inspected through safe partial retrieval."},
             "provenance": {"schema": "omega.plugin-source-provenance.v1", "identityMatched": False, "versionMatched": False},
+            "retrieval": {"schema": "omega.source-retrieval.v1", "mode": "git-partial-blob-none", "checkout": False},
             "error": str(exc)[:500],
         }
 
-
 def fetch_source(
     candidate_urls: list[object], token: str, hits: dict[str, list[str]], internal_name: str = "", plugin_name: str = "",
-    assembly_version: str = "", artifact_url: str = "", resolved_artifact_url: str = "",
+    assembly_version: str = "", artifact_url: str = "", resolved_artifact_url: str = "", *, analyze: bool = True,
 ) -> dict:
     """Try metadata-derived public Git repositories in deterministic priority order."""
     intel = empty_dependency_intelligence("source")
@@ -2542,11 +2605,16 @@ def fetch_source(
         candidate_hits: dict[str, list[str]] = defaultdict(list)
         fetcher = _fetch_source_candidate if github_repo_parts(repository) is not None else _fetch_public_git_source_candidate
         if internal_name or plugin_name or assembly_version:
-            result = fetcher(
-                repository, token, candidate_hits, internal_name, plugin_name, assembly_version, candidate.get("refHints") or [],
-            )
+            if analyze:
+                result = fetcher(
+                    repository, token, candidate_hits, internal_name, plugin_name, assembly_version, candidate.get("refHints") or [],
+                )
+            else:
+                result = fetcher(
+                    repository, token, candidate_hits, internal_name, plugin_name, assembly_version, candidate.get("refHints") or [], analyze=False,
+                )
         else:
-            result = fetcher(repository, token, candidate_hits)
+            result = fetcher(repository, token, candidate_hits) if analyze else fetcher(repository, token, candidate_hits, analyze=False)
         result["candidates"] = repositories
         if result["available"]:
             provenance = dict(result.get("provenance") or {})
@@ -2573,7 +2641,7 @@ def fetch_source(
                 confidence = "low"
             provenance.update({
                 "schema": "omega.plugin-source-provenance.v1",
-                "confidence": confidence,
+                "confidence": confidence,  # legacy display compatibility; machine logic uses source.attribution.confidence
                 "discoveryOrigins": origins,
                 "candidateUrls": [str(value) for value in candidate.get("urls") or [] if str(value)][:16],
                 "artifactOriginMatched": artifact_origin_matched,
@@ -2818,6 +2886,73 @@ def derive_automation_capabilities(intel: dict) -> dict:
 
 def ensure_schema(db: sqlite3.Connection) -> None:
     db.executescript("""
+    CREATE TABLE IF NOT EXISTS artifact_blobs (
+        artifact_sha256 TEXT PRIMARY KEY,
+        package_bytes INTEGER NOT NULL DEFAULT 0,
+        first_seen_utc TEXT NOT NULL DEFAULT '',
+        last_seen_utc TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS source_repositories (
+        repository_key TEXT PRIMARY KEY,
+        canonical_url TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        first_seen_utc TEXT NOT NULL DEFAULT '',
+        last_seen_utc TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS source_revisions (
+        source_revision_key TEXT PRIMARY KEY,
+        repository_key TEXT NOT NULL REFERENCES source_repositories(repository_key) ON DELETE CASCADE,
+        commit_sha TEXT NOT NULL,
+        observed_ref TEXT NOT NULL DEFAULT '',
+        observed_at_utc TEXT NOT NULL DEFAULT '',
+        UNIQUE(repository_key, commit_sha)
+    );
+    CREATE INDEX IF NOT EXISTS ix_source_revisions_repository ON source_revisions(repository_key,commit_sha);
+
+    CREATE TABLE IF NOT EXISTS artifact_source_attributions (
+        attribution_key TEXT PRIMARY KEY,
+        variant_id INTEGER NOT NULL REFERENCES plugin_variants(variant_id) ON DELETE CASCADE,
+        artifact_sha256 TEXT NOT NULL REFERENCES artifact_blobs(artifact_sha256) ON DELETE CASCADE,
+        source_revision_key TEXT NOT NULL DEFAULT '',
+        source_root_path TEXT NOT NULL DEFAULT '',
+        confidence INTEGER NOT NULL DEFAULT 0 CHECK(confidence IN (0,40,70,95,100)),
+        basis_json TEXT NOT NULL DEFAULT '[]',
+        coverage_label TEXT NOT NULL DEFAULT 'Unresolved',
+        observed_at_utc TEXT NOT NULL DEFAULT '',
+        active INTEGER NOT NULL DEFAULT 1
+    );
+    CREATE INDEX IF NOT EXISTS ix_artifact_source_attributions_variant ON artifact_source_attributions(variant_id,active);
+    CREATE INDEX IF NOT EXISTS ix_artifact_source_attributions_hash ON artifact_source_attributions(artifact_sha256,confidence DESC);
+
+    CREATE TABLE IF NOT EXISTS artifact_analyses (
+        artifact_sha256 TEXT NOT NULL REFERENCES artifact_blobs(artifact_sha256) ON DELETE CASCADE,
+        scanner_version TEXT NOT NULL,
+        definitions_revision TEXT NOT NULL DEFAULT '',
+        catalog_definitions_revision TEXT NOT NULL DEFAULT '',
+        representative_scan_id INTEGER REFERENCES plugin_security_scans(scan_id) ON DELETE SET NULL,
+        status TEXT NOT NULL DEFAULT '',
+        analyzed_at_utc TEXT NOT NULL DEFAULT '',
+        last_used_at_utc TEXT NOT NULL DEFAULT '',
+        reuse_count INTEGER NOT NULL DEFAULT 0,
+        analysis_payload_json TEXT NOT NULL DEFAULT '{}',
+        PRIMARY KEY(artifact_sha256,scanner_version,definitions_revision)
+    );
+
+    CREATE TABLE IF NOT EXISTS source_analyses (
+        source_revision_key TEXT NOT NULL,
+        source_root_path TEXT NOT NULL DEFAULT '',
+        scanner_version TEXT NOT NULL,
+        definitions_revision TEXT NOT NULL DEFAULT '',
+        representative_scan_id INTEGER REFERENCES plugin_security_scans(scan_id) ON DELETE SET NULL,
+        status TEXT NOT NULL DEFAULT '',
+        analyzed_at_utc TEXT NOT NULL DEFAULT '',
+        last_used_at_utc TEXT NOT NULL DEFAULT '',
+        reuse_count INTEGER NOT NULL DEFAULT 0,
+        analysis_payload_json TEXT NOT NULL DEFAULT '{}',
+        PRIMARY KEY(source_revision_key,source_root_path,scanner_version,definitions_revision)
+    );
+
     CREATE TABLE IF NOT EXISTS plugin_security_scans (
         scan_id INTEGER PRIMARY KEY,
         plugin_id INTEGER NOT NULL REFERENCES plugins(plugin_id) ON DELETE CASCADE,
@@ -3271,6 +3406,23 @@ def ensure_schema(db: sqlite3.Connection) -> None:
         db.execute("ALTER TABLE plugin_security_current ADD COLUMN automation_level TEXT NOT NULL DEFAULT 'none'")
     if "automation_capabilities_json" not in current_columns:
         db.execute("ALTER TABLE plugin_security_current ADD COLUMN automation_capabilities_json TEXT NOT NULL DEFAULT '[]'")
+    artifact_analysis_columns = {row[1] for row in db.execute("PRAGMA table_info(artifact_analyses)")}
+    for column, declaration in (
+        ("catalog_definitions_revision", "TEXT NOT NULL DEFAULT ''"),
+        ("last_used_at_utc", "TEXT NOT NULL DEFAULT ''"),
+        ("reuse_count", "INTEGER NOT NULL DEFAULT 0"),
+        ("analysis_payload_json", "TEXT NOT NULL DEFAULT '{}'") ,
+    ):
+        if column not in artifact_analysis_columns:
+            db.execute(f"ALTER TABLE artifact_analyses ADD COLUMN {column} {declaration}")
+    source_analysis_columns = {row[1] for row in db.execute("PRAGMA table_info(source_analyses)")}
+    for column, declaration in (
+        ("last_used_at_utc", "TEXT NOT NULL DEFAULT ''"),
+        ("reuse_count", "INTEGER NOT NULL DEFAULT 0"),
+        ("analysis_payload_json", "TEXT NOT NULL DEFAULT '{}'") ,
+    ):
+        if column not in source_analysis_columns:
+            db.execute(f"ALTER TABLE source_analyses ADD COLUMN {column} {declaration}")
     db.execute("CREATE INDEX IF NOT EXISTS ix_security_dependencies_requirement ON plugin_security_dependencies(requirement)")
     db.execute("CREATE INDEX IF NOT EXISTS ix_security_managed_calls_target_method ON plugin_security_managed_calls(target_method_token)")
 
@@ -4426,9 +4578,15 @@ def write_scan_ledger(path: Path | None, ledger: dict, db: sqlite3.Connection, c
 
 
 def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: set[str], ledger: dict | None = None, variant_ids: set[int] | None = None) -> list[sqlite3.Row]:
+    """Select artifact rows from identity/revision events, never elapsed age.
+
+    ``rescan_hours`` and the legacy ledger parameter remain accepted for compatibility
+    with developer tooling, but they no longer make an unchanged plugin due. Production
+    scheduling is owned by the typed persistent queue.
+    """
     if max_scans <= 0:
         return []
-    now = dt.datetime.now(dt.timezone.utc)
+    _ = rescan_hours, ledger
     variant_columns = {str(row[1]).casefold() for row in db.execute("PRAGMA table_info(plugin_variants)")}
     update_projection = "v.download_link_update" if "download_link_update" in variant_columns else "'' AS download_link_update"
     rows = db.execute(f"""
@@ -4445,9 +4603,7 @@ def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: s
          ORDER BY CASE
                     WHEN sc.scan_id IS NULL THEN 0
                     WHEN sc.status<>'complete' THEN 1
-                    WHEN COALESCE(sc.source_available,0)=0
-                         AND (sc.source_repository<>'' OR v.repo_url<>'' OR s.source_repo_url<>'') THEN 2
-                    ELSE 3
+                    ELSE 2
                   END,
                   COALESCE(sc.scanned_at_utc,''), p.internal_name COLLATE NOCASE, s.name COLLATE NOCASE
     """).fetchall()
@@ -4460,25 +4616,18 @@ def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: s
         _channel, version, url = choose_artifact(row)
         if not url:
             continue
-        # When the persistent production queue supplies an exact variant identity it
-        # owns due/retry semantics. Do not re-apply the legacy age/scanner-version
-        # scheduler here or rule-set/manual queue reasons could be silently skipped.
         if variant_ids:
+            # Exact typed queue selection owns all due/retry semantics.
             result.append(row)
             if len(result) >= max_scans:
                 break
             continue
-        last = parse_utc(row["current_scanned_at_utc"])
-        ledger_entry = ((ledger or {}).get("variants") or {}).get(str(row["variant_id"])) if isinstance((ledger or {}).get("variants"), dict) else None
-        operationally_fresh = ledger_entry_is_fresh(ledger_entry, version, url, now, rescan_hours)
-        stale = not operationally_fresh and (last is None or (now - last).total_seconds() >= rescan_hours * 3600)
         due = (
-            row["current_status"] is None or
-            str(row["current_status"]) != "complete" or
-            str(row["current_scanner_version"] or "") != SCANNER_VERSION or
-            str(row["current_artifact_url"] or "") != url or
-            str(row["current_assembly_version"] or "") != version or
-            stale
+            row["current_status"] is None
+            or str(row["current_status"]) != "complete"
+            or str(row["current_scanner_version"] or "") != SCANNER_VERSION
+            or str(row["current_artifact_url"] or "") != url
+            or str(row["current_assembly_version"] or "") != version
         )
         if due:
             result.append(row)
@@ -4610,7 +4759,353 @@ def save_automation_capabilities(db: sqlite3.Connection, scan_id: int, result: d
         )
 
 
+def persist_artifact_source_identity(db: sqlite3.Connection, variant_id: int, result: dict, scan_id: int) -> None:
+    """Persist artifact/source identities separately from the legacy combined scan row."""
+    artifact_sha = str(result.get("artifactSha256") or "").strip().casefold()
+    if not artifact_sha:
+        return
+    observed = str(result.get("scannedAtUtc") or utc_now())
+    package_bytes = int(result.get("artifactBytes") or 0)
+    db.execute(
+        """INSERT INTO artifact_blobs(artifact_sha256,package_bytes,first_seen_utc,last_seen_utc) VALUES(?,?,?,?)
+           ON CONFLICT(artifact_sha256) DO UPDATE SET package_bytes=MAX(artifact_blobs.package_bytes,excluded.package_bytes),last_seen_utc=excluded.last_seen_utc""",
+        (artifact_sha, package_bytes, observed, observed),
+    )
+    catalog_definitions_revision = read_catalog_meta(db, "definitions_revision")
+    analysis_revision = str(result.get("artifactAnalysisRevision") or "").strip() or _artifact_analysis_revision(
+        db,
+        result.get("scanProvenance") if isinstance(result.get("scanProvenance"), dict) else None,
+    )
+    analysis_payload = result.get("artifactAnalysis") if isinstance(result.get("artifactAnalysis"), dict) else {}
+    reused = int(bool(result.get("artifactAnalysisReused")))
+    db.execute(
+        """INSERT INTO artifact_analyses(
+               artifact_sha256,scanner_version,definitions_revision,catalog_definitions_revision,representative_scan_id,
+               status,analyzed_at_utc,last_used_at_utc,reuse_count,analysis_payload_json)
+           VALUES(?,?,?,?,?,?,?,?,?,?)
+           ON CONFLICT(artifact_sha256,scanner_version,definitions_revision) DO UPDATE SET
+               catalog_definitions_revision=excluded.catalog_definitions_revision,
+               representative_scan_id=CASE
+                   WHEN artifact_analyses.representative_scan_id IS NULL OR artifact_analyses.representative_scan_id=0
+                   THEN excluded.representative_scan_id ELSE artifact_analyses.representative_scan_id END,
+               status=excluded.status,
+               analyzed_at_utc=CASE WHEN artifact_analyses.analyzed_at_utc='' THEN excluded.analyzed_at_utc ELSE artifact_analyses.analyzed_at_utc END,
+               last_used_at_utc=excluded.last_used_at_utc,
+               reuse_count=artifact_analyses.reuse_count + excluded.reuse_count,
+               analysis_payload_json=CASE WHEN excluded.analysis_payload_json<>'{}' THEN excluded.analysis_payload_json ELSE artifact_analyses.analysis_payload_json END""",
+        (
+            artifact_sha, SCANNER_VERSION, analysis_revision, catalog_definitions_revision, scan_id,
+            str(result.get("status") or ""), observed, observed, reused,
+            json.dumps(analysis_payload, separators=(",", ":")),
+        ),
+    )
+
+    source = result.get("source") if isinstance(result.get("source"), dict) else {}
+    attribution = attribution_from_source_result(source)
+    source["attribution"] = attribution
+    result["source"] = source
+    repository = public_repository_url(str(source.get("repository") or ""))
+    commit_sha = str(source.get("commit") or "").strip()
+    revision_key = ""
+    if repository:
+        rkey = repository_key(repository)
+        db.execute(
+            """INSERT INTO source_repositories(repository_key,canonical_url,first_seen_utc,last_seen_utc) VALUES(?,?,?,?)
+               ON CONFLICT(repository_key) DO UPDATE SET canonical_url=excluded.canonical_url,last_seen_utc=excluded.last_seen_utc""",
+            (rkey, repository, observed, observed),
+        )
+        if commit_sha:
+            revision_key = source_revision_key(repository, commit_sha)
+            db.execute(
+                """INSERT OR REPLACE INTO source_revisions(source_revision_key,repository_key,commit_sha,observed_ref,observed_at_utc)
+                   VALUES(?,?,?,?,?)""",
+                (revision_key, rkey, commit_sha, str(source.get("branch") or ""), observed),
+            )
+
+    scope = source.get("scope") if isinstance(source.get("scope"), dict) else {}
+    primary_project = str(scope.get("primaryProject") or "").strip().replace("\\", "/")
+    root_path = str(PurePosixPath(primary_project).parent) if primary_project else ""
+    if root_path == ".":
+        root_path = ""
+    attr_key = attribution_key(int(variant_id), artifact_sha, revision_key, root_path)
+    db.execute("UPDATE artifact_source_attributions SET active=0 WHERE variant_id=?", (int(variant_id),))
+    db.execute(
+        """INSERT OR REPLACE INTO artifact_source_attributions(
+               attribution_key,variant_id,artifact_sha256,source_revision_key,source_root_path,confidence,basis_json,coverage_label,observed_at_utc,active)
+           VALUES(?,?,?,?,?,?,?,?,?,1)""",
+        (attr_key, int(variant_id), artifact_sha, revision_key, root_path, int(attribution["confidence"]),
+         basis_json(attribution.get("basis") or []), str(attribution.get("coverageLabel") or ""), observed),
+    )
+    if revision_key:
+        source_analysis_revision = str(result.get("sourceAnalysisRevision") or "").strip() or _source_analysis_revision(
+            db, result.get("scanProvenance") if isinstance(result.get("scanProvenance"), dict) else None,
+        )
+        source_analysis = result.get("sourceAnalysis") if isinstance(result.get("sourceAnalysis"), dict) else {}
+        if not source_analysis:
+            source_analysis = _source_payload(source, {})
+        source_reused = int(bool(result.get("sourceAnalysisReused")))
+        source_status = "complete" if str(result.get("workType") or "") == "source" else "combined-compatibility"
+        db.execute(
+            """INSERT INTO source_analyses(
+                   source_revision_key,source_root_path,scanner_version,definitions_revision,representative_scan_id,status,analyzed_at_utc,
+                   last_used_at_utc,reuse_count,analysis_payload_json)
+               VALUES(?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(source_revision_key,source_root_path,scanner_version,definitions_revision) DO UPDATE SET
+                   representative_scan_id=CASE
+                       WHEN source_analyses.representative_scan_id IS NULL OR source_analyses.representative_scan_id=0
+                       THEN excluded.representative_scan_id ELSE source_analyses.representative_scan_id END,
+                   status=CASE WHEN excluded.status='complete' THEN 'complete' ELSE source_analyses.status END,
+                   analyzed_at_utc=CASE WHEN source_analyses.analyzed_at_utc='' THEN excluded.analyzed_at_utc ELSE source_analyses.analyzed_at_utc END,
+                   last_used_at_utc=excluded.last_used_at_utc,
+                   reuse_count=source_analyses.reuse_count + excluded.reuse_count,
+                   analysis_payload_json=CASE WHEN excluded.analysis_payload_json<>'{}' THEN excluded.analysis_payload_json ELSE source_analyses.analysis_payload_json END""",
+            (revision_key, root_path, SCANNER_VERSION, source_analysis_revision, scan_id, source_status, observed, observed, source_reused,
+             json.dumps(source_analysis, separators=(",", ":"))),
+        )
+
+
+def rebuild_artifact_source_contracts(db: sqlite3.Connection) -> int:
+    """Reconstruct artifact/source identity tables from current Evidence v2 projections.
+
+    Evidence v2 keeps the compact report plus current artifact hash. This makes the
+    new identity tables durable across the existing Evidence v2 transport before the
+    future split artifact/source analysis datasets are introduced.
+    """
+    ensure_schema(db)
+    db.execute("DELETE FROM artifact_source_attributions")
+    rebuilt = 0
+    rows = db.execute("SELECT variant_id,scan_id,artifact_sha256,scanned_at_utc,status,report_json FROM plugin_security_current ORDER BY variant_id").fetchall()
+    for row in rows:
+        try:
+            report = json.loads(str(row["report_json"] or "{}"))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            report = {}
+        if not isinstance(report, dict):
+            report = {}
+        report["artifactSha256"] = str(row["artifact_sha256"] or "")
+        report["scannedAtUtc"] = str(row["scanned_at_utc"] or "")
+        report["status"] = str(row["status"] or "")
+        persist_artifact_source_identity(db, int(row["variant_id"]), report, int(row["scan_id"] or 0))
+        if str(row["artifact_sha256"] or ""):
+            rebuilt += 1
+    return rebuilt
+
+
+ARTIFACT_CLONE_TABLES = (
+    "plugin_security_findings",
+    "plugin_security_dependencies",
+    "plugin_security_ipc_endpoints",
+    "plugin_security_imports",
+    "plugin_security_managed_assemblies",
+    "plugin_security_managed_symbols",
+    "plugin_security_managed_calls",
+    "plugin_security_managed_reachability",
+    "plugin_security_permission_candidates",
+    "plugin_security_automation_capabilities",
+)
+
+
+def _clone_scan_dataset_rows(db: sqlite3.Connection, table: str, source_scan_id: int, target_scan_id: int) -> int:
+    if not _table_exists(db, table):
+        return 0
+    info = list(db.execute(f'PRAGMA table_info("{table}")'))
+    columns = [str(row[1]) for row in info]
+    if "scan_id" not in columns:
+        return 0
+    primary_keys = {str(row[1]) for row in info if int(row[5] or 0) > 0}
+    copy_columns = [column for column in columns if column != "scan_id" and column not in primary_keys]
+    quoted = ",".join(f'"{column}"' for column in copy_columns)
+    select_columns = ",".join(f'"{column}"' for column in copy_columns)
+    if copy_columns:
+        db.execute(
+            f'INSERT INTO "{table}"(scan_id,{quoted}) SELECT ?,{select_columns} FROM "{table}" WHERE scan_id=?',
+            (target_scan_id, source_scan_id),
+        )
+    else:
+        db.execute(f'INSERT INTO "{table}"(scan_id) SELECT ? FROM "{table}" WHERE scan_id=?', (target_scan_id, source_scan_id))
+    return int(db.execute("SELECT changes()").fetchone()[0])
+
+
+def _save_reused_artifact_scan(db: sqlite3.Connection, row: sqlite3.Row, result: dict, source_scan_id: int) -> int:
+    """Project one already-proven artifact analysis onto another distributing variant.
+
+    The target variant still downloaded and SHA-256 verified its own artifact bytes.
+    Only after that identity match do we copy the immutable normalized artifact evidence
+    from the representative scan. No source evidence is copied or inferred.
+    """
+    representative = db.execute(
+        """SELECT * FROM plugin_security_scans WHERE scan_id=? AND status='complete'""",
+        (source_scan_id,),
+    ).fetchone()
+    if representative is None:
+        raise RuntimeError(f"artifact reuse representative scan {source_scan_id} is unavailable")
+    artifact_sha = str(result.get("artifactSha256") or "").strip().casefold()
+    if artifact_sha != str(representative["artifact_sha256"] or "").strip().casefold():
+        raise RuntimeError("artifact reuse refused because representative SHA-256 differs")
+    counts = result.get("counts") if isinstance(result.get("counts"), dict) else {}
+    source = result.get("source") if isinstance(result.get("source"), dict) else {}
+    cur = db.execute(
+        """INSERT INTO plugin_security_scans(
+               plugin_id,variant_id,source_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,
+               scanner_version,status,scanned_at_utc,highest_severity,informational_count,caution_count,high_count,
+               critical_count,capabilities_json,source_available,source_repository,source_commit,source_to_binary_verified,
+               report_json,error)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            row["plugin_id"], row["variant_id"], row["source_id"], result["assemblyVersion"], result["artifactChannel"],
+            result["artifactUrl"], artifact_sha, SCANNER_VERSION, result["status"], result["scannedAtUtc"],
+            result["highestSeverity"], int(counts.get("informational") or 0), int(counts.get("caution") or 0),
+            int(counts.get("high") or 0), int(counts.get("critical") or 0),
+            json.dumps(result.get("capabilities") or [], separators=(",", ":")), 0,
+            str(source.get("repository") or ""), "", 0, json.dumps(result, separators=(",", ":")), "",
+        ),
+    )
+    scan_id = int(cur.lastrowid)
+    for table in ARTIFACT_CLONE_TABLES:
+        _clone_scan_dataset_rows(db, table, source_scan_id, scan_id)
+    persist_artifact_source_identity(db, int(row["variant_id"]), result, scan_id)
+    previous_current = db.execute("SELECT scan_id,status FROM plugin_security_current WHERE variant_id=?", (row["variant_id"],)).fetchone()
+    previous_scan_id = int(previous_current["scan_id"]) if previous_current is not None and str(previous_current["status"] or "") == "complete" else None
+    result["dependencyHistory"] = record_dependency_history(db, previous_scan_id, scan_id, int(row["variant_id"]), result)
+    db.execute("UPDATE plugin_security_scans SET report_json=? WHERE scan_id=?", (json.dumps(result, separators=(",", ":")), scan_id))
+    automation = result.get("automation") if isinstance(result.get("automation"), dict) else {}
+    db.execute(
+        """INSERT INTO plugin_security_current(
+               variant_id,scan_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,
+               scanned_at_utc,highest_severity,informational_count,caution_count,high_count,critical_count,capabilities_json,
+               automation_level,automation_capabilities_json,findings_json,source_available,source_repository,source_commit,
+               source_to_binary_verified,report_json,error)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+           ON CONFLICT(variant_id) DO UPDATE SET
+               scan_id=excluded.scan_id,assembly_version=excluded.assembly_version,artifact_channel=excluded.artifact_channel,
+               artifact_url=excluded.artifact_url,artifact_sha256=excluded.artifact_sha256,scanner_version=excluded.scanner_version,
+               status=excluded.status,scanned_at_utc=excluded.scanned_at_utc,highest_severity=excluded.highest_severity,
+               informational_count=excluded.informational_count,caution_count=excluded.caution_count,high_count=excluded.high_count,
+               critical_count=excluded.critical_count,capabilities_json=excluded.capabilities_json,
+               automation_level=excluded.automation_level,automation_capabilities_json=excluded.automation_capabilities_json,
+               findings_json=excluded.findings_json,source_available=0,source_repository=excluded.source_repository,
+               source_commit='',source_to_binary_verified=0,report_json=excluded.report_json,error=excluded.error""",
+        (
+            row["variant_id"], scan_id, result["assemblyVersion"], result["artifactChannel"], result["artifactUrl"], artifact_sha,
+            SCANNER_VERSION, result["status"], result["scannedAtUtc"], result["highestSeverity"],
+            int(counts.get("informational") or 0), int(counts.get("caution") or 0), int(counts.get("high") or 0), int(counts.get("critical") or 0),
+            json.dumps(result.get("capabilities") or [], separators=(",", ":")), str(automation.get("level") or "none"),
+            json.dumps(automation.get("capabilities") or [], separators=(",", ":")), json.dumps(result.get("findings") or [], separators=(",", ":")),
+            0, str(source.get("repository") or ""), "", 0, json.dumps(result, separators=(",", ":")), "",
+        ),
+    )
+    return scan_id
+
+
+def _save_source_projection_scan(db: sqlite3.Connection, row: sqlite3.Row, result: dict, artifact_scan_id: int) -> int:
+    """Attach source analysis to an existing artifact analysis without rerunning it.
+
+    The immutable artifact datasets are cloned from the artifact representative scan.
+    Only source-origin normalized rows are appended. This keeps source work from
+    replacing artifact dependency/IL/permission evidence when Evidence v2 has compacted
+    the in-memory artifact-analysis JSON payload between workers.
+    """
+    representative = db.execute(
+        "SELECT * FROM plugin_security_scans WHERE scan_id=? AND status='complete'",
+        (int(artifact_scan_id),),
+    ).fetchone()
+    if representative is None:
+        raise RuntimeError(f"source projection artifact representative scan {artifact_scan_id} is unavailable")
+    artifact_sha = str(result.get("artifactSha256") or "").strip().casefold()
+    if not artifact_sha or artifact_sha != str(representative["artifact_sha256"] or "").strip().casefold():
+        raise RuntimeError("source projection refused because artifact representative SHA-256 differs")
+    counts = result.get("counts") if isinstance(result.get("counts"), dict) else {}
+    source = result.get("source") if isinstance(result.get("source"), dict) else {}
+    cur = db.execute(
+        """INSERT INTO plugin_security_scans(
+               plugin_id,variant_id,source_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,
+               scanner_version,status,scanned_at_utc,highest_severity,informational_count,caution_count,high_count,
+               critical_count,capabilities_json,source_available,source_repository,source_commit,source_to_binary_verified,
+               report_json,error)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            row["plugin_id"], row["variant_id"], row["source_id"], result["assemblyVersion"], result["artifactChannel"],
+            result["artifactUrl"], artifact_sha, SCANNER_VERSION, result["status"], result["scannedAtUtc"],
+            result["highestSeverity"], int(counts.get("informational") or 0), int(counts.get("caution") or 0),
+            int(counts.get("high") or 0), int(counts.get("critical") or 0),
+            json.dumps(result.get("capabilities") or [], separators=(",", ":")), int(bool(source.get("available"))),
+            str(source.get("repository") or ""), str(source.get("commit") or ""), 0,
+            json.dumps(result, separators=(",", ":")), str(result.get("error") or ""),
+        ),
+    )
+    scan_id = int(cur.lastrowid)
+    for table in ARTIFACT_CLONE_TABLES:
+        _clone_scan_dataset_rows(db, table, artifact_scan_id, scan_id)
+
+    source_findings = list(source.get("findings") or [])
+    source_automation = source.get("automation") if isinstance(source.get("automation"), dict) else {}
+    source_findings.extend(source_automation.get("findings") or [])
+    seen_findings: set[tuple[str, str, str]] = set()
+    for finding in source_findings:
+        if not isinstance(finding, dict):
+            continue
+        key = (str(finding.get("ruleId") or ""), str(finding.get("severity") or ""), str(finding.get("title") or ""))
+        if key in seen_findings:
+            continue
+        seen_findings.add(key)
+        db.execute(
+            """INSERT INTO plugin_security_findings(scan_id,rule_id,severity,category,title,description,evidence_json)
+               VALUES(?,?,?,?,?,?,?)""",
+            (scan_id, key[0], key[1], str(finding.get("category") or ""), key[2], str(finding.get("description") or ""),
+             json.dumps(finding.get("evidence") or [], separators=(",", ":"))),
+        )
+    save_dependency_intelligence(db, scan_id, {"dependencyIntelligence": source.get("dependencyIntelligence") or empty_dependency_intelligence("source")})
+    if source_automation:
+        save_automation_capabilities(db, scan_id, {"automation": source_automation})
+
+    previous_current = db.execute("SELECT scan_id,status FROM plugin_security_current WHERE variant_id=?", (row["variant_id"],)).fetchone()
+    previous_scan_id = int(previous_current["scan_id"]) if previous_current is not None and str(previous_current["status"] or "") == "complete" else None
+    persist_artifact_source_identity(db, int(row["variant_id"]), result, scan_id)
+    result["sourceArtifactComparison"] = save_source_artifact_comparison(db, scan_id, int(row["variant_id"]), result)
+    result["dependencyHistory"] = record_dependency_history(db, previous_scan_id, scan_id, int(row["variant_id"]), result)
+    db.execute("UPDATE plugin_security_scans SET report_json=? WHERE scan_id=?", (json.dumps(result, separators=(",", ":")), scan_id))
+
+    automation = result.get("automation") if isinstance(result.get("automation"), dict) else {}
+    db.execute(
+        """INSERT INTO plugin_security_current(
+               variant_id,scan_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,
+               scanned_at_utc,highest_severity,informational_count,caution_count,high_count,critical_count,capabilities_json,
+               automation_level,automation_capabilities_json,findings_json,source_available,source_repository,source_commit,
+               source_to_binary_verified,report_json,error)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+           ON CONFLICT(variant_id) DO UPDATE SET
+               scan_id=excluded.scan_id,assembly_version=excluded.assembly_version,artifact_channel=excluded.artifact_channel,
+               artifact_url=excluded.artifact_url,artifact_sha256=excluded.artifact_sha256,scanner_version=excluded.scanner_version,
+               status=excluded.status,scanned_at_utc=excluded.scanned_at_utc,highest_severity=excluded.highest_severity,
+               informational_count=excluded.informational_count,caution_count=excluded.caution_count,high_count=excluded.high_count,
+               critical_count=excluded.critical_count,capabilities_json=excluded.capabilities_json,
+               automation_level=excluded.automation_level,automation_capabilities_json=excluded.automation_capabilities_json,
+               findings_json=excluded.findings_json,source_available=excluded.source_available,
+               source_repository=excluded.source_repository,source_commit=excluded.source_commit,
+               source_to_binary_verified=excluded.source_to_binary_verified,report_json=excluded.report_json,error=excluded.error""",
+        (
+            row["variant_id"], scan_id, result["assemblyVersion"], result["artifactChannel"], result["artifactUrl"], artifact_sha,
+            SCANNER_VERSION, result["status"], result["scannedAtUtc"], result["highestSeverity"],
+            int(counts.get("informational") or 0), int(counts.get("caution") or 0), int(counts.get("high") or 0), int(counts.get("critical") or 0),
+            json.dumps(result.get("capabilities") or [], separators=(",", ":")), str(automation.get("level") or "none"),
+            json.dumps(automation.get("capabilities") or [], separators=(",", ":")), json.dumps(result.get("findings") or [], separators=(",", ":")),
+            int(bool(source.get("available"))), str(source.get("repository") or ""), str(source.get("commit") or ""), 0,
+            json.dumps(result, separators=(",", ":")), str(result.get("error") or ""),
+        ),
+    )
+    return scan_id
+
+
 def save_scan(db: sqlite3.Connection, row: sqlite3.Row, result: dict) -> int:
+    work_type = str(result.get("workType") or "")
+    if work_type == "source" and result.get("status") == "complete":
+        source_projection_base = int(result.get("sourceProjectionArtifactScanId") or result.get("artifactAnalysisRepresentativeScanId") or 0)
+        if source_projection_base <= 0:
+            raise RuntimeError("source work cannot publish without an artifact representative scan")
+        return _save_source_projection_scan(db, row, result, source_projection_base)
+    clone_from = int(result.get("artifactAnalysisCloneFromScanId") or 0)
+    if clone_from > 0 and work_type == "artifact" and result.get("status") == "complete":
+        return _save_reused_artifact_scan(db, row, result, clone_from)
     counts = result["counts"]
     previous_current = db.execute("SELECT scan_id,status FROM plugin_security_current WHERE variant_id=?", (row["variant_id"],)).fetchone()
     previous_scan_id = int(previous_current["scan_id"]) if previous_current is not None and str(previous_current["status"] or "") == "complete" else None
@@ -4630,6 +5125,7 @@ def save_scan(db: sqlite3.Connection, row: sqlite3.Row, result: dict) -> int:
         result.get("error", ""),
     ))
     scan_id = int(cur.lastrowid)
+    persist_artifact_source_identity(db, int(row["variant_id"]), result, scan_id)
     for finding in result["findings"]:
         db.execute(
             """INSERT INTO plugin_security_findings(scan_id,rule_id,severity,category,title,description,evidence_json)
@@ -4679,7 +5175,474 @@ def save_scan(db: sqlite3.Connection, row: sqlite3.Row, result: dict) -> int:
     return scan_id
 
 
-def scan_row(row: sqlite3.Row, token: str, scan_source: bool, source_override: str = "") -> dict:
+def _artifact_analysis_revision(db: sqlite3.Connection | None, scan_provenance: dict | None = None) -> str:
+    provenance = scan_provenance if isinstance(scan_provenance, dict) else {}
+    narrow_revision = str(provenance.get("artifactAnalysisRevision") or "").strip()
+    if narrow_revision:
+        return narrow_revision
+    if db is not None:
+        revision = read_catalog_meta(db, "artifact_analysis_revision", "")
+        if revision:
+            return str(revision)
+    # Backward compatibility for evidence produced before the narrow revision existed.
+    scanner_revision = str(provenance.get("scannerRevision") or "").strip()
+    rule_revision = str(provenance.get("ruleSetRevision") or "").strip()
+    if scanner_revision or rule_revision:
+        return f"legacy:{scanner_revision or 'scanner-unknown'}+{rule_revision or 'rules-unknown'}"
+    if db is not None:
+        revision = read_catalog_meta(db, "scanner_revision", "") or read_catalog_meta(db, "rule_set_revision", "") or read_catalog_meta(db, "definitions_revision", "")
+        if revision:
+            return f"legacy:{revision}"
+    return f"legacy:scanner-{SCANNER_VERSION}"
+
+
+def _finalize_findings(rule_findings: list[dict], rule_capabilities: Iterable[str], intel: dict, candidates: Iterable[str]) -> dict:
+    findings = copy.deepcopy(rule_findings)
+    capabilities = set(str(item or "") for item in rule_capabilities if str(item or ""))
+    endpoint_results, endpoint_capabilities = endpoint_findings(
+        intel.get("networkEndpoints") or [],
+        any(finding.get("ruleId") in {"network.http", "network.socket", "local.listener"} for finding in findings),
+        list(candidates),
+    )
+    automation = derive_automation_capabilities(intel)
+    findings.extend(endpoint_results)
+    findings.extend(automation["findings"])
+    capabilities.update(endpoint_capabilities)
+    capabilities.update(
+        str(item.get("label") or "")
+        for item in automation.get("capabilities") or []
+        if str(item.get("label") or "")
+    )
+    findings.sort(key=lambda f: (-SEVERITY_RANK.get(str(f.get("severity") or ""), 0), str(f.get("ruleId") or "")))
+    counts = {
+        severity: sum(1 for finding in findings if finding.get("severity") == severity)
+        for severity in ("informational", "caution", "high", "critical")
+    }
+    highest = "none"
+    for severity in ("critical", "high", "caution", "informational"):
+        if counts[severity]:
+            highest = severity
+            break
+    return {
+        "findings": findings,
+        "capabilities": sorted(capabilities, key=str.lower),
+        "automation": automation,
+        "counts": counts,
+        "highestSeverity": highest,
+    }
+
+
+def _load_cached_artifact_analysis(
+    db: sqlite3.Connection | None, artifact_sha256: str, analysis_revision: str,
+) -> tuple[dict | None, int]:
+    if db is None or not artifact_sha256 or not analysis_revision:
+        return None, 0
+    row = db.execute(
+        """SELECT representative_scan_id,status,analysis_payload_json
+             FROM artifact_analyses
+            WHERE artifact_sha256=? AND scanner_version=? AND definitions_revision=?""",
+        (artifact_sha256, SCANNER_VERSION, analysis_revision),
+    ).fetchone()
+    if row is None or str(row["status"] or "") != "complete":
+        return None, 0
+    representative_scan_id = int(row["representative_scan_id"] or 0)
+    try:
+        payload = json.loads(str(row["analysis_payload_json"] or "{}"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        payload = {}
+    if isinstance(payload, dict) and payload.get("schema") == ARTIFACT_ANALYSIS_SCHEMA:
+        if str(payload.get("artifactSha256") or "").casefold() == artifact_sha256.casefold():
+            return payload, representative_scan_id
+    # Evidence v2 deliberately transports normalized scan datasets instead of a
+    # second giant artifact-analysis JSON blob. After a worker re-materializes the
+    # previous snapshot, reconstruct a small replay descriptor from the representative
+    # scan and clone its normalized datasets when persisting the new variant.
+    if representative_scan_id <= 0:
+        return None, 0
+    scan = db.execute(
+        """SELECT assembly_version,artifact_sha256,highest_severity,informational_count,caution_count,high_count,critical_count,
+                  capabilities_json,report_json,status
+             FROM plugin_security_scans WHERE scan_id=?""",
+        (representative_scan_id,),
+    ).fetchone()
+    if scan is None or str(scan["status"] or "") != "complete" or str(scan["artifact_sha256"] or "").casefold() != artifact_sha256.casefold():
+        return None, 0
+    try:
+        report = json.loads(str(scan["report_json"] or "{}"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        report = {}
+    findings: list[dict] = []
+    for item in db.execute(
+        "SELECT rule_id,severity,category,title,description,evidence_json FROM plugin_security_findings WHERE scan_id=? ORDER BY finding_id",
+        (representative_scan_id,),
+    ):
+        try:
+            evidence = json.loads(str(item["evidence_json"] or "[]"))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            evidence = []
+        findings.append({
+            "ruleId": str(item["rule_id"] or ""), "severity": str(item["severity"] or ""),
+            "category": str(item["category"] or ""), "title": str(item["title"] or ""),
+            "description": str(item["description"] or ""), "evidence": evidence if isinstance(evidence, list) else [],
+        })
+    try:
+        capabilities = json.loads(str(scan["capabilities_json"] or "[]"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        capabilities = []
+    payload = {
+        "schema": ARTIFACT_ANALYSIS_SCHEMA,
+        "replayMode": "clone-normalized-evidence",
+        "cloneFromScanId": representative_scan_id,
+        "artifactSha256": artifact_sha256,
+        "artifactBytes": int((report.get("artifactBytes") if isinstance(report, dict) else 0) or 0),
+        "resolvedArtifactUrl": str((report.get("resolvedArtifactUrl") if isinstance(report, dict) else "") or ""),
+        "artifactAssemblyVersion": str(scan["assembly_version"] or ""),
+        "manifestPath": str(((report.get("artifactIdentity") or {}).get("manifestPath") if isinstance(report, dict) else "") or ""),
+        "package": copy.deepcopy(report.get("package") or {}) if isinstance(report, dict) else {},
+        "ruleFindings": findings,
+        "ruleCapabilities": capabilities if isinstance(capabilities, list) else [],
+        "dependencyIntelligence": empty_dependency_intelligence("artifact"),
+        "findings": findings,
+        "capabilities": capabilities if isinstance(capabilities, list) else [],
+        "automation": copy.deepcopy(report.get("automation") or {"level": "none", "capabilities": [], "findings": []}) if isinstance(report, dict) else {"level": "none", "capabilities": [], "findings": []},
+        "counts": {
+            "informational": int(scan["informational_count"] or 0), "caution": int(scan["caution_count"] or 0),
+            "high": int(scan["high_count"] or 0), "critical": int(scan["critical_count"] or 0),
+        },
+        "highestSeverity": str(scan["highest_severity"] or "none"),
+    }
+    return payload, representative_scan_id
+
+
+def _apply_artifact_analysis(base: dict, payload: dict, catalog_version: str, *, reused: bool, representative_scan_id: int = 0) -> None:
+    artifact_version = str(payload.get("artifactAssemblyVersion") or "")
+    base["package"] = copy.deepcopy(payload.get("package") or {})
+    base["dependencyIntelligence"] = copy.deepcopy(payload.get("dependencyIntelligence") or empty_dependency_intelligence("artifact"))
+    base["artifactIdentity"] = {
+        "catalogAssemblyVersion": catalog_version,
+        "artifactAssemblyVersion": artifact_version,
+        "manifestPath": str(payload.get("manifestPath") or ""),
+        "versionMatchesCatalog": not artifact_version or not catalog_version or artifact_version.casefold() == catalog_version.casefold(),
+    }
+    for key in ("findings", "capabilities", "automation", "counts", "highestSeverity"):
+        base[key] = copy.deepcopy(payload.get(key))
+    base["artifactAnalysis"] = copy.deepcopy(payload)
+    base["artifactAnalysisReused"] = bool(reused)
+    base["artifactAnalysisRepresentativeScanId"] = int(representative_scan_id or 0)
+    base["artifactAnalysisCloneFromScanId"] = int(payload.get("cloneFromScanId") or 0)
+    base["status"] = "complete"
+
+
+def _build_artifact_analysis(row: sqlite3.Row, artifact: bytes, final_url: str, catalog_version: str) -> dict:
+    artifact_sha = sha256_bytes(artifact)
+    artifact_hits: dict[str, list[str]] = defaultdict(list)
+    artifact_intel = empty_dependency_intelligence("artifact")
+    package_meta = scan_archive(artifact, artifact_hits, artifact_intel)
+    finalize_intelligence(artifact_intel)
+    package_meta["dependencyIntelligence"] = artifact_intel
+    artifact_manifest = next((
+        item for item in package_meta.get("pluginManifests") or []
+        if str(item.get("internalName") or "").casefold() == str(row["internal_name"] or "").casefold()
+    ), None)
+    artifact_version = str((artifact_manifest or {}).get("assemblyVersion") or catalog_version)
+    raw_findings, raw_capabilities = finding_payload(artifact_hits, package_meta)
+    finalized = _finalize_findings(raw_findings, raw_capabilities, artifact_intel, [])
+    return {
+        "schema": ARTIFACT_ANALYSIS_SCHEMA,
+        "artifactSha256": artifact_sha,
+        "artifactBytes": len(artifact),
+        "resolvedArtifactUrl": final_url,
+        "artifactAssemblyVersion": artifact_version,
+        "manifestPath": str((artifact_manifest or {}).get("path") or ""),
+        "package": package_meta,
+        "ruleFindings": raw_findings,
+        "ruleCapabilities": sorted(set(raw_capabilities), key=str.lower),
+        "dependencyIntelligence": artifact_intel,
+        **finalized,
+    }
+
+
+def _source_analysis_revision(db: sqlite3.Connection | None, scan_provenance: dict | None = None) -> str:
+    provenance = scan_provenance if isinstance(scan_provenance, dict) else {}
+    narrow_revision = str(provenance.get("sourceAnalysisRevision") or "").strip()
+    if narrow_revision:
+        return narrow_revision
+    if db is not None:
+        revision = read_catalog_meta(db, "source_analysis_revision", "")
+        if revision:
+            return str(revision)
+    scanner_revision = str(provenance.get("scannerRevision") or "").strip()
+    rule_revision = str(provenance.get("ruleSetRevision") or "").strip()
+    if scanner_revision or rule_revision:
+        return f"legacy-source:{scanner_revision or 'scanner-unknown'}+{rule_revision or 'rules-unknown'}"
+    if db is not None:
+        definitions_revision = read_catalog_meta(db, "definitions_revision", "")
+        if definitions_revision:
+            return f"legacy-source:{definitions_revision}"
+    return f"legacy-source:scanner-{SCANNER_VERSION}"
+
+
+def _source_root_path(source: dict) -> str:
+    scope = source.get("scope") if isinstance(source.get("scope"), dict) else {}
+    primary_project = str(scope.get("primaryProject") or "").strip().replace("\\", "/")
+    root_path = str(PurePosixPath(primary_project).parent) if primary_project else ""
+    return "" if root_path == "." else root_path
+
+
+def _source_payload(source: dict, source_hits: dict[str, list[str]], *, analysis_complete: bool = False) -> dict:
+    source = copy.deepcopy(source if isinstance(source, dict) else {})
+    findings, capabilities = finding_payload(source_hits, {})
+    source["findings"] = findings
+    source["capabilities"] = capabilities
+    source["automation"] = derive_automation_capabilities(source.get("dependencyIntelligence") or empty_dependency_intelligence("source"))
+    source["sourceToBinaryVerified"] = False
+    source["status"] = "resolved" if source.get("available") else "unresolved"
+    source["attribution"] = attribution_from_source_result(source)
+    repository = public_repository_url(str(source.get("repository") or ""))
+    commit_sha = str(source.get("commit") or "").strip()
+    revision_key = source_revision_key(repository, commit_sha) if repository and commit_sha else ""
+    return {
+        "schema": SOURCE_ANALYSIS_SCHEMA,
+        "sourceRevisionKey": revision_key,
+        "sourceRootPath": _source_root_path(source),
+        "analysisComplete": bool(analysis_complete),
+        "source": source,
+    }
+
+
+def _load_cached_source_analysis(
+    db: sqlite3.Connection | None, source_revision: str, root_path: str, analysis_revision: str,
+) -> tuple[dict | None, int]:
+    if db is None or not source_revision or not analysis_revision:
+        return None, 0
+    row = db.execute(
+        """SELECT representative_scan_id,status,analysis_payload_json
+             FROM source_analyses
+            WHERE source_revision_key=? AND source_root_path=? AND scanner_version=? AND definitions_revision=?""",
+        (source_revision, root_path, SCANNER_VERSION, analysis_revision),
+    ).fetchone()
+    if row is None or str(row["status"] or "") not in {"complete", "combined-compatibility"}:
+        return None, 0
+    representative_scan_id = int(row["representative_scan_id"] or 0)
+    try:
+        payload = json.loads(str(row["analysis_payload_json"] or "{}"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        payload = {}
+    if isinstance(payload, dict) and payload.get("schema") == SOURCE_ANALYSIS_SCHEMA and bool(payload.get("analysisComplete")):
+        if str(payload.get("sourceRevisionKey") or "") == source_revision and str(payload.get("sourceRootPath") or "") == root_path:
+            return payload, representative_scan_id
+    if representative_scan_id <= 0:
+        return None, 0
+    scan = db.execute("SELECT report_json,status FROM plugin_security_scans WHERE scan_id=?", (representative_scan_id,)).fetchone()
+    if scan is None or str(scan["status"] or "") != "complete":
+        return None, 0
+    try:
+        report = json.loads(str(scan["report_json"] or "{}"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        report = {}
+    source = report.get("source") if isinstance(report, dict) and isinstance(report.get("source"), dict) else {}
+    repository = public_repository_url(str(source.get("repository") or ""))
+    commit_sha = str(source.get("commit") or "").strip()
+    observed_key = source_revision_key(repository, commit_sha) if repository and commit_sha else ""
+    if observed_key != source_revision or _source_root_path(source) != root_path:
+        return None, 0
+    return {
+        "schema": SOURCE_ANALYSIS_SCHEMA,
+        "sourceRevisionKey": source_revision,
+        "sourceRootPath": root_path,
+        "analysisComplete": False,
+        "source": copy.deepcopy(source),
+    }, representative_scan_id
+
+
+def _apply_source_analysis(
+    base: dict,
+    payload: dict,
+    artifact_analysis: dict,
+    candidates: list[str],
+    candidate_records: list[dict],
+    *,
+    reused: bool,
+    representative_scan_id: int = 0,
+) -> None:
+    source = copy.deepcopy(payload.get("source") or {})
+    source["candidates"] = list(candidates)
+    source["candidateEvidence"] = copy.deepcopy(candidate_records)
+    source["sourceToBinaryVerified"] = False
+    source["status"] = "resolved" if source.get("available") else "unresolved"
+    source["attribution"] = attribution_from_source_result(source)
+    base["source"] = source
+    artifact_intel = artifact_analysis.get("dependencyIntelligence") or empty_dependency_intelligence("artifact")
+    source_intel = source.get("dependencyIntelligence") or empty_dependency_intelligence("source")
+    combined_intel = merge_dependency_intelligence(artifact_intel, source_intel)
+    raw_findings = list(artifact_analysis.get("ruleFindings") or artifact_analysis.get("findings") or []) + list(source.get("findings") or [])
+    raw_capabilities = list(artifact_analysis.get("ruleCapabilities") or artifact_analysis.get("capabilities") or []) + list(source.get("capabilities") or [])
+    finalized = _finalize_findings(raw_findings, raw_capabilities, combined_intel, candidates)
+    base["dependencyIntelligence"] = combined_intel
+    base.update(finalized)
+    base["sourceAnalysis"] = copy.deepcopy(payload)
+    base["sourceAnalysisReused"] = bool(reused)
+    base["sourceAnalysisRepresentativeScanId"] = int(representative_scan_id or 0)
+    base["status"] = "complete"
+
+
+def _artifact_payload_for_source_work(db: sqlite3.Connection, current: sqlite3.Row, report: dict) -> tuple[dict | None, int]:
+    artifact_sha = str(current["artifact_sha256"] or "").strip().casefold()
+    revision = str(report.get("artifactAnalysisRevision") or "").strip()
+    if not revision:
+        provenance = report.get("scanProvenance") if isinstance(report.get("scanProvenance"), dict) else {}
+        revision = _artifact_analysis_revision(db, provenance)
+    payload, representative = _load_cached_artifact_analysis(db, artifact_sha, revision)
+    if payload is not None:
+        return payload, representative
+    if int(current["source_available"] or 0) == 0:
+        return {
+            "schema": ARTIFACT_ANALYSIS_SCHEMA,
+            "artifactSha256": artifact_sha,
+            "artifactAssemblyVersion": str(current["assembly_version"] or ""),
+            "manifestPath": str(((report.get("artifactIdentity") or {}).get("manifestPath") if isinstance(report.get("artifactIdentity"), dict) else "") or ""),
+            "package": copy.deepcopy(report.get("package") or {}),
+            "ruleFindings": copy.deepcopy(report.get("findings") or []),
+            "ruleCapabilities": copy.deepcopy(report.get("capabilities") or []),
+            "dependencyIntelligence": copy.deepcopy(report.get("dependencyIntelligence") or empty_dependency_intelligence("artifact")),
+            "findings": copy.deepcopy(report.get("findings") or []),
+            "capabilities": copy.deepcopy(report.get("capabilities") or []),
+            "automation": copy.deepcopy(report.get("automation") or {"level": "none", "capabilities": [], "findings": []}),
+            "counts": copy.deepcopy(report.get("counts") or {"informational": 0, "caution": 0, "high": 0, "critical": 0}),
+            "highestSeverity": str(report.get("highestSeverity") or "none"),
+        }, int(current["scan_id"] or 0)
+    return None, 0
+
+
+def scan_source_row(
+    row: sqlite3.Row,
+    token: str,
+    source_override: str = "",
+    *,
+    db: sqlite3.Connection,
+    source_analysis_revision: str = "",
+) -> dict:
+    current = db.execute("SELECT * FROM plugin_security_current WHERE variant_id=?", (int(row["variant_id"]),)).fetchone()
+    scanned_at = utc_now()
+    if current is None or str(current["status"] or "") != "complete" or not str(current["artifact_sha256"] or "").strip():
+        return {
+            "schema": "omega.plugin-security.scan.v1", "engineName": SIGMASCOPE_NAME, "engineVersion": SIGMASCOPE_VERSION,
+            "scannerVersion": SCANNER_VERSION, "scannedAtUtc": scanned_at, "workType": "source", "status": "failed",
+            "plugin": {"internalName": row["internal_name"], "name": row["name"], "author": row["author"], "sourceName": row["source_name"]},
+            "assemblyVersion": str(row["assembly_version"] or ""), "artifactChannel": "", "artifactUrl": "", "artifactSha256": "",
+            "highestSeverity": "none", "counts": {"informational": 0, "caution": 0, "high": 0, "critical": 0},
+            "capabilities": [], "findings": [], "automation": {"level": "none", "capabilities": [], "findings": []},
+            "dependencyIntelligence": empty_dependency_intelligence("artifact"),
+            "source": {"status": "unresolved", "available": False, "repository": "", "commit": "", "branch": "", "treeSha256": "", "filesScanned": 0, "sourceToBinaryVerified": False, "dependencyIntelligence": empty_dependency_intelligence("source"), "candidates": [], "candidateEvidence": [], "error": "Artifact analysis must complete before source work."},
+            "package": {}, "error": "Artifact analysis must complete before source work.",
+        }
+    try:
+        report = json.loads(str(current["report_json"] or "{}"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        report = {}
+    base = copy.deepcopy(report if isinstance(report, dict) else {})
+    base.update({
+        "schema": "omega.plugin-security.scan.v1", "engineName": SIGMASCOPE_NAME, "engineVersion": SIGMASCOPE_VERSION,
+        "scannerVersion": SCANNER_VERSION, "scannedAtUtc": scanned_at, "workType": "source", "status": "failed", "error": "",
+        "assemblyVersion": str(current["assembly_version"] or ""), "artifactChannel": str(current["artifact_channel"] or ""),
+        "artifactUrl": str(current["artifact_url"] or ""), "artifactSha256": str(current["artifact_sha256"] or ""),
+    })
+    artifact_analysis, artifact_representative = _artifact_payload_for_source_work(db, current, base)
+    if artifact_analysis is None:
+        base["error"] = "Artifact-only representative evidence is unavailable for source projection."
+        return base
+    _apply_artifact_analysis(base, artifact_analysis, str(current["assembly_version"] or ""), reused=True, representative_scan_id=artifact_representative)
+    base["sourceProjectionArtifactScanId"] = int(artifact_representative or current["scan_id"] or 0)
+    base["workType"] = "source"
+    base["artifactAnalysisRevision"] = str(report.get("artifactAnalysisRevision") or _artifact_analysis_revision(db, report.get("scanProvenance") if isinstance(report.get("scanProvenance"), dict) else None))
+    final_url = str(report.get("resolvedArtifactUrl") or current["artifact_url"] or "")
+    candidate_records = _source_candidates_for_row(row, source_override, final_url)
+    candidates = [str(item.get("repository") or "") for item in candidate_records if str(item.get("repository") or "")]
+    resolution_hits: dict[str, list[str]] = defaultdict(list)
+    resolution = fetch_source(
+        candidate_records, token, resolution_hits, str(row["internal_name"] or ""), str(row["name"] or ""),
+        str(current["assembly_version"] or ""), str(current["artifact_url"] or ""), final_url, analyze=False,
+    )
+    if not resolution.get("available"):
+        payload = _source_payload(resolution, {}, analysis_complete=True)
+        _apply_source_analysis(base, payload, artifact_analysis, candidates, candidate_records, reused=False)
+        base["sourceAnalysisRevision"] = source_analysis_revision or _source_analysis_revision(db)
+        return base
+    repository = public_repository_url(str(resolution.get("repository") or ""))
+    commit_sha = str(resolution.get("commit") or "").strip()
+    revision_key = source_revision_key(repository, commit_sha) if repository and commit_sha else ""
+    root_path = _source_root_path(resolution)
+    analysis_revision = source_analysis_revision or _source_analysis_revision(db)
+    base["sourceAnalysisRevision"] = analysis_revision
+    cached, representative_scan_id = _load_cached_source_analysis(db, revision_key, root_path, analysis_revision)
+    if cached is not None:
+        _apply_source_analysis(base, cached, artifact_analysis, candidates, candidate_records, reused=True, representative_scan_id=representative_scan_id)
+        return base
+    analysis_hits: dict[str, list[str]] = defaultdict(list)
+    analyzed = fetch_source(
+        candidate_records, token, analysis_hits, str(row["internal_name"] or ""), str(row["name"] or ""),
+        str(current["assembly_version"] or ""), str(current["artifact_url"] or ""), final_url, analyze=True,
+    )
+    payload = _source_payload(analyzed, analysis_hits, analysis_complete=True)
+    _apply_source_analysis(base, payload, artifact_analysis, candidates, candidate_records, reused=False)
+    return base
+
+
+def _source_candidates_for_row(row: sqlite3.Row, source_override: str, final_url: str) -> list[dict]:
+    return source_candidate_records((
+        ("override", source_override),
+        ("repo-url", str(row["repo_url"] or "")),
+        ("artifact-resolved", str(final_url or "")),
+        ("artifact-install", str(row["download_link_install"] or "")),
+        ("artifact-update", str(row["download_link_update"] or "")),
+        ("artifact-testing", str(row["download_link_testing"] or "")),
+    ))
+
+
+def _attach_source_analysis(base: dict, row: sqlite3.Row, token: str, source_override: str) -> None:
+    artifact_analysis = base.get("artifactAnalysis") if isinstance(base.get("artifactAnalysis"), dict) else {}
+    candidate_records = _source_candidates_for_row(row, source_override, str(base.get("resolvedArtifactUrl") or ""))
+    candidates = [str(item.get("repository") or "") for item in candidate_records if str(item.get("repository") or "")]
+    base["source"]["candidates"] = candidates
+    base["source"]["candidateEvidence"] = candidate_records
+    if not candidates:
+        base["source"]["status"] = "unresolved"
+        base["source"]["error"] = "No GitHub source candidate could be derived from plugin metadata or download links"
+        return
+
+    source_hits: dict[str, list[str]] = defaultdict(list)
+    artifact_version = str((base.get("artifactIdentity") or {}).get("artifactAssemblyVersion") or base.get("assemblyVersion") or "")
+    base["source"] = fetch_source(
+        candidate_records, token, source_hits, str(row["internal_name"] or ""), str(row["name"] or ""),
+        artifact_version, str(base.get("artifactUrl") or ""), str(base.get("resolvedArtifactUrl") or ""),
+    )
+    base["source"]["sourceToBinaryVerified"] = False
+    base["source"]["status"] = "resolved" if base["source"].get("available") else "unresolved"
+    base["source"]["candidates"] = candidates
+    base["source"]["candidateEvidence"] = candidate_records
+    source_intel = base["source"].get("dependencyIntelligence") or empty_dependency_intelligence("source")
+    source_findings, source_capabilities = finding_payload(source_hits, {})
+    base["source"]["findings"] = source_findings
+    base["source"]["capabilities"] = source_capabilities
+
+    artifact_intel = artifact_analysis.get("dependencyIntelligence") or empty_dependency_intelligence("artifact")
+    combined_intel = merge_dependency_intelligence(artifact_intel, source_intel)
+    raw_findings = list(artifact_analysis.get("ruleFindings") or []) + source_findings
+    raw_capabilities = list(artifact_analysis.get("ruleCapabilities") or []) + source_capabilities
+    finalized = _finalize_findings(raw_findings, raw_capabilities, combined_intel, candidates)
+    base["dependencyIntelligence"] = combined_intel
+    base.update(finalized)
+
+
+def scan_row(
+    row: sqlite3.Row,
+    token: str,
+    scan_source: bool,
+    source_override: str = "",
+    *,
+    db: sqlite3.Connection | None = None,
+    artifact_analysis_revision: str = "",
+) -> dict:
     channel, version, url = choose_artifact(row)
     scanned_at = utc_now()
     empty_source_intel = empty_dependency_intelligence("source")
@@ -4689,6 +5652,7 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool, source_override: s
         "engineVersion": SIGMASCOPE_VERSION,
         "scannerVersion": SCANNER_VERSION,
         "scannedAtUtc": scanned_at,
+        "workType": "combined" if scan_source else "artifact",
         "plugin": {"internalName": row["internal_name"], "name": row["name"], "author": row["author"], "sourceName": row["source_name"]},
         "assemblyVersion": version,
         "artifactChannel": channel,
@@ -4700,88 +5664,40 @@ def scan_row(row: sqlite3.Row, token: str, scan_source: bool, source_override: s
         "capabilities": [],
         "findings": [],
         "automation": {"level": "none", "capabilities": [], "findings": []},
-        "dependencyIntelligence": empty_dependency_intelligence("combined"),
+        "dependencyIntelligence": empty_dependency_intelligence("artifact"),
         "source": {
-            "available": False, "repository": str(row["repo_url"] or ""), "commit": "", "branch": "", "treeSha256": "",
+            "status": "unresolved", "available": False, "repository": str(row["repo_url"] or ""), "commit": "", "branch": "", "treeSha256": "",
             "filesScanned": 0, "sourceToBinaryVerified": False, "dependencyIntelligence": empty_source_intel,
-            "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "Source was not scanned."},
-            "candidates": [], "error": "",
+            "scope": {"schema": "omega.plugin-source-scope.v1", "mode": "unavailable", "confidence": "none", "primaryProject": "", "projectFiles": [], "solutionFiles": [], "contextProjects": [], "contextSolutions": [], "criticalPaths": [], "repositorySourceFiles": 0, "criticalSourceFiles": 0, "excludedSourceFiles": 0, "reason": "Source analysis has not run."},
+            "candidates": [], "candidateEvidence": [], "error": "",
         },
         "package": {},
+        "artifactAnalysisReused": False,
+        "artifactAnalysisRepresentativeScanId": 0,
         "error": "",
     }
     try:
         artifact, final_url = request_bytes(url, MAX_ARTIFACT_BYTES)
+        artifact_sha = sha256_bytes(artifact)
         base["resolvedArtifactUrl"] = final_url
-        base["artifactSha256"] = sha256_bytes(artifact)
-        artifact_hits: dict[str, list[str]] = defaultdict(list)
-        artifact_intel = empty_dependency_intelligence("artifact")
-        package_meta = scan_archive(artifact, artifact_hits, artifact_intel)
-        finalize_intelligence(artifact_intel)
-        package_meta["dependencyIntelligence"] = artifact_intel
-        base["package"] = package_meta
-        artifact_manifest = next((
-            item for item in package_meta.get("pluginManifests") or []
-            if str(item.get("internalName") or "").casefold() == str(row["internal_name"] or "").casefold()
-        ), None)
-        source_version = str((artifact_manifest or {}).get("assemblyVersion") or version)
-        base["artifactIdentity"] = {
-            "catalogAssemblyVersion": version,
-            "artifactAssemblyVersion": source_version,
-            "manifestPath": str((artifact_manifest or {}).get("path") or ""),
-            "versionMatchesCatalog": not source_version or not version or source_version.casefold() == version.casefold(),
-        }
-        findings, capabilities = finding_payload(artifact_hits, package_meta)
-
-        source_intel = empty_source_intel
-        source_findings: list[dict] = []
-        candidate_records = source_candidate_records((
-            ("override", source_override),
-            ("repo-url", str(row["repo_url"] or "")),
-            ("artifact-resolved", str(final_url or "")),
-            ("artifact-install", str(row["download_link_install"] or "")),
-            ("artifact-update", str(row["download_link_update"] or "")),
-            ("artifact-testing", str(row["download_link_testing"] or "")),
-        ))
-        candidates = [str(item.get("repository") or "") for item in candidate_records if str(item.get("repository") or "")]
-        base["source"]["candidates"] = candidates
+        base["artifactBytes"] = len(artifact)
+        base["artifactSha256"] = artifact_sha
+        candidate_records = _source_candidates_for_row(row, source_override, final_url)
+        base["source"]["candidates"] = [str(item.get("repository") or "") for item in candidate_records if str(item.get("repository") or "")]
         base["source"]["candidateEvidence"] = candidate_records
-        if scan_source and candidates:
-            source_hits: dict[str, list[str]] = defaultdict(list)
-            base["source"] = fetch_source(
-                candidate_records, token, source_hits, str(row["internal_name"] or ""), str(row["name"] or ""),
-                source_version, url, final_url,
-            )
-            base["source"]["sourceToBinaryVerified"] = False
-            source_intel = base["source"].get("dependencyIntelligence") or empty_source_intel
-            source_findings, source_capabilities = finding_payload(source_hits, {})
-            base["source"]["findings"] = source_findings
-            base["source"]["capabilities"] = source_capabilities
-        elif scan_source:
-            base["source"]["error"] = "No GitHub source candidate could be derived from plugin metadata or download links"
 
-        base["dependencyIntelligence"] = merge_dependency_intelligence(artifact_intel, source_intel)
-        endpoint_results, endpoint_capabilities = endpoint_findings(
-            base["dependencyIntelligence"]["networkEndpoints"],
-            any(finding["ruleId"] in {"network.http", "network.socket", "local.listener"} for finding in findings + source_findings),
-            candidates,
-        )
-        automation = derive_automation_capabilities(base["dependencyIntelligence"])
-        base["automation"] = automation
-        findings.extend(endpoint_results)
-        findings.extend(automation["findings"])
-        capabilities = sorted(
-            set(capabilities) | set(endpoint_capabilities) | {str(item.get("label") or "") for item in automation["capabilities"] if str(item.get("label") or "")},
-            key=str.lower,
-        )
-        findings.sort(key=lambda f: (-SEVERITY_RANK.get(f["severity"], 0), f["ruleId"]))
-        counts = {severity: sum(1 for f in findings if f["severity"] == severity) for severity in ("informational", "caution", "high", "critical")}
-        highest = "none"
-        for severity in ("critical", "high", "caution", "informational"):
-            if counts[severity]:
-                highest = severity
-                break
-        base.update({"status": "complete", "findings": findings, "capabilities": capabilities, "counts": counts, "highestSeverity": highest})
+        revision = artifact_analysis_revision or _artifact_analysis_revision(db)
+        base["artifactAnalysisRevision"] = revision
+        cached, representative_scan_id = _load_cached_artifact_analysis(db, artifact_sha, revision)
+        if cached is not None:
+            _apply_artifact_analysis(base, cached, version, reused=True, representative_scan_id=representative_scan_id)
+        else:
+            payload = _build_artifact_analysis(row, artifact, final_url, version)
+            _apply_artifact_analysis(base, payload, version, reused=False)
+
+        if scan_source:
+            _attach_source_analysis(base, row, token, source_override)
+        base["status"] = "complete"
     except Exception as exc:
         base["error"] = str(exc)[:1000]
     return base
@@ -4822,11 +5738,16 @@ def run(args: argparse.Namespace) -> dict:
     variant_ids = {int(x.strip()) for x in str(getattr(args, "variant_ids", "") or "").split(",") if x.strip().isdigit()}
     advisories = load_advisories(args.advisories)
     scan_provenance = getattr(args, "scan_provenance", None)
+    artifact_analysis_revision = _artifact_analysis_revision(db, scan_provenance if isinstance(scan_provenance, dict) else None)
     advisory_coverage = load_advisory_coverage(args.advisories)
     source_overrides = load_source_overrides(Path(args.source_overrides) if args.source_overrides else None)
     summary = {
         "schema": "omega.plugin-security.batch.v1", "engineName": SIGMASCOPE_NAME, "engineVersion": SIGMASCOPE_VERSION, "scannerVersion": SCANNER_VERSION, "startedAtUtc": utc_now(),
         "selected": 0, "completed": 0, "failed": 0, "plugins": [],
+        "workType": str((scan_provenance or {}).get("workType") or ("artifact" if args.skip_source else "combined")) if isinstance(scan_provenance, dict) else ("artifact" if args.skip_source else "combined"),
+        "artifactAnalysisRevision": artifact_analysis_revision,
+        "artifactAnalysesReused": 0,
+        "sourceAnalysesReused": 0,
         "batchBudgetSeconds": max(0, int(args.max_batch_seconds)), "stoppedByBatchBudget": False,
     }
     batch_started = time.monotonic()
@@ -4846,7 +5767,21 @@ def run(args: argparse.Namespace) -> dict:
             print(f"[{index}/{len(rows)}] scanning {row['internal_name']} from {row['source_name']}", flush=True)
             scan_started = time.monotonic()
             override_key = source_override_key(str(row["internal_name"] or ""), str(row["source_url"] or ""))
-            result = scan_row(row, token, not args.skip_source, source_overrides.get(override_key, ""))
+            work_type = str((scan_provenance or {}).get("workType") or ("artifact" if args.skip_source else "combined")) if isinstance(scan_provenance, dict) else ("artifact" if args.skip_source else "combined")
+            if work_type == "source":
+                result = scan_source_row(
+                    row, token, source_overrides.get(override_key, ""), db=db,
+                    source_analysis_revision=_source_analysis_revision(db, scan_provenance if isinstance(scan_provenance, dict) else None),
+                )
+            else:
+                result = scan_row(
+                    row,
+                    token,
+                    not args.skip_source,
+                    source_overrides.get(override_key, ""),
+                    db=db,
+                    artifact_analysis_revision=artifact_analysis_revision,
+                )
             if isinstance(scan_provenance, dict) and scan_provenance:
                 result["scanProvenance"] = dict(scan_provenance)
                 result["scanProvenance"]["variantId"] = int(row["variant_id"])
@@ -4860,6 +5795,10 @@ def run(args: argparse.Namespace) -> dict:
                 db.execute("RELEASE SAVEPOINT omega_scan_persist")
                 raise
             summary["completed" if result["status"] == "complete" else "failed"] += 1
+            if result.get("artifactAnalysisReused"):
+                summary["artifactAnalysesReused"] += 1
+            if result.get("sourceAnalysisReused"):
+                summary["sourceAnalysesReused"] += 1
             ledger_variants = ledger.setdefault("variants", {})
             ledger_variants[str(row["variant_id"])] = {
                 "status": result["status"],
@@ -4879,6 +5818,11 @@ def run(args: argparse.Namespace) -> dict:
                 "variantId": int(row["variant_id"]),
                 "internalName": row["internal_name"], "sourceName": row["source_name"], "status": result["status"],
                 "highestSeverity": result["highestSeverity"], "artifactSha256": result["artifactSha256"],
+                "workType": result.get("workType") or "",
+                "artifactAnalysisReused": bool(result.get("artifactAnalysisReused")),
+                "artifactAnalysisRepresentativeScanId": int(result.get("artifactAnalysisRepresentativeScanId") or 0),
+                "sourceAnalysisReused": bool(result.get("sourceAnalysisReused")),
+                "sourceAnalysisRepresentativeScanId": int(result.get("sourceAnalysisRepresentativeScanId") or 0),
                 "dependencyCount": len(intel.get("dependencies") or []),
                 "softDependencyCount": sum(1 for item in (intel.get("dependencies") or []) if item.get("requirement") == "soft"),
                 "reachableMethodCount": len({item.get("methodToken") for item in (intel.get("managedReachability") or []) if item.get("methodToken")}),

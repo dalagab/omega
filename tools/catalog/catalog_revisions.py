@@ -192,6 +192,34 @@ BASE_QUERIES: tuple[tuple[str, str], ...] = (
           JOIN sources spr ON spr.source_id=vpr.source_id
          ORDER BY p.internal_name COLLATE NOCASE
     """),
+    ("manifest_observations", """
+        SELECT p.internal_name,s.url AS source_url,v.source_entry_key,m.channel,m.manifest_version,m.download_url,m.repository_url,m.active
+          FROM manifest_observations m
+          JOIN plugin_variants v ON v.variant_id=m.variant_id
+          JOIN plugins p ON p.plugin_id=v.plugin_id
+          JOIN sources s ON s.source_id=v.source_id
+         ORDER BY p.internal_name COLLATE NOCASE,s.url COLLATE NOCASE,v.source_entry_key,m.channel
+    """),
+    ("source_repositories", """
+        SELECT repository_key,canonical_url FROM source_repositories ORDER BY repository_key
+    """),
+    ("source_repository_aliases", """
+        SELECT repository_key,alias_url,alias_kind FROM source_repository_aliases ORDER BY repository_key,alias_url COLLATE NOCASE
+    """),
+    ("manifest_source_candidates", """
+        SELECT p.internal_name,s.url AS source_url,v.source_entry_key,m.channel,c.repository_key,c.origins_json,c.ref_hints_json,c.urls_json
+          FROM manifest_source_candidates c
+          JOIN manifest_observations m ON m.observation_id=c.observation_id
+          JOIN plugin_variants v ON v.variant_id=m.variant_id
+          JOIN plugins p ON p.plugin_id=v.plugin_id
+          JOIN sources s ON s.source_id=v.source_id
+         ORDER BY p.internal_name COLLATE NOCASE,s.url COLLATE NOCASE,v.source_entry_key,m.channel,c.repository_key
+    """),
+    ("plugin_identity_aliases", """
+        SELECT p.internal_name,a.alias_type,a.alias_value,a.normalized_value,a.source_kind,a.confidence,a.active
+          FROM plugin_identity_aliases a JOIN plugins p ON p.plugin_id=a.plugin_id
+         ORDER BY p.internal_name COLLATE NOCASE,a.alias_type,a.normalized_value COLLATE NOCASE
+    """),
 )
 
 

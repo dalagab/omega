@@ -4,12 +4,14 @@
 The daily catalog/Definitions boundary publishes an immutable queue *seed* derived
 from that day's canonical catalog plus the last-known-good Security Evidence v2
 snapshot. Continuous workers never rewrite that seed. Their bounded operational
-progress (leases, retries and recent attempts) lives with Security Evidence v2.
+progress (attempts, retries and completion state) lives with Security Evidence v2.
 
-Queue semantics intentionally distinguish scanner-rule changes from other
-Definitions changes. OSV/reputation refreshes can update derived evidence without
-re-downloading every plugin artifact, while a changed ``ruleSetRevision`` makes the
-affected artifact/source variants due for a real Sigmascope examination.
+Queue semantics are event-driven and typed. Artifact work, source work and frozen
+advisory projection are independent. Elapsed time never creates work. A scanner/rule
+change can invalidate artifact analysis; source attribution/revision changes can
+invalidate source analysis; an OSV advisory revision change creates one global advisory
+projection item instead of re-scanning plugin code. The production workflow has one
+Sigmascope concurrency lock, so distributed lease machinery is intentionally absent.
 """
 from __future__ import annotations
 
@@ -29,21 +31,26 @@ for item in (SCRIPT_DIR, SECURITY_DIR):
         sys.path.insert(0, str(item))
 
 from security_evidence_v2 import iter_variant_entries  # noqa: E402
+from artifact_source_model import BASIS_DEFAULT_BRANCH  # noqa: E402
+from source_resolution import public_repository_url, source_candidate_records  # noqa: E402
 
-SEED_SCHEMA = "omega.sigmascope.queue-seed.v1"
-STATE_SCHEMA = "omega.sigmascope.queue-state.v1"
-ATTEMPT_SCHEMA = "omega.sigmascope.queue-attempt.v1"
+SEED_SCHEMA = "omega.sigmascope.queue-seed.v2"
+STATE_SCHEMA = "omega.sigmascope.queue-state.v2"
+ATTEMPT_SCHEMA = "omega.sigmascope.queue-attempt.v2"
 MAX_RECENT_ATTEMPTS = 16
 
 REASON_PRIORITIES = {
     "manual": 1000,
     "baseline_scan": 950,
+    "source_followup": 925,
     "new_variant": 900,
     "artifact_changed": 850,
-    "source_review_due": 800,
-    "rule_set_changed": 700,
+    "advisory_changed": 800,
+    "artifact_analysis_changed": 750,
+    "source_revision_changed": 675,
+    "source_unresolved": 650,
+    "source_analysis_changed": 625,
     "failed_retry": 600,
-    "periodic_revalidation": 100,
 }
 
 RETRY_DELAYS_MINUTES = (60, 240, 720, 1440, 2880, 5760)
@@ -172,6 +179,46 @@ def evidence_identity_epoch(evidence_root: Path) -> str:
     revisions = index.get("revisions") if isinstance(index.get("revisions"), dict) else {}
     return str((revisions or {}).get("catalogIdentityEpoch") or index.get("catalogIdentityEpoch") or "")
 
+def evidence_advisory_revision(evidence_root: Path) -> str:
+    index = read_json(evidence_root / "index.json", {}) or {}
+    revisions = index.get("revisions") if isinstance(index.get("revisions"), dict) else {}
+    return str((revisions or {}).get("advisoryRevision") or "")
+
+
+def source_observations(definitions_root: Path) -> dict[str, dict[str, Any]]:
+    index = read_json(definitions_root / "index.json", {}) or {}
+    descriptor = index.get("sourceObservations") if isinstance(index.get("sourceObservations"), dict) else {}
+    path = definitions_root / str(descriptor.get("path") or "source-revisions.json")
+    document = read_json(path, {}) or {}
+    result: dict[str, dict[str, Any]] = {}
+    for item in document.get("repositories") or []:
+        if not isinstance(item, dict) or str(item.get("status") or "") != "observed":
+            continue
+        repository = public_repository_url(str(item.get("repository") or ""))
+        commit = str(item.get("commitSha") or "").strip().lower()
+        if repository and commit:
+            result[repository.casefold()] = {
+                "repository": repository,
+                "commitSha": commit,
+                "defaultRef": str(item.get("defaultRef") or ""),
+            }
+    return result
+
+
+def _observed_source_for_variant(variant: dict[str, Any], observations: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    records = source_candidate_records((
+        ("repo-url", str(variant.get("repositoryUrl") or "")),
+        ("catalog-source", str(variant.get("sourceRepositoryUrl") or "")),
+        ("artifact", str(variant.get("artifactUrl") or "")),
+    ))
+    for record in records:
+        repository = public_repository_url(str(record.get("repository") or ""))
+        observed = observations.get(repository.casefold()) if repository else None
+        if isinstance(observed, dict):
+            return observed
+    return {}
+
+
 def evidence_current(evidence_root: Path) -> dict[int, dict[str, Any]]:
     if not (evidence_root / "index.json").is_file():
         return {}
@@ -186,15 +233,72 @@ def evidence_current(evidence_root: Path) -> dict[int, dict[str, Any]]:
     return result
 
 
+def _current_report(current: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(current, dict):
+        return {}
+    raw = current.get("report_json")
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def _has_source_candidate(variant: dict[str, Any]) -> bool:
+    return any(str(variant.get(key) or "").strip() for key in ("repositoryUrl", "sourceRepositoryUrl", "artifactUrl"))
+
+
+def source_due_reasons(
+    variant: dict[str, Any],
+    current: dict[str, Any] | None,
+    *,
+    source_analysis_revision: str,
+    observations: dict[str, dict[str, Any]] | None = None,
+) -> list[str]:
+    if not current or str(current.get("status") or "") != "complete":
+        return []
+    if not str(current.get("artifact_sha256") or "").strip():
+        return []
+    if not _has_source_candidate(variant):
+        return []
+    report = _current_report(current)
+    source = report.get("source") if isinstance(report.get("source"), dict) else {}
+    attribution = source.get("attribution") if isinstance(source.get("attribution"), dict) else {}
+    confidence = int(attribution.get("confidence") or 0)
+    basis = {str(item or "").strip() for item in attribution.get("basis") or []}
+    reasons: list[str] = []
+    if confidence <= 0 or not bool(source.get("available")):
+        reasons.append("source_unresolved")
+    if str(report.get("workType") or "") == "source":
+        previous_analysis_revision = str(report.get("sourceAnalysisRevision") or "")
+        if source_analysis_revision and previous_analysis_revision != source_analysis_revision:
+            reasons.append("source_analysis_changed")
+        # Only confidence-40/default-branch attribution tracks mutable HEAD. Version-
+        # correlated/tag/pinned evidence remains tied to its immutable revision.
+        if confidence == 40 and BASIS_DEFAULT_BRANCH in basis:
+            observed = _observed_source_for_variant(variant, observations or {})
+            current_repository = public_repository_url(str(source.get("repository") or ""))
+            current_commit = str(source.get("commit") or "").strip().lower()
+            observed_repository = public_repository_url(str(observed.get("repository") or ""))
+            observed_commit = str(observed.get("commitSha") or "").strip().lower()
+            if (
+                current_repository and observed_repository
+                and current_repository.casefold() == observed_repository.casefold()
+                and current_commit and observed_commit and current_commit != observed_commit
+            ):
+                reasons.append("source_revision_changed")
+    return list(dict.fromkeys(reasons))
+
+
 def due_reasons(
     variant: dict[str, Any],
     current: dict[str, Any] | None,
     *,
-    rule_set_revision: str,
-    rescan_after_hours: int,
-    now: dt.datetime,
+    artifact_analysis_revision: str,
     manual: bool = False,
 ) -> list[str]:
+    """Return artifact work reasons driven only by artifact identity/analysis events."""
     reasons: list[str] = []
     if manual:
         reasons.append("manual")
@@ -211,42 +315,25 @@ def due_reasons(
     ):
         reasons.append("artifact_changed")
 
-    known_source = bool(
-        str(current.get("source_repository") or "").strip()
-        or str(variant.get("repositoryUrl") or "").strip()
-        or str(variant.get("sourceRepositoryUrl") or "").strip()
-    )
-    if int(current.get("source_available") or 0) == 0 and known_source:
-        reasons.append("source_review_due")
+    report = _current_report(current)
+    previous_analysis_revision = str(report.get("artifactAnalysisRevision") or "")
+    if artifact_analysis_revision and previous_analysis_revision != artifact_analysis_revision:
+        reasons.append("artifact_analysis_changed")
 
-    provenance = _report_provenance(current)
-    previous_rule_set = str(provenance.get("ruleSetRevision") or "")
-    if rule_set_revision and previous_rule_set != rule_set_revision:
-        reasons.append("rule_set_changed")
-
-    scanned = parse_utc(str(current.get("scanned_at_utc") or ""))
-    if scanned is None or (now - scanned).total_seconds() >= max(0, rescan_after_hours) * 3600:
-        reasons.append("periodic_revalidation")
-
-    # Stable de-duplication while preserving priority semantics below.
     return list(dict.fromkeys(reasons))
 
 
-def _target_fingerprint(variant: dict[str, Any], current: dict[str, Any] | None, rule_set_revision: str) -> str:
+def _target_fingerprint(
+    variant: dict[str, Any], current: dict[str, Any] | None, artifact_analysis_revision: str,
+) -> str:
     semantic = {
+        "workType": "artifact",
         "variantId": int(variant.get("variantId") or 0),
         "assemblyVersion": str(variant.get("assemblyVersion") or ""),
         "artifactUrl": str(variant.get("artifactUrl") or ""),
-        "repositoryUrl": str(variant.get("repositoryUrl") or ""),
-        "sourceRepositoryUrl": str(variant.get("sourceRepositoryUrl") or ""),
-        "ruleSetRevision": rule_set_revision,
-        # A successful scan advances currentScanId. Including that identity means a
-        # future periodic/source-review queue entry for the same artifact is a new
-        # target, while repeated failures that retain last-known-good current state
-        # keep the same target and therefore retain retry backoff.
-        "currentScanId": int((current or {}).get("scan_id") or 0),
+        "artifactAnalysisRevision": artifact_analysis_revision,
     }
-    return f"scan-target-v1-{digest(semantic)[:20]}"
+    return f"artifact-target-v2-{digest(semantic)[:20]}"
 
 
 def _queue_item(
@@ -257,6 +344,8 @@ def _queue_item(
     catalog_revision: str,
     catalog_identity_epoch: str,
     definitions_revision: str,
+    scanner_revision: str,
+    artifact_analysis_revision: str,
     rule_set_revision: str,
     generated_at: str,
 ) -> dict[str, Any]:
@@ -264,7 +353,8 @@ def _queue_item(
     primary = ordered[0] if ordered else ""
     return {
         "queueKey": f"variant-{int(variant.get('variantId') or 0)}",
-        "targetFingerprint": _target_fingerprint(variant, current, rule_set_revision),
+        "workType": "artifact",
+        "targetFingerprint": _target_fingerprint(variant, current, artifact_analysis_revision),
         "variantId": int(variant.get("variantId") or 0),
         "pluginId": int(variant.get("pluginId") or 0),
         "sourceId": int(variant.get("sourceId") or 0),
@@ -274,9 +364,13 @@ def _queue_item(
         "assemblyVersion": str(variant.get("assemblyVersion") or ""),
         "artifactChannel": str(variant.get("artifactChannel") or ""),
         "artifactUrl": str(variant.get("artifactUrl") or ""),
+        "repositoryUrl": str(variant.get("repositoryUrl") or ""),
+        "sourceRepositoryUrl": str(variant.get("sourceRepositoryUrl") or ""),
         "catalogRevision": catalog_revision,
         "catalogIdentityEpoch": catalog_identity_epoch,
         "definitionsRevision": definitions_revision,
+        "scannerRevision": scanner_revision,
+        "artifactAnalysisRevision": artifact_analysis_revision,
         "ruleSetRevision": rule_set_revision,
         "reasons": ordered,
         "primaryReason": primary,
@@ -288,13 +382,184 @@ def _queue_item(
     }
 
 
+def _source_target_fingerprint(
+    variant: dict[str, Any], current: dict[str, Any] | None, source_analysis_revision: str, observed: dict[str, Any] | None = None,
+) -> str:
+    semantic = {
+        "workType": "source",
+        "variantId": int(variant.get("variantId") or 0),
+        "artifactSha256": str((current or {}).get("artifact_sha256") or "").strip().lower(),
+        "repositoryUrl": str(variant.get("repositoryUrl") or ""),
+        "sourceRepositoryUrl": str(variant.get("sourceRepositoryUrl") or ""),
+        "sourceAnalysisRevision": source_analysis_revision,
+        "observedSourceCommit": str((observed or {}).get("commitSha") or "").lower(),
+    }
+    return f"source-target-v2-{digest(semantic)[:20]}"
+
+
+def _source_queue_item(
+    variant: dict[str, Any],
+    current: dict[str, Any],
+    reasons: list[str],
+    *,
+    catalog_revision: str,
+    catalog_identity_epoch: str,
+    definitions_revision: str,
+    scanner_revision: str,
+    source_analysis_revision: str,
+    rule_set_revision: str,
+    generated_at: str,
+    observations: dict[str, dict[str, Any]] | None = None,
+    priority_override: int = 0,
+) -> dict[str, Any]:
+    ordered = sorted(reasons, key=lambda reason: (-REASON_PRIORITIES.get(reason, 0), reason))
+    primary = ordered[0] if ordered else ""
+    priority = max((REASON_PRIORITIES.get(reason, 0) for reason in ordered), default=0)
+    if priority_override:
+        priority = max(priority, int(priority_override))
+    observed = _observed_source_for_variant(variant, observations or {})
+    return {
+        "queueKey": f"source-variant-{int(variant.get('variantId') or 0)}",
+        "workType": "source",
+        "targetFingerprint": _source_target_fingerprint(variant, current, source_analysis_revision, observed),
+        "variantId": int(variant.get("variantId") or 0),
+        "pluginId": int(variant.get("pluginId") or 0),
+        "sourceId": int(variant.get("sourceId") or 0),
+        "internalName": str(variant.get("internalName") or ""),
+        "name": str(variant.get("name") or ""),
+        "sourceName": str(variant.get("sourceName") or ""),
+        "assemblyVersion": str(variant.get("assemblyVersion") or ""),
+        "artifactChannel": str(variant.get("artifactChannel") or ""),
+        "artifactUrl": str(variant.get("artifactUrl") or ""),
+        "repositoryUrl": str(variant.get("repositoryUrl") or ""),
+        "sourceRepositoryUrl": str(variant.get("sourceRepositoryUrl") or ""),
+        "catalogRevision": catalog_revision,
+        "catalogIdentityEpoch": catalog_identity_epoch,
+        "definitionsRevision": definitions_revision,
+        "scannerRevision": scanner_revision,
+        "sourceAnalysisRevision": source_analysis_revision,
+        "ruleSetRevision": rule_set_revision,
+        "observedSourceRepository": str(observed.get("repository") or ""),
+        "observedSourceCommit": str(observed.get("commitSha") or ""),
+        "observedSourceRef": str(observed.get("defaultRef") or ""),
+        "reasons": ordered,
+        "primaryReason": primary,
+        "priority": priority,
+        "currentScanId": int((current or {}).get("scan_id") or 0),
+        "currentScannedAtUtc": str((current or {}).get("scanned_at_utc") or ""),
+        "currentArtifactSha256": str((current or {}).get("artifact_sha256") or "").strip().lower(),
+        "enqueuedAtUtc": generated_at,
+    }
+
+
+def _advisory_queue_item(
+    *,
+    catalog_revision: str,
+    catalog_identity_epoch: str,
+    definitions_revision: str,
+    scanner_revision: str,
+    scanner_bundle_sha256: str,
+    rule_set_revision: str,
+    advisory_revision: str,
+    previous_advisory_revision: str,
+    generated_at: str,
+) -> dict[str, Any]:
+    semantic = {
+        "workType": "advisory",
+        "catalogRevision": catalog_revision,
+        "catalogIdentityEpoch": catalog_identity_epoch,
+        "advisoryRevision": advisory_revision,
+    }
+    return {
+        "queueKey": "advisory-projection",
+        "workType": "advisory",
+        "targetFingerprint": f"advisory-target-v1-{digest(semantic)[:20]}",
+        "variantId": 0,
+        "pluginId": 0,
+        "sourceId": 0,
+        "internalName": "",
+        "name": "Frozen advisory projection",
+        "sourceName": "",
+        "assemblyVersion": "",
+        "artifactChannel": "",
+        "artifactUrl": "",
+        "repositoryUrl": "",
+        "sourceRepositoryUrl": "",
+        "catalogRevision": catalog_revision,
+        "catalogIdentityEpoch": catalog_identity_epoch,
+        "definitionsRevision": definitions_revision,
+        "scannerRevision": scanner_revision,
+        "scannerBundleSha256": scanner_bundle_sha256,
+        "ruleSetRevision": rule_set_revision,
+        "advisoryRevision": advisory_revision,
+        "previousAdvisoryRevision": previous_advisory_revision,
+        "reasons": ["advisory_changed"],
+        "primaryReason": "advisory_changed",
+        "priority": REASON_PRIORITIES["advisory_changed"],
+        "currentScanId": 0,
+        "currentScannedAtUtc": "",
+        "currentArtifactSha256": "",
+        "enqueuedAtUtc": generated_at,
+    }
+
+
+def enqueue_source_followup(
+    state: dict[str, Any],
+    artifact_item: dict[str, Any] | None,
+    current: dict[str, Any] | None,
+    *,
+    now: dt.datetime | None = None,
+) -> dict[str, Any] | None:
+    if not isinstance(artifact_item, dict) or str(artifact_item.get("workType") or "") != "artifact":
+        return None
+    if not isinstance(current, dict) or str(current.get("status") or "") != "complete":
+        return None
+    variant = {
+        "variantId": int(artifact_item.get("variantId") or 0),
+        "pluginId": int(artifact_item.get("pluginId") or 0),
+        "sourceId": int(artifact_item.get("sourceId") or 0),
+        "internalName": str(artifact_item.get("internalName") or ""),
+        "name": str(artifact_item.get("name") or ""),
+        "sourceName": str(artifact_item.get("sourceName") or ""),
+        "assemblyVersion": str(artifact_item.get("assemblyVersion") or ""),
+        "artifactChannel": str(artifact_item.get("artifactChannel") or ""),
+        "artifactUrl": str(artifact_item.get("artifactUrl") or ""),
+        "repositoryUrl": str(artifact_item.get("repositoryUrl") or ""),
+        "sourceRepositoryUrl": str(artifact_item.get("sourceRepositoryUrl") or ""),
+    }
+    if not _has_source_candidate(variant):
+        return None
+    now_dt = now or dt.datetime.now(dt.timezone.utc)
+    item = _source_queue_item(
+        variant, current, ["source_followup"],
+        catalog_revision=str(state.get("catalogRevision") or artifact_item.get("catalogRevision") or ""),
+        catalog_identity_epoch=str(state.get("catalogIdentityEpoch") or artifact_item.get("catalogIdentityEpoch") or ""),
+        definitions_revision=str(state.get("definitionsRevision") or artifact_item.get("definitionsRevision") or ""),
+        scanner_revision=str(state.get("scannerRevision") or artifact_item.get("scannerRevision") or ""),
+        source_analysis_revision=str(state.get("sourceAnalysisRevision") or artifact_item.get("sourceAnalysisRevision") or ""),
+        rule_set_revision=str(state.get("ruleSetRevision") or artifact_item.get("ruleSetRevision") or ""),
+        generated_at=utc_now(now_dt),
+        priority_override=int(artifact_item.get("priority") or 0) + 1,
+    )
+    existing = (state.get("items") or {}).get(item["queueKey"])
+    if isinstance(existing, dict) and str(existing.get("targetFingerprint") or "") == item["targetFingerprint"] and str(existing.get("state") or "") != "complete":
+        return existing
+    item.update({
+        "dynamic": True,
+        "attemptCount": 0, "recentAttempts": [], "state": "pending", "nextEligibleAtUtc": "",
+        "lastAttemptStatus": "", "lastError": "",
+    })
+    state.setdefault("items", {})[item["queueKey"]] = item
+    state["updatedAtUtc"] = utc_now(now_dt)
+    return item
+
+
 def build_seed(
     *,
     catalog_root: Path,
     definitions_root: Path,
     evidence_root: Path,
     output: Path,
-    rescan_after_hours: int = 168,
     now: dt.datetime | None = None,
 ) -> dict[str, Any]:
     now_dt = now or dt.datetime.now(dt.timezone.utc)
@@ -306,36 +571,73 @@ def build_seed(
     definitions_revision = str(definitions_index.get("definitionsRevision") or "")
     rule_set_revision = str(definitions_index.get("ruleSetRevision") or "")
     scanner_revision = str(definitions_index.get("scannerRevision") or "")
+    artifact_analysis_revision = str(definitions_index.get("artifactAnalysisRevision") or "")
+    source_analysis_revision = str(definitions_index.get("sourceAnalysisRevision") or "")
     scanner_bundle_sha256 = str((definitions_index.get("scannerBundle") or {}).get("sha256") or "")
+    advisory_revision = str(definitions_index.get("advisoryRevision") or "")
     previous_evidence_identity_epoch = evidence_identity_epoch(evidence_root)
+    previous_advisory_revision = evidence_advisory_revision(evidence_root)
+    observations = source_observations(definitions_root)
     baseline_security_rebuild = bool(catalog_identity_epoch and previous_evidence_identity_epoch != catalog_identity_epoch)
     current = {} if baseline_security_rebuild else evidence_current(evidence_root)
     items: list[dict[str, Any]] = []
     counts = {reason: 0 for reason in REASON_PRIORITIES}
     for variant in catalog_variants(catalog_root):
+        current_row = current.get(int(variant["variantId"]))
         reasons = ["baseline_scan"] if baseline_security_rebuild else due_reasons(
             variant,
-            current.get(int(variant["variantId"])),
-            rule_set_revision=rule_set_revision,
-            rescan_after_hours=rescan_after_hours,
-            now=now_dt,
+            current_row,
+            artifact_analysis_revision=artifact_analysis_revision,
         )
-        if not reasons:
-            continue
-        item = _queue_item(
-            variant,
-            current.get(int(variant["variantId"])),
-            reasons,
+        if reasons:
+            item = _queue_item(
+                variant,
+                current_row,
+                reasons,
+                catalog_revision=catalog_revision,
+                catalog_identity_epoch=catalog_identity_epoch,
+                definitions_revision=definitions_revision,
+                scanner_revision=scanner_revision,
+                artifact_analysis_revision=artifact_analysis_revision,
+                rule_set_revision=rule_set_revision,
+                generated_at=generated,
+            )
+            items.append(item)
+            for reason in reasons:
+                counts[reason] = counts.get(reason, 0) + 1
+        if not baseline_security_rebuild and current_row:
+            source_reasons = source_due_reasons(
+                variant, current_row, source_analysis_revision=source_analysis_revision, observations=observations,
+            )
+            if source_reasons:
+                source_item = _source_queue_item(
+                    variant, current_row, source_reasons,
+                    catalog_revision=catalog_revision, catalog_identity_epoch=catalog_identity_epoch,
+                    definitions_revision=definitions_revision, scanner_revision=scanner_revision,
+                    source_analysis_revision=source_analysis_revision, rule_set_revision=rule_set_revision, generated_at=generated,
+                    observations=observations,
+                )
+                items.append(source_item)
+                for reason in source_reasons:
+                    counts[reason] = counts.get(reason, 0) + 1
+    if (
+        not baseline_security_rebuild
+        and advisory_revision
+        and advisory_revision != previous_advisory_revision
+    ):
+        items.append(_advisory_queue_item(
             catalog_revision=catalog_revision,
             catalog_identity_epoch=catalog_identity_epoch,
             definitions_revision=definitions_revision,
+            scanner_revision=scanner_revision,
+            scanner_bundle_sha256=scanner_bundle_sha256,
             rule_set_revision=rule_set_revision,
+            advisory_revision=advisory_revision,
+            previous_advisory_revision=previous_advisory_revision,
             generated_at=generated,
-        )
-        items.append(item)
-        for reason in reasons:
-            counts[reason] = counts.get(reason, 0) + 1
-    items.sort(key=lambda item: (-int(item["priority"]), str(item["currentScannedAtUtc"]), str(item["internalName"]).casefold(), str(item["sourceName"]).casefold(), int(item["variantId"])))
+        ))
+        counts["advisory_changed"] = counts.get("advisory_changed", 0) + 1
+    items.sort(key=lambda item: (-int(item["priority"]), str(item["currentScannedAtUtc"]), str(item["internalName"]).casefold(), str(item["sourceName"]).casefold(), int(item["variantId"]), str(item.get("workType") or "")))
     semantic = {
         "schema": SEED_SCHEMA,
         "catalogRevision": catalog_revision,
@@ -344,29 +646,34 @@ def build_seed(
         "scannerRevision": scanner_revision,
         "scannerBundleSha256": scanner_bundle_sha256,
         "ruleSetRevision": rule_set_revision,
+        "advisoryRevision": advisory_revision,
         "baselineSecurityRebuild": baseline_security_rebuild,
-        "rescanAfterHours": int(rescan_after_hours),
         "items": [
             {
                 key: item[key]
-                for key in ("targetFingerprint", "variantId", "assemblyVersion", "artifactUrl", "ruleSetRevision", "reasons", "priority")
+                for key in ("queueKey", "workType", "targetFingerprint", "variantId", "assemblyVersion", "artifactUrl", "artifactAnalysisRevision", "sourceAnalysisRevision", "ruleSetRevision", "observedSourceCommit", "reasons", "priority")
+                if key in item
             }
             for item in items
         ],
     }
     seed = {
         "schema": SEED_SCHEMA,
-        "queueSeedRevision": f"queue-seed-v1-{digest(semantic)[:16]}",
+        "queueSeedRevision": f"queue-seed-v2-{digest(semantic)[:16]}",
         "generatedAtUtc": generated,
         "catalogRevision": catalog_revision,
         "catalogIdentityEpoch": catalog_identity_epoch,
         "definitionsRevision": definitions_revision,
         "scannerRevision": scanner_revision,
         "scannerBundleSha256": scanner_bundle_sha256,
+        "artifactAnalysisRevision": artifact_analysis_revision,
+        "sourceAnalysisRevision": source_analysis_revision,
+        "sourceObservationRevision": str(definitions_index.get("sourceObservationRevision") or ""),
         "baselineSecurityRebuild": baseline_security_rebuild,
         "previousEvidenceIdentityEpoch": previous_evidence_identity_epoch,
         "ruleSetRevision": rule_set_revision,
-        "rescanAfterHours": int(rescan_after_hours),
+        "advisoryRevision": advisory_revision,
+        "previousAdvisoryRevision": previous_advisory_revision,
         "counts": {**counts, "queued": len(items)},
         "items": items,
     }
@@ -415,9 +722,18 @@ def sync_state(seed: dict[str, Any], previous: dict[str, Any] | None, *, now: dt
         elif same_target and state["nextEligibleAtUtc"]:
             next_at = parse_utc(state["nextEligibleAtUtc"])
             if next_at is not None and now_dt < next_at:
-                state["state"] = "retry_wait"
+                state["state"] = "retry"
         items[key] = state
     same_seed = str(previous.get("queueSeedRevision") or "") == str(seed.get("queueSeedRevision") or "")
+    if same_seed:
+        for key, old in previous_items.items():
+            if key in items or not isinstance(old, dict) or not bool(old.get("dynamic")):
+                continue
+            if str(old.get("catalogRevision") or "") != str(seed.get("catalogRevision") or ""):
+                continue
+            if str(old.get("definitionsRevision") or "") != str(seed.get("definitionsRevision") or ""):
+                continue
+            items[str(key)] = dict(old)
     return {
         "schema": STATE_SCHEMA,
         "queueSeedRevision": str(seed.get("queueSeedRevision") or ""),
@@ -427,7 +743,11 @@ def sync_state(seed: dict[str, Any], previous: dict[str, Any] | None, *, now: dt
         "definitionsRevision": str(seed.get("definitionsRevision") or ""),
         "scannerRevision": str(seed.get("scannerRevision") or ""),
         "scannerBundleSha256": str(seed.get("scannerBundleSha256") or ""),
+        "artifactAnalysisRevision": str(seed.get("artifactAnalysisRevision") or ""),
+        "sourceAnalysisRevision": str(seed.get("sourceAnalysisRevision") or ""),
+        "sourceObservationRevision": str(seed.get("sourceObservationRevision") or ""),
         "ruleSetRevision": str(seed.get("ruleSetRevision") or ""),
+        "advisoryRevision": str(seed.get("advisoryRevision") or ""),
         "updatedAtUtc": str(previous.get("updatedAtUtc") or "") if same_seed else utc_now(now_dt),
         "items": items,
         "recentCompleted": list(previous.get("recentCompleted") or [])[-64:],
@@ -479,7 +799,12 @@ def add_manual_items_from_database(
             "sourceRepositoryUrl": str(row["source_repo_url"] or ""),
         }
         current = dict(row) if row["scan_id"] is not None else None
-        reasons = due_reasons(variant, current, rule_set_revision=str(state.get("ruleSetRevision") or ""), rescan_after_hours=0, now=now_dt, manual=True)
+        reasons = due_reasons(
+            variant,
+            current,
+            artifact_analysis_revision=str(state.get("artifactAnalysisRevision") or ""),
+            manual=True,
+        )
         item = _queue_item(
             variant,
             current,
@@ -487,6 +812,8 @@ def add_manual_items_from_database(
             catalog_revision=str(state.get("catalogRevision") or ""),
             catalog_identity_epoch=str(state.get("catalogIdentityEpoch") or ""),
             definitions_revision=str(state.get("definitionsRevision") or ""),
+            scanner_revision=str(state.get("scannerRevision") or ""),
+            artifact_analysis_revision=str(state.get("artifactAnalysisRevision") or ""),
             rule_set_revision=str(state.get("ruleSetRevision") or ""),
             generated_at=utc_now(now_dt),
         )
@@ -504,7 +831,13 @@ def add_manual_items_from_database(
         state.setdefault("items", {})[item["queueKey"]] = item
 
 
-def lease_next(state: dict[str, Any], *, now: dt.datetime | None = None, lease_minutes: int = 70) -> dict[str, Any] | None:
+def select_next(state: dict[str, Any], *, now: dt.datetime | None = None) -> dict[str, Any] | None:
+    """Select one eligible item under the single Sigmascope workflow lock.
+
+    There is deliberately no lease/expiry state. If a runner dies before publication,
+    its mutation is never committed to Security Evidence v2 and the next worker simply
+    selects the same previously-published item again.
+    """
     now_dt = now or dt.datetime.now(dt.timezone.utc)
     eligible: list[dict[str, Any]] = []
     for item in (state.get("items") or {}).values():
@@ -512,40 +845,47 @@ def lease_next(state: dict[str, Any], *, now: dt.datetime | None = None, lease_m
             continue
         next_at = parse_utc(str(item.get("nextEligibleAtUtc") or ""))
         if next_at is not None and now_dt < next_at:
-            item["state"] = "retry_wait"
+            item["state"] = "retry"
             continue
-        lease_expires = parse_utc(str(item.get("leaseExpiresAtUtc") or ""))
-        if str(item.get("state") or "") == "leased" and lease_expires is not None and now_dt < lease_expires:
-            continue
+        if str(item.get("state") or "") == "attempted":
+            # An attempted state should not normally survive atomic publication, but
+            # treating it as eligible is the safest recovery behavior.
+            item["state"] = "pending"
         eligible.append(item)
     if not eligible:
         return None
-    eligible.sort(key=lambda item: (-int(item.get("priority") or 0), str(item.get("currentScannedAtUtc") or ""), str(item.get("internalName") or "").casefold(), str(item.get("sourceName") or "").casefold(), int(item.get("variantId") or 0)))
+
+    eligible.sort(key=lambda item: (
+        -int(item.get("priority") or 0),
+        str(item.get("currentScannedAtUtc") or ""),
+        str(item.get("internalName") or "").casefold(),
+        str(item.get("sourceName") or "").casefold(),
+        int(item.get("variantId") or 0),
+        str(item.get("workType") or ""),
+    ))
     item = eligible[0]
     attempt_count = int(item.get("attemptCount") or 0) + 1
-    attempt_id = f"attempt-v1-{digest([item.get('targetFingerprint'), attempt_count, utc_now(now_dt)])[:16]}"
+    attempt_id = f"attempt-v2-{digest([item.get('targetFingerprint'), attempt_count, utc_now(now_dt)])[:16]}"
     attempt = {
         "schema": ATTEMPT_SCHEMA,
         "attemptId": attempt_id,
         "attemptNumber": attempt_count,
-        "leasedAtUtc": utc_now(now_dt),
-        "status": "leased",
+        "selectedAtUtc": utc_now(now_dt),
+        "status": "attempted",
     }
     attempts = list(item.get("recentAttempts") or [])
     attempts.append(attempt)
     item["recentAttempts"] = attempts[-MAX_RECENT_ATTEMPTS:]
     item["attemptCount"] = attempt_count
-    item["state"] = "leased"
-    item["leaseId"] = attempt_id
-    item["leaseExpiresAtUtc"] = utc_now(now_dt + dt.timedelta(minutes=max(1, lease_minutes)))
+    item["state"] = "attempted"
     item["nextEligibleAtUtc"] = ""
     state["updatedAtUtc"] = utc_now(now_dt)
     return dict(item)
 
 
-def finish_lease(
+def finish_attempt(
     state: dict[str, Any],
-    leased: dict[str, Any] | None,
+    selected: dict[str, Any] | None,
     *,
     status: str,
     error: str = "",
@@ -553,15 +893,18 @@ def finish_lease(
     scan_id: int = 0,
     now: dt.datetime | None = None,
 ) -> None:
-    if not leased:
+    if not selected:
         return
     now_dt = now or dt.datetime.now(dt.timezone.utc)
-    key = str(leased.get("queueKey") or "")
+    key = str(selected.get("queueKey") or "")
     item = (state.get("items") or {}).get(key)
     if not isinstance(item, dict):
         return
-    attempt_id = str(item.get("leaseId") or "")
+
     attempts = list(item.get("recentAttempts") or [])
+    attempt_id = ""
+    if attempts and isinstance(attempts[-1], dict):
+        attempt_id = str(attempts[-1].get("attemptId") or "")
     for attempt in reversed(attempts):
         if isinstance(attempt, dict) and str(attempt.get("attemptId") or "") == attempt_id:
             attempt["status"] = status
@@ -570,11 +913,10 @@ def finish_lease(
             attempt["artifactSha256"] = str(artifact_sha256 or "").strip().lower()
             attempt["scanId"] = int(scan_id or 0)
             break
+
     item["recentAttempts"] = attempts[-MAX_RECENT_ATTEMPTS:]
     item["lastAttemptStatus"] = status
     item["lastError"] = str(error or "")[:4096]
-    item["leaseId"] = ""
-    item["leaseExpiresAtUtc"] = ""
     if status == "complete":
         item["state"] = "complete"
         item["completedAtUtc"] = utc_now(now_dt)
@@ -582,6 +924,7 @@ def finish_lease(
         completed = list(state.get("recentCompleted") or [])
         completed.append({
             "variantId": int(item.get("variantId") or 0),
+            "workType": str(item.get("workType") or "artifact"),
             "internalName": str(item.get("internalName") or ""),
             "targetFingerprint": str(item.get("targetFingerprint") or ""),
             "primaryReason": str(item.get("primaryReason") or ""),
@@ -590,7 +933,7 @@ def finish_lease(
         })
         state["recentCompleted"] = completed[-64:]
     else:
-        item["state"] = "retry_wait"
+        item["state"] = "retry"
         item["nextEligibleAtUtc"] = _retry_at(now_dt, int(item.get("attemptCount") or 1))
     state["updatedAtUtc"] = utc_now(now_dt)
 
@@ -615,7 +958,11 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
         "definitionsRevision": str(state.get("definitionsRevision") or ""),
         "scannerRevision": str(state.get("scannerRevision") or ""),
         "scannerBundleSha256": str(state.get("scannerBundleSha256") or ""),
+        "artifactAnalysisRevision": str(state.get("artifactAnalysisRevision") or ""),
+        "sourceAnalysisRevision": str(state.get("sourceAnalysisRevision") or ""),
+        "sourceObservationRevision": str(state.get("sourceObservationRevision") or ""),
         "ruleSetRevision": str(state.get("ruleSetRevision") or ""),
+        "advisoryRevision": str(state.get("advisoryRevision") or ""),
         "states": counts,
         "pendingByReason": due_by_reason,
         "total": sum(counts.values()),
@@ -630,7 +977,6 @@ def main() -> int:
     build.add_argument("--definitions-root", required=True, type=Path)
     build.add_argument("--evidence-root", required=True, type=Path)
     build.add_argument("--output", required=True, type=Path)
-    build.add_argument("--rescan-after-hours", type=int, default=168)
     args = parser.parse_args()
     if args.command == "build-seed":
         result = build_seed(
@@ -638,7 +984,6 @@ def main() -> int:
             definitions_root=args.definitions_root,
             evidence_root=args.evidence_root,
             output=args.output,
-            rescan_after_hours=args.rescan_after_hours,
         )
         print(json.dumps({"queueSeedRevision": result["queueSeedRevision"], "queued": result["counts"]["queued"]}, indent=2))
         return 0

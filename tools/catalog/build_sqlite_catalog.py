@@ -35,6 +35,8 @@ from catalog_revisions import compute_catalog_base_revision, ensure_revision_sch
 from catalog_presentation import is_adult_content, split_project_image_urls
 from source_stability import stable_source_priority
 from author_identity import split_authors
+from artifact_source_model import casefold_key, repository_key
+from source_resolution import source_candidate_records
 
 SCHEMA_VERSION = 1
 SCHEMA_NAME = "omega.catalog.sqlite.v1"
@@ -253,6 +255,59 @@ CREATE INDEX IF NOT EXISTS ix_variants_plugin ON plugin_variants(plugin_id);
 CREATE INDEX IF NOT EXISTS ix_variants_source ON plugin_variants(source_id);
 CREATE INDEX IF NOT EXISTS ix_variants_api ON plugin_variants(dalamud_api_level);
 CREATE INDEX IF NOT EXISTS ix_variants_repo_url ON plugin_variants(repo_url COLLATE NOCASE);
+
+CREATE TABLE IF NOT EXISTS manifest_observations (
+    observation_id INTEGER PRIMARY KEY,
+    variant_id INTEGER NOT NULL REFERENCES plugin_variants(variant_id) ON DELETE CASCADE,
+    channel TEXT NOT NULL,
+    internal_name TEXT NOT NULL DEFAULT '',
+    manifest_version TEXT NOT NULL DEFAULT '',
+    download_url TEXT NOT NULL DEFAULT '',
+    repository_url TEXT NOT NULL DEFAULT '',
+    raw_manifest_json TEXT NOT NULL DEFAULT '{}',
+    first_seen_utc TEXT NOT NULL DEFAULT '',
+    last_seen_utc TEXT NOT NULL DEFAULT '',
+    active INTEGER NOT NULL DEFAULT 1,
+    UNIQUE(variant_id, channel)
+);
+CREATE INDEX IF NOT EXISTS ix_manifest_observations_variant ON manifest_observations(variant_id);
+CREATE INDEX IF NOT EXISTS ix_manifest_observations_download ON manifest_observations(download_url);
+
+CREATE TABLE IF NOT EXISTS source_repositories (
+    repository_key TEXT PRIMARY KEY,
+    canonical_url TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    first_seen_utc TEXT NOT NULL DEFAULT '',
+    last_seen_utc TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS source_repository_aliases (
+    alias_url TEXT PRIMARY KEY COLLATE NOCASE,
+    repository_key TEXT NOT NULL REFERENCES source_repositories(repository_key) ON DELETE CASCADE,
+    alias_kind TEXT NOT NULL DEFAULT 'observed_url'
+);
+CREATE INDEX IF NOT EXISTS ix_source_repository_aliases_repository ON source_repository_aliases(repository_key);
+
+CREATE TABLE IF NOT EXISTS manifest_source_candidates (
+    observation_id INTEGER NOT NULL REFERENCES manifest_observations(observation_id) ON DELETE CASCADE,
+    repository_key TEXT NOT NULL REFERENCES source_repositories(repository_key) ON DELETE CASCADE,
+    origins_json TEXT NOT NULL DEFAULT '[]',
+    ref_hints_json TEXT NOT NULL DEFAULT '[]',
+    urls_json TEXT NOT NULL DEFAULT '[]',
+    PRIMARY KEY(observation_id, repository_key)
+);
+
+CREATE TABLE IF NOT EXISTS plugin_identity_aliases (
+    alias_id INTEGER PRIMARY KEY,
+    plugin_id INTEGER NOT NULL REFERENCES plugins(plugin_id) ON DELETE CASCADE,
+    alias_type TEXT NOT NULL,
+    alias_value TEXT NOT NULL,
+    normalized_value TEXT NOT NULL COLLATE NOCASE,
+    source_kind TEXT NOT NULL DEFAULT '',
+    confidence INTEGER NOT NULL DEFAULT 100,
+    active INTEGER NOT NULL DEFAULT 1,
+    UNIQUE(plugin_id, alias_type, normalized_value)
+);
+CREATE INDEX IF NOT EXISTS ix_plugin_identity_alias_lookup ON plugin_identity_aliases(normalized_value COLLATE NOCASE, alias_type);
 
 CREATE TABLE IF NOT EXISTS plugin_tags (
     variant_id INTEGER NOT NULL REFERENCES plugin_variants(variant_id) ON DELETE CASCADE,
@@ -676,6 +731,80 @@ def import_enriched(db: sqlite3.Connection, enriched_doc: Any, now: str) -> None
     db.execute("UPDATE plugins SET active=CASE WHEN EXISTS(SELECT 1 FROM plugin_variants v WHERE v.plugin_id=plugins.plugin_id AND v.active=1) THEN 1 ELSE 0 END")
 
 
+def rebuild_identity_evidence(db: sqlite3.Connection, now: str) -> None:
+    """Rebuild manifest/source/alias observations from normalized catalog facts.
+
+    These tables are evidence contracts, not replacement runtime identities.  They are
+    deterministic derivatives of PluginMaster observations and can be rebuilt from the
+    canonical catalog without network access.
+    """
+    for table in ("manifest_source_candidates", "source_repository_aliases", "source_repositories", "manifest_observations", "plugin_identity_aliases"):
+        db.execute(f'DELETE FROM "{table}"')
+
+    for plugin in db.execute("SELECT plugin_id,internal_name,canonical_name,active FROM plugins ORDER BY plugin_id"):
+        values = (
+            ("internal_name", str(plugin["internal_name"] or ""), "manifest-internal-name", 100),
+            ("display_name", str(plugin["canonical_name"] or ""), "manifest-display-name", 70),
+        )
+        for alias_type, alias_value, source_kind, confidence in values:
+            normalized = casefold_key(alias_value)
+            if not normalized:
+                continue
+            db.execute(
+                """INSERT OR IGNORE INTO plugin_identity_aliases(plugin_id,alias_type,alias_value,normalized_value,source_kind,confidence,active)
+                   VALUES(?,?,?,?,?,?,?)""",
+                (int(plugin["plugin_id"]), alias_type, alias_value, normalized, source_kind, confidence, int(plugin["active"] or 0)),
+            )
+
+    variants = db.execute("""
+        SELECT v.*,p.internal_name FROM plugin_variants v
+        JOIN plugins p ON p.plugin_id=v.plugin_id ORDER BY v.variant_id
+    """).fetchall()
+    for row in variants:
+        channels: list[tuple[str, str, str]] = []
+        stable_url = str(row["download_link_install"] or row["download_link_update"] or "").strip()
+        testing_url = str(row["download_link_testing"] or "").strip()
+        dip17 = str(row["dip17_channel"] or "").strip().casefold()
+        stable_channel = "staging" if dip17 == "staging" else "stable"
+        if stable_url:
+            channels.append((stable_channel, str(row["assembly_version"] or ""), stable_url))
+        if testing_url:
+            channels.append(("testing", str(row["testing_assembly_version"] or row["assembly_version"] or ""), testing_url))
+        for channel, version, download_url in channels:
+            cur = db.execute(
+                """INSERT INTO manifest_observations(variant_id,channel,internal_name,manifest_version,download_url,repository_url,raw_manifest_json,first_seen_utc,last_seen_utc,active)
+                   VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (int(row["variant_id"]), channel, str(row["internal_name"] or ""), version, download_url, str(row["repo_url"] or ""),
+                 str(row["raw_manifest_json"] or "{}"), str(row["first_seen_utc"] or now), str(row["last_seen_utc"] or now), int(row["active"] or 0)),
+            )
+            observation_id = int(cur.lastrowid)
+            candidates = source_candidate_records((
+                ("repo-url", str(row["repo_url"] or "")),
+                ("artifact-download", download_url),
+            ))
+            for candidate in candidates:
+                canonical = str(candidate.get("repository") or "").strip()
+                if not canonical:
+                    continue
+                rkey = repository_key(canonical)
+                db.execute(
+                    """INSERT INTO source_repositories(repository_key,canonical_url,first_seen_utc,last_seen_utc) VALUES(?,?,?,?)
+                       ON CONFLICT(repository_key) DO UPDATE SET canonical_url=excluded.canonical_url,last_seen_utc=excluded.last_seen_utc""",
+                    (rkey, canonical, now, now),
+                )
+                for alias in [canonical, *[str(v) for v in candidate.get("urls") or []]]:
+                    if alias.strip():
+                        db.execute(
+                            "INSERT OR IGNORE INTO source_repository_aliases(alias_url,repository_key,alias_kind) VALUES(?,?,?)",
+                            (alias.strip(), rkey, "canonical" if alias.strip().casefold() == canonical.casefold() else "observed_url"),
+                        )
+                db.execute(
+                    """INSERT OR REPLACE INTO manifest_source_candidates(observation_id,repository_key,origins_json,ref_hints_json,urls_json)
+                       VALUES(?,?,?,?,?)""",
+                    (observation_id, rkey, json_text(candidate.get("origins") or []), json_text(candidate.get("refHints") or []), json_text(candidate.get("urls") or [])),
+                )
+
+
 def readme_images(repo_url: str, excerpt: str) -> list[str]:
     if not repo_url or not excerpt:
         return []
@@ -938,6 +1067,12 @@ def validate_database(db: sqlite3.Connection) -> None:
     variants = int(db.execute("SELECT COUNT(*) FROM plugin_variants WHERE active=1").fetchone()[0])
     if plugins <= 0 or variants <= 0:
         raise RuntimeError("catalog contains no active plugins/variants")
+    observations = int(db.execute("SELECT COUNT(*) FROM manifest_observations WHERE active=1").fetchone()[0])
+    if observations <= 0:
+        raise RuntimeError("catalog contains no active manifest observations")
+    invalid_confidence = int(db.execute("SELECT COUNT(*) FROM plugin_identity_aliases WHERE confidence NOT IN (0,40,70,95,100)").fetchone()[0])
+    if invalid_confidence:
+        raise RuntimeError("catalog identity aliases contain unsupported confidence values")
 
 
 def export_debug(db: sqlite3.Connection, out_dir: Path) -> None:
@@ -978,6 +1113,7 @@ def build(args: argparse.Namespace) -> dict:
         website_doc = load_json(Path(args.website_enrichment) if args.website_enrichment else None, {"repos": {}})
         upsert_sources(db, raw_doc, source_definitions, now)
         import_enriched(db, enriched_doc, now)
+        rebuild_identity_evidence(db, now)
         import_websites(db, website_doc, now)
         sanitize_seeded_plugin_presentation_fields(db)
         sanitize_seeded_website_cache(db)
