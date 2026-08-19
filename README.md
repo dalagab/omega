@@ -76,6 +76,20 @@ A few useful places to start:
 
 The public website is maintained separately on the `website` branch.
 
+## Is Omega wrong about your plugin?
+
+If you maintain a plugin and believe Omega or Sigmascope has described it incorrectly, **please tell us**.
+
+Scanner results are evidence and classifications, not unquestionable verdicts. If a security finding, capability, automation classification, dependency, endpoint, source association, or other result is wrong, we want to know **what was reported and where the scanner went wrong**.
+
+Use the scanner-result correction form:
+
+**https://github.com/dalagab/omega/issues/new?template=scanner-result.yml**
+
+Please include the plugin version, the result you believe is incorrect, what you think the correct result should be, and a link to the source code or other public evidence that lets us verify it.
+
+The goal is not to give individual plugins special treatment. If the scanner logic is wrong, we want to fix the logic so the correction applies consistently to everyone.
+
 ## One last thing
 
 Omega is an independent community project. It is not affiliated with Square Enix, Dalamud, XIVLauncher, or FINAL FANTASY XIV.
