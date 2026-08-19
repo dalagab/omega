@@ -29,30 +29,12 @@ class SigmascopeBrandingTests(unittest.TestCase):
         self.assertIn("Compatibility shim", shim)
         self.assertIn("from sigmascope import", shim)
 
-        identity = (root / "Omega" / "SigmascopeInfo.cs").read_text(encoding="utf-8")
-        self.assertIn('Name = "Sigmascope"', identity)
-        self.assertIn("Sigmascape", identity)
-        self.assertIn("scope examines closely", identity)
-        self.assertIn("evidence, not a final judgement", identity)
+        # Client-side Sigmascope presentation identity belongs to main after the branch split.
+        self.assertFalse((root / "Omega").exists())
+        deltascope = (root / "tools" / "security" / "deltascope.py").read_text(encoding="utf-8")
+        self.assertIn("DeltaScope", deltascope)
+        self.assertIn("developer-only, read-only", deltascope)
 
-        library = (root / "Omega" / "UI" / "MarketplaceWindow.Library.cs").read_text(encoding="utf-8")
-        product = (root / "Omega" / "UI" / "MarketplaceWindow.Sigmascope.cs").read_text(encoding="utf-8")
-        self.assertIn("library-tab-sigmascope", library)
-        self.assertIn("SigmascopeInfo.Name", library)
-        self.assertIn("SigmascopeInfo.Description", product)
-        self.assertIn("SigmascopeInfo.Lore", product)
-
-        # ZipRunner applies production packages as overlays. These retired source paths
-        # therefore remain as behavior-free tombstones long enough to overwrite a
-        # pre-Sigmascope workspace rather than leaving duplicate partial members behind.
-        for legacy_name, canonical_name in (
-            ("MarketplaceWindow.PluginSecurity.cs", "MarketplaceWindow.Sigmascope.cs"),
-            ("MarketplaceWindow.LibrarySecurity.cs", "MarketplaceWindow.LibrarySigmascope.cs"),
-        ):
-            legacy = (root / "Omega" / "UI" / legacy_name).read_text(encoding="utf-8")
-            self.assertIn("ZipRunner overlay compatibility tombstone", legacy)
-            self.assertIn(canonical_name, legacy)
-            self.assertNotIn("partial class MarketplaceWindow", legacy)
 
 
 if __name__ == "__main__":

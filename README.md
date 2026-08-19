@@ -1,99 +1,40 @@
-# Omega
+# Omega security services · SigmaScope + DeltaScope
 
-**Omega is a plugin marketplace for Dalamud.**
+This package is the source intended for the **`sigmascope` branch** of `dalagab/omega`. It contains repository discovery/catalog generation, frozen Definitions, SigmaScope, DeltaScope, Security Evidence v2 publication, source submissions, and their Python regression tests.
 
-Think of it like this:
+It deliberately contains **no Omega C# client source**.
 
-- **Dalamud** is the thing that installs and updates plugins.
-- **Omega** helps you find plugins and understand what you are looking at.
-- When you choose to install something, **Dalamud still does the installing**.
+## Services
 
-That is basically it.
+### SigmaScope 2.9.0
+Deterministic static scanner. Plugin artifacts and source are treated as untrusted data and are never executed. The continuous worker consumes the frozen worker bundle from `catalog-data` and publishes validated evidence to `security-evidence-v2`.
 
-## I just want to install Omega
+### DeltaScope
+Developer/operator-only, read-only inspection and audit tooling over published or local SigmaScope evidence. Run it with:
 
-Go here:
+```bash
+python tools/security/deltascope.py serve-online
+python tools/security/deltascope.py audit --evidence-v2 path/to/security-evidence-v2 --json
+```
 
-**https://dalagab.github.io/omega/#install**
+DeltaScope is not part of the production scanner decision path and has no publication step.
 
-The installation page has the current Omega repository link, a copy button, and the steps for adding it to Dalamud.
+## Branch model
 
-We intentionally keep the actual repository URL on the website instead of copying it into this README, so there is one obvious place to find the current installation instructions.
+- `sigmascope` — this source.
+- `catalog-data` — generated canonical catalog + frozen Definitions + immutable worker bundle.
+- `security-evidence-v2` — generated validated detailed evidence.
+- `main` — Omega client plus small default-branch launcher workflows.
 
-## What does Omega do?
+GitHub schedules run from the default branch, so `main` keeps thin callers that invoke these reusable workflows using `@sigmascope`. The full implementation remains here.
 
-Omega looks at public Dalamud plugin repositories and puts the plugins it can find into one in-game marketplace.
+## Workflows owned here
 
-It can show things such as:
+- `catalog-builder.yml` — daily/manual catalog + Definitions snapshot and client marketplace DB compiler.
+- `sigmascope.yml` — bounded continuous SigmaScope worker.
+- `source-submissions.yml` — validates and persists public source metadata onto `sigmascope`.
+- `catalog-compaction.yml` — manual legacy compatibility self-test.
+- `regression-tests.yml` — Python/service regression suite for the `sigmascope` branch.
+- `deltascope.yml` — manual read-only developer audit.
 
-- what a plugin does;
-- who made it;
-- where it comes from;
-- which repository or repositories publish it;
-- available versions;
-- dependencies;
-- changelogs and project links;
-- security information collected by Sigmascope.
-
-Omega does **not** replace Dalamud's plugin installer.
-
-## Is every plugin in Omega safe?
-
-No.
-
-Omega tries to give you **more information**, not make the decision for you.
-
-A plugin appearing in Omega does not mean it is approved, recommended, or guaranteed to be safe. Omega can show public information and static security evidence, but you still choose what you install.
-
-## What is Sigmascope?
-
-Sigmascope is Omega's security scanner.
-
-It examines plugin packages and available source code as **data**. It does not load or run the plugins it scans.
-
-Its job is to collect useful evidence — things like dependencies, capabilities, endpoints, hashes, and other indicators — so Omega can show you more context before you make a choice.
-
-## Where is the website?
-
-**https://dalagab.github.io/omega/**
-
-## Support
-
-For installation help, questions, feedback, or corrections, join the [Omega Discord](https://discord.gg/rMBHbJTjp).
-
-
-## I am a developer
-
-You are in the right repository.
-
-The production source, tests, catalog tooling, Sigmascope tooling, source definitions, and release automation live here.
-
-A few useful places to start:
-
-- `Omega/` — the Dalamud plugin.
-- `Omega.RegressionTests/` — C# regression tests.
-- `tools/catalog/` — catalog collection and database generation.
-- `tools/security/` — Sigmascope and Security Evidence tooling.
-- `sources/` — known plugin repository sources.
-- `SECURITY.md` — security architecture and reporting information.
-- `CHANGELOG.md` — development and release changes.
-
-The public website is maintained separately on the `website` branch.
-
-## Is Omega wrong about your plugin?
-
-If you maintain a plugin and believe Omega or Sigmascope has described it incorrectly, **please tell us**.
-
-Scanner results are evidence and classifications, not unquestionable verdicts. If a security finding, capability, automation classification, dependency, endpoint, source association, or other result is wrong, we want to know **what was reported and where the scanner went wrong**.
-
-Use the scanner-result correction form:
-
-**https://github.com/dalagab/omega/issues/new?template=scanner-result.yml**
-
-Please include the plugin version, the result you believe is incorrect, what you think the correct result should be, and a link to the source code or other public evidence that lets us verify it.
-
-The goal is not to give individual plugins special treatment. If the scanner logic is wrong, we want to fix the logic so the correction applies consistently to everyone.
-
-## One last thing
-
-Omega is an independent community project. It is not affiliated with Square Enix, Dalamud, XIVLauncher, or FINAL FANTASY XIV.
+The scheduled/event launchers with matching names live on `main`; do not move scanner implementation back there.

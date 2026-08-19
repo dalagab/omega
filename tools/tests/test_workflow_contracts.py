@@ -19,7 +19,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assert_has(
             text,
             "name: Omega daily catalog snapshot and client database",
-            'cron: "17 2 * * *"',
+            "workflow_call:",
             "workflow_dispatch:",
             "name: Freeze JSON state and compile the Omega client DB",
             "needs: [collect, enrich, scrape]",
@@ -61,7 +61,7 @@ class WorkflowContractTests(unittest.TestCase):
             text.index("Publish the once-daily client database"),
             "publish frozen online inputs immediately before the matching client DB",
         )
-        self.assertNotRegex(text, r"(?m)^  push:\s*$", "ordinary source pushes must not create client-visible catalog churn")
+        self.assertNotIn("  schedule:", text, "schedule is owned by the thin default-branch launcher")
         self.assertNotIn("--allow-legacy-identity", text, "legacy catalog snapshots may be skipped as seeds but must never be materialized by weakening validation")
         self.assertNotIn("security-evidence-latest", text)
         self.assertNotIn("omega-security-evidence.sqlite.zip", text)
@@ -81,7 +81,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assert_has(
             text,
             "name: Omega Sigmascope continuous worker",
-            'cron: "*/15 * * * *"',
+            "workflow_call:",
             "workflow_dispatch:",
             "ref: catalog-data",
             "path: catalog/active-state",
@@ -108,7 +108,7 @@ class WorkflowContractTests(unittest.TestCase):
             "sigmascope-source-followups.json",
             "continue-on-error: true",
         )
-        self.assertNotIn("workflow_run:", text)
+        self.assertNotIn("schedule:", text, "schedule is owned by the thin default-branch launcher")
         self.assertNotIn("--rescan-after-hours", text, "production scheduling is event-driven, not age/TTL driven")
         self.assertNotIn("gh release upload catalog-latest", text, "continuous scanner must never publish the client DB")
         self.assertNotIn("validate_marketplace_catalog.py", text, "continuous scanner no longer builds a client projection")
@@ -157,8 +157,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assert_has(
             text,
             "name: Omega source submissions",
-            "issues:",
-            "issue_comment:",
+            "workflow_call:",
             "workflow_dispatch:",
             "tools/catalog/process_source_submission.py",
             "sources/community-sources.json",
@@ -199,51 +198,9 @@ class WorkflowContractTests(unittest.TestCase):
             "python tools/catalog/project_marketplace_catalog.py --self-test",
             "The v1 SQLite evidence release is archival only.",
         )
-        self.assertNotIn("workflow_run:", text)
+        self.assertNotIn("schedule:", text, "schedule is owned by the thin default-branch launcher")
         self.assertNotIn("gh release upload", text)
         self.assertNotIn("contents: write", text)
-
-    def test_catalog_bootstrap_prefers_exact_published_client_db_with_legacy_fallback(self) -> None:
-        helper = (common.ROOT / "tools" / "catalog" / "stage_catalog_bootstrap.py").read_text(encoding="utf-8")
-        regression = self.read("regression-tests.yml")
-        release = self.read("release.yml")
-        self.assertIn('MARKETPLACE_BUNDLE_NAME = "omega-marketplace.sqlite.zip"', helper)
-        self.assertIn('validate_marketplace_catalog.validate_bytes', helper)
-        self.assertIn('BUILDER_WORKFLOW = "catalog-builder.yml"', helper)
-        self.assertIn('ARTIFACT_NAME = "omega-sqlite-catalog"', helper)
-        self.assertIn('validate_base_catalog.validate_local', helper)
-        self.assertIn('"gh", "release", "download", "catalog-latest"', helper)
-        self.assertIn('"gh", "run", "list"', helper)
-        self.assertIn("tools/catalog/stage_catalog_bootstrap.py", regression)
-        self.assertIn("tools/catalog/stage_catalog_bootstrap.py", release)
-
-    def test_client_code_has_no_full_security_evidence_endpoint(self) -> None:
-        omega_root = common.ROOT / "Omega"
-        combined = "\n".join(path.read_text(encoding="utf-8", errors="replace") for path in omega_root.rglob("*.cs"))
-        self.assertNotIn("security-evidence-latest", combined)
-        self.assertNotIn("omega-security-evidence.sqlite.zip", combined)
-        self.assertIn("EvidenceRevision", combined)
-
-    def test_repository_regression_workflow_covers_python_and_dotnet(self) -> None:
-        text = self.read("regression-tests.yml")
-        self.assertIn('- "sources/**"', text)
-        self.assert_has(
-            text,
-            "name: Omega repository regression tests",
-            "pull_request:",
-            "workflow_dispatch:",
-            "actions: read",
-            "python -m unittest discover -s tools/tests -p 'test_*.py' -v",
-            "python tools/catalog/sigmascope.py --self-test",
-            "python tools/catalog/sigmascope.py --hardening-self-test",
-            "python tools/catalog/compact_sqlite_catalog.py --self-test",
-            "python tools/catalog/project_marketplace_catalog.py --self-test",
-            "Stage validated current catalog bootstrap",
-            "tools/catalog/stage_catalog_bootstrap.py",
-            "--output catalog/bootstrap/omega-catalog.sqlite.zip",
-            "dotnet build .\\Omega.sln -c Release",
-        )
-        self.assertLess(text.index("Stage validated current catalog bootstrap"), text.index("dotnet build .\\Omega.sln -c Release"))
 
     def test_revision_and_v2_publication_tools_are_separated_by_workflow(self) -> None:
         builder = self.read("catalog-builder.yml")
@@ -255,82 +212,9 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("publish_security_evidence_v2.py", security)
         self.assertNotIn("compile_marketplace_snapshot.py", security)
 
-    def test_release_workflow_runs_python_and_dotnet_regressions_before_publish(self) -> None:
-        text = self.read("release.yml")
-        self.assert_has(
-            text,
-            "Run repository Python regression suite",
-            "python -m unittest discover -s tools/tests -p 'test_*.py' -v",
-            "Stage validated current catalog bootstrap",
-            "tools/catalog/stage_catalog_bootstrap.py",
-            "--output catalog/bootstrap/omega-catalog.sqlite.zip",
-            "Build and run regression suite",
-            "dotnet build .\\Omega.sln -c Release",
-            "Publish immutable versioned release",
-        )
-        self.assertLess(text.index("Run repository Python regression suite"), text.index("Publish immutable versioned release"))
-        self.assertLess(text.index("Build and run regression suite"), text.index("Publish immutable versioned release"))
-
-    def test_release_queues_one_deliberate_out_of_cycle_daily_snapshot(self) -> None:
-        text = self.read("release.yml")
-        self.assertIn("Queue Definitions rebuild for published Omega feed", text)
-        self.assertIn("gh workflow run catalog-builder.yml", text)
-        self.assertNotIn("gh workflow run sigmascope.yml", text)
-
-    def test_release_workflow_uses_three_part_versions_for_ziprunner(self) -> None:
-        text = self.read("release.yml")
-        self.assertIn('      - "v*.*.*"', text)
-        self.assertNotIn('      - "v*.*.*.*"', text)
-        self.assertIn(r"^v(?<version>\d+\.\d+\.\d+)$", text)
-        self.assertIn("Distributed plugin version $distributedVersion does not match release tag assembly version $expectedAssemblyVersion", text)
-        self.assertIn("generate_pluginmaster.py", text)
-        self.assertIn("repository/pluginmaster.template.json", text)
-        self.assertIn("Verify immutable versioned release asset", text)
-        self.assertIn("gh release upload omega-latest pluginmaster.json Omega.zip Omega.zip.sha256 --clobber", text)
-        self.assertIn("Publish legacy raw-main PluginMaster compatibility mirror", text)
-
-    def test_release_feed_is_generated_from_built_package_before_stable_publication(self) -> None:
-        text = self.read("release.yml")
-        ordered = [
-            "Assemble Dalamud package",
-            "Generate PluginMaster from packaged Omega.zip",
-            "Publish immutable versioned release",
-            "Verify immutable versioned release asset",
-            "Publish stable generated Dalamud feed",
-            "Verify stable generated Dalamud feed",
-            "Publish legacy raw-main PluginMaster compatibility mirror",
-        ]
-        positions = [text.index(item) for item in ordered]
-        self.assertEqual(sorted(positions), positions)
-        self.assertIn("--package Omega.zip", text)
-        self.assertIn("--tag '${{ steps.release.outputs.tag }}'", text)
-        self.assertNotIn("Get-Content 'repository/pluginmaster.json'", text)
-        self.assertIn("group: omega-release-stable", text)
-        self.assertIn("actions: write", text)
-        versioned = text[text.index("Publish immutable versioned release"):text.index("Verify immutable versioned release asset")]
-        self.assertNotIn("--clobber", versioned)
-        self.assertIn("Refusing to clobber the tagged release", versioned)
-
-    def test_release_package_contains_private_sqlite_runtime(self) -> None:
-        text = self.read("release.yml")
-        self.assertIn("e_sqlite3.dll", text)
-        self.assertIn("SQLitePCLRaw.provider.e_sqlite3.dll", text)
-        self.assertIn("Build output is missing the bundled e_sqlite3.dll runtime.", text)
-        self.assertIn("Compress-Archive -Path (Join-Path $extract '*')", text)
-        self.assertNotIn("SQLitePCLRaw.provider.winsqlite3", text)
-
     def test_workflows_do_not_embed_large_python_heredocs(self) -> None:
         for name in ("catalog-builder.yml", "sigmascope.yml", "catalog-compaction.yml"):
             self.assertNotIn("python - <<'PY'", self.read(name), f"{name} should call tested Python modules instead of inline Python")
-
-    def test_release_uses_project_changelog(self):
-        release = self.read("release.yml")
-        changelog = (common.ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-        extractor = (common.ROOT / "tools" / "release" / "extract_changelog.py").read_text(encoding="utf-8")
-        self.assertIn("extract_changelog.py", release)
-        self.assertIn("--notes-file release-notes.md", release)
-        self.assertIn("## [0.8.56]", changelog)
-        self.assertIn("CHANGELOG.md has no release section", extractor)
 
 
 if __name__ == "__main__":

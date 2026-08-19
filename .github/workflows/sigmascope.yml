@@ -1,9 +1,12 @@
 name: Omega Sigmascope continuous worker
 
 on:
-  schedule:
-    # One bounded queue selection every 15 minutes against the day's frozen inputs.
-    - cron: "*/15 * * * *"
+  workflow_call:
+    inputs:
+      internal_names:
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
     inputs:
       internal_names:
@@ -27,9 +30,10 @@ jobs:
       contents: write
       issues: write
     steps:
-      - name: Checkout workflow repository for publication transport
+      - name: Checkout security-services branch for publication transport
         uses: actions/checkout@v6
         with:
+          ref: sigmascope
           fetch-depth: 1
           persist-credentials: true
       - name: Checkout frozen catalog and Definitions state

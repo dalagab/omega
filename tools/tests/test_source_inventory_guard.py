@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import common  # noqa: F401
 import source_inventory_guard
 
 

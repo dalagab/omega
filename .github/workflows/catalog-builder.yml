@@ -1,9 +1,24 @@
 name: Omega daily catalog snapshot and client database
 
 on:
-  schedule:
-    # One public catalog/Definitions generation per day. Scanning continues separately.
-    - cron: "17 2 * * *"
+  workflow_call:
+    inputs:
+      concurrency:
+        type: string
+        required: false
+        default: "8"
+      timeout:
+        type: string
+        required: false
+        default: "20"
+      website_max_age_hours:
+        type: string
+        required: false
+        default: "168"
+      allow_source_removal:
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       concurrency:
@@ -44,6 +59,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: sigmascope
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -61,6 +78,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: sigmascope
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -85,6 +104,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: sigmascope
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -124,6 +145,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: sigmascope
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -167,7 +190,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: sigmascope
           fetch-depth: 0
+      - name: Record security-services source commit
+        id: security_source
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -235,7 +263,7 @@ jobs:
           python tools/catalog/catalog_json_store.py export
           --database catalog/normalized/omega-catalog.sqlite
           --output catalog/state-catalog
-          --built-from-dev-commit "${{ github.sha }}"
+          --built-from-dev-commit "${{ steps.security_source.outputs.sha }}"
       - name: Validate canonical source inventory and retention
         shell: bash
         run: |
@@ -265,7 +293,7 @@ jobs:
           --repo-root .
           --evidence-root catalog/security-v2-current
           --output catalog/state-definitions
-          --built-from-dev-commit "${{ github.sha }}"
+          --built-from-dev-commit "${{ steps.security_source.outputs.sha }}"
           --source-observations catalog/source-revision-observations.json
           --timeout ${{ inputs.timeout || '20' }}
       - name: Build deterministic daily Sigmascope queue seed

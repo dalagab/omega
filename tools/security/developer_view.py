@@ -1112,7 +1112,7 @@ def serve(inspector: Any, host: str, port: int, open_browser: bool) -> int:
     handler = type("BoundAppHandler", (AppHandler,), {"inspector": inspector})
     server = ThreadingHTTPServer((host, port), handler)
     url = f"http://{host}:{server.server_address[1]}/"
-    print(f"Omega Security Developer View: {url}", file=sys.stderr)
+    print(f"DeltaScope · Omega security developer view: {url}", file=sys.stderr)
     print(f"Evidence source: {inspector.evidence_path}", file=sys.stderr)
     print("Press Ctrl+C to stop.", file=sys.stderr)
     if open_browser:
@@ -1128,7 +1128,7 @@ def serve(inspector: Any, host: str, port: int, open_browser: bool) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Browse Omega Sigmascope evidence read-only. Published Evidence v2 is streamed lazily from GitHub by default.")
+    parser = argparse.ArgumentParser(description="DeltaScope: browse Omega SigmaScope evidence read-only. Published Evidence v2 is streamed lazily from GitHub by default.")
     parser.add_argument("command", nargs="?", choices=["fetch", "serve", "serve-online", "audit"], default="serve")
     parser.add_argument("--database", type=Path, help="Local omega-security-evidence.sqlite; uses legacy/local SQLite view.")
     parser.add_argument("--evidence-v2", type=Path, help="Local Security Evidence v2 JSON directory; opens it directly without publication or download.")

@@ -1,10 +1,12 @@
 name: Omega source submissions
 
 on:
-  issues:
-    types: [opened, edited, reopened]
-  issue_comment:
-    types: [created]
+  workflow_call:
+    inputs:
+      source_url:
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
     inputs:
       source_url:
@@ -33,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.repository.default_branch || github.ref_name }}
+          ref: sigmascope
           persist-credentials: false
       - uses: actions/setup-python@v7
         with:
@@ -93,7 +95,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.repository.default_branch || github.ref_name }}
+          ref: sigmascope
           persist-credentials: true
       - uses: actions/setup-python@v7
         with:
@@ -120,7 +122,7 @@ jobs:
           git add -- sources/community-sources.json sources/source-overrides.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "catalog: persist validated source metadata [skip ci]"
-          branch="${{ github.event.repository.default_branch || github.ref_name }}"
+          branch="sigmascope"
           git pull --rebase origin "$branch"
           git push origin "HEAD:$branch"
       - name: Record daily processing boundary

@@ -1,84 +1,46 @@
-name: Omega repository regression tests
+name: Omega security services regression tests
 
 on:
   push:
-    branches:
-      - main
+    branches: [sigmascope]
     paths:
-      - "Omega/**"
-      - "Omega.RegressionTests/**"
       - "tools/catalog/**"
-      - "tools/release/**"
+      - "tools/security/**"
       - "tools/tests/**"
-      - "CHANGELOG.md"
-      - ".omega/**"
-      - "images/**"
-      - ".github/workflows/**"
-      - "repository/pluginmaster.json"
       - "sources/**"
+      - ".github/workflows/**"
   pull_request:
-    branches:
-      - main
+    paths:
+      - "tools/catalog/**"
+      - "tools/security/**"
+      - "tools/tests/**"
+      - "sources/**"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: read
-
-concurrency:
-  group: omega-regression-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   python:
-    name: Python and workflow regression tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - name: Run Python unit and workflow contract tests
+      - name: Run security-services Python regression suite
         run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
-      - name: Run SQLite catalog integration self-test
-        run: python tools/catalog/test_sqlite_catalog.py
-      - name: Run Sigmascope deterministic self-test
-        run: python tools/catalog/sigmascope.py --self-test
-      - name: Run Sigmascope hardening self-test
-        run: python tools/catalog/sigmascope.py --hardening-self-test
-      - name: Run database compactor self-test
-        run: python tools/catalog/compact_sqlite_catalog.py --self-test
-      - name: Run marketplace projection self-test
-        run: python tools/catalog/project_marketplace_catalog.py --self-test
-
-  dotnet:
-    name: Omega .NET regression suite
-    runs-on: windows-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: "10.0.x"
-      - name: Download current Dalamud runtime
-        shell: pwsh
+      - name: Run SigmaScope scanner self-tests
         run: |
-          $dalamudHome = Join-Path $env:APPDATA 'XIVLauncher\addon\Hooks\dev'
-          New-Item -ItemType Directory -Force -Path $dalamudHome | Out-Null
-          Invoke-WebRequest 'https://goatcorp.github.io/dalamud-distrib/stg/latest.zip' -OutFile 'dalamud.zip'
-          Expand-Archive 'dalamud.zip' -DestinationPath $dalamudHome -Force
-          Remove-Item 'dalamud.zip'
-      - name: Stage validated current catalog bootstrap
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          python tools/catalog/stage_catalog_bootstrap.py
-          --repository "${{ github.repository }}"
-          --branch "${{ github.event.repository.default_branch }}"
-          --output catalog/bootstrap/omega-catalog.sqlite.zip
-      - name: Build and run Omega regression suite
-        run: dotnet build .\Omega.sln -c Release
+          python tools/catalog/sigmascope.py --self-test
+          python tools/catalog/sigmascope.py --hardening-self-test
+      - name: Run production pipeline self-test
+        run: python tools/security/production_sigmascope_v2_pipeline.py --self-test
+      - name: Run legacy projection compatibility self-tests
+        run: |
+          python tools/catalog/compact_sqlite_catalog.py --self-test
+          python tools/catalog/project_marketplace_catalog.py --self-test

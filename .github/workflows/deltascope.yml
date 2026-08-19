@@ -1,0 +1,53 @@
+name: DeltaScope developer audit
+
+on:
+  workflow_call:
+    inputs:
+      strict_warnings:
+        type: boolean
+        required: false
+        default: false
+  workflow_dispatch:
+    inputs:
+      strict_warnings:
+        description: "Fail the audit on warnings as well as failures"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Checkout published Security Evidence v2 read-only
+        uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Run DeltaScope read-only audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(audit --evidence-v2 catalog/security-v2-current --no-download --json)
+          if [ "${{ inputs.strict_warnings || false }}" = "true" ]; then args+=(--strict-warnings); fi
+          python tools/security/deltascope.py "${args[@]}" > deltascope-audit.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: deltascope-developer-audit
+          path: deltascope-audit.json
+          if-no-files-found: warn
+          retention-days: 30
