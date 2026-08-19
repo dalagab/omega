@@ -227,13 +227,18 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
       - name: Materialize compatible previous canonical JSON as normalization seed
+        id: previous_catalog
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
+          echo "present=false" >> "$GITHUB_OUTPUT"
+          echo "compatible=false" >> "$GITHUB_OUTPUT"
           if [ -f catalog/previous-state/catalog/index.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
             if python tools/catalog/catalog_json_store.py identity-compatible \
               --root catalog/previous-state/catalog > catalog/previous-seed-identity.json; then
+              echo "compatible=true" >> "$GITHUB_OUTPUT"
               python tools/catalog/catalog_json_store.py materialize \
                 --root catalog/previous-state/catalog \
                 --database catalog/seed/omega-catalog.sqlite
@@ -275,9 +280,13 @@ jobs:
             --curated sources/curated-sources.json
             --community sources/community-sources.json
             --aliases sources/source-url-aliases.json
-            --previous-catalog-root catalog/previous-state/catalog
             --report catalog/source-inventory.json
           )
+          if [ "${{ steps.previous_catalog.outputs.compatible }}" = "true" ]; then
+            args+=(--previous-catalog-root catalog/previous-state/catalog)
+          elif [ "${{ steps.previous_catalog.outputs.present }}" = "true" ]; then
+            echo "::notice::Skipping only historical source-retention comparison for the incompatible pre-migration catalog identity epoch; current discovery/configuration/canonical coverage remains fail-closed."
+          fi
           if [ "${{ inputs.allow_source_removal || false }}" = "true" ]; then args+=(--allow-source-removal); fi
           python tools/catalog/source_inventory_guard.py "${args[@]}"
       - name: Observe public source HEAD revisions without fetching source bodies
