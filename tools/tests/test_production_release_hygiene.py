@@ -86,9 +86,13 @@ class ProductionReleaseHygieneTests(unittest.TestCase):
         self.assertIn('- ".omega/**"', regression_workflow)
 
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("Build Omega", readme)
+        self.assertIn("## I am a developer", readme)
+        self.assertIn("Omega.RegressionTests/", readme)
+        self.assertIn("tools/catalog/", readme)
+        self.assertIn("tools/security/", readme)
+        self.assertIn("SECURITY.md", readme)
+        self.assertIn("CHANGELOG.md", readme)
         self.assertIn("Sigmascope", readme)
-        self.assertIn(".omega/index.json", readme)
         self.assertNotIn("Install-OmegaRepository.ps1", readme)
 
         security_policy = (ROOT / "SECURITY.md").read_text(encoding="utf-8")

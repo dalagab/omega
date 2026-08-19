@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import closing
 from pathlib import Path
 import io
+import hashlib
 import json
 import shutil
 import sqlite3
@@ -656,6 +657,30 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertFalse((legacy_index.get("revisions") or {}).get("catalogIdentityEpoch"))
             self.assertEqual(1, int((legacy_index.get("counts") or {}).get("currentVariants") or 0))
 
+            # Reproduce the live pre-epoch branch condition: transport hashes are
+            # internally consistent, but the legacy plugins-index summary no longer
+            # matches the canonical variant payload. A clean epoch reset must be able
+            # to discard this state instead of trying to validate/inherit it.
+            plugins_entry = legacy_index["indexes"]["plugins"]
+            plugins_path = legacy_evidence / str(plugins_entry["path"])
+            plugins_doc = json.loads(plugins_path.read_text(encoding="utf-8"))
+            self.assertTrue(plugins_doc["currentVariants"])
+            plugins_doc["currentVariants"][0]["summary"] = {"status": "stale-legacy-summary"}
+            plugins_bytes = (json.dumps(plugins_doc, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
+            plugins_path.write_bytes(plugins_bytes)
+            plugins_entry["bytes"] = len(plugins_bytes)
+            plugins_entry["sha256"] = hashlib.sha256(plugins_bytes).hexdigest()
+            (legacy_evidence / "index.json").write_text(
+                json.dumps(legacy_index, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            stale_validation = validate_snapshot(legacy_evidence, require_no_orphans=False)
+            self.assertFalse(stale_validation["ok"])
+            self.assertTrue(
+                any("plugins index summary mismatch" in error for error in stale_validation.get("errors") or []),
+                stale_validation,
+            )
+
             # The clean canonical epoch deliberately starts from catalog identity only.
             base = root / "base.sqlite"
             shutil.copy2(database, base)
@@ -743,6 +768,10 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                  patch("production_sigmascope_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=fake_collect):
                 result = run_pipeline(args)
 
+            self.assertTrue(result["baseline"]["ok"])
+            self.assertTrue(result["baseline"]["discarded"])
+            self.assertFalse(result["baseline"]["validated"])
+            self.assertEqual("catalog_identity_epoch_changed", result["baseline"]["reason"])
             self.assertTrue(result["materialized"]["baselineSecurityRebuild"])
             self.assertFalse(result["materialized"]["evidenceInherited"])
             self.assertEqual(0, result["materialized"]["currentVariantsMaterialized"])
@@ -761,6 +790,48 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertEqual(catalog_json_store.IDENTITY_EPOCH, provenance["catalogIdentityEpoch"])
             self.assertTrue(provenance["baselineSecurityRebuild"])
             self.assertEqual("baseline_scan", provenance["primaryReason"])
+
+            # The same immutable daily seed still says this was a baseline generation.
+            # That flag is provenance, not a command to erase the newly published
+            # same-epoch evidence every 15 minutes. The next worker must inherit the
+            # first scan and completed queue state rather than lease it again.
+            second_args = SimpleNamespace(**vars(args))
+            second_args.current_evidence = root / "candidate"
+            second_args.candidate_evidence = root / "candidate-2"
+            second_args.work_dir = root / "work-2"
+            with patch("production_sigmascope_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=fake_collect):
+                second = run_pipeline(second_args)
+
+            self.assertFalse(second["materialized"]["baselineSecurityRebuild"])
+            self.assertTrue(second["materialized"]["queueSeedRequestedBaseline"])
+            self.assertTrue(second["materialized"]["evidenceInherited"])
+            self.assertEqual(1, second["materialized"]["currentVariantsMaterialized"])
+            self.assertEqual({}, second["queue"]["leased"], "completed baseline target must not be leased again")
+            self.assertEqual(1, int((second["queue"]["summary"].get("states") or {}).get("complete") or 0))
+
+            # Conversely, same-epoch evidence is authoritative and remains fail-closed.
+            # Only an incompatible epoch is eligible for the intentional discard path.
+            invalid_same_epoch = root / "invalid-same-epoch"
+            shutil.copytree(root / "candidate-2", invalid_same_epoch)
+            invalid_index = json.loads((invalid_same_epoch / "index.json").read_text(encoding="utf-8"))
+            invalid_plugins_entry = invalid_index["indexes"]["plugins"]
+            invalid_plugins_path = invalid_same_epoch / str(invalid_plugins_entry["path"])
+            invalid_plugins_doc = json.loads(invalid_plugins_path.read_text(encoding="utf-8"))
+            invalid_plugins_doc["currentVariants"][0]["summary"] = {"status": "same-epoch-corruption"}
+            invalid_plugins_bytes = (json.dumps(invalid_plugins_doc, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
+            invalid_plugins_path.write_bytes(invalid_plugins_bytes)
+            invalid_plugins_entry["bytes"] = len(invalid_plugins_bytes)
+            invalid_plugins_entry["sha256"] = hashlib.sha256(invalid_plugins_bytes).hexdigest()
+            (invalid_same_epoch / "index.json").write_text(
+                json.dumps(invalid_index, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            invalid_args = SimpleNamespace(**vars(args))
+            invalid_args.current_evidence = invalid_same_epoch
+            invalid_args.candidate_evidence = root / "candidate-invalid"
+            invalid_args.work_dir = root / "work-invalid"
+            with self.assertRaisesRegex(RuntimeError, "published Security Evidence v2 baseline failed intrinsic validation"):
+                run_pipeline(invalid_args)
 
     def test_osv_gate_rejects_candidate_when_exact_nuget_versions_are_not_queried(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-osv-gate-") as td:

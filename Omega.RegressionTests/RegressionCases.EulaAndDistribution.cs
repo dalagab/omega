@@ -101,9 +101,13 @@ internal static partial class RegressionCases
         Contains(websiteScraper, ".omega/index.json", "daily enrichment still consumes Omega's scrapeable repository metadata");
 
         var readme = File.ReadAllText(Path.Combine(Root, "README.md"));
-        Contains(readme, "Build Omega", "lean production README documents the application build");
-        Contains(readme, "Sigmascope", "lean production README documents Sigmascope tooling");
-        Contains(readme, ".omega/index.json", "lean production README documents scrapeable Omega metadata");
+        Contains(readme, "## I am a developer", "lean production README keeps an obvious developer entry point");
+        Contains(readme, "Omega.RegressionTests/", "lean production README points developers at the executable regression suite");
+        Contains(readme, "tools/catalog/", "lean production README points developers at catalog tooling");
+        Contains(readme, "tools/security/", "lean production README points developers at Sigmascope/security tooling");
+        Contains(readme, "SECURITY.md", "lean production README points developers at the security architecture");
+        Contains(readme, "CHANGELOG.md", "lean production README points developers at development and release changes");
+        Contains(readme, "Sigmascope", "lean production README explains Sigmascope to users");
         DoesNotContain(readme, "Install-OmegaRepository.ps1", "lean production README does not resurrect the retired installer path");
 
         var securityPolicy = File.ReadAllText(Path.Combine(Root, "SECURITY.md"));

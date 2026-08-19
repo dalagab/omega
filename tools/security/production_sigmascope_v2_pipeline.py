@@ -988,11 +988,15 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     work_dir.mkdir(parents=True, exist_ok=True)
     publication.mkdir(parents=True, exist_ok=True)
 
-    initial_validation = validate_snapshot(current_evidence, require_no_orphans=False)
-    if not initial_validation.get("ok"):
-        raise RuntimeError("published Security Evidence v2 baseline failed intrinsic validation: " + "; ".join(initial_validation.get("errors") or []))
+    # Read only the root pointer first. The full published-evidence validator is
+    # intentionally deferred until after we know whether this queue starts a new
+    # catalog identity epoch. An incompatible epoch is disposable input: none of
+    # its variant IDs or security payloads may be inherited, so stale legacy
+    # per-variant summaries must not prevent the clean baseline from starting.
     previous_index = read_json_file(current_evidence, "index.json")
     previous_index_sha = sha256_file(current_evidence / "index.json")
+    if previous_index.get("schema") != SCHEMA:
+        raise RuntimeError(f"unsupported published Security Evidence v2 schema: {previous_index.get('schema')!r}")
 
     queue_seed_arg = getattr(args, "queue_seed", None)
     queue_seed_path = queue_seed_arg.resolve() if queue_seed_arg else None
@@ -1007,9 +1011,34 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
 
     queue_identity_epoch = str(preloaded_queue_seed.get("catalogIdentityEpoch") or "")
     previous_identity_epoch = str((previous_index.get("revisions") or {}).get("catalogIdentityEpoch") or "")
-    baseline_security_rebuild = bool(preloaded_queue_seed.get("baselineSecurityRebuild")) or bool(
+    # The immutable daily seed records that this catalog generation began a clean
+    # security baseline, but the destructive reset itself is one-shot. Once Evidence
+    # v2 has been published with the same identity epoch, later 15-minute workers must
+    # inherit that evidence and mutable queue progress instead of restarting the
+    # baseline for the rest of the day.
+    queue_seed_requested_baseline = bool(preloaded_queue_seed.get("baselineSecurityRebuild"))
+    baseline_security_rebuild = bool(
         queue_identity_epoch and previous_identity_epoch != queue_identity_epoch
     )
+
+    if baseline_security_rebuild:
+        initial_validation = {
+            "schema": "omega.security-evidence.discarded-baseline.v1",
+            "ok": True,
+            "validated": False,
+            "discarded": True,
+            "reason": "catalog_identity_epoch_changed",
+            "previousCatalogIdentityEpoch": previous_identity_epoch,
+            "catalogIdentityEpoch": queue_identity_epoch,
+            "errors": [],
+        }
+    else:
+        initial_validation = validate_snapshot(current_evidence, require_no_orphans=False)
+        if not initial_validation.get("ok"):
+            raise RuntimeError(
+                "published Security Evidence v2 baseline failed intrinsic validation: "
+                + "; ".join(initial_validation.get("errors") or [])
+            )
 
     work_database = work_dir / "omega-security-v2-working.sqlite"
     materialized = materialize_current_state(
@@ -1018,6 +1047,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     materialized["catalogIdentityEpoch"] = queue_identity_epoch
     materialized["previousEvidenceIdentityEpoch"] = previous_identity_epoch
     materialized["baselineSecurityRebuild"] = baseline_security_rebuild
+    materialized["queueSeedRequestedBaseline"] = queue_seed_requested_baseline
     before_current = _current_rows(work_database)
 
     queue_state: dict[str, Any] | None = None
@@ -1204,7 +1234,16 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         variant_ids=set(successful),
         source_context={"mode": "production-incremental-v2", "previousIndexSha256": previous_index_sha},
     )
-    _copy_evidence_tree(current_evidence, candidate)
+    if baseline_security_rebuild:
+        # Start the new identity epoch from an empty evidence tree. Copying the
+        # incompatible legacy snapshot would reintroduce the exact numeric-ID
+        # ambiguity the epoch boundary exists to prevent, and could also carry
+        # stale transport summaries into candidate validation.
+        if candidate.exists():
+            shutil.rmtree(candidate)
+        candidate.mkdir(parents=True, exist_ok=True)
+    else:
+        _copy_evidence_tree(current_evidence, candidate)
     _merge_successful_subset(candidate, subset)
     sync_report = synchronize_candidate(candidate, work_database, set(successful))
 

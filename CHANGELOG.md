@@ -4,6 +4,13 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
+<sub>work build: 0.9.27</sub>
+- Let a deliberate catalog identity-epoch reset discard incompatible legacy Security Evidence before full per-variant intrinsic validation; same-epoch evidence remains fail-closed.
+- Start baseline Evidence v2 candidates from an empty tree instead of copying the legacy snapshot, preventing stale summaries or colliding numeric IDs from leaking into the new generation.
+- Reproduce the live legacy `plugins index summary mismatch` condition in regression coverage and prove the first baseline worker still establishes the new epoch.
+- Make the destructive baseline reset one-shot by catalog identity epoch: the immutable daily seed may keep recording `baselineSecurityRebuild`, but later 15-minute workers inherit same-epoch evidence and completed queue state instead of restarting the baseline all day.
+- Align Python and Windows/C# production-hygiene contracts with the simplified user-facing README while retaining explicit developer pointers to tests, catalog/security tooling, `SECURITY.md`, and `CHANGELOG.md`.
+
 <sub>work build: 0.9.26</sub>
 - Treat the new canonical catalog as an explicit identity epoch so a from-zero database rebuild cannot accidentally attach legacy Sigmascope evidence by colliding numeric plugin/variant IDs.
 - When the evidence epoch is incompatible, compile Omega with no inherited detailed security rows and seed the one-item scanner queue with explicit `baseline_scan` work; the first successful worker establishes the new Evidence v2 epoch.
