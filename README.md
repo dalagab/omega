@@ -57,6 +57,10 @@ Its job is to collect useful evidence — things like dependencies, capabilities
 
 **https://dalagab.github.io/omega/**
 
+## Support
+
+For installation help, questions, feedback, or corrections, join the [Omega Discord](https://discord.gg/mnZecFy82).
+
 
 ## I am a developer
 
