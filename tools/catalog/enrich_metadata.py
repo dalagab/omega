@@ -112,10 +112,18 @@ def http_get(
             body = resp.read(max_bytes + 1)
             if len(body) > max_bytes:
                 raise ValueError(f"PluginMaster response exceeds {max_bytes} bytes")
-            return int(resp.status), body, {k.lower(): v for k, v in resp.headers.items()}
+            response_headers = {k.lower(): v for k, v in resp.headers.items()}
+            # Internal metadata only: record the final URL after validated redirects so the
+            # source-inventory guard can recognize an observed feed migration without making
+            # its own network request. The synthetic key cannot collide with a normal HTTP
+            # header used by the catalog pipeline.
+            response_headers["x-omega-resolved-url"] = str(resp.geturl() or url)
+            return int(resp.status), body, response_headers
     except urllib.error.HTTPError as exc:
         if exc.code == 304:
-            return 304, b"", {k.lower(): v for k, v in exc.headers.items()}
+            response_headers = {k.lower(): v for k, v in exc.headers.items()}
+            response_headers["x-omega-resolved-url"] = str(exc.geturl() or url)
+            return 304, b"", response_headers
         raise
 
 
@@ -211,10 +219,11 @@ def fetch_source(
         return _record(source, ok=False, error=f"{type(exc).__name__}: {exc}")
     etag = headers.get("etag") or str(cached.get("etag") or "")
     last_modified = headers.get("last-modified") or str(cached.get("last_modified") or "")
+    resolved_url = str(headers.get("x-omega-resolved-url") or source.get("url") or "")
     if status == 304:
         return _record(
             source, ok=True, error=None, notModified=True, etag=etag, lastModified=last_modified,
-            contentSha256=str(cached.get("content_sha256") or ""),
+            contentSha256=str(cached.get("content_sha256") or ""), resolvedUrl=resolved_url,
         )
     try:
         data = _loads_pluginmaster_json(body.decode("utf-8-sig", errors="replace"))
@@ -229,6 +238,7 @@ def fetch_source(
     return _record(
         source, ok=True, error=None, plugins=plugins, pluginCount=len(plugins),
         etag=etag, lastModified=last_modified, contentSha256=hashlib.sha256(body).hexdigest(),
+        resolvedUrl=resolved_url,
     )
 
 
@@ -243,9 +253,11 @@ def _record(
     etag: str = "",
     lastModified: str = "",
     contentSha256: str = "",
+    resolvedUrl: str = "",
 ) -> dict:
     return {
         "url": source["url"],
+        "resolvedUrl": resolvedUrl,
         "provider": source.get("provider"),
         "kind": source.get("kind"),
         "discoveredBy": source.get("discoveredBy"),

@@ -207,6 +207,7 @@ internal static partial class RegressionCases
 
         var builder = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
         Contains(builder, "source_inventory_guard.py", "daily catalog job fail-closes if discovery or normalization silently loses known source URLs");
+        Contains(builder, "--aliases sources/source-url-aliases.json", "source retention accepts only explicit feed migrations/aliases in addition to successful observed redirects");
         Contains(builder, "source-inventory.json", "validated source coverage is published with catalog-data for developer inspection");
         Contains(builder, "compile_marketplace_snapshot.py", "daily catalog job compiles the client database from canonical state");
         Contains(builder, "validate_marketplace_catalog.py --root catalog/client-dist", "daily catalog job validates the exact client database before publication");

@@ -81,6 +81,7 @@ internal static partial class RegressionCases
             "images/omega-banner.png",
             "catalog/catalog-endpoint.json",
             "sources/curated-sources.json",
+            "sources/source-url-aliases.json",
             "tools/catalog/sigmascope.py",
             "tools/security/production_sigmascope_v2_pipeline.py",
             ".github/workflows/regression-tests.yml",

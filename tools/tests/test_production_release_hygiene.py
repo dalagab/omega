@@ -47,6 +47,7 @@ class ProductionReleaseHygieneTests(unittest.TestCase):
             "catalog/catalog-endpoint.json",
             "sources/curated-sources.json",
             "sources/community-sources.json",
+            "sources/source-url-aliases.json",
             "sources/source-overrides.json",
             "repository/pluginmaster.json",
             "repository/pluginmaster.template.json",

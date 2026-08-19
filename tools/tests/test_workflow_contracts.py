@@ -30,6 +30,7 @@ class WorkflowContractTests(unittest.TestCase):
             "identity-compatible",
             "legacy/incompatible identity epoch",
             "source_inventory_guard.py",
+            "--aliases sources/source-url-aliases.json",
             "--report catalog/source-inventory.json",
             "Observe public source HEAD revisions without fetching source bodies",
             "source_revision_observer.py",

@@ -524,6 +524,21 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertEqual(0, row["pluginCount"])
         self.assertIn("Non-JSON response:", row["error"])
 
+    def test_enrichment_records_successfully_followed_feed_redirect(self) -> None:
+        source = {"url": "https://example.invalid/old.json", "provider": "Example"}
+        resolved = "https://cdn.example.invalid/current.json"
+        body = json.dumps([{
+            "Author": "Omega", "Name": "Example", "InternalName": "Example",
+            "AssemblyVersion": "1.0.0", "DalamudApiLevel": 15,
+        }]).encode("utf-8")
+        with mock.patch.object(
+            enrich_metadata, "http_get",
+            return_value=(200, body, {"x-omega-resolved-url": resolved}),
+        ):
+            row = enrich_metadata.fetch_source(source)
+        self.assertTrue(row["ok"])
+        self.assertEqual(resolved, row["resolvedUrl"])
+
     def test_conditional_manifest_304_preserves_cache_metadata(self) -> None:
         source = {"url": "https://example.invalid/repo.json", "provider": "Example"}
         cache = {source["url"]: {"etag": '"abc"', "last_modified": "yesterday", "content_sha256": "deadbeef"}}

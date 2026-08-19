@@ -4,7 +4,9 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
-<sub>work build: 0.9.35</sub>
+<sub>work build: 0.9.36</sub>
+- Buildfix4 hardens the canonical source-retention guard for identity migrations: explicitly declared feed URL aliases and redirects successfully observed during the current enrichment pass can satisfy retention without treating arbitrary repository paths as equivalent; ambiguous aliases still fail closed and the manual source-removal override remains narrow.
+- Record each successfully followed PluginMaster redirect as `resolvedUrl` in enrichment evidence and ship an audited Omega legacy-feed alias from the historical raw-main URL to the generated `omega-latest` feed.
 - Upgrade Sigmascope to 2.9.0 and replace GitHub source ZIP/archive inspection with immutable commit/tree metadata plus selected Git blob retrieval; no repository archive is downloaded.
 - Replace generic public-Git shallow-clone fallback with strict `blob:none` partial fetches, no checkout, and lazy selected-blob hydration; refuse servers that ignore object filtering rather than silently downloading complete source bodies.
 - Add complete `sourceAnalysisCache` transport records to Security Evidence v2 with source revision/root, source-analysis revision, scanner version, and canonical payload SHA-256 validation.
