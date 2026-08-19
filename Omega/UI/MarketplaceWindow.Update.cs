@@ -236,6 +236,121 @@ internal sealed partial class MarketplaceWindow
         DrawRepositoryName(name, sourceUrl, official: false, currentApi: currentApi);
     }
 
+    private void StartUpdateAll(
+        IReadOnlyDictionary<string, IExposedPlugin> installed,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
+        if (updateAllActive || updateTask is not null || updateAllDefinitionsTask is not null || updates.IsRefreshing)
+            return;
+
+        updateAllQueue.Clear();
+        updateAllCompleted = 0;
+        updateAllFailed = 0;
+        updateAllSkippedMigrations = 0;
+        updateAllDefinitionsPending = updates.DefinitionsUpdateAvailable;
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var displayed in catalog.GetMainProjection(currentApi).Plugins.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!seen.Add(displayed.InternalName) || !installed.TryGetValue(displayed.InternalName, out var installedPlugin))
+                continue;
+            var candidate = GetAvailableUpdateCandidate(displayed.InternalName, installedPlugin, currentApi, currentDalamudVersion);
+            if (candidate is null)
+                continue;
+            if (IsRepositoryMigration(installedPlugin, candidate))
+            {
+                updateAllSkippedMigrations++;
+                continue;
+            }
+            updateAllQueue.Enqueue(candidate);
+        }
+
+        updateAllTotal = updateAllQueue.Count + (updateAllDefinitionsPending ? 1 : 0);
+        if (updateAllTotal == 0)
+        {
+            operationMessage = updateAllSkippedMigrations > 0
+                ? $"{updateAllSkippedMigrations} update{(updateAllSkippedMigrations == 1 ? string.Empty : "s")} require repository migration review; use the individual update buttons."
+                : "Everything is already current.";
+            return;
+        }
+
+        updateAllActive = true;
+        operationMessage = $"Updating 0/{updateAllTotal}…";
+        StartNextUpdateAllStep();
+    }
+
+    private void StartNextUpdateAllStep()
+    {
+        if (!updateAllActive || updateTask is not null || updateAllDefinitionsTask is not null)
+            return;
+
+        if (updateAllQueue.Count > 0)
+        {
+            var plugin = updateAllQueue.Dequeue();
+            updatingInternalName = plugin.InternalName;
+            operationMessage = $"Updating {Math.Min(updateAllCompleted + 1, updateAllTotal)}/{updateAllTotal}: {plugin.Name}…";
+            updateTask = installer.UpdateAsync(
+                plugin,
+                FindConfiguredSource(plugin.SourceUrl),
+                configuration.PreferTestingBuilds);
+            return;
+        }
+
+        if (updateAllDefinitionsPending)
+        {
+            updateAllDefinitionsPending = false;
+            operationMessage = $"Updating {Math.Min(updateAllCompleted + 1, updateAllTotal)}/{updateAllTotal}: Omega Definitions…";
+            updateAllDefinitionsTask = updates.ApplyDefinitionsUpdateAsync();
+            return;
+        }
+
+        FinishUpdateAll();
+    }
+
+    private void CompleteUpdateAllDefinitionsTaskIfReady()
+    {
+        if (updateAllDefinitionsTask is null || !updateAllDefinitionsTask.IsCompleted)
+            return;
+
+        try
+        {
+            updateAllDefinitionsTask.GetAwaiter().GetResult();
+            updateAllCompleted++;
+            if (!string.IsNullOrWhiteSpace(updates.LastOnlineError) || updates.DefinitionsUpdateAvailable)
+                updateAllFailed++;
+        }
+        catch (Exception ex)
+        {
+            updateAllCompleted++;
+            updateAllFailed++;
+            Plugin.Log.Warning(ex, "Omega Update all could not apply Definitions");
+        }
+        finally
+        {
+            updateAllDefinitionsTask = null;
+            sidebarCatalogRevision = -1;
+            filterCatalogRevision = -1;
+        }
+
+        StartNextUpdateAllStep();
+    }
+
+    private void FinishUpdateAll()
+    {
+        var succeeded = Math.Max(0, updateAllCompleted - updateAllFailed);
+        var summary = $"Update all finished: {succeeded}/{updateAllTotal} succeeded";
+        if (updateAllFailed > 0)
+            summary += $", {updateAllFailed} failed";
+        if (updateAllSkippedMigrations > 0)
+            summary += $". {updateAllSkippedMigrations} repository migration{(updateAllSkippedMigrations == 1 ? string.Empty : "s")} still require individual review";
+        operationMessage = summary + ".";
+        updateAllActive = false;
+        updateAllDefinitionsPending = false;
+        updateAllQueue.Clear();
+        updateAllTotal = 0;
+    }
+
     private void StartSelectedUpdate(MarketplacePlugin plugin)
     {
         if (updateTask is not null)
@@ -274,10 +389,21 @@ internal sealed partial class MarketplaceWindow
             operationMessage = result.Message;
             if (result.Success && !string.IsNullOrWhiteSpace(updatingInternalName) && !string.IsNullOrWhiteSpace(result.NewSourceUrl))
                 selectedVariantSource[updatingInternalName] = result.NewSourceUrl;
+            if (updateAllActive)
+            {
+                updateAllCompleted++;
+                if (!result.Success)
+                    updateAllFailed++;
+            }
         }
         catch (Exception ex)
         {
             operationMessage = $"Update failed: {ex.GetBaseException().Message}";
+            if (updateAllActive)
+            {
+                updateAllCompleted++;
+                updateAllFailed++;
+            }
         }
         finally
         {
@@ -286,6 +412,9 @@ internal sealed partial class MarketplaceWindow
             sidebarCatalogRevision = -1;
             filterCatalogRevision = -1;
         }
+
+        if (updateAllActive)
+            StartNextUpdateAllStep();
     }
 
     private void CloseUpdateMigration()

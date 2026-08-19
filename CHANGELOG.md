@@ -4,7 +4,16 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
-## [0.9.21] - 2026-08-18
+<sub>work build: 0.9.23</sub>
+- Count Discover by stable catalog plugin identity, so one plugin mirrored by ten repositories is still one plugin in the rail and catalog status count while all ten source variants remain available.
+- Carry the stable SQLite `plugin_id` into runtime marketplace variants, with InternalName fallback for legacy and live Dalamud overlays.
+- Promote Deltascope's exact-base Sigmascope overlays: prioritize completed plugins whose declared source has not yet been reviewed, publish bounded/redacted network endpoint evidence, publish bounded presentation context, and add an explicit OSV query-coverage ledger to Security Evidence v2.
+- Keep the standalone Deltascope application and its continuous 15-minute backfill launcher/workflow out of the production client base for now; those remain developer/operator tooling rather than Omega runtime requirements.
+
+<sub>work build: 0.9.22</sub>
+- Make the changelog icon beside an offered plugin version open a compact update-focused popup showing the changelog entries newer than the installed version.
+- Add an `Update all` action at the top of Updates & downloads for compatible same-repository plugin updates plus pending Omega Definitions. Repository migrations remain individual so source/security differences are never bypassed.
+- Move pending Definitions updates into the normal update list as a restrained cyan row instead of a prominent header banner.
 
 <sub>work build: 0.9.21</sub>
 - Repair the GitHub Actions Windows/.NET regression gate by staging and validating `omega-catalog.sqlite.zip` from the authoritative `omega-sqlite-catalog` catalog-builder artifact before `dotnet build`.

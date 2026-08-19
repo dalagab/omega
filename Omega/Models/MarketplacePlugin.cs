@@ -9,6 +9,9 @@ public sealed class MarketplacePlugin
     public IReadOnlyList<string> EffectiveAuthors => Authors.Count > 0 ? Authors : MarketplaceAuthorRules.Split(Author);
     public string Name { get; init; } = string.Empty;
     public string InternalName { get; init; } = string.Empty;
+    // Stable catalog identity shared by every repository variant of the same plugin.
+    // Zero means the plugin came from a legacy JSON/live Dalamud overlay without a database id.
+    public long CatalogPluginId { get; init; }
     public string Punchline { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public string Changelog { get; init; } = string.Empty;

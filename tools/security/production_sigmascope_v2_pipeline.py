@@ -413,6 +413,77 @@ def _identity_maps(db: sqlite3.Connection) -> tuple[dict[int, dict[str, Any]], d
     return plugins, variants, sources
 
 
+def _presentation_by_variant(db: sqlite3.Connection, variants: dict[int, dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    websites: dict[str, dict[str, Any]] = {}
+    if table_exists(db, "websites"):
+        for row in db.execute("""
+            SELECT url,title,description,homepage,readme_excerpt,image_urls_json,links_json,omega_banner_url
+              FROM websites WHERE ok=1
+        """):
+            website = normalize_row(row)
+            url = str(website.get("url") or "").casefold()
+            if url:
+                websites[url] = website
+
+    presentation_rows: dict[int, dict[str, Any]] = {}
+    if table_exists(db, "presentation"):
+        presentation_rows = {
+            int(row["plugin_id"]): normalize_row(row)
+            for row in db.execute("""
+                SELECT plugin_id,rich_card,web_enriched,official,nsfw,richness_score,
+                       image_urls_json,summary,description
+                  FROM presentation
+            """)
+        }
+
+    images: dict[int, list[dict[str, Any]]] = {}
+    if table_exists(db, "plugin_images"):
+        for row in db.execute("""
+            SELECT variant_id,url,image_kind,ordinal,source_kind
+              FROM plugin_images ORDER BY variant_id,ordinal,image_id
+        """):
+            image = normalize_row(row)
+            variant_id = int(image.get("variant_id") or 0)
+            if variant_id:
+                images.setdefault(variant_id, []).append({
+                    "url": str(image.get("url") or ""),
+                    "kind": str(image.get("image_kind") or ""),
+                    "source": str(image.get("source_kind") or ""),
+                })
+
+    result: dict[int, dict[str, Any]] = {}
+    for variant_id, variant in variants.items():
+        repository = str(variant.get("repo_url") or "")
+        website = websites.get(repository.casefold())
+        presentation = presentation_rows.get(int(variant.get("plugin_id") or 0), {})
+        result[variant_id] = {
+            "schema": "omega.evidence.presentation.v1",
+            "projectRepository": repository,
+            "website": {
+                "url": str((website or {}).get("url") or ""),
+                "title": str((website or {}).get("title") or ""),
+                "description": str((website or {}).get("description") or ""),
+                "homepage": str((website or {}).get("homepage") or ""),
+                "readmeExcerpt": str((website or {}).get("readme_excerpt") or ""),
+                "images": list((website or {}).get("image_urls_json") or [])[:12],
+                "links": list((website or {}).get("links_json") or [])[:24],
+                "omegaBannerUrl": str((website or {}).get("omega_banner_url") or ""),
+            },
+            "plugin": {
+                "richCard": bool(presentation.get("rich_card")),
+                "webEnriched": bool(presentation.get("web_enriched")),
+                "official": bool(presentation.get("official")),
+                "nsfw": bool(presentation.get("nsfw")),
+                "richnessScore": int(presentation.get("richness_score") or 0),
+                "summary": str(presentation.get("summary") or ""),
+                "description": str(presentation.get("description") or ""),
+                "images": list(presentation.get("image_urls_json") or [])[:12],
+            },
+            "images": images.get(variant_id, [])[:24],
+        }
+    return result
+
+
 DERIVED_DATASETS: dict[str, str] = {
     "dependencyResolutions": "dependency-resolutions",
     "dependencyIssues": "dependency-issues",
@@ -444,6 +515,7 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
         db.row_factory = sqlite3.Row
         active = _active_variant_ids(db)
         plugins, variants, sources = _identity_maps(db)
+        presentation = _presentation_by_variant(db, variants)
         current_rows = {int(row["variant_id"]): dict(row) for row in db.execute("SELECT * FROM plugin_security_current")}
         variant_paths = sorted((candidate / "variants").rglob("*.json")) if (candidate / "variants").exists() else []
         for path in variant_paths:
@@ -464,6 +536,7 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
             payload["plugin"] = plugins.get(plugin_id)
             payload["variant"] = variant
             payload["source"] = sources.get(source_id)
+            payload["presentation"] = presentation.get(variant_id, {})
             # Older published v2 snapshots may still contain the full legacy
             # report_json in both scan and current rows.  Compact every active
             # descriptor during synchronization so one successful run repairs the
@@ -644,7 +717,7 @@ def _semantic_security_revision(db: sqlite3.Connection) -> str:
     return f"sec-{safe_version}-{digest[:16]}"
 
 
-def _evidence_revision(candidate: Path, index_entries: dict[str, dict[str, Any]]) -> str:
+def _evidence_revision(candidate: Path, index_entries: dict[str, dict[str, Any]], osv_coverage: dict[str, Any]) -> str:
     variants = []
     for path in sorted((candidate / "variants").rglob("*.json")):
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -656,17 +729,35 @@ def _evidence_revision(candidate: Path, index_entries: dict[str, dict[str, Any]]
             "artifactSha256": str(analysis.get("artifactSha256") or current.get("artifact_sha256") or "").lower(),
             "scannerVersion": str(current.get("scanner_version") or ""),
             "status": str(current.get("status") or ""),
+            "presentation": payload.get("presentation") if isinstance(payload.get("presentation"), dict) else {},
         })
     semantic_indexes = {
         name: str(entry.get("sha256") or "")
         for name, entry in sorted(index_entries.items())
         if name in {"nuget", "ipc", "dependencyComponents", "advisories"}
     }
-    digest = sha256_bytes(canonical_json_bytes({"schema": "omega.security-evidence.revision.v2", "variants": variants, "indexes": semantic_indexes}))
+    digest = sha256_bytes(canonical_json_bytes({
+        "schema": "omega.security-evidence.revision.v2",
+        "variants": variants,
+        "indexes": semantic_indexes,
+        "osvCoverage": {
+            "inputPackageVersionPairs": int(osv_coverage.get("inputPackageVersionPairs") or 0),
+            "expectedQueryPackageVersionPairs": int(osv_coverage.get("expectedQueryPackageVersionPairs") or 0),
+            "queriedPackageVersionPairs": int(osv_coverage.get("queriedPackageVersionPairs") or 0),
+            "matchedPackageVersionPairs": int(osv_coverage.get("matchedPackageVersionPairs") or 0),
+            "advisoryRecords": int(osv_coverage.get("advisoryRecords") or 0),
+        },
+    }))
     return f"ev-v2-{digest[:16]}"
 
 
-def rebuild_candidate_indexes(candidate: Path, database: Path, previous_index: dict[str, Any], scan_context: dict[str, Any]) -> dict[str, Any]:
+def rebuild_candidate_indexes(
+    candidate: Path,
+    database: Path,
+    previous_index: dict[str, Any],
+    scan_context: dict[str, Any],
+    osv_coverage: dict[str, Any],
+) -> dict[str, Any]:
     candidate.mkdir(parents=True, exist_ok=True)
     (candidate / "indexes").mkdir(exist_ok=True)
     with closing(sqlite3.connect(database)) as db:
@@ -691,7 +782,7 @@ def rebuild_candidate_indexes(candidate: Path, database: Path, previous_index: d
             row = db.execute("SELECT value FROM catalog_meta WHERE key IN ('catalog_base_revision','base_revision') ORDER BY CASE key WHEN 'catalog_base_revision' THEN 0 ELSE 1 END LIMIT 1").fetchone()
             base_revision = str(row[0] or "") if row else ""
         security_revision = _semantic_security_revision(db)
-        evidence_revision = _evidence_revision(candidate, indexes)
+        evidence_revision = _evidence_revision(candidate, indexes, osv_coverage)
         catalog_revision = catalog_revisions.compute_catalog_revision(db, base_revision, security_revision)
         for key, value in (
             ("security_revision", security_revision),
@@ -722,6 +813,7 @@ def rebuild_candidate_indexes(candidate: Path, database: Path, previous_index: d
             "scannerVersion": sigmascope.SCANNER_VERSION,
             "previousIndexSha256": scan_context.get("previousIndexSha256", ""),
             "scan": scan_context,
+            "osv": osv_coverage,
         },
         "revisions": {
             "baseRevision": base_revision,
@@ -982,7 +1074,20 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "maxScans": args.max_scans,
         "rescanAfterHours": args.rescan_after_hours,
     }
-    root_index = rebuild_candidate_indexes(candidate, work_database, previous_index, scan_context)
+    osv_coverage = {
+        "schema": "omega.security-evidence.osv-coverage.v1",
+        "source": "OSV",
+        "ecosystem": "NuGet",
+        "generatedAtUtc": str(advisory_report.get("generatedAtUtc") or ""),
+        "inputPackageVersionPairs": observed_nuget_pairs,
+        "expectedQueryPackageVersionPairs": expected_osv,
+        "queriedPackageVersionPairs": queried_osv,
+        "matchedPackageVersionPairs": int(advisory_report.get("matchedPackages") or 0),
+        "advisoryRecords": len(advisory_report.get("advisories") or []),
+        "notQueriedByLimit": max(0, observed_nuget_pairs - expected_osv),
+        "queryGate": "pass" if (not expected_osv or queried_osv >= expected_osv) else "fail",
+    }
+    root_index = rebuild_candidate_indexes(candidate, work_database, previous_index, scan_context, osv_coverage)
     snapshot_validation = validate_snapshot(candidate, require_no_orphans=True)
     write_json(candidate / "validation-report.json", snapshot_validation)
     if not snapshot_validation.get("ok"):

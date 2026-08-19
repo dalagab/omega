@@ -142,6 +142,12 @@ internal sealed partial class MarketplaceWindow
         Version currentDalamudVersion)
     {
         ImGui.Spacing();
+        if (updates.DefinitionsUpdateAvailable)
+        {
+            DrawDefinitionsUpdateRow();
+            ImGui.Spacing();
+        }
+
         foreach (var plugin in plugins)
         {
             if (!installed.TryGetValue(plugin.InternalName, out var installedPlugin))
@@ -518,6 +524,111 @@ internal sealed partial class MarketplaceWindow
         return enabled && clicked;
     }
 
+    private void DrawUpdatesToolbar(
+        IReadOnlyDictionary<string, IExposedPlugin> installed,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
+        var (automaticPluginUpdates, migrations) = CountUpdateAllCandidates(installed, currentApi, currentDalamudVersion);
+        var definitions = updates.DefinitionsUpdateAvailable ? 1 : 0;
+        var actionable = automaticPluginUpdates + definitions;
+        var busy = updateAllActive || updateTask is not null || updateAllDefinitionsTask is not null || updates.IsRefreshing;
+        var buttonWidth = Ui(118f);
+        var rightEdge = ImGui.GetWindowContentRegionMax().X;
+
+        ImGui.SameLine();
+        ImGui.SetCursorPosX(Math.Max(ImGui.GetCursorPosX() + Ui(16f), rightEdge - buttonWidth));
+        if (busy || actionable == 0)
+            ImGui.BeginDisabled();
+        var label = updateAllActive
+            ? $"Updating {Math.Min(updateAllCompleted, updateAllTotal)}/{updateAllTotal}…"
+            : "Update all";
+        if (DrawRoundedButton(label, "updates-update-all", new Vector2(buttonWidth, Ui(32f))) && !busy && actionable > 0)
+            StartUpdateAll(installed, currentApi, currentDalamudVersion);
+        if (busy || actionable == 0)
+            ImGui.EndDisabled();
+
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+        {
+            var tooltip = actionable > 0
+                ? $"Update {automaticPluginUpdates} plugin{(automaticPluginUpdates == 1 ? string.Empty : "s")}{(definitions > 0 ? " and Omega Definitions" : string.Empty)}."
+                : "No automatic updates are currently available.";
+            if (migrations > 0)
+                tooltip += $" {migrations} repository migration{(migrations == 1 ? string.Empty : "s")} require individual review and will not be moved silently.";
+            ImGui.SetTooltip(tooltip);
+        }
+    }
+
+    private (int Automatic, int Migrations) CountUpdateAllCandidates(
+        IReadOnlyDictionary<string, IExposedPlugin> installed,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
+        var automatic = 0;
+        var migrations = 0;
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var displayed in catalog.GetMainProjection(currentApi).Plugins)
+        {
+            if (!seen.Add(displayed.InternalName) || !installed.TryGetValue(displayed.InternalName, out var installedPlugin))
+                continue;
+            var candidate = GetAvailableUpdateCandidate(displayed.InternalName, installedPlugin, currentApi, currentDalamudVersion);
+            if (candidate is null)
+                continue;
+            if (IsRepositoryMigration(installedPlugin, candidate))
+                migrations++;
+            else
+                automatic++;
+        }
+        return (automatic, migrations);
+    }
+
+    private void DrawDefinitionsUpdateRow()
+    {
+        var rowHeight = Ui(72f);
+        var rowWidth = Math.Max(Ui(420f), ImGui.GetContentRegionAvail().X);
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.025f, 0.105f, 0.115f, 0.48f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.08f, 0.34f, 0.36f, 0.42f));
+        ImGui.BeginChild("definitions-update-row", new Vector2(rowWidth, rowHeight), true,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+
+        var iconSize = Ui(38f);
+        ImGui.SetCursorPos(new Vector2(Ui(10f), MarketplaceLayoutRules.CenterY(rowHeight, iconSize)));
+        var iconMin = ImGui.GetCursorScreenPos();
+        ImGui.Dummy(new Vector2(iconSize, iconSize));
+        ImGui.PushFont(UiBuilder.IconFontFixedWidth);
+        var glyph = FontAwesomeIcon.Download.ToIconString();
+        var glyphSize = ImGui.CalcTextSize(glyph);
+        ImGui.GetWindowDrawList().AddText(
+            iconMin + (new Vector2(iconSize, iconSize) - glyphSize) * 0.5f,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(0.45f, 0.82f, 0.84f, 0.90f)),
+            glyph);
+        ImGui.PopFont();
+
+        ImGui.SameLine(0f, Ui(10f));
+        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, ImGui.GetTextLineHeightWithSpacing() * 2f));
+        ImGui.BeginGroup();
+        ImGui.TextUnformatted("Omega Definitions");
+        var current = string.IsNullOrWhiteSpace(catalog.CatalogRevision) ? "current" : catalog.CatalogRevision;
+        var available = string.IsNullOrWhiteSpace(updates.AvailableDefinitionsRevision) ? "new revision" : updates.AvailableDefinitionsRevision;
+        ImGui.TextDisabled($"{Shorten(current, 30)} → {Shorten(available, 30)}");
+        ImGui.EndGroup();
+
+        var actionSize = Ui(38f);
+        ImGui.SameLine();
+        ImGui.SetCursorPos(new Vector2(
+            MarketplaceLayoutRules.RightAlignedX(ImGui.GetWindowContentRegionMax().X, actionSize),
+            MarketplaceLayoutRules.CenterY(rowHeight, actionSize)));
+        var canUpdate = !updates.IsRefreshing && !updateAllActive && updateAllDefinitionsTask is null && updateTask is null;
+        if (DrawUpdateActionIcon("definitions-update-action", canUpdate, "Update Omega Definitions"))
+        {
+            operationMessage = "Updating Definitions…";
+            _ = ApplyDefinitionsUpdateFromUiAsync();
+        }
+
+        ImGui.EndChild();
+        ImGui.PopStyleColor(2);
+    }
+
     private void DrawUpdateRow(
         MarketplacePlugin plugin,
         IExposedPlugin installedPlugin,
@@ -558,7 +669,7 @@ internal sealed partial class MarketplaceWindow
             if (BuildChangelogEntries(updateVariant).Count > 0)
             {
                 ImGui.SameLine(0f, 5f);
-                DrawInlineChangelogButton(updateVariant, $"update-changelog-{StableId(plugin.InternalName)}");
+                DrawInlineChangelogButton(updateVariant, $"update-changelog-{StableId(plugin.InternalName)}", installedPlugin.Version);
             }
             ImGui.SameLine(0f, 6f);
             ImGui.TextDisabled(Shorten($"•  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}", 44));

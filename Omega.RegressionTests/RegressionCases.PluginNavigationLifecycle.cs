@@ -318,6 +318,8 @@ internal static partial class RegressionCases
         var changelog = File.ReadAllText(Path.Combine(Root, "CHANGELOG.md"));
 
         Contains(library, "DrawInlineChangelogButton", "Updates exposes changelog access beside the offered version");
+        Contains(library, "installedPlugin.Version", "update changelog popup receives the installed version so it can focus on what changed");
+        Contains(content, "UiModalSize(360f, 140f)", "inline update changelog stays a compact popup instead of opening the full product page");
         Contains(content, "DrawProductChangelog", "product pages render changelog history");
         Contains(content, "DrawProductUsage", "product pages render how-to-use information");
         Contains(usage, "how to use", "usage extraction recognizes explicit how-to headings");

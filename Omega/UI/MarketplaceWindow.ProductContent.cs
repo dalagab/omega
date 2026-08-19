@@ -92,9 +92,16 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextDisabled($"{entries.Count - maximumEntries} older changelog entr{(entries.Count - maximumEntries == 1 ? "y" : "ies")} retained in Definitions.");
     }
 
-    private bool DrawInlineChangelogButton(MarketplacePlugin plugin, string id)
+    private bool DrawInlineChangelogButton(MarketplacePlugin plugin, string id, Version? installedVersion = null)
     {
         var entries = BuildChangelogEntries(plugin);
+        if (installedVersion is not null)
+        {
+            var updateEntries = entries.Where(entry =>
+                !Version.TryParse(entry.VersionText, out var version) || version > installedVersion).ToArray();
+            if (updateEntries.Length > 0)
+                entries = updateEntries;
+        }
         if (entries.Count == 0)
             return false;
 
@@ -110,12 +117,14 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("View update changelog");
 
-        ImGui.SetNextWindowSizeConstraints(UiModalSize(420f, 180f), UiModalSize(760f, 620f));
+        ImGui.SetNextWindowSizeConstraints(UiModalSize(360f, 140f), UiModalSize(540f, 390f));
         if (ImGui.BeginPopup($"{id}-popup"))
         {
             ImGui.TextUnformatted($"{plugin.Name} changelog");
+            if (installedVersion is not null)
+                ImGui.TextDisabled($"Installed v{installedVersion} → v{plugin.AssemblyVersion}");
             ImGui.Separator();
-            DrawChangelogEntries(entries, maximumEntries: 12);
+            DrawChangelogEntries(entries, maximumEntries: 6);
             ImGui.EndPopup();
         }
         return true;

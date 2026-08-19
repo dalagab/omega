@@ -235,6 +235,9 @@ internal sealed class SqliteCatalogStore
         var adultContentProjection = runtimeColumns.Contains("plugin_nsfw")
             ? "plugin_nsfw"
             : "0 AS plugin_nsfw";
+        var catalogPluginIdProjection = runtimeColumns.Contains("plugin_id")
+            ? "plugin_id"
+            : "0 AS plugin_id";
         var automationLevelProjection = runtimeColumns.Contains("security_automation_level")
             ? "security_automation_level"
             : "'none' AS security_automation_level";
@@ -285,7 +288,7 @@ internal sealed class SqliteCatalogStore
                    dip17_channel,source_name,source_url,source_is_official,website_url,website_title,
                    website_description,{websiteReadmeProjection},website_image_urls_json,website_enriched,{adultContentProjection},
                    {securityProjection},
-                   {authorsProjection},{websiteLinksProjection},{omegaBannerProjection}
+                   {authorsProjection},{websiteLinksProjection},{omegaBannerProjection},{catalogPluginIdProjection}
               FROM runtime_plugin_variants;
             """;
         using var reader = command.ExecuteReader();
@@ -355,6 +358,7 @@ internal sealed class SqliteCatalogStore
                 Authors = ReadStrings(GetString(reader, 58, "[]")),
                 OmegaProjectLinks = ReadProjectLinks(GetString(reader, 59, "[]")),
                 OmegaBannerUrl = GetString(reader, 60),
+                CatalogPluginId = GetLong(reader, 61),
             });
         }
         return result;

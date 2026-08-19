@@ -174,10 +174,10 @@ internal sealed partial class MarketplaceWindow
             ? BuildLibraryProjection(mainProjection.Plugins, installed)
             : mainProjection.Plugins;
         var filtered = GetFilteredPlugins(shelfPlugins, installed, currentApi, currentDalamudVersion);
-        if (filtered.Length == 0)
+        if (filtered.Length == 0 && !(activeView == MarketplaceView.Updates && updates.DefinitionsUpdateAvailable))
         {
             ImGui.Text(activeView == MarketplaceView.Updates
-                ? "All installed plugins are current in Omega's Definitions."
+                ? "All installed plugins and Omega Definitions are current."
                 : "No plugins match this shelf.");
             if (DrawPillButton("Reset filters", "empty-reset-filters", Ui(132f, 32f), false))
             {

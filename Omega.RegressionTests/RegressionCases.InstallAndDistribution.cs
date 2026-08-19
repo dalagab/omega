@@ -50,8 +50,8 @@ internal static partial class RegressionCases
         Contains(ui, "updates.CheckForUpdatesAsync()", "Settings update check delegates to the Definitions coordinator");
         Contains(ui, "##omega-about-version", "version remains visible and clickable at the icon-rail footer");
         Contains(ui, "OpenAbout()", "clicking the footer version opens About");
-        Contains(ui, "DrawDefinitionsUpdateBanner();", "Updates page renders a Definitions update notice at its content header");
-        Contains(ui, "Definitions update available", "pending Definitions state is clearly named for the user");
+        Contains(ui, "DrawDefinitionsUpdateRow();", "Updates page renders Definitions as a normal update-list row");
+        Contains(ui, "Omega Definitions", "pending Definitions state is clearly named for the user");
         Contains(ui, "counts.Updates + applicationUpdateCount + definitionsUpdateCount", "Updates destination count includes plugin, Omega and Definitions updates");
         Contains(ui, "notificationCount: counts.Updates + applicationUpdateCount", "Definitions updates do not inflate the red numeric badge");
         Contains(ui, "definitionsAttention: updates.DefinitionsUpdateAvailable", "Definitions updates use the dedicated blue exclamation marker");
@@ -65,12 +65,15 @@ internal static partial class RegressionCases
         Contains(ui, "DrawInlineMarketplaceFilters(currentApi)", "full filter editor is hidden until Filters is expanded");
         var contentFlow = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.cs"));
         var filtersAt = contentFlow.IndexOf("DrawSearchAndCategoryButtons(currentApi)", StringComparison.Ordinal);
-        var headerAt = contentFlow.IndexOf("DrawContentHeader(versionInfo.Version, currentApi)", StringComparison.Ordinal);
+        var headerAt = contentFlow.IndexOf("DrawContentHeader(versionInfo.Version, currentApi, installed)", StringComparison.Ordinal);
         var libraryTabsAt = contentFlow.IndexOf("DrawLibraryTabs(installed.Count)", StringComparison.Ordinal);
         True(filtersAt >= 0 && headerAt > filtersAt && libraryTabsAt > headerAt, "Filters must be the top content control before page headings and Library controls");
         var chromeSource = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
         var updateBanner = Capture(chromeSource, @"private void DrawApplicationUpdateBanner\(\)\s*\{([\s\S]*?)\r?\n    \}");
         Contains(updateBanner, "ImGuiStyleVar.ChildRounding, Ui(4f)", "Omega update notice uses a compact square-cornered panel");
+        Contains(ui, "updates-update-all", "Updates & downloads exposes Update all at the top of the page");
+        Contains(ui, "repository migration", "Update all preserves individual review for repository migrations");
+        Contains(ui, "definitions-update-row", "Definitions updates use the same list vocabulary as plugin updates");
         Contains(ui, "DrawSelectedFilterPills()", "active filter pills remain visible while the editor is collapsed");
         Contains(ui, "omega-inline-filters", "expanded filters render in the owning content panel rather than a modal");
         Contains(filters, "CalculateInlineFilterPanelHeight()", "Discover and Library derive inline filter height from the responsive layout");

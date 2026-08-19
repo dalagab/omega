@@ -130,6 +130,20 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
                 "counts": {"informational": 1, "caution": 2, "high": 0, "critical": 0},
                 "capabilities": ["Network access", "Filesystem access"],
                 "automation": {"level": "ui", "capabilities": [{"id": "fixture", "label": "Fixture"}]},
+                "dependencyIntelligence": {
+                    "networkEndpoints": [
+                        {
+                            "url": "https://api.example.invalid/v1/status",
+                            "host": "api.example.invalid",
+                            "origin": "artifact",
+                            "classification": "unrecognised-host",
+                            "purpose": "unrecognised public host",
+                            "severity": "caution",
+                            "reason": "forensic detail that should stay normalized elsewhere",
+                            "evidence": ["fixture"],
+                        }
+                    ]
+                },
             }
             encoded = json.dumps(huge_report, separators=(",", ":"))
             with closing(sqlite3.connect(database)) as db:
@@ -160,6 +174,16 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
                 self.assertEqual(report["highestSeverity"], "caution")
                 self.assertEqual(report["counts"], {"informational": 1, "caution": 2, "high": 0, "critical": 0})
                 self.assertEqual(report["capabilities"], ["Network access", "Filesystem access"])
+                self.assertEqual(
+                    report["intelligence"]["networkEndpoints"],
+                    [{
+                        "url": "https://api.example.invalid/v1/status",
+                        "host": "api.example.invalid",
+                        "origin": "artifact",
+                        "classification": "unrecognised-host",
+                        "purpose": "unrecognised public host",
+                    }],
+                )
             report = validate(database, output)
             self.assertTrue(report["ok"], report)
             intrinsic = validate_snapshot(output)

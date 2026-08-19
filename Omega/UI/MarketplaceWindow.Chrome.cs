@@ -48,13 +48,15 @@ internal sealed partial class MarketplaceWindow
         Version currentDalamudVersion)
     {
         RefreshCollectionsIfNeeded();
-        var mainPlugins = catalog.GetMainProjection(currentApi).Plugins;
+        var mainProjection = catalog.GetMainProjection(currentApi);
+        var mainPlugins = mainProjection.Plugins;
+        var discoverPluginCount = MarketplaceCatalogRules.CountUniquePlugins(mainProjection.Variants);
         var counts = GetSidebarCounts(mainPlugins, installed, currentApi, currentDalamudVersion);
 
         // Keep the primary destinations visually attached to the top application bar.
         ImGui.Dummy(Ui(0f, 6f));
         DrawSidebarViewIcon(MarketplaceView.Spotlight, FontAwesomeIcon.Star, "Spotlight", 0);
-        DrawSidebarViewIcon(MarketplaceView.Discover, FontAwesomeIcon.Search, "Discover", mainPlugins.Count);
+        DrawSidebarViewIcon(MarketplaceView.Discover, FontAwesomeIcon.Search, "Discover", discoverPluginCount);
         DrawSidebarFooter(counts);
     }
 
@@ -222,14 +224,17 @@ internal sealed partial class MarketplaceWindow
         return clicked;
     }
 
-    private void DrawContentHeader(Version dalamudVersion, int currentApi)
+    private void DrawContentHeader(
+        Version dalamudVersion,
+        int currentApi,
+        IReadOnlyDictionary<string, IExposedPlugin> installed)
     {
         ImGui.TextUnformatted(ViewTitle(activeView));
 
         if (activeView == MarketplaceView.Updates)
         {
+            DrawUpdatesToolbar(installed, currentApi, dalamudVersion);
             DrawApplicationUpdateBanner();
-            DrawDefinitionsUpdateBanner();
         }
 
         if (ShouldDrawOperationStatus())
@@ -242,8 +247,9 @@ internal sealed partial class MarketplaceWindow
     {
         if (string.IsNullOrWhiteSpace(operationMessage))
             return false;
-        if (installTask is not null || updateTask is not null || uninstallTask is not null || repositoryTask is not null ||
-            collectionOperationTask is not null || configBackupTask is not null || updates.IsRefreshing || selfUpdates.IsChecking)
+        if (installTask is not null || updateTask is not null || updateAllActive || updateAllDefinitionsTask is not null ||
+            uninstallTask is not null || repositoryTask is not null || collectionOperationTask is not null ||
+            configBackupTask is not null || updates.IsRefreshing || selfUpdates.IsChecking)
             return true;
 
         var message = operationMessage.ToLowerInvariant();
@@ -275,33 +281,6 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
     }
 
-    private void DrawDefinitionsUpdateBanner()
-    {
-        if (!updates.DefinitionsUpdateAvailable)
-            return;
-
-        ImGui.Spacing();
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.035f, 0.16f, 0.17f, 0.72f));
-        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.10f, 0.58f, 0.54f, 0.72f));
-        ImGui.BeginChild("definitions-update-banner", new Vector2(0f, Ui(78f)), true,
-            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        ImGui.TextUnformatted("Definitions update available");
-        if (!string.IsNullOrWhiteSpace(updates.AvailableDefinitionsRevision))
-            ImGui.TextDisabled($"New Definitions: {updates.AvailableDefinitionsRevision}");
-        else
-            ImGui.TextDisabled("A newer marketplace Definitions package is ready.");
-
-        ImGui.SameLine(Math.Max(Ui(340f), ImGui.GetWindowWidth() - Ui(190f)));
-        if (ImGui.Button(updates.IsRefreshing ? "Updating…" : "Update Definitions") && !updates.IsRefreshing)
-        {
-            operationMessage = "Updating Definitions…";
-            _ = ApplyDefinitionsUpdateFromUiAsync();
-        }
-        ImGui.EndChild();
-        ImGui.PopStyleColor(2);
-        ImGui.Spacing();
-    }
-
     private void DrawCatalogStatus(int currentApi)
     {
         if (!catalog.HasLoaded)
@@ -309,7 +288,11 @@ internal sealed partial class MarketplaceWindow
         else if (!catalog.MatchesConfiguredSources(configuration.Repositories))
             ImGui.TextDisabled("Some enabled custom sources are not loaded — check for updates from Settings");
         else if (catalog.LastRefresh is not null)
-            ImGui.TextDisabled($"{catalog.GetMainProjection(currentApi).Plugins.Count} plugins • {catalog.CachedRepositoryCount} Definitions sources • {updates.ModeLabel} • checked {catalog.LastRefresh.Value.LocalDateTime:t}");
+        {
+            var projection = catalog.GetMainProjection(currentApi);
+            var uniquePluginCount = MarketplaceCatalogRules.CountUniquePlugins(projection.Variants);
+            ImGui.TextDisabled($"{uniquePluginCount} plugins • {catalog.CachedRepositoryCount} Definitions sources • {updates.ModeLabel} • checked {catalog.LastRefresh.Value.LocalDateTime:t}");
+        }
 
         if (!string.IsNullOrWhiteSpace(catalog.LastError))
         {

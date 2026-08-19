@@ -154,8 +154,8 @@ internal static partial class RegressionCases
         }
 
         var ui = ReadMarketplaceWindowSource();
-        Contains(ui, "Definitions update available", "Updates page advertises pending Definitions at the top");
-        Contains(ui, "Update Definitions", "Updates page exposes the explicit Definitions apply action");
+        Contains(ui, "definitions-update-row", "Updates page advertises pending Definitions inside the update list");
+        Contains(ui, "Update Omega Definitions", "Updates page exposes the explicit Definitions apply action");
         Contains(ui, "##omega-about-version", "version footer is the About entry point");
         Contains(ui, "(versionAvailable - versionButtonSize.X) * 0.5f", "version footer is centered in the application rail");
         Contains(ui, "About Omega", "version footer opens the product-focused About popup");

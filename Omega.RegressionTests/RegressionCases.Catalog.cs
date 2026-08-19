@@ -104,6 +104,8 @@ internal static partial class RegressionCases
         Contains(source, "ReplaceFromBundle", "online bundle atomically replaces database");
         Contains(source, "Pooling = false", "read-only validation connections cannot retain Windows file handles");
         Contains(source, "runtime_plugin_variants", "runtime reads normalized SQLite view");
+        Contains(source, "catalogPluginIdProjection", "runtime imports stable SQLite plugin identity for cross-repository Discover counting");
+        Contains(source, "CatalogPluginId = GetLong(reader, 61)", "runtime variants retain their canonical database plugin id");
         Contains(source, "ValidateRuntimeSnapshot(candidate)", "downloaded database is fully readable before it can replace the last-known-good catalog");
         Contains(source, "ReadChangelogEntryCount", "runtime reads embedded catalog changelog identity without requiring a second format");
         Contains(source, "128L * 1024 * 1024", "runtime extracted marketplace database ceiling remains bounded well below the detailed evidence database size");

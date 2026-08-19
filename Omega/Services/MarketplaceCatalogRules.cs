@@ -27,6 +27,37 @@ internal static class MarketplaceCatalogRules
         return new MarketplaceCatalogProjection(merged, visibleVariants);
     }
 
+
+    /// <summary>
+    /// Count logical plugins, not repository/source variants. SQLite-backed rows use the
+    /// canonical plugins.id value. Live/legacy overlays are counted by InternalName, except
+    /// when that InternalName already belongs to a SQLite plugin represented in the same view.
+    /// </summary>
+    public static int CountUniquePlugins(IEnumerable<MarketplacePlugin> candidates)
+    {
+        var visible = candidates.Where(x => !x.IsHide).ToArray();
+        var databaseNames = visible
+            .Where(x => x.CatalogPluginId > 0)
+            .Select(x => (x.InternalName ?? string.Empty).Trim())
+            .Where(x => x.Length > 0)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var databasePlugins = visible
+            .Where(x => x.CatalogPluginId > 0)
+            .Select(x => x.CatalogPluginId)
+            .Distinct()
+            .Count();
+
+        var overlayOnlyPlugins = visible
+            .Where(x => x.CatalogPluginId <= 0)
+            .Select(x => (x.InternalName ?? string.Empty).Trim())
+            .Where(x => x.Length > 0 && !databaseNames.Contains(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+
+        return databasePlugins + overlayOnlyPlugins;
+    }
+
     public static IReadOnlyList<MarketplacePlugin> GetVariants(
         IEnumerable<MarketplacePlugin> candidates,
         string internalName)

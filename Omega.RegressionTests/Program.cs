@@ -22,6 +22,7 @@ var tests = new (string Name, Action Body)[]
     ("unmaintained threshold is three API levels", TestUnmaintainedThreshold),
     ("repository stale rule hides only fully unmaintained repositories", TestRepositoryStaleRule),
     ("duplicate repository variants remain available", TestDuplicateVariantRetention),
+    ("Discover counts logical plugins rather than repository variants", TestDiscoverCountsUniqueCatalogPlugins),
     ("stable API badge aggregates repository variants", TestStableApiVariantAggregation),
     ("official source wins storefront projection", TestOfficialVariantWinsProjection),
     ("highest community version wins without official source", TestHighestCommunityVersionWinsProjection),

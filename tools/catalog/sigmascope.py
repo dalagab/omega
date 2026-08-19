@@ -4442,7 +4442,13 @@ def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: s
           JOIN sources s ON s.source_id=v.source_id
           LEFT JOIN plugin_security_current sc ON sc.variant_id=v.variant_id
          WHERE v.active=1 AND p.active=1 AND (v.download_link_install<>'' OR v.download_link_testing<>'')
-         ORDER BY CASE WHEN sc.scan_id IS NULL THEN 0 WHEN sc.status<>'complete' THEN 1 ELSE 2 END,
+         ORDER BY CASE
+                    WHEN sc.scan_id IS NULL THEN 0
+                    WHEN sc.status<>'complete' THEN 1
+                    WHEN COALESCE(sc.source_available,0)=0
+                         AND (sc.source_repository<>'' OR v.repo_url<>'' OR s.source_repo_url<>'') THEN 2
+                    ELSE 3
+                  END,
                   COALESCE(sc.scanned_at_utc,''), p.internal_name COLLATE NOCASE, s.name COLLATE NOCASE
     """).fetchall()
     result = []

@@ -141,6 +141,14 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private string pendingUpdatePreviousSourceUrl = string.Empty;
     private Task<UpdateResult>? updateTask;
     private string updatingInternalName = string.Empty;
+    private readonly Queue<MarketplacePlugin> updateAllQueue = new();
+    private Task? updateAllDefinitionsTask;
+    private bool updateAllActive;
+    private bool updateAllDefinitionsPending;
+    private int updateAllTotal;
+    private int updateAllCompleted;
+    private int updateAllFailed;
+    private int updateAllSkippedMigrations;
     private MarketplacePlugin? pendingUninstall;
     private Task<UninstallResult>? uninstallTask;
     private string uninstallingInternalName = string.Empty;
@@ -299,6 +307,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     {
         CompleteInstallTaskIfReady();
         CompleteUpdateTaskIfReady();
+        CompleteUpdateAllDefinitionsTaskIfReady();
         CompleteUninstallTaskIfReady();
         CompleteRepositoryTaskIfReady();
         CompleteCollectionOperationIfReady();
@@ -354,7 +363,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         }
 
         if (activeView is MarketplaceView.Library or MarketplaceView.Updates)
-            DrawContentHeader(versionInfo.Version, currentApi);
+            DrawContentHeader(versionInfo.Version, currentApi, installed);
 
         if (activeView == MarketplaceView.Library)
             DrawLibraryTabs(installed.Count);

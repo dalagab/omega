@@ -113,6 +113,18 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
         item for item in top_capabilities[:128]
         if isinstance(item, (str, int, float, bool))
     ]
+    endpoint_records = intelligence.get("networkEndpoints") if isinstance(intelligence.get("networkEndpoints"), list) else []
+    compact_endpoints: list[dict[str, str]] = []
+    for endpoint in endpoint_records[:48]:
+        if not isinstance(endpoint, dict):
+            continue
+        compact_endpoints.append({
+            "url": _bounded_text(endpoint.get("url"), 2048),
+            "host": _bounded_text(endpoint.get("host"), 512),
+            "origin": _bounded_text(endpoint.get("origin"), 64),
+            "classification": _bounded_text(endpoint.get("classification"), 128),
+            "purpose": _bounded_text(endpoint.get("purpose"), 512),
+        })
 
     summary = {
         "schema": TRANSPORT_REPORT_SCHEMA,
@@ -162,6 +174,7 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
         "intelligence": {
             "coverage": intelligence.get("coverage") if isinstance(intelligence.get("coverage"), dict) else {},
             "limits": intelligence.get("limits") if isinstance(intelligence.get("limits"), dict) else {},
+            "networkEndpoints": compact_endpoints,
         },
         "error": _bounded_text(row.get("error") or report.get("error") or "", 8192),
     }

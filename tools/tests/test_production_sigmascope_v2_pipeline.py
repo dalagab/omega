@@ -320,8 +320,18 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertTrue((root / "publication" / "omega-marketplace.sqlite").is_file())
             self.assertTrue((root / "publication" / "omega-marketplace.sqlite.zip").is_file())
             self.assertEqual(result["summary"]["nugetPackageVersionPairs"], 1)
+            root_index = json.loads((root / "candidate" / "index.json").read_text(encoding="utf-8"))
+            osv = root_index["source"]["osv"]
+            self.assertEqual(osv["schema"], "omega.security-evidence.osv-coverage.v1")
+            self.assertEqual(osv["inputPackageVersionPairs"], 1)
+            self.assertEqual(osv["expectedQueryPackageVersionPairs"], 1)
+            self.assertEqual(osv["queriedPackageVersionPairs"], 1)
+            self.assertEqual(osv["queryGate"], "pass")
             variant_file = next((root / "candidate" / "variants").rglob("*.json"))
             payload = json.loads(variant_file.read_text(encoding="utf-8"))
+            self.assertEqual(payload["presentation"]["schema"], "omega.evidence.presentation.v1")
+            self.assertIn("projectRepository", payload["presentation"])
+            self.assertIn("plugin", payload["presentation"])
             for name in ("dependencyResolutions", "dependencyIssues", "advisoryMatches"):
                 self.assertNotIn(name, payload.get("derived") or {})
                 descriptor = (payload.get("derivedEvidence") or {}).get(name)

@@ -187,6 +187,63 @@ internal static partial class RegressionCases
         Equal(2, MarketplaceCatalogRules.GetVariants(projection.Variants, "Same").Count, "source chooser sees both variants");
     }
 
+    internal static void TestDiscoverCountsUniqueCatalogPlugins()
+    {
+        var variants = Enumerable.Range(0, 10)
+            .Select(index => new MarketplacePlugin
+            {
+                CatalogPluginId = 42,
+                InternalName = "MirroredPlugin",
+                Name = "Mirrored Plugin",
+                AssemblyVersionText = $"1.0.{index}.0",
+                DalamudApiLevel = 15,
+                SourceName = $"Repository {index + 1}",
+                SourceUrl = $"https://example.invalid/repository-{index + 1}.json",
+            })
+            .Concat(new[]
+            {
+                new MarketplacePlugin
+                {
+                    CatalogPluginId = 77,
+                    InternalName = "AnotherPlugin",
+                    Name = "Another Plugin",
+                    AssemblyVersionText = "1.0.0.0",
+                    DalamudApiLevel = 15,
+                    SourceName = "Another repository",
+                    SourceUrl = "https://example.invalid/another.json",
+                },
+                // A live repository overlay can mirror a SQLite-backed plugin before the next
+                // catalog refresh. It must not inflate the Discover count either.
+                new MarketplacePlugin
+                {
+                    CatalogPluginId = 0,
+                    InternalName = "MirroredPlugin",
+                    Name = "Mirrored Plugin",
+                    AssemblyVersionText = "2.0.0.0",
+                    DalamudApiLevel = 15,
+                    SourceName = "Live overlay",
+                    SourceUrl = "https://example.invalid/live.json",
+                },
+            })
+            .ToArray();
+
+        Equal(2, MarketplaceCatalogRules.CountUniquePlugins(variants), "ten repository rows for one catalog plugin still count as one Discover plugin");
+        var projection = MarketplaceCatalogRules.Project(variants);
+        Equal(2, projection.Plugins.Count, "storefront projection still collapses repository variants by plugin InternalName");
+        Equal(12, projection.Variants.Count, "all repository variants remain available behind the two logical plugins");
+
+        var legacyOverlay = new[]
+        {
+            Plugin("LegacySame", "1.0.0.0", 15, sourceName: "Legacy A"),
+            Plugin("LegacySame", "2.0.0.0", 15, sourceName: "Legacy B"),
+        };
+        Equal(1, MarketplaceCatalogRules.CountUniquePlugins(legacyOverlay), "legacy/live overlays fall back to case-insensitive InternalName identity");
+
+        var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
+        Contains(chrome, "CountUniquePlugins(mainProjection.Variants)", "Discover rail count uses logical plugin identities rather than projected database entry count");
+        Contains(chrome, "CountUniquePlugins(projection.Variants)", "catalog status text uses the same logical plugin count");
+    }
+
     internal static void TestStableApiVariantAggregation()
     {
         var variants = new[]

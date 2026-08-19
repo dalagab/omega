@@ -218,11 +218,11 @@ class UiLayoutContractTests(unittest.TestCase):
         window = (ROOT / "Omega" / "UI" / "MarketplaceWindow.cs").read_text(encoding="utf-8")
         chrome = (ROOT / "Omega" / "UI" / "MarketplaceWindow.Chrome.cs").read_text(encoding="utf-8")
         filters_at = window.index("DrawSearchAndCategoryButtons(currentApi)")
-        header_at = window.index("DrawContentHeader(versionInfo.Version, currentApi)")
+        header_at = window.index("DrawContentHeader(versionInfo.Version, currentApi, installed)")
         library_at = window.index("DrawLibraryTabs(installed.Count)")
         self.assertLess(filters_at, header_at)
         self.assertLess(header_at, library_at)
-        banner = chrome.split("private void DrawApplicationUpdateBanner()", 1)[1].split("private void DrawDefinitionsUpdateBanner()", 1)[0]
+        banner = chrome.split("private void DrawApplicationUpdateBanner()", 1)[1].split("private void DrawCatalogStatus(int currentApi)", 1)[0]
         self.assertIn("ImGuiStyleVar.ChildRounding, Ui(4f)", banner)
 
     def test_marketplace_layout_is_scale_aware_and_responsive_through_200_percent(self):

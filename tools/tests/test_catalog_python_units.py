@@ -774,6 +774,80 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertEqual("Combat Reborn", source_stability.classify_stable_source("Combat Reborn", "https://github.com/FFXIV-CombatReborn/CombatRebornRepo", False).label)
         self.assertIsNone(source_stability.classify_stable_source("Huge community repo", "https://example.invalid/huge.json", False))
 
+    def test_due_scan_order_prioritizes_declared_but_unreviewed_source(self) -> None:
+        with sqlite3.connect(":memory:") as db:
+            db.row_factory = sqlite3.Row
+            db.executescript("""
+                CREATE TABLE plugins(
+                    plugin_id INTEGER PRIMARY KEY,
+                    internal_name TEXT NOT NULL,
+                    active INTEGER NOT NULL
+                );
+                CREATE TABLE sources(
+                    source_id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    url TEXT NOT NULL,
+                    source_repo_url TEXT NOT NULL
+                );
+                CREATE TABLE plugin_variants(
+                    variant_id INTEGER PRIMARY KEY,
+                    plugin_id INTEGER NOT NULL,
+                    source_id INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    author TEXT NOT NULL,
+                    assembly_version TEXT NOT NULL,
+                    testing_assembly_version TEXT,
+                    download_link_install TEXT NOT NULL,
+                    download_link_update TEXT NOT NULL,
+                    download_link_testing TEXT NOT NULL,
+                    repo_url TEXT NOT NULL,
+                    active INTEGER NOT NULL
+                );
+                CREATE TABLE plugin_security_current(
+                    variant_id INTEGER PRIMARY KEY,
+                    scan_id INTEGER,
+                    status TEXT,
+                    source_available INTEGER,
+                    source_repository TEXT,
+                    scanned_at_utc TEXT,
+                    scanner_version TEXT,
+                    artifact_url TEXT,
+                    assembly_version TEXT
+                );
+
+                INSERT INTO plugins VALUES(1,'ReviewedPlugin',1);
+                INSERT INTO plugins VALUES(2,'NeedsSourceReview',1);
+                INSERT INTO sources VALUES(1,'Reviewed repo','https://example.invalid/a.json','https://github.com/example/reviewed');
+                INSERT INTO sources VALUES(2,'Pending repo','https://example.invalid/b.json','https://gitlab.example/pending');
+                INSERT INTO plugin_variants VALUES(
+                    1,1,1,'Reviewed Plugin','Tester','1.0.0',NULL,
+                    'https://example.invalid/reviewed.zip','','','https://github.com/example/reviewed',1
+                );
+                INSERT INTO plugin_variants VALUES(
+                    2,2,2,'Needs Source Review','Tester','1.0.0',NULL,
+                    'https://example.invalid/pending.zip','','','https://gitlab.example/pending',1
+                );
+            """)
+            now = sigmascope.utc_now()
+            db.execute(
+                """INSERT INTO plugin_security_current
+                   VALUES(1,101,'complete',1,'https://github.com/example/reviewed',?,?,?,?)""",
+                (now, sigmascope.SCANNER_VERSION, "https://example.invalid/reviewed.zip", "1.0.0"),
+            )
+            db.execute(
+                """INSERT INTO plugin_security_current
+                   VALUES(2,102,'complete',0,'',?,?,?,?)""",
+                (now, sigmascope.SCANNER_VERSION, "https://example.invalid/pending.zip", "1.0.0"),
+            )
+
+            due = sigmascope.due_rows(db, 1, 0, set())
+            self.assertEqual(1, len(due))
+            self.assertEqual(
+                "NeedsSourceReview",
+                due[0]["internal_name"],
+                "declared source lacking a successful review is selected before routine complete rescans",
+            )
+
     def test_public_advisory_collector_normalizes_osv_matches_for_observed_nuget_versions(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
