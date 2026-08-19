@@ -59,7 +59,7 @@ Its job is to collect useful evidence — things like dependencies, capabilities
 
 ## Support
 
-For installation help, questions, feedback, or corrections, join the [Omega Discord](https://discord.gg/mnZecFy82).
+For installation help, questions, feedback, or corrections, join the [Omega Discord](https://discord.gg/rMBHbJTjp).
 
 
 ## I am a developer
