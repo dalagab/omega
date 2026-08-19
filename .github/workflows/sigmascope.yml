@@ -1,33 +1,13 @@
-name: Omega Sigmascope
+name: Omega Sigmascope continuous worker
 
 on:
-  workflow_run:
-    workflows:
-      - "Omega SQLite catalog builder"
-    types:
-      - completed
   schedule:
-    # Independent bounded Sigmascope revalidation between catalog-driven examinations.
-    - cron: "47 3,15 * * *"
+    # One bounded queue selection every 15 minutes against the day's frozen inputs.
+    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
-      max_scans:
-        description: "Maximum plugin variants for Sigmascope to examine in this run"
-        type: string
-        required: false
-        default: "60"
-      rescan_after_hours:
-        description: "Re-check an unchanged artifact after this many hours"
-        type: string
-        required: false
-        default: "168"
-      max_batch_seconds:
-        description: "Wall-clock budget for starting new Sigmascope examinations (0 disables)"
-        type: string
-        required: false
-        default: "4200"
       internal_names:
-        description: "Optional comma-separated InternalName allow-list for a bounded test run"
+        description: "Optional comma-separated InternalName allow-list for a bounded developer run"
         type: string
         required: false
         default: ""
@@ -38,19 +18,49 @@ concurrency:
 
 jobs:
   scan:
-    name: Stage, audit and publish Sigmascope Security Evidence v2
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    name: Process one Sigmascope candidate against frozen daily inputs
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 75
     permissions:
-      actions: read
       contents: write
       issues: write
     steps:
       - name: Checkout Omega source
         uses: actions/checkout@v6
         with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Checkout frozen catalog and Definitions state
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/active-state
+          fetch-depth: 1
           persist-credentials: false
+      - name: Resolve frozen Definitions source commit
+        id: frozen
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['sourceCommit'])")"
+          catalog_revision="$(python -c "import json; print(json.load(open('catalog/active-state/catalog/index.json'))['catalogRevision'])")"
+          definitions_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['definitionsRevision'])")"
+          rule_set_revision="$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['ruleSetRevision'])")"
+          test -n "$commit"
+          printf 'source_commit=%s\n' "$commit" >> "$GITHUB_OUTPUT"
+          printf 'catalog_revision=%s\n' "$catalog_revision" >> "$GITHUB_OUTPUT"
+          printf 'definitions_revision=%s\n' "$definitions_revision" >> "$GITHUB_OUTPUT"
+          printf 'rule_set_revision=%s\n' "$rule_set_revision" >> "$GITHUB_OUTPUT"
+      - name: Pin scanner code to the daily Definitions commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach "${{ steps.frozen.outputs.source_commit }}"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Verify frozen Definitions still match scanner code
+        run: python tools/catalog/definitions_snapshot.py verify --repo-root . --definitions-root catalog/active-state/definitions
       - name: Checkout last-known-good Security Evidence v2 snapshot
         uses: actions/checkout@v6
         with:
@@ -58,56 +68,41 @@ jobs:
           path: catalog/security-v2-current
           fetch-depth: 1
           persist-credentials: false
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-      - name: Run repository Python regression suite
-        run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
-      - name: Self-test Sigmascope semantics and automation capability detection
-        run: python tools/catalog/sigmascope.py --self-test
-      - name: Run Sigmascope hardening and deterministic projection tests
-        run: python tools/catalog/sigmascope.py --hardening-self-test
-      - name: Self-test production Sigmascope Security Evidence v2 orchestration
-        run: python tools/security/production_sigmascope_v2_pipeline.py --self-test
-      - name: Resolve authoritative catalog handoff with early diagnostics
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          EVENT_NAME: ${{ github.event_name }}
-          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+      - name: Run scanner self-tests
+        run: |
+          python tools/catalog/sigmascope.py --self-test
+          python tools/catalog/sigmascope.py --hardening-self-test
+          python tools/security/production_sigmascope_v2_pipeline.py --self-test
+      - name: Materialize the frozen canonical catalog for this worker
         run: >-
-          python tools/security/sigmascope_handoff.py
-          --event-name "$EVENT_NAME"
-          --repository "$GH_REPO"
-          --upstream-run-id "$UPSTREAM_RUN_ID"
-          --output-dir catalog/security-input
-          --previous-marketplace-dir catalog/previous-marketplace
-          --current-evidence-dir catalog/security-v2-current
-          --diagnostics catalog/sigmascope-handoff-diagnostics.json
-      - name: Stage bounded Sigmascope v2 examination, refresh OSV/IPC/dependencies, and build marketplace candidate
+          python tools/catalog/catalog_json_store.py materialize
+          --root catalog/active-state/catalog
+          --database catalog/security-input/omega-catalog.sqlite
+          --definitions-revision "${{ steps.frozen.outputs.definitions_revision }}"
+      - name: Examine one due variant and build Evidence v2 candidate
         id: v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           python tools/security/production_sigmascope_v2_pipeline.py
           --base-database catalog/security-input/omega-catalog.sqlite
-          --descriptor catalog/security-input/catalog.json
           --current-evidence catalog/security-v2-current
           --candidate-evidence catalog/security-v2-candidate
           --work-dir catalog/security-v2-work
-          --publication-output catalog/publication-output
-          --previous-marketplace-descriptor catalog/previous-marketplace/catalog.json
-          --marketplace-download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-marketplace.sqlite.zip"
+          --skip-marketplace
+          --frozen-advisories catalog/active-state/definitions/osv-advisories.json
+          --catalog-revision "${{ steps.frozen.outputs.catalog_revision }}"
+          --definitions-revision "${{ steps.frozen.outputs.definitions_revision }}"
+          --definitions-source-commit "${{ steps.frozen.outputs.source_commit }}"
+          --rule-set-revision "${{ steps.frozen.outputs.rule_set_revision }}"
+          --queue-seed catalog/active-state/scan-queue.json
           --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json"
-          --max-scans ${{ inputs.max_scans || '60' }}
-          --max-batch-seconds ${{ inputs.max_batch_seconds || '4200' }}
-          --rescan-after-hours ${{ inputs.rescan_after_hours || '168' }}
+          --max-scans 1
+          --max-batch-seconds 3300
+          --rescan-after-hours 168
           --internal-names "${{ inputs.internal_names || '' }}"
           --source-overrides sources/source-overrides.json
           --github-output "$GITHUB_OUTPUT"
-      - name: Validate small client marketplace candidate
-        run: python tools/catalog/validate_marketplace_catalog.py --root catalog/publication-output
       - name: Project public-source coverage follow-ups
         run: >-
           python tools/catalog/sigmascope_source_followups.py
@@ -131,14 +126,11 @@ jobs:
           python tools/security/developer_view.py audit \
             --no-download \
             --database catalog/security-v2-work/omega-security-v2-working.sqlite \
-            --marketplace-database catalog/publication-output/omega-marketplace.sqlite \
             --json > "$audit"
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
-            if [ -s "$audit" ]; then
-              python tools/security/print_sigmascope_audit_failures.py "$audit" --limit 20 || true
-            fi
+            if [ -s "$audit" ]; then python tools/security/print_sigmascope_audit_failures.py "$audit" --limit 20 || true; fi
             exit "$status"
           fi
       - name: Publish validated Security Evidence v2 snapshot atomically
@@ -156,43 +148,16 @@ jobs:
             --snapshot-validation-report catalog/security-v2-candidate/validation-report.json \
             --audit-report catalog/security-v2-work/security-developer-audit.json \
             --push
-      - name: Publish small client marketplace only after all v2 gates pass
-        if: steps.v2.outputs.publish_marketplace == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! gh release view catalog-latest --repo "$GH_REPO" >/dev/null 2>&1; then
-            gh release create catalog-latest --repo "$GH_REPO" --title "Omega marketplace database" \
-              --notes "Small Omega client marketplace catalog. Detailed Sigmascope evidence is stored on the security-evidence-v2 snapshot branch."
-          fi
-          assets=(
-            catalog/publication-output/omega-marketplace.sqlite.zip
-            catalog/publication-output/omega-marketplace.sqlite.zip.sha256
-            catalog/publication-output/catalog.json
-            catalog/publication-output/marketplace-projection-report.json
-          )
-          [ -f catalog/security-input/catalog-report.json ] && assets+=(catalog/security-input/catalog-report.json)
-          gh release upload catalog-latest "${assets[@]}" --repo "$GH_REPO" --clobber
-          # Legacy detailed evidence assets remain untouched as the archived v1 rollback reference.
-      - name: Upload bounded diagnostics
+      - name: Upload worker diagnostics
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: omega-sigmascope-v2-diagnostics
+          name: omega-sigmascope-worker-diagnostics
           path: |
-            # The handoff file is created before catalog download attempts, so even an
-            # early authoritative-catalog failure produces a downloadable diagnostic.
-            catalog/sigmascope-handoff-diagnostics.json
-            # Keep the production batch summary explicit: C# release contracts
-            # require this audit artifact not to depend on a broad diagnostics glob.
             catalog/security-v2-work/production-sigmascope-v2-report.json
             catalog/security-v2-work/*.json
             catalog/security-v2-candidate/index.json
+            catalog/security-v2-candidate/scanner-queue.json
             catalog/security-v2-candidate/validation-report.json
-            catalog/publication-output/catalog.json
-            catalog/publication-output/marketplace-projection-report.json
           if-no-files-found: warn
           retention-days: 30

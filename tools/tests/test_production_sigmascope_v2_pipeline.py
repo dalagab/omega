@@ -23,6 +23,11 @@ for item in (SECURITY, CATALOG):
         sys.path.insert(0, str(item))
 
 import sigmascope
+import scan_queue
+import catalog_json_store
+import compile_marketplace_snapshot
+import definitions_snapshot
+import validate_marketplace_catalog
 import developer_view as developer_view
 from migrate_security_evidence_v2 import migrate
 from production_sigmascope_v2_pipeline import (
@@ -92,6 +97,69 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_scanner_version',?)", (sigmascope.SCANNER_VERSION,))
             db.commit()
         return database, variant_id, plugin_id
+
+    def test_daily_marketplace_compiler_reapplies_frozen_definitions_without_artifact_rescan(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-daily-definitions-projection-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            evidence = root / "evidence"
+            migrate(database, evidence, reset=True)
+            source_index = json.loads((evidence / "index.json").read_text(encoding="utf-8"))
+            source_security_revision = str((source_index.get("revisions") or {}).get("securityRevision") or "")
+
+            catalog_root = root / "catalog"
+            catalog_json_store.export_snapshot(database, catalog_root, source_commit="fixture")
+            advisory_file = root / "today-osv.json"
+            advisory_file.write_text(json.dumps({
+                "schema": "omega.public-advisories.v1",
+                "generatedAtUtc": "2026-08-19T00:00:00Z",
+                "source": "OSV",
+                "ecosystem": "NuGet",
+                "queriedPackages": 1,
+                "matchedPackages": 1,
+                "advisories": [{
+                    "id": "OSV-TODAY",
+                    "componentKind": "nuget",
+                    "name": "Example.Package",
+                    "affectedVersions": ["1.2.3"],
+                    "fixedVersion": "1.2.4",
+                    "severity": "high",
+                    "title": "Today's frozen advisory",
+                    "url": "https://osv.dev/vulnerability/OSV-TODAY",
+                    "source": "OSV",
+                }],
+            }), encoding="utf-8")
+            definitions_root = root / "definitions"
+            definitions = definitions_snapshot.build_snapshot(
+                repo_root=common.ROOT, evidence_root=evidence, output=definitions_root,
+                source_commit="fixture", advisories_input=advisory_file,
+            )
+            output = root / "compiled"
+            result = compile_marketplace_snapshot.build(
+                catalog_root=catalog_root, definitions_root=definitions_root, evidence_root=evidence,
+                output=output, download_url="https://example.invalid/omega-marketplace.sqlite.zip",
+                evidence_index_url="https://example.invalid/security-evidence-v2/index.json",
+            )
+            validation = validate_marketplace_catalog.validate_bytes(
+                (output / "catalog.json").read_bytes(),
+                (output / "omega-marketplace.sqlite.zip").read_bytes(),
+            )
+            self.assertEqual("ok", validation["integrity"])
+
+            with closing(sqlite3.connect(output / "omega-marketplace.sqlite")) as db:
+                row = db.execute(
+                    "SELECT security_known_advisory_count,security_known_advisory_highest_severity FROM runtime_plugin_variants WHERE variant_id=?",
+                    (variant_id,),
+                ).fetchone()
+                self.assertEqual((1, "high"), tuple(row))
+                meta = {str(k): str(v) for k, v in db.execute("SELECT key,value FROM catalog_meta")}
+            self.assertEqual(definitions["definitionsRevision"], meta["definitions_revision"])
+            self.assertEqual(source_security_revision, meta["source_security_revision"])
+            self.assertEqual(result["inputs"]["securityRevision"], meta["security_revision"])
+            self.assertNotEqual(source_security_revision, meta["security_revision"], "today's Definitions-derived advisory projection must have its own truthful security revision")
+            self.assertEqual(0, result["definitionsProjectionRefresh"]["dependencyGraph"]["dependencies"] - 1)
+            # The compiler refreshed derived state only; immutable artifact scan history stayed one row.
+            self.assertEqual(1, result["materializedEvidence"]["currentVariantsMaterialized"])
 
     def test_v2_sqlite_test_connections_are_windows_cleanup_safe(self) -> None:
         # sqlite3.Connection.__exit__ commits/rolls back but does not close the handle.
@@ -430,6 +498,107 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             analysis_path = payload["analysis"]["path"]
             dependency_rows = __import__("security_evidence_v2").read_dataset_rows(root / "candidate", analysis_path, "dependencies")
             self.assertTrue(any(row.get("kind") == "nuget-resolved" and row.get("name") == "Example.Package" and row.get("resolved_version") == "9.8.7" for row in dependency_rows))
+
+
+    def test_persistent_queue_leases_exact_variant_and_records_provenance(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-queue-pipeline-") as td:
+            root = Path(td)
+            database, variant_id, _plugin_id = self.make_catalog_with_security(root)
+            evidence = root / "evidence"
+            migrate(database, evidence, reset=True)
+            base = root / "base.sqlite"
+            shutil.copy2(database, base)
+            with closing(sqlite3.connect(base)) as db:
+                sigmascope.ensure_schema(db)
+                db.execute("PRAGMA foreign_keys=OFF")
+                for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
+                    db.execute(f'DELETE FROM "{row[0]}"')
+                db.execute("PRAGMA foreign_keys=ON")
+                variant = db.execute(
+                    "SELECT v.variant_id,v.plugin_id,v.source_id,p.internal_name,v.name,s.name,v.assembly_version,v.download_link_install "
+                    "FROM plugin_variants v JOIN plugins p ON p.plugin_id=v.plugin_id JOIN sources s ON s.source_id=v.source_id "
+                    "WHERE v.variant_id=?", (variant_id,)
+                ).fetchone()
+                db.commit()
+
+            queue_seed = root / "scan-queue.json"
+            queue_seed.write_text(json.dumps({
+                "schema": scan_queue.SEED_SCHEMA,
+                "queueSeedRevision": "queue-seed-v1-fixture",
+                "catalogRevision": "cat-json-v1-fixture",
+                "definitionsRevision": "defs-v1-fixture",
+                "ruleSetRevision": "rules-v1-fixture",
+                "rescanAfterHours": 168,
+                "counts": {"queued": 1},
+                "items": [{
+                    "queueKey": f"variant-{variant_id}",
+                    "targetFingerprint": "scan-target-v1-fixture",
+                    "variantId": variant_id,
+                    "pluginId": int(variant[1]),
+                    "sourceId": int(variant[2]),
+                    "internalName": str(variant[3]),
+                    "name": str(variant[4]),
+                    "sourceName": str(variant[5]),
+                    "assemblyVersion": str(variant[6]),
+                    "artifactChannel": "stable",
+                    "artifactUrl": str(variant[7]),
+                    "catalogRevision": "cat-json-v1-fixture",
+                    "definitionsRevision": "defs-v1-fixture",
+                    "ruleSetRevision": "rules-v1-fixture",
+                    "reasons": ["rule_set_changed"],
+                    "primaryReason": "rule_set_changed",
+                    "priority": 700,
+                    "currentScanId": 9001,
+                    "currentScannedAtUtc": "2026-08-17T00:00:00Z",
+                    "currentArtifactSha256": "a" * 64,
+                    "enqueuedAtUtc": "2026-08-19T00:00:00Z",
+                }],
+            }), encoding="utf-8")
+
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("fixture.txt", "queue provenance fixture")
+            artifact = buffer.getvalue()
+            args = SimpleNamespace(
+                base_database=base, descriptor=None, current_evidence=evidence,
+                candidate_evidence=root / "candidate", work_dir=root / "work", publication_output=None,
+                previous_marketplace_descriptor=None, marketplace_download_url="",
+                evidence_index_url="https://example.invalid/security-evidence-v2/index.json",
+                source_overrides=common.ROOT / "sources" / "source-overrides.json", max_scans=1,
+                rescan_after_hours=168, max_batch_seconds=0, internal_names="", variant_ids="", skip_source=True,
+                osv_timeout=1.0, max_osv_packages=2000, github_output=None, skip_marketplace=True,
+                frozen_advisories=None, catalog_revision="cat-json-v1-fixture", definitions_revision="defs-v1-fixture",
+                rule_set_revision="rules-v1-fixture", queue_seed=queue_seed,
+            )
+
+            def fake_collect(index_path, output, timeout=20.0, max_packages=2000):
+                import collect_public_advisories
+                packages = collect_public_advisories.observed_nuget_index(Path(index_path), max_packages)
+                document = {
+                    "schema": "omega.public-advisories.v1", "generatedAtUtc": "2026-08-19T00:00:00Z",
+                    "source": "OSV", "ecosystem": "NuGet", "queriedPackages": len(packages),
+                    "matchedPackages": 0, "advisories": [],
+                }
+                Path(output).write_text(json.dumps(document), encoding="utf-8")
+                return document
+
+            with patch("sigmascope.request_bytes", return_value=(artifact, str(variant[7]))), \
+                 patch("production_sigmascope_v2_pipeline.collect_public_advisories.collect_from_nuget_index", side_effect=fake_collect):
+                result = run_pipeline(args)
+
+            self.assertEqual(variant_id, int(result["queue"]["leased"]["variantId"]))
+            self.assertEqual("rule_set_changed", result["queue"]["leased"]["primaryReason"] )
+            self.assertTrue(result["queue"]["stateChanged"])
+            queue_state = json.loads((root / "candidate" / "scanner-queue.json").read_text(encoding="utf-8"))
+            self.assertEqual("complete", queue_state["items"][f"variant-{variant_id}"]["state"] )
+            root_index = json.loads((root / "candidate" / "index.json").read_text(encoding="utf-8"))
+            self.assertEqual(scan_queue.STATE_SCHEMA, root_index["scannerQueue"]["schema"] )
+            variant_file = next((root / "candidate" / "variants").rglob(f"{variant_id}.json"))
+            payload = json.loads(variant_file.read_text(encoding="utf-8"))
+            provenance = payload["current"]["report_json"]["scanProvenance"]
+            self.assertEqual("rules-v1-fixture", provenance["ruleSetRevision"] )
+            self.assertEqual("defs-v1-fixture", provenance["definitionsRevision"] )
+            self.assertEqual("rule_set_changed", provenance["primaryReason"] )
 
 
     def test_osv_gate_rejects_candidate_when_exact_nuget_versions_are_not_queried(self) -> None:

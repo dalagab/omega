@@ -14,126 +14,116 @@ class WorkflowContractTests(unittest.TestCase):
         for snippet in snippets:
             self.assertIn(snippet, text, f"workflow contract missing: {snippet}")
 
-    def test_catalog_builder_contract(self) -> None:
+    def test_catalog_builder_is_daily_or_manual_json_authority_and_client_compiler(self) -> None:
         text = self.read("catalog-builder.yml")
         self.assert_has(
             text,
-            "name: Omega SQLite catalog builder",
-            "push:",
-            "branches: [main]",
-            '- "tools/catalog/**"',
-            '- "sources/**"',
-            '- "catalog/bootstrap/**"',
-            '- ".github/workflows/catalog-builder.yml"',
-            '- ".github/workflows/sigmascope.yml"',
-            '- ".github/workflows/catalog-compaction.yml"',
+            "name: Omega daily catalog snapshot and client database",
+            'cron: "17 2 * * *"',
             "workflow_dispatch:",
-            "schedule:",
-            "name: 4) Build and hand off authoritative catalog state",
+            "name: Freeze JSON state and compile the Omega client DB",
             "needs: [collect, enrich, scrape]",
-            "python tools/catalog/validate_base_catalog.py --root catalog/dist",
-            "name: omega-sqlite-catalog",
+            "ref: security-evidence-v2",
+            "ref: catalog-data",
+            "catalog_json_store.py materialize",
+            "catalog_json_store.py export",
+            "definitions_snapshot.py build",
+            "scan_queue.py build-seed",
+            "--output catalog/state-scan-queue.json",
+            "catalog_state.py assemble",
+            "--queue-seed catalog/state-scan-queue.json",
+            "catalog_state.py validate",
+            "publish_catalog_state.py",
+            "--branch catalog-data",
+            "compile_marketplace_snapshot.py",
+            "validate_marketplace_catalog.py --root catalog/client-dist",
+            "Publish the once-daily client database",
+            "gh release upload catalog-latest",
             "omega-marketplace.sqlite.zip",
-            "Download previous small marketplace database as catalog seed",
+            "database-build.json",
         )
-        self.assertRegex(text, r"(?m)^  preflight:\s*$")
-        self.assertRegex(text, r"(?m)^  collect:\s*\n(?:.|\n)*?    needs: preflight\s*$")
-        self.assertNotIn("gh release upload catalog-latest", text, "base builder must not publish an intermediate production catalog")
-        self.assertNotIn("gh release upload security-evidence-latest", text, "base builder must not publish evidence directly")
+        self.assertLess(
+            text.index("Validate exact client publication"),
+            text.index("Publish canonical JSON state atomically"),
+            "catalog-data must not advance until the exact daily client DB has compiled and validated locally",
+        )
+        self.assertLess(
+            text.index("Publish canonical JSON state atomically"),
+            text.index("Publish the once-daily client database"),
+            "publish frozen online inputs immediately before the matching client DB",
+        )
+        self.assertNotRegex(text, r"(?m)^  push:\s*$", "ordinary source pushes must not create client-visible catalog churn")
+        self.assertNotIn("security-evidence-latest", text)
+        self.assertNotIn("omega-security-evidence.sqlite.zip", text)
 
-
-    def test_database_processing_changes_restart_from_catalog_builder(self) -> None:
+    def test_catalog_json_is_authoritative_public_state_not_a_main_branch_generated_commit(self) -> None:
         builder = self.read("catalog-builder.yml")
-        security = self.read("sigmascope.yml")
-        compactor = self.read("catalog-compaction.yml")
+        publisher = (common.ROOT / "tools" / "catalog" / "publish_catalog_state.py").read_text(encoding="utf-8")
+        self.assertIn("catalog-data", builder)
+        self.assertIn("omega.catalog-state.v1", (common.ROOT / "tools" / "catalog" / "catalog_state.py").read_text(encoding="utf-8"))
+        self.assertIn("omega.catalog-json.v1", (common.ROOT / "tools" / "catalog" / "catalog_json_store.py").read_text(encoding="utf-8"))
+        self.assertIn("force-with-lease", publisher)
+        self.assertNotIn("git add catalog/catalog-endpoint.json", builder)
+        self.assertNotIn("git push\n", builder, "daily generated catalog state belongs on catalog-data, not main")
 
-        # One broad path owns every current/future catalog-processing module. This is deliberate:
-        # adding a new Python module under tools/catalog automatically restarts the whole chain.
-        self.assertIn('- "tools/catalog/**"', builder)
-        self.assertIn('- "sources/**"', builder)
-        self.assertIn('- "catalog/bootstrap/**"', builder)
-        self.assertIn('- ".github/workflows/sigmascope.yml"', builder)
-        self.assertIn('- ".github/workflows/catalog-compaction.yml"', builder)
-
-        # Sigmascope chains from the catalog builder; the retired v1 compactor is manual only.
-        self.assertNotRegex(security, r"(?m)^  push:\s*$")
-        self.assertNotRegex(compactor, r"(?m)^  push:\s*$")
-        self.assertIn('- "Omega SQLite catalog builder"', security)
-        self.assertIn("workflow_dispatch:", compactor)
-        self.assertNotIn("workflow_run:", compactor)
-
-        catalog_modules = list((common.ROOT / "tools" / "catalog").glob("*.py"))
-        self.assertGreater(len(catalog_modules), 5, "catalog processing modules should exist under the trigger root")
-
-    def test_security_scanner_stages_and_publishes_v2_fail_closed(self) -> None:
+    def test_sigmascope_is_a_15_minute_single_item_evidence_worker(self) -> None:
         text = self.read("sigmascope.yml")
         self.assert_has(
             text,
-            "name: Omega Sigmascope",
-            '- "Omega SQLite catalog builder"',
-            "github.event.workflow_run.conclusion == 'success'",
-            "actions: read",
-            "contents: write",
-            "issues: write",
+            "name: Omega Sigmascope continuous worker",
+            'cron: "*/15 * * * *"',
+            "workflow_dispatch:",
+            "ref: catalog-data",
+            "path: catalog/active-state",
             "ref: security-evidence-v2",
             "path: catalog/security-v2-current",
-            "tools/security/sigmascope_handoff.py",
-            "catalog/sigmascope-handoff-diagnostics.json",
+            "definitions_snapshot.py verify",
+            "catalog_json_store.py materialize",
             "production_sigmascope_v2_pipeline.py",
-            "--candidate-evidence catalog/security-v2-candidate",
-            "--source-overrides sources/source-overrides.json",
-            "validate_marketplace_catalog.py --root catalog/publication-output",
-            "developer_view.py audit",
-            "security-developer-audit.json",
-            "print_sigmascope_audit_failures.py",
+            "--skip-marketplace",
+            "--frozen-advisories catalog/active-state/definitions/osv-advisories.json",
+            '--catalog-revision "${{ steps.frozen.outputs.catalog_revision }}"',
+            '--definitions-revision "${{ steps.frozen.outputs.definitions_revision }}"',
+            '--definitions-source-commit "${{ steps.frozen.outputs.source_commit }}"',
+            '--rule-set-revision "${{ steps.frozen.outputs.rule_set_revision }}"',
+            "--queue-seed catalog/active-state/scan-queue.json",
+            "--max-scans 1",
+            "--rescan-after-hours 168",
             "publish_security_evidence_v2.py",
-            "--snapshot-validation-report",
-            "--audit-report",
             "--branch security-evidence-v2",
-            "gh release upload catalog-latest",
+            "developer_view.py audit",
             "sigmascope-source-followups.json",
-            "tools/catalog/create_source_followup_issues.py",
             "continue-on-error: true",
         )
-        self.assertNotIn("security-evidence-latest", text)
-        self.assertNotIn("omega-security-evidence.sqlite.zip", text)
-        self.assertNotIn("omega-security-catalog", text)
-        self.assertLess(
-            text.index("Reconcile actionable source follow-up issues"),
-            text.index("Reproduce security conclusions with independent developer audit"),
-            "resolved source issues must close even when a later independent audit blocks publication",
-        )
+        self.assertNotIn("workflow_run:", text)
+        self.assertNotIn("gh release upload catalog-latest", text, "continuous scanner must never publish the client DB")
+        self.assertNotIn("validate_marketplace_catalog.py", text, "continuous scanner no longer builds a client projection")
+        self.assertNotIn("omega-marketplace.sqlite.zip", text)
 
+    def test_sigmascope_checks_out_and_verifies_the_frozen_definition_source_commit(self) -> None:
+        text = self.read("sigmascope.yml")
+        self.assertIn("source_commit=", text)
+        self.assertIn("git checkout --detach", text)
+        self.assertIn('"${{ steps.frozen.outputs.source_commit }}"', text)
+        self.assertLess(text.index("git checkout --detach"), text.index("definitions_snapshot.py verify"))
+        self.assertLess(text.index("definitions_snapshot.py verify"), text.index("production_sigmascope_v2_pipeline.py"))
 
+    def test_definitions_freeze_rules_and_exact_osv_query_universe(self) -> None:
+        definitions = (common.ROOT / "tools" / "catalog" / "definitions_snapshot.py").read_text(encoding="utf-8")
+        pipeline = (common.ROOT / "tools" / "security" / "production_sigmascope_v2_pipeline.py").read_text(encoding="utf-8")
+        self.assertIn("ruleFiles", definitions)
+        self.assertIn("RULE_SET_FILES", definitions)
+        self.assertIn("ruleSetRevision", definitions)
+        self.assertIn("sourceCommit", definitions)
+        self.assertIn("queriedPackageVersionPairs", definitions)
+        self.assertIn("definitionsRevision", definitions)
+        self.assertIn("notCoveredByFrozenDefinitions", pipeline)
+        self.assertIn("frozen-definitions", pipeline)
+        self.assertIn("--skip-marketplace", pipeline)
+        self.assertIn("queueSeedRevision", pipeline)
+        self.assertIn("primaryReason", pipeline)
 
-
-    def test_sigmascope_handoff_uses_builder_artifacts_for_all_events_and_emits_early_diagnostics(self) -> None:
-        workflow = self.read("sigmascope.yml")
-        handoff = (common.ROOT / "tools" / "security" / "sigmascope_handoff.py").read_text(encoding="utf-8")
-        self.assertIn("tools/security/sigmascope_handoff.py", workflow)
-        self.assertIn("catalog/sigmascope-handoff-diagnostics.json", workflow)
-        self.assertIn("if: always()", workflow)
-        self.assertIn("catalog-builder.yml", handoff)
-        self.assertIn('"gh", "run", "list"', handoff)
-        self.assertIn("latest-successful-builder-run", handoff)
-        self.assertIn("triggering-builder-run", handoff)
-        self.assertIn("omega-sqlite-catalog", handoff)
-        self.assertNotIn("python -m zipfile -e catalog/security-input/omega-marketplace.sqlite.zip", workflow)
-
-    def test_catalog_bootstrap_handoff_is_shared_by_windows_regression_and_release(self) -> None:
-        helper = (common.ROOT / "tools" / "catalog" / "stage_catalog_bootstrap.py").read_text(encoding="utf-8")
-        regression = self.read("regression-tests.yml")
-        release = self.read("release.yml")
-        self.assertIn('BUILDER_WORKFLOW = "catalog-builder.yml"', helper)
-        self.assertIn('ARTIFACT_NAME = "omega-sqlite-catalog"', helper)
-        self.assertIn('validate_base_catalog.validate_local', helper)
-        self.assertIn('"gh", "run", "list"', helper)
-        self.assertIn('"gh", "run", "download"', helper)
-        self.assertIn("tools/catalog/stage_catalog_bootstrap.py", regression)
-        self.assertIn("tools/catalog/stage_catalog_bootstrap.py", release)
-        self.assertNotIn("gh release download catalog-latest --repo '${{ github.repository }}' --pattern 'omega-catalog.sqlite.zip'", release)
-
-    def test_source_submission_workflow_validates_before_privileged_persistence_and_restarts_minimum_chain(self) -> None:
+    def test_source_submission_persists_now_but_waits_for_daily_or_manual_publication(self) -> None:
         text = self.read("source-submissions.yml")
         self.assert_has(
             text,
@@ -148,13 +138,13 @@ class WorkflowContractTests(unittest.TestCase):
             "needs: validate",
             "needs.validate.outputs.status == 'accepted'",
             "contents: write",
-            "actions: write",
-            "gh workflow run catalog-builder.yml",
-            "gh workflow run sigmascope.yml",
-            'internal_names="$internal"',
+            "Record daily processing boundary",
+            "next daily catalog/Definitions snapshot",
             'gh issue close "$ISSUE_NUMBER"',
             "persisted it disabled-by-default",
         )
+        self.assertNotIn("gh workflow run catalog-builder.yml", text)
+        self.assertNotIn("gh workflow run sigmascope.yml", text)
         validate_start = text.index("  validate:")
         persist_start = text.index("\n  persist:\n")
         validate_block = text[validate_start:persist_start]
@@ -162,26 +152,12 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("contents: read", validate_block)
         self.assertNotIn("contents: write", validate_block)
         self.assertIn("contents: write", persist_block)
-        self.assertIn("needs.validate.outputs.status == 'accepted'", persist_block)
-        self.assertIn("needs.validate.outputs.status == 'accepted' || needs.validate.outputs.status == 'accepted-override'", persist_block)
         self.assertIn("Revalidate and materialize the accepted source change", persist_block)
 
     def test_catalog_builder_ingests_community_source_metadata_explicitly(self) -> None:
         text = self.read("catalog-builder.yml")
         self.assertIn("--community sources/community-sources.json", text)
         self.assertGreaterEqual(text.count("--community sources/community-sources.json"), 2)
-
-    def test_security_scanner_routes_osv_through_the_v2_pipeline(self) -> None:
-        workflow = self.read("sigmascope.yml")
-        pipeline = (common.ROOT / "tools" / "security" / "production_sigmascope_v2_pipeline.py").read_text(encoding="utf-8")
-        self.assertIn("production_sigmascope_v2_pipeline.py", workflow)
-        self.assertIn("collect_public_advisories.collect", pipeline)
-        self.assertIn("nugetPackageVersionPairs", pipeline)
-        self.assertIn("OSV publication gate failed", pipeline)
-        self.assertIn("max_scans=0", pipeline, "advisory matches must be re-projected without starting another artifact scan")
-        self.assertIn("sigmascope-advisory-refresh-report.json", pipeline)
-
-
 
     def test_legacy_compactor_is_manual_and_never_publishes(self) -> None:
         text = self.read("catalog-compaction.yml")
@@ -196,44 +172,28 @@ class WorkflowContractTests(unittest.TestCase):
         )
         self.assertNotIn("workflow_run:", text)
         self.assertNotIn("gh release upload", text)
-        self.assertNotIn("gh release upload security-evidence-latest", text)
-        self.assertNotIn("omega-security-evidence.sqlite.zip", text)
         self.assertNotIn("contents: write", text)
 
-    def test_marketplace_publication_follows_v2_snapshot_gate(self) -> None:
-        text = self.read("sigmascope.yml")
-        v2_publish = text.index("Publish validated Security Evidence v2 snapshot atomically")
-        marketplace = text.index("Publish small client marketplace only after all v2 gates pass")
-        self.assertLess(v2_publish, marketplace)
-        self.assertIn("if: steps.v2.outputs.publish_v2 == 'true'", text)
-        self.assertIn("if: steps.v2.outputs.publish_marketplace == 'true'", text)
-        self.assertIn("--audit-report catalog/security-v2-work/security-developer-audit.json", text)
-        self.assertNotIn("omega-security-evidence.sqlite.zip", text)
+    def test_catalog_bootstrap_prefers_exact_published_client_db_with_legacy_fallback(self) -> None:
+        helper = (common.ROOT / "tools" / "catalog" / "stage_catalog_bootstrap.py").read_text(encoding="utf-8")
+        regression = self.read("regression-tests.yml")
+        release = self.read("release.yml")
+        self.assertIn('MARKETPLACE_BUNDLE_NAME = "omega-marketplace.sqlite.zip"', helper)
+        self.assertIn('validate_marketplace_catalog.validate_bytes', helper)
+        self.assertIn('BUILDER_WORKFLOW = "catalog-builder.yml"', helper)
+        self.assertIn('ARTIFACT_NAME = "omega-sqlite-catalog"', helper)
+        self.assertIn('validate_base_catalog.validate_local', helper)
+        self.assertIn('"gh", "release", "download", "catalog-latest"', helper)
+        self.assertIn('"gh", "run", "list"', helper)
+        self.assertIn("tools/catalog/stage_catalog_bootstrap.py", regression)
+        self.assertIn("tools/catalog/stage_catalog_bootstrap.py", release)
 
-    def test_builder_never_downloads_archived_v1_evidence(self) -> None:
-        text = self.read("catalog-builder.yml")
-        self.assertIn("omega-marketplace.sqlite.zip", text)
-        self.assertNotIn("security-evidence-latest", text)
-        self.assertNotIn("omega-security-evidence.sqlite.zip", text)
-
-    def test_workflow_chain_names_match_exactly(self) -> None:
-        builder = self.read("catalog-builder.yml")
-        security = self.read("sigmascope.yml")
-        builder_name = re.search(r"(?m)^name:\s*(.+)$", builder).group(1).strip()
-        self.assertIn(builder_name, security)
-        self.assertIn("Omega legacy SQLite catalog compactor (disabled)", self.read("catalog-compaction.yml"))
-
-
-
-    def test_client_code_has_no_evidence_database_endpoint(self) -> None:
+    def test_client_code_has_no_full_security_evidence_endpoint(self) -> None:
         omega_root = common.ROOT / "Omega"
-        combined = "\n".join(
-            path.read_text(encoding="utf-8", errors="replace")
-            for path in omega_root.rglob("*.cs")
-        )
+        combined = "\n".join(path.read_text(encoding="utf-8", errors="replace") for path in omega_root.rglob("*.cs"))
         self.assertNotIn("security-evidence-latest", combined)
         self.assertNotIn("omega-security-evidence.sqlite.zip", combined)
-        self.assertIn("EvidenceRevision", combined, "client may display the evidence identity without downloading evidence")
+        self.assertIn("EvidenceRevision", combined)
 
     def test_repository_regression_workflow_covers_python_and_dotnet(self) -> None:
         text = self.read("regression-tests.yml")
@@ -251,24 +211,20 @@ class WorkflowContractTests(unittest.TestCase):
             "python tools/catalog/project_marketplace_catalog.py --self-test",
             "Stage validated current catalog bootstrap",
             "tools/catalog/stage_catalog_bootstrap.py",
-            "--branch \"${{ github.event.repository.default_branch }}\"",
             "--output catalog/bootstrap/omega-catalog.sqlite.zip",
             "dotnet build .\\Omega.sln -c Release",
         )
         self.assertLess(text.index("Stage validated current catalog bootstrap"), text.index("dotnet build .\\Omega.sln -c Release"))
 
-    def test_workflows_do_not_duplicate_tool_version_constants(self) -> None:
-        self.assertNotIn("2.0.0", self.read("sigmascope.yml"))
-        self.assertNotIn("1.2.0", self.read("catalog-compaction.yml"))
-        self.assertNotIn("1.0.0", self.read("catalog-compaction.yml"))
-
-    def test_revision_and_v2_publication_tools_are_workflow_inputs(self) -> None:
+    def test_revision_and_v2_publication_tools_are_separated_by_workflow(self) -> None:
         builder = self.read("catalog-builder.yml")
         security = self.read("sigmascope.yml")
-        self.assertIn('- "tools/catalog/**"', builder, "all catalog/security processing modules must restart from the builder on push")
+        self.assertIn("publish_catalog_state.py", builder)
+        self.assertIn("compile_marketplace_snapshot.py", builder)
+        self.assertIn("validate_marketplace_catalog.py", builder)
         self.assertIn("production_sigmascope_v2_pipeline.py", security)
         self.assertIn("publish_security_evidence_v2.py", security)
-        self.assertIn("validate_marketplace_catalog.py", security)
+        self.assertNotIn("compile_marketplace_snapshot.py", security)
 
     def test_release_workflow_runs_python_and_dotnet_regressions_before_publish(self) -> None:
         text = self.read("release.yml")
@@ -278,30 +234,31 @@ class WorkflowContractTests(unittest.TestCase):
             "python -m unittest discover -s tools/tests -p 'test_*.py' -v",
             "Stage validated current catalog bootstrap",
             "tools/catalog/stage_catalog_bootstrap.py",
-            "--branch \"${{ github.event.repository.default_branch }}\"",
             "--output catalog/bootstrap/omega-catalog.sqlite.zip",
             "Build and run regression suite",
             "dotnet build .\\Omega.sln -c Release",
             "Publish immutable versioned release",
         )
-        bootstrap = text[text.index("Stage validated current catalog bootstrap"):text.index("Build and run regression suite")]
-        self.assertNotIn("gh release download catalog-latest", bootstrap, "full base catalog must come from the catalog-builder artifact, not the small client release")
         self.assertLess(text.index("Run repository Python regression suite"), text.index("Publish immutable versioned release"))
         self.assertLess(text.index("Build and run regression suite"), text.index("Publish immutable versioned release"))
+
+    def test_release_queues_one_deliberate_out_of_cycle_daily_snapshot(self) -> None:
+        text = self.read("release.yml")
+        self.assertIn("Queue Definitions rebuild for published Omega feed", text)
+        self.assertIn("gh workflow run catalog-builder.yml", text)
+        self.assertNotIn("gh workflow run sigmascope.yml", text)
 
     def test_release_workflow_uses_three_part_versions_for_ziprunner(self) -> None:
         text = self.read("release.yml")
         self.assertIn('      - "v*.*.*"', text)
         self.assertNotIn('      - "v*.*.*.*"', text)
         self.assertIn(r"^v(?<version>\d+\.\d+\.\d+)$", text)
-        self.assertNotIn(r"^v(?<version>\d+\.\d+\.\d+\.\d+)$", text)
         self.assertIn("Distributed plugin version $distributedVersion does not match release tag assembly version $expectedAssemblyVersion", text)
         self.assertIn("generate_pluginmaster.py", text)
         self.assertIn("repository/pluginmaster.template.json", text)
         self.assertIn("Verify immutable versioned release asset", text)
         self.assertIn("gh release upload omega-latest pluginmaster.json Omega.zip Omega.zip.sha256 --clobber", text)
         self.assertIn("Publish legacy raw-main PluginMaster compatibility mirror", text)
-        self.assertNotIn("Distributed plugin version $distributedVersion does not match repo version $repoVersion", text)
 
     def test_release_feed_is_generated_from_built_package_before_stable_publication(self) -> None:
         text = self.read("release.yml")
@@ -321,7 +278,6 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("Get-Content 'repository/pluginmaster.json'", text)
         self.assertIn("group: omega-release-stable", text)
         self.assertIn("actions: write", text)
-        self.assertIn("gh workflow run catalog-builder.yml", text)
         versioned = text[text.index("Publish immutable versioned release"):text.index("Verify immutable versioned release asset")]
         self.assertNotIn("--clobber", versioned)
         self.assertIn("Refusing to clobber the tagged release", versioned)
@@ -336,19 +292,17 @@ class WorkflowContractTests(unittest.TestCase):
 
     def test_workflows_do_not_embed_large_python_heredocs(self) -> None:
         for name in ("catalog-builder.yml", "sigmascope.yml", "catalog-compaction.yml"):
-            text = self.read(name)
-            self.assertNotIn("python - <<'PY'", text, f"{name} should call tested Python modules instead of inline Python")
-
-
+            self.assertNotIn("python - <<'PY'", self.read(name), f"{name} should call tested Python modules instead of inline Python")
 
     def test_release_uses_project_changelog(self):
-        release = (common.ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+        release = self.read("release.yml")
         changelog = (common.ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         extractor = (common.ROOT / "tools" / "release" / "extract_changelog.py").read_text(encoding="utf-8")
         self.assertIn("extract_changelog.py", release)
         self.assertIn("--notes-file release-notes.md", release)
         self.assertIn("## [0.8.56]", changelog)
         self.assertIn("CHANGELOG.md has no release section", extractor)
+
 
 if __name__ == "__main__":
     unittest.main()

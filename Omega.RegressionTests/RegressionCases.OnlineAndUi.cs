@@ -11,20 +11,33 @@ internal static partial class RegressionCases
     internal static void TestCatalogBuilderContract()
     {
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
+        Contains(workflow, "name: Omega daily catalog snapshot and client database", "catalog builder owns the daily public snapshot boundary");
+        Contains(workflow, "cron: \"17 2 * * *\"", "catalog and Definitions publish once per day");
+        Contains(workflow, "workflow_dispatch:", "operators can deliberately request an out-of-cycle daily snapshot");
+        False(Regex.IsMatch(workflow, @"(?m)^  push:\s*$"), "ordinary source pushes do not create client-visible catalog churn");
         Contains(workflow, "collect_sources.py", "online source discovery step");
-        Contains(workflow, "cron: \"17 0,6,12,18 * * *\"", "catalog source discovery runs every six hours");
         Contains(workflow, "enrich_metadata.py", "manifest normalization step");
         Contains(workflow, "scrape_websites_incremental.py", "incremental website enrichment step");
-        Contains(workflow, "build_sqlite_catalog.py", "SQLite build step");
-        Contains(workflow, "test_sqlite_catalog.py", "SQLite builder self-test step");
-        Contains(workflow, "omega-marketplace.sqlite.zip", "builder reuses the small client database for presentation and identity continuity");
-        Contains(workflow, "Download previous marketplace database", "small client database supplies presentation/enrichment cache");
-        Contains(workflow, "Download previous small marketplace database as catalog seed", "build state no longer depends on the archived detailed evidence SQLite");
-        False(workflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "catalog builder never downloads the archived giant v1 security evidence bundle");
-        Contains(workflow, "--seed-database catalog/seed/omega-catalog.sqlite", "manifest fetches use prior ETag/Last-Modified state");
-        Contains(workflow, "validate_base_catalog.py", "generated database and transport are validated by tested Python");
-        Contains(workflow, "name: omega-sqlite-catalog", "validated base catalog is handed to the security workflow");
-        False(workflow.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "base catalog builder cannot publish an intermediate production database");
+        Contains(workflow, "build_sqlite_catalog.py", "temporary relational normalization step remains available");
+        Contains(workflow, "catalog_json_store.py export", "canonical public catalog is exported as sharded JSON");
+        Contains(workflow, "definitions_snapshot.py build", "daily Definitions and OSV inputs are frozen once");
+        Contains(workflow, "scan_queue.py build-seed", "daily snapshot includes a deterministic Sigmascope queue seed");
+        Contains(workflow, "catalog_state.py assemble", "catalog JSON, Definitions and queue are assembled into one named state");
+        Contains(workflow, "catalog_state.py validate", "named canonical state is validated before publication");
+        Contains(workflow, "compile_marketplace_snapshot.py", "Omega's client SQLite is compiled from canonical JSON plus validated evidence");
+        Contains(workflow, "validate_marketplace_catalog.py --root catalog/client-dist", "exact client database is validated before publication");
+        Contains(workflow, "publish_catalog_state.py", "canonical JSON state is published to its dedicated branch");
+        Contains(workflow, "--branch catalog-data", "generated catalog state stays off main");
+        Contains(workflow, "Publish the once-daily client database", "client publication has one explicit daily boundary");
+        Contains(workflow, "gh release upload catalog-latest", "daily compiler publishes the validated small client database");
+        Contains(workflow, "database-build.json", "client publication includes auditable build metadata");
+        False(workflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "catalog builder never downloads or publishes the archived giant v1 security evidence bundle");
+
+        var validateIndex = workflow.IndexOf("Validate exact client publication", StringComparison.Ordinal);
+        var statePublishIndex = workflow.IndexOf("Publish canonical JSON state atomically", StringComparison.Ordinal);
+        var clientPublishIndex = workflow.IndexOf("Publish the once-daily client database", StringComparison.Ordinal);
+        True(validateIndex >= 0 && statePublishIndex > validateIndex && clientPublishIndex > statePublishIndex,
+            "daily publication validates the exact client DB before advancing canonical state and then the matching client release");
 
         var builder = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "build_sqlite_catalog.py"));
         Contains(builder, "CREATE TABLE IF NOT EXISTS plugins", "SQLite plugin table");
@@ -33,13 +46,19 @@ internal static partial class RegressionCases
         Contains(builder, "CREATE TABLE IF NOT EXISTS presentation", "presentation scoring table");
         Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_search", "normalized search table");
         Contains(builder, "raw_manifest_json", "original source manifest fields remain auditable");
-        Contains(builder, "VACUUM", "database is compacted before publication");
-        Contains(builder, "omega.catalog.sqlite.v1", "strict SQLite descriptor schema");
+        Contains(builder, "VACUUM", "database is compacted before projection");
+        Contains(builder, "omega.catalog.sqlite.v1", "strict normalization SQLite descriptor schema");
+
+        var jsonStore = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "catalog_json_store.py"));
+        Contains(jsonStore, "omega.catalog-json.v1", "canonical JSON catalog format has an explicit schema");
+        var definitions = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "definitions_snapshot.py"));
+        Contains(definitions, "ruleSetRevision", "Definitions distinguish scanner-rule changes from data-only changes");
+        Contains(definitions, "queriedPackageVersionPairs", "Definitions freeze the exact OSV query universe");
 
         var scraper = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "scrape_websites_incremental.py"));
         Contains(scraper, "last_success_utc", "successful website enrichment is reusable");
         Contains(scraper, "max-age-hours", "fresh website data avoids unnecessary re-scraping");
-        Contains(scraper, "seed-database", "previous SQLite database supplies enrichment cache");
+        Contains(scraper, "seed-database", "previous compiled database can supply enrichment cache");
         Contains(scraper, "load_seed_repo_urls", "304 manifests do not freeze stale website rechecks");
     }
 
@@ -93,6 +112,8 @@ internal static partial class RegressionCases
         False(OnlineCatalogClient.IsValidSha256("abc"), "short SHA-256 is rejected");
         True(OnlineCatalogClient.IsValidCatalogRevision("cat-v1-0123456789abcdef"), "semantic Catalog Revision format is accepted");
         False(OnlineCatalogClient.IsValidCatalogRevision("cat-v1-not-a-hash"), "malformed Catalog Revision is rejected");
+        True(OnlineCatalogClient.IsValidDefinitionsRevision("defs-v1-0123456789abcdef"), "semantic Definitions Revision format is accepted");
+        False(OnlineCatalogClient.IsValidDefinitionsRevision("defs-v1-not-a-hash"), "malformed Definitions Revision is rejected");
         True(OnlineCatalogClient.IsValidSecurityRevision("sec-2.0.0-0123456789abcdef"), "semantic Security Revision format is accepted");
         False(OnlineCatalogClient.IsValidSecurityRevision("sec-2.0.0-short"), "malformed Security Revision is rejected");
         True(OnlineCatalogClient.IsValidEvidenceRevision("ev-v1-0123456789abcdef"), "legacy Evidence Revision format remains accepted");
@@ -143,10 +164,12 @@ internal static partial class RegressionCases
                 CatalogSha256 = new string('a', 64),
                 AvailableCatalogSha256 = new string('b', 64),
                 AvailableCatalogRevision = "cat-v1-0123456789abcdef",
+                AvailableDefinitionsRevision = "defs-v1-fedcba9876543210",
             });
             var loaded = store.Load();
             Equal(new string('b', 64), loaded.AvailableCatalogSha256, "pending Definitions hash survives restart state round-trip");
-            Equal("cat-v1-0123456789abcdef", loaded.AvailableCatalogRevision, "pending Definitions revision survives restart state round-trip");
+            Equal("cat-v1-0123456789abcdef", loaded.AvailableCatalogRevision, "pending Catalog revision survives restart state round-trip");
+            Equal("defs-v1-fedcba9876543210", loaded.AvailableDefinitionsRevision, "pending Definitions revision survives restart state round-trip");
         }
         finally
         {
@@ -161,6 +184,7 @@ internal static partial class RegressionCases
         Contains(ui, "About Omega", "version footer opens the product-focused About popup");
         Contains(ui, "Every plugin. One orbit.", "About uses the Omega product tagline");
         Contains(ui, "DrawAboutVersionAndDefinitions", "About shows a concise Version row and explanatory Definitions information");
+        Contains(ui, "catalog.DefinitionsRevision", "About and Downloads prefer the actual frozen Definitions revision over the catalog revision");
         Contains(ui, "catalog.DatabaseSizeBytes", "About shows the loaded Definitions database size beside its revision");
         Contains(ui, "FormatDefinitionsDatabaseSize", "Definitions database size uses a bounded human-readable formatter");
         Contains(ui, "Check for updates", "Settings starts with an update check action");
@@ -178,24 +202,27 @@ internal static partial class RegressionCases
             endpoint.RootElement.GetProperty("descriptorUrl").GetString(), "live production descriptor URL");
 
         var builder = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
-        False(builder.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "base catalog builder never publishes an intermediate production database");
-        Contains(builder, "name: omega-sqlite-catalog", "base catalog is handed to security analysis as an Actions artifact");
+        Contains(builder, "compile_marketplace_snapshot.py", "daily catalog job compiles the client database from canonical state");
+        Contains(builder, "validate_marketplace_catalog.py --root catalog/client-dist", "daily catalog job validates the exact client database before publication");
+        Contains(builder, "Publish the once-daily client database", "client publication belongs to the daily/manual catalog boundary");
+        Contains(builder, "gh release upload catalog-latest", "validated daily client database updates the stable runtime endpoint");
+        Contains(builder, "omega-marketplace.sqlite.zip", "client release remains the bounded marketplace SQLite transport bundle");
 
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "sigmascope.yml"));
-        var evidencePublishIndex = workflow.IndexOf("Publish validated Security Evidence v2 snapshot atomically", StringComparison.Ordinal);
-        var marketplacePublishIndex = workflow.IndexOf("Publish small client marketplace only after all v2 gates pass", StringComparison.Ordinal);
-        True(evidencePublishIndex >= 0 && marketplacePublishIndex > evidencePublishIndex, "client marketplace publication follows the validated detailed evidence publication step");
-        Contains(workflow, "omega-marketplace.sqlite.zip", "client release contains only the marketplace SQLite transport bundle");
-        Contains(workflow, "--snapshot-validation-report", "detailed v2 evidence must pass intrinsic snapshot validation");
-        Contains(workflow, "--audit-report", "detailed v2 evidence must pass the independent developer audit");
+        Contains(workflow, "name: Omega Sigmascope continuous worker", "Sigmascope is the independent continuous evidence worker");
+        Contains(workflow, "--skip-marketplace", "continuous evidence scanning cannot compile or publish the client DB");
+        Contains(workflow, "Publish validated Security Evidence v2 snapshot atomically", "continuous worker can advance validated detailed evidence");
+        False(workflow.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "continuous scanner never publishes the client database");
+        False(workflow.Contains("omega-marketplace.sqlite.zip", StringComparison.Ordinal), "continuous scanner never transports a client database");
         False(workflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "live pipeline no longer publishes a giant detailed evidence SQLite bundle");
 
         var validator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_marketplace_catalog.py"));
         Contains(validator, "catalogSha256", "published database bytes are hash verified");
         Contains(validator, "bundleSha256", "published ZIP bytes are hash verified");
         Contains(validator, "catalogRevision", "published semantic Catalog Revision is verified");
-        Contains(validator, "securityRevision", "published semantic Security Revision is verified");
-        Contains(validator, "evidenceRevision", "published Evidence Revision is verified without fetching detailed evidence");
+        Contains(validator, "definitionsRevision", "published frozen Definitions Revision is verified");
+        Contains(validator, "securityRevision", "published compiled Security Revision is verified");
+        Contains(validator, "evidenceRevision", "published source Evidence Revision is verified without fetching detailed evidence");
     }
 
     internal static void TestStorefrontVirtualization()

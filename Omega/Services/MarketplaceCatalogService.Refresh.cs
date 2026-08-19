@@ -14,6 +14,7 @@ internal sealed partial class MarketplaceCatalogService
                 HasLoaded = false;
                 CachedRepositoryCount = 0;
                 CatalogRevision = string.Empty;
+                DefinitionsRevision = string.Empty;
                 SecurityRevision = string.Empty;
                 EvidenceRevision = string.Empty;
                 DatabaseSizeBytes = 0L;
@@ -153,6 +154,7 @@ internal sealed partial class MarketplaceCatalogService
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             CatalogRevision = snapshot.CatalogRevision;
+            DefinitionsRevision = snapshot.DefinitionsRevision;
             SecurityRevision = snapshot.SecurityRevision;
             EvidenceRevision = snapshot.EvidenceRevision;
             DatabaseSizeBytes = store.DatabaseSizeBytes;

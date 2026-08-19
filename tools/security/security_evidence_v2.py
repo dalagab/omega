@@ -73,6 +73,7 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
     intelligence = report.get("dependencyIntelligence") if isinstance(report.get("dependencyIntelligence"), dict) else {}
     if not intelligence and isinstance(report.get("intelligence"), dict):
         intelligence = report.get("intelligence")
+    scan_provenance = report.get("scanProvenance") if isinstance(report.get("scanProvenance"), dict) else {}
 
     capabilities = automation.get("capabilities") if isinstance(automation.get("capabilities"), list) else []
     compact_caps: list[Any] = []
@@ -129,6 +130,15 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
     summary = {
         "schema": TRANSPORT_REPORT_SCHEMA,
         "scannerVersion": str(row.get("scanner_version") or report.get("scannerVersion") or ""),
+        "scanProvenance": {
+            key: scan_provenance.get(key)
+            for key in (
+                "schema", "catalogRevision", "definitionsRevision", "definitionsSourceCommit", "ruleSetRevision",
+                "queueSeedRevision", "queueKey", "targetFingerprint", "primaryReason",
+                "reasons", "attemptId", "attemptNumber", "variantId",
+            )
+            if key in scan_provenance
+        },
         "scannedAtUtc": str(row.get("scanned_at_utc") or report.get("scannedAtUtc") or ""),
         "status": str(row.get("status") or report.get("status") or ""),
         "highestSeverity": highest,
@@ -262,6 +272,7 @@ def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
     report = current.get("report_json") if isinstance(current.get("report_json"), dict) else {}
     report_source = report.get("source") if isinstance(report.get("source"), dict) else {}
     provenance = report_source.get("provenance") if isinstance(report_source.get("provenance"), dict) else {}
+    scan_provenance = report.get("scanProvenance") if isinstance(report.get("scanProvenance"), dict) else {}
     return {
         "plugin_id": int(payload.get("pluginId") or plugin.get("plugin_id") or variant.get("plugin_id") or 0),
         "source_id": int(payload.get("sourceId") or source.get("source_id") or variant.get("source_id") or 0),
@@ -292,6 +303,12 @@ def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "source_version_matched": bool(provenance.get("versionMatched")),
         "source_artifact_origin_matched": bool(provenance.get("artifactOriginMatched")),
         "source_selected_ref": str(provenance.get("selectedRef") or ""),
+        "catalog_revision": str(scan_provenance.get("catalogRevision") or ""),
+        "definitions_revision": str(scan_provenance.get("definitionsRevision") or ""),
+        "definitions_source_commit": str(scan_provenance.get("definitionsSourceCommit") or ""),
+        "rule_set_revision": str(scan_provenance.get("ruleSetRevision") or ""),
+        "scan_queue_reason": str(scan_provenance.get("primaryReason") or ""),
+        "scan_queue_seed_revision": str(scan_provenance.get("queueSeedRevision") or ""),
     }
 
 
@@ -719,6 +736,19 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
         }
     if index.get("schema") != SCHEMA or int(index.get("formatVersion") or 0) != FORMAT_VERSION:
         errors.append(f"unexpected root schema/version: {index.get('schema')!r}/{index.get('formatVersion')!r}")
+
+    scanner_queue = index.get("scannerQueue") or {}
+    if scanner_queue:
+        if not isinstance(scanner_queue, dict):
+            errors.append("scannerQueue descriptor is not an object")
+        else:
+            errors.extend(f"scannerQueue: {item}" for item in verify_file_entry(root, scanner_queue, max_bytes=MAX_PUBLISH_FILE_BYTES))
+            try:
+                queue_doc = read_json_file(root, str(scanner_queue.get("path") or ""))
+                if queue_doc.get("schema") != "omega.sigmascope.queue-state.v1":
+                    errors.append("scannerQueue payload has an unsupported schema")
+            except Exception as exc:
+                errors.append(f"scannerQueue unreadable: {type(exc).__name__}: {exc}")
 
     indexes = index.get("indexes") or {}
     for name, entry in sorted(indexes.items()):

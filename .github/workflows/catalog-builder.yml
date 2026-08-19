@@ -1,20 +1,9 @@
-name: Omega SQLite catalog builder
+name: Omega daily catalog snapshot and client database
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "tools/catalog/**"
-      - "sources/**"
-      - ".omega/**"
-      - "images/omega-banner.png"
-      - "catalog/bootstrap/**"
-      - ".github/workflows/catalog-builder.yml"
-      - ".github/workflows/sigmascope.yml"
-      - ".github/workflows/catalog-compaction.yml"
   schedule:
-    # Four discovery/catalog passes per day; accepted source submissions still queue this workflow immediately.
-    - cron: "17 0,6,12,18 * * *"
+    # One public catalog/Definitions generation per day. Scanning continues separately.
+    - cron: "17 2 * * *"
   workflow_dispatch:
     inputs:
       concurrency:
@@ -36,18 +25,18 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: omega-sqlite-catalog-builder
-  cancel-in-progress: false
-
 env:
   PYTHONUNBUFFERED: "1"
 
+concurrency:
+  group: omega-daily-catalog-publication
+  cancel-in-progress: false
+
 jobs:
   preflight:
-    name: Validate workflow contracts and Python units
+    name: Validate catalog contracts
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v7
@@ -55,13 +44,13 @@ jobs:
           python-version: "3.13"
       - name: Run repository Python regression suite
         run: python -m unittest discover -s tools/tests -p 'test_*.py' -v
-      - name: Run SQLite catalog self-test
-        run: python tools/catalog/test_sqlite_catalog.py
-      - name: Run marketplace projection self-test
-        run: python tools/catalog/project_marketplace_catalog.py --self-test
+      - name: Run catalog self-tests
+        run: |
+          python tools/catalog/test_sqlite_catalog.py
+          python tools/catalog/project_marketplace_catalog.py --self-test
 
   collect:
-    name: 1) Discover source feeds
+    name: Discover source feeds
     needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -85,10 +74,10 @@ jobs:
           retention-days: 7
 
   enrich:
-    name: 2) Fetch and normalize manifests
+    name: Fetch and normalize manifests
+    needs: collect
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: collect
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v7
@@ -98,23 +87,16 @@ jobs:
         with:
           name: raw-sources
           path: catalog/
-      - name: Download previous marketplace database for conditional manifest requests
+      - name: Download previous published marketplace DB for conditional request hints
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          gh release download catalog-latest --repo "$GH_REPO" --pattern omega-marketplace.sqlite.zip --dir catalog/seed || true
-          if [ ! -f catalog/seed/omega-marketplace.sqlite.zip ]; then
-            gh release download catalog-latest --repo "$GH_REPO" --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
-          fi
-          bundle=""
-          [ -f catalog/seed/omega-marketplace.sqlite.zip ] && bundle=catalog/seed/omega-marketplace.sqlite.zip
-          [ -z "$bundle" ] && [ -f catalog/seed/omega-catalog.sqlite.zip ] && bundle=catalog/seed/omega-catalog.sqlite.zip
-          if [ -n "$bundle" ]; then
-            python -m zipfile -e "$bundle" catalog/seed
+          gh release download catalog-latest --repo "${{ github.repository }}" --pattern omega-marketplace.sqlite.zip --dir catalog/seed || true
+          if [ -f catalog/seed/omega-marketplace.sqlite.zip ]; then
+            python -m zipfile -e catalog/seed/omega-marketplace.sqlite.zip catalog/seed
           fi
       - name: Fetch PluginMaster feeds
         run: >-
@@ -131,10 +113,10 @@ jobs:
           retention-days: 7
 
   scrape:
-    name: 3) Incrementally enrich public project pages
+    name: Incrementally enrich public project pages
+    needs: enrich
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: enrich
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v7
@@ -144,23 +126,16 @@ jobs:
         with:
           name: enriched-sources
           path: catalog/
-      - name: Download previous marketplace database for enrichment cache
+      - name: Download previous published marketplace DB for website cache hints
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          gh release download catalog-latest --repo "$GH_REPO" --pattern omega-marketplace.sqlite.zip --dir catalog/seed || true
-          if [ ! -f catalog/seed/omega-marketplace.sqlite.zip ]; then
-            gh release download catalog-latest --repo "$GH_REPO" --pattern omega-catalog.sqlite.zip --dir catalog/seed || true
-          fi
-          bundle=""
-          [ -f catalog/seed/omega-marketplace.sqlite.zip ] && bundle=catalog/seed/omega-marketplace.sqlite.zip
-          [ -z "$bundle" ] && [ -f catalog/seed/omega-catalog.sqlite.zip ] && bundle=catalog/seed/omega-catalog.sqlite.zip
-          if [ -n "$bundle" ]; then
-            python -m zipfile -e "$bundle" catalog/seed
+          gh release download catalog-latest --repo "${{ github.repository }}" --pattern omega-marketplace.sqlite.zip --dir catalog/seed || true
+          if [ -f catalog/seed/omega-marketplace.sqlite.zip ]; then
+            python -m zipfile -e catalog/seed/omega-marketplace.sqlite.zip catalog/seed
           fi
       - name: Reuse fresh enrichment and scrape only new/stale project pages
         env:
@@ -179,11 +154,11 @@ jobs:
           path: catalog/website-enrichment.json
           retention-days: 7
 
-  build:
-    name: 4) Build and hand off authoritative catalog state
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+  publish:
+    name: Freeze JSON state and compile the Omega client DB
     needs: [collect, enrich, scrape]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
         with:
@@ -203,26 +178,37 @@ jobs:
         with:
           name: website-enrichment
           path: catalog/
-      - name: Download previous small marketplace database as catalog seed
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
+      - name: Checkout current Security Evidence v2
+        uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Checkout previous canonical catalog state when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/previous-state
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Materialize previous canonical JSON as normalization seed
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          # Security Evidence v2 is the detailed security state. The catalog builder only
-          # needs the small marketplace projection for conditional/history-aware identity
-          # rebuilding; it must never pull the archived multi-gigabyte v1 evidence DB.
-          gh release download catalog-latest --repo "$GH_REPO" --pattern omega-marketplace.sqlite.zip --dir catalog/seed || true
-      - name: Build authoritative catalog identities and presentation
+          if [ -f catalog/previous-state/catalog/index.json ]; then
+            python tools/catalog/catalog_json_store.py materialize \
+              --root catalog/previous-state/catalog \
+              --database catalog/seed/omega-catalog.sqlite
+          fi
+      - name: Normalize discovery into a temporary relational working catalog
         shell: bash
         run: |
           set -euo pipefail
-          seed=""
-          [ -f catalog/seed/omega-marketplace.sqlite.zip ] && seed=catalog/seed/omega-marketplace.sqlite.zip
           args=(
-            --out catalog/dist
+            --out catalog/normalized
             --curated sources/curated-sources.json
             --community sources/community-sources.json
             --raw-sources catalog/raw-sources.json
@@ -231,32 +217,80 @@ jobs:
             --download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-marketplace.sqlite.zip"
             --descriptor-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/catalog.json"
           )
-          if [ -n "$seed" ]; then args+=(--seed "$seed"); fi
+          if [ -f catalog/seed/omega-catalog.sqlite ]; then args+=(--seed catalog/seed/omega-catalog.sqlite); fi
           python tools/catalog/build_sqlite_catalog.py "${args[@]}"
-      - name: Validate generated database and transport bundle
-        run: python tools/catalog/validate_base_catalog.py --root catalog/dist
-      - name: Update endpoint and human-readable report only
+      - name: Export canonical public JSON catalog
+        run: >-
+          python tools/catalog/catalog_json_store.py export
+          --database catalog/normalized/omega-catalog.sqlite
+          --output catalog/state-catalog
+          --source-commit "${{ github.sha }}"
+      - name: Freeze daily Definitions and OSV data
+        run: >-
+          python tools/catalog/definitions_snapshot.py build
+          --repo-root .
+          --evidence-root catalog/security-v2-current
+          --output catalog/state-definitions
+          --source-commit "${{ github.sha }}"
+          --timeout ${{ inputs.timeout || '20' }}
+      - name: Build deterministic daily Sigmascope queue seed
+        run: >-
+          python tools/catalog/scan_queue.py build-seed
+          --catalog-root catalog/state-catalog
+          --definitions-root catalog/state-definitions
+          --evidence-root catalog/security-v2-current
+          --output catalog/state-scan-queue.json
+          --rescan-after-hours 168
+      - name: Assemble and validate named catalog/Definitions snapshot
+        run: |
+          python tools/catalog/catalog_state.py assemble \
+            --catalog catalog/state-catalog \
+            --definitions catalog/state-definitions \
+            --queue-seed catalog/state-scan-queue.json \
+            --output catalog/state
+          python tools/catalog/catalog_state.py validate --root catalog/state
+      - name: Compile daily Omega marketplace database from JSON + Evidence v2
+        run: >-
+          python tools/catalog/compile_marketplace_snapshot.py
+          --catalog-root catalog/state/catalog
+          --definitions-root catalog/state/definitions
+          --evidence-root catalog/security-v2-current
+          --output catalog/client-dist
+          --download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-marketplace.sqlite.zip"
+          --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json"
+      - name: Validate exact client publication
+        run: python tools/catalog/validate_marketplace_catalog.py --root catalog/client-dist
+      - name: Publish canonical JSON state atomically
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh auth setup-git
+          python tools/catalog/publish_catalog_state.py --input catalog/state --repo . --branch catalog-data --push
+      - name: Publish the once-daily client database
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          cp catalog/dist/catalog-endpoint.json catalog/catalog-endpoint.json
-          cp catalog/dist/catalog-report.json catalog/latest-report.json
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add catalog/catalog-endpoint.json catalog/latest-report.json
-          if ! git diff --cached --quiet; then
-            git commit -m "catalog: refresh SQLite report [skip ci]"
-            git push
+          if ! gh release view catalog-latest --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create catalog-latest --repo "${{ github.repository }}" --title "Omega marketplace database" \
+              --notes "Daily compiled Omega client database. Canonical catalog JSON is on catalog-data; detailed security evidence is on security-evidence-v2."
           fi
+          gh release upload catalog-latest \
+            catalog/client-dist/omega-marketplace.sqlite.zip \
+            catalog/client-dist/omega-marketplace.sqlite.zip.sha256 \
+            catalog/client-dist/catalog.json \
+            catalog/client-dist/database-build.json \
+            --repo "${{ github.repository }}" --clobber
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
-          name: omega-sqlite-catalog
+          name: omega-daily-catalog-state
           path: |
-            catalog/dist/omega-catalog.sqlite
-            catalog/dist/omega-catalog.sqlite.zip
-            catalog/dist/omega-catalog.sqlite.zip.sha256
-            catalog/dist/catalog.json
-            catalog/dist/catalog-endpoint.json
-            catalog/dist/catalog-report.json
-            catalog/dist/debug/*.json
+            catalog/state/index.json
+            catalog/state/catalog/index.json
+            catalog/state/definitions/index.json
+            catalog/state/scan-queue.json
+            catalog/client-dist/catalog.json
+            catalog/client-dist/database-build.json
           retention-days: 30

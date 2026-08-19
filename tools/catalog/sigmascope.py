@@ -4425,7 +4425,7 @@ def write_scan_ledger(path: Path | None, ledger: dict, db: sqlite3.Connection, c
     path.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: set[str], ledger: dict | None = None) -> list[sqlite3.Row]:
+def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: set[str], ledger: dict | None = None, variant_ids: set[int] | None = None) -> list[sqlite3.Row]:
     if max_scans <= 0:
         return []
     now = dt.datetime.now(dt.timezone.utc)
@@ -4453,10 +4453,20 @@ def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: s
     """).fetchall()
     result = []
     for row in rows:
+        if variant_ids and int(row["variant_id"]) not in variant_ids:
+            continue
         if names and str(row["internal_name"]).lower() not in names:
             continue
         _channel, version, url = choose_artifact(row)
         if not url:
+            continue
+        # When the persistent production queue supplies an exact variant identity it
+        # owns due/retry semantics. Do not re-apply the legacy age/scanner-version
+        # scheduler here or rule-set/manual queue reasons could be silently skipped.
+        if variant_ids:
+            result.append(row)
+            if len(result) >= max_scans:
+                break
             continue
         last = parse_utc(row["current_scanned_at_utc"])
         ledger_entry = ((ledger or {}).get("variants") or {}).get(str(row["variant_id"])) if isinstance((ledger or {}).get("variants"), dict) else None
@@ -4809,7 +4819,9 @@ def run(args: argparse.Namespace) -> dict:
     db.execute("PRAGMA busy_timeout=5000")
     token = os.environ.get("GITHUB_TOKEN", "")
     names = {x.strip().lower() for x in args.internal_names.split(",") if x.strip()}
+    variant_ids = {int(x.strip()) for x in str(getattr(args, "variant_ids", "") or "").split(",") if x.strip().isdigit()}
     advisories = load_advisories(args.advisories)
+    scan_provenance = getattr(args, "scan_provenance", None)
     advisory_coverage = load_advisory_coverage(args.advisories)
     source_overrides = load_source_overrides(Path(args.source_overrides) if args.source_overrides else None)
     summary = {
@@ -4824,7 +4836,7 @@ def run(args: argparse.Namespace) -> dict:
         ledger_path = Path(args.ledger) if args.ledger else None
         ledger = load_scan_ledger(ledger_path)
         ledger_changed = False
-        rows = due_rows(db, args.max_scans, args.rescan_after_hours, names, ledger)
+        rows = due_rows(db, args.max_scans, args.rescan_after_hours, names, ledger, variant_ids)
         summary["selected"] = len(rows)
         for index, row in enumerate(rows, start=1):
             if deadline is not None and time.monotonic() >= deadline:
@@ -4835,6 +4847,9 @@ def run(args: argparse.Namespace) -> dict:
             scan_started = time.monotonic()
             override_key = source_override_key(str(row["internal_name"] or ""), str(row["source_url"] or ""))
             result = scan_row(row, token, not args.skip_source, source_overrides.get(override_key, ""))
+            if isinstance(scan_provenance, dict) and scan_provenance:
+                result["scanProvenance"] = dict(scan_provenance)
+                result["scanProvenance"]["variantId"] = int(row["variant_id"])
             db.execute("SAVEPOINT omega_scan_persist")
             try:
                 save_scan(db, row, result)
@@ -4877,23 +4892,8 @@ def run(args: argparse.Namespace) -> dict:
                     "error": result["error"],
                 })
         summary["reportedPluginRows"] = len(summary["plugins"])
-        dependency_graph = refresh_dependency_graph(db, advisories)
-        summary["dependencyGraph"] = dependency_graph
-        if advisory_coverage:
-            coverage_meta = {
-                "public_advisory_source": advisory_coverage.get("source", ""),
-                "public_advisory_ecosystem": advisory_coverage.get("ecosystem", ""),
-                "public_advisory_queried_packages": advisory_coverage.get("queriedPackages", 0),
-                "public_advisory_matched_packages": advisory_coverage.get("matchedPackages", 0),
-                "public_advisory_generated_at_utc": advisory_coverage.get("generatedAtUtc", ""),
-            }
-            for key, value in coverage_meta.items():
-                db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES(?,?)", (key, str(value)))
-            summary["publicAdvisoryCoverage"] = dict(advisory_coverage)
-        summary["artifactSourceProvenance"] = propagate_source_provenance_by_artifact(db)
-        summary["artifactSecurityCanonicalization"] = canonicalize_current_security_by_artifact(db)
-        summary["crossSourceHashConsensus"] = refresh_cross_source_hash_findings(db)
-        recreate_runtime_view(db)
+        derived = refresh_current_security_projection(db, advisories, advisory_coverage)
+        summary.update(derived)
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('sigmascope_name',?)", (SIGMASCOPE_NAME,))
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('sigmascope_version',?)", (SIGMASCOPE_VERSION,))
         db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_scanner_version',?)", (SCANNER_VERSION,))
@@ -4984,6 +4984,42 @@ def run(args: argparse.Namespace) -> dict:
         update_descriptor(db_path, Path(args.bundle), Path(args.descriptor))
     return summary
 
+
+
+def refresh_current_security_projection(
+    db: sqlite3.Connection,
+    advisories: list[dict] | None = None,
+    advisory_coverage: dict[str, str | int] | None = None,
+) -> dict[str, object]:
+    """Refresh catalog/Definitions-derived security state without rescanning artifacts.
+
+    This is shared by the 15-minute worker and the daily SQLite compiler. Static
+    artifact evidence remains unchanged; only conclusions that legitimately depend on
+    the current catalog or frozen Definitions payload are recomputed.
+    """
+    dependency_graph = refresh_dependency_graph(db, advisories)
+    if advisory_coverage:
+        coverage_meta = {
+            "public_advisory_source": advisory_coverage.get("source", ""),
+            "public_advisory_ecosystem": advisory_coverage.get("ecosystem", ""),
+            "public_advisory_queried_packages": advisory_coverage.get("queriedPackages", 0),
+            "public_advisory_matched_packages": advisory_coverage.get("matchedPackages", 0),
+            "public_advisory_generated_at_utc": advisory_coverage.get("generatedAtUtc", ""),
+        }
+        for key, value in coverage_meta.items():
+            db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES(?,?)", (key, str(value)))
+    source_provenance = propagate_source_provenance_by_artifact(db)
+    artifact_canonicalization = canonicalize_current_security_by_artifact(db)
+    hash_consensus = refresh_cross_source_hash_findings(db)
+    recreate_runtime_view(db)
+    db.commit()
+    return {
+        "dependencyGraph": dependency_graph,
+        "publicAdvisoryCoverage": dict(advisory_coverage or {}),
+        "artifactSourceProvenance": source_provenance,
+        "artifactSecurityCanonicalization": artifact_canonicalization,
+        "crossSourceHashConsensus": hash_consensus,
+    }
 
 
 def load_source_overrides(path: Path | None) -> dict[str, str]:
@@ -5626,6 +5662,7 @@ def main() -> int:
     parser.add_argument("--max-batch-seconds", type=int, default=DEFAULT_MAX_BATCH_SECONDS, help="Stop starting new Sigmascope examinations after this wall-clock budget; 0 disables the budget")
     parser.add_argument("--rescan-after-hours", type=int, default=168)
     parser.add_argument("--internal-names", default="")
+    parser.add_argument("--variant-ids", default="", help="Optional exact comma-separated variant IDs; used by the persistent production queue")
     parser.add_argument("--advisories", default="", help="Optional local JSON advisory document; Sigmascope does not fetch advisory data itself")
     parser.add_argument("--source-overrides", default="sources/source-overrides.json", help="Optional validated plugin/source-to-GitHub-source override map")
     parser.add_argument("--skip-source", action="store_true")

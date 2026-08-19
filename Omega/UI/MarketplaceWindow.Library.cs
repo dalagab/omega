@@ -608,7 +608,9 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, ImGui.GetTextLineHeightWithSpacing() * 2f));
         ImGui.BeginGroup();
         ImGui.TextUnformatted("Omega Definitions");
-        var current = string.IsNullOrWhiteSpace(catalog.CatalogRevision) ? "current" : catalog.CatalogRevision;
+        var current = string.IsNullOrWhiteSpace(catalog.DefinitionsRevision)
+            ? (string.IsNullOrWhiteSpace(catalog.CatalogRevision) ? "current" : catalog.CatalogRevision)
+            : catalog.DefinitionsRevision;
         var available = string.IsNullOrWhiteSpace(updates.AvailableDefinitionsRevision) ? "new revision" : updates.AvailableDefinitionsRevision;
         ImGui.TextDisabled($"{Shorten(current, 30)} → {Shorten(available, 30)}");
         ImGui.EndGroup();

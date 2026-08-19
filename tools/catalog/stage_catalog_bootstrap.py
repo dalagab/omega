@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-"""Stage a validated Omega base-catalog bootstrap from GitHub Actions.
+"""Stage the validated database that Omega users actually consume.
 
-The authoritative full base catalog is the ``omega-sqlite-catalog`` artifact produced by
-``catalog-builder.yml``.  The public ``catalog-latest`` release intentionally contains the
-small client marketplace projection, so release/regression jobs must not try to recover the
-full base catalog from that release.
-
-This helper selects the newest successful catalog-builder run whose retained artifact still
-contains a valid base catalog, validates the database/descriptor/bundle triplet, and copies
-only the runtime bootstrap bundle to the requested output path.
+The daily/manual catalog compiler publishes ``omega-marketplace.sqlite.zip`` to the
+``catalog-latest`` release. Release/regression jobs stage those exact bytes under Omega's
+internal bootstrap filename ``omega-catalog.sqlite.zip``. A retained legacy builder-artifact
+fallback is kept only for the migration window before the first new daily publication.
 """
 from __future__ import annotations
 
@@ -22,11 +18,13 @@ import tempfile
 from typing import Any, Sequence
 
 import validate_base_catalog
+import validate_marketplace_catalog
 
 
 BUILDER_WORKFLOW = "catalog-builder.yml"
 ARTIFACT_NAME = "omega-sqlite-catalog"
 BUNDLE_NAME = "omega-catalog.sqlite.zip"
+MARKETPLACE_BUNDLE_NAME = "omega-marketplace.sqlite.zip"
 DATABASE_NAME = "omega-catalog.sqlite"
 DESCRIPTOR_NAME = "catalog.json"
 DEFAULT_MAX_RUNS = 10
@@ -87,6 +85,36 @@ def _artifact_root(download_root: Path) -> Path:
     return unique[0]
 
 
+def _stage_published_marketplace(runner: CommandRunner, repository: str, output: Path) -> dict[str, Any] | None:
+    with tempfile.TemporaryDirectory(prefix="omega-published-bootstrap-") as td:
+        root = Path(td)
+        completed = runner.run([
+            "gh", "release", "download", "catalog-latest",
+            "--repo", repository,
+            "--pattern", MARKETPLACE_BUNDLE_NAME,
+            "--pattern", DESCRIPTOR_NAME,
+            "--dir", str(root),
+            "--clobber",
+        ])
+        if completed.returncode != 0:
+            return None
+        descriptor = root / DESCRIPTOR_NAME
+        bundle = root / MARKETPLACE_BUNDLE_NAME
+        if not descriptor.is_file() or not bundle.is_file():
+            return None
+        validation = validate_marketplace_catalog.validate_bytes(descriptor.read_bytes(), bundle.read_bytes())
+        output.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(bundle, output)
+        return {
+            "source": "catalog-latest",
+            "output": str(output),
+            "variantCount": int(validation.get("variants") or 0),
+            "catalogRevision": str(validation.get("catalogRevision") or ""),
+            "securityRevision": str(validation.get("securityRevision") or ""),
+            "evidenceRevision": str(validation.get("evidenceRevision") or ""),
+        }
+
+
 def stage_catalog_bootstrap(
     *,
     repository: str,
@@ -103,6 +131,10 @@ def stage_catalog_bootstrap(
         raise HandoffError("max_runs must be positive.")
 
     runner = runner or CommandRunner()
+    published = _stage_published_marketplace(runner, repository, output)
+    if published is not None:
+        return published
+
     runs = _successful_builder_runs(runner, repository, branch.strip(), max_runs)
     if not runs:
         raise HandoffError("No successful Omega SQLite catalog builder run is available.")

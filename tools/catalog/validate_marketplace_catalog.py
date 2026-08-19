@@ -76,8 +76,17 @@ def validate_bytes(descriptor_bytes: bytes, bundle: bytes) -> dict:
             meta = dict(db.execute("SELECT key,value FROM catalog_meta"))
             if meta.get("database_role") != "marketplace" or meta.get("detailed_security_evidence_included") != "0":
                 raise RuntimeError("marketplace database role metadata is invalid")
-            if meta.get("evidence_revision", "") != str(descriptor.get("evidenceRevision") or ""):
-                raise RuntimeError("marketplace evidence revision mismatch")
+            revision_pairs = (
+                ("catalog_revision", "catalogRevision", "catalog"),
+                ("definitions_revision", "definitionsRevision", "Definitions"),
+                ("security_revision", "securityRevision", "security"),
+                ("evidence_revision", "evidenceRevision", "evidence"),
+                ("source_security_revision", "sourceSecurityRevision", "source-evidence security"),
+            )
+            for meta_key, descriptor_key, label in revision_pairs:
+                expected = str(descriptor.get(descriptor_key) or "")
+                if expected and meta.get(meta_key, "") != expected:
+                    raise RuntimeError(f"marketplace {label} revision mismatch")
             return {
                 "integrity": "ok",
                 "databaseBytes": len(raw),

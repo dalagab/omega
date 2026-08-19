@@ -51,6 +51,11 @@ class ProductionReleaseHygieneTests(unittest.TestCase):
             "repository/pluginmaster.json",
             "repository/pluginmaster.template.json",
             "tools/catalog/sigmascope.py",
+            "tools/catalog/catalog_json_store.py",
+            "tools/catalog/definitions_snapshot.py",
+            "tools/catalog/catalog_state.py",
+            "tools/catalog/publish_catalog_state.py",
+            "tools/catalog/compile_marketplace_snapshot.py",
             "tools/security/production_sigmascope_v2_pipeline.py",
             "tools/release/generate_pluginmaster.py",
             ".github/workflows/catalog-builder.yml",
@@ -72,8 +77,11 @@ class ProductionReleaseHygieneTests(unittest.TestCase):
 
         builder_workflow = (ROOT / ".github" / "workflows" / "catalog-builder.yml").read_text(encoding="utf-8")
         regression_workflow = (ROOT / ".github" / "workflows" / "regression-tests.yml").read_text(encoding="utf-8")
-        self.assertIn('- ".omega/**"', builder_workflow)
-        self.assertIn('- "images/omega-banner.png"', builder_workflow)
+        self.assertIn('cron: "17 2 * * *"', builder_workflow)
+        self.assertIn("workflow_dispatch:", builder_workflow)
+        self.assertNotRegex(builder_workflow, r"(?m)^  push:\s*$")
+        self.assertIn("publish_catalog_state.py", builder_workflow)
+        self.assertIn("compile_marketplace_snapshot.py", builder_workflow)
         self.assertIn('- ".omega/**"', regression_workflow)
 
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

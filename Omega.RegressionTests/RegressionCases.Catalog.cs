@@ -37,6 +37,7 @@ internal static partial class RegressionCases
             True(snapshot.SourceDefinitions.Count > 0, "SQLite snapshot exposes source definitions");
             True(snapshot.Variants.Any(x => x.InternalName.Equals("AetherLovePlugin", StringComparison.OrdinalIgnoreCase)), "bootstrap contains AetherLove");
             True(snapshot.CatalogRevision is not null, "catalog snapshot always exposes a troubleshooting Catalog Revision field");
+            True(snapshot.DefinitionsRevision is not null, "catalog snapshot always exposes a frozen Definitions Revision field");
             True(snapshot.SecurityRevision is not null, "catalog snapshot always exposes a troubleshooting Security Revision field");
             True(snapshot.EvidenceRevision is not null, "catalog snapshot always exposes a troubleshooting Evidence Revision field");
         }
@@ -86,6 +87,7 @@ internal static partial class RegressionCases
             Equal(string.Empty, snapshot.Variants[0].SecurityStatus, "legacy variant is treated as not yet scanned");
             Equal("none", snapshot.Variants[0].SecurityHighestSeverity, "legacy variant receives neutral security defaults");
             Equal(string.Empty, snapshot.CatalogRevision, "legacy catalog without revision metadata remains readable");
+            Equal(string.Empty, snapshot.DefinitionsRevision, "legacy catalog without Definitions revision metadata remains readable");
             Equal(string.Empty, snapshot.SecurityRevision, "legacy catalog without security revision metadata remains readable");
             Equal(string.Empty, snapshot.EvidenceRevision, "legacy catalog without evidence revision metadata remains readable");
             Equal(0, snapshot.ChangelogEntryCount, "legacy catalog without changelog table remains readable");

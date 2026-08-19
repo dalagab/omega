@@ -18,6 +18,7 @@ internal sealed class OnlineCatalogDescriptor
     public string CatalogSha256 { get; init; } = string.Empty;
     public string BundleSha256 { get; init; } = string.Empty;
     public string CatalogRevision { get; init; } = string.Empty;
+    public string DefinitionsRevision { get; init; } = string.Empty;
     public string SecurityRevision { get; init; } = string.Empty;
     public string EvidenceRevision { get; init; } = string.Empty;
     public string DatabaseRole { get; init; } = string.Empty;
@@ -32,12 +33,14 @@ internal sealed class OnlineCatalogState
     public string DescriptorUrl { get; set; } = string.Empty;
     public string CatalogSha256 { get; set; } = string.Empty;
     public string CatalogRevision { get; set; } = string.Empty;
+    public string DefinitionsRevision { get; set; } = string.Empty;
     public string SecurityRevision { get; set; } = string.Empty;
     public string EvidenceRevision { get; set; } = string.Empty;
     public DateTimeOffset? GeneratedAtUtc { get; set; }
     public DateTimeOffset? AppliedAtUtc { get; set; }
     public string AvailableCatalogSha256 { get; set; } = string.Empty;
     public string AvailableCatalogRevision { get; set; } = string.Empty;
+    public string AvailableDefinitionsRevision { get; set; } = string.Empty;
     public DateTimeOffset? CheckedAtUtc { get; set; }
 }
 
@@ -271,6 +274,11 @@ internal sealed class OnlineCatalogClient : IDisposable
            (value.StartsWith("cat-v1-", StringComparison.Ordinal) &&
             value.Length == 23 && value.AsSpan(7).ToString().All(char.IsAsciiHexDigit));
 
+    internal static bool IsValidDefinitionsRevision(string? value)
+        => string.IsNullOrWhiteSpace(value) ||
+           (value.StartsWith("defs-v1-", StringComparison.Ordinal) &&
+            value.Length == 24 && value.AsSpan(8).ToString().All(char.IsAsciiHexDigit));
+
     internal static bool IsValidSecurityRevision(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -317,6 +325,8 @@ internal sealed class OnlineCatalogClient : IDisposable
             throw new InvalidDataException("Online catalog descriptor has an invalid bundle size.");
         if (!IsValidCatalogRevision(descriptor.CatalogRevision))
             throw new InvalidDataException("Online catalog descriptor has an invalid Catalog Revision.");
+        if (!IsValidDefinitionsRevision(descriptor.DefinitionsRevision))
+            throw new InvalidDataException("Online catalog descriptor has an invalid Definitions Revision.");
         if (!IsValidSecurityRevision(descriptor.SecurityRevision))
             throw new InvalidDataException("Online catalog descriptor has an invalid Security Revision.");
         if (!IsValidEvidenceRevision(descriptor.EvidenceRevision))

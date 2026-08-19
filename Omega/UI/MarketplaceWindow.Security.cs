@@ -170,9 +170,11 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawAboutVersionAndDefinitions()
     {
-        var revision = string.IsNullOrWhiteSpace(catalog.CatalogRevision)
-            ? (catalog.HasLoaded ? "Loaded revision unavailable" : "Not loaded")
-            : catalog.CatalogRevision;
+        var revision = !string.IsNullOrWhiteSpace(catalog.DefinitionsRevision)
+            ? catalog.DefinitionsRevision
+            : string.IsNullOrWhiteSpace(catalog.CatalogRevision)
+                ? (catalog.HasLoaded ? "Loaded revision unavailable" : "Not loaded")
+                : catalog.CatalogRevision;
 
         ImGui.TextUnformatted("Version");
         ImGui.SameLine(0f, Ui(10f));

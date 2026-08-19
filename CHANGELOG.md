@@ -4,6 +4,19 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
+<sub>work build: 0.9.25</sub>
+- Update the Windows/C# regression contracts to the completed daily JSON/Definitions + 15-minute queue architecture after ZipRunner proved the plugin itself compiles but six pre-refactor workflow expectations were stale.
+- Keep the regression suite strict: daily client publication, frozen catalog/Definitions inputs, persistent queue ownership, and Sigmascope evidence-only publication are now asserted directly rather than removing the old checks.
+- Preserve the 0.9.24 refactor behavior unchanged; this build exists to rerun the real Windows/Dalamud gate with architecture-correct regressions.
+
+<sub>work build: 0.9.24</sub>
+- ZipRunner validation build for the catalog/Definitions refactor candidate; no public release is implied by this work-build version.
+- Make canonical sharded JSON the catalog authority, with a daily/manual compiler producing the compact SQLite database consumed by Omega.
+- Freeze daily Definitions separately from scanner rule-set identity, including deterministic OSV inputs, and carry catalog/Definitions/rules/evidence revisions through the compiled client database.
+- Replace production Sigmascope candidate scheduling with an explicit persistent one-item queue carrying scan reasons, leases, retry backoff, target identity, and reproducible per-scan provenance.
+- Keep 15-minute Sigmascope workers independent from client database publication; failed workers or daily compilers retain the previous known-good client database.
+- Keep Deltascope outside production as a read-only developer/security-analysis consumer of canonical catalog JSON, Security Evidence v2, and the exact published Omega SQLite database.
+
 <sub>work build: 0.9.23</sub>
 - Count Discover by stable catalog plugin identity, so one plugin mirrored by ten repositories is still one plugin in the rail and catalog status count while all ten source variants remain available.
 - Carry the stable SQLite `plugin_id` into runtime marketplace variants, with InternalName fallback for legacy and live Dalamud overlays.

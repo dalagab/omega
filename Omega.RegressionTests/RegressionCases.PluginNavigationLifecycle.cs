@@ -261,7 +261,8 @@ internal static partial class RegressionCases
         var config = File.ReadAllText(Path.Combine(Root, "Omega", "Configuration.cs"));
 
         Contains(state, "AvailableCatalogSha256", "pending Definitions hash is persisted outside the in-memory coordinator");
-        Contains(state, "AvailableCatalogRevision", "pending Definitions revision is persisted across game restarts");
+        Contains(state, "AvailableCatalogRevision", "pending Catalog revision is persisted across game restarts");
+        Contains(state, "AvailableDefinitionsRevision", "pending Definitions revision is persisted across game restarts");
         Contains(coordinator, "state.AvailableCatalogSha256", "coordinator rehydrates pending Definitions state at startup");
         Contains(chrome, "definitionsAttention: updates.DefinitionsUpdateAvailable", "Downloads rail receives a dedicated Definitions attention state");
         Contains(chrome, "0.12f, 0.48f, 0.86f", "Definitions attention marker is blue");

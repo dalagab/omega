@@ -6,8 +6,8 @@ Security Evidence v2 is the authoritative Sigmascope evidence state.  The pipeli
 small v2 evidence needed by the existing Sigmascope/projector, examines a bounded set of due
 variants, restores the last-known-good current pointer for any failed revalidation,
 refreshes OSV/IPC/dependency projections, merges only successful analyses into a staged
-copy of the published v2 snapshot, validates it intrinsically, and builds the small
-client marketplace SQLite from that staged state.
+copy of the published v2 snapshot and validates it intrinsically. The client
+marketplace SQLite is compiled separately at the daily/manual catalog publication boundary.
 
 Nothing in this module writes the published evidence branch.  Publication is a separate
 final step performed by publish_security_evidence_v2.py after both snapshot validation
@@ -39,6 +39,7 @@ for item in (SCRIPT_DIR, CATALOG_DIR):
 import catalog_revisions  # noqa: E402
 import collect_public_advisories  # noqa: E402
 import project_marketplace_catalog  # noqa: E402
+import scan_queue  # noqa: E402
 import sigmascope  # noqa: E402
 from local_sigmascope_v2_test import summarize as summarize_database  # noqa: E402
 from migrate_security_evidence_v2 import (  # noqa: E402
@@ -329,7 +330,9 @@ def _sigmascope_args(
     rescan_after_hours: int,
     max_batch_seconds: int,
     internal_names: str,
-    advisories: Path | None,
+    variant_ids: str = "",
+    scan_provenance: dict[str, Any] | None = None,
+    advisories: Path | None = None,
     source_overrides: Path,
     skip_source: bool,
 ) -> SimpleNamespace:
@@ -343,6 +346,8 @@ def _sigmascope_args(
         max_batch_seconds=max_batch_seconds,
         rescan_after_hours=rescan_after_hours,
         internal_names=internal_names,
+        variant_ids=variant_ids,
+        scan_provenance=dict(scan_provenance or {}),
         advisories=str(advisories) if advisories and advisories.exists() else "",
         source_overrides=str(source_overrides) if source_overrides.exists() else "",
         skip_source=skip_source,
@@ -668,7 +673,7 @@ def _build_plugins_artifacts_indexes(candidate: Path) -> tuple[dict[str, Any], d
     )
 
 
-def _semantic_security_revision(db: sqlite3.Connection) -> str:
+def semantic_security_revision(db: sqlite3.Connection) -> str:
     """Hash client/security conclusions without transport scan IDs.
 
     Current scan IDs are implementation details. Revalidating identical evidence must not
@@ -715,6 +720,10 @@ def _semantic_security_revision(db: sqlite3.Connection) -> str:
     digest = sha256_bytes(canonical_json_bytes(payload))
     safe_version = "".join(ch if ch.isalnum() or ch in ".-_" else "-" for ch in sigmascope.SCANNER_VERSION)[:24]
     return f"sec-{safe_version}-{digest[:16]}"
+
+
+# Backward-compatible private alias for older developer/tests that imported the helper.
+_semantic_security_revision = semantic_security_revision
 
 
 def _evidence_revision(candidate: Path, index_entries: dict[str, dict[str, Any]], osv_coverage: dict[str, Any]) -> str:
@@ -781,7 +790,7 @@ def rebuild_candidate_indexes(
         if table_exists(db, "catalog_meta"):
             row = db.execute("SELECT value FROM catalog_meta WHERE key IN ('catalog_base_revision','base_revision') ORDER BY CASE key WHEN 'catalog_base_revision' THEN 0 ELSE 1 END LIMIT 1").fetchone()
             base_revision = str(row[0] or "") if row else ""
-        security_revision = _semantic_security_revision(db)
+        security_revision = semantic_security_revision(db)
         evidence_revision = _evidence_revision(candidate, indexes, osv_coverage)
         catalog_revision = catalog_revisions.compute_catalog_revision(db, base_revision, security_revision)
         for key, value in (
@@ -811,6 +820,8 @@ def rebuild_candidate_indexes(
             "engineName": sigmascope.SIGMASCOPE_NAME,
             "engineVersion": sigmascope.SIGMASCOPE_VERSION,
             "scannerVersion": sigmascope.SCANNER_VERSION,
+            "catalogDataRevision": scan_context.get("catalogDataRevision", ""),
+            "definitionsRevision": scan_context.get("definitionsRevision", ""),
             "previousIndexSha256": scan_context.get("previousIndexSha256", ""),
             "scan": scan_context,
             "osv": osv_coverage,
@@ -818,6 +829,8 @@ def rebuild_candidate_indexes(
         "revisions": {
             "baseRevision": base_revision,
             "catalogRevision": catalog_revision,
+            "catalogDataRevision": scan_context.get("catalogDataRevision", ""),
+            "definitionsRevision": scan_context.get("definitionsRevision", ""),
             "securityRevision": security_revision,
             "evidenceRevision": evidence_revision,
             "previousCatalogRevision": str(previous_revisions.get("catalogRevision") or ""),
@@ -962,9 +975,12 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     current_evidence = args.current_evidence.resolve()
     candidate = args.candidate_evidence.resolve()
     work_dir = args.work_dir.resolve()
-    publication = args.publication_output.resolve()
-    descriptor = args.descriptor.resolve()
-    previous_marketplace = args.previous_marketplace_descriptor.resolve() if args.previous_marketplace_descriptor else None
+    publication_arg = getattr(args, "publication_output", None)
+    publication = publication_arg.resolve() if publication_arg else (work_dir / "publication-disabled")
+    descriptor_arg = getattr(args, "descriptor", None)
+    descriptor = descriptor_arg.resolve() if descriptor_arg else None
+    previous_marketplace_arg = getattr(args, "previous_marketplace_descriptor", None)
+    previous_marketplace = previous_marketplace_arg.resolve() if previous_marketplace_arg else None
     source_overrides = args.source_overrides.resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
     publication.mkdir(parents=True, exist_ok=True)
@@ -979,6 +995,60 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     materialized = materialize_current_state(base_database, current_evidence, work_database)
     before_current = _current_rows(work_database)
 
+    queue_seed_arg = getattr(args, "queue_seed", None)
+    queue_seed_path = queue_seed_arg.resolve() if queue_seed_arg else None
+    queue_enabled = queue_seed_path is not None
+    queue_state: dict[str, Any] | None = None
+    leased_queue_item: dict[str, Any] | None = None
+    queue_state_before = b""
+    selected_variant_ids = str(getattr(args, "variant_ids", "") or "")
+    selected_internal_names = str(args.internal_names or "")
+    scan_provenance: dict[str, Any] = {}
+    if queue_enabled:
+        if not queue_seed_path.is_file():
+            raise RuntimeError(f"frozen scan queue seed is missing: {queue_seed_path}")
+        queue_seed = json.loads(queue_seed_path.read_text(encoding="utf-8"))
+        if queue_seed.get("schema") != scan_queue.SEED_SCHEMA:
+            raise RuntimeError("frozen scan queue seed has an unsupported schema")
+        for key, expected in (
+            ("catalogRevision", str(getattr(args, "catalog_revision", "") or "")),
+            ("definitionsRevision", str(getattr(args, "definitions_revision", "") or "")),
+            ("definitionsSourceCommit", str(getattr(args, "definitions_source_commit", "") or "")),
+            ("ruleSetRevision", str(getattr(args, "rule_set_revision", "") or "")),
+        ):
+            if expected and str(queue_seed.get(key) or "") != expected:
+                raise RuntimeError(f"frozen scan queue {key} mismatch: {queue_seed.get(key)!r} != {expected!r}")
+        previous_queue_state = scan_queue.load_state(current_evidence / "scanner-queue.json")
+        queue_state = scan_queue.sync_state(queue_seed, previous_queue_state)
+        with closing(sqlite3.connect(work_database)) as queue_db:
+            queue_db.row_factory = sqlite3.Row
+            scan_queue.add_manual_items_from_database(
+                queue_state,
+                queue_db,
+                [item.strip() for item in selected_internal_names.split(",") if item.strip()],
+            )
+        leased_queue_item = scan_queue.lease_next(queue_state)
+        selected_variant_ids = str(int((leased_queue_item or {}).get("variantId") or 0)) if leased_queue_item else ""
+        selected_internal_names = ""
+        if leased_queue_item:
+            recent_attempts = leased_queue_item.get("recentAttempts") or []
+            latest_attempt = recent_attempts[-1] if recent_attempts and isinstance(recent_attempts[-1], dict) else {}
+            scan_provenance = {
+                "schema": "omega.sigmascope.scan-provenance.v1",
+                "catalogRevision": str(queue_seed.get("catalogRevision") or ""),
+                "definitionsRevision": str(queue_seed.get("definitionsRevision") or ""),
+                "definitionsSourceCommit": str(getattr(args, "definitions_source_commit", "") or ""),
+                "ruleSetRevision": str(queue_seed.get("ruleSetRevision") or ""),
+                "queueSeedRevision": str(queue_seed.get("queueSeedRevision") or ""),
+                "queueKey": str(leased_queue_item.get("queueKey") or ""),
+                "targetFingerprint": str(leased_queue_item.get("targetFingerprint") or ""),
+                "primaryReason": str(leased_queue_item.get("primaryReason") or ""),
+                "reasons": list(leased_queue_item.get("reasons") or []),
+                "attemptId": str(latest_attempt.get("attemptId") or ""),
+                "attemptNumber": int(latest_attempt.get("attemptNumber") or 0),
+            }
+        queue_state_before = scan_queue.canonical(previous_queue_state)
+
     if not os.environ.get("GITHUB_TOKEN") and os.environ.get("GH_TOKEN"):
         os.environ["GITHUB_TOKEN"] = os.environ["GH_TOKEN"]
 
@@ -986,10 +1056,12 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         work_database,
         work_dir,
         report_name="sigmascope-report.json",
-        max_scans=args.max_scans,
+        max_scans=1 if queue_enabled and leased_queue_item else (0 if queue_enabled else args.max_scans),
         rescan_after_hours=args.rescan_after_hours,
         max_batch_seconds=args.max_batch_seconds,
-        internal_names=args.internal_names,
+        internal_names=selected_internal_names,
+        variant_ids=selected_variant_ids,
+        scan_provenance=scan_provenance,
         advisories=None,
         source_overrides=source_overrides,
         skip_source=args.skip_source,
@@ -1007,6 +1079,21 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     }
     failed = sorted(set(failed) | reported_failed)
 
+    if queue_enabled and queue_state is not None and leased_queue_item is not None:
+        leased_variant_id = int(leased_queue_item.get("variantId") or 0)
+        attempted = next((item for item in (scan_report.get("plugins") or []) if isinstance(item, dict) and int(item.get("variantId") or 0) == leased_variant_id), None)
+        if attempted is None:
+            scan_queue.finish_lease(queue_state, leased_queue_item, status="failed", error="leased queue item produced no scan result")
+        else:
+            scan_queue.finish_lease(
+                queue_state,
+                leased_queue_item,
+                status="complete" if str(attempted.get("status") or "") == "complete" else "failed",
+                error=str(attempted.get("error") or ""),
+                artifact_sha256=str(attempted.get("artifactSha256") or ""),
+                scan_id=int((_current_rows(work_database).get(leased_variant_id) or {}).get("scan_id") or 0),
+            )
+
     # OSV consumes the explicit v2 NuGet package/version contract rather than
     # querying the mutable SQLite working projection directly. Build that bounded
     # index from current evidence first, then query exactly those identities.
@@ -1018,12 +1105,22 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         _osv_nuget_entry, osv_nuget_pairs = _export_nuget_index(osv_db, osv_input_root)
     osv_nuget_index = osv_input_root / "indexes" / "nuget.json"
     advisory_path = work_dir / "public-advisories.json"
-    advisory_report = collect_public_advisories.collect_from_nuget_index(
-        osv_nuget_index,
-        advisory_path,
-        timeout=args.osv_timeout,
-        max_packages=args.max_osv_packages,
-    )
+    frozen_advisories = getattr(args, "frozen_advisories", None)
+    frozen_advisories = frozen_advisories.resolve() if frozen_advisories else None
+    if frozen_advisories is not None:
+        if not frozen_advisories.is_file():
+            raise RuntimeError(f"frozen Definitions advisory payload does not exist: {frozen_advisories}")
+        shutil.copy2(frozen_advisories, advisory_path)
+        advisory_report = json.loads(advisory_path.read_text(encoding="utf-8"))
+        advisory_mode = "frozen-definitions"
+    else:
+        advisory_report = collect_public_advisories.collect_from_nuget_index(
+            osv_nuget_index,
+            advisory_path,
+            timeout=args.osv_timeout,
+            max_packages=args.max_osv_packages,
+        )
+        advisory_mode = "live-compatibility"
     refresh_args = _sigmascope_args(
         work_database,
         work_dir,
@@ -1032,6 +1129,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         rescan_after_hours=args.rescan_after_hours,
         max_batch_seconds=0,
         internal_names=args.internal_names,
+        variant_ids="",
         advisories=advisory_path,
         source_overrides=source_overrides,
         skip_source=True,
@@ -1045,13 +1143,38 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             f"NuGet evidence-index publication gate failed: current evidence reports {observed_nuget_pairs} exact pairs "
             f"but the generated v2 NuGet index contains {osv_nuget_pairs}"
         )
-    expected_osv = min(observed_nuget_pairs, int(args.max_osv_packages))
     queried_osv = int(advisory_report.get("queriedPackages") or 0)
-    if expected_osv and queried_osv < expected_osv:
-        raise RuntimeError(
-            f"OSV publication gate failed: {summary.get('nugetPackageVersionPairs')} exact NuGet package/version pairs observed, "
-            f"expected {expected_osv} queries, collector queried {queried_osv}"
-        )
+    frozen_pairs = {
+        (str(item.get("name") or "").casefold(), str(item.get("version") or ""))
+        for item in (advisory_report.get("queriedPackageVersionPairs") or [])
+        if isinstance(item, dict) and str(item.get("name") or "").strip() and str(item.get("version") or "").strip()
+    }
+    if frozen_advisories is not None:
+        nuget_doc = json.loads(osv_nuget_index.read_text(encoding="utf-8"))
+        current_pairs = {
+            (str(item.get("name") or "").casefold(), str(item.get("version") or ""))
+            for item in (nuget_doc.get("packages") or [])
+            if isinstance(item, dict) and str(item.get("name") or "").strip() and str(item.get("version") or "").strip()
+        }
+        covered_pairs = current_pairs & frozen_pairs
+        uncovered_pairs = current_pairs - frozen_pairs
+        expected_osv = len(covered_pairs)
+        # A frozen Definitions file is authoritative for the day. Dependencies first
+        # discovered during a worker run are recorded as uncovered until tomorrow;
+        # they must never cause a live mid-day OSV lookup.
+        if queried_osv < len(frozen_pairs):
+            raise RuntimeError(
+                f"frozen Definitions OSV payload is internally incomplete: declared {len(frozen_pairs)} package/version pairs, "
+                f"collector reports {queried_osv} queries"
+            )
+    else:
+        expected_osv = min(observed_nuget_pairs, int(args.max_osv_packages))
+        uncovered_pairs = set()
+        if expected_osv and queried_osv < expected_osv:
+            raise RuntimeError(
+                f"OSV publication gate failed: {summary.get('nugetPackageVersionPairs')} exact NuGet package/version pairs observed, "
+                f"expected {expected_osv} queries, collector queried {queried_osv}"
+            )
 
     subset = work_dir / "successful-v2-subset"
     migrate(
@@ -1073,6 +1196,17 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "failedVariantIds": failed,
         "maxScans": args.max_scans,
         "rescanAfterHours": args.rescan_after_hours,
+        "catalogDataRevision": str(getattr(args, "catalog_revision", "") or ""),
+        "definitionsRevision": str(getattr(args, "definitions_revision", "") or ""),
+        "ruleSetRevision": str(getattr(args, "rule_set_revision", "") or ""),
+        "queueSeedRevision": str((queue_state or {}).get("queueSeedRevision") or ""),
+        "queueLease": {
+            "variantId": int((leased_queue_item or {}).get("variantId") or 0),
+            "primaryReason": str((leased_queue_item or {}).get("primaryReason") or ""),
+            "reasons": list((leased_queue_item or {}).get("reasons") or []),
+            "attemptCount": int((leased_queue_item or {}).get("attemptCount") or 0),
+        } if leased_queue_item else {},
+        "advisoryMode": advisory_mode,
     }
     osv_coverage = {
         "schema": "omega.security-evidence.osv-coverage.v1",
@@ -1084,31 +1218,58 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "queriedPackageVersionPairs": queried_osv,
         "matchedPackageVersionPairs": int(advisory_report.get("matchedPackages") or 0),
         "advisoryRecords": len(advisory_report.get("advisories") or []),
-        "notQueriedByLimit": max(0, observed_nuget_pairs - expected_osv),
+        "notQueriedByLimit": max(0, observed_nuget_pairs - expected_osv) if frozen_advisories is None else 0,
+        "notCoveredByFrozenDefinitions": len(uncovered_pairs),
+        "definitionsRevision": str(getattr(args, "definitions_revision", "") or ""),
+        "mode": advisory_mode,
         "queryGate": "pass" if (not expected_osv or queried_osv >= expected_osv) else "fail",
     }
     root_index = rebuild_candidate_indexes(candidate, work_database, previous_index, scan_context, osv_coverage)
+    queue_state_changed = False
+    if queue_enabled and queue_state is not None:
+        queue_path = candidate / "scanner-queue.json"
+        scan_queue.write_json(queue_path, queue_state)
+        root_index["scannerQueue"] = {
+            "schema": scan_queue.STATE_SCHEMA,
+            "path": "scanner-queue.json",
+            "bytes": queue_path.stat().st_size,
+            "sha256": sha256_file(queue_path),
+            "summary": scan_queue.state_summary(queue_state),
+        }
+        write_json(candidate / "index.json", root_index)
+        queue_state_changed = scan_queue.canonical(queue_state) != queue_state_before
     snapshot_validation = validate_snapshot(candidate, require_no_orphans=True)
     write_json(candidate / "validation-report.json", snapshot_validation)
     if not snapshot_validation.get("ok"):
         raise RuntimeError("candidate Security Evidence v2 snapshot failed validation: " + "; ".join(snapshot_validation.get("errors") or []))
 
-    # Root revisions were written into the working DB by rebuild_candidate_indexes.
-    marketplace_report = write_marketplace_projection(
-        work_database,
-        descriptor,
-        publication,
-        marketplace_download_url=args.marketplace_download_url,
-        evidence_index_url=args.evidence_index_url,
-        previous_marketplace_descriptor=previous_marketplace,
-    )
+    # Client publication is intentionally not part of the continuous scanner.
+    # Compatibility/local tests may still request the old projection explicitly.
+    skip_marketplace = bool(getattr(args, "skip_marketplace", False))
+    if skip_marketplace:
+        marketplace_report = {
+            "schema": "omega.marketplace-projection.deferred.v1",
+            "publication": {"marketplaceRequired": False},
+            "reason": "Daily/manual catalog compiler owns client database publication.",
+        }
+    else:
+        if descriptor is None:
+            raise RuntimeError("descriptor is required when marketplace projection is enabled")
+        marketplace_report = write_marketplace_projection(
+            work_database,
+            descriptor,
+            publication,
+            marketplace_download_url=args.marketplace_download_url,
+            evidence_index_url=args.evidence_index_url,
+            previous_marketplace_descriptor=previous_marketplace,
+        )
 
     previous_revisions = previous_index.get("revisions") or {}
     revisions = root_index.get("revisions") or {}
     publication_required = any(
         str(revisions.get(key) or "") != str(previous_revisions.get(key) or "")
         for key in ("catalogRevision", "securityRevision", "evidenceRevision", "baseRevision")
-    )
+    ) or queue_state_changed
     result = {
         "schema": PIPELINE_SCHEMA,
         "generatedAtUtc": utc_now(),
@@ -1129,6 +1290,9 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "queriedPackages": queried_osv,
             "matchedPackages": int(advisory_report.get("matchedPackages") or 0),
             "gate": "pass" if (not expected_osv or queried_osv >= expected_osv) else "fail",
+            "mode": advisory_mode,
+            "definitionsRevision": str(getattr(args, "definitions_revision", "") or ""),
+            "notCoveredByFrozenDefinitions": len(uncovered_pairs),
         },
         "candidate": {
             "path": str(candidate),
@@ -1139,6 +1303,12 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "validation": snapshot_validation,
         },
         "marketplace": marketplace_report,
+        "queue": {
+            "enabled": queue_enabled,
+            "leased": leased_queue_item or {},
+            "stateChanged": queue_state_changed,
+            "summary": scan_queue.state_summary(queue_state) if queue_state is not None else {},
+        },
         "publicationRequired": publication_required,
         "workDatabase": str(work_database),
         "publicationOutput": str(publication),
@@ -1173,19 +1343,27 @@ def main() -> int:
         return 0
     parser = argparse.ArgumentParser(description="Stage and validate the production Omega Sigmascope / Security Evidence v2 update")
     parser.add_argument("--base-database", required=True, type=Path)
-    parser.add_argument("--descriptor", required=True, type=Path)
+    parser.add_argument("--descriptor", type=Path)
     parser.add_argument("--current-evidence", required=True, type=Path)
     parser.add_argument("--candidate-evidence", required=True, type=Path)
     parser.add_argument("--work-dir", required=True, type=Path)
-    parser.add_argument("--publication-output", required=True, type=Path)
+    parser.add_argument("--publication-output", type=Path)
     parser.add_argument("--previous-marketplace-descriptor", type=Path)
-    parser.add_argument("--marketplace-download-url", required=True)
+    parser.add_argument("--marketplace-download-url", default="")
     parser.add_argument("--evidence-index-url", required=True)
+    parser.add_argument("--skip-marketplace", action="store_true", help="Do not compile/publish the Omega client DB from the continuous scanner")
+    parser.add_argument("--frozen-advisories", type=Path, help="Definitions/osv-advisories.json frozen at the daily boundary")
+    parser.add_argument("--catalog-revision", default="", help="Canonical JSON catalog revision used for this worker")
+    parser.add_argument("--definitions-revision", default="", help="Frozen Definitions revision used for this worker")
+    parser.add_argument("--definitions-source-commit", default="", help="Exact Git commit pinned by the frozen Definitions snapshot")
+    parser.add_argument("--rule-set-revision", default="", help="Frozen scanner rule-set revision; distinct from advisory-only Definitions changes")
+    parser.add_argument("--queue-seed", type=Path, help="Immutable daily scan queue seed from catalog-data")
     parser.add_argument("--source-overrides", type=Path, default=TOOLS_DIR.parent / "sources" / "source-overrides.json")
     parser.add_argument("--max-scans", type=int, default=DEFAULT_MAX_SCANS)
     parser.add_argument("--rescan-after-hours", type=int, default=DEFAULT_RESCAN_HOURS)
     parser.add_argument("--max-batch-seconds", type=int, default=DEFAULT_MAX_BATCH_SECONDS)
     parser.add_argument("--internal-names", default="")
+    parser.add_argument("--variant-ids", default="", help="Optional exact variant IDs; normally supplied by the persistent queue")
     parser.add_argument("--skip-source", action="store_true")
     parser.add_argument("--osv-timeout", type=float, default=20.0)
     parser.add_argument("--max-osv-packages", type=int, default=2000)

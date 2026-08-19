@@ -50,7 +50,7 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
             OnlineCatalogClient.IsValidSha256(state.AvailableCatalogSha256) &&
             !state.AvailableCatalogSha256.Equals(state.CatalogSha256, StringComparison.OrdinalIgnoreCase))
         {
-            availableDefinitionsRevision = state.AvailableCatalogRevision;
+            availableDefinitionsRevision = ResolveDefinitionsRevision(state.AvailableDefinitionsRevision, state.AvailableCatalogRevision);
             Volatile.Write(ref definitionsUpdateAvailable, 1);
         }
     }
@@ -135,11 +135,14 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
             else if (probe.Descriptor is not null)
             {
                 var available = probe.Status == OnlineCatalogCheckStatus.UpdateAvailable;
-                availableDefinitionsRevision = available ? probe.Descriptor.CatalogRevision : string.Empty;
+                availableDefinitionsRevision = available
+                    ? ResolveDefinitionsRevision(probe.Descriptor.DefinitionsRevision, probe.Descriptor.CatalogRevision)
+                    : string.Empty;
                 Volatile.Write(ref definitionsUpdateAvailable, available ? 1 : 0);
                 state.DescriptorUrl = endpoint.DescriptorUrl;
                 state.AvailableCatalogSha256 = available ? probe.Descriptor.CatalogSha256.ToLowerInvariant() : string.Empty;
                 state.AvailableCatalogRevision = available ? probe.Descriptor.CatalogRevision : string.Empty;
+                state.AvailableDefinitionsRevision = available ? probe.Descriptor.DefinitionsRevision : string.Empty;
                 state.CheckedAtUtc = DateTimeOffset.UtcNow;
                 stateStore.Save(state);
                 Mode = catalog.HasLoaded ? CatalogAcquisitionMode.OnlineCatalog : CatalogAcquisitionMode.LocalCache;
@@ -246,6 +249,7 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
                 DescriptorUrl = endpoint.DescriptorUrl,
                 CatalogSha256 = result.Descriptor.CatalogSha256.ToLowerInvariant(),
                 CatalogRevision = applied.CatalogRevision,
+                DefinitionsRevision = applied.DefinitionsRevision,
                 SecurityRevision = applied.SecurityRevision,
                 EvidenceRevision = applied.EvidenceRevision,
                 GeneratedAtUtc = generatedAt,
@@ -259,7 +263,9 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
                 "Omega applied Definitions; variants={Variants}; sources={Sources}; definitionsRevision={DefinitionsRevision}; securityRevision={SecurityRevision}; evidenceRevision={EvidenceRevision}; sha256={Hash}",
                 applied.VariantCount,
                 applied.SourceDefinitions.Count,
-                string.IsNullOrWhiteSpace(applied.CatalogRevision) ? "unavailable" : applied.CatalogRevision,
+                string.IsNullOrWhiteSpace(applied.DefinitionsRevision)
+                    ? (string.IsNullOrWhiteSpace(applied.CatalogRevision) ? "unavailable" : applied.CatalogRevision)
+                    : applied.DefinitionsRevision,
                 string.IsNullOrWhiteSpace(applied.SecurityRevision) ? "unavailable" : applied.SecurityRevision,
                 string.IsNullOrWhiteSpace(applied.EvidenceRevision) ? "unavailable" : applied.EvidenceRevision,
                 result.Descriptor.CatalogSha256);
@@ -281,12 +287,24 @@ internal sealed class CatalogUpdateCoordinator : IDisposable
     {
         availableDefinitionsRevision = string.Empty;
         Volatile.Write(ref definitionsUpdateAvailable, 0);
-        if (string.IsNullOrWhiteSpace(state.AvailableCatalogSha256) && string.IsNullOrWhiteSpace(state.AvailableCatalogRevision))
+        if (string.IsNullOrWhiteSpace(state.AvailableCatalogSha256) &&
+            string.IsNullOrWhiteSpace(state.AvailableCatalogRevision) &&
+            string.IsNullOrWhiteSpace(state.AvailableDefinitionsRevision))
             return;
         state.AvailableCatalogSha256 = string.Empty;
         state.AvailableCatalogRevision = string.Empty;
+        state.AvailableDefinitionsRevision = string.Empty;
         state.CheckedAtUtc = DateTimeOffset.UtcNow;
         stateStore.Save(state);
+    }
+
+    private static string ResolveDefinitionsRevision(string? definitionsRevision, string? legacyCatalogRevision)
+    {
+        if (OnlineCatalogClient.IsValidDefinitionsRevision(definitionsRevision) && !string.IsNullOrWhiteSpace(definitionsRevision))
+            return definitionsRevision.Trim();
+        return OnlineCatalogClient.IsValidCatalogRevision(legacyCatalogRevision)
+            ? (legacyCatalogRevision ?? string.Empty).Trim()
+            : string.Empty;
     }
 
     public void Dispose()

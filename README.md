@@ -41,7 +41,11 @@ The canonical Sigmascope entry points include:
 
 Sigmascope is deterministic/static evidence gathering. It does not use an LLM to scan, score, or decide whether a plugin is trustworthy.
 
-Source feeds and source-resolution overrides live under `sources/`. The client-facing catalog endpoint is defined in `catalog/catalog-endpoint.json`. Generated catalog state is produced by GitHub Actions rather than treated as permanent hand-edited source.
+Source feeds and source-resolution overrides live under `sources/`. The client-facing catalog endpoint is defined in `catalog/catalog-endpoint.json`. Generated catalog state is not committed to `main`: the daily/manual catalog workflow publishes a canonical sharded JSON snapshot plus a frozen Definitions snapshot to the dedicated `catalog-data` branch, then compiles the exact `omega-marketplace.sqlite` consumed by Omega. SQLite is therefore a bounded client projection, not the authoritative catalog store.
+
+Sigmascope runs independently every 15 minutes against the active `catalog-data` snapshot. The daily snapshot includes an immutable deterministic queue seed with explicit reasons such as new variant, artifact change, source review, scanner-rule change, periodic revalidation, or manual review. Workers persist bounded lease/retry progress in Security Evidence v2, pin the scanner code to the snapshot's Definitions source commit, use its frozen OSV query/result set, process at most one queue item, and record catalog/Definitions/rule-set/source-commit provenance on the resulting evidence. Continuous scanner runs never publish a new Omega client database; client-visible catalog/Definitions publication is daily unless an operator deliberately runs the catalog workflow manually.
+
+The daily client compiler reapplies the day's frozen Definitions-derived advisory/catalog conclusions to the latest validated evidence without rescanning artifacts. The compiled database therefore carries its own truthful security revision plus the source Security Evidence revision it was built from.
 
 ## Omega repository metadata
 

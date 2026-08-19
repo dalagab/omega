@@ -63,10 +63,11 @@ class PipelineHandoffTests(unittest.TestCase):
             self.assertEqual(100, result["runId"], "expired newest artifact must fall back to the next successful builder run")
             self.assertEqual((artifact / "omega-catalog.sqlite.zip").read_bytes(), output.read_bytes())
             self.assertGreater(result["variantCount"], 0)
-            listed = runner.calls[0]
+            listed = next(call for call in runner.calls if call[:3] == ["gh", "run", "list"])
             self.assertIn("catalog-builder.yml", listed)
             self.assertIn("main", listed)
             self.assertIn("success", listed)
+            self.assertTrue(any(call[:4] == ["gh", "release", "download", "catalog-latest"] for call in runner.calls))
             downloads = [call for call in runner.calls if call[:3] == ["gh", "run", "download"]]
             self.assertEqual(2, len(downloads))
             self.assertTrue(all("omega-sqlite-catalog" in call for call in downloads))

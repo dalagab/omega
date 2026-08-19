@@ -54,15 +54,15 @@ class DotNetProjectContractTests(unittest.TestCase):
     def test_csharp_workflow_assertions_normalize_line_endings(self) -> None:
         path = common.ROOT / "Omega.RegressionTests" / "RegressionCases.SecurityIntelligence.cs"
         text = path.read_text(encoding="utf-8")
-        self.assertIn('var normalizedWorkflow = workflow.ReplaceLineEndings("\\n");', text)
-        self.assertIn('Contains(normalizedWorkflow, "workflows:\\n', text)
-        self.assertIn('Omega SQLite catalog builder', text)
-        self.assertIn('Contains(workflow, "tools/security/sigmascope_handoff.py"', text)
-        self.assertIn(r'ARTIFACT_NAME = \"omega-sqlite-catalog\"', text)
-        self.assertIn(r'\"gh\", \"run\", \"download\"', text)
-        self.assertNotIn('Contains(workflow, "--name omega-sqlite-catalog"', text)
-        self.assertNotIn('workflow.IndexOf("\\n  publish_marketplace:', text)
-        self.assertNotIn('workflow.IndexOf("\\n  publish_evidence:', text)
+        self.assertIn(r'var normalizedWorkflow = workflow.ReplaceLineEndings("\n");', text)
+        self.assertIn('Contains(normalizedWorkflow, "name: Omega Sigmascope continuous worker"', text)
+        self.assertIn(r'Contains(normalizedWorkflow, "cron: \"*/15 * * * *\""', text)
+        self.assertIn('Contains(normalizedWorkflow, "ref: catalog-data"', text)
+        self.assertIn('Contains(normalizedWorkflow, "--queue-seed catalog/active-state/scan-queue.json"', text)
+        self.assertIn('Contains(normalizedWorkflow, "--skip-marketplace"', text)
+        self.assertNotIn(r'Contains(normalizedWorkflow, "workflows:\n', text)
+        self.assertNotIn('Omega SQLite catalog builder', text)
+        self.assertNotIn('Contains(workflow, "tools/security/sigmascope_handoff.py"', text)
 
     def test_clean_source_build_does_not_require_generated_catalog_bootstrap_bytes(self) -> None:
         catalog = (common.ROOT / "Omega.RegressionTests" / "RegressionCases.Catalog.cs").read_text(encoding="utf-8")
@@ -108,6 +108,26 @@ class DotNetProjectContractTests(unittest.TestCase):
         self.assertIn('value.StartsWith("ev-v2", StringComparison.Ordinal)', client)
         self.assertIn('IsValidEvidenceRevision("ev-v2-0123456789abcdef")', regressions)
         self.assertIn('IsValidEvidenceRevision("ev-v3-0123456789abcdef")', regressions)
+
+    def test_client_carries_frozen_definitions_revision_end_to_end(self) -> None:
+        client = (common.ROOT / "Omega" / "Services" / "OnlineCatalogClient.cs").read_text(encoding="utf-8")
+        store = (common.ROOT / "Omega" / "Services" / "SqliteCatalogStore.cs").read_text(encoding="utf-8")
+        service = (common.ROOT / "Omega" / "Services" / "MarketplaceCatalogService.cs").read_text(encoding="utf-8")
+        refresh = (common.ROOT / "Omega" / "Services" / "MarketplaceCatalogService.Refresh.cs").read_text(encoding="utf-8")
+        coordinator = (common.ROOT / "Omega" / "Services" / "CatalogUpdateCoordinator.cs").read_text(encoding="utf-8")
+        library = (common.ROOT / "Omega" / "UI" / "MarketplaceWindow.Library.cs").read_text(encoding="utf-8")
+        about = (common.ROOT / "Omega" / "UI" / "MarketplaceWindow.Security.cs").read_text(encoding="utf-8")
+
+        self.assertIn("public string DefinitionsRevision", client)
+        self.assertIn("public string AvailableDefinitionsRevision", client)
+        self.assertIn('value.StartsWith("defs-v1-", StringComparison.Ordinal)', client)
+        self.assertIn('ReadMeta(connection, "definitions_revision")', store)
+        self.assertIn("string DefinitionsRevision", service)
+        self.assertIn("DefinitionsRevision = snapshot.DefinitionsRevision", refresh)
+        self.assertIn("probe.Descriptor.DefinitionsRevision", coordinator)
+        self.assertIn("applied.DefinitionsRevision", coordinator)
+        self.assertIn("catalog.DefinitionsRevision", library)
+        self.assertIn("catalog.DefinitionsRevision", about)
 
     def test_windows_regression_literals_follow_responsive_sigmascope_source(self) -> None:
         catalog = (common.ROOT / "Omega.RegressionTests" / "RegressionCases.Catalog.cs").read_text(encoding="utf-8")

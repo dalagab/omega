@@ -9,6 +9,7 @@ internal sealed record SqliteCatalogSnapshot(
     IReadOnlyList<CuratedSourceDefinition> SourceDefinitions,
     DateTimeOffset? GeneratedAtUtc,
     string CatalogRevision,
+    string DefinitionsRevision,
     string SecurityRevision,
     string EvidenceRevision,
     DateTimeOffset? RevisionUpdatedAtUtc,
@@ -71,6 +72,7 @@ internal sealed class SqliteCatalogStore
                     ReadSourceDefinitions(connection),
                     ReadGeneratedAt(connection),
                     ReadMeta(connection, "catalog_revision"),
+                    ReadMeta(connection, "definitions_revision"),
                     ReadMeta(connection, "security_revision"),
                     ReadMeta(connection, "evidence_revision"),
                     ReadRevisionUpdatedAt(connection),
@@ -209,6 +211,7 @@ internal sealed class SqliteCatalogStore
         _ = ReadSourceDefinitions(candidate);
         _ = ReadGeneratedAt(candidate);
         _ = ReadMeta(candidate, "catalog_revision");
+        _ = ReadMeta(candidate, "definitions_revision");
         _ = ReadMeta(candidate, "security_revision");
         _ = ReadMeta(candidate, "evidence_revision");
         _ = ReadRevisionUpdatedAt(candidate);
