@@ -25,7 +25,7 @@ class WorkflowContractTests(unittest.TestCase):
             "needs: [collect, enrich, scrape]",
             "ref: security-evidence-v2",
             "ref: catalog-data",
-            "catalog_json_store.py materialize",
+            "catalog_json_store.py",
             "catalog_json_store.py export",
             "source_inventory_guard.py",
             "--report catalog/source-inventory.json",
@@ -80,21 +80,22 @@ class WorkflowContractTests(unittest.TestCase):
             "path: catalog/active-state",
             "ref: security-evidence-v2",
             "path: catalog/security-v2-current",
-            "definitions_snapshot.py verify",
-            "catalog_json_store.py materialize",
+            "definitions_snapshot.py",
+            "catalog_json_store.py",
             "production_sigmascope_v2_pipeline.py",
             "--skip-marketplace",
             "--frozen-advisories catalog/active-state/definitions/osv-advisories.json",
             '--catalog-revision "${{ steps.frozen.outputs.catalog_revision }}"',
             '--definitions-revision "${{ steps.frozen.outputs.definitions_revision }}"',
-            '--definitions-source-commit "${{ steps.frozen.outputs.source_commit }}"',
+            '--scanner-revision "${{ steps.frozen.outputs.scanner_revision }}"',
+            '--scanner-bundle-sha256 "${{ steps.frozen.outputs.scanner_bundle_sha256 }}"',
             '--rule-set-revision "${{ steps.frozen.outputs.rule_set_revision }}"',
             "--queue-seed catalog/active-state/scan-queue.json",
             "--max-scans 1",
             "--rescan-after-hours 168",
             "publish_security_evidence_v2.py",
             "--branch security-evidence-v2",
-            "developer_view.py audit",
+            "developer_view.py",
             "sigmascope-source-followups.json",
             "continue-on-error: true",
         )
@@ -103,13 +104,19 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("validate_marketplace_catalog.py", text, "continuous scanner no longer builds a client projection")
         self.assertNotIn("omega-marketplace.sqlite.zip", text)
 
-    def test_sigmascope_checks_out_and_verifies_the_frozen_definition_source_commit(self) -> None:
+    def test_sigmascope_executes_frozen_worker_bundle_without_historical_dev_checkout(self) -> None:
         text = self.read("sigmascope.yml")
-        self.assertIn("source_commit=", text)
-        self.assertIn("git checkout --detach", text)
-        self.assertIn('"${{ steps.frozen.outputs.source_commit }}"', text)
-        self.assertLess(text.index("git checkout --detach"), text.index("definitions_snapshot.py verify"))
-        self.assertLess(text.index("definitions_snapshot.py verify"), text.index("production_sigmascope_v2_pipeline.py"))
+        self.assertIn("OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker", text)
+        self.assertIn("scanner_revision=", text)
+        self.assertIn("scanner_bundle_sha256=", text)
+        self.assertIn("Verify frozen worker bundle before execution", text)
+        self.assertIn('$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py', text)
+        self.assertIn('$OMEGA_FROZEN_WORKER/tools/security/publish_security_evidence_v2.py', text)
+        self.assertIn('$OMEGA_FROZEN_WORKER/sources/source-overrides.json', text)
+        self.assertNotIn("git checkout --detach", text)
+        self.assertNotIn("source_commit=", text)
+        self.assertNotIn("definitions-source-commit", text)
+        self.assertLess(text.index("Verify frozen worker bundle before execution"), text.index("Examine one due variant"))
 
     def test_definitions_freeze_rules_and_exact_osv_query_universe(self) -> None:
         definitions = (common.ROOT / "tools" / "catalog" / "definitions_snapshot.py").read_text(encoding="utf-8")
@@ -117,7 +124,11 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("ruleFiles", definitions)
         self.assertIn("RULE_SET_FILES", definitions)
         self.assertIn("ruleSetRevision", definitions)
-        self.assertIn("sourceCommit", definitions)
+        self.assertIn("WORKER_BUNDLE_SCHEMA", definitions)
+        self.assertIn("scannerRevision", definitions)
+        self.assertIn("scannerBundle", definitions)
+        self.assertIn("builtFromDevCommit", definitions)
+        self.assertNotIn('"sourceCommit": source_commit', definitions)
         self.assertIn("queriedPackageVersionPairs", definitions)
         self.assertIn("definitionsRevision", definitions)
         self.assertIn("notCoveredByFrozenDefinitions", pipeline)

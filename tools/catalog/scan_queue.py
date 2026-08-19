@@ -305,7 +305,8 @@ def build_seed(
     catalog_identity_epoch = str(catalog_index.get("identityEpoch") or "")
     definitions_revision = str(definitions_index.get("definitionsRevision") or "")
     rule_set_revision = str(definitions_index.get("ruleSetRevision") or "")
-    definitions_source_commit = str(definitions_index.get("sourceCommit") or "")
+    scanner_revision = str(definitions_index.get("scannerRevision") or "")
+    scanner_bundle_sha256 = str((definitions_index.get("scannerBundle") or {}).get("sha256") or "")
     previous_evidence_identity_epoch = evidence_identity_epoch(evidence_root)
     baseline_security_rebuild = bool(catalog_identity_epoch and previous_evidence_identity_epoch != catalog_identity_epoch)
     current = {} if baseline_security_rebuild else evidence_current(evidence_root)
@@ -340,6 +341,8 @@ def build_seed(
         "catalogRevision": catalog_revision,
         "catalogIdentityEpoch": catalog_identity_epoch,
         "definitionsRevision": definitions_revision,
+        "scannerRevision": scanner_revision,
+        "scannerBundleSha256": scanner_bundle_sha256,
         "ruleSetRevision": rule_set_revision,
         "baselineSecurityRebuild": baseline_security_rebuild,
         "rescanAfterHours": int(rescan_after_hours),
@@ -358,7 +361,8 @@ def build_seed(
         "catalogRevision": catalog_revision,
         "catalogIdentityEpoch": catalog_identity_epoch,
         "definitionsRevision": definitions_revision,
-        "definitionsSourceCommit": definitions_source_commit,
+        "scannerRevision": scanner_revision,
+        "scannerBundleSha256": scanner_bundle_sha256,
         "baselineSecurityRebuild": baseline_security_rebuild,
         "previousEvidenceIdentityEpoch": previous_evidence_identity_epoch,
         "ruleSetRevision": rule_set_revision,
@@ -421,6 +425,8 @@ def sync_state(seed: dict[str, Any], previous: dict[str, Any] | None, *, now: dt
         "catalogIdentityEpoch": str(seed.get("catalogIdentityEpoch") or ""),
         "baselineSecurityRebuild": bool(seed.get("baselineSecurityRebuild")),
         "definitionsRevision": str(seed.get("definitionsRevision") or ""),
+        "scannerRevision": str(seed.get("scannerRevision") or ""),
+        "scannerBundleSha256": str(seed.get("scannerBundleSha256") or ""),
         "ruleSetRevision": str(seed.get("ruleSetRevision") or ""),
         "updatedAtUtc": str(previous.get("updatedAtUtc") or "") if same_seed else utc_now(now_dt),
         "items": items,
@@ -607,6 +613,8 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
         "catalogIdentityEpoch": str(state.get("catalogIdentityEpoch") or ""),
         "baselineSecurityRebuild": bool(state.get("baselineSecurityRebuild")),
         "definitionsRevision": str(state.get("definitionsRevision") or ""),
+        "scannerRevision": str(state.get("scannerRevision") or ""),
+        "scannerBundleSha256": str(state.get("scannerBundleSha256") or ""),
         "ruleSetRevision": str(state.get("ruleSetRevision") or ""),
         "states": counts,
         "pendingByReason": due_by_reason,

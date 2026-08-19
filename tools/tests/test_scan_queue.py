@@ -32,6 +32,8 @@ class ScanQueueTests(unittest.TestCase):
         (target / "index.json").write_text(json.dumps({
             "schema": "omega.definitions.v1",
             "definitionsRevision": defs,
+            "scannerRevision": "scanner-v1-fixture",
+            "scannerBundle": {"sha256": "b" * 64},
             "ruleSetRevision": rules,
         }), encoding="utf-8")
         return target
@@ -71,6 +73,8 @@ class ScanQueueTests(unittest.TestCase):
             self.assertGreater(seed["counts"]["queued"], 0)
             self.assertTrue(all("new_variant" in item["reasons"] for item in seed["items"]))
             self.assertTrue(all(item["targetFingerprint"].startswith("scan-target-v1-") for item in seed["items"]))
+            self.assertEqual("scanner-v1-fixture", seed["scannerRevision"])
+            self.assertEqual("b" * 64, seed["scannerBundleSha256"])
 
 
     def test_identity_epoch_mismatch_creates_clean_baseline_queue(self) -> None:

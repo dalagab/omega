@@ -1061,7 +1061,8 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         for key, expected in (
             ("catalogRevision", str(getattr(args, "catalog_revision", "") or "")),
             ("definitionsRevision", str(getattr(args, "definitions_revision", "") or "")),
-            ("definitionsSourceCommit", str(getattr(args, "definitions_source_commit", "") or "")),
+            ("scannerRevision", str(getattr(args, "scanner_revision", "") or "")),
+            ("scannerBundleSha256", str(getattr(args, "scanner_bundle_sha256", "") or "")),
             ("ruleSetRevision", str(getattr(args, "rule_set_revision", "") or "")),
         ):
             if expected and str(queue_seed.get(key) or "") != expected:
@@ -1086,7 +1087,8 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 "catalogRevision": str(queue_seed.get("catalogRevision") or ""),
                 "catalogIdentityEpoch": str(queue_seed.get("catalogIdentityEpoch") or ""),
                 "definitionsRevision": str(queue_seed.get("definitionsRevision") or ""),
-                "definitionsSourceCommit": str(getattr(args, "definitions_source_commit", "") or ""),
+                "scannerRevision": str(getattr(args, "scanner_revision", "") or ""),
+                "scannerBundleSha256": str(getattr(args, "scanner_bundle_sha256", "") or ""),
                 "ruleSetRevision": str(queue_seed.get("ruleSetRevision") or ""),
                 "queueSeedRevision": str(queue_seed.get("queueSeedRevision") or ""),
                 "queueKey": str(leased_queue_item.get("queueKey") or ""),
@@ -1259,6 +1261,8 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "catalogIdentityEpoch": queue_identity_epoch,
         "baselineSecurityRebuild": baseline_security_rebuild,
         "definitionsRevision": str(getattr(args, "definitions_revision", "") or ""),
+        "scannerRevision": str(getattr(args, "scanner_revision", "") or ""),
+        "scannerBundleSha256": str(getattr(args, "scanner_bundle_sha256", "") or ""),
         "ruleSetRevision": str(getattr(args, "rule_set_revision", "") or ""),
         "queueSeedRevision": str((queue_state or {}).get("queueSeedRevision") or ""),
         "queueLease": {
@@ -1416,7 +1420,8 @@ def main() -> int:
     parser.add_argument("--frozen-advisories", type=Path, help="Definitions/osv-advisories.json frozen at the daily boundary")
     parser.add_argument("--catalog-revision", default="", help="Canonical JSON catalog revision used for this worker")
     parser.add_argument("--definitions-revision", default="", help="Frozen Definitions revision used for this worker")
-    parser.add_argument("--definitions-source-commit", default="", help="Exact Git commit pinned by the frozen Definitions snapshot")
+    parser.add_argument("--scanner-revision", default="", help="Frozen self-contained worker bundle revision")
+    parser.add_argument("--scanner-bundle-sha256", default="", help="SHA-256 of the frozen worker bundle manifest")
     parser.add_argument("--rule-set-revision", default="", help="Frozen scanner rule-set revision; distinct from advisory-only Definitions changes")
     parser.add_argument("--queue-seed", type=Path, help="Immutable daily scan queue seed from catalog-data")
     parser.add_argument("--source-overrides", type=Path, default=TOOLS_DIR.parent / "sources" / "source-overrides.json")

@@ -3,6 +3,8 @@ from __future__ import annotations
 from contextlib import closing
 import json
 import sqlite3
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -26,7 +28,7 @@ class CatalogJsonSnapshotTests(unittest.TestCase):
             index = catalog_json_store.export_snapshot(source_db, snapshot, source_commit="fixture-commit")
             validation = catalog_json_store.validate_snapshot(snapshot)
             self.assertTrue(validation["ok"], validation)
-            self.assertEqual("fixture-commit", index["sourceCommit"])
+            self.assertEqual("fixture-commit", index["builtFromDevCommit"])
             self.assertEqual(catalog_json_store.IDENTITY_EPOCH, index["identityEpoch"])
 
             materialized = root / "materialized.sqlite"
@@ -93,7 +95,36 @@ class CatalogJsonSnapshotTests(unittest.TestCase):
             )
             self.assertNotEqual(first["definitionsRevision"], second["definitionsRevision"])
             self.assertEqual(first["ruleSetRevision"], second["ruleSetRevision"], "OSV query changes must not force artifact rescans")
+            self.assertEqual(first["scannerRevision"], second["scannerRevision"], "data-only Definitions changes reuse the exact frozen worker bundle")
             self.assertTrue(first["ruleSetRevision"].startswith("rules-v1-"))
+            self.assertTrue(first["scannerRevision"].startswith("scanner-v1-"))
+            validation = definitions_snapshot.verify_snapshot(definitions_root=root / "defs-one")
+            self.assertTrue(validation["ok"], validation)
+            self.assertEqual(first["scannerRevision"], validation["scannerRevision"])
+            self.assertTrue((root / "defs-one" / "worker" / "tools" / "security" / "production_sigmascope_v2_pipeline.py").is_file())
+            self.assertTrue((root / "defs-one" / "worker" / "sources" / "source-overrides.json").is_file())
+
+    def test_frozen_worker_bundle_detects_tampering_without_dev_checkout(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-worker-bundle-") as td:
+            root = Path(td)
+            evidence = root / "evidence"
+            (evidence / "indexes").mkdir(parents=True)
+            (evidence / "indexes" / "nuget.json").write_text(json.dumps({"schema": "omega.security-evidence.nuget-index.v2", "packages": []}), encoding="utf-8")
+            (evidence / "index.json").write_text(json.dumps({"revisions": {"evidenceRevision": "ev-fixture"}, "indexes": {"nuget": {"path": "indexes/nuget.json"}}}), encoding="utf-8")
+            advisories = root / "advisories.json"
+            advisories.write_text(json.dumps({"schema": "omega.public-advisories.v1", "source": "OSV", "ecosystem": "NuGet", "queriedPackages": 0, "matchedPackages": 0, "advisories": []}), encoding="utf-8")
+            definitions = root / "definitions"
+            index = definitions_snapshot.build_snapshot(repo_root=common.ROOT, evidence_root=evidence, output=definitions, source_commit="dev-provenance-only", advisories_input=advisories)
+            self.assertEqual("dev-provenance-only", index["builtFromDevCommit"])
+            self.assertTrue(definitions_snapshot.verify_snapshot(definitions_root=definitions, repo_root=root / "deleted-dev-checkout")["ok"])
+            for relative, args in (("tools/catalog/sigmascope.py", ["--self-test"]), ("tools/security/production_sigmascope_v2_pipeline.py", ["--self-test"])):
+                result = subprocess.run([sys.executable, str(definitions / "worker" / relative), *args], cwd=root, text=True, capture_output=True)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            frozen_rule = definitions / "worker" / "tools" / "catalog" / "security_path_access.py"
+            frozen_rule.write_text(frozen_rule.read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8")
+            report = definitions_snapshot.verify_snapshot(definitions_root=definitions)
+            self.assertFalse(report["ok"])
+            self.assertTrue(any("worker bundle file" in item or "frozen scanner rule" in item for item in report["errors"]), report)
 
     def test_catalog_state_validation_detects_definition_payload_tampering(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-catalog-state-") as td:

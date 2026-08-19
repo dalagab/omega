@@ -6,12 +6,13 @@ run many times during that day, but it must use the same Definitions revision. T
 snapshot therefore captures:
 
 * semantic hashes of scanner/rule-bearing source files;
-* the exact Git commit containing those files;
+* a self-contained immutable worker bundle with the exact catalog/security Python code;
 * a frozen OSV advisory response for the exact NuGet pairs known at refresh time;
 * an explicit versioned reputation-feed document (empty until such a feed exists).
 
-The worker can checkout ``sourceCommit`` and verify the file hashes before scanning,
-preventing a mid-day main-branch change from silently changing scanner semantics.
+The Git branch that launches Actions is development/transport only. Scheduled workers execute
+the frozen bundle carried by ``catalog-data`` and never checkout a historical development
+commit. A development commit may be recorded as provenance, but it is not executable input.
 """
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ import datetime as dt
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 from typing import Any
@@ -34,6 +36,12 @@ import sigmascope  # noqa: E402
 
 SCHEMA = "omega.definitions.v1"
 FORMAT_VERSION = 1
+
+WORKER_BUNDLE_SCHEMA = "omega.sigmascope.worker-bundle.v1"
+WORKER_BUNDLE_PATH = "worker"
+WORKER_BUNDLE_DIRS = ("tools/catalog", "tools/security")
+WORKER_BUNDLE_EXTRA_FILES = ("sources/source-overrides.json",)
+
 RULE_SET_FILES = (
     # Static artifact/source analysis and the helper modules whose semantics feed
     # directly into findings, source provenance, endpoint/path evidence, and
@@ -98,14 +106,114 @@ def rule_set_revision(fingerprints: dict[str, str], scanner_version: str | None 
     return f"rules-v1-{sha256_bytes(canonical(semantic))[:16]}"
 
 
+def worker_bundle_files(repo_root: Path) -> list[str]:
+    files: set[str] = set()
+    for rel_dir in WORKER_BUNDLE_DIRS:
+        directory = repo_root / rel_dir
+        if not directory.is_dir():
+            raise RuntimeError(f"worker bundle directory is missing: {rel_dir}")
+        for path in directory.rglob("*.py"):
+            if path.is_file() and "__pycache__" not in path.parts:
+                files.add(path.relative_to(repo_root).as_posix())
+    for rel in WORKER_BUNDLE_EXTRA_FILES:
+        if not (repo_root / rel).is_file():
+            raise RuntimeError(f"worker bundle file is missing: {rel}")
+        files.add(rel)
+    return sorted(files)
+
+
+def build_worker_bundle(repo_root: Path, definitions_root: Path) -> dict[str, Any]:
+    bundle_root = definitions_root / WORKER_BUNDLE_PATH
+    if bundle_root.exists():
+        shutil.rmtree(bundle_root)
+    entries: list[dict[str, Any]] = []
+    total_bytes = 0
+    for rel in worker_bundle_files(repo_root):
+        source = repo_root / rel
+        destination = bundle_root / rel
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        size = destination.stat().st_size
+        total_bytes += size
+        entries.append({"path": rel, "sha256": sha256_file(destination), "bytes": size})
+    semantic = {"schema": WORKER_BUNDLE_SCHEMA, "files": entries}
+    scanner_revision = f"scanner-v1-{sha256_bytes(canonical(semantic))[:16]}"
+    manifest = {
+        "schema": WORKER_BUNDLE_SCHEMA,
+        "scannerRevision": scanner_revision,
+        "fileCount": len(entries),
+        "totalBytes": total_bytes,
+        "files": entries,
+    }
+    manifest_path = bundle_root / "manifest.json"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    return {
+        "path": WORKER_BUNDLE_PATH,
+        "manifestPath": f"{WORKER_BUNDLE_PATH}/manifest.json",
+        "sha256": sha256_file(manifest_path),
+        "scannerRevision": scanner_revision,
+        "fileCount": len(entries),
+        "totalBytes": total_bytes,
+    }
+
+
+def verify_worker_bundle(definitions_root: Path, descriptor: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    manifest_rel = str(descriptor.get("manifestPath") or "")
+    expected_manifest_sha = str(descriptor.get("sha256") or "")
+    manifest_path = definitions_root / manifest_rel
+    if not manifest_rel or not manifest_path.is_file():
+        return [f"worker bundle manifest missing: {manifest_rel or '<unset>'}"]
+    if sha256_file(manifest_path) != expected_manifest_sha:
+        errors.append("worker bundle manifest SHA-256 mismatch")
+        return errors
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return [f"worker bundle manifest unreadable: {type(exc).__name__}: {exc}"]
+    if manifest.get("schema") != WORKER_BUNDLE_SCHEMA:
+        errors.append(f"unsupported worker bundle schema: {manifest.get('schema')!r}")
+    entries = [item for item in manifest.get("files") or [] if isinstance(item, dict)]
+    semantic_entries: list[dict[str, Any]] = []
+    total_bytes = 0
+    bundle_root = definitions_root / str(descriptor.get("path") or WORKER_BUNDLE_PATH)
+    for item in entries:
+        rel = str(item.get("path") or "")
+        expected = str(item.get("sha256") or "")
+        expected_bytes = int(item.get("bytes") or 0)
+        path = bundle_root / rel
+        if not rel or not path.is_file():
+            errors.append(f"worker bundle file missing: {rel or '<unset>'}")
+            continue
+        actual_bytes = path.stat().st_size
+        if actual_bytes != expected_bytes:
+            errors.append(f"worker bundle file size mismatch: {rel}")
+        if sha256_file(path) != expected:
+            errors.append(f"worker bundle file SHA-256 mismatch: {rel}")
+        total_bytes += actual_bytes
+        semantic_entries.append({"path": rel, "sha256": expected, "bytes": expected_bytes})
+    expected_revision = f"scanner-v1-{sha256_bytes(canonical({'schema': WORKER_BUNDLE_SCHEMA, 'files': semantic_entries}))[:16]}"
+    manifest_revision = str(manifest.get("scannerRevision") or "")
+    descriptor_revision = str(descriptor.get("scannerRevision") or "")
+    if expected_revision != manifest_revision or expected_revision != descriptor_revision:
+        errors.append("scanner revision does not match frozen worker bundle")
+    if len(entries) != int(descriptor.get("fileCount") or 0):
+        errors.append("worker bundle file count mismatch")
+    if total_bytes != int(descriptor.get("totalBytes") or 0):
+        errors.append("worker bundle byte count mismatch")
+    return errors
+
+
 def definitions_revision(
-    *, scanner_version: str, scanner_rule_revision: str, fingerprints: dict[str, str],
+    *, scanner_version: str, scanner_revision: str, scanner_rule_revision: str, fingerprints: dict[str, str],
     osv_document: dict[str, Any], reputation: dict[str, Any],
 ) -> str:
     semantic = {
         "schema": SCHEMA,
         "formatVersion": FORMAT_VERSION,
         "scannerVersion": scanner_version,
+        "scannerRevision": scanner_revision,
         "ruleSetRevision": scanner_rule_revision,
         "ruleFiles": fingerprints,
         "osv": _semantic_osv(osv_document),
@@ -150,9 +258,11 @@ def build_snapshot(
     evidence_root = evidence_root.resolve()
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    source_commit = source_commit.strip() or git_commit(repo_root)
+    built_from_dev_commit = source_commit.strip() or git_commit(repo_root)
     fingerprints = rule_files(repo_root)
     scanner_rule_revision = rule_set_revision(fingerprints)
+    worker_bundle = build_worker_bundle(repo_root, output)
+    scanner_revision = str(worker_bundle["scannerRevision"])
 
     evidence_index_path = evidence_root / "index.json"
     evidence_index = json.loads(evidence_index_path.read_text(encoding="utf-8")) if evidence_index_path.is_file() else {}
@@ -200,6 +310,7 @@ def build_snapshot(
 
     revision = definitions_revision(
         scanner_version=sigmascope.SCANNER_VERSION,
+        scanner_revision=scanner_revision,
         scanner_rule_revision=scanner_rule_revision,
         fingerprints=fingerprints,
         osv_document=document,
@@ -210,8 +321,10 @@ def build_snapshot(
         "formatVersion": FORMAT_VERSION,
         "definitionsRevision": revision,
         "generatedAtUtc": utc_now(),
-        "sourceCommit": source_commit,
+        "builtFromDevCommit": built_from_dev_commit,
         "scannerVersion": sigmascope.SCANNER_VERSION,
+        "scannerRevision": scanner_revision,
+        "scannerBundle": worker_bundle,
         "sourceEvidenceRevision": evidence_revision,
         "ruleSetRevision": scanner_rule_revision,
         "ruleFiles": fingerprints,
@@ -232,8 +345,7 @@ def build_snapshot(
     return index
 
 
-def verify_snapshot(*, repo_root: Path, definitions_root: Path) -> dict[str, Any]:
-    repo_root = repo_root.resolve()
+def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) -> dict[str, Any]:
     definitions_root = definitions_root.resolve()
     errors: list[str] = []
     try:
@@ -242,14 +354,17 @@ def verify_snapshot(*, repo_root: Path, definitions_root: Path) -> dict[str, Any
         return {"schema": "omega.definitions.validation.v1", "ok": False, "errors": [f"index unreadable: {type(exc).__name__}: {exc}"]}
     if index.get("schema") != SCHEMA:
         errors.append(f"unsupported schema {index.get('schema')!r}")
+    worker_bundle = index.get("scannerBundle") if isinstance(index.get("scannerBundle"), dict) else {}
+    errors.extend(verify_worker_bundle(definitions_root, worker_bundle))
+    bundle_root = definitions_root / str(worker_bundle.get("path") or WORKER_BUNDLE_PATH)
     for rel, expected in sorted((index.get("ruleFiles") or {}).items()):
-        path = repo_root / rel
+        path = bundle_root / rel
         if not path.is_file():
-            errors.append(f"definition file missing at worker checkout: {rel}")
+            errors.append(f"frozen scanner rule file missing from worker bundle: {rel}")
             continue
         actual = sha256_file(path)
         if actual != expected:
-            errors.append(f"definition file changed since freeze: {rel}")
+            errors.append(f"frozen scanner rule file hash mismatch: {rel}")
     payloads: dict[str, dict[str, Any]] = {}
     for key in ("osv", "reputation"):
         item = index.get(key) or {}
@@ -273,6 +388,7 @@ def verify_snapshot(*, repo_root: Path, definitions_root: Path) -> dict[str, Any
     if "osv" in payloads and "reputation" in payloads and expected_rule_set:
         expected_definitions = definitions_revision(
             scanner_version=scanner_version,
+            scanner_revision=str(index.get("scannerRevision") or ""),
             scanner_rule_revision=expected_rule_set,
             fingerprints=fingerprints,
             osv_document=payloads["osv"],
@@ -285,7 +401,9 @@ def verify_snapshot(*, repo_root: Path, definitions_root: Path) -> dict[str, Any
         "ok": not errors,
         "definitionsRevision": str(index.get("definitionsRevision") or ""),
         "ruleSetRevision": str(index.get("ruleSetRevision") or ""),
-        "sourceCommit": str(index.get("sourceCommit") or ""),
+        "scannerRevision": str(index.get("scannerRevision") or ""),
+        "scannerBundleSha256": str((index.get("scannerBundle") or {}).get("sha256") or ""),
+        "builtFromDevCommit": str(index.get("builtFromDevCommit") or ""),
         "errors": errors,
     }
 
@@ -297,12 +415,11 @@ def main() -> int:
     build.add_argument("--repo-root", type=Path, default=Path.cwd())
     build.add_argument("--evidence-root", type=Path, required=True)
     build.add_argument("--output", type=Path, required=True)
-    build.add_argument("--source-commit", default="")
+    build.add_argument("--built-from-dev-commit", "--source-commit", dest="source_commit", default="", help="Optional development provenance only; never an execution dependency")
     build.add_argument("--advisories-input", type=Path)
     build.add_argument("--timeout", type=float, default=20.0)
     build.add_argument("--max-packages", type=int, default=2000)
     verify = sub.add_parser("verify")
-    verify.add_argument("--repo-root", type=Path, default=Path.cwd())
     verify.add_argument("--definitions-root", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "build":
@@ -316,7 +433,7 @@ def main() -> int:
             max_packages=args.max_packages,
         )
     else:
-        result = verify_snapshot(repo_root=args.repo_root, definitions_root=args.definitions_root)
+        result = verify_snapshot(definitions_root=args.definitions_root)
         if not result.get("ok"):
             print(json.dumps(result, indent=2))
             return 1

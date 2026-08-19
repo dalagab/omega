@@ -225,7 +225,7 @@ def export_snapshot(database: Path, output: Path, *, source_commit: str = "") ->
             "catalogBaseRevision": base_revision,
             "catalogRevision": catalog_revision,
             "identityEpoch": IDENTITY_EPOCH,
-            "sourceCommit": source_commit,
+            "builtFromDevCommit": source_commit,
         }
         meta_file = write_json(output / "meta.json", {"schema": "omega.catalog-json.meta.v1", **meta})
         meta_file["path"] = "meta.json"
@@ -244,7 +244,7 @@ def export_snapshot(database: Path, output: Path, *, source_commit: str = "") ->
         "catalogRevision": catalog_revision,
         "catalogBaseRevision": base_revision,
         "identityEpoch": IDENTITY_EPOCH,
-        "sourceCommit": source_commit,
+        "builtFromDevCommit": source_commit,
         "counts": counts,
         "files": [{"path": row["path"], "sha256": row["sha256"]} for row in sorted(files, key=lambda item: item["path"])],
     }
@@ -387,7 +387,7 @@ def materialize_snapshot(root: Path, database: Path, *, definitions_revision: st
         write_meta(db, "catalog_base_revision", str(meta.get("catalogBaseRevision") or index.get("catalogBaseRevision") or ""))
         write_meta(db, "catalog_json_revision", str(index.get("catalogRevision") or ""))
         write_meta(db, "catalog_identity_epoch", str(index.get("identityEpoch") or ""))
-        write_meta(db, "catalog_source_commit", str(index.get("sourceCommit") or ""))
+        write_meta(db, "catalog_built_from_dev_commit", str(index.get("builtFromDevCommit") or index.get("sourceCommit") or ""))
         if definitions_revision:
             write_meta(db, "definitions_revision", definitions_revision)
         build_sqlite_catalog.create_runtime_view(db)
@@ -418,7 +418,7 @@ def _main() -> int:
     export = sub.add_parser("export")
     export.add_argument("--database", required=True, type=Path)
     export.add_argument("--output", required=True, type=Path)
-    export.add_argument("--source-commit", default="")
+    export.add_argument("--built-from-dev-commit", "--source-commit", dest="source_commit", default="", help="Optional development provenance only; never an execution dependency")
     validate = sub.add_parser("validate")
     validate.add_argument("--root", required=True, type=Path)
     materialize = sub.add_parser("materialize")

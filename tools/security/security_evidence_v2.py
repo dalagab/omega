@@ -133,7 +133,7 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
         "scanProvenance": {
             key: scan_provenance.get(key)
             for key in (
-                "schema", "catalogRevision", "catalogIdentityEpoch", "definitionsRevision", "definitionsSourceCommit", "ruleSetRevision",
+                "schema", "catalogRevision", "catalogIdentityEpoch", "definitionsRevision", "scannerRevision", "scannerBundleSha256", "definitionsSourceCommit", "ruleSetRevision",
                 "queueSeedRevision", "queueKey", "targetFingerprint", "primaryReason", "baselineSecurityRebuild",
                 "reasons", "attemptId", "attemptNumber", "variantId",
             )
@@ -306,6 +306,8 @@ def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "catalog_revision": str(scan_provenance.get("catalogRevision") or ""),
         "definitions_revision": str(scan_provenance.get("definitionsRevision") or ""),
         "definitions_source_commit": str(scan_provenance.get("definitionsSourceCommit") or ""),
+        "scanner_revision": str(scan_provenance.get("scannerRevision") or ""),
+        "scanner_bundle_sha256": str(scan_provenance.get("scannerBundleSha256") or ""),
         "rule_set_revision": str(scan_provenance.get("ruleSetRevision") or ""),
         "scan_queue_reason": str(scan_provenance.get("primaryReason") or ""),
         "scan_queue_seed_revision": str(scan_provenance.get("queueSeedRevision") or ""),

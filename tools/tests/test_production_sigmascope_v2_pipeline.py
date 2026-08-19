@@ -573,6 +573,8 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 "queueSeedRevision": "queue-seed-v1-fixture",
                 "catalogRevision": "cat-json-v1-fixture",
                 "definitionsRevision": "defs-v1-fixture",
+                "scannerRevision": "scanner-v1-fixture",
+                "scannerBundleSha256": "b" * 64,
                 "ruleSetRevision": "rules-v1-fixture",
                 "rescanAfterHours": 168,
                 "counts": {"queued": 1},
@@ -614,6 +616,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 rescan_after_hours=168, max_batch_seconds=0, internal_names="", variant_ids="", skip_source=True,
                 osv_timeout=1.0, max_osv_packages=2000, github_output=None, skip_marketplace=True,
                 frozen_advisories=None, catalog_revision="cat-json-v1-fixture", definitions_revision="defs-v1-fixture",
+                scanner_revision="scanner-v1-fixture", scanner_bundle_sha256="b" * 64,
                 rule_set_revision="rules-v1-fixture", queue_seed=queue_seed,
             )
 
@@ -644,6 +647,8 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             provenance = payload["current"]["report_json"]["scanProvenance"]
             self.assertEqual("rules-v1-fixture", provenance["ruleSetRevision"] )
             self.assertEqual("defs-v1-fixture", provenance["definitionsRevision"] )
+            self.assertEqual("scanner-v1-fixture", provenance["scannerRevision"] )
+            self.assertEqual("b" * 64, provenance["scannerBundleSha256"] )
             self.assertEqual("rule_set_changed", provenance["primaryReason"] )
 
 
@@ -704,7 +709,8 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 "catalogRevision": "cat-json-v1-baseline-fixture",
                 "catalogIdentityEpoch": catalog_json_store.IDENTITY_EPOCH,
                 "definitionsRevision": "defs-v1-baseline-fixture",
-                "definitionsSourceCommit": "fixture-commit",
+                "scannerRevision": "scanner-v1-baseline-fixture",
+                "scannerBundleSha256": "a" * 64,
                 "ruleSetRevision": "rules-v1-baseline-fixture",
                 "baselineSecurityRebuild": True,
                 "previousEvidenceIdentityEpoch": "",
@@ -749,8 +755,8 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 rescan_after_hours=168, max_batch_seconds=0, internal_names="", variant_ids="", skip_source=True,
                 osv_timeout=1.0, max_osv_packages=2000, github_output=None, skip_marketplace=True,
                 frozen_advisories=None, catalog_revision="cat-json-v1-baseline-fixture",
-                definitions_revision="defs-v1-baseline-fixture", definitions_source_commit="fixture-commit",
-                rule_set_revision="rules-v1-baseline-fixture", queue_seed=queue_seed,
+                definitions_revision="defs-v1-baseline-fixture", scanner_revision="scanner-v1-baseline-fixture",
+                scanner_bundle_sha256="a" * 64, rule_set_revision="rules-v1-baseline-fixture", queue_seed=queue_seed,
             )
 
             def fake_collect(index_path, output, timeout=20.0, max_packages=2000):

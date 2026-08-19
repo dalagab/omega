@@ -27,6 +27,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import catalog_json_store  # noqa: E402
+import definitions_snapshot  # noqa: E402
 
 SCHEMA = "omega.catalog-state.v1"
 
@@ -94,8 +95,10 @@ def assemble(*, catalog: Path, definitions: Path, output: Path, queue_seed: Path
         },
         "definitions": {
             "revision": str(definitions_index.get("definitionsRevision") or ""),
+            "scannerRevision": str(definitions_index.get("scannerRevision") or ""),
+            "scannerBundleSha256": str((definitions_index.get("scannerBundle") or {}).get("sha256") or ""),
             "ruleSetRevision": str(definitions_index.get("ruleSetRevision") or ""),
-            "sourceCommit": str(definitions_index.get("sourceCommit") or ""),
+            "builtFromDevCommit": str(definitions_index.get("builtFromDevCommit") or ""),
             "path": "definitions/index.json",
             "sha256": definitions_sha,
         },
@@ -107,7 +110,8 @@ def assemble(*, catalog: Path, definitions: Path, output: Path, queue_seed: Path
             "sha256": queue_seed_sha,
             "queued": int((queue_seed_doc.get("counts") or {}).get("queued") or 0),
             "ruleSetRevision": str(queue_seed_doc.get("ruleSetRevision") or ""),
-            "definitionsSourceCommit": str(queue_seed_doc.get("definitionsSourceCommit") or ""),
+            "scannerRevision": str(queue_seed_doc.get("scannerRevision") or ""),
+            "scannerBundleSha256": str(queue_seed_doc.get("scannerBundleSha256") or ""),
             "catalogIdentityEpoch": str(queue_seed_doc.get("catalogIdentityEpoch") or ""),
             "baselineSecurityRebuild": bool(queue_seed_doc.get("baselineSecurityRebuild")),
         }
@@ -149,6 +153,13 @@ def validate(root: Path) -> dict[str, Any]:
             errors.append("definitions revision mismatch")
         if str(cat.get("catalogRevision") or "") != str((index.get("catalog") or {}).get("revision") or ""):
             errors.append("catalog revision mismatch")
+        defs_validation = definitions_snapshot.verify_snapshot(definitions_root=root / "definitions")
+        if not defs_validation.get("ok"):
+            errors.extend(f"definitions: {item}" for item in defs_validation.get("errors") or [])
+        if str(defs.get("scannerRevision") or "") != str((index.get("definitions") or {}).get("scannerRevision") or ""):
+            errors.append("definitions scanner revision mismatch")
+        if str((defs.get("scannerBundle") or {}).get("sha256") or "") != str((index.get("definitions") or {}).get("scannerBundleSha256") or ""):
+            errors.append("definitions scanner bundle SHA-256 mismatch")
         # Validate every independently published Definitions payload by the hashes carried in
         # definitions/index.json. This checks the public branch bytes without requiring the
         # validator checkout itself to be the frozen source commit.
@@ -165,8 +176,10 @@ def validate(root: Path) -> dict[str, Any]:
                 errors.append("scan queue Definitions revision mismatch")
             if str(queue.get("ruleSetRevision") or "") != str((index.get("definitions") or {}).get("ruleSetRevision") or ""):
                 errors.append("scan queue rule-set revision mismatch")
-            if str(queue.get("definitionsSourceCommit") or "") != str((index.get("definitions") or {}).get("sourceCommit") or ""):
-                errors.append("scan queue Definitions source commit mismatch")
+            if str(queue.get("scannerRevision") or "") != str((index.get("definitions") or {}).get("scannerRevision") or ""):
+                errors.append("scan queue scanner revision mismatch")
+            if str(queue.get("scannerBundleSha256") or "") != str((index.get("definitions") or {}).get("scannerBundleSha256") or ""):
+                errors.append("scan queue scanner bundle SHA-256 mismatch")
             if str(queue.get("queueSeedRevision") or "") != str(queue_meta.get("revision") or ""):
                 errors.append("scan queue seed revision mismatch")
         source_meta = index.get("sourceInventory") or {}

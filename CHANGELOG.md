@@ -4,6 +4,13 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
+<sub>work build: 0.9.28</sub>
+- Freeze a self-contained Sigmascope worker bundle (`tools/catalog`, `tools/security`, and source overrides) into each daily Definitions snapshot on `catalog-data`.
+- Replace historical development-commit execution with immutable `scannerRevision` + worker-manifest SHA-256 provenance; `builtFromDevCommit` is retained only as optional build provenance.
+- Make the 15-minute worker execute materialization, scanner self-tests, production scanning, source follow-ups, independent audit, and Evidence v2 publication from the frozen bundle instead of source files on the workflow checkout.
+- Remove `git checkout --detach <Definitions source commit>` and `definitionsSourceCommit` from active queue/worker contracts while keeping legacy evidence fields readable for backward compatibility.
+- Validate the frozen bundle transitively in `catalog_state`, carry scanner revision/hash through queue state, Evidence v2 provenance, and the compiled client descriptor, and prove the bundle runs with no development checkout available.
+
 <sub>work build: 0.9.27</sub>
 - Let a deliberate catalog identity-epoch reset discard incompatible legacy Security Evidence before full per-variant intrinsic validation; same-epoch evidence remains fail-closed.
 - Start baseline Evidence v2 candidates from an empty tree instead of copying the legacy snapshot, preventing stale summaries or colliding numeric IDs from leaking into the new generation.
