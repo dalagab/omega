@@ -77,7 +77,7 @@
     sigmascopeSection.insertAdjacentElement('afterend', teamSection);
   }
 
-  const storyPanels = Array.from(document.querySelectorAll('[data-story-panel], #about + section'))
+  const storyPanels = Array.from(document.querySelectorAll('[data-story-panel], #aetherfeed-note'))
     .filter((panel) => panel.getClientRects().length > 0);
   let storyScrollLocked = false;
   window.addEventListener('wheel', (event) => {
