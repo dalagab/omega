@@ -24,6 +24,9 @@ jobs:
     name: Process one Sigmascope candidate against frozen daily inputs
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    outputs:
+      publish_v2: ${{ steps.v2.outputs.publish_v2 }}
+      discord_notice_ready: ${{ steps.discord_notice.outcome == 'success' }}
     env:
       OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
     permissions:
@@ -168,6 +171,25 @@ jobs:
             --snapshot-validation-report catalog/security-v2-candidate/validation-report.json \
             --audit-report catalog/security-v2-work/security-developer-audit.json \
             --push
+      - name: Build a sanitised Discord publication notice
+        id: discord_notice
+        if: steps.v2.outputs.publish_v2 == 'true'
+        continue-on-error: true
+        run: >-
+          python tools/notifications/discord_notice.py sigmascope
+          --report catalog/security-v2-work/production-sigmascope-v2-report.json
+          --database catalog/security-v2-work/omega-security-v2-working.sqlite
+          --repository "${{ github.repository }}"
+          --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          --output catalog/security-v2-work/discord-notice.json
+      - name: Upload Discord publication notice
+        if: steps.v2.outputs.publish_v2 == 'true' && steps.discord_notice.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-discord-notice
+          path: catalog/security-v2-work/discord-notice.json
+          if-no-files-found: error
+          retention-days: 1
       - name: Upload worker diagnostics
         if: always()
         uses: actions/upload-artifact@v7
@@ -181,3 +203,32 @@ jobs:
             catalog/security-v2-candidate/validation-report.json
           if-no-files-found: warn
           retention-days: 30
+
+  notify-discord:
+    name: Post published Sigmascope update to Discord
+    needs: scan
+    if: needs.scan.result == 'success' && needs.scan.outputs.publish_v2 == 'true' && needs.scan.outputs.discord_notice_ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: discord-public
+    permissions: {}
+    steps:
+      - name: Checkout notification sender
+        uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Download sanitised notice
+        uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-discord-notice
+          path: discord-notice
+      - name: Post public update
+        continue-on-error: true
+        env:
+          DISCORD_CATALOG_WEBHOOK_URL: ${{ secrets.DISCORD_CATALOG_WEBHOOK_URL }}
+          DISCORD_SECURITY_WEBHOOK_URL: ${{ secrets.DISCORD_SECURITY_WEBHOOK_URL }}
+          DISCORD_DEFINITIONS_WEBHOOK_URL: ${{ secrets.DISCORD_DEFINITIONS_WEBHOOK_URL }}
+          DISCORD_EVIDENCE_WEBHOOK_URL: ${{ secrets.DISCORD_EVIDENCE_WEBHOOK_URL }}
+        run: python tools/notifications/post_discord_notice.py --notice discord-notice/discord-notice.json

@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import io
 import json
+import re
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -22,10 +23,26 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def validate_bytes(descriptor_bytes: bytes, bundle: bytes) -> dict:
+def validate_bytes(descriptor_bytes: bytes, bundle: bytes, *, require_v2: bool = False) -> dict:
     descriptor = json.loads(descriptor_bytes.decode("utf-8"))
-    if descriptor.get("schema") != "omega.catalog.sqlite.v1" or int(descriptor.get("schemaVersion") or 0) != 1:
+    schema = str(descriptor.get("schema") or "")
+    schema_version = int(descriptor.get("schemaVersion") or 0)
+    is_v1 = schema_version == 1 and schema == "omega.catalog.sqlite.v1"
+    is_v2 = schema_version == 2 and schema == "omega.catalog.marketplace.v2"
+    if require_v2 and not is_v2:
+        raise RuntimeError("production marketplace publication must use descriptor v2")
+    if not is_v1 and not is_v2:
         raise RuntimeError("unsupported marketplace descriptor schema")
+
+    catalog_revision = str(descriptor.get("catalogRevision") or "")
+    catalog_json_revision = str(descriptor.get("catalogJsonRevision") or "")
+    if is_v2:
+        if re.fullmatch(r"cat-v2-[0-9a-f]{16}", catalog_revision) is None:
+            raise RuntimeError("marketplace catalog revision is not a valid v2 revision")
+        if re.fullmatch(r"cat-json-v1-[0-9a-f]{16}", catalog_json_revision) is None:
+            raise RuntimeError("marketplace canonical catalog revision is invalid")
+        if catalog_revision.removeprefix("cat-v2-") != catalog_json_revision.removeprefix("cat-json-v1-"):
+            raise RuntimeError("marketplace and canonical catalog revision suffixes do not match")
     if descriptor.get("databaseRole") != "marketplace":
         raise RuntimeError("catalog descriptor is not a marketplace projection")
     if descriptor.get("detailedSecurityEvidenceIncluded") is not False:
@@ -78,6 +95,7 @@ def validate_bytes(descriptor_bytes: bytes, bundle: bytes) -> dict:
                 raise RuntimeError("marketplace database role metadata is invalid")
             revision_pairs = (
                 ("catalog_revision", "catalogRevision", "catalog"),
+                ("catalog_json_revision", "catalogJsonRevision", "canonical catalog"),
                 ("catalog_identity_epoch", "catalogIdentityEpoch", "catalog identity epoch"),
                 ("definitions_revision", "definitionsRevision", "Definitions"),
                 ("security_revision", "securityRevision", "security"),
@@ -106,6 +124,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path)
     parser.add_argument("--base-url", default="")
+    parser.add_argument("--require-v2", action="store_true")
     args = parser.parse_args()
     if args.root:
         descriptor = (args.root / DESCRIPTOR_NAME).read_bytes()
@@ -116,7 +135,7 @@ def main() -> int:
         bundle = urllib.request.urlopen(base + BUNDLE_NAME, timeout=60).read()
     else:
         raise SystemExit("--root or --base-url is required")
-    print(json.dumps(validate_bytes(descriptor, bundle), indent=2))
+    print(json.dumps(validate_bytes(descriptor, bundle, require_v2=args.require_v2), indent=2))
     return 0
 
 

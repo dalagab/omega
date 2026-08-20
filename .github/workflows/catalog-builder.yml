@@ -187,6 +187,8 @@ jobs:
     needs: [collect, enrich, scrape]
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      discord_notice_ready: ${{ steps.discord_notice.outcome == 'success' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -331,7 +333,7 @@ jobs:
           --download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-marketplace.sqlite.zip"
           --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json"
       - name: Validate exact client publication
-        run: python tools/catalog/validate_marketplace_catalog.py --root catalog/client-dist
+        run: python tools/catalog/validate_marketplace_catalog.py --root catalog/client-dist --require-v2
       - name: Publish canonical JSON state atomically
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -354,6 +356,26 @@ jobs:
             catalog/client-dist/catalog.json \
             catalog/client-dist/database-build.json \
             --repo "${{ github.repository }}" --clobber
+      - name: Build a sanitised Discord catalog notice
+        id: discord_notice
+        continue-on-error: true
+        run: >-
+          python tools/notifications/discord_notice.py catalog
+          --catalog-index catalog/state/catalog/index.json
+          --previous-catalog-index catalog/previous-state/catalog/index.json
+          --definitions-index catalog/state/definitions/index.json
+          --previous-definitions-index catalog/previous-state/definitions/index.json
+          --repository "${{ github.repository }}"
+          --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          --output catalog/discord-notice.json
+      - name: Upload Discord catalog notice
+        if: steps.discord_notice.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-catalog-discord-notice
+          path: catalog/discord-notice.json
+          if-no-files-found: error
+          retention-days: 1
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -369,3 +391,33 @@ jobs:
             catalog/client-dist/catalog.json
             catalog/client-dist/database-build.json
           retention-days: 30
+
+  notify-discord:
+    name: Post published catalog update to Discord
+    needs: publish
+    if: needs.publish.result == 'success' && needs.publish.outputs.discord_notice_ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: discord-public
+    permissions: {}
+    steps:
+      - name: Checkout notification sender
+        uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Download sanitised notice
+        uses: actions/download-artifact@v8
+        with:
+          name: omega-catalog-discord-notice
+          path: discord-notice
+      - name: Post public update
+        continue-on-error: true
+        env:
+          DISCORD_CATALOG_WEBHOOK_URL: ${{ secrets.DISCORD_CATALOG_WEBHOOK_URL }}
+          DISCORD_SECURITY_WEBHOOK_URL: ${{ secrets.DISCORD_SECURITY_WEBHOOK_URL }}
+          DISCORD_DEFINITIONS_WEBHOOK_URL: ${{ secrets.DISCORD_DEFINITIONS_WEBHOOK_URL }}
+          DISCORD_EVIDENCE_WEBHOOK_URL: ${{ secrets.DISCORD_EVIDENCE_WEBHOOK_URL }}
+        run: python tools/notifications/post_discord_notice.py --notice discord-notice/discord-notice.json
+

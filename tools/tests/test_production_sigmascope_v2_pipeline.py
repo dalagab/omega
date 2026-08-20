@@ -147,8 +147,16 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             validation = validate_marketplace_catalog.validate_bytes(
                 (output / "catalog.json").read_bytes(),
                 (output / "omega-marketplace.sqlite.zip").read_bytes(),
+                require_v2=True,
             )
             self.assertEqual("ok", validation["integrity"])
+            descriptor = json.loads((output / "catalog.json").read_text(encoding="utf-8"))
+            self.assertEqual(2, descriptor["schemaVersion"])
+            self.assertEqual("omega.catalog.marketplace.v2", descriptor["schema"])
+            self.assertTrue(descriptor["catalogRevision"].startswith("cat-v2-"))
+            self.assertTrue(descriptor["catalogJsonRevision"].startswith("cat-json-v1-"))
+            self.assertEqual(descriptor["catalogRevision"].removeprefix("cat-v2-"),
+                             descriptor["catalogJsonRevision"].removeprefix("cat-json-v1-"))
 
             with closing(sqlite3.connect(output / "omega-marketplace.sqlite")) as db:
                 row = db.execute(

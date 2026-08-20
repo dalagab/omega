@@ -31,6 +31,21 @@ import sigmascope  # noqa: E402
 from production_sigmascope_v2_pipeline import materialize_current_state, semantic_security_revision  # noqa: E402
 
 SCHEMA = "omega.marketplace-build.v1"
+PUBLIC_DESCRIPTOR_SCHEMA = "omega.catalog.marketplace.v2"
+PUBLIC_DESCRIPTOR_VERSION = 2
+CANONICAL_CATALOG_REVISION_PREFIX = "cat-json-v1-"
+PUBLIC_CATALOG_REVISION_PREFIX = "cat-v2-"
+
+
+def public_catalog_revision(canonical_revision: str) -> str:
+    """Map canonical JSON identity to the v2 client marketplace contract."""
+    revision = str(canonical_revision or "").strip()
+    if not revision.startswith(CANONICAL_CATALOG_REVISION_PREFIX):
+        raise RuntimeError(f"unsupported canonical catalog revision for marketplace v2: {revision!r}")
+    suffix = revision[len(CANONICAL_CATALOG_REVISION_PREFIX):]
+    if len(suffix) != 16 or any(c not in "0123456789abcdefABCDEF" for c in suffix):
+        raise RuntimeError(f"canonical catalog revision has an invalid semantic suffix: {revision!r}")
+    return PUBLIC_CATALOG_REVISION_PREFIX + suffix.lower()
 
 
 def utc_now() -> str:
@@ -82,6 +97,8 @@ def build(
     definitions_index = json.loads((definitions_root / "index.json").read_text(encoding="utf-8"))
     evidence_index = json.loads((evidence_root / "index.json").read_text(encoding="utf-8"))
     evidence_revisions = evidence_index.get("revisions") or {}
+    canonical_catalog_revision = str(catalog_index.get("catalogRevision") or "")
+    marketplace_catalog_revision = public_catalog_revision(canonical_catalog_revision)
     catalog_identity_epoch = str(catalog_index.get("identityEpoch") or "")
     evidence_identity_epoch = str(evidence_revisions.get("catalogIdentityEpoch") or "")
     evidence_compatible = bool(not catalog_identity_epoch or evidence_identity_epoch == catalog_identity_epoch)
@@ -116,8 +133,8 @@ def build(
         source_security_revision = available_source_security_revision if evidence_compatible else ""
         evidence_revision = available_evidence_revision if evidence_compatible else ""
         meta = {
-            "catalog_revision": str(catalog_index.get("catalogRevision") or ""),
-            "catalog_json_revision": str(catalog_index.get("catalogRevision") or ""),
+            "catalog_revision": marketplace_catalog_revision,
+            "catalog_json_revision": canonical_catalog_revision,
             "catalog_base_revision": str(catalog_index.get("catalogBaseRevision") or ""),
             "catalog_identity_epoch": catalog_identity_epoch,
             "definitions_revision": str(definitions_index.get("definitionsRevision") or ""),
@@ -152,8 +169,8 @@ def build(
         meta_rows = {str(row[0]): str(row[1]) for row in db.execute("SELECT key,value FROM catalog_meta")}
 
     descriptor = {
-        "schemaVersion": 1,
-        "schema": project_marketplace_catalog.MARKETPLACE_SCHEMA,
+        "schemaVersion": PUBLIC_DESCRIPTOR_VERSION,
+        "schema": PUBLIC_DESCRIPTOR_SCHEMA,
         "databaseRole": "marketplace",
         "generatedAtUtc": utc_now(),
         "downloadUrl": download_url,
@@ -163,7 +180,8 @@ def build(
         "databaseBytes": marketplace_db.stat().st_size,
         "marketplaceProjectorVersion": project_marketplace_catalog.PROJECTOR_VERSION,
         "detailedSecurityEvidenceIncluded": False,
-        "catalogRevision": str(catalog_index.get("catalogRevision") or ""),
+        "catalogRevision": marketplace_catalog_revision,
+        "catalogJsonRevision": canonical_catalog_revision,
         "catalogBaseRevision": str(catalog_index.get("catalogBaseRevision") or ""),
         "catalogIdentityEpoch": catalog_identity_epoch,
         "definitionsRevision": str(definitions_index.get("definitionsRevision") or ""),
@@ -187,6 +205,7 @@ def build(
         "generatedAtUtc": descriptor["generatedAtUtc"],
         "inputs": {
             "catalogRevision": descriptor["catalogRevision"],
+            "catalogJsonRevision": canonical_catalog_revision,
             "catalogContentSha256": str(catalog_index.get("contentSha256") or ""),
             "definitionsRevision": descriptor["definitionsRevision"],
             "securityRevision": descriptor["securityRevision"],
