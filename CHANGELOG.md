@@ -1,5 +1,22 @@
 # Omega security services changelog
 
+## 2.14.0 — Reviewed Omega Core YARA and bounded archive-member scanning
+
+- Bump Omega Security Services / SigmaScope engine to **2.14.0** because artifact-analysis and secondary-evidence semantics change materially.
+- Enable the first production Omega Core YARA set: 14 first-party compound rules across credential/exfiltration, execution/injection/security-tamper, persistence, and contextual anomaly classes.
+- Keep broad primitives such as HTTP, P/Invoke, Discord URLs, filesystem access, `Process.Start`, PowerShell strings, obfuscation or entropy insufficient by themselves; YARA remains supplemental evidence only.
+- Scan YARA against the exact downloaded artifact container plus a bounded generated view of ZIP members instead of only the outer archive.
+- Bound YARA member materialization to 256 members, 16 MiB per member and 64 MiB total; reject unsafe/encrypted/suspicious-ratio members and skip large media/font resources.
+- Attribute YARA matches back to the original archive member path, member SHA-256 and byte count without ever using the untrusted path for extraction.
+- Add `omega.sigmascope.yara-scan-scope.v1` and advance new artifact scans to secondary-security Evidence contract **v3**.
+- Fix source-only artifact replay so materialized Evidence-v2 workers preserve the exact artifact-bound secondary-security payload/contract instead of emitting a stale half-contract.
+- Preserve historical contract-v2 secondary evidence during source-only reuse; old artifact evidence cannot be falsely upgraded to v3.
+- Advance YARA policy/metadata to v2 with exact `reviewedRuleSha256`, reviewer, rule class and confidence; require metadata rule names to exactly match declarations and reject cross-file duplicate rule identifiers.
+- Compile-check every enabled YARA file at the Definitions boundary and retain frozen executable identity verification in continuous workers.
+- Make regression CI trigger on `security-definitions/**` and install real YARA before tests so rule-only changes are compile-checked.
+- Add an upstream review queue for YARA Forge/signature-base/embee-style rules without importing any third-party pack wholesale; future accepted rules require exact upstream provenance/license and independent local review.
+- Preserve immutable ClamAV transport, artifact/source attribution, lifecycle/requeue, native PE, endpoint and component-summary contracts.
+
 ## 2.13.0 — Native structural evidence, endpoint intelligence and component summaries
 
 - Compatibility hotfix: validate pre-lifecycle Evidence-v2 plugin summaries using their historical lifecycle-contract-0 field set instead of recomputing them with lifecycle-contract-v1 fields. This repairs incremental startup against existing published snapshots without rewriting or deleting evidence.

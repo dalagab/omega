@@ -17,7 +17,7 @@ from migrate_security_evidence_v2 import _resolve_source_database, migrate
 from publish_security_evidence_v2 import preflight, validate_audit_report, validate_snapshot_report
 from security_evidence_download import DownloadedEvidence, parse_sidecar, safe_extract_sqlite
 from security_evidence_v2 import (
-    MAX_PUBLISH_FILE_BYTES, read_record_dataset, sha256_file, validate_snapshot,
+    MAX_PUBLISH_FILE_BYTES, compact_report_for_transport, read_record_dataset, sha256_file, validate_snapshot,
     variant_index_summary, write_record_dataset,
 )
 from validate_security_evidence_v2 import infer_database_from_migration_state, validate
@@ -219,6 +219,72 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             self.assertTrue(report["ok"], report)
             intrinsic = validate_snapshot(output)
             self.assertTrue(intrinsic["ok"], intrinsic)
+
+
+    def test_secondary_security_v3_transport_keeps_yara_member_attribution_and_review_provenance(self) -> None:
+        artifact_sha = "a" * 64
+        target_sha = "b" * 64
+        row = {
+            "artifact_sha256": artifact_sha,
+            "report_json": {
+                "artifactSha256": artifact_sha,
+                "secondarySecurityContractVersion": 3,
+                "secondarySecurity": {
+                    "schema": "omega.sigmascope.secondary-security.v1",
+                    "artifactSha256": artifact_sha,
+                    "semantics": "supplemental-evidence-only",
+                    "matchCount": 1,
+                    "engines": [{
+                        "schema": "omega.sigmascope.secondary-engine-result.v1",
+                        "engine": "yara",
+                        "status": "complete",
+                        "available": True,
+                        "enabled": True,
+                        "revision": "secondary-v1-fixture",
+                        "version": "YARA 4.test",
+                        "policyRevision": "policy-fixture",
+                        "scanScope": {
+                            "schema": "omega.sigmascope.yara-scan-scope.v1",
+                            "artifactContainerScanned": True,
+                            "archiveDetected": True,
+                            "archiveMemberCandidates": 1,
+                            "archiveMembersScanned": 1,
+                            "archiveMembersSkipped": 0,
+                            "archiveMemberBytesScanned": 123,
+                            "targetCount": 2,
+                            "truncated": False,
+                            "skipReasons": {},
+                        },
+                        "matches": [{
+                            "kind": "rule",
+                            "value": "Omega_Process_Injection_Classic member-0001.dll",
+                            "rule": "Omega_Process_Injection_Classic",
+                            "provenance": {"kind": "first-party", "source": "omega-core-execution.yar"},
+                            "license": "LicenseRef-Omega-First-Party",
+                            "reviewedAtUtc": "2026-08-20T14:00:00Z",
+                            "reviewer": "Omega security-services maintainers",
+                            "reviewedRuleSha256": "c" * 64,
+                            "ruleClass": "compound-abuse",
+                            "confidence": "high",
+                            "falsePositiveExpectation": "low",
+                            "scope": "fixture",
+                            "target": {"kind": "archive-member", "path": "Plugin.dll", "sha256": target_sha, "bytes": 123},
+                        }],
+                    }],
+                },
+            },
+        }
+        compact = compact_report_for_transport(row)
+        secondary = compact["secondarySecurity"]
+        self.assertEqual(3, compact["secondarySecurityContractVersion"])
+        engine = secondary["engines"][0]
+        self.assertEqual(2, engine["scanScope"]["targetCount"])
+        match = engine["matches"][0]
+        self.assertEqual("Plugin.dll", match["target"]["path"])
+        self.assertEqual(target_sha, match["target"]["sha256"])
+        self.assertEqual("compound-abuse", match["ruleClass"])
+        self.assertEqual("high", match["confidence"])
+        self.assertEqual("c" * 64, match["reviewedRuleSha256"])
 
     def test_resume_reuses_completed_variant_state(self) -> None:
         with tempfile.TemporaryDirectory() as td:

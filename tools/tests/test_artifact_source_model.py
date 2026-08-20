@@ -449,5 +449,80 @@ class ArtifactSourceModelTests(unittest.TestCase):
                 self.assertEqual(artifact_sha, current["artifact_sha256"])
 
 
+    def test_source_replay_preserves_artifact_bound_secondary_security_contract(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-secondary-replay-") as td:
+            root = Path(td)
+            curated, raw, enriched, websites = test_sqlite_catalog.fixture_documents(root)
+            out = root / "built"
+            test_sqlite_catalog.run_builder(common.ROOT, out, curated, raw, enriched, websites)
+            with closing(sqlite3.connect(out / "omega-catalog.sqlite")) as db:
+                db.row_factory = sqlite3.Row
+                sigmascope.ensure_schema(db)
+                row = db.execute("""
+                    SELECT v.variant_id,v.plugin_id,v.source_id,p.internal_name,v.name,v.author,v.assembly_version,
+                           v.download_link_install,s.name AS source_name,s.url AS source_url,s.source_repo_url
+                      FROM plugin_variants v
+                      JOIN plugins p ON p.plugin_id=v.plugin_id
+                      JOIN sources s ON s.source_id=v.source_id
+                     ORDER BY v.variant_id LIMIT 1
+                """).fetchone()
+                artifact_sha = "9" * 64
+                secondary = {
+                    "schema": "omega.sigmascope.secondary-security.v1",
+                    "artifactSha256": artifact_sha,
+                    "semantics": "supplemental-evidence-only",
+                    "matchCount": 0,
+                    "engines": [],
+                }
+                report = {
+                    "schema": "omega.security-evidence.scan-summary.v2",
+                    "artifactBytes": 42,
+                    "artifactIdentity": {"manifestPath": "Plugin.json"},
+                    "package": {},
+                    "automation": {"level": "none", "capabilities": [], "findings": []},
+                    "secondarySecurity": secondary,
+                    "secondarySecurityContractVersion": 2,
+                }
+                db.execute("INSERT INTO artifact_blobs(artifact_sha256,package_bytes) VALUES(?,?)", (artifact_sha, 42))
+                scan = db.execute(
+                    """INSERT INTO plugin_security_scans(plugin_id,variant_id,source_id,assembly_version,artifact_sha256,scanner_version,status,
+                               highest_severity,capabilities_json,report_json)
+                           VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                    (row["plugin_id"], row["variant_id"], row["source_id"], row["assembly_version"], artifact_sha,
+                     sigmascope.SCANNER_VERSION, "complete", "none", "[]", json.dumps(report)),
+                )
+                scan_id = int(scan.lastrowid)
+                # Evidence-v2 materialization intentionally restores the normalized
+                # representative and may not retain the large artifact payload cache.
+                db.execute(
+                    """INSERT INTO artifact_analyses(artifact_sha256,scanner_version,definitions_revision,representative_scan_id,status,analysis_payload_json)
+                           VALUES(?,?,?,?,?,?)""",
+                    (artifact_sha, sigmascope.SCANNER_VERSION, "artifact-replay", scan_id, "complete", "{}"),
+                )
+                db.commit()
+
+                replay, representative = sigmascope._load_cached_artifact_analysis(db, artifact_sha, "artifact-replay")
+                self.assertEqual(scan_id, representative)
+                self.assertIsNotNone(replay)
+                self.assertEqual(2, replay["secondarySecurityContractVersion"])
+                self.assertEqual(secondary, replay["secondarySecurity"])
+
+                base = {"artifactSha256": artifact_sha, "secondarySecurityContractVersion": 2, "secondarySecurity": {"stale": True}}
+                sigmascope._apply_artifact_analysis(base, replay, str(row["assembly_version"] or ""), reused=True, representative_scan_id=scan_id)
+                self.assertEqual(2, base["secondarySecurityContractVersion"])
+                self.assertEqual(artifact_sha, base["secondarySecurity"]["artifactSha256"])
+                self.assertEqual("supplemental-evidence-only", base["secondarySecurity"]["semantics"])
+
+                # A malformed/missing replay payload must never leave a stale marker.
+                base = {"artifactSha256": artifact_sha, "secondarySecurityContractVersion": 2, "secondarySecurity": {"stale": True}}
+                sigmascope._apply_artifact_analysis(
+                    base,
+                    {"artifactSha256": artifact_sha, "artifactAssemblyVersion": str(row["assembly_version"] or ""), "findings": [], "capabilities": [], "counts": {}, "highestSeverity": "none"},
+                    str(row["assembly_version"] or ""), reused=True, representative_scan_id=scan_id,
+                )
+                self.assertNotIn("secondarySecurityContractVersion", base)
+                self.assertIsNone(base["secondarySecurity"])
+
+
 if __name__ == "__main__":
     unittest.main()

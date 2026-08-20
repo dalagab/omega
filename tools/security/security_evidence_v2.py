@@ -303,6 +303,18 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
                         "verified": bool((item.get("executableIdentity") or {}).get("verified")),
                         "error": _bounded_text((item.get("executableIdentity") or {}).get("error"), 2048),
                     } if isinstance(item.get("executableIdentity"), dict) and item.get("executableIdentity") else {}),
+                    "scanScope": ({
+                        "schema": _bounded_text((item.get("scanScope") or {}).get("schema"), 128),
+                        "artifactContainerScanned": bool((item.get("scanScope") or {}).get("artifactContainerScanned")),
+                        "archiveDetected": bool((item.get("scanScope") or {}).get("archiveDetected")),
+                        "archiveMemberCandidates": int((item.get("scanScope") or {}).get("archiveMemberCandidates") or 0),
+                        "archiveMembersScanned": int((item.get("scanScope") or {}).get("archiveMembersScanned") or 0),
+                        "archiveMembersSkipped": int((item.get("scanScope") or {}).get("archiveMembersSkipped") or 0),
+                        "archiveMemberBytesScanned": int((item.get("scanScope") or {}).get("archiveMemberBytesScanned") or 0),
+                        "targetCount": int((item.get("scanScope") or {}).get("targetCount") or 0),
+                        "truncated": bool((item.get("scanScope") or {}).get("truncated")),
+                        "skipReasons": dict((item.get("scanScope") or {}).get("skipReasons") or {}),
+                    } if isinstance(item.get("scanScope"), dict) and item.get("scanScope") else {}),
                     "matches": [
                         {
                             "kind": _bounded_text(match.get("kind"), 64),
@@ -313,8 +325,19 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
                                 "source": _bounded_text((match.get("provenance") or {}).get("source"), 1024),
                             } if isinstance(match.get("provenance"), dict) and match.get("provenance") else {}),
                             "license": _bounded_text(match.get("license"), 256),
+                            "reviewedAtUtc": _bounded_text(match.get("reviewedAtUtc"), 64),
+                            "reviewer": _bounded_text(match.get("reviewer"), 256),
+                            "reviewedRuleSha256": _bounded_text(match.get("reviewedRuleSha256"), 128),
+                            "ruleClass": _bounded_text(match.get("ruleClass"), 64),
+                            "confidence": _bounded_text(match.get("confidence"), 32),
                             "falsePositiveExpectation": _bounded_text(match.get("falsePositiveExpectation"), 64),
                             "scope": _bounded_text(match.get("scope"), 1024),
+                            "target": ({
+                                "kind": _bounded_text((match.get("target") or {}).get("kind"), 64),
+                                "path": _bounded_text((match.get("target") or {}).get("path"), 2048),
+                                "sha256": _bounded_text((match.get("target") or {}).get("sha256"), 128),
+                                "bytes": int((match.get("target") or {}).get("bytes") or 0),
+                            } if isinstance(match.get("target"), dict) and match.get("target") else {}),
                         }
                         for match in (item.get("matches") or [])[:256] if isinstance(match, dict)
                     ],
@@ -916,7 +939,7 @@ def _validate_identity_contract(variant_id: int, payload: dict[str, Any], errors
                          ("source attribution", attribution_contract)):
         if value not in {0, 1}:
             errors.append(f"variant {variant_id} declares unsupported {label} contract version {value}")
-    if secondary_contract not in {0, 1, 2}:
+    if secondary_contract not in {0, 1, 2, 3}:
         errors.append(f"variant {variant_id} declares unsupported secondary security contract version {secondary_contract}")
 
     if artifact_contract == 1:
@@ -958,7 +981,7 @@ def _validate_identity_contract(variant_id: int, payload: dict[str, Any], errors
             for error in attribution_invariant_errors(source, attribution):
                 errors.append(f"variant {variant_id} source attribution: {error}")
 
-    if secondary_contract in {1, 2}:
+    if secondary_contract in {1, 2, 3}:
         secondary = report.get("secondarySecurity") if isinstance(report.get("secondarySecurity"), dict) else {}
         if str(secondary.get("schema") or "") != "omega.sigmascope.secondary-security.v1":
             errors.append(f"variant {variant_id} secondary security schema is unsupported")
@@ -976,7 +999,7 @@ def _validate_identity_contract(variant_id: int, payload: dict[str, Any], errors
                 errors.append(f"variant {variant_id} secondary security engine is unsupported")
             if str(engine.get("status") or "") not in allowed_status:
                 errors.append(f"variant {variant_id} secondary security engine status is unsupported")
-            if secondary_contract == 2 and bool(engine.get("enabled")) and str(engine.get("status") or "") == "complete":
+            if secondary_contract in {2, 3} and bool(engine.get("enabled")) and str(engine.get("status") or "") == "complete":
                 identity = engine.get("executableIdentity") if isinstance(engine.get("executableIdentity"), dict) else {}
                 if not bool(identity.get("verified")):
                     errors.append(f"variant {variant_id} completed secondary security engine lacks verified executable identity")
@@ -984,6 +1007,24 @@ def _validate_identity_contract(variant_id: int, payload: dict[str, Any], errors
                 actual_sha = str(identity.get("actualSha256") or "").strip().lower()
                 if len(expected_sha) != 64 or expected_sha != actual_sha:
                     errors.append(f"variant {variant_id} completed secondary security engine executable hash identity is invalid")
+                if secondary_contract == 3 and str(engine.get("engine") or "") == "yara":
+                    scope = engine.get("scanScope") if isinstance(engine.get("scanScope"), dict) else {}
+                    if str(scope.get("schema") or "") != "omega.sigmascope.yara-scan-scope.v1":
+                        errors.append(f"variant {variant_id} completed YARA evidence lacks bounded scan-scope contract")
+                    if not bool(scope.get("artifactContainerScanned")) or int(scope.get("targetCount") or 0) < 1:
+                        errors.append(f"variant {variant_id} completed YARA evidence lacks artifact-container target coverage")
+                    for match in engine.get("matches") or []:
+                        if not isinstance(match, dict):
+                            continue
+                        target = match.get("target") if isinstance(match.get("target"), dict) else {}
+                        if target:
+                            if str(target.get("kind") or "") not in {"artifact-container", "archive-member"}:
+                                errors.append(f"variant {variant_id} YARA match target kind is unsupported")
+                            target_sha = str(target.get("sha256") or "").strip().lower()
+                            if len(target_sha) != 64:
+                                errors.append(f"variant {variant_id} YARA match target lacks SHA-256 identity")
+                            if int(target.get("bytes") or 0) < 0:
+                                errors.append(f"variant {variant_id} YARA match target byte count is invalid")
 
 
 def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[str, Any]:

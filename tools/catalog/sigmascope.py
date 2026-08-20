@@ -66,7 +66,7 @@ from artifact_source_model import (
 
 
 SIGMASCOPE_NAME = "Sigmascope"
-SIGMASCOPE_VERSION = "2.13.0"
+SIGMASCOPE_VERSION = "2.14.0"
 # Persisted SQLite columns and v1/v2 JSON contracts retain the historical scanner_version name.
 SCANNER_VERSION = SIGMASCOPE_VERSION
 ARTIFACT_ANALYSIS_SCHEMA = "omega.sigmascope.artifact-analysis.v1"
@@ -5411,6 +5411,11 @@ def _load_cached_artifact_analysis(
         "artifactAssemblyVersion": str(scan["assembly_version"] or ""),
         "manifestPath": str(((report.get("artifactIdentity") or {}).get("manifestPath") if isinstance(report, dict) else "") or ""),
         "package": copy.deepcopy(report.get("package") or {}) if isinstance(report, dict) else {},
+        # Source-only replay must retain the exact secondary-engine evidence that
+        # belongs to this immutable artifact.  Dropping the payload while leaving
+        # a transported contract marker creates an impossible half-contract.
+        "secondarySecurity": copy.deepcopy(report.get("secondarySecurity") or {}) if isinstance(report, dict) else {},
+        "secondarySecurityContractVersion": int(report.get("secondarySecurityContractVersion") or 0) if isinstance(report, dict) else 0,
         "ruleFindings": findings,
         "ruleCapabilities": capabilities if isinstance(capabilities, list) else [],
         "dependencyIntelligence": empty_dependency_intelligence("artifact"),
@@ -5447,7 +5452,14 @@ def _apply_artifact_analysis(base: dict, payload: dict, catalog_version: str, *,
     for key in ("findings", "capabilities", "automation", "counts", "highestSeverity", "secondarySecurity"):
         base[key] = copy.deepcopy(payload.get(key))
     if isinstance(base.get("secondarySecurity"), dict) and base.get("secondarySecurity"):
-        base["secondarySecurityContractVersion"] = 2
+        # Preserve the contract that produced reusable historical artifact evidence.
+        # Contract 3 is asserted only by a fresh artifact analysis that actually
+        # carried bounded YARA member-scan scope; legacy 2.11-2.13 analyses remain v2.
+        base["secondarySecurityContractVersion"] = int(payload.get("secondarySecurityContractVersion") or 2)
+    else:
+        # Never carry a stale contract marker after replay.  Either the exact
+        # artifact-bound payload survives or the contract is explicitly absent.
+        base.pop("secondarySecurityContractVersion", None)
     base["artifactAnalysis"] = copy.deepcopy(payload)
     base["artifactAnalysisReused"] = bool(reused)
     base["artifactAnalysisRepresentativeScanId"] = int(representative_scan_id or 0)
@@ -5491,6 +5503,7 @@ def _build_artifact_analysis(row: sqlite3.Row, artifact: bytes, final_url: str, 
         "manifestInternalName": str((artifact_manifest or {}).get("internalName") or ""),
         "manifestRepositoryUrl": str((artifact_manifest or {}).get("repoUrl") or ""),
         "secondarySecurity": secondary_security,
+        "secondarySecurityContractVersion": 3,
         "package": package_meta,
         "ruleFindings": raw_findings,
         "ruleCapabilities": sorted(set(raw_capabilities), key=str.lower),
@@ -5639,6 +5652,8 @@ def _artifact_payload_for_source_work(db: sqlite3.Connection, current: sqlite3.R
             "artifactAssemblyVersion": str(current["assembly_version"] or ""),
             "manifestPath": str(((report.get("artifactIdentity") or {}).get("manifestPath") if isinstance(report.get("artifactIdentity"), dict) else "") or ""),
             "package": copy.deepcopy(report.get("package") or {}),
+            "secondarySecurity": copy.deepcopy(report.get("secondarySecurity") or {}),
+            "secondarySecurityContractVersion": int(report.get("secondarySecurityContractVersion") or 0),
             "ruleFindings": copy.deepcopy(report.get("findings") or []),
             "ruleCapabilities": copy.deepcopy(report.get("capabilities") or []),
             "dependencyIntelligence": copy.deepcopy(report.get("dependencyIntelligence") or empty_dependency_intelligence("artifact")),

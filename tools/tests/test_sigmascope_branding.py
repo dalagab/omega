@@ -19,7 +19,7 @@ class SigmascopeBrandingTests(unittest.TestCase):
 
         engine = (root / "tools" / "catalog" / "sigmascope.py").read_text(encoding="utf-8")
         self.assertIn('SIGMASCOPE_NAME = "Sigmascope"', engine)
-        self.assertIn('SIGMASCOPE_VERSION = "2.13.0"', engine)
+        self.assertIn('SIGMASCOPE_VERSION = "2.14.0"', engine)
         self.assertIn("SCANNER_VERSION = SIGMASCOPE_VERSION", engine)
         self.assertIn("Omega-Sigmascope/", engine)
 

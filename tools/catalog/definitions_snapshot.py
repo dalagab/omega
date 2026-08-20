@@ -20,6 +20,8 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -53,8 +55,8 @@ SECONDARY_SECURITY_ALLOWED_SUFFIXES = {
 }
 SECONDARY_SECURITY_MAX_FILES = {"yara": 128, "clamav": 32}
 SECONDARY_SECURITY_MAX_FILE_BYTES = 95 * 1024 * 1024
-YARA_POLICY_SCHEMA = "omega.sigmascope.yara-policy.v1"
-YARA_RULE_METADATA_SCHEMA = "omega.sigmascope.yara-rule-metadata.v1"
+YARA_POLICY_SCHEMA = "omega.sigmascope.yara-policy.v2"
+YARA_RULE_METADATA_SCHEMA = "omega.sigmascope.yara-rule-metadata.v2"
 YARA_POLICY_FILE = "policy.json"
 YARA_METADATA_SUFFIX = ".metadata.json"
 
@@ -255,12 +257,14 @@ def _validate_yara_policy(source_dir: Path) -> tuple[dict[str, Any], dict[str, d
         raise RuntimeError("YARA policy must default rules to disabled-unless-reviewed")
     required = {
         "schema", "ruleFile", "ruleNames", "status", "provenance", "license", "reviewedAtUtc",
+        "reviewedRuleSha256", "reviewer", "ruleClass", "confidence",
         "falsePositiveExpectation", "scope", "reviewNotes",
     }
     declared = {str(item) for item in (policy.get("requiredMetadata") or [])}
     if not required.issubset(declared):
         raise RuntimeError("YARA policy omits mandatory provenance/false-positive metadata requirements")
     metadata_by_rule: dict[str, dict[str, Any]] = {}
+    seen_rule_names: set[str] = set()
     for rule in rules:
         rel = rule.relative_to(source_dir).as_posix()
         metadata_path = rule.with_name(rule.name + YARA_METADATA_SUFFIX)
@@ -286,10 +290,43 @@ def _validate_yara_policy(source_dir: Path) -> tuple[dict[str, Any], dict[str, d
         provenance = metadata.get("provenance") if isinstance(metadata.get("provenance"), dict) else {}
         if not str(provenance.get("kind") or "") or not str(provenance.get("source") or ""):
             raise RuntimeError(f"YARA metadata provenance is incomplete for {rel}")
-        if not str(metadata.get("license") or "") or not str(metadata.get("reviewedAtUtc") or ""):
+        if not str(metadata.get("license") or "") or not str(metadata.get("reviewedAtUtc") or "") or not str(metadata.get("reviewer") or ""):
             raise RuntimeError(f"YARA metadata review/license fields are incomplete for {rel}")
+        expected_reviewed_sha = sha256_file(rule)
+        if str(metadata.get("reviewedRuleSha256") or "").strip().lower() != expected_reviewed_sha:
+            raise RuntimeError(f"YARA metadata reviewedRuleSha256 does not match reviewed bytes for {rel}")
+        if str(metadata.get("ruleClass") or "") not in {"compound-abuse", "known-malware", "anomaly", "tooling"}:
+            raise RuntimeError(f"YARA rule class is invalid for {rel}")
+        if str(metadata.get("confidence") or "") not in {"low", "medium", "high"}:
+            raise RuntimeError(f"YARA rule confidence is invalid for {rel}")
         if str(metadata.get("falsePositiveExpectation") or "") not in {"low", "medium", "high", "unknown"}:
             raise RuntimeError(f"YARA false-positive expectation is invalid for {rel}")
+        try:
+            dt.datetime.fromisoformat(str(metadata.get("reviewedAtUtc") or "").replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise RuntimeError(f"YARA reviewedAtUtc is invalid for {rel}") from exc
+        declared_rule_names = re.findall(
+            r"(?m)^\s*(?:(?:private|global)\s+)?rule\s+([A-Za-z_][A-Za-z0-9_]*)",
+            rule.read_text(encoding="utf-8"),
+        )
+        if sorted(rule_names) != sorted(declared_rule_names):
+            raise RuntimeError(f"YARA metadata ruleNames do not exactly match rule declarations for {rel}")
+        duplicates = sorted(set(rule_names).intersection(seen_rule_names))
+        if duplicates:
+            raise RuntimeError(f"YARA rule names are duplicated across files: {', '.join(duplicates)}")
+        seen_rule_names.update(rule_names)
+        if str(metadata.get("status") or "") == "enabled":
+            try:
+                compile_check = subprocess.run(
+                    ["yara", "--no-warnings", str(rule), os.devnull],
+                    check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                    encoding="utf-8", errors="replace", timeout=30,
+                )
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise RuntimeError(f"YARA compile check could not run for {rel}: {type(exc).__name__}: {exc}") from exc
+            if compile_check.returncode != 0:
+                detail = (compile_check.stdout or "").strip().replace("\n", "; ")[:2048]
+                raise RuntimeError(f"YARA compile check failed for {rel}: {detail or 'non-zero exit'}")
         metadata_by_rule[rel] = metadata
     return policy, metadata_by_rule
 
@@ -392,20 +429,25 @@ def build_secondary_security_snapshot(
             "path": f"{SECONDARY_SECURITY_PATH}/yara/{YARA_POLICY_FILE}",
             "sha256": sha256_file(policy_destination),
         }
-    enabled_yara = sum(1 for item in yara_entries if item["enabled"])
+    enabled_yara_files = sum(1 for item in yara_entries if item["enabled"])
+    enabled_yara_rules = sum(
+        len((item.get("metadata") or {}).get("ruleNames") or [])
+        for item in yara_entries if item.get("enabled")
+    )
     yara_executable_identity: dict[str, Any] = {}
-    if enabled_yara:
+    if enabled_yara_files:
         # An enabled rule set is not allowed to float across arbitrary YARA binaries.
         # The exact executable identity observed at the Definitions boundary is frozen
         # and workers verify it before invocation.
         yara_executable_identity = secondary_security_assets.executable_identity("yara")
     engines.append({
         "engine": "yara",
-        "status": "configured" if enabled_yara else "disabled",
+        "status": "configured" if enabled_yara_files else "disabled",
         "files": yara_entries,
         "policy": frozen_policy,
         "executableIdentity": yara_executable_identity,
-        "note": f"{enabled_yara} reviewed YARA rule(s) enabled." if enabled_yara else "No reviewed YARA production rules are enabled.",
+        "enabledRuleCount": enabled_yara_rules,
+        "note": f"{enabled_yara_rules} reviewed YARA rule(s) enabled across {enabled_yara_files} file(s)." if enabled_yara_files else "No reviewed YARA production rules are enabled.",
     })
 
     clamav_dir = source_root / "clamav"

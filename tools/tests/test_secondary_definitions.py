@@ -33,13 +33,17 @@ class SecondaryDefinitionsTests(unittest.TestCase):
         (yara / "policy.json").write_text(json.dumps(policy), encoding="utf-8")
         (yara / "fixture.yar").write_text("rule Fixture { condition: true }\n", encoding="utf-8")
         metadata = {
-            "schema": "omega.sigmascope.yara-rule-metadata.v1",
+            "schema": "omega.sigmascope.yara-rule-metadata.v2",
             "ruleFile": "fixture.yar",
             "ruleNames": ["Fixture"],
             "status": status,
             "provenance": {"kind": "first-party-test", "source": "tools/tests/test_secondary_definitions.py"},
             "license": "test-only",
             "reviewedAtUtc": "2026-08-20T00:00:00Z",
+            "reviewedRuleSha256": __import__("hashlib").sha256((yara / "fixture.yar").read_bytes()).hexdigest(),
+            "reviewer": "unit-test",
+            "ruleClass": "tooling",
+            "confidence": "low",
             "falsePositiveExpectation": "high",
             "scope": "test fixture",
             "reviewNotes": "Synthetic always-true test rule; never production material.",
@@ -54,6 +58,25 @@ class SecondaryDefinitionsTests(unittest.TestCase):
         exe.write_text("#!/bin/sh\necho 'YARA 4.test'\n", encoding="utf-8")
         exe.chmod(0o755)
         return bindir
+
+
+    def test_repository_omega_core_rules_are_reviewed_and_enabled_as_four_files_fourteen_rules(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-yara-core-") as td:
+            root = Path(td)
+            bindir = self._fake_yara(root)
+            with mock.patch.dict(os.environ, {"PATH": str(bindir) + os.pathsep + os.environ.get("PATH", "")}):
+                index = self._build(root, "omega-core")
+            yara_summary = next(item for item in index["secondarySecurity"]["engines"] if item["engine"] == "yara")
+            self.assertEqual("configured", yara_summary["status"])
+            self.assertEqual(4, yara_summary["fileCount"])
+            frozen = json.loads((root / "definitions-omega-core" / "secondary-security" / "index.json").read_text(encoding="utf-8"))
+            yara_engine = next(item for item in frozen["engines"] if item["engine"] == "yara")
+            self.assertEqual(14, yara_engine["enabledRuleCount"])
+            self.assertTrue(all(item["enabled"] for item in yara_engine["files"]))
+            for item in yara_engine["files"]:
+                metadata = item["metadata"]
+                self.assertEqual("omega.sigmascope.yara-rule-metadata.v2", metadata["schema"])
+                self.assertEqual(item["sha256"], metadata["reviewedRuleSha256"])
 
     def test_yara_definition_change_invalidates_artifact_analysis_revision(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-secondary-definitions-") as td:
@@ -98,6 +121,61 @@ class SecondaryDefinitionsTests(unittest.TestCase):
             (configured / "yara" / "fixture.yar").write_text("rule Fixture { condition: true }\n", encoding="utf-8")
             with self.assertRaisesRegex(RuntimeError, "policy.json"):
                 self._build(root, "unreviewed", configured)
+
+
+
+    def test_duplicate_rule_names_across_reviewed_files_fail_closed(self) -> None:
+        import hashlib
+        with tempfile.TemporaryDirectory(prefix="omega-yara-duplicate-names-") as td:
+            root = Path(td)
+            configured = root / "configured"
+            self._write_reviewed_yara(configured)
+            yara = configured / "yara"
+            second = yara / "second.yar"
+            second.write_text("rule Fixture { condition: false }\n", encoding="utf-8")
+            metadata = {
+                "schema": "omega.sigmascope.yara-rule-metadata.v2",
+                "ruleFile": "second.yar", "ruleNames": ["Fixture"], "status": "enabled",
+                "provenance": {"kind": "first-party-test", "source": "unit-test"},
+                "license": "test-only", "reviewedAtUtc": "2026-08-20T00:00:00Z",
+                "reviewedRuleSha256": hashlib.sha256(second.read_bytes()).hexdigest(),
+                "reviewer": "unit-test", "ruleClass": "tooling", "confidence": "low",
+                "falsePositiveExpectation": "high", "scope": "fixture",
+                "reviewNotes": "duplicate-name fixture",
+            }
+            (yara / "second.yar.metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+            bindir = self._fake_yara(root)
+            with mock.patch.dict(os.environ, {"PATH": str(bindir) + os.pathsep + os.environ.get("PATH", "")}):
+                with self.assertRaisesRegex(RuntimeError, "duplicated across files"):
+                    self._build(root, "duplicate-names", configured)
+
+    def test_enabled_yara_review_hash_mismatch_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-yara-review-hash-") as td:
+            root = Path(td)
+            configured = root / "configured"
+            self._write_reviewed_yara(configured)
+            metadata_path = configured / "yara" / "fixture.yar.metadata.json"
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            metadata["reviewedRuleSha256"] = "0" * 64
+            metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+            bindir = self._fake_yara(root)
+            with mock.patch.dict(os.environ, {"PATH": str(bindir) + os.pathsep + os.environ.get("PATH", "")}):
+                with self.assertRaisesRegex(RuntimeError, "reviewedRuleSha256"):
+                    self._build(root, "hash-mismatch", configured)
+
+    def test_metadata_rule_names_must_match_exact_rule_declarations(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-yara-rule-names-") as td:
+            root = Path(td)
+            configured = root / "configured"
+            self._write_reviewed_yara(configured)
+            metadata_path = configured / "yara" / "fixture.yar.metadata.json"
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            metadata["ruleNames"] = ["DifferentRule"]
+            metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+            bindir = self._fake_yara(root)
+            with mock.patch.dict(os.environ, {"PATH": str(bindir) + os.pathsep + os.environ.get("PATH", "")}):
+                with self.assertRaisesRegex(RuntimeError, "ruleNames"):
+                    self._build(root, "name-mismatch", configured)
 
 
 if __name__ == "__main__":

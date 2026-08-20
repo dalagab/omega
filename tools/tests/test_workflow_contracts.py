@@ -138,6 +138,14 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("definitions-source-commit", text)
         self.assertLess(text.index("Verify frozen worker bundle before execution"), text.index("Examine one due variant"))
 
+
+    def test_regression_workflow_runs_for_yara_definition_changes_and_installs_real_yara(self) -> None:
+        text = self.read("regression-tests.yml")
+        self.assertIn('"security-definitions/**"', text)
+        self.assertIn("Install YARA compile-check dependency", text)
+        self.assertIn("apt-get install -y --no-install-recommends yara", text)
+        self.assertLess(text.index("Install YARA compile-check dependency"), text.index("Run security-services Python regression suite"))
+
     def test_definitions_freeze_rules_and_exact_osv_query_universe(self) -> None:
         definitions = (common.ROOT / "tools" / "catalog" / "definitions_snapshot.py").read_text(encoding="utf-8")
         pipeline = (common.ROOT / "tools" / "security" / "production_sigmascope_v2_pipeline.py").read_text(encoding="utf-8")
