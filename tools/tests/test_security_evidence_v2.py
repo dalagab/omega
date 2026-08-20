@@ -16,7 +16,10 @@ if str(SECURITY) not in sys.path:
 from migrate_security_evidence_v2 import _resolve_source_database, migrate
 from publish_security_evidence_v2 import preflight, validate_audit_report, validate_snapshot_report
 from security_evidence_download import DownloadedEvidence, parse_sidecar, safe_extract_sqlite
-from security_evidence_v2 import (MAX_PUBLISH_FILE_BYTES, read_record_dataset, sha256_file, validate_snapshot, write_record_dataset)
+from security_evidence_v2 import (
+    MAX_PUBLISH_FILE_BYTES, read_record_dataset, sha256_file, validate_snapshot,
+    variant_index_summary, write_record_dataset,
+)
 from validate_security_evidence_v2 import infer_database_from_migration_state, validate
 
 
@@ -103,6 +106,34 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             publication = preflight(output)
             self.assertGreater(publication["files"], 0)
             self.assertEqual(publication["evidenceRevision"], "ev-test")
+
+    def test_variant_index_summary_preserves_pre_lifecycle_contract_shape(self) -> None:
+        payload = {
+            "variantId": 107,
+            "pluginId": 1,
+            "sourceId": 1,
+            "plugin": {"internal_name": "FixturePlugin", "canonical_name": "Fixture Plugin"},
+            "variant": {"name": "Fixture Plugin", "author": "Tester", "assembly_version": "1.0.0"},
+            "source": {"name": "Fixture", "url": "https://example.invalid/pluginmaster.json"},
+            "current": {"scan_id": 10, "status": "complete", "highest_severity": "none"},
+        }
+        legacy = variant_index_summary(payload, lifecycle_contract_version=0)
+        self.assertNotIn("lifecycle_state", legacy)
+        self.assertNotIn("lifecycle_reason", legacy)
+        self.assertNotIn("lifecycle_terminal", legacy)
+        self.assertEqual(legacy, variant_index_summary(payload))
+
+        payload["lifecycle"] = {
+            "schema": "omega.security-evidence.variant-lifecycle.v1",
+            "state": "active",
+            "reason": "",
+            "terminal": False,
+            "rescanEligible": True,
+        }
+        modern = variant_index_summary(payload, lifecycle_contract_version=1)
+        self.assertEqual("active", modern["lifecycle_state"])
+        self.assertFalse(modern["lifecycle_terminal"])
+        self.assertEqual(modern, variant_index_summary(payload))
 
     def test_oversized_legacy_report_is_compacted_out_of_variant_descriptor(self) -> None:
         with tempfile.TemporaryDirectory() as td:

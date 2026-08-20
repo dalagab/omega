@@ -2,6 +2,9 @@
 
 ## 2.13.0 — Native structural evidence, endpoint intelligence and component summaries
 
+- Compatibility hotfix: validate pre-lifecycle Evidence-v2 plugin summaries using their historical lifecycle-contract-0 field set instead of recomputing them with lifecycle-contract-v1 fields. This repairs incremental startup against existing published snapshots without rewriting or deleting evidence.
+- Keep lifecycle-aware production snapshots on contract v1; terminal/superseded validation remains fail-closed and unchanged.
+- This is publication/validation compatibility only and does not change SigmaScope artifact/source scanning semantics or require an engine-version bump.
 - Bump Omega Security Services / SigmaScope engine to **2.13.0** because artifact-analysis and Evidence-v2 transport semantics change materially.
 - Advance the binary-classification contract to **v2**. PE classification now records bounded loader/security characteristics, COFF timestamp, entry-point/image metadata, section permissions/entropy and certificate-table presence without claiming Authenticode verification.
 - Add bounded caution evidence for native PE sections marked both writable and executable; high entropy remains contextual metadata only and does not become a malware verdict.

@@ -415,11 +415,19 @@ def normalize_value(key: str, value: Any) -> Any:
     return value
 
 
-def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
+def variant_index_summary(
+    payload: dict[str, Any], *, lifecycle_contract_version: int | None = None
+) -> dict[str, Any]:
     """Return the small identity/current projection used by the online Developer View.
 
     The summary intentionally contains no detailed findings, calls, symbols or source text.
     Those remain in the variant/analysis graph and are fetched lazily by developers.
+
+    ``lifecycle_contract_version`` is deliberately explicit for validation. Published
+    pre-lifecycle snapshots used the same plugins index schema but did not contain the
+    lifecycle summary keys introduced by lifecycle contract v1.  When omitted, infer
+    the contract from the descriptor so legacy migration paths keep their historical
+    shape while lifecycle-aware production descriptors get the v1 fields.
     """
     plugin = payload.get("plugin") if isinstance(payload.get("plugin"), dict) else {}
     variant = payload.get("variant") if isinstance(payload.get("variant"), dict) else {}
@@ -431,7 +439,13 @@ def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
     attribution = report_source.get("attribution") if isinstance(report_source.get("attribution"), dict) else {}
     scan_provenance = report.get("scanProvenance") if isinstance(report.get("scanProvenance"), dict) else {}
     lifecycle = payload.get("lifecycle") if isinstance(payload.get("lifecycle"), dict) else {}
-    return {
+    if lifecycle_contract_version is None:
+        lifecycle_contract_version = (
+            1 if str(lifecycle.get("schema") or "") == "omega.security-evidence.variant-lifecycle.v1" else 0
+        )
+    if lifecycle_contract_version not in {0, 1}:
+        raise ValueError(f"unsupported lifecycle summary contract: {lifecycle_contract_version}")
+    summary = {
         "plugin_id": int(payload.get("pluginId") or plugin.get("plugin_id") or variant.get("plugin_id") or 0),
         "source_id": int(payload.get("sourceId") or source.get("source_id") or variant.get("source_id") or 0),
         "internal_name": str(plugin.get("internal_name") or ""),
@@ -472,13 +486,17 @@ def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "artifact_analysis_revision": str(report.get("artifactAnalysisRevision") or scan_provenance.get("artifactAnalysisRevision") or ""),
         "source_analysis_revision": str(report.get("sourceAnalysisRevision") or scan_provenance.get("sourceAnalysisRevision") or ""),
         "source_observation_revision": str(scan_provenance.get("sourceObservationRevision") or ""),
-        "lifecycle_state": str(lifecycle.get("state") or "active"),
-        "lifecycle_reason": str(lifecycle.get("reason") or ""),
-        "lifecycle_terminal": bool(lifecycle.get("terminal")),
         "rule_set_revision": str(scan_provenance.get("ruleSetRevision") or ""),
         "scan_queue_reason": str(scan_provenance.get("primaryReason") or ""),
         "scan_queue_seed_revision": str(scan_provenance.get("queueSeedRevision") or ""),
     }
+    if lifecycle_contract_version == 1:
+        summary.update({
+            "lifecycle_state": str(lifecycle.get("state") or "active"),
+            "lifecycle_reason": str(lifecycle.get("reason") or ""),
+            "lifecycle_terminal": bool(lifecycle.get("terminal")),
+        })
+    return summary
 
 
 def normalize_row(row: sqlite3.Row | dict[str, Any], *, exclude: Iterable[str] = ()) -> dict[str, Any]:
@@ -1126,7 +1144,10 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
             if declared_variant_sha and declared_variant_sha != sha256_file(root / variant_path):
                 errors.append(f"variant {variant_id} plugins index descriptor SHA mismatch")
             declared_summary = entry.get("summary")
-            if declared_summary is not None and declared_summary != variant_index_summary(payload):
+            expected_summary = variant_index_summary(
+                payload, lifecycle_contract_version=lifecycle_contract
+            )
+            if declared_summary is not None and declared_summary != expected_summary:
                 errors.append(f"variant {variant_id} plugins index summary mismatch")
             if lifecycle_contract == 1:
                 lifecycle = payload.get("lifecycle") if isinstance(payload.get("lifecycle"), dict) else {}
@@ -1298,7 +1319,9 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                     declared_variant_sha = str(entry.get("variantSha256") or "").strip().lower()
                     if not declared_variant_sha or declared_variant_sha != sha256_file(root / variant_path):
                         errors.append(f"{collection_name} variant {variant_id} descriptor SHA mismatch")
-                    if entry.get("summary") != variant_index_summary(payload):
+                    if entry.get("summary") != variant_index_summary(
+                        payload, lifecycle_contract_version=1
+                    ):
                         errors.append(f"{collection_name} variant {variant_id} summary mismatch")
                     lifecycle = payload.get("lifecycle") if isinstance(payload.get("lifecycle"), dict) else {}
                     if str(lifecycle.get("schema") or "") != "omega.security-evidence.variant-lifecycle.v1":
