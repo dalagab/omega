@@ -233,12 +233,32 @@ class ArtifactSourceModelTests(unittest.TestCase):
                 self.assertEqual(2, fetch.call_count)
                 self.assertFalse(fetch.call_args_list[0].kwargs["analyze"])
                 self.assertTrue(fetch.call_args_list[1].kwargs["analyze"])
+
+                # Combined source+artifact finalization can derive findings (for example
+                # endpoint findings) that do not live in source["findings"].  The immutable
+                # source-projection rows must persist the final finding list exactly.
+                result["findings"].append({
+                    "ruleId": "network.endpoint.fixture", "severity": "caution", "category": "network-endpoint",
+                    "title": "Endpoint: fixture.example", "description": "Derived combined endpoint evidence",
+                    "evidence": ["source:fixture"],
+                })
+                result["counts"]["caution"] += 1
+                result["highestSeverity"] = "caution"
                 new_scan = sigmascope.save_scan(db, row, result)
                 db.commit()
                 current = db.execute("SELECT scan_id,source_available,artifact_sha256 FROM plugin_security_current WHERE variant_id=?", (row["variant_id"],)).fetchone()
                 self.assertEqual(new_scan, current["scan_id"])
                 self.assertEqual(1, current["source_available"])
                 self.assertEqual(artifact_sha, current["artifact_sha256"])
+                persisted_findings = db.execute(
+                    "SELECT rule_id,severity FROM plugin_security_findings WHERE scan_id=? ORDER BY finding_id", (new_scan,)
+                ).fetchall()
+                self.assertEqual([("network.endpoint.fixture", "caution")], [(r["rule_id"], r["severity"]) for r in persisted_findings])
+                persisted_scan = db.execute(
+                    "SELECT caution_count,informational_count,high_count,critical_count FROM plugin_security_scans WHERE scan_id=?", (new_scan,)
+                ).fetchone()
+                self.assertEqual(1, persisted_scan["caution_count"])
+                self.assertEqual(1, len(persisted_findings))
 
     def test_source_analysis_reuses_same_immutable_revision_within_worker(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-source-cache-") as td:

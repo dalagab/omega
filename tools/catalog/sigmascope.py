@@ -5143,25 +5143,26 @@ def _save_source_projection_scan(db: sqlite3.Connection, row: sqlite3.Row, resul
     )
     scan_id = int(cur.lastrowid)
     for table in ARTIFACT_CLONE_TABLES:
+        if table == "plugin_security_findings":
+            continue
         _clone_scan_dataset_rows(db, table, artifact_scan_id, scan_id)
 
-    source_findings = list(source.get("findings") or [])
-    source_automation = source.get("automation") if isinstance(source.get("automation"), dict) else {}
-    source_findings.extend(source_automation.get("findings") or [])
-    seen_findings: set[tuple[str, str, str]] = set()
-    for finding in source_findings:
+    # The source projection's immutable finding rows must reproduce the *final*
+    # combined result, not merely artifact rows plus source rule findings.
+    # _apply_source_analysis() can derive additional endpoint/automation findings
+    # from the merged artifact+source intelligence.  Persist that authoritative
+    # final list exactly so scan counters and normalized evidence cannot diverge.
+    for finding in result.get("findings") or []:
         if not isinstance(finding, dict):
             continue
-        key = (str(finding.get("ruleId") or ""), str(finding.get("severity") or ""), str(finding.get("title") or ""))
-        if key in seen_findings:
-            continue
-        seen_findings.add(key)
         db.execute(
             """INSERT INTO plugin_security_findings(scan_id,rule_id,severity,category,title,description,evidence_json)
                VALUES(?,?,?,?,?,?,?)""",
-            (scan_id, key[0], key[1], str(finding.get("category") or ""), key[2], str(finding.get("description") or ""),
+            (scan_id, str(finding.get("ruleId") or ""), str(finding.get("severity") or ""),
+             str(finding.get("category") or ""), str(finding.get("title") or ""), str(finding.get("description") or ""),
              json.dumps(finding.get("evidence") or [], separators=(",", ":"))),
         )
+    source_automation = source.get("automation") if isinstance(source.get("automation"), dict) else {}
     save_dependency_intelligence(db, scan_id, {"dependencyIntelligence": source.get("dependencyIntelligence") or empty_dependency_intelligence("source")})
     if source_automation:
         save_automation_capabilities(db, scan_id, {"automation": source_automation})

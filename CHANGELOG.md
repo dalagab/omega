@@ -17,6 +17,11 @@
 - Hotfix the daily Catalog preflight and manual compaction workflows to install real YARA before their full repository regression suites; enabled Definitions fixtures intentionally compile-check production rules and therefore require the compiler at test time.
 - Add an upstream review queue for YARA Forge/signature-base/embee-style rules without importing any third-party pack wholesale; future accepted rules require exact upstream provenance/license and independent local review.
 - Preserve immutable ClamAV transport, artifact/source attribution, lifecycle/requeue, native PE, endpoint and component-summary contracts.
+- Replace the continuous worker's hard one-item queue clamp with bounded multi-item processing: up to 20 queue work items per runner while preserving per-item work type, provenance, retry/backoff, source-followup and last-known-good failure retention.
+- Reserve the last 300 seconds of the existing 3,300-second batch budget for advisory refresh, Evidence-v2 validation/audit and atomic publication so long scans do not consume the publication window.
+- Expose batch diagnostics (`selectedCount`, selected items, budget stop state, invocation count, and aggregate per-plugin elapsed seconds) without persisting runtime timings into semantic Evidence-v2 or changing artifact/source analysis identities.
+- Fix source-projection persistence exposed by the first 20-item batch: immutable normalized finding rows are now rebuilt from the final combined source+artifact finding set instead of artifact rows plus only direct source findings. This preserves newly derived endpoint/automation findings and keeps immutable scan counters reproducible.
+- Keep the independent developer audit fail-closed; the failed 20-item batch published nothing after it detected five mirrored ActionTimelineReborn source projections with 21/10 recorded caution/informational counts but only 19/9 normalized rows.
 
 ## 2.13.0 — Native structural evidence, endpoint intelligence and component summaries
 
