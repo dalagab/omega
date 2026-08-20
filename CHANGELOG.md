@@ -104,6 +104,8 @@ Omega follows semantic product versions. Development work stays under **Unreleas
 
 ## [Unreleased]
 
+## [0.9.51] - 2026-08-20
+
 <sub>work build: 0.9.40</sub>
 - Preserve downloaded Sigmascope/security projections when Dalamud official runtime manifests replace the same source/version in the live marketplace view.
 - Apply the same exact-source/version security merge to manually refreshed repository overlays so live manifests keep current install/update metadata without erasing server-side findings.
