@@ -37,6 +37,10 @@ SOURCE_ROOT_SYMBOLS = (
 ARTIFACT_SUPPORT_FILES = (
     "tools/catalog/security_endpoint_inventory.py",
     "tools/catalog/security_path_access.py",
+    "tools/catalog/security_secondary_engines.py",
+    "tools/catalog/secondary_security_assets.py",
+    "tools/catalog/security_binary_classifier.py",
+    "tools/catalog/security_component_summary.py",
 )
 SOURCE_SUPPORT_FILES = (
     "tools/catalog/source_resolution.py",
@@ -45,6 +49,7 @@ SOURCE_SUPPORT_FILES = (
     "tools/catalog/artifact_source_model.py",
     "tools/catalog/security_endpoint_inventory.py",
     "tools/catalog/security_path_access.py",
+    "tools/catalog/security_component_summary.py",
 )
 
 

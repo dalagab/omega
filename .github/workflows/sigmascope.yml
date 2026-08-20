@@ -29,6 +29,8 @@ jobs:
       discord_notice_ready: ${{ steps.discord_notice.outcome == 'success' }}
     env:
       OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
+      OMEGA_SECONDARY_SECURITY_ROOT: catalog/active-state/definitions/secondary-security
+      OMEGA_SECONDARY_SECURITY_CACHE: catalog/secondary-security-runtime
     permissions:
       contents: write
       issues: write
@@ -81,6 +83,19 @@ jobs:
           set -euo pipefail
           python -c "import hashlib,json,pathlib; r=pathlib.Path('catalog/active-state/definitions'); i=json.load(open(r/'index.json')); m=r/i['scannerBundle']['manifestPath']; assert hashlib.sha256(m.read_bytes()).hexdigest()==i['scannerBundle']['sha256'], 'worker bundle manifest SHA-256 mismatch'"
           python "$OMEGA_FROZEN_WORKER/tools/catalog/definitions_snapshot.py" verify --definitions-root catalog/active-state/definitions
+      - name: Install secondary-engine executables
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clamav yara
+      - name: Materialize exact frozen ClamAV definitions
+        continue-on-error: true
+        run: >-
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/secondary_security_assets.py" materialize-clamav
+          --definitions-root catalog/active-state/definitions
+          --output "$OMEGA_SECONDARY_SECURITY_CACHE"
       - name: Checkout last-known-good Security Evidence v2 snapshot
         uses: actions/checkout@v6
         with:

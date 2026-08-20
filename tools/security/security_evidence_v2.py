@@ -15,9 +15,18 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import sqlite3
+import sys
 import tempfile
 import urllib.parse
 from typing import Any, Iterable, Iterator, Sequence
+
+
+CATALOG_DIR = Path(__file__).resolve().parents[1] / "catalog"
+if str(CATALOG_DIR) not in sys.path:
+    sys.path.insert(0, str(CATALOG_DIR))
+from artifact_source_model import (  # noqa: E402
+    ATTRIBUTION_SCHEMA, MANIFEST_OBSERVATION_SCHEMA, attribution_invariant_errors, manifest_observation_key,
+)
 
 SCHEMA = "omega.security-evidence.v2"
 FORMAT_VERSION = 2
@@ -71,6 +80,8 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
     source_fingerprints = source_intel.get("fingerprints") if isinstance(source_intel.get("fingerprints"), dict) else {}
     package = report.get("package") if isinstance(report.get("package"), dict) else {}
     artifact_identity = report.get("artifactIdentity") if isinstance(report.get("artifactIdentity"), dict) else {}
+    manifest_observation = report.get("manifestObservation") if isinstance(report.get("manifestObservation"), dict) else {}
+    secondary_security = report.get("secondarySecurity") if isinstance(report.get("secondarySecurity"), dict) else {}
     automation = report.get("automation") if isinstance(report.get("automation"), dict) else {}
     intelligence = report.get("dependencyIntelligence") if isinstance(report.get("dependencyIntelligence"), dict) else {}
     if not intelligence and isinstance(report.get("intelligence"), dict):
@@ -121,16 +132,68 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
     for endpoint in endpoint_records[:48]:
         if not isinstance(endpoint, dict):
             continue
-        compact_endpoints.append({
+        compact_endpoint = {
             "url": _bounded_text(endpoint.get("url"), 2048),
             "host": _bounded_text(endpoint.get("host"), 512),
             "origin": _bounded_text(endpoint.get("origin"), 64),
             "classification": _bounded_text(endpoint.get("classification"), 128),
             "purpose": _bounded_text(endpoint.get("purpose"), 512),
-        })
+        }
+        if "originType" in endpoint:
+            compact_endpoint["originType"] = _bounded_text(endpoint.get("originType"), 64)
+        if "confidence" in endpoint:
+            compact_endpoint["confidence"] = _bounded_text(endpoint.get("confidence"), 32)
+        if "concreteDestinationEvidence" in endpoint:
+            compact_endpoint["concreteDestinationEvidence"] = bool(endpoint.get("concreteDestinationEvidence"))
+        compact_endpoints.append(compact_endpoint)
+
+    endpoint_summary_raw = intelligence.get("endpointSummary") if isinstance(intelligence.get("endpointSummary"), dict) else {}
+    component_summary_raw = intelligence.get("componentSummary") if isinstance(intelligence.get("componentSummary"), dict) else {}
+    compact_endpoint_summary = {
+        "schema": _bounded_text(endpoint_summary_raw.get("schema"), 128),
+        "networkCapabilityObserved": bool(endpoint_summary_raw.get("networkCapabilityObserved")),
+        "literalCount": _countish_transport(endpoint_summary_raw.get("literalCount")),
+        "concreteDestinationCount": _countish_transport(endpoint_summary_raw.get("concreteDestinationCount")),
+        "hostCount": _countish_transport(endpoint_summary_raw.get("hostCount")),
+        "destinationsUndetermined": bool(endpoint_summary_raw.get("destinationsUndetermined")),
+        "hosts": [
+            {
+                "host": _bounded_text(item.get("host"), 512),
+                "literalCount": _countish_transport(item.get("literalCount")),
+                "concreteCount": _countish_transport(item.get("concreteCount")),
+                "confidence": _bounded_text(item.get("confidence"), 32),
+                "classifications": [_bounded_text(v, 128) for v in (item.get("classifications") or [])[:8]],
+                "originTypes": [_bounded_text(v, 64) for v in (item.get("originTypes") or [])[:8]],
+            }
+            for item in (endpoint_summary_raw.get("hosts") or [])[:24] if isinstance(item, dict)
+        ],
+    } if endpoint_summary_raw else {}
+    compact_component_summary = {
+        "schema": _bounded_text(component_summary_raw.get("schema"), 128),
+        "dependencyCount": _countish_transport(component_summary_raw.get("dependencyCount")),
+        "families": component_summary_raw.get("families") if isinstance(component_summary_raw.get("families"), dict) else {},
+        "requirements": component_summary_raw.get("requirements") if isinstance(component_summary_raw.get("requirements"), dict) else {},
+        "exactVersionObservedCount": _countish_transport(component_summary_raw.get("exactVersionObservedCount")),
+        "versionUnknownCount": _countish_transport(component_summary_raw.get("versionUnknownCount")),
+        "nativeRelationshipCounts": component_summary_raw.get("nativeRelationshipCounts") if isinstance(component_summary_raw.get("nativeRelationshipCounts"), dict) else {},
+        "pluginRelationships": [
+            {key: _bounded_text(item.get(key), 512) for key in ("kind", "name", "requirement", "relationship", "confidence", "versionRequirement", "origin")}
+            for item in (component_summary_raw.get("pluginRelationships") or [])[:24] if isinstance(item, dict)
+        ],
+        "nativeRelationships": [
+            {
+                **{key: _bounded_text(item.get(key), 1024) for key in ("consumerPath", "library", "entryPoint", "managedName", "disposition", "confidence", "targetPath")},
+                "directManagedCallObserved": bool(item.get("directManagedCallObserved")),
+                "directManagedCallCount": _countish_transport(item.get("directManagedCallCount")),
+            }
+            for item in (component_summary_raw.get("nativeRelationships") or [])[:24] if isinstance(item, dict)
+        ],
+        "fingerprint": _bounded_text(component_summary_raw.get("fingerprint"), 128),
+    } if component_summary_raw else {}
 
     summary = {
         "schema": TRANSPORT_REPORT_SCHEMA,
+        "engineVersion": str(report.get("engineVersion") or ""),
         "scannerVersion": str(row.get("scanner_version") or report.get("scannerVersion") or ""),
         "scanProvenance": {
             key: scan_provenance.get(key)
@@ -143,6 +206,10 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
         },
         "scannedAtUtc": str(row.get("scanned_at_utc") or report.get("scannedAtUtc") or ""),
         "workType": str(report.get("workType") or scan_provenance.get("workType") or ""),
+        "artifactIdentityContractVersion": int(report.get("artifactIdentityContractVersion") or 0),
+        "manifestObservationContractVersion": int(report.get("manifestObservationContractVersion") or 0),
+        "sourceAttributionContractVersion": int(report.get("sourceAttributionContractVersion") or 0),
+        "secondarySecurityContractVersion": int(report.get("secondarySecurityContractVersion") or 0),
         "artifactAnalysisRevision": str(report.get("artifactAnalysisRevision") or scan_provenance.get("artifactAnalysisRevision") or scan_provenance.get("ruleSetRevision") or ""),
         "artifactAnalysisReused": bool(report.get("artifactAnalysisReused")),
         "artifactAnalysisRepresentativeScanId": int(report.get("artifactAnalysisRepresentativeScanId") or 0),
@@ -151,8 +218,27 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
         "sourceAnalysisRepresentativeScanId": int(report.get("sourceAnalysisRepresentativeScanId") or 0),
         "artifactBytes": int(report.get("artifactBytes") or 0),
         "artifactIdentity": {
+            "schema": _bounded_text(artifact_identity.get("schema"), 128),
+            "artifactSha256": _bounded_text(artifact_identity.get("artifactSha256"), 128),
+            "artifactBytes": int(artifact_identity.get("artifactBytes") or report.get("artifactBytes") or 0),
+            "resolvedArtifactUrl": _bounded_text(artifact_identity.get("resolvedArtifactUrl") or report.get("resolvedArtifactUrl"), 8192),
+            "catalogAssemblyVersion": _bounded_text(artifact_identity.get("catalogAssemblyVersion"), 512),
             "artifactAssemblyVersion": _bounded_text(artifact_identity.get("artifactAssemblyVersion"), 512),
             "manifestPath": _bounded_text(artifact_identity.get("manifestPath"), 2048),
+            "manifestInternalName": _bounded_text(artifact_identity.get("manifestInternalName"), 512),
+            "manifestRepositoryUrl": _bounded_text(artifact_identity.get("manifestRepositoryUrl"), 8192),
+            "versionMatchesCatalog": bool(artifact_identity.get("versionMatchesCatalog")),
+        },
+        "manifestObservation": {
+            "schema": _bounded_text(manifest_observation.get("schema"), 128),
+            "observationKey": _bounded_text(manifest_observation.get("observationKey"), 128),
+            "observationId": int(manifest_observation.get("observationId") or 0),
+            "variantId": int(manifest_observation.get("variantId") or 0),
+            "channel": _bounded_text(manifest_observation.get("channel"), 64),
+            "internalName": _bounded_text(manifest_observation.get("internalName"), 512),
+            "manifestVersion": _bounded_text(manifest_observation.get("manifestVersion"), 512),
+            "downloadUrl": _bounded_text(manifest_observation.get("downloadUrl"), 8192),
+            "repositoryUrl": _bounded_text(manifest_observation.get("repositoryUrl"), 8192),
         },
         "status": str(row.get("status") or report.get("status") or ""),
         "highestSeverity": highest,
@@ -177,7 +263,7 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
                     "schema", "confidence", "requestedAssemblyVersion", "selectedRef", "selectedRefKind",
                     "manifestPath", "manifestInternalName", "manifestAssemblyVersion", "manifestRepoUrl",
                     "identityMatched", "versionMatched", "manifestRepositoryMatched", "artifactOriginMatched",
-                    "repoUrlMatched", "originMatched", "sourceToBinaryVerified", "inheritedViaArtifact",
+                    "repoUrlMatched", "originMatched", "artifactPinnedCommit", "reproducibleSourceToArtifact", "sourceToBinaryVerified", "inheritedViaArtifact",
                     "inheritedArtifactSha256", "inheritedFromVariantId", "distributionSource",
                 )
                 if key in source_provenance
@@ -189,6 +275,54 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
                 }
             },
         },
+        "secondarySecurity": ({
+            "schema": _bounded_text(secondary_security.get("schema"), 128),
+            "artifactSha256": _bounded_text(secondary_security.get("artifactSha256"), 128),
+            "semantics": _bounded_text(secondary_security.get("semantics"), 128),
+            "matchCount": int(secondary_security.get("matchCount") or 0),
+            "engines": [
+                {
+                    "schema": _bounded_text(item.get("schema"), 128),
+                    "engine": _bounded_text(item.get("engine"), 64),
+                    "status": _bounded_text(item.get("status"), 64),
+                    "available": bool(item.get("available")),
+                    "enabled": bool(item.get("enabled")),
+                    "revision": _bounded_text(item.get("revision"), 256),
+                    "version": _bounded_text(item.get("version"), 512),
+                    "policyRevision": _bounded_text(item.get("policyRevision"), 256),
+                    "executableIdentity": ({
+                        "schema": _bounded_text((item.get("executableIdentity") or {}).get("schema"), 128),
+                        "command": _bounded_text((item.get("executableIdentity") or {}).get("command"), 128),
+                        "expectedSha256": _bounded_text((item.get("executableIdentity") or {}).get("expectedSha256"), 128),
+                        "expectedBytes": int((item.get("executableIdentity") or {}).get("expectedBytes") or 0),
+                        "expectedVersion": _bounded_text((item.get("executableIdentity") or {}).get("expectedVersion"), 512),
+                        "actualSha256": _bounded_text((item.get("executableIdentity") or {}).get("actualSha256"), 128),
+                        "actualBytes": int((item.get("executableIdentity") or {}).get("actualBytes") or 0),
+                        "actualVersion": _bounded_text((item.get("executableIdentity") or {}).get("actualVersion"), 512),
+                        "available": bool((item.get("executableIdentity") or {}).get("available")),
+                        "verified": bool((item.get("executableIdentity") or {}).get("verified")),
+                        "error": _bounded_text((item.get("executableIdentity") or {}).get("error"), 2048),
+                    } if isinstance(item.get("executableIdentity"), dict) and item.get("executableIdentity") else {}),
+                    "matches": [
+                        {
+                            "kind": _bounded_text(match.get("kind"), 64),
+                            "value": _bounded_text(match.get("value"), 2048),
+                            "rule": _bounded_text(match.get("rule"), 256),
+                            "provenance": ({
+                                "kind": _bounded_text((match.get("provenance") or {}).get("kind"), 128),
+                                "source": _bounded_text((match.get("provenance") or {}).get("source"), 1024),
+                            } if isinstance(match.get("provenance"), dict) and match.get("provenance") else {}),
+                            "license": _bounded_text(match.get("license"), 256),
+                            "falsePositiveExpectation": _bounded_text(match.get("falsePositiveExpectation"), 64),
+                            "scope": _bounded_text(match.get("scope"), 1024),
+                        }
+                        for match in (item.get("matches") or [])[:256] if isinstance(match, dict)
+                    ],
+                    "error": _bounded_text(item.get("error"), 4096),
+                }
+                for item in (secondary_security.get("engines") or [])[:8] if isinstance(item, dict)
+            ],
+        } if secondary_security else {}),
         "package": {
             "archive": _bounded_text(package.get("archive"), 2048),
             "fileCount": _countish_transport(package.get("fileCount") or package.get("files")),
@@ -205,6 +339,8 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
             "coverage": intelligence.get("coverage") if isinstance(intelligence.get("coverage"), dict) else {},
             "limits": intelligence.get("limits") if isinstance(intelligence.get("limits"), dict) else {},
             "networkEndpoints": compact_endpoints,
+            "endpointSummary": compact_endpoint_summary,
+            "componentSummary": compact_component_summary,
         },
         "error": _bounded_text(row.get("error") or report.get("error") or "", 8192),
     }
@@ -213,7 +349,7 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
         # Coverage/limits are informational compatibility data.  Preserve the fields
         # required by incremental/source workflows first, then drop these optional
         # maps rather than ever allowing a legacy report to inflate a variant file.
-        summary["intelligence"] = {"coverage": {}, "limits": {}}
+        summary["intelligence"] = {"coverage": {}, "limits": {}, "networkEndpoints": [], "endpointSummary": compact_endpoint_summary, "componentSummary": compact_component_summary}
         encoded = canonical_json_bytes(summary)
     if len(encoded) > MAX_TRANSPORT_REPORT_BYTES:
         summary["automation"]["capabilities"] = []
@@ -294,6 +430,7 @@ def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
     provenance = report_source.get("provenance") if isinstance(report_source.get("provenance"), dict) else {}
     attribution = report_source.get("attribution") if isinstance(report_source.get("attribution"), dict) else {}
     scan_provenance = report.get("scanProvenance") if isinstance(report.get("scanProvenance"), dict) else {}
+    lifecycle = payload.get("lifecycle") if isinstance(payload.get("lifecycle"), dict) else {}
     return {
         "plugin_id": int(payload.get("pluginId") or plugin.get("plugin_id") or variant.get("plugin_id") or 0),
         "source_id": int(payload.get("sourceId") or source.get("source_id") or variant.get("source_id") or 0),
@@ -335,6 +472,9 @@ def variant_index_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "artifact_analysis_revision": str(report.get("artifactAnalysisRevision") or scan_provenance.get("artifactAnalysisRevision") or ""),
         "source_analysis_revision": str(report.get("sourceAnalysisRevision") or scan_provenance.get("sourceAnalysisRevision") or ""),
         "source_observation_revision": str(scan_provenance.get("sourceObservationRevision") or ""),
+        "lifecycle_state": str(lifecycle.get("state") or "active"),
+        "lifecycle_reason": str(lifecycle.get("reason") or ""),
+        "lifecycle_terminal": bool(lifecycle.get("terminal")),
         "rule_set_revision": str(scan_provenance.get("ruleSetRevision") or ""),
         "scan_queue_reason": str(scan_provenance.get("primaryReason") or ""),
         "scan_queue_seed_revision": str(scan_provenance.get("queueSeedRevision") or ""),
@@ -732,6 +872,102 @@ def iter_variant_entries(root: Path) -> Iterator[tuple[dict[str, Any], dict[str,
         yield entry, payload
 
 
+
+def _scanner_version_at_least(value: Any, minimum: tuple[int, int, int]) -> bool:
+    parts = []
+    for item in str(value or "").split(".")[:3]:
+        try:
+            parts.append(int(item))
+        except ValueError:
+            parts.append(0)
+    while len(parts) < 3:
+        parts.append(0)
+    return tuple(parts[:3]) >= minimum
+
+
+def _validate_identity_contract(variant_id: int, payload: dict[str, Any], errors: list[str]) -> None:
+    current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
+    report = current.get("report_json") if isinstance(current.get("report_json"), dict) else {}
+    artifact_sha = str(current.get("artifact_sha256") or report.get("artifactSha256") or "").strip().lower()
+
+    artifact_contract = int(report.get("artifactIdentityContractVersion") or 0)
+    manifest_contract = int(report.get("manifestObservationContractVersion") or 0)
+    attribution_contract = int(report.get("sourceAttributionContractVersion") or 0)
+    secondary_contract = int(report.get("secondarySecurityContractVersion") or 0)
+    for label, value in (("artifact identity", artifact_contract), ("manifest observation", manifest_contract),
+                         ("source attribution", attribution_contract)):
+        if value not in {0, 1}:
+            errors.append(f"variant {variant_id} declares unsupported {label} contract version {value}")
+    if secondary_contract not in {0, 1, 2}:
+        errors.append(f"variant {variant_id} declares unsupported secondary security contract version {secondary_contract}")
+
+    if artifact_contract == 1:
+        identity = report.get("artifactIdentity") if isinstance(report.get("artifactIdentity"), dict) else {}
+        if str(identity.get("schema") or "") != "omega.sigmascope.artifact-identity.v1":
+            errors.append(f"variant {variant_id} lacks the v2.10 artifact identity contract")
+        if str(identity.get("artifactSha256") or "").strip().lower() != artifact_sha:
+            errors.append(f"variant {variant_id} artifact identity hash differs from current artifact hash")
+        if int(identity.get("artifactBytes") or 0) <= 0:
+            errors.append(f"variant {variant_id} artifact identity lacks package byte identity")
+
+    if manifest_contract == 1:
+        observation = report.get("manifestObservation") if isinstance(report.get("manifestObservation"), dict) else {}
+        if str(observation.get("schema") or "") != MANIFEST_OBSERVATION_SCHEMA:
+            errors.append(f"variant {variant_id} lacks the manifest observation contract")
+        else:
+            if int(observation.get("variantId") or 0) != variant_id:
+                errors.append(f"variant {variant_id} manifest observation points at another variant")
+            expected_key = manifest_observation_key(
+                variant_id, str(observation.get("channel") or ""), str(observation.get("internalName") or ""),
+                str(observation.get("manifestVersion") or ""), str(observation.get("downloadUrl") or ""),
+                str(observation.get("repositoryUrl") or ""),
+            )
+            if str(observation.get("observationKey") or "") != expected_key:
+                errors.append(f"variant {variant_id} manifest observation key is not derivable from its fields")
+            if str(observation.get("channel") or "") != str(current.get("artifact_channel") or ""):
+                errors.append(f"variant {variant_id} manifest observation channel differs from selected artifact channel")
+            if str(observation.get("downloadUrl") or "") != str(current.get("artifact_url") or ""):
+                errors.append(f"variant {variant_id} manifest observation URL differs from selected artifact URL")
+            if str(observation.get("manifestVersion") or "") != str(current.get("assembly_version") or ""):
+                errors.append(f"variant {variant_id} manifest observation version differs from selected assembly version")
+
+    if attribution_contract == 1:
+        source = report.get("source") if isinstance(report.get("source"), dict) else {}
+        attribution = source.get("attribution") if isinstance(source.get("attribution"), dict) else {}
+        if str(attribution.get("schema") or "") != ATTRIBUTION_SCHEMA:
+            errors.append(f"variant {variant_id} lacks the artifact/source attribution contract")
+        else:
+            for error in attribution_invariant_errors(source, attribution):
+                errors.append(f"variant {variant_id} source attribution: {error}")
+
+    if secondary_contract in {1, 2}:
+        secondary = report.get("secondarySecurity") if isinstance(report.get("secondarySecurity"), dict) else {}
+        if str(secondary.get("schema") or "") != "omega.sigmascope.secondary-security.v1":
+            errors.append(f"variant {variant_id} secondary security schema is unsupported")
+        if str(secondary.get("artifactSha256") or "").strip().lower() != artifact_sha:
+            errors.append(f"variant {variant_id} secondary security evidence targets another artifact")
+        if str(secondary.get("semantics") or "") != "supplemental-evidence-only":
+            errors.append(f"variant {variant_id} secondary security evidence has unsafe semantics")
+        allowed_status = {"disabled", "unavailable", "complete", "failed"}
+        engines = secondary.get("engines") if isinstance(secondary.get("engines"), list) else []
+        for engine in engines:
+            if not isinstance(engine, dict):
+                errors.append(f"variant {variant_id} secondary security engine entry is malformed")
+                continue
+            if str(engine.get("engine") or "") not in {"yara", "clamav"}:
+                errors.append(f"variant {variant_id} secondary security engine is unsupported")
+            if str(engine.get("status") or "") not in allowed_status:
+                errors.append(f"variant {variant_id} secondary security engine status is unsupported")
+            if secondary_contract == 2 and bool(engine.get("enabled")) and str(engine.get("status") or "") == "complete":
+                identity = engine.get("executableIdentity") if isinstance(engine.get("executableIdentity"), dict) else {}
+                if not bool(identity.get("verified")):
+                    errors.append(f"variant {variant_id} completed secondary security engine lacks verified executable identity")
+                expected_sha = str(identity.get("expectedSha256") or "").strip().lower()
+                actual_sha = str(identity.get("actualSha256") or "").strip().lower()
+                if len(expected_sha) != 64 or expected_sha != actual_sha:
+                    errors.append(f"variant {variant_id} completed secondary security engine executable hash identity is invalid")
+
+
 def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[str, Any]:
     """Validate a published/staged v2 tree without requiring the retired v1 SQLite DB.
 
@@ -790,10 +1026,18 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
         errors.extend(f"index {name}: {item}" for item in verify_file_entry(root, entry, max_bytes=MAX_PUBLISH_FILE_BYTES))
 
     plugin_entries: list[dict[str, Any]] = []
+    terminal_entries: list[dict[str, Any]] = []
+    historical_entries: list[dict[str, Any]] = []
+    lifecycle_contract = 0
     try:
         plugins_path = str((indexes.get("plugins") or {}).get("path") or "")
         plugins = read_json_file(root, plugins_path)
         plugin_entries = [item for item in (plugins.get("currentVariants") or []) if isinstance(item, dict)]
+        terminal_entries = [item for item in (plugins.get("terminalVariants") or []) if isinstance(item, dict)]
+        historical_entries = [item for item in (plugins.get("historicalSnapshots") or []) if isinstance(item, dict)]
+        lifecycle_contract = int(plugins.get("lifecycleContractVersion") or 0)
+        if lifecycle_contract not in {0, 1}:
+            errors.append(f"plugins index lifecycle contract is unsupported: {lifecycle_contract}")
     except Exception as exc:  # validation should aggregate rather than abort
         errors.append(f"plugins index unreadable: {type(exc).__name__}: {exc}")
 
@@ -884,8 +1128,19 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
             declared_summary = entry.get("summary")
             if declared_summary is not None and declared_summary != variant_index_summary(payload):
                 errors.append(f"variant {variant_id} plugins index summary mismatch")
+            if lifecycle_contract == 1:
+                lifecycle = payload.get("lifecycle") if isinstance(payload.get("lifecycle"), dict) else {}
+                if str(lifecycle.get("schema") or "") != "omega.security-evidence.variant-lifecycle.v1":
+                    errors.append(f"variant {variant_id} active lifecycle schema is invalid")
+                if str(lifecycle.get("state") or "") != "active":
+                    errors.append(f"variant {variant_id} current descriptor lifecycle state is not active")
+                if bool(lifecycle.get("terminal")):
+                    errors.append(f"variant {variant_id} current descriptor is incorrectly terminal")
+                if lifecycle.get("rescanEligible") is False:
+                    errors.append(f"variant {variant_id} current descriptor is not rescan eligible")
             current = payload.get("current") or {}
             report = current.get("report_json") if isinstance(current.get("report_json"), dict) else {}
+            _validate_identity_contract(variant_id, payload, errors)
             report_source = report.get("source") if isinstance(report.get("source"), dict) else {}
             attribution = report_source.get("attribution") if isinstance(report_source.get("attribution"), dict) else {}
             if attribution:
@@ -1017,9 +1272,127 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
         except Exception as exc:
             errors.append(f"current variant entry invalid: {type(exc).__name__}: {exc}")
 
+    if lifecycle_contract == 1:
+        # New lifecycle-aware snapshots are investigation/history state only. They
+        # must never masquerade as active queue candidates, but their immutable
+        # artifact analyses remain fully hash/digest validated and referenced.
+        for collection_name, expected_state, entries in (
+            ("terminalVariants", "retired", terminal_entries),
+            ("historicalSnapshots", "superseded", historical_entries),
+        ):
+            seen_snapshot_paths: set[str] = set()
+            for entry in entries:
+                try:
+                    variant_id = int(entry.get("variantId") or 0)
+                    if variant_id <= 0:
+                        raise ValueError("variantId is missing/invalid")
+                    variant_path = safe_relpath(str(entry.get("variantPath") or ""))
+                    if variant_path in seen_snapshot_paths:
+                        errors.append(f"duplicate {collection_name} path {variant_path}")
+                        continue
+                    seen_snapshot_paths.add(variant_path)
+                    referenced_files.add(variant_path)
+                    payload = read_json_file(root, variant_path)
+                    if int(payload.get("variantId") or 0) != variant_id:
+                        errors.append(f"{collection_name} variant {variant_id} identity mismatch in {variant_path}")
+                    declared_variant_sha = str(entry.get("variantSha256") or "").strip().lower()
+                    if not declared_variant_sha or declared_variant_sha != sha256_file(root / variant_path):
+                        errors.append(f"{collection_name} variant {variant_id} descriptor SHA mismatch")
+                    if entry.get("summary") != variant_index_summary(payload):
+                        errors.append(f"{collection_name} variant {variant_id} summary mismatch")
+                    lifecycle = payload.get("lifecycle") if isinstance(payload.get("lifecycle"), dict) else {}
+                    if str(lifecycle.get("schema") or "") != "omega.security-evidence.variant-lifecycle.v1":
+                        errors.append(f"{collection_name} variant {variant_id} lifecycle schema is invalid")
+                    if str(lifecycle.get("state") or "") != expected_state:
+                        errors.append(f"{collection_name} variant {variant_id} lifecycle state is not {expected_state}")
+                    if not bool(lifecycle.get("terminal")) or bool(lifecycle.get("rescanEligible", True)):
+                        errors.append(f"{collection_name} variant {variant_id} is not terminal/non-rescannable")
+                    if payload.get("derivedEvidence"):
+                        errors.append(f"{collection_name} variant {variant_id} retains mutable derivedEvidence")
+
+                    current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
+                    analysis = payload.get("analysis") if isinstance(payload.get("analysis"), dict) else {}
+                    artifact_sha = str(analysis.get("artifactSha256") or current.get("artifact_sha256") or "").strip().lower()
+                    artifact_key = str(entry.get("artifactSha256") or artifact_sha or "").strip().lower() or "unknown"
+                    group = artifact_index_groups.get(artifact_key)
+                    if group is None:
+                        errors.append(f"{collection_name} variant {variant_id} references missing artifact group {artifact_key}")
+                    analysis_id = str(analysis.get("analysisId") or "")
+                    analysis_path = str(analysis.get("path") or "")
+                    if str(current.get("status") or "") == "complete":
+                        if not analysis_id or not analysis_path:
+                            errors.append(f"{collection_name} variant {variant_id} is complete but has no analysis pointer")
+                            continue
+                        if str(entry.get("analysisId") or "") != analysis_id:
+                            errors.append(f"{collection_name} variant {variant_id} analysisId mismatch")
+                        if str(entry.get("artifactSha256") or "").strip().lower() != artifact_sha:
+                            errors.append(f"{collection_name} variant {variant_id} artifact SHA mismatch")
+                        analysis_ids.add(analysis_id)
+                        analysis_rel = safe_relpath(analysis_path)
+                        referenced_analysis_paths.add(analysis_rel)
+                        manifest_rel = f"{analysis_rel}/manifest.json"
+                        referenced_files.add(manifest_rel)
+                        manifest = read_json_file(root, manifest_rel)
+                        if str(manifest.get("analysisId") or "") != analysis_id:
+                            errors.append(f"{collection_name} analysis manifest ID mismatch for variant {variant_id}")
+                        if str(manifest.get("artifactSha256") or "").strip().lower() != artifact_sha:
+                            errors.append(f"{collection_name} analysis artifact SHA mismatch for variant {variant_id}")
+                        if group is not None:
+                            group_analysis_ids = {
+                                str(item.get("analysisId") or "")
+                                for item in (group.get("analyses") or []) if isinstance(item, dict)
+                            }
+                            if analysis_id not in group_analysis_ids:
+                                errors.append(f"{collection_name} analysis {analysis_id} is missing from artifact group {artifact_key}")
+                        for dataset_name, dataset in sorted((manifest.get("datasets") or {}).items()):
+                            if not isinstance(dataset, dict):
+                                errors.append(f"{collection_name} analysis {analysis_id} dataset {dataset_name} is malformed")
+                                continue
+                            declared_records = int(dataset.get("records") or 0)
+                            row_hashes: list[str] = []
+                            file_records = 0
+                            for file_info in dataset.get("files") or []:
+                                if not isinstance(file_info, dict):
+                                    errors.append(f"{collection_name} analysis {analysis_id}/{dataset_name} has malformed file entry")
+                                    continue
+                                errors.extend(
+                                    f"{collection_name} analysis {analysis_id}/{dataset_name}: {item}"
+                                    for item in verify_file_entry(root, file_info, max_bytes=MAX_PUBLISH_FILE_BYTES)
+                                )
+                                rel = safe_relpath(str(file_info.get("path") or ""))
+                                referenced_files.add(rel)
+                                data_path = root / rel
+                                encoding = str(file_info.get("encoding") or "")
+                                if encoding == "json":
+                                    value = json.loads(data_path.read_text(encoding="utf-8"))
+                                    rows = value if isinstance(value, list) else [value]
+                                    rows = [row for row in rows if isinstance(row, dict)]
+                                    row_hashes.extend(sha256_bytes(canonical_json_bytes(row)) for row in rows)
+                                    file_records += len(rows)
+                                elif encoding == "jsonl+gzip":
+                                    with gzip.open(data_path, "rt", encoding="utf-8") as stream:
+                                        for line in stream:
+                                            if not line.strip():
+                                                continue
+                                            row = json.loads(line)
+                                            if isinstance(row, dict):
+                                                row_hashes.append(sha256_bytes(canonical_json_bytes(row)))
+                                                file_records += 1
+                                else:
+                                    errors.append(f"{collection_name} analysis {analysis_id}/{dataset_name}: unsupported encoding {encoding!r}")
+                            count, digest_value = dataset_record_digest_from_hashes(row_hashes)
+                            if count != declared_records or file_records != declared_records:
+                                errors.append(f"{collection_name} analysis {analysis_id}/{dataset_name}: record count mismatch")
+                            if str(dataset.get("recordDigest") or "") != digest_value:
+                                errors.append(f"{collection_name} analysis {analysis_id}/{dataset_name}: semantic record digest mismatch")
+                except Exception as exc:
+                    errors.append(f"{collection_name} entry invalid: {type(exc).__name__}: {exc}")
+
     counts = index.get("counts") or {}
     expected_counts = {
         "currentVariants": len(variant_ids),
+        "terminalVariants": len(terminal_entries) if lifecycle_contract == 1 else int(counts.get("terminalVariants") or 0),
+        "historicalSnapshots": len(historical_entries) if lifecycle_contract == 1 else int(counts.get("historicalSnapshots") or 0),
         "analyses": len(analysis_ids),
         "artifactGroups": len(artifact_index_groups),
     }

@@ -1,4 +1,4 @@
-name: Omega daily catalog snapshot and client database
+name: Omega catalog snapshot and client database
 
 on:
   workflow_call:
@@ -298,15 +298,62 @@ jobs:
           --output catalog/source-revision-observations.json
           --timeout 12
           --concurrency 16
+      - name: Freeze optional ClamAV feed into a content-addressed release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clamav clamav-freshclam yara
+          sudo systemctl stop clamav-freshclam.service 2>/dev/null || true
+          mkdir -p catalog/clamav-database catalog/secondary-security-assets
+          set +e
+          sudo freshclam --stdout
+          freshclam_status=$?
+          set -e
+          while IFS= read -r -d '' file; do
+            sudo cp "$file" catalog/clamav-database/
+          done < <(sudo find /var/lib/clamav -maxdepth 1 -type f \( -name '*.cvd' -o -name '*.cld' \) -print0 2>/dev/null)
+          sudo chown -R "$(id -u):$(id -g)" catalog/clamav-database
+
+          if find catalog/clamav-database -maxdepth 1 -type f \( -name '*.cvd' -o -name '*.cld' \) -print -quit | grep -q .; then
+            python tools/catalog/secondary_security_assets.py build-clamav               --database-dir catalog/clamav-database               --output-dir catalog/secondary-security-assets               --asset-base-url "https://github.com/${{ github.repository }}/releases/download/sigmascope-definitions"               --manifest-output catalog/secondary-security-asset-manifest.json
+            if ! gh release view sigmascope-definitions --repo "${{ github.repository }}" >/dev/null 2>&1; then
+              gh release create sigmascope-definitions --repo "${{ github.repository }}"                 --title "Omega frozen secondary-security definitions"                 --notes "Content-addressed large security-definition assets referenced by frozen SigmaScope Definitions. Workers verify SHA-256 and never update these assets in place."
+            fi
+            gh release upload sigmascope-definitions catalog/secondary-security-assets/*.zip               --repo "${{ github.repository }}" --clobber
+          else
+            echo "::warning::FreshClam produced no CVD/CLD files (status=$freshclam_status); attempting to retain the previous frozen ClamAV asset."
+            python - <<'PYCODE'
+          import json
+          from pathlib import Path
+          previous = Path("catalog/previous-state/definitions/secondary-security/index.json")
+          output = Path("catalog/secondary-security-asset-manifest.json")
+          if previous.is_file():
+              document = json.loads(previous.read_text(encoding="utf-8"))
+              clamav = next((item for item in document.get("engines") or [] if isinstance(item, dict) and item.get("engine") == "clamav"), {})
+              transport = clamav.get("transport") if isinstance(clamav.get("transport"), dict) else {}
+              if transport:
+                  output.write_text(json.dumps(transport, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          PYCODE
+          fi
       - name: Freeze daily Definitions and OSV data
-        run: >-
-          python tools/catalog/definitions_snapshot.py build
-          --repo-root .
-          --evidence-root catalog/security-v2-current
-          --output catalog/state-definitions
-          --built-from-dev-commit "${{ steps.security_source.outputs.sha }}"
-          --source-observations catalog/source-revision-observations.json
-          --timeout ${{ inputs.timeout || '20' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --repo-root .
+            --evidence-root catalog/security-v2-current
+            --output catalog/state-definitions
+            --built-from-dev-commit "${{ steps.security_source.outputs.sha }}"
+            --source-observations catalog/source-revision-observations.json
+            --timeout "${{ inputs.timeout || '20' }}"
+          )
+          if [ -f catalog/secondary-security-asset-manifest.json ]; then
+            args+=(--secondary-security-asset-manifest catalog/secondary-security-asset-manifest.json)
+          fi
+          python tools/catalog/definitions_snapshot.py build "${args[@]}"
       - name: Build deterministic daily Sigmascope queue seed
         run: >-
           python tools/catalog/scan_queue.py build-seed

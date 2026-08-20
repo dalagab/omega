@@ -14,6 +14,7 @@ from typing import Any, Iterable
 
 ATTRIBUTION_SCHEMA = "omega.artifact-source-attribution.v1"
 IDENTITY_ALIAS_SCHEMA = "omega.plugin-identity-alias.v1"
+MANIFEST_OBSERVATION_SCHEMA = "omega.manifest-observation.v1"
 
 CONFIDENCE_NONE = 0
 CONFIDENCE_CURRENT_SOURCE = 40
@@ -149,6 +150,70 @@ def attribution_from_source_result(source: dict[str, Any]) -> dict[str, Any]:
         "basis": basis,
     }
 
+
+
+def manifest_observation_key(variant_id: int, channel: str, internal_name: str, manifest_version: str, download_url: str, repository_url: str) -> str:
+    return stable_key(
+        "manifest", variant_id, channel, internal_name, manifest_version, download_url, repository_url, length=28
+    )
+
+
+def manifest_observation_contract(
+    variant_id: int,
+    channel: str,
+    internal_name: str,
+    manifest_version: str,
+    download_url: str,
+    repository_url: str,
+    *,
+    observation_id: int = 0,
+) -> dict[str, Any]:
+    key = manifest_observation_key(variant_id, channel, internal_name, manifest_version, download_url, repository_url)
+    return {
+        "schema": MANIFEST_OBSERVATION_SCHEMA,
+        "observationKey": key,
+        "observationId": max(0, int(observation_id or 0)),
+        "variantId": max(0, int(variant_id or 0)),
+        "channel": str(channel or ""),
+        "internalName": str(internal_name or ""),
+        "manifestVersion": str(manifest_version or ""),
+        "downloadUrl": str(download_url or ""),
+        "repositoryUrl": str(repository_url or ""),
+    }
+
+
+def attribution_invariant_errors(source: dict[str, Any], attribution: dict[str, Any] | None = None) -> list[str]:
+    """Validate that coverage is derived from source evidence rather than hand-authored.
+
+    The numeric ladder is policy, not probability. The canonical expected attribution is
+    recomputed from the source/provenance evidence and compared exactly.
+    """
+    source = source if isinstance(source, dict) else {}
+    actual = attribution if isinstance(attribution, dict) else (source.get("attribution") if isinstance(source.get("attribution"), dict) else {})
+    expected = attribution_from_source_result(source)
+    errors: list[str] = []
+    try:
+        confidence = int(actual.get("confidence") or 0)
+    except (TypeError, ValueError):
+        confidence = -1
+    if confidence not in ALLOWED_CONFIDENCE:
+        errors.append(f"unsupported attribution confidence {confidence}")
+        return errors
+    if confidence != int(expected["confidence"]):
+        errors.append(f"attribution confidence {confidence} is not derivable from provenance; expected {expected['confidence']}")
+    label = str(actual.get("coverageLabel") or "")
+    if label != str(expected["coverageLabel"]):
+        errors.append(f"coverage label {label!r} does not match derived label {expected['coverageLabel']!r}")
+    raw_basis = actual.get("basis")
+    if not isinstance(raw_basis, list) or any(not isinstance(item, str) for item in raw_basis):
+        errors.append("attribution basis is malformed")
+    else:
+        normalized = normalize_basis(raw_basis)
+        if normalized != list(expected["basis"]):
+            errors.append(f"attribution basis {normalized!r} does not match derived basis {expected['basis']!r}")
+    if str(actual.get("schema") or ATTRIBUTION_SCHEMA) != ATTRIBUTION_SCHEMA:
+        errors.append("unsupported attribution schema")
+    return errors
 
 def basis_json(values: Iterable[Any]) -> str:
     return json.dumps(normalize_basis(values), ensure_ascii=False, separators=(",", ":"))

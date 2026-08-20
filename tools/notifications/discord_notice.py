@@ -21,28 +21,28 @@ MAX_FIELD_VALUE = 900
 
 VOICE_LINES: dict[str, tuple[str, ...]] = {
     "security": (
-        "Wonderful. Another sharp edge in the pile.",
-        "Oh, good. More trouble for the evidence locker.",
-        "Apparently the scanner needed one more thing to be irritated about.",
-        "Fine. Add it to the list of things that deserved a closer look.",
+        "Really? Another finding wants my attention.",
+        "I was hoping for a quiet scan. Apparently not.",
+        "Another finding. Fine, I've filed it.",
+        "Something new turned up. I have notes.",
     ),
     "catalog": (
-        "The vault gets heavier. Excellent.",
-        "Another deposit cleared; the catalog is richer for it.",
+        "The vault gets heavier. I approve.",
+        "Another deposit cleared. The catalog is richer for it.",
         "The hoard grows. More data, more reach, more power.",
-        "Another ledger closes in the black. Data compounds nicely.",
+        "Another line in the ledger. Information compounds beautifully.",
     ),
     "definitions": (
-        "Fresh definitions! The map just got clearer.",
-        "New definitions landed. That is genuinely good news.",
-        "Definitions refreshed — lovely. The scanner gets a sharper set of eyes.",
-        "A fresh definitions set! Exactly the kind of update I like.",
+        "Fresh definitions! Now that's a worthwhile update.",
+        "New definitions landed. Lovely.",
+        "Definitions refreshed — excellent. More context is always welcome.",
+        "A fresh definitions set! Exactly the sort of update I like.",
     ),
     "evidence": (
-        "Reviewed, filed, and exactly where it belongs. 😏",
-        "Another review complete. Naturally. 😏",
-        "Evidence checked. Clean paperwork, smug scanner. 😏",
-        "Filed with confidence. Try to look surprised. 😏",
+        "Reviewed and filed. You're welcome. 😏",
+        "Another review complete. I had it handled. 😏",
+        "Evidence checked and neatly filed. Naturally. 😏",
+        "Done. Nicely, if I do say so myself. 😏",
     ),
 }
 
@@ -149,11 +149,11 @@ def build_sigmascope(report_path: Path, database: Path, repository: str, run_url
 
     if introduced:
         webhook_key = "security"
-        title = f"Sigmascope is not amused: new {severity or 'high'} finding"
+        title = f"New security findings for {plugin}"
         description = (
             f"{voice_line('security', identity)} "
-            f"Sigmascope recorded new high-impact evidence for {plugin}. "
-            "Review the evidence before treating it as a verdict."
+            f"SigmaScope recorded new security findings for {plugin}. "
+            "Review the findings if you want to know more."
         )
         fields = [
             ("Plugin", plugin),
@@ -168,7 +168,7 @@ def build_sigmascope(report_path: Path, database: Path, repository: str, run_url
             "Omega definitions updated",
             (
                 f"{voice_line('definitions', identity)} "
-                "Sigmascope applied the frozen advisory definitions to the current evidence set."
+                "SigmaScope applied the frozen advisory definitions to the current evidence set."
             ),
             10_181_046,
             [
@@ -183,7 +183,7 @@ def build_sigmascope(report_path: Path, database: Path, repository: str, run_url
             "Omega evidence review complete",
             (
                 f"{voice_line('evidence', identity)} "
-                f"Sigmascope completed a {work_type} review for {plugin}."
+                f"SigmaScope completed a {work_type} evidence review for {plugin}."
             ),
             5_793_266,
             [
@@ -260,16 +260,16 @@ def build_catalog(
     ]
 
     if catalog_changed:
-        title = "Omega catalog grew richer"
+        title = "Omega catalog updated"
         description = (
             f"{voice_line('catalog', identity)} "
-            "The daily catalog snapshot is published and ready for Omega."
+            "The latest catalog snapshot is published and ready for Omega."
         )
     else:
         title = "Omega definitions updated"
         description = (
             f"{voice_line('definitions', identity)} "
-            "A new frozen Definitions snapshot is published for Sigmascope."
+            "A new frozen Definitions snapshot is published for SigmaScope."
         )
 
     payload = embed(

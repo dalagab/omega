@@ -44,14 +44,35 @@ REASON_PRIORITIES = {
     "baseline_scan": 950,
     "source_followup": 925,
     "new_variant": 900,
-    "artifact_changed": 850,
+    "artifact_url_changed": 875,
+    "artifact_version_changed": 870,
+    "artifact_analysis_changed": 850,
     "advisory_changed": 800,
-    "artifact_analysis_changed": 750,
-    "source_revision_changed": 675,
+    "source_candidates_changed": 725,
+    "source_candidate_observed": 710,
+    "source_observation_changed": 700,
+    "source_analysis_changed": 675,
     "source_unresolved": 650,
-    "source_analysis_changed": 625,
     "failed_retry": 600,
 }
+
+REASON_CONTRACTS = {
+    "manual": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "developer_recheck"},
+    "baseline_scan": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "catalog_identity_epoch_changed"},
+    "new_variant": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "new_active_variant"},
+    "artifact_url_changed": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "selected_artifact_url_changed"},
+    "artifact_version_changed": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "selected_artifact_version_changed"},
+    "artifact_analysis_changed": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "artifact_analysis_revision_changed"},
+    "failed_retry": {"workType": "artifact", "invalidates": ["failed-work"], "event": "previous_artifact_attempt_incomplete"},
+    "source_followup": {"workType": "source", "invalidates": ["source-attribution", "source-analysis"], "event": "artifact_analysis_completed"},
+    "source_candidates_changed": {"workType": "source", "invalidates": ["source-attribution", "source-analysis"], "event": "catalog_source_candidates_changed"},
+    "source_candidate_observed": {"workType": "source", "invalidates": ["source-attribution", "source-analysis"], "event": "previously_unresolved_source_now_observed"},
+    "source_observation_changed": {"workType": "source", "invalidates": ["source-attribution", "source-analysis"], "event": "observed_default_branch_commit_changed"},
+    "source_analysis_changed": {"workType": "source", "invalidates": ["source-analysis"], "event": "source_analysis_revision_changed"},
+    "source_unresolved": {"workType": "source", "invalidates": ["source-attribution"], "event": "source_attribution_unresolved"},
+    "advisory_changed": {"workType": "advisory", "invalidates": ["advisory-projection"], "event": "frozen_advisory_revision_changed"},
+}
+
 
 RETRY_DELAYS_MINUTES = (60, 240, 720, 1440, 2880, 5760)
 
@@ -249,6 +270,19 @@ def _has_source_candidate(variant: dict[str, Any]) -> bool:
     return any(str(variant.get(key) or "").strip() for key in ("repositoryUrl", "sourceRepositoryUrl", "artifactUrl"))
 
 
+def _source_candidate_repositories(variant: dict[str, Any]) -> list[str]:
+    result: list[str] = []
+    for record in source_candidate_records((
+        ("repo-url", str(variant.get("repositoryUrl") or "")),
+        ("catalog-source", str(variant.get("sourceRepositoryUrl") or "")),
+        ("artifact", str(variant.get("artifactUrl") or "")),
+    )):
+        repository = public_repository_url(str(record.get("repository") or ""))
+        if repository and repository.casefold() not in {item.casefold() for item in result}:
+            result.append(repository)
+    return result
+
+
 def source_due_reasons(
     variant: dict[str, Any],
     current: dict[str, Any] | None,
@@ -268,8 +302,22 @@ def source_due_reasons(
     confidence = int(attribution.get("confidence") or 0)
     basis = {str(item or "").strip() for item in attribution.get("basis") or []}
     reasons: list[str] = []
+
+    candidate_repositories = _source_candidate_repositories(variant)
+    previous_candidates = [
+        public_repository_url(str(item or ""))
+        for item in (source.get("candidates") or [])
+        if public_repository_url(str(item or ""))
+    ]
+    if previous_candidates and {item.casefold() for item in previous_candidates} != {item.casefold() for item in candidate_repositories}:
+        reasons.append("source_candidates_changed")
+
+    observed = _observed_source_for_variant(variant, observations or {})
     if confidence <= 0 or not bool(source.get("available")):
+        if observed:
+            reasons.append("source_candidate_observed")
         reasons.append("source_unresolved")
+
     if str(report.get("workType") or "") == "source":
         previous_analysis_revision = str(report.get("sourceAnalysisRevision") or "")
         if source_analysis_revision and previous_analysis_revision != source_analysis_revision:
@@ -277,7 +325,6 @@ def source_due_reasons(
         # Only confidence-40/default-branch attribution tracks mutable HEAD. Version-
         # correlated/tag/pinned evidence remains tied to its immutable revision.
         if confidence == 40 and BASIS_DEFAULT_BRANCH in basis:
-            observed = _observed_source_for_variant(variant, observations or {})
             current_repository = public_repository_url(str(source.get("repository") or ""))
             current_commit = str(source.get("commit") or "").strip().lower()
             observed_repository = public_repository_url(str(observed.get("repository") or ""))
@@ -287,7 +334,7 @@ def source_due_reasons(
                 and current_repository.casefold() == observed_repository.casefold()
                 and current_commit and observed_commit and current_commit != observed_commit
             ):
-                reasons.append("source_revision_changed")
+                reasons.append("source_observation_changed")
     return list(dict.fromkeys(reasons))
 
 
@@ -309,11 +356,10 @@ def due_reasons(
     status = str(current.get("status") or "")
     if status != "complete":
         reasons.append("failed_retry")
-    if (
-        str(current.get("artifact_url") or "") != str(variant.get("artifactUrl") or "")
-        or str(current.get("assembly_version") or "") != str(variant.get("assemblyVersion") or "")
-    ):
-        reasons.append("artifact_changed")
+    if str(current.get("artifact_url") or "") != str(variant.get("artifactUrl") or ""):
+        reasons.append("artifact_url_changed")
+    if str(current.get("assembly_version") or "") != str(variant.get("assemblyVersion") or ""):
+        reasons.append("artifact_version_changed")
 
     report = _current_report(current)
     previous_analysis_revision = str(report.get("artifactAnalysisRevision") or "")
@@ -648,6 +694,7 @@ def build_seed(
         "ruleSetRevision": rule_set_revision,
         "advisoryRevision": advisory_revision,
         "baselineSecurityRebuild": baseline_security_rebuild,
+        "reasonContracts": REASON_CONTRACTS,
         "items": [
             {
                 key: item[key]
@@ -674,6 +721,7 @@ def build_seed(
         "ruleSetRevision": rule_set_revision,
         "advisoryRevision": advisory_revision,
         "previousAdvisoryRevision": previous_advisory_revision,
+        "reasonContracts": REASON_CONTRACTS,
         "counts": {**counts, "queued": len(items)},
         "items": items,
     }
@@ -748,6 +796,7 @@ def sync_state(seed: dict[str, Any], previous: dict[str, Any] | None, *, now: dt
         "sourceObservationRevision": str(seed.get("sourceObservationRevision") or ""),
         "ruleSetRevision": str(seed.get("ruleSetRevision") or ""),
         "advisoryRevision": str(seed.get("advisoryRevision") or ""),
+        "reasonContracts": dict(seed.get("reasonContracts") or REASON_CONTRACTS),
         "updatedAtUtc": str(previous.get("updatedAtUtc") or "") if same_seed else utc_now(now_dt),
         "items": items,
         "recentCompleted": list(previous.get("recentCompleted") or [])[-64:],
@@ -965,6 +1014,7 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
         "advisoryRevision": str(state.get("advisoryRevision") or ""),
         "states": counts,
         "pendingByReason": due_by_reason,
+        "reasonContracts": dict(state.get("reasonContracts") or REASON_CONTRACTS),
         "total": sum(counts.values()),
     }
 

@@ -25,6 +25,7 @@ for item in (SECURITY, CATALOG):
 
 import sigmascope
 import scan_queue
+import variant_lifecycle
 import catalog_json_store
 import compile_marketplace_snapshot
 import definitions_snapshot
@@ -39,11 +40,111 @@ from production_sigmascope_v2_pipeline import (
     run_pipeline,
     synchronize_candidate,
     _write_variant_derived_datasets,
+    _merge_successful_subset,
+    _build_plugins_artifacts_indexes,
+    rebuild_candidate_indexes,
 )
 from security_evidence_v2 import canonical_json_bytes, read_record_dataset, sha256_bytes, validate_snapshot, write_record_dataset
 
 
 class ProductionSecurityV2PipelineTests(unittest.TestCase):
+    def test_inactive_variant_becomes_terminal_snapshot_and_keeps_analysis(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-terminal-variant-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            candidate = root / "candidate"
+            migrate(database, candidate, reset=True)
+            current_path = next((candidate / "variants").rglob(f"{variant_id}.json"))
+            current_payload = json.loads(current_path.read_text(encoding="utf-8"))
+            analysis_path = candidate / current_payload["analysis"]["path"] / "manifest.json"
+            self.assertTrue(analysis_path.is_file())
+            with closing(sqlite3.connect(database)) as db:
+                db.execute("UPDATE plugin_variants SET active=0 WHERE variant_id=?", (variant_id,))
+                db.commit()
+
+            report = synchronize_candidate(candidate, database, set())
+            self.assertEqual(1, report["variantsRetired"])
+            self.assertFalse(current_path.exists())
+            terminal = variant_lifecycle.terminal_path(candidate, variant_id)
+            self.assertTrue(terminal.is_file())
+            payload = json.loads(terminal.read_text(encoding="utf-8"))
+            self.assertEqual("retired", payload["lifecycle"]["state"])
+            self.assertFalse(payload["lifecycle"]["rescanEligible"])
+            self.assertNotIn("derivedEvidence", payload)
+            self.assertTrue(analysis_path.is_file(), "terminal evidence must retain its immutable artifact analysis")
+
+            _plugins, _artifacts, current_count, terminal_count, history_count, analysis_count, _groups = _build_plugins_artifacts_indexes(candidate)
+            self.assertEqual((0, 1, 0, 1), (current_count, terminal_count, history_count, analysis_count))
+            index = json.loads((candidate / "indexes" / "plugins.json").read_text(encoding="utf-8"))
+            self.assertEqual([], index["currentVariants"])
+            self.assertEqual(variant_id, index["terminalVariants"][0]["variantId"])
+
+    def test_terminal_snapshot_is_validated_and_counted_in_rebuilt_evidence_index(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-terminal-validation-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            candidate = root / "candidate"
+            migrate(database, candidate, reset=True)
+            previous_index = json.loads((candidate / "index.json").read_text(encoding="utf-8"))
+            with closing(sqlite3.connect(database)) as db:
+                db.execute("UPDATE plugin_variants SET active=0 WHERE variant_id=?", (variant_id,))
+                db.commit()
+            synchronize_candidate(candidate, database, set())
+            rebuilt = rebuild_candidate_indexes(
+                candidate, database, previous_index,
+                {
+                    "catalogDataRevision": "cat-fixture", "catalogIdentityEpoch": catalog_json_store.IDENTITY_EPOCH,
+                    "definitionsRevision": "defs-fixture", "artifactAnalysisRevision": "artifact-fixture",
+                    "sourceAnalysisRevision": "source-fixture", "advisoryRevision": "osv-fixture",
+                    "previousIndexSha256": "",
+                },
+                {
+                    "inputPackageVersionPairs": 0, "expectedQueryPackageVersionPairs": 0,
+                    "queriedPackageVersionPairs": 0, "matchedPackageVersionPairs": 0, "advisoryRecords": 0,
+                },
+            )
+            validation = validate_snapshot(candidate)
+            self.assertTrue(validation["ok"], validation["errors"])
+            self.assertEqual(0, rebuilt["counts"]["currentVariants"])
+            self.assertEqual(1, rebuilt["counts"]["terminalVariants"])
+            self.assertEqual(0, rebuilt["counts"]["historicalSnapshots"])
+            self.assertEqual(1, rebuilt["counts"]["analyses"])
+
+    def test_new_artifact_archives_superseded_snapshot_but_source_only_projection_does_not(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-superseded-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            candidate = root / "candidate"
+            migrate(database, candidate, reset=True)
+            current_path = next((candidate / "variants").rglob(f"{variant_id}.json"))
+            previous = json.loads(current_path.read_text(encoding="utf-8"))
+
+            source_only_subset = root / "source-only"
+            source_variant = source_only_subset / current_path.relative_to(candidate)
+            source_variant.parent.mkdir(parents=True, exist_ok=True)
+            source_only = json.loads(json.dumps(previous))
+            source_only["current"]["scan_id"] = int(source_only["current"].get("scan_id") or 0) + 1
+            source_variant.write_text(json.dumps(source_only), encoding="utf-8")
+            result = _merge_successful_subset(candidate, source_only_subset)
+            self.assertEqual(0, result["historicalSnapshotsArchived"], "source-only projection must not manufacture artifact history")
+
+            artifact_subset = root / "artifact-change"
+            artifact_variant = artifact_subset / current_path.relative_to(candidate)
+            artifact_variant.parent.mkdir(parents=True, exist_ok=True)
+            changed = json.loads(json.dumps(source_only))
+            changed["current"]["scan_id"] += 1
+            changed["current"]["artifact_sha256"] = "b" * 64
+            changed["analysis"]["artifactSha256"] = "b" * 64
+            changed["current"]["artifact_url"] = "https://example.invalid/plugin-v2.zip"
+            artifact_variant.write_text(json.dumps(changed), encoding="utf-8")
+            result = _merge_successful_subset(candidate, artifact_subset)
+            self.assertEqual(1, result["historicalSnapshotsArchived"])
+            history = list((candidate / "history" / "variants").rglob("*.json"))
+            self.assertEqual(1, len(history))
+            archived = json.loads(history[0].read_text(encoding="utf-8"))
+            self.assertEqual("superseded", archived["lifecycle"]["state"])
+            self.assertEqual(previous["current"]["artifact_sha256"], archived["current"]["artifact_sha256"])
+
     def test_synchronize_preserves_unmaterialized_published_source_analysis_cache(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-source-cache-preserve-") as td:
             root = Path(td)

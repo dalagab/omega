@@ -6,10 +6,15 @@ It deliberately contains **no Omega C# client source**.
 
 ## Services
 
-### Security services 2.9.7 · SigmaScope scanner engine 2.9.0
+### Security services 2.13.0 · SigmaScope scanner engine 2.13.0
 
-2.9.7 keeps the source-analysis cache integrity, TONI notifications, and catalog/Sigmascope workflow lock. It also makes the independent audit verify the exact frozen Definitions OSV query universe, so NuGet dependencies first discovered during the day are reported as awaiting the next Definitions refresh rather than incorrectly failing the current worker.
-Deterministic static scanner. Plugin artifacts and source are treated as untrusted data and are never executed. The continuous worker consumes the frozen worker bundle from `catalog-data` and publishes validated evidence to `security-evidence-v2`.
+2.13.0 deepens the native artifact model and implements endpoint intelligence as an explicit evidence contract. Native PE classification now records bounded loader/security characteristics, certificate-table *presence* (never treated as Authenticode verification), section permissions and entropy, and writable+executable sections. A writable+executable native section becomes a bounded caution finding, while entropy and certificate metadata remain contextual structural evidence rather than malware verdicts.
+
+Endpoint evidence now separates **network capability** from **destination literals**. Every retained HTTP(S) literal records its origin type and evidence confidence. Source/config literals therefore remain distinguishable from low-confidence strings embedded in compiled binaries. Source/repository references, community navigation and certificate/revocation metadata stay in the forensic inventory but do not masquerade as concrete destinations. Webhook paths and secret-like path segments remain redacted before persistence. A bounded endpoint summary exposes host/classification/origin counts and an explicit `destinationsUndetermined` state when network capability exists without attributable concrete endpoints.
+
+The existing dependency graph already provides exact-version, advisory, IPC, source/artifact comparison and drift analysis. 2.13 adds a concise **component summary** on top of those authoritative rows: dependency families, exact-version coverage, plugin/IPC relationship summaries, and managed/native relationships that distinguish bundled native components, Windows platform libraries and unresolved/runtime-resolved libraries. Direct compiled IL calls to P/Invoke targets strengthen those native relationship records without claiming runtime execution.
+
+The 2.12 lifecycle/event-driven queue contracts remain unchanged, as do the 2.11 immutable ClamAV/reviewed-YARA contracts and the 2.10 artifact/source-attribution model. Plugin artifacts and source remain untrusted data and are never executed or dynamically loaded.
 
 ### DeltaScope
 Developer/operator-only, read-only inspection and audit tooling over published or local SigmaScope evidence. Run it with:

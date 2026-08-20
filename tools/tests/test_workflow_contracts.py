@@ -18,7 +18,7 @@ class WorkflowContractTests(unittest.TestCase):
         text = self.read("catalog-builder.yml")
         self.assert_has(
             text,
-            "name: Omega daily catalog snapshot and client database",
+            "name: Omega catalog snapshot and client database",
             "workflow_call:",
             "workflow_dispatch:",
             "name: Freeze JSON state and compile the Omega client DB",
@@ -35,6 +35,10 @@ class WorkflowContractTests(unittest.TestCase):
             "Observe public source HEAD revisions without fetching source bodies",
             "source_revision_observer.py",
             "--source-observations catalog/source-revision-observations.json",
+            "Freeze optional ClamAV feed into a content-addressed release asset",
+            "secondary_security_assets.py build-clamav",
+            "releases/download/sigmascope-definitions",
+            "--secondary-security-asset-manifest",
             "definitions_snapshot.py build",
             "scan_queue.py build-seed",
             "--output catalog/state-scan-queue.json",
@@ -117,6 +121,11 @@ class WorkflowContractTests(unittest.TestCase):
     def test_sigmascope_executes_frozen_worker_bundle_without_historical_dev_checkout(self) -> None:
         text = self.read("sigmascope.yml")
         self.assertIn("OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker", text)
+        self.assertIn("OMEGA_SECONDARY_SECURITY_ROOT: catalog/active-state/definitions/secondary-security", text)
+        self.assertIn("OMEGA_SECONDARY_SECURITY_CACHE: catalog/secondary-security-runtime", text)
+        self.assertIn("Materialize exact frozen ClamAV definitions", text)
+        self.assertIn("secondary_security_assets.py\" materialize-clamav", text)
+        self.assertIn("--no-install-recommends clamav yara", text)
         self.assertIn("scanner_revision=", text)
         self.assertIn("scanner_bundle_sha256=", text)
         self.assertIn("Verify frozen worker bundle before execution", text)
@@ -147,6 +156,11 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn('"sourceCommit": source_commit', definitions)
         self.assertIn("queriedPackageVersionPairs", definitions)
         self.assertIn("definitionsRevision", definitions)
+        self.assertIn("SECONDARY_SECURITY_SCHEMA", definitions)
+        self.assertIn("YARA_POLICY_SCHEMA", definitions)
+        self.assertIn("secondary_security_assets.validate_asset_manifest", definitions)
+        self.assertIn("secondarySecurity", definitions)
+        self.assertIn("bind_artifact_analysis_revision", definitions)
         self.assertIn("notCoveredByFrozenDefinitions", pipeline)
         self.assertIn("frozen-definitions", pipeline)
         self.assertIn("--skip-marketplace", pipeline)

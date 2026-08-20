@@ -95,6 +95,9 @@ class ScanQueueTests(unittest.TestCase):
             self.assertTrue(all(item["workType"] == "artifact" for item in seed["items"]))
             self.assertEqual("scanner-v1-fixture", seed["scannerRevision"])
             self.assertEqual("b" * 64, seed["scannerBundleSha256"])
+            self.assertEqual("artifact", seed["reasonContracts"]["new_variant"]["workType"])
+            self.assertEqual("advisory", seed["reasonContracts"]["advisory_changed"]["workType"])
+            self.assertEqual("source", seed["reasonContracts"]["source_observation_changed"]["workType"])
 
 
     def test_identity_epoch_mismatch_creates_clean_baseline_queue(self) -> None:
@@ -268,7 +271,7 @@ class ScanQueueTests(unittest.TestCase):
             artifact_ids = {item["variantId"] for item in seed["items"] if item.get("workType") == "artifact"}
             self.assertNotIn(variant["variantId"], artifact_ids)
             source_item = next(item for item in seed["items"] if item.get("workType") == "source" and item["variantId"] == variant["variantId"])
-            self.assertIn("source_revision_changed", source_item["reasons"])
+            self.assertIn("source_observation_changed", source_item["reasons"])
             self.assertEqual("2" * 40, source_item["observedSourceCommit"])
             self.assertTrue(source_item["targetFingerprint"].startswith("source-target-v2-"))
 
@@ -416,6 +419,40 @@ class ScanQueueTests(unittest.TestCase):
         next_state = scan_queue.sync_state(new_seed, state, now=NOW + dt.timedelta(days=30))
         self.assertEqual("pending", next_state["items"]["variant-1"]["state"])
         self.assertEqual(0, next_state["items"]["variant-1"]["attemptCount"])
+
+    def test_inactive_catalog_variant_is_not_a_queue_candidate(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-queue-retired-") as td:
+            root = Path(td)
+            catalog, variant = self._catalog(root)
+            plugin_index = json.loads((catalog / "plugins" / "index.json").read_text(encoding="utf-8"))
+            payload_path = catalog / plugin_index["plugins"][0]["path"]
+            payload = json.loads(payload_path.read_text(encoding="utf-8"))
+            target = next(group["variant"] for group in payload["variants"] if int(group["variant"]["variant_id"]) == variant["variantId"])
+            target["active"] = 0
+            payload_path.write_text(json.dumps(payload), encoding="utf-8")
+            current = {
+                "scan_id": 9, "status": "complete", "scanned_at_utc": "2026-08-19T09:00:00Z",
+                "artifact_url": variant["artifactUrl"], "assembly_version": variant["assemblyVersion"],
+                "artifact_sha256": "a" * 64, "report_json": {"artifactAnalysisRevision": "artifact-analysis-v1-fixture"},
+            }
+            seed = scan_queue.build_seed(
+                catalog_root=catalog, definitions_root=self._definitions(root),
+                evidence_root=self._evidence(root, current, variant_id=variant["variantId"]),
+                output=root / "queue.json", now=NOW,
+            )
+            self.assertFalse(any(int(item.get("variantId") or 0) == variant["variantId"] for item in seed["items"]))
+
+    def test_artifact_identity_changes_have_precise_reasons(self) -> None:
+        variant = {"artifactUrl": "https://example.test/new.zip", "assemblyVersion": "2.0.0"}
+        current = {
+            "status": "complete", "artifact_url": "https://example.test/old.zip", "assembly_version": "1.0.0",
+            "report_json": {"artifactAnalysisRevision": "analysis-same"},
+        }
+        reasons = scan_queue.due_reasons(variant, current, artifact_analysis_revision="analysis-same")
+        self.assertEqual(["artifact_url_changed", "artifact_version_changed"], reasons)
+        self.assertNotIn("artifact_changed", scan_queue.REASON_PRIORITIES)
+        self.assertEqual("artifact", scan_queue.REASON_CONTRACTS["artifact_url_changed"]["workType"])
+        self.assertEqual(["artifact", "source-followup"], scan_queue.REASON_CONTRACTS["artifact_version_changed"]["invalidates"])
 
     def test_queue_state_contains_no_lease_fields(self) -> None:
         seed = {

@@ -52,6 +52,32 @@ class ArtifactSourceModelTests(unittest.TestCase):
         self.assertEqual(100, proof["confidence"])
         self.assertIn("reproducible_build", proof["basis"])
 
+    def test_manifest_observation_identity_is_stable_and_attribution_is_derived(self) -> None:
+        observation = model.manifest_observation_contract(
+            17, "stable", "ExamplePlugin", "1.2.3",
+            "https://example.invalid/plugin.zip", "https://github.com/example/plugin", observation_id=99,
+        )
+        self.assertEqual(model.MANIFEST_OBSERVATION_SCHEMA, observation["schema"])
+        self.assertEqual(17, observation["variantId"])
+        self.assertEqual(
+            model.manifest_observation_key(17, "stable", "ExamplePlugin", "1.2.3",
+                                           "https://example.invalid/plugin.zip", "https://github.com/example/plugin"),
+            observation["observationKey"],
+        )
+
+        source = {
+            "available": True,
+            "repository": "https://github.com/example/plugin",
+            "commit": "a" * 40,
+            "provenance": {"identityMatched": True, "versionMatched": True, "selectedRefKind": "version-tag", "selectedRef": "v1.2.3"},
+        }
+        canonical = model.attribution_from_source_result(source)
+        self.assertEqual([], model.attribution_invariant_errors(source, canonical))
+        hand_authored = dict(canonical)
+        hand_authored["confidence"] = 95
+        errors = model.attribution_invariant_errors(source, hand_authored)
+        self.assertTrue(any("not derivable" in item for item in errors))
+
     def test_alias_collision_becomes_ambiguous_never_automatic(self) -> None:
         rows = [
             {"plugin_id": 1, "normalized_value": "same"},

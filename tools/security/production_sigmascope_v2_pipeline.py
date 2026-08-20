@@ -41,6 +41,7 @@ import collect_public_advisories  # noqa: E402
 import project_marketplace_catalog  # noqa: E402
 import scan_queue  # noqa: E402
 import sigmascope  # noqa: E402
+import variant_lifecycle  # noqa: E402
 from local_sigmascope_v2_test import summarize as summarize_database  # noqa: E402
 from migrate_security_evidence_v2 import (  # noqa: E402
     _derived_for_variant,
@@ -446,7 +447,17 @@ def _copy_evidence_tree(source: Path, target: Path) -> None:
     (target / "validation-report.json").unlink(missing_ok=True)
 
 
-def _merge_successful_subset(candidate: Path, subset: Path) -> None:
+def _merge_successful_subset(candidate: Path, subset: Path) -> dict[str, int]:
+    """Merge successful current analyses while retaining the replaced current snapshot.
+
+    A variant ID is a catalog identity, not an immutable artifact identity.  When a
+    successful scan replaces the current artifact/source projection, archive the old
+    descriptor before overwrite.  This keeps investigation history and prevents its
+    immutable artifact analysis from becoming garbage merely because a newer package
+    became current.
+    """
+    copied_artifacts = 0
+    archived_snapshots = 0
     for path in (subset / "artifacts").rglob("*") if (subset / "artifacts").exists() else []:
         if not path.is_file():
             continue
@@ -456,11 +467,26 @@ def _merge_successful_subset(candidate: Path, subset: Path) -> None:
         if destination.exists() and sha256_file(destination) == sha256_file(path):
             continue
         shutil.copy2(path, destination)
+        copied_artifacts += 1
     for path in (subset / "variants").rglob("*.json") if (subset / "variants").exists() else []:
         rel = path.relative_to(subset)
         destination = candidate / rel
         destination.parent.mkdir(parents=True, exist_ok=True)
+        incoming = json.loads(path.read_text(encoding="utf-8"))
+        if destination.is_file():
+            previous = json.loads(destination.read_text(encoding="utf-8"))
+            if variant_lifecycle.artifact_identity_fingerprint(previous) != variant_lifecycle.artifact_identity_fingerprint(incoming):
+                variant_id = int(previous.get("variantId") or incoming.get("variantId") or 0)
+                history = variant_lifecycle.history_path(candidate, variant_id, previous)
+                if not history.exists():
+                    history.parent.mkdir(parents=True, exist_ok=True)
+                    archived = variant_lifecycle.superseded_snapshot(
+                        previous, replacement=incoming, observed_at_utc=utc_now(),
+                    )
+                    write_json(history, archived)
+                    archived_snapshots += 1
         shutil.copy2(path, destination)
+    return {"artifactFilesCopied": copied_artifacts, "historicalSnapshotsArchived": archived_snapshots}
 
 
 def _identity_maps(db: sqlite3.Connection) -> tuple[dict[int, dict[str, Any]], dict[int, dict[str, Any]], dict[int, dict[str, Any]]]:
@@ -595,14 +621,25 @@ def _record_dataset_files_present(root: Path, descriptor: object) -> bool:
 
 
 def synchronize_candidate(candidate: Path, database: Path, successful_variants: set[int]) -> dict[str, Any]:
-    """Synchronize active identity/derived graph and garbage-collect old analyses."""
-    removed_variants = 0
+    """Synchronize current identities while retaining terminal Security Evidence v2.
+
+    ``variants/`` is strictly the active/current projection consumed by normal queue and
+    marketplace paths.  When a catalog variant/plugin becomes inactive, its last-known-
+    good descriptor moves to ``terminal/variants`` and is no longer a rescan candidate.
+    Immutable artifact analyses referenced by terminal or superseded snapshots remain
+    reachable and therefore are not garbage-collected.
+    """
+    retired_variants = 0
     updated_variants = 0
     referenced_analyses: set[str] = set()
+    catalog_revision = ""
     with closing(sqlite3.connect(database)) as db:
         db.row_factory = sqlite3.Row
         active = _active_variant_ids(db)
         plugins, variants, sources = _identity_maps(db)
+        if table_exists(db, "catalog_meta"):
+            row = db.execute("SELECT value FROM catalog_meta WHERE key='catalog_revision' LIMIT 1").fetchone()
+            catalog_revision = str(row[0] or "") if row else ""
         presentation = _presentation_by_variant(db, variants)
         current_rows = {int(row["variant_id"]): dict(row) for row in db.execute("SELECT * FROM plugin_security_current")}
         variant_paths = sorted((candidate / "variants").rglob("*.json")) if (candidate / "variants").exists() else []
@@ -612,10 +649,39 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
                 variant_id = int(payload.get("variantId") or 0)
             except Exception:
                 variant_id = 0
-            if variant_id not in active or variant_id not in current_rows:
+                payload = {}
+
+            if variant_id not in active:
+                variant_row = variants.get(variant_id, {})
+                plugin_id = int(variant_row.get("plugin_id") or payload.get("pluginId") or 0)
+                plugin_row = plugins.get(plugin_id, {})
+                if not variant_row:
+                    reason = "catalog_variant_missing"
+                elif int(variant_row.get("active") or 0) != 1:
+                    reason = "catalog_variant_inactive"
+                elif int(plugin_row.get("active") or 0) != 1:
+                    reason = "catalog_plugin_inactive"
+                else:
+                    reason = "catalog_variant_not_current"
+                terminal = variant_lifecycle.terminal_path(candidate, variant_id)
+                if terminal.is_file():
+                    previous_terminal = json.loads(terminal.read_text(encoding="utf-8"))
+                    if variant_lifecycle.identity_fingerprint(previous_terminal) != variant_lifecycle.identity_fingerprint(payload):
+                        history = variant_lifecycle.history_path(candidate, variant_id, previous_terminal)
+                        history.parent.mkdir(parents=True, exist_ok=True)
+                        if not history.exists():
+                            write_json(history, previous_terminal)
+                terminal.parent.mkdir(parents=True, exist_ok=True)
+                write_json(terminal, variant_lifecycle.terminal_snapshot(
+                    payload, reason=reason, catalog_revision=catalog_revision, observed_at_utc=utc_now(),
+                ))
                 path.unlink(missing_ok=True)
-                removed_variants += 1
+                retired_variants += 1
                 continue
+
+            if variant_id not in current_rows:
+                raise RuntimeError(f"active Evidence-v2 variant {variant_id} has no materialized current security row")
+
             variant = variants[variant_id]
             plugin_id = int(variant.get("plugin_id") or payload.get("pluginId") or 0)
             source_id = int(variant.get("source_id") or payload.get("sourceId") or 0)
@@ -625,8 +691,9 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
             payload["variant"] = variant
             payload["source"] = sources.get(source_id)
             payload["presentation"] = presentation.get(variant_id, {})
+            payload["lifecycle"] = variant_lifecycle.mark_active(payload, catalog_revision=catalog_revision)["lifecycle"]
             # Older published v2 snapshots may still contain the full legacy
-            # report_json in both scan and current rows.  Compact every active
+            # report_json in both scan and current rows. Compact every active
             # descriptor during synchronization so one successful run repairs the
             # whole branch, not only freshly scanned variants.
             payload["scan"] = transport_security_row(dict(payload.get("scan") or {}))
@@ -638,30 +705,18 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
             scan_id = int(current.get("scan_id") or 0)
             derived = dict(payload.get("derived") or {})
             graph_derived = _graph_derived(db, scan_id, variant_id)
-            # The graph projections are potentially very large and are not artifact
-            # evidence. Keep variant JSON lightweight by storing only bounded file
-            # descriptors here; the actual rows live under derived/variants/.
             for name in DERIVED_DATASETS:
                 derived.pop(name, None)
             payload["derived"] = derived
             existing_evidence = dict(payload.get("derivedEvidence") or {})
             datasets_to_write = dict(graph_derived)
             existing_source_cache = existing_evidence.get("sourceAnalysisCache")
-            # An unchanged variant may have a valid immutable source-analysis cache in
-            # the copied published candidate even when that cache was not materialized
-            # into the disposable working DB. Preserve both its descriptor *and bytes*.
-            # If the descriptor's files are absent (for example a freshly merged subset
-            # whose derived tree was not copied), keep sourceAnalysisCache in the write
-            # set so an empty/fresh dataset is materialized and its descriptor refreshed.
             if (
                 not graph_derived.get("sourceAnalysisCache")
                 and _record_dataset_files_present(candidate, existing_source_cache)
             ):
                 datasets_to_write.pop("sourceAnalysisCache", None)
             written = _write_variant_derived_datasets(candidate, variant_id, datasets_to_write)
-            # If this working DB contains a complete source analysis (fresh scan or
-            # restored cache), rewrite its cache descriptor. Otherwise retain an
-            # already-published cache descriptor for unchanged evidence.
             source_cache = written.pop("sourceAnalysisCache", None)
             if isinstance(source_cache, dict) and int(source_cache.get("records") or 0) > 0:
                 existing_evidence["sourceAnalysisCache"] = source_cache
@@ -675,6 +730,20 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
             analysis_path = str((payload.get("analysis") or {}).get("path") or "")
             if analysis_path:
                 referenced_analyses.add(safe_relpath(analysis_path))
+
+    # Terminal and superseded descriptors retain immutable artifact-analysis
+    # references. They intentionally do not retain mutable derivedEvidence paths.
+    for snapshot_root in (candidate / "terminal" / "variants", candidate / "history" / "variants"):
+        if not snapshot_root.exists():
+            continue
+        for path in sorted(snapshot_root.rglob("*.json")):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                analysis_path = str((payload.get("analysis") or {}).get("path") or "")
+                if analysis_path:
+                    referenced_analyses.add(safe_relpath(analysis_path))
+            except Exception as exc:
+                raise RuntimeError(f"terminal/historical variant snapshot is unreadable: {path}: {exc}") from exc
 
     removed_derived = 0
     derived_root = candidate / "derived" / "variants"
@@ -709,7 +778,6 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
             if analysis_dir not in referenced_analyses:
                 shutil.rmtree(manifest.parent, ignore_errors=True)
                 removed_analyses += 1
-        # Remove empty artifact/bucket directories from the bottom up.
         for directory in sorted([p for p in analyses_root.rglob("*") if p.is_dir()], key=lambda p: len(p.parts), reverse=True):
             try:
                 directory.rmdir()
@@ -717,27 +785,32 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
                 pass
     return {
         "variantsUpdated": updated_variants,
-        "variantsRemoved": removed_variants,
+        "variantsRemoved": retired_variants,  # legacy report key; these are retained terminal snapshots now
+        "variantsRetired": retired_variants,
         "analysesReferenced": len(referenced_analyses),
         "analysesGarbageCollected": removed_analyses,
         "derivedVariantDirectoriesGarbageCollected": removed_derived,
     }
 
 
-def _build_plugins_artifacts_indexes(candidate: Path) -> tuple[dict[str, Any], dict[str, Any], int, int, int]:
-    plugin_rows: list[dict[str, Any]] = []
+def _build_plugins_artifacts_indexes(candidate: Path) -> tuple[dict[str, Any], dict[str, Any], int, int, int, int, int]:
+    current_rows: list[dict[str, Any]] = []
+    terminal_rows: list[dict[str, Any]] = []
+    history_rows: list[dict[str, Any]] = []
     artifacts: dict[str, dict[str, Any]] = {}
     analyses: set[str] = set()
-    for path in sorted((candidate / "variants").rglob("*.json")):
+
+    def add_snapshot(path: Path, collection: list[dict[str, Any]], kind: str) -> None:
         payload = json.loads(path.read_text(encoding="utf-8"))
         variant_id = int(payload.get("variantId") or 0)
         current = payload.get("current") or {}
         analysis = payload.get("analysis") or {}
+        lifecycle = payload.get("lifecycle") if isinstance(payload.get("lifecycle"), dict) else {}
         artifact_sha = str(analysis.get("artifactSha256") or current.get("artifact_sha256") or "").strip().lower() or "unknown"
         analysis_id = str(analysis.get("analysisId") or "")
         analysis_path = str(analysis.get("path") or "")
         rel = path.relative_to(candidate).as_posix()
-        plugin_rows.append({
+        entry = {
             "variantId": variant_id,
             "scanId": int(current.get("scan_id") or 0),
             "artifactSha256": artifact_sha,
@@ -745,9 +818,23 @@ def _build_plugins_artifacts_indexes(candidate: Path) -> tuple[dict[str, Any], d
             "variantPath": rel,
             "variantSha256": sha256_file(path),
             "summary": variant_index_summary(payload),
+        }
+        if kind != "current":
+            entry["lifecycle"] = lifecycle
+        collection.append(entry)
+        bucket = artifacts.setdefault(artifact_sha, {
+            "artifactSha256": artifact_sha, "variants": [], "currentVariants": [],
+            "terminalSnapshots": [], "historicalSnapshots": [], "analyses": {},
         })
-        bucket = artifacts.setdefault(artifact_sha, {"artifactSha256": artifact_sha, "variants": [], "analyses": {}})
         bucket["variants"].append(variant_id)
+        if kind == "current":
+            bucket["currentVariants"].append(variant_id)
+        else:
+            bucket["terminalSnapshots" if kind == "terminal" else "historicalSnapshots"].append({
+                "variantId": variant_id,
+                "scanId": int(current.get("scan_id") or 0),
+                "variantPath": rel,
+            })
         if analysis_id and analysis_path:
             analyses.add(analysis_id)
             manifest_path = candidate / safe_relpath(analysis_path) / "manifest.json"
@@ -755,14 +842,34 @@ def _build_plugins_artifacts_indexes(candidate: Path) -> tuple[dict[str, Any], d
                 "path": safe_relpath(analysis_path),
                 "manifest": file_entry(candidate, manifest_path, encoding="json"),
             }
-    plugin_rows.sort(key=lambda row: int(row["variantId"]))
-    plugins_payload = {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": plugin_rows}
+
+    for path in sorted((candidate / "variants").rglob("*.json")) if (candidate / "variants").exists() else []:
+        add_snapshot(path, current_rows, "current")
+    for path in sorted((candidate / "terminal" / "variants").rglob("*.json")) if (candidate / "terminal" / "variants").exists() else []:
+        add_snapshot(path, terminal_rows, "terminal")
+    for path in sorted((candidate / "history" / "variants").rglob("*.json")) if (candidate / "history" / "variants").exists() else []:
+        add_snapshot(path, history_rows, "history")
+
+    current_rows.sort(key=lambda row: int(row["variantId"]))
+    terminal_rows.sort(key=lambda row: (int(row["variantId"]), int(row["scanId"])))
+    history_rows.sort(key=lambda row: (int(row["variantId"]), int(row["scanId"]), str(row["variantPath"])))
+    plugins_payload = {
+        "schema": "omega.security-evidence.plugins-index.v2",
+        "lifecycleContractVersion": 1,
+        "currentVariants": current_rows,
+        "terminalVariants": terminal_rows,
+        "historicalSnapshots": history_rows,
+    }
     artifacts_payload = {
         "schema": "omega.security-evidence.artifacts-index.v2",
+        "lifecycleContractVersion": 1,
         "artifacts": [
             {
                 "artifactSha256": key,
-                "variants": sorted(value["variants"]),
+                "variants": sorted(set(value["variants"])),
+                "currentVariants": sorted(set(value["currentVariants"])),
+                "terminalSnapshots": sorted(value["terminalSnapshots"], key=lambda x: (int(x["variantId"]), int(x["scanId"]))),
+                "historicalSnapshots": sorted(value["historicalSnapshots"], key=lambda x: (int(x["variantId"]), int(x["scanId"]), str(x["variantPath"]))),
                 "analyses": [{"analysisId": aid, **data} for aid, data in sorted(value["analyses"].items())],
             }
             for key, value in sorted(artifacts.items())
@@ -773,11 +880,9 @@ def _build_plugins_artifacts_indexes(candidate: Path) -> tuple[dict[str, Any], d
     write_json(plugins_path, plugins_payload)
     write_json(artifacts_path, artifacts_payload)
     return (
-        file_entry(candidate, plugins_path, records=len(plugin_rows), encoding="json"),
+        file_entry(candidate, plugins_path, records=len(current_rows) + len(terminal_rows) + len(history_rows), encoding="json"),
         file_entry(candidate, artifacts_path, records=len(artifacts), encoding="json"),
-        len(plugin_rows),
-        len(analyses),
-        len(artifacts),
+        len(current_rows), len(terminal_rows), len(history_rows), len(analyses), len(artifacts),
     )
 
 
@@ -836,18 +941,29 @@ _semantic_security_revision = semantic_security_revision
 
 def _evidence_revision(candidate: Path, index_entries: dict[str, dict[str, Any]], osv_coverage: dict[str, Any]) -> str:
     variants = []
-    for path in sorted((candidate / "variants").rglob("*.json")):
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        analysis = payload.get("analysis") or {}
-        current = payload.get("current") or {}
-        variants.append({
-            "variantId": int(payload.get("variantId") or 0),
-            "analysisId": str(analysis.get("analysisId") or ""),
-            "artifactSha256": str(analysis.get("artifactSha256") or current.get("artifact_sha256") or "").lower(),
-            "scannerVersion": str(current.get("scanner_version") or ""),
-            "status": str(current.get("status") or ""),
-            "presentation": payload.get("presentation") if isinstance(payload.get("presentation"), dict) else {},
-        })
+    snapshot_roots = (
+        ("active", candidate / "variants"),
+        ("retired", candidate / "terminal" / "variants"),
+        ("superseded", candidate / "history" / "variants"),
+    )
+    for lifecycle_state, root in snapshot_roots:
+        if not root.exists():
+            continue
+        for path in sorted(root.rglob("*.json")):
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            analysis = payload.get("analysis") or {}
+            current = payload.get("current") or {}
+            lifecycle = payload.get("lifecycle") if isinstance(payload.get("lifecycle"), dict) else {}
+            variants.append({
+                "variantId": int(payload.get("variantId") or 0),
+                "analysisId": str(analysis.get("analysisId") or ""),
+                "artifactSha256": str(analysis.get("artifactSha256") or current.get("artifact_sha256") or "").lower(),
+                "scannerVersion": str(current.get("scanner_version") or ""),
+                "status": str(current.get("status") or ""),
+                "lifecycleState": str(lifecycle.get("state") or lifecycle_state),
+                "lifecycleReason": str(lifecycle.get("reason") or ""),
+                "presentation": payload.get("presentation") if isinstance(payload.get("presentation"), dict) else {},
+            })
     semantic_indexes = {
         name: str(entry.get("sha256") or "")
         for name, entry in sorted(index_entries.items())
@@ -884,7 +1000,7 @@ def rebuild_candidate_indexes(
         ipc_entry, ipc_count = _export_ipc_index(db, candidate)
         component_entry, component_count = _export_global_table(db, candidate, "plugin_security_dependency_components", "dependency-components")
         advisory_entry, advisory_count = _export_global_table(db, candidate, "plugin_security_dependency_advisory_matches", "advisories")
-        plugins_entry, artifacts_entry, current_count, analysis_count, artifact_count = _build_plugins_artifacts_indexes(candidate)
+        plugins_entry, artifacts_entry, current_count, terminal_count, historical_count, analysis_count, artifact_count = _build_plugins_artifacts_indexes(candidate)
         indexes = {
             "identities": identity_entry,
             "plugins": plugins_entry,
@@ -955,6 +1071,8 @@ def rebuild_candidate_indexes(
         },
         "counts": {
             "currentVariants": current_count,
+            "terminalVariants": terminal_count,
+            "historicalSnapshots": historical_count,
             "analyses": analysis_count,
             "artifactGroups": artifact_count,
             "nugetPackageVersionPairs": nuget_count,
@@ -1377,8 +1495,8 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         candidate.mkdir(parents=True, exist_ok=True)
     else:
         _copy_evidence_tree(current_evidence, candidate)
-    _merge_successful_subset(candidate, subset)
-    sync_report = synchronize_candidate(candidate, work_database, set(successful))
+    merge_report = _merge_successful_subset(candidate, subset)
+    sync_report = {**merge_report, **synchronize_candidate(candidate, work_database, set(successful))}
 
     scan_context = {
         "previousIndexSha256": previous_index_sha,

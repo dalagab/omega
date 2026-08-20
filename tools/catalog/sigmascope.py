@@ -52,18 +52,21 @@ from collections import defaultdict, deque
 from pathlib import Path, PurePosixPath
 from typing import Iterable
 from catalog_revisions import read_meta as read_catalog_meta, update_candidate_revisions
-from security_endpoint_inventory import endpoint_candidates, endpoint_findings
+from security_endpoint_inventory import endpoint_candidates, endpoint_findings, endpoint_summary
 from security_hash_consensus import canonicalize_current_security_by_artifact, propagate_source_provenance_by_artifact, refresh_cross_source_hash_findings
 from security_path_access import external_hard_coded_paths
+from security_secondary_engines import scan_artifact_bytes as scan_secondary_security_artifact
+from security_binary_classifier import classify_binary
+from security_component_summary import build_component_summary
 from source_resolution import github_repository_url, public_repository_url, source_candidate_records, source_candidates, source_override_key
 from public_git_source import MAX_GIT_TREE_ENTRIES, PublicGitSource
 from artifact_source_model import (
-    attribution_from_source_result, attribution_key, basis_json, repository_key, source_revision_key,
+    MANIFEST_OBSERVATION_SCHEMA, attribution_from_source_result, attribution_key, basis_json, manifest_observation_contract, repository_key, source_revision_key,
 )
 
 
 SIGMASCOPE_NAME = "Sigmascope"
-SIGMASCOPE_VERSION = "2.9.0"
+SIGMASCOPE_VERSION = "2.13.0"
 # Persisted SQLite columns and v1/v2 JSON contracts retain the historical scanner_version name.
 SCANNER_VERSION = SIGMASCOPE_VERSION
 ARTIFACT_ANALYSIS_SCHEMA = "omega.sigmascope.artifact-analysis.v1"
@@ -1341,10 +1344,12 @@ def add_external_path_hits(text: str, evidence_label: str, hits: dict[str, list[
             existing.append(evidence)
 
 
-def add_network_endpoints(intel: dict, text: str, evidence_label: str) -> None:
-    for endpoint in endpoint_candidates(text, evidence_label):
+def add_network_endpoints(
+    intel: dict, text: str, evidence_label: str, *, origin_type: str | None = None, confidence: str | None = None,
+) -> None:
+    for endpoint in endpoint_candidates(text, evidence_label, origin_type=origin_type, confidence=confidence):
         endpoint["origin"] = intel["origin"]
-        _append_intel(intel, "networkEndpoints", endpoint, ("origin", "url"))
+        _append_intel(intel, "networkEndpoints", endpoint, ("origin", "originType", "url"))
 
 
 def empty_dependency_intelligence(origin: str) -> dict:
@@ -1363,6 +1368,8 @@ def empty_dependency_intelligence(origin: str) -> dict:
         "permissionCandidates": [],
         "sourceFiles": [],
         "networkEndpoints": [],
+        "endpointSummary": {},
+        "componentSummary": {},
         "limits": {"truncated": False, "droppedByCollection": {}},
         "coverage": {"total": 0, "known": 0, "analyzed": 0, "notAnalyzed": 0, "binaryOnly": 0, "externalPlugin": 0, "dynamicallyDownloaded": 0,
                      "requirements": {"required": 0, "soft": 0, "optional": 0, "bundled": 0, "observed": 0, "unknown": 0}},
@@ -1749,6 +1756,7 @@ def finalize_intelligence(intel: dict) -> dict:
     intel["managedCallSites"].sort(key=lambda x: (x["path"].lower(), x["sourceMethodToken"], int(x["ilOffset"]), x["opcode"], x["targetToken"]))
     intel["managedReachability"].sort(key=lambda x: (x["path"].lower(), x["rootMethodToken"], int(x["depth"]), x["methodToken"]))
     intel["permissionCandidates"].sort(key=lambda x: (x["permissionId"], x["confidence"], x["risk"]))
+    intel["componentSummary"] = build_component_summary(intel)
     coverage = {"total": len(intel["dependencies"]), "known": 0, "analyzed": 0, "notAnalyzed": 0, "binaryOnly": 0, "externalPlugin": 0, "dynamicallyDownloaded": 0,
                 "requirements": {"required": 0, "soft": 0, "optional": 0, "bundled": 0, "observed": 0, "unknown": 0}}
     status_keys = {
@@ -1791,6 +1799,44 @@ def archive_member_is_symlink(info: zipfile.ZipInfo) -> bool:
     return (unix_mode & 0o170000) == 0o120000
 
 
+def apply_binary_classification(intel: dict, classification: dict, hits: dict[str, list[str]]) -> None:
+    """Project bounded native PE imports into existing dependency/rule evidence."""
+    if str(classification.get("kind") or "") != "native-pe":
+        return
+    path = str(classification.get("path") or "artifact")
+    for imported in classification.get("imports") or []:
+        if not isinstance(imported, dict):
+            continue
+        library = str(imported.get("library") or "").strip()
+        if not library:
+            continue
+        functions = [str(item or "").strip() for item in imported.get("functions") or [] if str(item or "").strip()]
+        add_dependency(
+            intel, "native-import", library, "", path, "analyzed",
+            f"native-pe:{path}: import table {library}", "observed",
+        )
+        add_permission_candidate(
+            intel, "native.interop", "High", "VeryHigh",
+            "A bundled native PE has a statically parsed import table.", f"native-pe:{path}: {library}",
+        )
+        if not functions:
+            _append_intel(
+                intel, "nativeImports",
+                {"origin": intel["origin"], "library": library, "path": path, "entryPoint": "", "managedName": ""},
+                ("origin", "library", "path", "entryPoint"),
+            )
+            add_rule_hits(library, f"native-pe:{path}: import {library}", hits)
+            continue
+        for function in functions:
+            evidence = f"native-pe:{path}: import {library}!{function}"
+            _append_intel(
+                intel, "nativeImports",
+                {"origin": intel["origin"], "library": library, "path": path, "entryPoint": function, "managedName": ""},
+                ("origin", "library", "path", "entryPoint"),
+            )
+            add_rule_hits(f"{library} {function}", evidence, hits)
+
+
 def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = None) -> dict:
     if intel is None:
         intel = empty_dependency_intelligence("artifact")
@@ -1801,6 +1847,9 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
         "bundledExecutables": [],
         "bundledManagedAssemblies": [],
         "bundledNativeLibraries": [],
+        "binaryClassificationContractVersion": 2,
+        "binaryClassifications": [],
+        "binaryClassificationErrors": [],
         "managedMetadataErrors": [],
         "pluginManifests": [],
     }
@@ -1808,14 +1857,29 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
         text = decoded_views(data[:MAX_ENTRY_SCAN_BYTES])
         add_rule_hits(text, "artifact", hits)
         add_external_path_hits(text, "artifact", hits)
-        # A standalone managed/native binary can contain documentation URLs,
-        # certificate endpoints, and third-party metadata strings. Keep those
-        # bytes useful for capability detection, but do not present them as
-        # plugin destinations without source/config evidence.
-        if not data.startswith(b"MZ"):
+        # Binary URL strings are retained with low confidence rather than discarded.
+        # Endpoint v2 explicitly records their origin, and certificate/source metadata
+        # is filtered from concrete-destination findings later.
+        if data.startswith((b"MZ", b"\x7fELF", b"\xfe\xed\xfa\xce", b"\xce\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca")):
+            add_network_endpoints(intel, text, "artifact", origin_type="artifact-binary-string", confidence="Low")
+        else:
             add_network_endpoints(intel, text, "artifact")
+        if data.startswith((b"MZ", b"\x7fELF", b"\xfe\xed\xfa\xce", b"\xce\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca")):
+            try:
+                classification = classify_binary(data[:MAX_ENTRY_SCAN_BYTES], "artifact", sha256=sha256_bytes(data))
+                metadata["binaryClassifications"].append(classification)
+                apply_binary_classification(intel, classification, hits)
+                if classification.get("role") == "library" and classification.get("kind") != "managed-pe":
+                    metadata["bundledNativeLibraries"].append("artifact")
+                elif classification.get("role") == "executable":
+                    metadata["bundledExecutables"].append("artifact")
+            except ValueError as exc:
+                metadata["binaryClassificationErrors"].append({"path": "artifact", "error": str(exc)[:500]})
         if data.startswith(b"MZ"):
-            metadata["bundledExecutables"].append("artifact")
+            if "artifact" not in metadata["bundledExecutables"] and not any(
+                item.get("path") == "artifact" and item.get("role") == "library" for item in metadata["binaryClassifications"]
+            ):
+                metadata["bundledExecutables"].append("artifact")
             managed = None
             managed_error = ""
             try:
@@ -1878,6 +1942,15 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
                     entry_hash.update(chunk)
                 entry_sha256 = entry_hash.hexdigest()
 
+            classification = None
+            if suffix in {".dll", ".exe", ".so", ".dylib"}:
+                try:
+                    classification = classify_binary(sample, info.filename, sha256=entry_sha256)
+                    metadata["binaryClassifications"].append(classification)
+                    apply_binary_classification(intel, classification, hits)
+                except ValueError as exc:
+                    metadata["binaryClassificationErrors"].append({"path": info.filename, "error": str(exc)[:500]})
+
             managed = None
             managed_error = ""
             if suffix in {".dll", ".exe"} and sample.startswith(b"MZ"):
@@ -1939,9 +2012,13 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
                 text = decoded_views(sample)
                 add_rule_hits(text, f"artifact:{info.filename}", hits)
                 add_external_path_hits(text, f"artifact:{info.filename}", hits)
-                # URL-shaped strings in compiled/bundled binaries are often
-                # documentation or certificate metadata. They do not establish
-                # that this plugin constructs or connects to that destination.
+                # Preserve binary URL-shaped strings as low-confidence endpoint evidence.
+                # Endpoint v2 keeps origin/confidence and filters certificate/source metadata
+                # so these strings cannot masquerade as proven runtime destinations.
+                add_network_endpoints(
+                    intel, text, f"artifact:{info.filename}",
+                    origin_type="artifact-binary-string", confidence="Low",
+                )
 
     return metadata
 
@@ -2639,6 +2716,14 @@ def fetch_source(
                 confidence = "medium"
             else:
                 confidence = "low"
+            selected_ref = str(provenance.get("selectedRef") or "").strip()
+            artifact_pin = ""
+            if (
+                artifact_origin_matched
+                and re.fullmatch(r"[0-9a-fA-F]{40}", selected_ref)
+                and selected_ref.casefold() == str(result.get("commit") or "").strip().casefold()
+            ):
+                artifact_pin = str(result.get("commit") or "").strip().casefold()
             provenance.update({
                 "schema": "omega.plugin-source-provenance.v1",
                 "confidence": confidence,  # legacy display compatibility; machine logic uses source.attribution.confidence
@@ -2647,6 +2732,8 @@ def fetch_source(
                 "artifactOriginMatched": artifact_origin_matched,
                 "repoUrlMatched": repo_url_matched,
                 "originMatched": artifact_origin_matched or repo_url_matched,
+                "artifactPinnedCommit": artifact_pin,
+                "reproducibleSourceToArtifact": False,
                 "sourceToBinaryVerified": False,
             })
             result["provenance"] = provenance
@@ -2693,7 +2780,7 @@ def merge_dependency_intelligence(*items: dict) -> dict:
         for item in intel.get("sourceFiles") or []:
             _append_intel(combined, "sourceFiles", dict(item), ("origin", "path", "sha256"))
         for item in intel.get("networkEndpoints") or []:
-            _append_intel(combined, "networkEndpoints", dict(item), ("origin", "url"))
+            _append_intel(combined, "networkEndpoints", dict(item), ("origin", "originType", "url"))
         fp = intel.get("fingerprints") or {}
         if fp.get("sourceArchiveSha256"):
             source_archives.append(str(fp["sourceArchiveSha256"]))
@@ -2740,6 +2827,26 @@ def finding_payload(hits: dict[str, list[str]], archive_meta: dict) -> tuple[lis
     if native:
         capabilities.add("Bundled native libraries")
         findings.append({"ruleId": "package.native-library", "severity": "informational", "category": "package", "title": "Bundled native libraries", "description": "The plugin package contains native-library payloads in addition to managed plugin files.", "evidence": native[:8]})
+
+    wx_evidence: list[str] = []
+    for classification in archive_meta.get("binaryClassifications") or []:
+        if not isinstance(classification, dict) or str(classification.get("kind") or "") != "native-pe":
+            continue
+        path = str(classification.get("path") or "artifact")
+        for section in classification.get("writableExecutableSections") or []:
+            wx_evidence.append(f"{path}: {section}")
+            if len(wx_evidence) >= 8:
+                break
+        if len(wx_evidence) >= 8:
+            break
+    if wx_evidence:
+        capabilities.add("Writable+executable native section")
+        findings.append({
+            "ruleId": "native.pe.writable-executable-section", "severity": "caution", "category": "native",
+            "title": "Writable and executable PE section",
+            "description": "A bundled native PE contains a section marked both writable and executable. This is a structural static signal and is not by itself evidence of malicious behavior.",
+            "evidence": wx_evidence,
+        })
 
     rule_ids = {f["ruleId"] for f in findings}
     if "network.http" in rule_ids and ("process.launch" in rule_ids or "shell.powershell" in rule_ids):
@@ -4804,6 +4911,7 @@ def persist_artifact_source_identity(db: sqlite3.Connection, variant_id: int, re
     attribution = attribution_from_source_result(source)
     source["attribution"] = attribution
     result["source"] = source
+    result["sourceAttributionContractVersion"] = 1
     repository = public_repository_url(str(source.get("repository") or ""))
     commit_sha = str(source.get("commit") or "").strip()
     revision_key = ""
@@ -5199,9 +5307,13 @@ def _artifact_analysis_revision(db: sqlite3.Connection | None, scan_provenance: 
 def _finalize_findings(rule_findings: list[dict], rule_capabilities: Iterable[str], intel: dict, candidates: Iterable[str]) -> dict:
     findings = copy.deepcopy(rule_findings)
     capabilities = set(str(item or "") for item in rule_capabilities if str(item or ""))
+    has_network_capability = any(
+        finding.get("ruleId") in {"network.http", "network.socket", "local.listener"} for finding in findings
+    )
+    intel["endpointSummary"] = endpoint_summary(intel.get("networkEndpoints") or [], has_network_capability)
     endpoint_results, endpoint_capabilities = endpoint_findings(
         intel.get("networkEndpoints") or [],
-        any(finding.get("ruleId") in {"network.http", "network.socket", "local.listener"} for finding in findings),
+        has_network_capability,
         list(candidates),
     )
     automation = derive_automation_capabilities(intel)
@@ -5319,13 +5431,23 @@ def _apply_artifact_analysis(base: dict, payload: dict, catalog_version: str, *,
     base["package"] = copy.deepcopy(payload.get("package") or {})
     base["dependencyIntelligence"] = copy.deepcopy(payload.get("dependencyIntelligence") or empty_dependency_intelligence("artifact"))
     base["artifactIdentity"] = {
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "artifactSha256": str(payload.get("artifactSha256") or base.get("artifactSha256") or "").strip().lower(),
+        "artifactBytes": int(payload.get("artifactBytes") or base.get("artifactBytes") or 0),
+        "resolvedArtifactUrl": str(payload.get("resolvedArtifactUrl") or base.get("resolvedArtifactUrl") or ""),
         "catalogAssemblyVersion": catalog_version,
         "artifactAssemblyVersion": artifact_version,
         "manifestPath": str(payload.get("manifestPath") or ""),
+        "manifestInternalName": str(payload.get("manifestInternalName") or ""),
+        "manifestRepositoryUrl": str(payload.get("manifestRepositoryUrl") or ""),
         "versionMatchesCatalog": not artifact_version or not catalog_version or artifact_version.casefold() == catalog_version.casefold(),
     }
-    for key in ("findings", "capabilities", "automation", "counts", "highestSeverity"):
+    if int(base["artifactIdentity"].get("artifactBytes") or 0) > 0 and str(base["artifactIdentity"].get("artifactSha256") or ""):
+        base["artifactIdentityContractVersion"] = 1
+    for key in ("findings", "capabilities", "automation", "counts", "highestSeverity", "secondarySecurity"):
         base[key] = copy.deepcopy(payload.get(key))
+    if isinstance(base.get("secondarySecurity"), dict) and base.get("secondarySecurity"):
+        base["secondarySecurityContractVersion"] = 2
     base["artifactAnalysis"] = copy.deepcopy(payload)
     base["artifactAnalysisReused"] = bool(reused)
     base["artifactAnalysisRepresentativeScanId"] = int(representative_scan_id or 0)
@@ -5345,6 +5467,18 @@ def _build_artifact_analysis(row: sqlite3.Row, artifact: bytes, final_url: str, 
         if str(item.get("internalName") or "").casefold() == str(row["internal_name"] or "").casefold()
     ), None)
     artifact_version = str((artifact_manifest or {}).get("assemblyVersion") or catalog_version)
+    secondary_config = _secondary_security_definition_config()
+    secondary_security = scan_secondary_security_artifact(
+        artifact,
+        artifact_sha,
+        yara_rules=secondary_config["yaraRules"],
+        clamav_databases=secondary_config["clamavDatabases"],
+        yara_executable_identity=secondary_config["yaraExecutableIdentity"],
+        clamav_executable_identity=secondary_config["clamavExecutableIdentity"],
+        yara_policy_revision=secondary_config["yaraPolicyRevision"],
+        yara_rule_metadata=secondary_config["yaraRuleMetadata"],
+        clamav_configuration_error=secondary_config["clamavConfigurationError"],
+    )
     raw_findings, raw_capabilities = finding_payload(artifact_hits, package_meta)
     finalized = _finalize_findings(raw_findings, raw_capabilities, artifact_intel, [])
     return {
@@ -5354,6 +5488,9 @@ def _build_artifact_analysis(row: sqlite3.Row, artifact: bytes, final_url: str, 
         "resolvedArtifactUrl": final_url,
         "artifactAssemblyVersion": artifact_version,
         "manifestPath": str((artifact_manifest or {}).get("path") or ""),
+        "manifestInternalName": str((artifact_manifest or {}).get("internalName") or ""),
+        "manifestRepositoryUrl": str((artifact_manifest or {}).get("repoUrl") or ""),
+        "secondarySecurity": secondary_security,
         "package": package_meta,
         "ruleFindings": raw_findings,
         "ruleCapabilities": sorted(set(raw_capabilities), key=str.lower),
@@ -5547,6 +5684,11 @@ def scan_source_row(
         "assemblyVersion": str(current["assembly_version"] or ""), "artifactChannel": str(current["artifact_channel"] or ""),
         "artifactUrl": str(current["artifact_url"] or ""), "artifactSha256": str(current["artifact_sha256"] or ""),
     })
+    if not isinstance(base.get("manifestObservation"), dict) or str(base.get("manifestObservation", {}).get("schema") or "") != MANIFEST_OBSERVATION_SCHEMA:
+        base["manifestObservation"] = _manifest_observation_for_scan(
+            db, row, str(current["artifact_channel"] or ""), str(current["artifact_url"] or ""), str(current["assembly_version"] or ""),
+        )
+    base["manifestObservationContractVersion"] = 1
     artifact_analysis, artifact_representative = _artifact_payload_for_source_work(db, current, base)
     if artifact_analysis is None:
         base["error"] = "Artifact-only representative evidence is unavailable for source projection."
@@ -5587,6 +5729,125 @@ def scan_source_row(
     _apply_source_analysis(base, payload, artifact_analysis, candidates, candidate_records, reused=False)
     return base
 
+
+
+def _manifest_observation_for_scan(db: sqlite3.Connection | None, row: sqlite3.Row, channel: str, artifact_url: str, manifest_version: str = "") -> dict:
+    observation = None
+    if db is not None and _table_exists(db, "manifest_observations"):
+        observation = db.execute(
+            """SELECT observation_id,variant_id,channel,internal_name,manifest_version,download_url,repository_url
+                 FROM manifest_observations
+                WHERE variant_id=? AND channel=? AND active=1
+                ORDER BY observation_id DESC LIMIT 1""",
+            (int(row["variant_id"]), str(channel or "")),
+        ).fetchone()
+        if observation is None and artifact_url:
+            observation = db.execute(
+                """SELECT observation_id,variant_id,channel,internal_name,manifest_version,download_url,repository_url
+                     FROM manifest_observations
+                    WHERE variant_id=? AND download_url=? AND active=1
+                    ORDER BY observation_id DESC LIMIT 1""",
+                (int(row["variant_id"]), str(artifact_url)),
+            ).fetchone()
+    if observation is not None:
+        return manifest_observation_contract(
+            int(observation["variant_id"]), str(observation["channel"] or ""), str(observation["internal_name"] or ""),
+            str(observation["manifest_version"] or ""), str(observation["download_url"] or ""),
+            str(observation["repository_url"] or ""), observation_id=int(observation["observation_id"] or 0),
+        )
+    # Compatibility fallback for materialized/legacy state that predates the explicit
+    # manifest_observations table. The semantic key remains deterministic.
+    return manifest_observation_contract(
+        int(row["variant_id"]), str(channel or ""), str(row["internal_name"] or ""),
+        str(manifest_version or row["assembly_version"] or ""), str(artifact_url or ""), str(row["repo_url"] or ""), observation_id=0,
+    )
+
+
+def _secondary_security_definition_config() -> dict:
+    result = {
+        "yaraRules": [],
+        "clamavDatabases": [],
+        "yaraExecutableIdentity": {},
+        "clamavExecutableIdentity": {},
+        "yaraPolicyRevision": "",
+        "yaraRuleMetadata": [],
+        "clamavConfigurationError": "",
+    }
+    root_text = str(os.environ.get("OMEGA_SECONDARY_SECURITY_ROOT") or "").strip()
+    if not root_text:
+        return result
+    root = Path(root_text)
+    index_path = root / "index.json"
+    if not root.is_dir() or not index_path.is_file():
+        return result
+    try:
+        document = json.loads(index_path.read_text(encoding="utf-8"))
+    except Exception:
+        return result
+    definitions_root = root.parent
+    engines = {
+        str(item.get("engine") or ""): item
+        for item in document.get("engines") or []
+        if isinstance(item, dict)
+    }
+    yara_engine = engines.get("yara") or {}
+    result["yaraExecutableIdentity"] = copy.deepcopy(yara_engine.get("executableIdentity") or {})
+    policy = yara_engine.get("policy") if isinstance(yara_engine.get("policy"), dict) else {}
+    result["yaraPolicyRevision"] = str(policy.get("sha256") or "")
+    yara_rules = []
+    for entry in yara_engine.get("files") or []:
+        if not isinstance(entry, dict) or not bool(entry.get("enabled")):
+            continue
+        rel = str(entry.get("path") or "")
+        path = definitions_root / rel
+        if path.is_file() and path.suffix.casefold() in {".yar", ".yara"}:
+            yara_rules.append(path)
+            metadata = entry.get("metadata") if isinstance(entry.get("metadata"), dict) else {}
+            if metadata:
+                result["yaraRuleMetadata"].append(copy.deepcopy(metadata))
+    result["yaraRules"] = sorted(yara_rules, key=lambda path: path.as_posix().casefold())[:128]
+
+    clamav_engine = engines.get("clamav") or {}
+    result["clamavExecutableIdentity"] = copy.deepcopy(clamav_engine.get("executableIdentity") or {})
+    transport = clamav_engine.get("transport") if isinstance(clamav_engine.get("transport"), dict) else {}
+    clamav_databases = []
+    if transport:
+        cache_text = str(os.environ.get("OMEGA_SECONDARY_SECURITY_CACHE") or "").strip()
+        cache_root = Path(cache_text) if cache_text else None
+        runtime_path = (cache_root / "runtime.json") if cache_root is not None else None
+        runtime_ok = False
+        if runtime_path is not None and runtime_path.is_file():
+            try:
+                runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
+                runtime_ok = (
+                    str(runtime.get("status") or "") == "ready"
+                    and str(runtime.get("assetRevision") or "") == str(transport.get("revision") or "")
+                    and str(runtime.get("assetSha256") or "") == str((transport.get("asset") or {}).get("sha256") or "")
+                )
+            except Exception:
+                runtime_ok = False
+        if not runtime_ok:
+            result["clamavConfigurationError"] = "Frozen ClamAV asset is configured but was not materialized and verified for this worker."
+        if runtime_ok and cache_root is not None:
+            for entry in (transport.get("asset") or {}).get("files") or []:
+                if not isinstance(entry, dict):
+                    continue
+                rel = str(entry.get("path") or "")
+                if not rel.startswith("clamav/"):
+                    continue
+                path = cache_root / rel
+                if path.is_file() and path.suffix.casefold() in {".cvd", ".cld"}:
+                    clamav_databases.append(path)
+    else:
+        for entry in clamav_engine.get("files") or []:
+            if not isinstance(entry, dict) or not bool(entry.get("enabled", True)):
+                continue
+            rel = str(entry.get("path") or "")
+            path = definitions_root / rel
+            if path.is_file() and path.suffix.casefold() in {".cvd", ".cld"}:
+                clamav_databases.append(path)
+    result["clamavDatabases"] = sorted(clamav_databases, key=lambda path: path.as_posix().casefold())[:32]
+    return result
 
 def _source_candidates_for_row(row: sqlite3.Row, source_override: str, final_url: str) -> list[dict]:
     return source_candidate_records((
@@ -5658,6 +5919,8 @@ def scan_row(
         "artifactChannel": channel,
         "artifactUrl": url,
         "artifactSha256": "",
+        "manifestObservation": _manifest_observation_for_scan(db, row, channel, url, version),
+        "manifestObservationContractVersion": 1,
         "status": "failed",
         "highestSeverity": "none",
         "counts": {"informational": 0, "caution": 0, "high": 0, "critical": 0},

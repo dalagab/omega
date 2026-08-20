@@ -707,9 +707,12 @@ class CatalogPythonUnitTests(unittest.TestCase):
         hits = defaultdict(list)
         intel = sigmascope.empty_dependency_intelligence("artifact")
         sigmascope.scan_archive(payload.getvalue(), hits, intel)
-        endpoints = {item["url"] for item in intel["networkEndpoints"]}
+        endpoints = {item["url"]: item for item in intel["networkEndpoints"]}
         self.assertIn("https://api.example.test/plugin", endpoints)
-        self.assertNotIn("https://aka.ms/IdentityModel/SecurityArtifactLogging", endpoints)
+        documentation = endpoints["https://aka.ms/IdentityModel/SecurityArtifactLogging"]
+        self.assertEqual("artifact-binary-string", documentation["originType"])
+        self.assertEqual("documentation-reference", documentation["classification"])
+        self.assertFalse(documentation["concreteDestinationEvidence"])
 
     def test_cross_source_hash_consensus_uses_named_stable_baseline(self) -> None:
         with closing(sqlite3.connect(":memory:")) as db:

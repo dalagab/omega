@@ -153,7 +153,7 @@ class DiscordNoticeTests(unittest.TestCase):
                 current, previous, definitions, previous_definitions,
                 "dalagab/omega", "https://example.invalid/run",
             )
-        self.assertEqual("Omega catalog grew richer", rich["payload"]["embeds"][0]["title"])
+        self.assertEqual("Omega catalog updated", rich["payload"]["embeds"][0]["title"])
         self.assertTrue(any(line in rich["payload"]["embeds"][0]["description"] for line in discord_notice.VOICE_LINES["catalog"]))
         self.assertEqual("Omega definitions updated", happy["payload"]["embeds"][0]["title"])
         self.assertTrue(any(line in happy["payload"]["embeds"][0]["description"] for line in discord_notice.VOICE_LINES["definitions"]))
@@ -192,10 +192,27 @@ class DiscordNoticeTests(unittest.TestCase):
                 evidence_report, database, "dalagab/omega", "https://example.invalid/run"
             )
 
-        self.assertIn("not amused", irritated["payload"]["embeds"][0]["title"])
-        self.assertTrue(any(line in irritated["payload"]["embeds"][0]["description"] for line in discord_notice.VOICE_LINES["security"]))
+        security_embed = irritated["payload"]["embeds"][0]
+        self.assertEqual("New security findings for Test", security_embed["title"])
+        self.assertIn("Review the findings if you want to know more.", security_embed["description"])
+        self.assertNotIn("verdict", security_embed["description"].casefold())
+        self.assertTrue(any(line in security_embed["description"] for line in discord_notice.VOICE_LINES["security"]))
         self.assertIn("😏", cocky["payload"]["embeds"][0]["description"])
         self.assertTrue(any(line in cocky["payload"]["embeds"][0]["description"] for line in discord_notice.VOICE_LINES["evidence"]))
+
+    def test_toni_owns_the_personality_and_catalog_language_is_run_agnostic(self) -> None:
+        source = (common.ROOT / "tools" / "notifications" / "discord_notice.py").read_text(encoding="utf-8")
+        self.assertNotIn("Sigmascope is not amused", source)
+        self.assertNotIn("treating it as a verdict", source)
+        self.assertNotIn("daily catalog snapshot", source.casefold())
+        self.assertNotIn("smug scanner", source.casefold())
+        self.assertNotIn("scanner needed one more thing to be irritated", source.casefold())
+        self.assertIn("The latest catalog snapshot is published and ready for Omega.", source)
+        self.assertIn("Review the findings if you want to know more.", source)
+        for kind in ("security", "catalog", "definitions", "evidence"):
+            for line in discord_notice.VOICE_LINES[kind]:
+                self.assertNotIn("sigmascope", line.casefold())
+                self.assertNotIn("scanner", line.casefold())
 
 
     def test_notification_workflows_keep_webhook_secrets_in_isolated_jobs(self) -> None:
