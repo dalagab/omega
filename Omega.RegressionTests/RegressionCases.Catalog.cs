@@ -10,7 +10,7 @@ internal static partial class RegressionCases
 {
     internal static void TestCatalogDatabaseRoundTrip()
     {
-        var bootstrap = Path.Combine(Root, "catalog", "bootstrap", "omega-catalog.sqlite.zip");
+        var bootstrap = Path.Combine(Root, "catalog", "bootstrap", "omega-marketplace.sqlite.zip");
         if (!File.Exists(bootstrap))
         {
             // The lean source tree intentionally does not commit generated catalog bytes.
@@ -19,8 +19,8 @@ internal static partial class RegressionCases
             // local/ZipRunner source build instead verifies that the project keeps the bootstrap
             // as an optional packaged asset rather than failing because CI state is absent.
             var project = File.ReadAllText(Path.Combine(Root, "Omega", "DalagabOmega.csproj"));
-            Contains(project, @"catalog\bootstrap\omega-catalog.sqlite.zip", "project declares optional SQLite bootstrap content");
-            Contains(project, @"Condition=""Exists('..\catalog\bootstrap\omega-catalog.sqlite.zip')""", "bootstrap remains optional for lean source builds");
+            Contains(project, @"catalog\bootstrap\omega-marketplace.sqlite.zip", "project consumes the published marketplace bootstrap asset");
+            Contains(project, @"Condition=""Exists('..\catalog\bootstrap\omega-marketplace.sqlite.zip')""", "bootstrap remains optional for lean source builds");
             Contains(project, "<Link>omega-catalog.sqlite.zip</Link>", "staged bootstrap is packaged under the runtime filename");
             return;
         }

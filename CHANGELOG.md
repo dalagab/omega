@@ -1,3 +1,10 @@
+## 0.9.51 - 2026-08-20
+
+- Fixes the tagged release packaging path for the published marketplace SQLite bootstrap.
+- MSBuild now consumes `catalog/bootstrap/omega-marketplace.sqlite.zip` from `catalog-latest` and links it into the plugin package as `omega-catalog.sqlite.zip`.
+- Strengthens the bootstrap regression so release CI exercises the staged published asset instead of silently falling back to the lean-source optional-content contract.
+- Runtime marketplace behavior is unchanged from 0.9.50.
+
 ## 0.9.50 - 2026-08-20
 
 - Regression-only repair: collection tests now verify multi-collection rendering structurally instead of requiring removed explanatory UI copy.
