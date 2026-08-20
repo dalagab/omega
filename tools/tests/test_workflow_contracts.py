@@ -146,6 +146,19 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("apt-get install -y --no-install-recommends yara", text)
         self.assertLess(text.index("Install YARA compile-check dependency"), text.index("Run security-services Python regression suite"))
 
+        # Every workflow that executes the full repository suite must provide the
+        # same real YARA compiler first, because enabled production rules are
+        # intentionally compile-checked while Definitions fixtures are built.
+        for workflow in ("catalog-builder.yml", "catalog-compaction.yml"):
+            workflow_text = self.read(workflow)
+            self.assertIn("Install YARA compile-check dependency", workflow_text, workflow)
+            self.assertIn("apt-get install -y --no-install-recommends yara", workflow_text, workflow)
+            self.assertLess(
+                workflow_text.index("Install YARA compile-check dependency"),
+                workflow_text.index("Run repository Python regression suite"),
+                workflow,
+            )
+
     def test_definitions_freeze_rules_and_exact_osv_query_universe(self) -> None:
         definitions = (common.ROOT / "tools" / "catalog" / "definitions_snapshot.py").read_text(encoding="utf-8")
         pipeline = (common.ROOT / "tools" / "security" / "production_sigmascope_v2_pipeline.py").read_text(encoding="utf-8")

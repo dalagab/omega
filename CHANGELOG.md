@@ -14,6 +14,7 @@
 - Advance YARA policy/metadata to v2 with exact `reviewedRuleSha256`, reviewer, rule class and confidence; require metadata rule names to exactly match declarations and reject cross-file duplicate rule identifiers.
 - Compile-check every enabled YARA file at the Definitions boundary and retain frozen executable identity verification in continuous workers.
 - Make regression CI trigger on `security-definitions/**` and install real YARA before tests so rule-only changes are compile-checked.
+- Hotfix the daily Catalog preflight and manual compaction workflows to install real YARA before their full repository regression suites; enabled Definitions fixtures intentionally compile-check production rules and therefore require the compiler at test time.
 - Add an upstream review queue for YARA Forge/signature-base/embee-style rules without importing any third-party pack wholesale; future accepted rules require exact upstream provenance/license and independent local review.
 - Preserve immutable ClamAV transport, artifact/source attribution, lifecycle/requeue, native PE, endpoint and component-summary contracts.
 
