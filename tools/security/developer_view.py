@@ -326,9 +326,15 @@ class AuditItem:
 
 
 class SecurityInspector:
-    def __init__(self, evidence_path: Path, marketplace_path: Path | None = None):
+    def __init__(
+        self,
+        evidence_path: Path,
+        marketplace_path: Path | None = None,
+        advisory_coverage_path: Path | None = None,
+    ):
         self.evidence_path = evidence_path.resolve()
         self.marketplace_path = marketplace_path.resolve() if marketplace_path else None
+        self.advisory_coverage_path = advisory_coverage_path.resolve() if advisory_coverage_path else None
         self.db = open_ro(self.evidence_path)
         self.marketplace = open_ro(self.marketplace_path) if self.marketplace_path and self.marketplace_path.exists() else None
         self.tables = {str(r[0]) for r in self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -699,7 +705,57 @@ class SecurityInspector:
             queried_nuget = int(summary["counts"].get("osvQueriedPackages") or 0)
             coverage_present = "public_advisory_queried_packages" in summary.get("meta", {})
             expected_queries = min(observed_nuget, OSV_QUERY_LIMIT)
-            if observed_nuget and not coverage_present:
+            if self.advisory_coverage_path is not None:
+                try:
+                    coverage_doc = json.loads(self.advisory_coverage_path.read_text(encoding="utf-8-sig"))
+                    if not isinstance(coverage_doc, dict) or coverage_doc.get("schema") != "omega.public-advisories.v1":
+                        raise ValueError("unsupported frozen advisory coverage schema")
+                    declared_queries = max(0, int(coverage_doc.get("queriedPackages") or 0))
+                    frozen_pairs = {
+                        (str(row.get("name") or "").strip().casefold(), str(row.get("version") or "").strip())
+                        for row in (coverage_doc.get("queriedPackageVersionPairs") or [])
+                        if isinstance(row, dict) and str(row.get("name") or "").strip() and str(row.get("version") or "").strip()
+                    }
+                    if declared_queries != len(frozen_pairs):
+                        items.append(AuditItem(
+                            "fail", "osv.coverage.metadata", "Frozen OSV query universe is internally inconsistent",
+                            f"declaredQueries={declared_queries}, exactQueryPairs={len(frozen_pairs)}",
+                        ))
+                    elif coverage_present and queried_nuget != declared_queries:
+                        items.append(AuditItem(
+                            "fail", "osv.coverage.projection", "Working security projection disagrees with frozen OSV coverage",
+                            f"databaseQueriedPackages={queried_nuget}, frozenDeclaredQueries={declared_queries}",
+                        ))
+                    else:
+                        observed_pairs = {
+                            (str(row[0] or "").strip().casefold(), str(row[1] or "").strip())
+                            for row in self.db.execute(
+                                """SELECT lower(TRIM(d.name)),COALESCE(NULLIF(TRIM(d.resolved_version),''),NULLIF(TRIM(d.version),''))
+                                     FROM plugin_security_dependencies d
+                                     JOIN plugin_security_current c ON c.scan_id=d.scan_id
+                                    WHERE c.status='complete' AND lower(d.kind) IN ('nuget','nuget-lock','nuget-resolved')
+                                      AND TRIM(d.name)<>''
+                                      AND COALESCE(NULLIF(TRIM(d.resolved_version),''),NULLIF(TRIM(d.version),''))<>''
+                                    GROUP BY 1,2"""
+                            )
+                        } if {"plugin_security_dependencies", "plugin_security_current"}.issubset(self.tables) else set()
+                        covered_pairs = observed_pairs & frozen_pairs
+                        uncovered_pairs = observed_pairs - frozen_pairs
+                        items.append(AuditItem(
+                            "pass", "osv.coverage.queries", "Frozen OSV query universe is internally consistent",
+                            f"observedNugetVersions={len(observed_pairs)}, frozenQueries={declared_queries}, currentlyCovered={len(covered_pairs)}",
+                        ))
+                        if uncovered_pairs:
+                            items.append(AuditItem(
+                                "warn", "osv.coverage.frozen_gap", "New NuGet versions await the next Definitions refresh",
+                                f"notCoveredByFrozenDefinitions={len(uncovered_pairs)}; no live mid-day OSV query is permitted",
+                            ))
+                except (OSError, ValueError, json.JSONDecodeError) as exc:
+                    items.append(AuditItem(
+                        "fail", "osv.coverage.metadata", "Frozen OSV coverage could not be verified",
+                        f"{type(exc).__name__}: {exc}",
+                    ))
+            elif observed_nuget and not coverage_present:
                 items.append(AuditItem(
                     "warn", "osv.coverage.metadata", "OSV collector coverage metadata is unavailable",
                     f"observedNugetVersions={observed_nuget}; this evidence predates the coverage marker or was not processed by the current advisory collector.",
@@ -1143,6 +1199,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument("--json", action="store_true", help="Emit audit result as JSON.")
     parser.add_argument("--strict-warnings", action="store_true", help="Audit exits non-zero for warnings as well as failures.")
+    parser.add_argument("--advisories", type=Path, help="Optional frozen Definitions OSV advisory payload used to verify the exact query universe during a local audit.")
     return parser
 
 
@@ -1179,7 +1236,7 @@ def main(argv: list[str] | None = None) -> int:
             inspector = V2SigmascopeInspector(args.evidence_v2)
         else:
             evidence, marketplace = resolve_databases(args)
-            inspector = SecurityInspector(evidence, marketplace)
+            inspector = SecurityInspector(evidence, marketplace, args.advisories)
 
         if args.command == "audit":
             result = inspector.global_audit()

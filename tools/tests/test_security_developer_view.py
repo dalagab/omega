@@ -325,6 +325,62 @@ class SecurityDeveloperViewTests(unittest.TestCase):
             finally:
                 inspector.close()
 
+    def test_global_audit_allows_new_nuget_after_frozen_definitions(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            evidence = root / "evidence.sqlite"
+            advisories = root / "osv-advisories.json"
+            make_evidence(evidence)
+            with closing(sqlite3.connect(evidence)) as db:
+                db.execute("UPDATE catalog_meta SET value='0' WHERE key='public_advisory_queried_packages'")
+                db.execute("UPDATE catalog_meta SET value='0' WHERE key='public_advisory_matched_packages'")
+                db.commit()
+            advisories.write_text(json.dumps({
+                "schema": "omega.public-advisories.v1",
+                "generatedAtUtc": "2026-08-20T07:20:53Z",
+                "source": "OSV",
+                "ecosystem": "NuGet",
+                "queriedPackages": 0,
+                "matchedPackages": 0,
+                "queriedPackageVersionPairs": [],
+                "advisories": [],
+            }), encoding="utf-8")
+            inspector = view.SecurityInspector(evidence, None, advisories)
+            try:
+                audit = inspector.global_audit()
+                failures = [item for item in audit["items"] if item["status"] == "fail"]
+                warnings = [item for item in audit["items"] if item["status"] == "warn"]
+                passes = [item for item in audit["items"] if item["status"] == "pass"]
+                self.assertFalse(any(item["code"].startswith("osv.coverage") for item in failures))
+                self.assertTrue(any(item["code"] == "osv.coverage.queries" for item in passes))
+                self.assertTrue(any(item["code"] == "osv.coverage.frozen_gap" for item in warnings))
+            finally:
+                inspector.close()
+
+    def test_global_audit_rejects_inconsistent_frozen_osv_query_universe(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            evidence = root / "evidence.sqlite"
+            advisories = root / "osv-advisories.json"
+            make_evidence(evidence)
+            advisories.write_text(json.dumps({
+                "schema": "omega.public-advisories.v1",
+                "generatedAtUtc": "2026-08-20T07:20:53Z",
+                "source": "OSV",
+                "ecosystem": "NuGet",
+                "queriedPackages": 0,
+                "matchedPackages": 0,
+                "queriedPackageVersionPairs": [{"name": "Newtonsoft.Json", "version": "12.0.1"}],
+                "advisories": [],
+            }), encoding="utf-8")
+            inspector = view.SecurityInspector(evidence, None, advisories)
+            try:
+                audit = inspector.global_audit()
+                failures = [item for item in audit["items"] if item["status"] == "fail"]
+                self.assertTrue(any(item["code"] == "osv.coverage.metadata" for item in failures))
+            finally:
+                inspector.close()
+
     def test_global_audit_checks_database_contract_and_current_conclusions(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             evidence = Path(td) / "evidence.sqlite"

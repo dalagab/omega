@@ -123,6 +123,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn('$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py', text)
         self.assertIn('$OMEGA_FROZEN_WORKER/tools/security/publish_security_evidence_v2.py', text)
         self.assertIn('$OMEGA_FROZEN_WORKER/sources/source-overrides.json', text)
+        self.assertIn('--advisories catalog/active-state/definitions/osv-advisories.json', text)
         self.assertNotIn("git checkout --detach", text)
         self.assertNotIn("source_commit=", text)
         self.assertNotIn("definitions-source-commit", text)

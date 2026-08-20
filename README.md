@@ -6,9 +6,9 @@ It deliberately contains **no Omega C# client source**.
 
 ## Services
 
-### Security services 2.9.6 · SigmaScope scanner engine 2.9.0
+### Security services 2.9.7 · SigmaScope scanner engine 2.9.0
 
-2.9.6 keeps the source-analysis cache integrity and TONI notification changes, and adds a shared workflow lock so catalog publication and Sigmascope scanning can never run at the same time.
+2.9.7 keeps the source-analysis cache integrity, TONI notifications, and catalog/Sigmascope workflow lock. It also makes the independent audit verify the exact frozen Definitions OSV query universe, so NuGet dependencies first discovered during the day are reported as awaiting the next Definitions refresh rather than incorrectly failing the current worker.
 Deterministic static scanner. Plugin artifacts and source are treated as untrusted data and are never executed. The continuous worker consumes the frozen worker bundle from `catalog-data` and publishes validated evidence to `security-evidence-v2`.
 
 ### DeltaScope
