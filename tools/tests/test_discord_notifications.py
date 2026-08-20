@@ -7,12 +7,14 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import common
 
 NOTIFICATIONS = common.ROOT / "tools" / "notifications"
 sys.path.insert(0, str(NOTIFICATIONS))
 import discord_notice
+import post_discord_notice
 
 
 class DiscordNoticeTests(unittest.TestCase):
@@ -205,6 +207,52 @@ class DiscordNoticeTests(unittest.TestCase):
         self.assertIn('steps.previous_catalog.outputs.compatible', workflow)
         self.assertIn('args+=(--previous-catalog-root catalog/previous-state/catalog)', workflow)
         self.assertIn("validate_marketplace_catalog.py --root catalog/client-dist --require-v2", workflow)
+
+
+    def test_sender_uses_discord_api_user_agent_and_safe_headers(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            notice_path = Path(temporary) / "notice.json"
+            notice_path.write_text(json.dumps({
+                "schema": "omega.discord-notice.v1",
+                "event": "catalog",
+                "webhookKey": "catalog",
+                "eventId": "test",
+                "shouldNotify": True,
+                "payload": {
+                    "username": "Omega Updates",
+                    "allowed_mentions": {"parse": []},
+                    "embeds": [{"title": "Test"}],
+                },
+            }), encoding="utf-8")
+
+            captured = {}
+
+            class Response:
+                status = 204
+                def __enter__(self):
+                    return self
+                def __exit__(self, exc_type, exc, tb):
+                    return False
+
+            def fake_urlopen(request, timeout=0):
+                captured["request"] = request
+                captured["timeout"] = timeout
+                return Response()
+
+            with patch.dict("os.environ", {
+                "DISCORD_CATALOG_WEBHOOK_URL": "https://discord.com/api/webhooks/123/secret-token",
+            }, clear=False), patch.object(post_discord_notice, "urlopen", fake_urlopen), patch.object(
+                sys, "argv", ["post_discord_notice.py", "--notice", str(notice_path)]
+            ):
+                self.assertEqual(0, post_discord_notice.main())
+
+        request = captured["request"]
+        self.assertEqual("POST", request.get_method())
+        self.assertEqual("application/json", request.get_header("Content-type"))
+        self.assertEqual("application/json", request.get_header("Accept"))
+        self.assertEqual(post_discord_notice.USER_AGENT, request.get_header("User-agent"))
+        self.assertTrue(post_discord_notice.USER_AGENT.startswith("DiscordBot ("))
+        self.assertEqual(15, captured["timeout"])
 
 
 if __name__ == "__main__":

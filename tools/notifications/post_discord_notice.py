@@ -12,6 +12,9 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
+USER_AGENT = "DiscordBot (https://github.com/dalagab/omega, 2.9.3)"
+
+
 WEBHOOK_ENVIRONMENTS = {
     "catalog": "DISCORD_CATALOG_WEBHOOK_URL",
     "security": "DISCORD_SECURITY_WEBHOOK_URL",
@@ -45,7 +48,16 @@ def main() -> int:
     url = os.environ.get(environment_name, "")
     if not url.startswith("https://discord.com/api/webhooks/"):
         raise RuntimeError(f"{environment_name} must be a Discord incoming webhook URL")
-    request = Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
+    request = Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": USER_AGENT,
+        },
+        method="POST",
+    )
     for attempt in range(3):
         try:
             with urlopen(request, timeout=15) as response:
@@ -55,7 +67,13 @@ def main() -> int:
                 raise RuntimeError(f"Discord returned HTTP {response.status}")
         except HTTPError as error:
             if error.code != 429 or attempt == 2:
-                raise RuntimeError(f"Discord delivery failed with HTTP {error.code}") from error
+                detail = ""
+                try:
+                    detail = error.read(2048).decode("utf-8", errors="replace").strip()
+                except Exception:
+                    detail = ""
+                suffix = f": {detail}" if detail else ""
+                raise RuntimeError(f"Discord delivery failed with HTTP {error.code}{suffix}") from error
             time.sleep(min(float(error.headers.get("Retry-After", "1")), 10.0))
     return 1
 
