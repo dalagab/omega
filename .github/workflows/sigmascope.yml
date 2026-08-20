@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   scan:
-    name: Process one Sigmascope candidate against frozen daily inputs
+    name: Process bounded Sigmascope batch against frozen daily inputs
     runs-on: ubuntu-latest
     timeout-minutes: 75
     outputs:
@@ -114,7 +114,7 @@ jobs:
           --root catalog/active-state/catalog
           --database catalog/security-input/omega-catalog.sqlite
           --definitions-revision "${{ steps.frozen.outputs.definitions_revision }}"
-      - name: Examine one due variant and build Evidence v2 candidate
+      - name: Examine bounded due-variant batch and build Evidence v2 candidate
         id: v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -136,7 +136,7 @@ jobs:
           --advisory-revision "${{ steps.frozen.outputs.advisory_revision }}"
           --queue-seed catalog/active-state/scan-queue.json
           --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json"
-          --max-scans 1
+          --max-scans 20
           --max-batch-seconds 3300
           --internal-names "${{ inputs.internal_names || '' }}"
           --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"

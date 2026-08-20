@@ -26,6 +26,7 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+import time
 from types import SimpleNamespace
 from typing import Any, Iterable
 
@@ -79,6 +80,7 @@ SNAPSHOT_VALIDATION_SCHEMA = "omega.security-evidence.snapshot-validation.v2"
 DEFAULT_MAX_SCANS = 60
 DEFAULT_RESCAN_HOURS = 168
 DEFAULT_MAX_BATCH_SECONDS = 4200
+BATCH_PUBLICATION_RESERVE_SECONDS = 300
 SMALL_ANALYSIS_DATASETS: dict[str, str] = {
     "findings": "plugin_security_findings",
     "dependencies": "plugin_security_dependencies",
@@ -407,6 +409,77 @@ def _sigmascope_args(
         skip_revision_update=True,
     )
 
+
+
+def _scan_provenance_for_queue_item(queue_seed: dict[str, Any], selected: dict[str, Any], args: argparse.Namespace, baseline_security_rebuild: bool) -> tuple[str, dict[str, Any]]:
+    work_type = str(selected.get("workType") or "artifact")
+    recent_attempts = selected.get("recentAttempts") or []
+    latest_attempt = recent_attempts[-1] if recent_attempts and isinstance(recent_attempts[-1], dict) else {}
+    provenance = {
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "catalogRevision": str(queue_seed.get("catalogRevision") or ""),
+        "catalogIdentityEpoch": str(queue_seed.get("catalogIdentityEpoch") or ""),
+        "definitionsRevision": str(queue_seed.get("definitionsRevision") or ""),
+        "advisoryRevision": str(queue_seed.get("advisoryRevision") or ""),
+        "scannerRevision": str(getattr(args, "scanner_revision", "") or ""),
+        "scannerBundleSha256": str(getattr(args, "scanner_bundle_sha256", "") or ""),
+        "artifactAnalysisRevision": str(queue_seed.get("artifactAnalysisRevision") or getattr(args, "artifact_analysis_revision", "") or ""),
+        "sourceAnalysisRevision": str(queue_seed.get("sourceAnalysisRevision") or getattr(args, "source_analysis_revision", "") or ""),
+        "sourceObservationRevision": str(queue_seed.get("sourceObservationRevision") or ""),
+        "observedSourceRepository": str(selected.get("observedSourceRepository") or ""),
+        "observedSourceCommit": str(selected.get("observedSourceCommit") or ""),
+        "observedSourceRef": str(selected.get("observedSourceRef") or ""),
+        "ruleSetRevision": str(queue_seed.get("ruleSetRevision") or ""),
+        "queueSeedRevision": str(queue_seed.get("queueSeedRevision") or ""),
+        "queueKey": str(selected.get("queueKey") or ""),
+        "workType": work_type,
+        "targetFingerprint": str(selected.get("targetFingerprint") or ""),
+        "primaryReason": str(selected.get("primaryReason") or ""),
+        "reasons": list(selected.get("reasons") or []),
+        "attemptId": str(latest_attempt.get("attemptId") or ""),
+        "attemptNumber": int(latest_attempt.get("attemptNumber") or 0),
+        "baselineSecurityRebuild": baseline_security_rebuild,
+    }
+    return work_type, provenance
+
+
+def _merge_scan_reports(reports: list[dict[str, Any]], *, batch_budget_seconds: int, stopped_by_budget: bool, batch_elapsed_seconds: float) -> dict[str, Any]:
+    if not reports:
+        return {
+            "schema": "omega.plugin-security.batch.v1",
+            "engineName": sigmascope.SIGMASCOPE_NAME,
+            "engineVersion": sigmascope.SIGMASCOPE_VERSION,
+            "scannerVersion": sigmascope.SCANNER_VERSION,
+            "startedAtUtc": utc_now(),
+            "selected": 0, "completed": 0, "failed": 0, "plugins": [],
+            "batchBudgetSeconds": int(batch_budget_seconds),
+            "stoppedByBatchBudget": bool(stopped_by_budget),
+            "elapsedSeconds": round(batch_elapsed_seconds, 3),
+        }
+    first = dict(reports[0])
+    merged = {
+        "schema": str(first.get("schema") or "omega.plugin-security.batch.v1"),
+        "engineName": str(first.get("engineName") or sigmascope.SIGMASCOPE_NAME),
+        "engineVersion": str(first.get("engineVersion") or sigmascope.SIGMASCOPE_VERSION),
+        "scannerVersion": str(first.get("scannerVersion") or sigmascope.SCANNER_VERSION),
+        "startedAtUtc": str(first.get("startedAtUtc") or utc_now()),
+        "selected": sum(int(item.get("selected") or 0) for item in reports),
+        "completed": sum(int(item.get("completed") or 0) for item in reports),
+        "failed": sum(int(item.get("failed") or 0) for item in reports),
+        "plugins": [plugin for item in reports for plugin in (item.get("plugins") or []) if isinstance(plugin, dict)],
+        "artifactAnalysesReused": sum(int(item.get("artifactAnalysesReused") or 0) for item in reports),
+        "sourceAnalysesReused": sum(int(item.get("sourceAnalysesReused") or 0) for item in reports),
+        "batchBudgetSeconds": int(batch_budget_seconds),
+        "stoppedByBatchBudget": bool(stopped_by_budget),
+        "elapsedSeconds": round(batch_elapsed_seconds, 3),
+        "invocations": len(reports),
+    }
+    merged["reportedPluginRows"] = len(merged["plugins"])
+    plugin_elapsed = [float(item.get("elapsedSeconds") or 0.0) for item in merged["plugins"] if isinstance(item, dict)]
+    merged["pluginElapsedSecondsTotal"] = round(sum(plugin_elapsed), 3)
+    merged["pluginElapsedSecondsAverage"] = round((sum(plugin_elapsed) / len(plugin_elapsed)) if plugin_elapsed else 0.0, 3)
+    merged["pluginElapsedSecondsMax"] = round(max(plugin_elapsed), 3) if plugin_elapsed else 0.0
+    return merged
 
 def _current_rows(database: Path) -> dict[int, dict[str, Any]]:
     with closing(sqlite3.connect(database)) as db:
@@ -1283,11 +1356,11 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
 
     queue_state: dict[str, Any] | None = None
     selected_queue_item: dict[str, Any] | None = None
+    selected_queue_items: list[dict[str, Any]] = []
+    advisory_queue_item: dict[str, Any] | None = None
     queue_state_before = b""
-    selected_variant_ids = str(getattr(args, "variant_ids", "") or "")
     selected_internal_names = str(args.internal_names or "")
-    scan_provenance: dict[str, Any] = {}
-    work_type = "combined"
+    queue_seed: dict[str, Any] = {}
     if queue_enabled:
         queue_seed = preloaded_queue_seed
         for key, expected in (
@@ -1311,88 +1384,116 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 queue_db,
                 [item.strip() for item in selected_internal_names.split(",") if item.strip()],
             )
-        selected_queue_item = scan_queue.select_next(queue_state)
-        selected_variant_ids = str(int((selected_queue_item or {}).get("variantId") or 0)) if selected_queue_item else ""
-        selected_internal_names = ""
-        if selected_queue_item:
-            work_type = str(selected_queue_item.get("workType") or "artifact")
-            recent_attempts = selected_queue_item.get("recentAttempts") or []
-            latest_attempt = recent_attempts[-1] if recent_attempts and isinstance(recent_attempts[-1], dict) else {}
-            scan_provenance = {
-                "schema": "omega.sigmascope.scan-provenance.v1",
-                "catalogRevision": str(queue_seed.get("catalogRevision") or ""),
-                "catalogIdentityEpoch": str(queue_seed.get("catalogIdentityEpoch") or ""),
-                "definitionsRevision": str(queue_seed.get("definitionsRevision") or ""),
-                "advisoryRevision": str(queue_seed.get("advisoryRevision") or ""),
-                "scannerRevision": str(getattr(args, "scanner_revision", "") or ""),
-                "scannerBundleSha256": str(getattr(args, "scanner_bundle_sha256", "") or ""),
-                "artifactAnalysisRevision": str(queue_seed.get("artifactAnalysisRevision") or getattr(args, "artifact_analysis_revision", "") or ""),
-                "sourceAnalysisRevision": str(queue_seed.get("sourceAnalysisRevision") or getattr(args, "source_analysis_revision", "") or ""),
-                "sourceObservationRevision": str(queue_seed.get("sourceObservationRevision") or ""),
-                "observedSourceRepository": str(selected_queue_item.get("observedSourceRepository") or ""),
-                "observedSourceCommit": str(selected_queue_item.get("observedSourceCommit") or ""),
-                "observedSourceRef": str(selected_queue_item.get("observedSourceRef") or ""),
-                "ruleSetRevision": str(queue_seed.get("ruleSetRevision") or ""),
-                "queueSeedRevision": str(queue_seed.get("queueSeedRevision") or ""),
-                "queueKey": str(selected_queue_item.get("queueKey") or ""),
-                "workType": work_type,
-                "targetFingerprint": str(selected_queue_item.get("targetFingerprint") or ""),
-                "primaryReason": str(selected_queue_item.get("primaryReason") or ""),
-                "reasons": list(selected_queue_item.get("reasons") or []),
-                "attemptId": str(latest_attempt.get("attemptId") or ""),
-                "attemptNumber": int(latest_attempt.get("attemptNumber") or 0),
-                "baselineSecurityRebuild": baseline_security_rebuild,
-            }
         queue_state_before = scan_queue.canonical(previous_queue_state)
+        selected_internal_names = ""
 
     if not os.environ.get("GITHUB_TOKEN") and os.environ.get("GH_TOKEN"):
         os.environ["GITHUB_TOKEN"] = os.environ["GH_TOKEN"]
 
-    scan_args = _sigmascope_args(
-        work_database,
-        work_dir,
-        report_name="sigmascope-report.json",
-        max_scans=(1 if queue_enabled and selected_queue_item and work_type in {"artifact", "source"} else (0 if queue_enabled else args.max_scans)),
-        max_batch_seconds=args.max_batch_seconds,
-        internal_names=selected_internal_names,
-        variant_ids=selected_variant_ids,
-        scan_provenance=scan_provenance,
-        advisories=None,
-        source_overrides=source_overrides,
-        skip_source=bool(args.skip_source or work_type == "artifact"),
-    )
-    scan_report = sigmascope.run(scan_args)
-    successful, failed = _restore_last_known_good(work_database, before_current)
-    # Sigmascope itself preserves an existing completed current pointer when a
-    # transient revalidation fails, so such failures do not appear as a changed
-    # current row. Carry the attempted failed variant IDs from the bounded scan
-    # report into production diagnostics while still retaining last-known-good data.
-    reported_failed = {
-        int(item.get("variantId") or 0)
-        for item in (scan_report.get("plugins") or [])
-        if isinstance(item, dict) and str(item.get("status") or "") != "complete" and int(item.get("variantId") or 0) > 0
-    }
-    failed = sorted(set(failed) | reported_failed)
+    successful: list[int] = []
+    failed: list[int] = []
+    scan_reports: list[dict[str, Any]] = []
+    batch_started = time.monotonic()
+    batch_budget = max(0, int(args.max_batch_seconds))
+    reserve_seconds = min(BATCH_PUBLICATION_RESERVE_SECONDS, max(0, batch_budget // 4)) if batch_budget else 0
+    scan_deadline = batch_started + max(0, batch_budget - reserve_seconds) if batch_budget else None
+    stopped_by_batch_budget = False
 
-    if queue_enabled and queue_state is not None and selected_queue_item is not None and work_type in {"artifact", "source"}:
-        selected_variant_id = int(selected_queue_item.get("variantId") or 0)
-        attempted = next((item for item in (scan_report.get("plugins") or []) if isinstance(item, dict) and int(item.get("variantId") or 0) == selected_variant_id), None)
-        if attempted is None:
-            scan_queue.finish_attempt(queue_state, selected_queue_item, status="failed", error="selected queue item produced no scan result")
-        else:
-            attempted_status = "complete" if str(attempted.get("status") or "") == "complete" else "failed"
-            current_after = _current_rows(work_database)
-            current_row = current_after.get(selected_variant_id) or {}
-            scan_queue.finish_attempt(
-                queue_state,
-                selected_queue_item,
-                status=attempted_status,
-                error=str(attempted.get("error") or ""),
-                artifact_sha256=str(attempted.get("artifactSha256") or ""),
-                scan_id=int(current_row.get("scan_id") or 0),
+    if queue_enabled and queue_state is not None:
+        for _batch_index in range(max(0, int(args.max_scans))):
+            if scan_deadline is not None and time.monotonic() >= scan_deadline:
+                stopped_by_batch_budget = True
+                break
+            selected = scan_queue.select_next(queue_state)
+            if selected is None:
+                break
+            selected_queue_items.append(selected)
+            if selected_queue_item is None:
+                selected_queue_item = selected
+            work_type, scan_provenance = _scan_provenance_for_queue_item(queue_seed, selected, args, baseline_security_rebuild)
+            if work_type == "advisory":
+                # Advisory reprojection is global and happens once below. Do not select
+                # further queue work until that authoritative frozen projection completes.
+                advisory_queue_item = selected
+                break
+
+            selected_variant_id = int(selected.get("variantId") or 0)
+            before_item_current = _current_rows(work_database)
+            remaining_seconds = 0
+            if scan_deadline is not None:
+                remaining_seconds = max(1, int(scan_deadline - time.monotonic()))
+            scan_args = _sigmascope_args(
+                work_database,
+                work_dir,
+                report_name=f"sigmascope-report-{len(selected_queue_items):03d}.json",
+                max_scans=1,
+                max_batch_seconds=remaining_seconds,
+                internal_names="",
+                variant_ids=str(selected_variant_id),
+                scan_provenance=scan_provenance,
+                advisories=None,
+                source_overrides=source_overrides,
+                skip_source=bool(args.skip_source or work_type == "artifact"),
             )
-            if attempted_status == "complete" and work_type == "artifact":
-                scan_queue.enqueue_source_followup(queue_state, selected_queue_item, current_row)
+            item_report = sigmascope.run(scan_args)
+            scan_reports.append(item_report)
+            item_successful, item_failed = _restore_last_known_good(work_database, before_item_current)
+            successful.extend(item_successful)
+            reported_failed = {
+                int(item.get("variantId") or 0)
+                for item in (item_report.get("plugins") or [])
+                if isinstance(item, dict) and str(item.get("status") or "") != "complete" and int(item.get("variantId") or 0) > 0
+            }
+            failed.extend(sorted(set(item_failed) | reported_failed))
+
+            attempted = next((item for item in (item_report.get("plugins") or []) if isinstance(item, dict) and int(item.get("variantId") or 0) == selected_variant_id), None)
+            if attempted is None:
+                scan_queue.finish_attempt(queue_state, selected, status="failed", error="selected queue item produced no scan result")
+            else:
+                attempted_status = "complete" if str(attempted.get("status") or "") == "complete" else "failed"
+                current_after = _current_rows(work_database)
+                current_row = current_after.get(selected_variant_id) or {}
+                scan_queue.finish_attempt(
+                    queue_state,
+                    selected,
+                    status=attempted_status,
+                    error=str(attempted.get("error") or ""),
+                    artifact_sha256=str(attempted.get("artifactSha256") or ""),
+                    scan_id=int(current_row.get("scan_id") or 0),
+                )
+                if attempted_status == "complete" and work_type == "artifact":
+                    scan_queue.enqueue_source_followup(queue_state, selected, current_row)
+    else:
+        scan_args = _sigmascope_args(
+            work_database,
+            work_dir,
+            report_name="sigmascope-report.json",
+            max_scans=args.max_scans,
+            max_batch_seconds=args.max_batch_seconds,
+            internal_names=selected_internal_names,
+            variant_ids=str(getattr(args, "variant_ids", "") or ""),
+            scan_provenance={},
+            advisories=None,
+            source_overrides=source_overrides,
+            skip_source=bool(args.skip_source),
+        )
+        scan_reports.append(sigmascope.run(scan_args))
+        successful, failed = _restore_last_known_good(work_database, before_current)
+        reported_failed = {
+            int(item.get("variantId") or 0)
+            for item in (scan_reports[-1].get("plugins") or [])
+            if isinstance(item, dict) and str(item.get("status") or "") != "complete" and int(item.get("variantId") or 0) > 0
+        }
+        failed = sorted(set(failed) | reported_failed)
+
+    successful = sorted(set(successful))
+    failed = sorted(set(failed))
+    scan_report = _merge_scan_reports(
+        scan_reports,
+        batch_budget_seconds=batch_budget,
+        stopped_by_budget=stopped_by_batch_budget,
+        batch_elapsed_seconds=time.monotonic() - batch_started,
+    )
 
     # OSV consumes the explicit v2 NuGet package/version contract rather than
     # querying the mutable SQLite working projection directly. Build that bounded
@@ -1434,8 +1535,8 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         skip_source=True,
     )
     refresh_report = sigmascope.run(refresh_args)
-    if queue_enabled and queue_state is not None and selected_queue_item is not None and work_type == "advisory":
-        scan_queue.finish_attempt(queue_state, selected_queue_item, status="complete")
+    if queue_enabled and queue_state is not None and advisory_queue_item is not None:
+        scan_queue.finish_attempt(queue_state, advisory_queue_item, status="complete")
     summary = summarize_database(work_database)
     diagnostics = _dependency_diagnostics(work_database)
     observed_nuget_pairs = int(summary.get("nugetPackageVersionPairs") or 0)
@@ -1523,6 +1624,14 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "reasons": list((selected_queue_item or {}).get("reasons") or []),
             "attemptCount": int((selected_queue_item or {}).get("attemptCount") or 0),
         } if selected_queue_item else {},
+        "queueBatch": {
+            "selectedCount": len(selected_queue_items),
+            "variantIds": [int(item.get("variantId") or 0) for item in selected_queue_items if int(item.get("variantId") or 0) > 0],
+            "workTypes": [str(item.get("workType") or "") for item in selected_queue_items],
+            "stoppedByBatchBudget": stopped_by_batch_budget,
+            "scanElapsedSeconds": round(time.monotonic() - batch_started, 3),
+            "publicationReserveSeconds": reserve_seconds,
+        },
         "advisoryMode": advisory_mode,
     }
     osv_coverage = {
@@ -1625,6 +1734,9 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "queue": {
             "enabled": queue_enabled,
             "selected": selected_queue_item or {},
+            "selectedItems": selected_queue_items,
+            "selectedCount": len(selected_queue_items),
+            "stoppedByBatchBudget": stopped_by_batch_budget,
             "stateChanged": queue_state_changed,
             "summary": scan_queue.state_summary(queue_state) if queue_state is not None else {},
         },
@@ -1704,6 +1816,18 @@ def main() -> int:
         "publicationRequired": result["publicationRequired"],
         "successful": len(result["successfulVariantIds"]),
         "failedRetained": len(result["failedRetainedVariantIds"]),
+        "batch": {
+            "queueSelected": int((result.get("queue") or {}).get("selectedCount") or 0),
+            "scanSelected": int((result.get("scan") or {}).get("selected") or 0),
+            "completed": int((result.get("scan") or {}).get("completed") or 0),
+            "failed": int((result.get("scan") or {}).get("failed") or 0),
+            "invocations": int((result.get("scan") or {}).get("invocations") or 0),
+            "elapsedSeconds": float((result.get("scan") or {}).get("elapsedSeconds") or 0.0),
+            "pluginElapsedSecondsTotal": float((result.get("scan") or {}).get("pluginElapsedSecondsTotal") or 0.0),
+            "pluginElapsedSecondsAverage": float((result.get("scan") or {}).get("pluginElapsedSecondsAverage") or 0.0),
+            "pluginElapsedSecondsMax": float((result.get("scan") or {}).get("pluginElapsedSecondsMax") or 0.0),
+            "stoppedByBatchBudget": bool((result.get("queue") or {}).get("stoppedByBatchBudget")),
+        },
         "nugetPackageVersionPairs": result["summary"].get("nugetPackageVersionPairs", 0),
         "ipcProviders": result["summary"].get("ipcProviders", 0),
         "osv": result["osv"],

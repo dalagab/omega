@@ -80,7 +80,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("git add catalog/catalog-endpoint.json", builder)
         self.assertNotIn("git push\n", builder, "daily generated catalog state belongs on catalog-data, not main")
 
-    def test_sigmascope_is_a_15_minute_single_item_evidence_worker(self) -> None:
+    def test_sigmascope_is_a_15_minute_bounded_batch_evidence_worker(self) -> None:
         text = self.read("sigmascope.yml")
         self.assert_has(
             text,
@@ -105,7 +105,7 @@ class WorkflowContractTests(unittest.TestCase):
             '--rule-set-revision "${{ steps.frozen.outputs.rule_set_revision }}"',
             '--advisory-revision "${{ steps.frozen.outputs.advisory_revision }}"',
             "--queue-seed catalog/active-state/scan-queue.json",
-            "--max-scans 1",
+            "--max-scans 20",
             "publish_security_evidence_v2.py",
             "--branch security-evidence-v2",
             "developer_view.py",
@@ -136,7 +136,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("git checkout --detach", text)
         self.assertNotIn("source_commit=", text)
         self.assertNotIn("definitions-source-commit", text)
-        self.assertLess(text.index("Verify frozen worker bundle before execution"), text.index("Examine one due variant"))
+        self.assertLess(text.index("Verify frozen worker bundle before execution"), text.index("Examine bounded due-variant batch"))
 
 
     def test_regression_workflow_runs_for_yara_definition_changes_and_installs_real_yara(self) -> None:

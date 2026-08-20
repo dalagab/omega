@@ -42,12 +42,40 @@ from production_sigmascope_v2_pipeline import (
     _write_variant_derived_datasets,
     _merge_successful_subset,
     _build_plugins_artifacts_indexes,
+    _merge_scan_reports,
     rebuild_candidate_indexes,
 )
 from security_evidence_v2 import canonical_json_bytes, read_record_dataset, sha256_bytes, validate_snapshot, write_record_dataset
 
 
 class ProductionSecurityV2PipelineTests(unittest.TestCase):
+    def test_bounded_batch_report_aggregates_multiple_queue_invocations(self) -> None:
+        reports = [
+            {
+                "schema": "omega.plugin-security.batch.v1", "engineName": "Sigmascope",
+                "engineVersion": sigmascope.SIGMASCOPE_VERSION, "scannerVersion": sigmascope.SCANNER_VERSION,
+                "startedAtUtc": "2026-08-20T00:00:00Z", "selected": 1, "completed": 1, "failed": 0,
+                "artifactAnalysesReused": 0, "sourceAnalysesReused": 0,
+                "plugins": [{"variantId": 1, "status": "complete", "elapsedSeconds": 2.5}],
+            },
+            {
+                "schema": "omega.plugin-security.batch.v1", "engineName": "Sigmascope",
+                "engineVersion": sigmascope.SIGMASCOPE_VERSION, "scannerVersion": sigmascope.SCANNER_VERSION,
+                "startedAtUtc": "2026-08-20T00:00:03Z", "selected": 1, "completed": 0, "failed": 1,
+                "artifactAnalysesReused": 1, "sourceAnalysesReused": 0,
+                "plugins": [{"variantId": 2, "status": "failed", "elapsedSeconds": 0.5}],
+            },
+        ]
+        merged = _merge_scan_reports(reports, batch_budget_seconds=3300, stopped_by_budget=False, batch_elapsed_seconds=4.0)
+        self.assertEqual(2, merged["selected"])
+        self.assertEqual(1, merged["completed"])
+        self.assertEqual(1, merged["failed"])
+        self.assertEqual(2, merged["invocations"])
+        self.assertEqual(3.0, merged["pluginElapsedSecondsTotal"])
+        self.assertEqual(1.5, merged["pluginElapsedSecondsAverage"])
+        self.assertEqual(2.5, merged["pluginElapsedSecondsMax"])
+        self.assertEqual([1, 2], [item["variantId"] for item in merged["plugins"]])
+
     def test_inactive_variant_becomes_terminal_snapshot_and_keeps_analysis(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-terminal-variant-") as td:
             root = Path(td)
