@@ -6,7 +6,9 @@ It deliberately contains **no Omega C# client source**.
 
 ## Services
 
-### SigmaScope 2.9.0
+### Security services 2.9.6 · SigmaScope scanner engine 2.9.0
+
+2.9.6 keeps the source-analysis cache integrity and TONI notification changes, and adds a shared workflow lock so catalog publication and Sigmascope scanning can never run at the same time.
 Deterministic static scanner. Plugin artifacts and source are treated as untrusted data and are never executed. The continuous worker consumes the frozen worker bundle from `catalog-data` and publishes validated evidence to `security-evidence-v2`.
 
 ### DeltaScope
@@ -38,3 +40,13 @@ GitHub schedules run from the default branch, so `main` keeps thin callers that 
 - `deltascope.yml` — manual read-only developer audit.
 
 The scheduled/event launchers with matching names live on `main`; do not move scanner implementation back there.
+
+## Discord publication notifications
+
+Public publication notices are built from already-sanitised catalog/SigmaScope outputs. The notice builder has no webhook credential; delivery happens in a separate `discord-public` environment job.
+
+- `tools/notifications/discord_notice.py` — deterministic, sanitised notice builder.
+- `tools/notifications/post_discord_notice.py` — isolated webhook sender with a Discord-compliant API User-Agent.
+- `tools/tests/test_discord_notifications.py` — notification routing, sanitisation, and voice regression tests.
+
+Message wording is selected deterministically from fixed line pools. No AI or generated copy is used at runtime. Security notices sound mildly irritated, catalog growth sounds wealthy/data-hungry, Definitions updates sound pleased, and ordinary evidence reviews are deliberately a little smug.

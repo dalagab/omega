@@ -561,8 +561,37 @@ def _write_variant_derived_datasets(
     directory = candidate / "derived" / "variants" / f"{variant_id // 1000:04d}" / str(variant_id)
     result: dict[str, Any] = {}
     for name, stem in DERIVED_DATASETS.items():
+        if name not in datasets:
+            continue
         result[name] = write_record_dataset(candidate, directory, stem, datasets.get(name) or [])
     return result
+
+
+def _record_dataset_files_present(root: Path, descriptor: object) -> bool:
+    """Return True only when every file named by a record descriptor still exists.
+
+    Synchronization can safely preserve an immutable source-analysis cache only when
+    its transport bytes are actually present in the copied candidate tree. Freshly
+    merged successful subsets currently carry variant descriptors but not their
+    derived files, so those missing datasets must still be materialized from the
+    working DB (including an intentional empty dataset).
+    """
+    if not isinstance(descriptor, dict):
+        return False
+    files = descriptor.get("files") or []
+    if not isinstance(files, list) or not files:
+        return False
+    root = root.resolve()
+    for item in files:
+        if not isinstance(item, dict):
+            return False
+        try:
+            relative = safe_relpath(str(item.get("path") or ""))
+        except (TypeError, ValueError):
+            return False
+        if not (root / relative).is_file():
+            return False
+    return True
 
 
 def synchronize_candidate(candidate: Path, database: Path, successful_variants: set[int]) -> dict[str, Any]:
@@ -616,7 +645,20 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
                 derived.pop(name, None)
             payload["derived"] = derived
             existing_evidence = dict(payload.get("derivedEvidence") or {})
-            written = _write_variant_derived_datasets(candidate, variant_id, graph_derived)
+            datasets_to_write = dict(graph_derived)
+            existing_source_cache = existing_evidence.get("sourceAnalysisCache")
+            # An unchanged variant may have a valid immutable source-analysis cache in
+            # the copied published candidate even when that cache was not materialized
+            # into the disposable working DB. Preserve both its descriptor *and bytes*.
+            # If the descriptor's files are absent (for example a freshly merged subset
+            # whose derived tree was not copied), keep sourceAnalysisCache in the write
+            # set so an empty/fresh dataset is materialized and its descriptor refreshed.
+            if (
+                not graph_derived.get("sourceAnalysisCache")
+                and _record_dataset_files_present(candidate, existing_source_cache)
+            ):
+                datasets_to_write.pop("sourceAnalysisCache", None)
+            written = _write_variant_derived_datasets(candidate, variant_id, datasets_to_write)
             # If this working DB contains a complete source analysis (fresh scan or
             # restored cache), rewrite its cache descriptor. Otherwise retain an
             # already-published cache descriptor for unchanged evidence.

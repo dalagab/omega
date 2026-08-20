@@ -212,6 +212,17 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("publish_security_evidence_v2.py", security)
         self.assertNotIn("compile_marketplace_snapshot.py", security)
 
+    def test_catalog_and_sigmascope_are_mutually_exclusive(self) -> None:
+        catalog = self.read("catalog-builder.yml")
+        security = self.read("sigmascope.yml")
+        shared_group = "group: omega-catalog-sigmascope-exclusive"
+        self.assertIn(shared_group, catalog)
+        self.assertIn(shared_group, security)
+        self.assertIn("cancel-in-progress: false", catalog)
+        self.assertIn("cancel-in-progress: false", security)
+        self.assertNotIn("group: omega-daily-catalog-publication", catalog)
+        self.assertNotIn("group: omega-sigmascope", security)
+
     def test_workflows_do_not_embed_large_python_heredocs(self) -> None:
         for name in ("catalog-builder.yml", "sigmascope.yml", "catalog-compaction.yml"):
             self.assertNotIn("python - <<'PY'", self.read(name), f"{name} should call tested Python modules instead of inline Python")

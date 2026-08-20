@@ -18,6 +18,16 @@ import post_discord_notice
 
 
 class DiscordNoticeTests(unittest.TestCase):
+    def test_notice_sender_identity_is_exactly_toni(self) -> None:
+        result = discord_notice.notice(
+            "catalog",
+            "catalog",
+            {"embeds": [{"title": "Test"}]},
+            {"event": "identity"},
+        )
+        self.assertEqual("TONI", result["payload"]["username"])
+        self.assertNotIn("Omega Updates", json.dumps(result))
+
     def test_catalog_notice_is_sanitised_and_compares_revisions(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -219,7 +229,7 @@ class DiscordNoticeTests(unittest.TestCase):
                 "eventId": "test",
                 "shouldNotify": True,
                 "payload": {
-                    "username": "Omega Updates",
+                    "username": "TONI",
                     "allowed_mentions": {"parse": []},
                     "embeds": [{"title": "Test"}],
                 },

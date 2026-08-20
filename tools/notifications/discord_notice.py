@@ -87,7 +87,7 @@ def notice(
         "webhookKey": webhook_key,
         "eventId": digest,
         "shouldNotify": should_notify,
-        "payload": {"username": "Omega Updates", "allowed_mentions": {"parse": []}, **payload},
+        "payload": {"username": "TONI", "allowed_mentions": {"parse": []}, **payload},
     }
 
 
