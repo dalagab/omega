@@ -76,6 +76,39 @@ REASON_CONTRACTS = {
 
 RETRY_DELAYS_MINUTES = (60, 240, 720, 1440, 2880, 5760)
 
+# Coverage-first queue policy: establish at least one artifact-backed result for as many
+# active variants as possible before spending worker time revisiting already-covered
+# variants. Reason priorities still order work within each lane.
+SELECTION_POLICY = "coverage-first-v1"
+
+
+def _selection_lane(item: dict[str, Any]) -> int:
+    """Return the deterministic coverage lane for a mutable queue item.
+
+    0 = never-attempted artifact work for a variant with no published current scan
+    1 = retry of artifact work for a still-uncovered variant
+    2 = all already-covered work (artifact re-analysis, source follow-up, advisory)
+    """
+    work_type = str(item.get("workType") or "")
+    current_scan_id = int(item.get("currentScanId") or 0)
+    current_scanned_at = str(item.get("currentScannedAtUtc") or "").strip()
+    uncovered_artifact = work_type == "artifact" and current_scan_id <= 0 and not current_scanned_at
+    if not uncovered_artifact:
+        return 2
+    return 0 if int(item.get("attemptCount") or 0) <= 0 else 1
+
+
+def _selection_sort_key(item: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        _selection_lane(item),
+        -int(item.get("priority") or 0),
+        str(item.get("currentScannedAtUtc") or ""),
+        str(item.get("internalName") or "").casefold(),
+        str(item.get("sourceName") or "").casefold(),
+        int(item.get("variantId") or 0),
+        str(item.get("workType") or ""),
+    )
+
 
 def utc_now(now: dt.datetime | None = None) -> str:
     value = now or dt.datetime.now(dt.timezone.utc)
@@ -683,7 +716,7 @@ def build_seed(
             generated_at=generated,
         ))
         counts["advisory_changed"] = counts.get("advisory_changed", 0) + 1
-    items.sort(key=lambda item: (-int(item["priority"]), str(item["currentScannedAtUtc"]), str(item["internalName"]).casefold(), str(item["sourceName"]).casefold(), int(item["variantId"]), str(item.get("workType") or "")))
+    items.sort(key=_selection_sort_key)
     semantic = {
         "schema": SEED_SCHEMA,
         "catalogRevision": catalog_revision,
@@ -695,6 +728,7 @@ def build_seed(
         "advisoryRevision": advisory_revision,
         "baselineSecurityRebuild": baseline_security_rebuild,
         "reasonContracts": REASON_CONTRACTS,
+        "selectionPolicy": SELECTION_POLICY,
         "items": [
             {
                 key: item[key]
@@ -722,6 +756,7 @@ def build_seed(
         "advisoryRevision": advisory_revision,
         "previousAdvisoryRevision": previous_advisory_revision,
         "reasonContracts": REASON_CONTRACTS,
+        "selectionPolicy": SELECTION_POLICY,
         "counts": {**counts, "queued": len(items)},
         "items": items,
     }
@@ -797,6 +832,7 @@ def sync_state(seed: dict[str, Any], previous: dict[str, Any] | None, *, now: dt
         "ruleSetRevision": str(seed.get("ruleSetRevision") or ""),
         "advisoryRevision": str(seed.get("advisoryRevision") or ""),
         "reasonContracts": dict(seed.get("reasonContracts") or REASON_CONTRACTS),
+        "selectionPolicy": str(seed.get("selectionPolicy") or SELECTION_POLICY),
         "updatedAtUtc": str(previous.get("updatedAtUtc") or "") if same_seed else utc_now(now_dt),
         "items": items,
         "recentCompleted": list(previous.get("recentCompleted") or [])[-64:],
@@ -904,14 +940,7 @@ def select_next(state: dict[str, Any], *, now: dt.datetime | None = None) -> dic
     if not eligible:
         return None
 
-    eligible.sort(key=lambda item: (
-        -int(item.get("priority") or 0),
-        str(item.get("currentScannedAtUtc") or ""),
-        str(item.get("internalName") or "").casefold(),
-        str(item.get("sourceName") or "").casefold(),
-        int(item.get("variantId") or 0),
-        str(item.get("workType") or ""),
-    ))
+    eligible.sort(key=_selection_sort_key)
     item = eligible[0]
     attempt_count = int(item.get("attemptCount") or 0) + 1
     attempt_id = f"attempt-v2-{digest([item.get('targetFingerprint'), attempt_count, utc_now(now_dt)])[:16]}"
@@ -990,6 +1019,9 @@ def finish_attempt(
 def state_summary(state: dict[str, Any]) -> dict[str, Any]:
     counts: dict[str, int] = {}
     due_by_reason: dict[str, int] = {}
+    uncovered_variant_ids: set[int] = set()
+    uncovered_retry_variant_ids: set[int] = set()
+    covered_work_pending = 0
     for item in (state.get("items") or {}).values():
         if not isinstance(item, dict):
             continue
@@ -998,6 +1030,14 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
         if status != "complete":
             reason = str(item.get("primaryReason") or "")
             due_by_reason[reason] = due_by_reason.get(reason, 0) + 1
+            lane = _selection_lane(item)
+            variant_id = int(item.get("variantId") or 0)
+            if lane in (0, 1) and variant_id > 0:
+                uncovered_variant_ids.add(variant_id)
+                if lane == 1:
+                    uncovered_retry_variant_ids.add(variant_id)
+            elif lane == 2:
+                covered_work_pending += 1
     return {
         "schema": "omega.sigmascope.queue-summary.v1",
         "queueSeedRevision": str(state.get("queueSeedRevision") or ""),
@@ -1015,6 +1055,10 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
         "states": counts,
         "pendingByReason": due_by_reason,
         "reasonContracts": dict(state.get("reasonContracts") or REASON_CONTRACTS),
+        "selectionPolicy": str(state.get("selectionPolicy") or SELECTION_POLICY),
+        "unscannedVariantsPending": len(uncovered_variant_ids),
+        "unscannedRetryVariants": len(uncovered_retry_variant_ids),
+        "coveredWorkPending": covered_work_pending,
         "total": sum(counts.values()),
     }
 

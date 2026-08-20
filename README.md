@@ -17,14 +17,16 @@ The YARA review contract advances to v2. Enabled rules must pin the SHA-256 of t
 ClamAV remains operational through the 2.11 immutable database/executable identity path. The 2.13 native/endpoint/component contracts, 2.12 lifecycle/event-driven queue contracts, and 2.10 artifact/source-attribution model remain compatible. Plugin artifacts and source remain untrusted data and are never executed or dynamically loaded.
 
 ### DeltaScope
-Developer/operator-only, read-only inspection and audit tooling over published or local SigmaScope evidence. Run it with:
+Developer/operator-only, read-only inspection and audit tooling over published or local SigmaScope evidence. DeltaScope 3.0 is organized as a **security-research workbench**, not a database browser: current variants enter a triage queue and open into Triage, Malware, Findings, Network, Code & native, Supply chain, and Immutable evidence tabs. It exposes ClamAV/YARA (including YARA archive-member targets), static findings/capabilities, automation/permission evidence, endpoint URLs/origin/confidence, imports/PInvoke/reachability/call search, dependency/native relationships, OSV, artifact/manifest identity, source-attribution/provenance and lifecycle/immutable analysis history. Generic Evidence-v2/SQLite traversal remains available under Advanced. Online browsing detects publication races on the moving Evidence-v2 branch, refreshes the atomic root/index and retries while preserving strict SHA verification.
+
+Online mode remains lazy: plugin lists use the compact published indexes and large forensic shards are fetched only when opened. Historical/pre-summary Evidence-v2 and the legacy read-only SQLite developer mode remain supported. Run it with:
 
 ```bash
 python tools/security/deltascope.py serve-online
 python tools/security/deltascope.py audit --evidence-v2 path/to/security-evidence-v2 --json
 ```
 
-DeltaScope is not part of the production scanner decision path and has no publication step.
+DeltaScope is not part of the production scanner decision path, never scans plugins, and has no publication/write-back step.
 
 ## Branch model
 
@@ -55,3 +57,25 @@ Public publication notices are built from already-sanitised catalog/SigmaScope o
 - `tools/tests/test_discord_notifications.py` — notification routing, sanitisation, and voice regression tests.
 
 Message wording is selected deterministically from fixed line pools. No AI or generated copy is used at runtime. Security notices sound mildly irritated, catalog growth sounds wealthy/data-hungry, Definitions updates sound pleased, and ordinary evidence reviews are deliberately a little smug.
+
+## DeltaScope antivirus/YARA visibility hotfix
+
+DeltaScope now exposes a permanent top-level **Antivirus & YARA** panel and moves per-plugin ClamAV/YARA results directly below the selected plugin overview. Clean/no-match results are shown explicitly; scans without secondary-security evidence are labelled as unrecorded rather than implied clean. This is developer-view-only and does not alter SigmaScope analysis or publication semantics.
+
+## DeltaScope TONI and metric drill-downs
+
+DeltaScope includes **TONI** as a deterministic evidence guide in the browser. TONI explains the currently loaded Evidence-v2 counts, queue state, selected plugin, source-attribution confidence and ClamAV/YARA state using fixed data-driven wording. It has no model call and no scanner/publication authority.
+
+Headline metric cards are direct navigation controls: immutable-analysis counts open the exact flattened analysis records; artifact/lifecycle/global-index counts open their matching records; queue cards filter to the exact queue state; finding totals open per-variant contribution rows so the displayed total can be reproduced and each variant can be opened for its raw immutable findings. Immutable analysis rows can open their hash-verified manifest in the read-only row inspector.
+
+The refreshed visual system is Tailwind-inspired but compiled into the existing self-contained HTML/CSS so local/offline DeltaScope does not depend on a CDN.
+
+
+## DeltaScope security researcher workbench
+
+The default DeltaScope interaction is now case-oriented. Select a variant from the research queue, review deterministic TONI triage signals, check ClamAV/YARA and static findings, inspect endpoints and code/native behavior, then validate supply-chain/source correspondence and immutable evidence. Headline cards remain exact drill-downs; the raw table browser is intentionally secondary. No AI/LLM participates in these signals or in SigmaScope decisions.
+
+
+### Coverage-first queue / DeltaScope coverage visibility
+
+SigmaScope prioritizes never-scanned active variants before revisiting variants that already have published evidence. DeltaScope surfaces this as `Never scanned` coverage and makes `SOURCE CODE` versus `ARTIFACT ONLY` explicit; source availability is not the same thing as source→artifact verification. Online Evidence-v2 cache filenames are short content-derived keys to remain safe on long Windows cache prefixes.

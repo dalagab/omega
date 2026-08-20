@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SECURITY_TOOLS = ROOT / "tools" / "security"
 if str(SECURITY_TOOLS) not in sys.path:
     sys.path.insert(0, str(SECURITY_TOOLS))
-from evidence_v2_inspector import V2SigmascopeInspector
+from evidence_v2_inspector import RemoteEvidenceSource, V2SigmascopeInspector
 
 MODULE_PATH = ROOT / "tools" / "security" / "developer_view.py"
 spec = importlib.util.spec_from_file_location("omega_security_developer_view", MODULE_PATH)
@@ -431,6 +431,149 @@ class SecurityDeveloperViewTests(unittest.TestCase):
                 inspector.close()
 
 
+    def test_deltascope_browses_modern_v2_lifecycle_queue_secondary_and_forensics(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "security-evidence-v2"
+            (root / "indexes").mkdir(parents=True)
+            (root / "variants" / "0000").mkdir(parents=True)
+            (root / "variants" / "history").mkdir(parents=True)
+            analysis = root / "artifacts" / "aa" / "analysis"
+            analysis.mkdir(parents=True)
+
+            report = {
+                "artifactIdentityContractVersion": 1,
+                "manifestObservationContractVersion": 1,
+                "sourceAttributionContractVersion": 1,
+                "secondarySecurityContractVersion": 3,
+                "scanProvenance": {"workType": "source", "artifactAnalysisRevision": "artifact-v3", "sourceAnalysisRevision": "source-v1"},
+                "artifactIdentity": {"schema": "omega.sigmascope.artifact-identity.v1", "artifactSha256": "a" * 64, "artifactBytes": 1234},
+                "manifestObservation": {"schema": "omega.manifest-observation.v1", "observationKey": "fixture"},
+                "source": {
+                    "available": True, "repository": "https://github.com/example/fixture", "commit": "b" * 40,
+                    "attribution": {"schema": "omega.artifact-source-attribution.v1", "confidence": 70, "coverageLabel": "Version-correlated source", "basis": ["version_match"]},
+                    "provenance": {"identityMatched": True, "versionMatched": True},
+                },
+                "secondarySecurity": {
+                    "schema": "omega.sigmascope.secondary-security.v1", "artifactSha256": "a" * 64,
+                    "semantics": "supplemental-evidence-only", "matchCount": 1,
+                    "engines": [{
+                        "engine": "yara", "status": "complete", "available": True, "enabled": True, "version": "4.5.0",
+                        "scanScope": {"schema": "omega.sigmascope.yara-scan-scope.v1", "artifactContainerScanned": True, "archiveMembersScanned": 2, "targetCount": 3},
+                        "matches": [{"rule": "Omega_Test", "ruleClass": "compound-abuse", "confidence": "high", "license": "LicenseRef-Omega-First-Party", "target": {"kind": "archive-member", "path": "Fixture.dll", "sha256": "c" * 64, "bytes": 42}}],
+                    }, {"engine": "clamav", "status": "complete", "available": True, "enabled": True, "version": "ClamAV fixture", "matches": []}],
+                },
+                "package": {"archive": "Fixture.zip", "fileCount": 4, "bundledManagedAssemblyCount": 1},
+                "intelligence": {
+                    "endpointSummary": {"schema": "omega.sigmascope.endpoint-summary.v1", "literalCount": 1, "concreteDestinationCount": 1, "hosts": ["api.example.test"]},
+                    "networkEndpoints": [{"host": "api.example.test", "classification": "unrecognised-host", "originType": "source-code", "confidence": "High", "concreteDestinationEvidence": True}],
+                    "componentSummary": {"schema": "omega.sigmascope.component-summary.v1", "dependencyCount": 2, "nativeRelationships": [{"library": "kernel32.dll", "disposition": "platform-library", "directManagedCallObserved": True}]},
+                    "coverage": {"managedMetadata": True}, "limits": {"calls": 20000},
+                },
+            }
+            current_payload = {
+                "variantId": 1,
+                "plugin": {"plugin_id": 1, "internal_name": "ModernFixture", "canonical_name": "Modern Fixture"},
+                "variant": {"variant_id": 1, "name": "Modern Fixture", "author": "Test", "assembly_version": "2.14.0"},
+                "source": {"source_id": 1, "name": "Fixture feed", "url": "https://example.test/repo.json"},
+                "current": {"variant_id": 1, "scan_id": 9, "status": "complete", "highest_severity": "caution", "caution_count": 1, "source_attribution_confidence": 70, "report_json": report},
+                "analysis": {"path": "artifacts/aa/analysis", "artifactSha256": "a" * 64, "analysisId": "d" * 64},
+                "derived": {"sourceArtifactComparison": {"comparisonStatus": "matched"}, "scanLineage": {"representativeScanId": 8}, "dependencyDrift": []},
+            }
+            historical_payload = {**current_payload, "current": {**current_payload["current"], "scan_id": 8}, "lifecycle": {"state": "superseded", "terminal": True, "reason": "artifact_identity_changed"}}
+            (root / "variants" / "0000" / "1.json").write_text(json.dumps(current_payload), encoding="utf-8")
+            (root / "variants" / "history" / "1-old.json").write_text(json.dumps(historical_payload), encoding="utf-8")
+
+            datasets = {
+                "findings": [{"rule_id": "fixture", "severity": "caution", "title": "Fixture"}],
+                "assemblies": [{"path": "Fixture.dll", "assembly_name": "Fixture"}],
+                "imports": [{"assembly_path": "Fixture.dll", "native_library": "kernel32.dll", "entry_point": "CreateFileW"}],
+                "reachability": [{"method": "Fixture.Run", "reachable": True}],
+                "symbols": [{"assembly_path": "Fixture.dll", "symbol": "Fixture.Run"}],
+                "calls": [{"caller": "Fixture.Run", "target": "CreateFileW"}],
+            }
+            manifest = {"datasets": {}}
+            for name, rows in datasets.items():
+                path = analysis / f"{name}.json"
+                path.write_text(json.dumps(rows), encoding="utf-8")
+                manifest["datasets"][name] = {"records": len(rows), "recordDigest": name + "-digest", "files": [{"path": f"artifacts/aa/analysis/{name}.json", "encoding": "json"}]}
+            manifest_path = analysis / "manifest.json"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            manifest_sha = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+
+            plugins_index = {
+                "schema": "omega.security-evidence.plugins-index.v2", "lifecycleContractVersion": 1,
+                "currentVariants": [{"variantId": 1, "scanId": 9, "variantPath": "variants/0000/1.json", "summary": {"plugin_id": 1, "internal_name": "ModernFixture", "canonical_name": "Modern Fixture", "scan_status": "complete", "highest_severity": "caution", "caution_count": 1, "source_available": 1, "source_repository": "https://github.com/example/fixture", "source_attribution_confidence": 70, "source_coverage_label": "Version-correlated source"}}],
+                "terminalVariants": [],
+                "historicalSnapshots": [{"variantId": 1, "scanId": 8, "variantPath": "variants/history/1-old.json", "lifecycle": {"state": "superseded", "terminal": True}, "summary": {"plugin_id": 1, "canonical_name": "Modern Fixture", "lifecycle_state": "superseded"}}],
+            }
+            (root / "indexes" / "plugins.json").write_text(json.dumps(plugins_index), encoding="utf-8")
+            global_indexes = {
+                "artifacts": {"artifacts": [{"artifactSha256": "a" * 64, "currentVariants": [1], "variants": [1], "historicalSnapshots": [], "terminalSnapshots": [], "analyses": [{"analysisId": "d" * 64, "path": "artifacts/aa/analysis", "manifest": {"path": "artifacts/aa/analysis/manifest.json", "sha256": "__MANIFEST_SHA__", "bytes": 0}}]}]},
+                "dependency-components": {"records": [{"component": "kernel32.dll", "family": "native"}]},
+                "advisories": {"records": [{"id": "GHSA-fixture"}]},
+                "nuget": {"packages": [{"package": "Fixture.Package", "version": "1.0.0"}]},
+                "ipc": {"providers": [{"channel": "Fixture.Channel", "variantId": 1}]},
+                "identities": {"plugins": [{"plugin_id": 1, "internal_name": "ModernFixture"}], "plugin_variants": [{"variant_id": 1, "plugin_id": 1}], "sources": [{"source_id": 1, "name": "Fixture feed"}]},
+            }
+            index_desc = {"plugins": {"path": "indexes/plugins.json"}}
+            for key, payload in global_indexes.items():
+                if key == "artifacts":
+                    payload["artifacts"][0]["analyses"][0]["manifest"]["sha256"] = manifest_sha
+                    payload["artifacts"][0]["analyses"][0]["manifest"]["bytes"] = manifest_path.stat().st_size
+                filename = key + ".json"
+                (root / "indexes" / filename).write_text(json.dumps(payload), encoding="utf-8")
+                root_key = {"dependency-components": "dependencyComponents"}.get(key, key)
+                index_desc[root_key] = {"path": "indexes/" + filename}
+            queue = {"schema": "omega.sigmascope.queue-state.v2", "items": {"variant:2:artifact": {"queueKey": "variant:2:artifact", "variantId": 2, "workType": "artifact", "state": "pending", "reasons": ["new_variant"]}}, "recentCompleted": [{"queueKey": "variant:1:source", "variantId": 1, "workType": "source", "state": "complete"}]}
+            (root / "scanner-queue.json").write_text(json.dumps(queue), encoding="utf-8")
+            root_index = {
+                "schema": "omega.security-evidence.v2", "formatVersion": 2, "engine": {"name": "Sigmascope", "version": "2.14.0"},
+                "counts": {"currentVariants": 1, "historicalSnapshots": 1, "analyses": 1, "artifactGroups": 1, "dependencyComponents": 1, "advisories": 1, "nugetPackageVersionPairs": 1},
+                "indexes": index_desc,
+                "scannerQueue": {"path": "scanner-queue.json", "summary": {"total": 2, "states": {"pending": 1, "complete": 1, "retry": 0}}},
+                "revisions": {"evidenceRevision": "ev-v2-modern", "artifactAnalysisRevision": "artifact-v3", "sourceAnalysisRevision": "source-v1"},
+                "source": {"scan": {"queueBatch": {"selectedCount": 20, "scanElapsedSeconds": 123.4}}},
+            }
+            (root / "index.json").write_text(json.dumps(root_index), encoding="utf-8")
+
+            inspector = V2SigmascopeInspector(root)
+            try:
+                summary = inspector.summary()
+                self.assertEqual(1, summary["counts"]["historicalSnapshots"])
+                self.assertEqual(1, summary["counts"]["queuePending"])
+                self.assertEqual(20, summary["lastBatch"]["selectedCount"])
+                detail = inspector.plugin_detail(1)
+                self.assertEqual(3, detail["contracts"]["secondarySecurityContractVersion"])
+                self.assertEqual(70, detail["sourceAttribution"]["confidence"])
+                self.assertTrue(detail["sourceCoverage"]["sourceCodeAvailable"])
+                self.assertEqual("artifact+source", detail["sourceCoverage"]["mode"])
+                self.assertEqual("source+artifact", inspector.list_plugins()[0]["source_code_status"])
+                self.assertEqual(1, detail["secondarySecurity"]["matchCount"])
+                self.assertEqual(1, detail["researcher"]["secondaryMatchCount"])
+                self.assertEqual("urgent", detail["researcher"]["priority"])
+                self.assertTrue(detail["researcher"]["signals"])
+                self.assertEqual("api.example.test", detail["endpointSummary"]["hosts"][0])
+                self.assertTrue(detail["componentSummary"]["nativeRelationships"][0]["directManagedCallObserved"])
+                self.assertIn("assemblies", {row["name"] for row in detail["datasetCatalog"]})
+                self.assertEqual("Fixture.dll", inspector.plugin_dataset(1, "assemblies")[0]["path"])
+                self.assertEqual("superseded", inspector.variant_snapshots(1)[1]["snapshotKind"])
+                snapshot = inspector.snapshot_detail("variants/history/1-old.json")
+                self.assertEqual("superseded", snapshot["snapshotKind"])
+                self.assertEqual("superseded", snapshot["lifecycle"]["state"])
+                self.assertEqual("artifact", inspector.browse_table("v2_queue_items")["rows"][0]["workType"])
+                analyses = inspector.browse_table("v2_analyses")["rows"]
+                self.assertEqual(1, len(analyses))
+                self.assertEqual("d" * 64, analyses[0]["analysisId"])
+                self.assertEqual("artifacts/aa/analysis/manifest.json", analyses[0]["manifestPath"])
+                self.assertIn("datasets", inspector.analysis_manifest(analyses[0]["manifestPath"]))
+                breakdown = inspector.browse_table("v2_finding_breakdown")["rows"]
+                self.assertEqual(1, breakdown[0]["finding_count"])
+                self.assertEqual(1, len(inspector.browse_table("v2_finding_breakdown", filter_column="caution_count", filter_value="__positive__")["rows"]))
+                self.assertEqual("native", inspector.browse_table("v2_dependency_components")["rows"][0]["family"])
+                self.assertEqual("CreateFileW", inspector.browse_table("plugin_security_managed_imports", filter_column="variant_id", filter_value="1")["rows"][0]["entry_point"])
+            finally:
+                inspector.close()
+
     def test_online_v2_developer_view_fetches_indexes_then_evidence_lazily(self) -> None:
         class Response:
             def __init__(self, data: bytes):
@@ -503,6 +646,25 @@ class SecurityDeveloperViewTests(unittest.TestCase):
             finally:
                 inspector.close()
 
+    def test_online_cache_uses_short_hashed_paths_for_deep_evidence_members(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            # Simulate the long Windows Store Python cache prefix that previously pushed
+            # immutable analysis paths over MAX_PATH.
+            base = Path(td) / ("w" * 120)
+            source = RemoteEvidenceSource(
+                "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/",
+                base,
+                urlopen=lambda *args, **kwargs: None,
+            )
+            source.set_revision("ev-v2-9f3c6bf213892b8c")
+            relative = "artifacts/e7/" + "e7" * 32 + "/analyses/" + "a1" * 32 + "/forensics/reachability-0001.jsonl.gz"
+            path = source._cache_path(relative)
+            self.assertLess(len(str(path)), 240)
+            self.assertNotIn("artifacts", str(path))
+            self.assertNotIn("analyses", str(path))
+            self.assertEqual(".bin", path.suffix)
+            self.assertEqual(path, source._cache_path(relative), "cache key must be deterministic")
+
     def test_online_v2_revision_check_and_refresh_switches_snapshot_namespace(self) -> None:
         class Response:
             def __init__(self, data: bytes): self.data = io.BytesIO(data); self.headers = {"Content-Length": str(len(data))}
@@ -534,6 +696,68 @@ class SecurityDeveloperViewTests(unittest.TestCase):
                 inspector.close()
 
 
+
+    def test_online_plugin_open_recovers_when_branch_publishes_between_index_and_variant_fetch(self) -> None:
+        class Response:
+            def __init__(self, data: bytes):
+                self.data = io.BytesIO(data)
+                self.headers = {"Content-Length": str(len(data))}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, n: int = -1) -> bytes: return self.data.read(n)
+
+        def packed(value) -> bytes:
+            return (json.dumps(value, sort_keys=True) + "\n").encode()
+
+        base = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
+        manifest = {"datasets": {}}
+        variant1 = {
+            "schema": "omega.security-evidence.variant.v2", "formatVersion": 2, "variantId": 1,
+            "plugin": {"plugin_id": 1, "internal_name": "RaceFixture", "canonical_name": "Race Fixture"},
+            "variant": {"variant_id": 1, "name": "Race Fixture", "assembly_version": "1.0"},
+            "source": {},
+            "current": {"variant_id": 1, "scan_id": 1, "status": "complete", "highest_severity": "none", "report_json": {}},
+            "analysis": {"analysisId": "a" * 64, "path": "artifacts/aa/analysis", "artifactSha256": "b" * 64},
+            "derived": {},
+        }
+        variant2 = {**variant1, "current": {**variant1["current"], "scan_id": 2, "scanned_at_utc": "2026-08-20T21:00:00Z"}}
+        vb1, vb2 = packed(variant1), packed(variant2)
+        plugins1 = {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": [{
+            "variantId": 1, "scanId": 1, "variantPath": "variants/0000/1.json", "variantSha256": hashlib.sha256(vb1).hexdigest(),
+            "summary": {"plugin_id": 1, "internal_name": "RaceFixture", "canonical_name": "Race Fixture", "scan_id": 1, "scan_status": "complete", "highest_severity": "none"},
+        }]}
+        plugins2 = {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": [{
+            "variantId": 1, "scanId": 2, "variantPath": "variants/0000/1.json", "variantSha256": hashlib.sha256(vb2).hexdigest(),
+            "summary": {"plugin_id": 1, "internal_name": "RaceFixture", "canonical_name": "Race Fixture", "scan_id": 2, "scan_status": "complete", "highest_severity": "none"},
+        }]}
+        pb1, pb2 = packed(plugins1), packed(plugins2)
+        root1 = {"schema": "omega.security-evidence.v2", "formatVersion": 2, "revisions": {"evidenceRevision": "ev-v2-race-old"}, "indexes": {"plugins": {"path": "indexes/plugins.json", "sha256": hashlib.sha256(pb1).hexdigest()}}}
+        root2 = {"schema": "omega.security-evidence.v2", "formatVersion": 2, "revisions": {"evidenceRevision": "ev-v2-race-new"}, "indexes": {"plugins": {"path": "indexes/plugins.json", "sha256": hashlib.sha256(pb2).hexdigest()}}}
+        state = {"new": False}
+
+        def fake_urlopen(request, timeout=0):
+            del timeout
+            url = request.full_url
+            if url == base + "index.json":
+                return Response(packed(root2 if state["new"] else root1))
+            if url == base + "indexes/plugins.json":
+                return Response(pb2 if state["new"] else pb1)
+            if url == base + "variants/0000/1.json":
+                state["new"] = True
+                return Response(vb2)
+            if url == base + "artifacts/aa/analysis/manifest.json":
+                return Response(packed(manifest))
+            raise AssertionError(url)
+
+        with tempfile.TemporaryDirectory() as td:
+            inspector = V2SigmascopeInspector.online(base_url=base, cache_dir=Path(td), urlopen=fake_urlopen)
+            try:
+                detail = inspector.plugin_detail(1)
+                self.assertTrue(detail["onlineSnapshotRefreshed"])
+                self.assertEqual(2, detail["identity"]["scan_id"])
+                self.assertEqual("ev-v2-race-new", inspector.source_status()["currentRevision"])
+            finally:
+                inspector.close()
 
     def test_online_v2_remains_compatible_with_pre_summary_published_index(self) -> None:
         class Response:
@@ -575,9 +799,19 @@ class SecurityDeveloperViewTests(unittest.TestCase):
         serve_mock.assert_called_once()
         fetch_mock.assert_not_called()
 
-    def test_developer_view_uses_explicit_controls_and_click_through_evidence_browser(self) -> None:
-        self.assertIn("Evidence browser", view.HTML)
-        self.assertIn("No SQL required", view.HTML)
+    def test_developer_view_uses_research_workbench_with_advanced_raw_evidence(self) -> None:
+        self.assertIn("SECURITY RESEARCH WORKBENCH", view.HTML)
+        self.assertIn("Research queue", view.HTML)
+        self.assertIn("Triage", view.HTML)
+        self.assertIn("Malware", view.HTML)
+        self.assertIn("Code & native", view.HTML)
+        self.assertIn("Supply chain", view.HTML)
+        self.assertIn("Advanced · raw Evidence-v2 / database browser", view.HTML)
+        self.assertIn("Metrics & coverage · exact drill-down counts", view.HTML)
+        self.assertIn("Never scanned", view.HTML)
+        self.assertIn("SOURCE CODE", view.HTML)
+        self.assertIn("ARTIFACT ONLY", view.HTML)
+        self.assertIn("sourceCoverage", MODULE_PATH.read_text(encoding="utf-8"))
         self.assertIn("Advanced · read-only SQL console", view.HTML)
         self.assertIn("scanStatusFilter", view.HTML)
         self.assertIn("document.getElementById", view.HTML)

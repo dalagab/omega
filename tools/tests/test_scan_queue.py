@@ -307,6 +307,41 @@ class ScanQueueTests(unittest.TestCase):
         self.assertEqual("source", selected["workType"])
         self.assertEqual("attempted", synced["items"]["source-variant-7"]["state"])
 
+    def test_coverage_first_selection_prefers_never_scanned_before_source_followup_or_rescan(self) -> None:
+        state = {
+            "schema": scan_queue.STATE_SCHEMA, "selectionPolicy": scan_queue.SELECTION_POLICY,
+            "items": {
+                "source-variant-1": {
+                    "queueKey": "source-variant-1", "workType": "source", "variantId": 1,
+                    "internalName": "AlreadyCovered", "sourceName": "Repo", "priority": 1001,
+                    "currentScanId": 10, "currentScannedAtUtc": "2026-08-19T10:00:00Z",
+                    "attemptCount": 0, "state": "pending", "targetFingerprint": "source-1",
+                },
+                "variant-2": {
+                    "queueKey": "variant-2", "workType": "artifact", "variantId": 2,
+                    "internalName": "NeverScanned", "sourceName": "Repo", "priority": 900,
+                    "currentScanId": 0, "currentScannedAtUtc": "",
+                    "attemptCount": 0, "state": "pending", "targetFingerprint": "artifact-2",
+                },
+                "variant-3": {
+                    "queueKey": "variant-3", "workType": "artifact", "variantId": 3,
+                    "internalName": "UncoveredRetry", "sourceName": "Repo", "priority": 950,
+                    "currentScanId": 0, "currentScannedAtUtc": "",
+                    "attemptCount": 2, "state": "pending", "targetFingerprint": "artifact-3",
+                },
+            },
+        }
+        first = scan_queue.select_next(state, now=NOW)
+        self.assertEqual(2, first["variantId"], "untouched uncovered artifact must beat a higher-priority revisit")
+        scan_queue.finish_attempt(state, first, status="complete", artifact_sha256="a" * 64, scan_id=20, now=NOW)
+        second = scan_queue.select_next(state, now=NOW + dt.timedelta(seconds=1))
+        self.assertEqual(3, second["variantId"], "retry of an uncovered artifact must still beat already-covered work")
+        summary = scan_queue.state_summary(state)
+        self.assertEqual(scan_queue.SELECTION_POLICY, summary["selectionPolicy"])
+        self.assertEqual(1, summary["unscannedVariantsPending"])
+        self.assertEqual(1, summary["unscannedRetryVariants"])
+        self.assertEqual(1, summary["coveredWorkPending"])
+
     def test_failed_attempts_back_off_instead_of_releasing_every_fifteen_minutes(self) -> None:
         seed = {
             "schema": scan_queue.SEED_SCHEMA,
