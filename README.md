@@ -97,3 +97,9 @@ The goal is not to give individual plugins special treatment. If the scanner log
 ## One last thing
 
 Omega is an independent community project. It is not affiliated with Square Enix, Dalamud, XIVLauncher, or FINAL FANTASY XIV.
+
+## Current client interaction notes
+
+- Required resolved plugin dependencies can be opened in the normal Omega install chooser; optional and inferred relationships remain reviewable rather than silently installed.
+- Repository-move updates stay in Updates as explicit review items.
+- The changelog icon beside an available update opens an **Update changes** panel with the version transition, source repository, and published change text.

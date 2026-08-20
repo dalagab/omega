@@ -13,17 +13,19 @@ internal sealed partial class MarketplaceWindow
 
         DrawProductSectionHeading("Project README");
         ImGui.Indent(14f);
-        ImGui.TextDisabled("Fetched from the project's public repository. Markdown and common embedded HTML are rendered as presentation text.");
-        ImGui.Dummy(new Vector2(Ui(1f), Ui(5f)));
-
-        var blocks = MarketplaceReadmeMarkup.Parse(readme);
-        for (var index = 0; index < blocks.Count; index++)
-            DrawProductReadmeBlock(blocks[index], index);
+        DrawMarketplaceMarkupText(readme, "readme");
 
         ImGui.Unindent(14f);
     }
 
-    private void DrawProductReadmeBlock(MarketplaceReadmeBlock block, int index)
+    private void DrawMarketplaceMarkupText(string text, string idPrefix, int maximumBlocks = 160)
+    {
+        var blocks = MarketplaceReadmeMarkup.Parse(text);
+        for (var index = 0; index < Math.Min(blocks.Count, maximumBlocks); index++)
+            DrawProductReadmeBlock(blocks[index], index, idPrefix);
+    }
+
+    private void DrawProductReadmeBlock(MarketplaceReadmeBlock block, int index, string idPrefix = "readme")
     {
         var wrap = ImGui.GetCursorPosX() + Math.Max(Ui(320f), Math.Min(Ui(940f), ImGui.GetContentRegionAvail().X));
         switch (block.Kind)
@@ -57,7 +59,7 @@ internal sealed partial class MarketplaceWindow
             case MarketplaceReadmeBlockKind.Code:
                 ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.025f, 0.030f, 0.038f, 0.88f));
                 var codeLines = Math.Clamp(block.Text.Count(ch => ch == '\n') + 1, 1, 14);
-                ImGui.BeginChild($"readme-code-{index}-{StableId(block.Text)}", new Vector2(Math.Min(Ui(940f), ImGui.GetContentRegionAvail().X), Ui(12f) + (codeLines * ImGui.GetTextLineHeightWithSpacing())), true, ImGuiWindowFlags.HorizontalScrollbar);
+                ImGui.BeginChild($"{idPrefix}-code-{index}-{StableId(block.Text)}", new Vector2(Math.Min(Ui(940f), ImGui.GetContentRegionAvail().X), Ui(12f) + (codeLines * ImGui.GetTextLineHeightWithSpacing())), true, ImGuiWindowFlags.HorizontalScrollbar);
                 ImGui.TextUnformatted(block.Text);
                 ImGui.EndChild();
                 ImGui.PopStyleColor();

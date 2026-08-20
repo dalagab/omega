@@ -35,6 +35,7 @@ internal sealed partial class MarketplaceWindow
 
         pendingUpdate = candidate;
         pendingUpdatePreviousSourceUrl = installedPlugin.Manifest.InstalledFromUrl ?? string.Empty;
+        pendingUpdateSourceAcknowledgementChecked = false;
         updateMigrationPopupOpen = true;
         requestUpdateMigrationPopup = true;
     }
@@ -116,8 +117,27 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextDisabled("To");
             ImGui.TableSetColumnIndex(1);
             DrawRepositoryName(SourceLabel(candidate), candidate.SourceUrl, candidate.SourceIsOfficial, currentApi);
+            ImGui.SameLine(0f, Ui(8f));
+            ImGui.TextDisabled("•");
+            ImGui.SameLine(0f, Ui(8f));
+            DrawRepositoryTrustLabel(SourceLabel(candidate), candidate.SourceUrl, candidate.SourceIsOfficial);
 
             ImGui.EndTable();
+        }
+
+        var destinationNeedsSourceReview = NeedsInstallRepositoryReview(candidate);
+        if (destinationNeedsSourceReview)
+        {
+            ImGui.Spacing();
+            ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.24f, 0.035f, 0.045f, 0.88f));
+            ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.82f, 0.16f, 0.20f, 0.94f));
+            ImGui.BeginChild("update-migration-source-review", new Vector2(0f, Ui(92f)), true,
+                ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+            ImGui.TextColored(new Vector4(0.98f, 0.37f, 0.31f, 1f), "The destination source requires acknowledgement.");
+            ImGui.TextWrapped(BuildInstallRepositoryReviewReason(candidate));
+            ImGui.Checkbox("I understand and want to migrate to this source", ref pendingUpdateSourceAcknowledgementChecked);
+            ImGui.EndChild();
+            ImGui.PopStyleColor(2);
         }
 
         var previousVariant = ResolveMigrationSourceVariant(candidate.InternalName, pendingUpdatePreviousSourceUrl, installedVersion);
@@ -157,11 +177,23 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.SameLine(0f, 10f);
         var canUpdate = updateTask is null &&
+                        (!destinationNeedsSourceReview || pendingUpdateSourceAcknowledgementChecked) &&
                         GetAvailableUpdateCandidate(candidate.InternalName, installedPlugin, currentApi, currentDalamudVersion) is not null;
         if (!canUpdate)
             ImGui.BeginDisabled();
-        if (ImGui.Button("Migrate & update", new Vector2(migrateWidth, Ui(32f))))
+        var migrateLabel = destinationNeedsSourceReview ? "Acknowledge & migrate" : "Migrate & update";
+        if (ImGui.Button(migrateLabel, new Vector2(destinationNeedsSourceReview ? Ui(178f) : migrateWidth, Ui(32f))))
+        {
+            if (destinationNeedsSourceReview)
+            {
+                var notice = FindRepositoryRiskNotice(candidate.SourceUrl);
+                if (notice is not null && !IsRepositoryRiskAcknowledged(notice))
+                    AcknowledgeRepositoryRisk(notice);
+                if (RequiresUntrustedRepositoryAcknowledgement(candidate) && !IsUntrustedRepositoryAcknowledged(candidate))
+                    AcknowledgeUntrustedRepository(candidate);
+            }
             StartSelectedUpdate(candidate);
+        }
         if (!canUpdate)
             ImGui.EndDisabled();
 
@@ -229,11 +261,19 @@ internal sealed partial class MarketplaceWindow
         if (sourceVariant is not null)
         {
             DrawRepositoryName(SourceLabel(sourceVariant), sourceVariant.SourceUrl, sourceVariant.SourceIsOfficial, currentApi);
+            ImGui.SameLine(0f, Ui(8f));
+            ImGui.TextDisabled("•");
+            ImGui.SameLine(0f, Ui(8f));
+            DrawRepositoryTrustLabel(SourceLabel(sourceVariant), sourceVariant.SourceUrl, sourceVariant.SourceIsOfficial);
             return;
         }
 
         var name = Uri.TryCreate(sourceUrl, UriKind.Absolute, out var uri) ? uri.Host : "Installed repository";
         DrawRepositoryName(name, sourceUrl, official: false, currentApi: currentApi);
+        ImGui.SameLine(0f, Ui(8f));
+        ImGui.TextDisabled("•");
+        ImGui.SameLine(0f, Ui(8f));
+        ImGui.TextColored(new Vector4(0.34f, 0.64f, 0.98f, 1f), "Unmanaged local");
     }
 
     private void StartUpdateAll(
@@ -270,7 +310,7 @@ internal sealed partial class MarketplaceWindow
         if (updateAllTotal == 0)
         {
             operationMessage = updateAllSkippedMigrations > 0
-                ? $"{updateAllSkippedMigrations} update{(updateAllSkippedMigrations == 1 ? string.Empty : "s")} require repository migration review; use the individual update buttons."
+                ? $"{updateAllSkippedMigrations} update{(updateAllSkippedMigrations == 1 ? string.Empty : "s")} require repository review below."
                 : "Everything is already current.";
             return;
         }
@@ -343,7 +383,7 @@ internal sealed partial class MarketplaceWindow
         if (updateAllFailed > 0)
             summary += $", {updateAllFailed} failed";
         if (updateAllSkippedMigrations > 0)
-            summary += $". {updateAllSkippedMigrations} repository migration{(updateAllSkippedMigrations == 1 ? string.Empty : "s")} still require individual review";
+            summary += $". {updateAllSkippedMigrations} repository migration{(updateAllSkippedMigrations == 1 ? string.Empty : "s")} remain in the list for review";
         operationMessage = summary + ".";
         updateAllActive = false;
         updateAllDefinitionsPending = false;
@@ -361,6 +401,9 @@ internal sealed partial class MarketplaceWindow
         var migration = installedPlugin is not null && IsRepositoryMigration(installedPlugin, plugin);
 
         updatingInternalName = plugin.InternalName;
+        updatingInstalledVersionText = installedPlugin?.Version?.ToString() ?? string.Empty;
+        plugin.HasCurrentApiBuild(Plugin.PluginInterface.Manifest.DalamudApiLevel, configuration.PreferTestingBuilds, out var useTestingTarget);
+        updatingTargetVersionText = (useTestingTarget ? plugin.TestingAssemblyVersion ?? plugin.AssemblyVersion : plugin.AssemblyVersion).ToString();
         operationMessage = migration
             ? $"Migrating {plugin.Name} to {plugin.SourceName} and updating it..."
             : $"Updating {plugin.Name}...";
@@ -387,6 +430,13 @@ internal sealed partial class MarketplaceWindow
         {
             var result = updateTask.GetAwaiter().GetResult();
             operationMessage = result.Message;
+            if (!string.IsNullOrWhiteSpace(updatingInternalName))
+            {
+                if (result.Success)
+                    ClearUpdateFailure(updatingInternalName);
+                else if (result.HasFailureDetail)
+                    SetUpdateFailure(updatingInternalName, result);
+            }
             if (result.Success && !string.IsNullOrWhiteSpace(updatingInternalName) && !string.IsNullOrWhiteSpace(result.NewSourceUrl))
                 selectedVariantSource[updatingInternalName] = result.NewSourceUrl;
             if (updateAllActive)
@@ -398,7 +448,17 @@ internal sealed partial class MarketplaceWindow
         }
         catch (Exception ex)
         {
-            operationMessage = $"Update failed: {ex.GetBaseException().Message}";
+            var detail = ex.GetBaseException().Message;
+            operationMessage = $"Update failed: {detail}";
+            if (!string.IsNullOrWhiteSpace(updatingInternalName))
+            {
+                SetUpdateFailure(updatingInternalName, new UpdateResult(
+                    UpdateOutcome.Failed,
+                    $"Update failed for {updatingInternalName}. The installed plugin was not intentionally replaced by Omega.",
+                    FailureKind: UpdateFailureKind.Lifecycle,
+                    FailureCode: ex.GetBaseException().GetType().Name,
+                    FailureDetail: detail));
+            }
             if (updateAllActive)
             {
                 updateAllCompleted++;
@@ -409,6 +469,8 @@ internal sealed partial class MarketplaceWindow
         {
             updateTask = null;
             updatingInternalName = string.Empty;
+            updatingInstalledVersionText = string.Empty;
+            updatingTargetVersionText = string.Empty;
             sidebarCatalogRevision = -1;
             filterCatalogRevision = -1;
         }
@@ -417,10 +479,166 @@ internal sealed partial class MarketplaceWindow
             StartNextUpdateAllStep();
     }
 
+    private void DrawProductUpdateFailure(
+        MarketplacePlugin plugin,
+        IExposedPlugin? installedPlugin,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
+        if (!updateFailures.TryGetValue(plugin.InternalName, out var failure))
+            return;
+
+        var availableTarget = installedPlugin is null
+            ? null
+            : GetAvailableUpdateVersion(plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
+        if (installedPlugin is null || !IsUpdateFailureApplicable(failure, availableTarget))
+        {
+            ClearUpdateFailure(plugin.InternalName);
+            return;
+        }
+
+        ImGui.Dummy(Ui(1f, 10f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Ui(7f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.18f, 0.055f, 0.035f, 0.72f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.86f, 0.27f, 0.17f, 0.78f));
+        ImGui.BeginChild(
+            $"product-update-failure-{StableId(plugin.InternalName)}",
+            new Vector2(0f, Ui(142f)),
+            true,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+
+        ImGui.PushFont(UiBuilder.IconFontFixedWidth);
+        ImGui.TextColored(new Vector4(0.98f, 0.48f, 0.24f, 1f), FontAwesomeIcon.ExclamationTriangle.ToIconString());
+        ImGui.PopFont();
+        ImGui.SameLine(0f, Ui(8f));
+        ImGui.TextUnformatted("Update needs attention");
+        ImGui.TextWrapped(failure.Message);
+        var code = string.IsNullOrWhiteSpace(failure.FailureCode) ? "Dalamud update failure" : $"Dalamud: {failure.FailureCode}";
+        var target = availableTarget;
+        var installedVersion = installedPlugin?.Version?.ToString() ?? "unknown";
+        var targetVersion = target?.ToString() ?? "unknown";
+        ImGui.TextDisabled($"Installed v{installedVersion}  •  target v{targetVersion}  •  {code}  •  {SourceLabel(plugin)}");
+        if (ImGui.IsItemHovered())
+            SetReadableTooltip(BuildUpdateFailureTooltip(plugin, failure));
+
+        ImGui.Spacing();
+        if (IsSafeUpdateFailureRepositoryUrl(plugin.SourceUrl) && ImGui.SmallButton($"Open repository##update-failure-open-{StableId(plugin.InternalName)}"))
+            OpenProductWebsite(plugin, plugin.SourceUrl);
+        if (IsSafeUpdateFailureRepositoryUrl(plugin.SourceUrl))
+            ImGui.SameLine(0f, Ui(8f));
+        if (ImGui.SmallButton($"Dismiss##update-failure-dismiss-{StableId(plugin.InternalName)}"))
+        {
+            ClearUpdateFailure(plugin.InternalName);
+            operationMessage = $"Dismissed the saved update diagnostic for {plugin.Name}.";
+        }
+        if (ImGui.IsWindowHovered())
+            SetReadableTooltip(BuildUpdateFailureTooltip(plugin, failure));
+
+        ImGui.EndChild();
+        ImGui.PopStyleColor(2);
+        ImGui.PopStyleVar(2);
+    }
+
+    private static string BuildUpdateFailureTooltip(MarketplacePlugin plugin, UpdateResult failure)
+    {
+        var lines = new List<string>();
+        if (failure.FailureRecordedAtUtc is { } recorded)
+            lines.Add($"Recorded: {recorded.ToLocalTime():g}");
+        if (!string.IsNullOrWhiteSpace(failure.FailureInstalledVersion) || !string.IsNullOrWhiteSpace(failure.FailureTargetVersion))
+            lines.Add($"Failed update: v{(string.IsNullOrWhiteSpace(failure.FailureInstalledVersion) ? "?" : failure.FailureInstalledVersion)} → v{(string.IsNullOrWhiteSpace(failure.FailureTargetVersion) ? "?" : failure.FailureTargetVersion)}");
+        if (!string.IsNullOrWhiteSpace(failure.FailureDetail))
+            lines.Add(failure.FailureDetail);
+        if (!string.IsNullOrWhiteSpace(failure.FailureCode))
+            lines.Add($"Dalamud status: {failure.FailureCode}");
+        if (!string.IsNullOrWhiteSpace(plugin.SourceUrl))
+            lines.Add($"Repository: {plugin.SourceUrl}");
+        lines.Add("The existing installed version remains the safe baseline. Retry the update; if a download failure keeps repeating, the repository/update endpoint likely needs attention.");
+        return string.Join("\n", lines);
+    }
+
+    private void RestorePersistedUpdateFailures()
+    {
+        if (configuration.UpdateFailures is null || configuration.UpdateFailures.Count == 0)
+            return;
+
+        foreach (var pair in configuration.UpdateFailures)
+        {
+            var stored = pair.Value;
+            if (stored is null || string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(stored.Message))
+                continue;
+            if (!Enum.TryParse<UpdateFailureKind>(stored.FailureKind, ignoreCase: true, out var kind))
+                kind = UpdateFailureKind.Lifecycle;
+            updateFailures[pair.Key] = new UpdateResult(
+                UpdateOutcome.Failed,
+                stored.Message,
+                stored.PreviousSourceUrl,
+                stored.NewSourceUrl,
+                FailureKind: kind,
+                FailureCode: stored.FailureCode,
+                FailureDetail: stored.FailureDetail,
+                FailureRecordedAtUtc: stored.RecordedAtUtc == default ? null : stored.RecordedAtUtc,
+                FailureInstalledVersion: stored.InstalledVersion,
+                FailureTargetVersion: stored.TargetVersion);
+        }
+    }
+
+    private void SetUpdateFailure(string internalName, UpdateResult failure)
+    {
+        if (string.IsNullOrWhiteSpace(internalName))
+            return;
+        var recorded = failure with
+        {
+            FailureRecordedAtUtc = failure.FailureRecordedAtUtc ?? DateTimeOffset.UtcNow,
+            FailureInstalledVersion = string.IsNullOrWhiteSpace(failure.FailureInstalledVersion) ? updatingInstalledVersionText : failure.FailureInstalledVersion,
+            FailureTargetVersion = string.IsNullOrWhiteSpace(failure.FailureTargetVersion) ? updatingTargetVersionText : failure.FailureTargetVersion,
+        };
+        updateFailures[internalName] = recorded;
+        configuration.UpdateFailures ??= new Dictionary<string, PersistedUpdateFailure>(StringComparer.OrdinalIgnoreCase);
+        configuration.UpdateFailures[internalName] = new PersistedUpdateFailure
+        {
+            Message = recorded.Message,
+            PreviousSourceUrl = recorded.PreviousSourceUrl,
+            NewSourceUrl = recorded.NewSourceUrl,
+            FailureKind = recorded.FailureKind.ToString(),
+            FailureCode = recorded.FailureCode,
+            FailureDetail = recorded.FailureDetail,
+            InstalledVersion = recorded.FailureInstalledVersion,
+            TargetVersion = recorded.FailureTargetVersion,
+            RecordedAtUtc = recorded.FailureRecordedAtUtc ?? DateTimeOffset.UtcNow,
+        };
+        configuration.Save();
+    }
+
+    private void ClearUpdateFailure(string internalName)
+    {
+        if (string.IsNullOrWhiteSpace(internalName))
+            return;
+        var changed = updateFailures.Remove(internalName);
+        if (configuration.UpdateFailures is not null)
+            changed |= configuration.UpdateFailures.Remove(internalName);
+        if (changed)
+            configuration.Save();
+    }
+
+    private static bool IsUpdateFailureApplicable(UpdateResult failure, Version? availableTarget)
+    {
+        if (availableTarget is null)
+            return false;
+        return string.IsNullOrWhiteSpace(failure.FailureTargetVersion) ||
+               failure.FailureTargetVersion.Equals(availableTarget.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsSafeUpdateFailureRepositoryUrl(string value)
+        => Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+           (uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+            uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase));
+
     private void CloseUpdateMigration()
     {
         pendingUpdate = null;
         pendingUpdatePreviousSourceUrl = string.Empty;
+        pendingUpdateSourceAcknowledgementChecked = false;
         updateMigrationPopupOpen = false;
         ImGui.CloseCurrentPopup();
     }

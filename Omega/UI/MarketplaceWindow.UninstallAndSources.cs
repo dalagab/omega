@@ -39,7 +39,7 @@ internal sealed partial class MarketplaceWindow
         var plugin = pendingUninstall;
         ImGui.TextUnformatted($"Uninstall {plugin.Name}?");
         ImGui.Spacing();
-        ImGui.TextWrapped("Omega will ask Dalamud to unload the plugin when needed, schedule its installed files for deletion, and remove it from Dalamud's active installed-plugin list.");
+        ImGui.TextWrapped("Dalamud will uninstall this plugin.");
         ImGui.TextDisabled("Plugin configuration/data is not deleted by this action.");
         ImGui.Spacing();
 

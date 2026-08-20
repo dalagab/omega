@@ -25,14 +25,31 @@ internal enum UpdateOutcome
     Failed,
 }
 
+internal enum UpdateFailureKind
+{
+    None,
+    RepositoryPreparation,
+    Download,
+    Unload,
+    Load,
+    Lifecycle,
+}
+
 internal sealed record UpdateResult(
     UpdateOutcome Outcome,
     string Message,
     string PreviousSourceUrl = "",
     string NewSourceUrl = "",
-    bool Migrated = false)
+    bool Migrated = false,
+    UpdateFailureKind FailureKind = UpdateFailureKind.None,
+    string FailureCode = "",
+    string FailureDetail = "",
+    DateTimeOffset? FailureRecordedAtUtc = null,
+    string FailureInstalledVersion = "",
+    string FailureTargetVersion = "")
 {
     public bool Success => Outcome is UpdateOutcome.Updated or UpdateOutcome.AlreadyCurrent;
+    public bool HasFailureDetail => !Success && FailureKind != UpdateFailureKind.None;
 }
 
 internal enum UninstallOutcome
@@ -144,7 +161,17 @@ internal sealed class DalamudInstallerBridge
         var previousSource = exposed.Manifest.InstalledFromUrl ?? string.Empty;
         try
         {
-            await UpdateThroughDalamudInternalsAsync(plugin, useTesting, cancellationToken).ConfigureAwait(false);
+            var status = await UpdateThroughDalamudInternalsAsync(plugin, useTesting, cancellationToken).ConfigureAwait(false);
+            if (!status.Equals("Success", StringComparison.OrdinalIgnoreCase))
+            {
+                Plugin.Log.Warning(
+                    "Dalamud update returned {Status} for {Plugin} from {Repository}",
+                    status,
+                    plugin.InternalName,
+                    plugin.SourceUrl);
+                return BuildDalamudStatusFailure(plugin, installedVersion, targetVersion, previousSource, status);
+            }
+
             var moved = !PluginUpdateRules.IsSamePublishingSource(previousSource, plugin.SourceUrl, plugin.SourceIsOfficial);
             return new UpdateResult(
                 UpdateOutcome.Updated,
@@ -158,11 +185,7 @@ internal sealed class DalamudInstallerBridge
         catch (Exception ex)
         {
             Plugin.Log.Warning(ex, "Dalamud internal update bridge failed for {Plugin} from {Repository}", plugin.InternalName, plugin.SourceUrl);
-            return new UpdateResult(
-                UpdateOutcome.Failed,
-                $"Omega could not update {plugin.Name} through the current Dalamud lifecycle service: {ex.GetBaseException().Message}",
-                previousSource,
-                plugin.SourceUrl);
+            return BuildUpdateExceptionFailure(plugin, installedVersion, targetVersion, previousSource, ex);
         }
     }
 
@@ -292,7 +315,7 @@ internal sealed class DalamudInstallerBridge
         await task.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task UpdateThroughDalamudInternalsAsync(MarketplacePlugin plugin, bool useTesting, CancellationToken cancellationToken)
+    private static async Task<string> UpdateThroughDalamudInternalsAsync(MarketplacePlugin plugin, bool useTesting, CancellationToken cancellationToken)
     {
         var dalamudAssembly = typeof(IDalamudPluginInterface).Assembly;
         var pluginManagerType = RequireType(dalamudAssembly, "Dalamud.Plugin.Internal.PluginManager");
@@ -329,8 +352,94 @@ internal sealed class DalamudInstallerBridge
         var result = task.GetType().GetProperty("Result", BindingFlags.Instance | BindingFlags.Public)?.GetValue(task)
             ?? throw new InvalidOperationException("Dalamud update invocation completed without a result.");
         var status = result.GetType().GetProperty("Status", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(result)?.ToString();
-        if (!string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"Dalamud update returned {status ?? "an unknown status"}.");
+        return string.IsNullOrWhiteSpace(status) ? "Unknown" : status;
+    }
+
+    private static UpdateResult BuildDalamudStatusFailure(
+        MarketplacePlugin plugin,
+        Version installedVersion,
+        Version targetVersion,
+        string previousSource,
+        string status)
+    {
+        var normalized = (status ?? string.Empty).Trim();
+        var (kind, summary, detail) = normalized.ToLowerInvariant() switch
+        {
+            "faileddownload" => (
+                UpdateFailureKind.Download,
+                $"Update download failed for {plugin.Name}. Your installed v{installedVersion} was left unchanged.",
+                $"Dalamud could not download v{targetVersion} from {plugin.SourceName}. The repository may be temporarily rejecting requests, the update URL may be invalid, or the package may no longer be available. Omega did not replace the installed plugin."),
+            "failedunload" => (
+                UpdateFailureKind.Unload,
+                $"{plugin.Name} could not be unloaded for its update. The installed version was kept.",
+                $"Dalamud reached the update step for v{targetVersion}, but could not unload the running plugin safely. Retry after closing the plugin's UI or after restarting the game if the problem persists."),
+            "failedload" => (
+                UpdateFailureKind.Load,
+                $"The {plugin.Name} update package could not be installed or loaded. The previous plugin was not replaced.",
+                $"Dalamud downloaded the v{targetVersion} update but could not finish staging/loading it. Retry once; if it repeats, the repository package itself may be invalid or incompatible."),
+            _ => (
+                UpdateFailureKind.Lifecycle,
+                $"Dalamud could not complete the {plugin.Name} update. The installed version was not replaced.",
+                $"Dalamud returned update status '{normalized}' while attempting v{targetVersion} from {plugin.SourceName}."),
+        };
+
+        return new UpdateResult(
+            UpdateOutcome.Failed,
+            summary,
+            previousSource,
+            plugin.SourceUrl,
+            FailureKind: kind,
+            FailureCode: string.IsNullOrWhiteSpace(normalized) ? "Unknown" : normalized,
+            FailureDetail: detail,
+            FailureInstalledVersion: installedVersion.ToString(),
+            FailureTargetVersion: targetVersion.ToString());
+    }
+
+    private static UpdateResult BuildUpdateExceptionFailure(
+        MarketplacePlugin plugin,
+        Version installedVersion,
+        Version targetVersion,
+        string previousSource,
+        Exception exception)
+    {
+        var http = FindException<HttpRequestException>(exception);
+        if (http is not null)
+        {
+            var httpCode = http.StatusCode is null ? "HTTP request failed" : $"HTTP {(int)http.StatusCode.Value} {http.StatusCode.Value}";
+            return new UpdateResult(
+                UpdateOutcome.Failed,
+                $"Update download failed for {plugin.Name}. Your installed v{installedVersion} was left unchanged.",
+                previousSource,
+                plugin.SourceUrl,
+                FailureKind: UpdateFailureKind.Download,
+                FailureCode: httpCode,
+                FailureDetail: $"The repository request for v{targetVersion} failed ({httpCode}). Retry later; if it persists, the repository's update URL or package endpoint likely needs attention.",
+                FailureInstalledVersion: installedVersion.ToString(),
+                FailureTargetVersion: targetVersion.ToString());
+        }
+
+        var baseException = exception.GetBaseException();
+        return new UpdateResult(
+            UpdateOutcome.Failed,
+            $"Omega could not update {plugin.Name} through the current Dalamud lifecycle service.",
+            previousSource,
+            plugin.SourceUrl,
+            FailureKind: UpdateFailureKind.Lifecycle,
+            FailureCode: baseException.GetType().Name,
+            FailureDetail: baseException.Message,
+            FailureInstalledVersion: installedVersion.ToString(),
+            FailureTargetVersion: targetVersion.ToString());
+    }
+
+    private static TException? FindException<TException>(Exception exception)
+        where TException : Exception
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is TException typed)
+                return typed;
+        }
+        return null;
     }
 
     private static object CreateRemoteManifest(

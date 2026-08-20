@@ -35,7 +35,8 @@ public sealed class Plugin : IDalamudPlugin
     private readonly DailyCatalogUpdateService dailyCatalogUpdate;
     private readonly OmegaSelfUpdateService selfUpdates;
     private readonly OmegaRepositoryMigrationService repositoryMigration;
-    private readonly IReadOnlyTitleScreenMenuEntry? titleScreenEntry;
+    private readonly string assemblyDirectory;
+    private IReadOnlyTitleScreenMenuEntry? titleScreenEntry;
 
     public Configuration Configuration { get; }
 
@@ -43,7 +44,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         MigrateConfigurationSchema();
-        var assemblyDirectory = PluginInterface.AssemblyLocation.Directory?.FullName ?? string.Empty;
+        assemblyDirectory = PluginInterface.AssemblyLocation.Directory?.FullName ?? string.Empty;
         MergeBundledSources(assemblyDirectory);
 
         var catalogDatabasePath = Path.Combine(PluginInterface.ConfigDirectory.FullName, SqliteCatalogStore.DatabaseFileName);
@@ -74,8 +75,9 @@ public sealed class Plugin : IDalamudPlugin
 
         RegisterUiCallbacks();
         PluginInterface.ActivePluginsChanged += OnActivePluginsChanged;
-        titleScreenEntry = TryRegisterTitleScreenEntry(assemblyDirectory);
-        systemMenuBridge = new DalamudSystemMenuBridge(GameInterop, OpenMainUi);
+        if (Configuration.ShowInTitleScreenMenu)
+            titleScreenEntry = TryRegisterTitleScreenEntry(assemblyDirectory);
+        systemMenuBridge = new DalamudSystemMenuBridge(GameInterop, OpenMainUi, () => Configuration.ShowInSystemMenu);
         dailyCatalogUpdate = new DailyCatalogUpdateService(Configuration, catalog, catalogUpdates, Notifications);
         catalogUpdates.SeedIfEmpty();
 
@@ -89,9 +91,9 @@ public sealed class Plugin : IDalamudPlugin
 
     private void MigrateConfigurationSchema()
     {
-        if (Configuration.Version >= 9)
+        if (Configuration.Version >= 11)
             return;
-        Configuration.Version = 9;
+        Configuration.Version = 11;
         Configuration.Save();
     }
 
@@ -175,7 +177,34 @@ public sealed class Plugin : IDalamudPlugin
             Path.Combine(assemblyDirectory, "icon.png"),
             Path.Combine(assemblyDirectory, "sigmascope-banner.png"),
             Path.Combine(assemblyDirectory, "company-fallback.png"),
-            Path.Combine(assemblyDirectory, "EULA.md"));
+            Path.Combine(assemblyDirectory, "EULA.md"),
+            ApplyBehaviorConfiguration);
+    }
+
+
+    private void ApplyBehaviorConfiguration()
+    {
+        if (Configuration.ShowInTitleScreenMenu)
+        {
+            titleScreenEntry ??= TryRegisterTitleScreenEntry(assemblyDirectory);
+            return;
+        }
+
+        if (titleScreenEntry is null)
+            return;
+
+        try
+        {
+            TitleScreenMenu.RemoveEntry(titleScreenEntry);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Omega title-screen entry was already unavailable while applying behavior settings.");
+        }
+        finally
+        {
+            titleScreenEntry = null;
+        }
     }
 
     private void RegisterUiCallbacks()

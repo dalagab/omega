@@ -147,7 +147,7 @@ internal sealed partial class MarketplaceWindow
                 background,
                 FontAwesomeIcon.Question,
                 0xFFFFFFFF,
-                $"{SigmascopeRibbonLabel(severity)} Sigmascope finding level. Artifact analysis is available, but source attribution is unresolved. This does not imply anything about the developer's source-disclosure intent.");
+                $"{SigmascopeRibbonLabel(severity)} Sigmascope finding level. Plugin package analysis is available, but source attribution is unresolved. This does not imply anything about the developer's source-disclosure intent.");
         }
 
         var highestKnownApi = HighestKnownApiFor(plugin.InternalName, currentApi);

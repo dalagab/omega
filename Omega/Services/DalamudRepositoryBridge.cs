@@ -475,8 +475,9 @@ internal sealed class DalamudRepositoryBridge
         => target?.GetType().GetProperty(propertyName, AllInstance)?.GetValue(target) as string ?? string.Empty;
 
     /// <summary>
-    /// Removes a user-selected third-party repository only when no currently installed plugin
-    /// points at it through Dalamud's persisted InstalledFromUrl provenance. The usage check is
+    /// Removes a user-selected third-party repository only when no installed plugin, enabled or disabled,
+    /// points at it through Dalamud's persisted InstalledFromUrl provenance. Disabled plugins still need
+    /// a stable servicing origin for future updates/re-enablement. The usage check is
     /// repeated inside the bridge immediately before the configuration mutation so UI state
     /// cannot race a plugin install.
     /// </summary>
@@ -494,7 +495,7 @@ internal sealed class DalamudRepositoryBridge
                 var suffix = inUse.PluginNames.Count > 6 ? $" (+{inUse.PluginNames.Count - 6} more)" : string.Empty;
                 return new RepositoryBridgeResult(
                     RepositoryBridgeOutcome.Failed,
-                    $"Cannot remove this repository while {inUse.InstalledCount} installed plugin(s) use it: {names}{suffix}");
+                    $"Cannot remove this repository while {inUse.InstalledCount} installed plugin(s) use it (enabled or disabled): {names}{suffix}");
             }
 
             var context = ResolveContext();

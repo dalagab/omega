@@ -36,6 +36,33 @@ internal sealed partial class MarketplaceWindow
 
     }
 
+    private string RepositoryStateLabel(string sourceName, string sourceUrl, bool official)
+        => !official && !catalog.IsSourceInDefinitions(sourceUrl)
+            ? "Unmanaged local"
+            : RepositoryProviderRules.TrustLabel(sourceName, sourceUrl, official);
+
+    private void DrawRepositoryTrustLabel(string sourceName, string sourceUrl, bool official)
+    {
+        var unmanaged = !official && !catalog.IsSourceInDefinitions(sourceUrl);
+        var label = RepositoryStateLabel(sourceName, sourceUrl, official);
+        var color = official
+            ? new Vector4(0.35f, 0.78f, 0.92f, 1f)
+            : unmanaged
+                ? new Vector4(0.34f, 0.64f, 0.98f, 1f)
+                : RepositoryProviderRules.IsStableProvider(sourceName, sourceUrl, official)
+                    ? new Vector4(0.38f, 0.78f, 0.52f, 1f)
+                    : new Vector4(0.95f, 0.64f, 0.20f, 1f);
+        ImGui.TextColored(color, label);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(official
+                ? "Built into Dalamud."
+                : unmanaged
+                    ? "Configured in Dalamud; not in Omega Definitions."
+                    : RepositoryProviderRules.IsStableProvider(sourceName, sourceUrl, official)
+                        ? "Recognized community source."
+                        : "Unrecognized community source; acknowledgement required before install.");
+    }
+
     private void DrawRepositoryProviderIcon(RepositoryProviderPresentation provider, float size)
     {
         if (string.IsNullOrWhiteSpace(provider.IconUrl))
@@ -125,6 +152,10 @@ internal sealed partial class MarketplaceWindow
             currentApi);
         if (ImGui.IsItemHovered() && !string.IsNullOrWhiteSpace(plugin.SourceUrl))
             ImGui.SetTooltip(plugin.SourceUrl);
+        ImGui.SameLine(0f, Ui(8f));
+        ImGui.TextDisabled("•");
+        ImGui.SameLine(0f, Ui(8f));
+        DrawRepositoryTrustLabel(SourceLabel(plugin), plugin.SourceUrl, plugin.SourceIsOfficial);
     }
 
     private bool DrawRepositoryActionButton(

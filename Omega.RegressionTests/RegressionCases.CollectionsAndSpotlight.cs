@@ -19,12 +19,13 @@ internal static partial class RegressionCases
         Contains(ui, "Library / Collections /", "opened collection exposes folder-style breadcrumb navigation");
         DoesNotContain(window, "DrawLibraryCollectionDropShelf", "Library > All must not render collection folders or collection drop targets");
         DoesNotContain(library, "DrawCollectionDragHandle", "Library > All must not expose collection-management drag handles");
-        Contains(collections, "Library > All stays a clean list of installed plugins", "collection overview documents the separation between installed-list and collection management");
+        DoesNotContain(collections, "Library > All stays a clean list of installed plugins", "collection overview no longer carries explanatory copy about Library separation");
         Contains(collections, "DrawCollectionAddPicker", "membership additions are managed from inside an opened collection");
         Contains(collections, "Installed plugins not yet in this collection", "opened collections expose a searchable installed-plugin picker");
         Contains(collections, "+ Add plugins", "named collections expose an explicit add-membership action");
         Contains(ui, "DrawProductCollectionMembership", "the Discover individual product page exposes collection membership");
-        Contains(ui, "multiple named collections at the same time", "the product page makes overlapping named collection membership explicit");
+        Contains(ui, "foreach (var membership in memberships)", "the product page renders every named collection membership rather than only one");
+        Contains(ui, ".Where(x => !x.Collection.IsDefault)", "the product page separates named collection memberships from Dalamud's default profile");
         Contains(ui, "StartAddPluginToCollection", "the collection-local picker starts a membership operation");
         Contains(ui, "StartRemovePluginFromCollection", "opened named collections support removing membership");
         Contains(ui, "StartCollectionPluginStateChange", "opened collections can change per-plugin desired state");

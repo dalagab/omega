@@ -27,11 +27,7 @@ internal sealed partial class MarketplaceWindow
 
         DrawProductSectionHeading("How to use");
         ImGui.Indent(14f);
-        ImGui.TextDisabled("Commands, controls and usage information collected from the plugin's own metadata or public project README.");
-        ImGui.Dummy(new Vector2(Ui(1f), Ui(5f)));
-        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(Ui(320f), Math.Min(Ui(940f), ImGui.GetContentRegionAvail().X)));
-        ImGui.TextWrapped(usage);
-        ImGui.PopTextWrapPos();
+        DrawMarketplaceMarkupText(usage, "usage", maximumBlocks: 80);
         ImGui.Unindent(14f);
     }
 
@@ -67,7 +63,7 @@ internal sealed partial class MarketplaceWindow
         return history;
     }
 
-    private static void DrawChangelogEntries(IReadOnlyList<MarketplaceChangelogEntry> entries, int maximumEntries)
+    private void DrawChangelogEntries(IReadOnlyList<MarketplaceChangelogEntry> entries, int maximumEntries)
     {
         foreach (var entry in entries.Take(maximumEntries))
         {
@@ -83,50 +79,34 @@ internal sealed partial class MarketplaceWindow
                 ImGui.SameLine(0f, 8f);
                 ImGui.TextDisabled(entry.SourceName);
             }
-            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(Ui(300f), Math.Min(Ui(900f), ImGui.GetContentRegionAvail().X)));
-            ImGui.TextWrapped(entry.Changelog);
-            ImGui.PopTextWrapPos();
+            DrawMarketplaceMarkupText(entry.Changelog, $"changelog-{StableId(entry.VersionText)}", maximumBlocks: 80);
             ImGui.Dummy(new Vector2(Ui(1f), Ui(7f)));
         }
         if (entries.Count > maximumEntries)
-            ImGui.TextDisabled($"{entries.Count - maximumEntries} older changelog entr{(entries.Count - maximumEntries == 1 ? "y" : "ies")} retained in Definitions.");
+            ImGui.TextDisabled($"{entries.Count - maximumEntries} older changelog entr{(entries.Count - maximumEntries == 1 ? "y" : "ies")}");
     }
 
     private bool DrawInlineChangelogButton(MarketplacePlugin plugin, string id, Version? installedVersion = null)
     {
-        var entries = BuildChangelogEntries(plugin);
-        if (installedVersion is not null)
-        {
-            var updateEntries = entries.Where(entry =>
-                !Version.TryParse(entry.VersionText, out var version) || version > installedVersion).ToArray();
-            if (updateEntries.Length > 0)
-                entries = updateEntries;
-        }
+        var entries = BuildUpdateChangelogEntries(plugin, installedVersion);
         if (entries.Count == 0)
             return false;
 
         var size = Ui(20f);
-        if (ImGui.InvisibleButton($"##{id}", new Vector2(size, size)))
-            ImGui.OpenPopup($"{id}-popup");
+        var clicked = ImGui.InvisibleButton($"##{id}", new Vector2(size, size));
         var min = ImGui.GetItemRectMin();
         ImGui.PushFont(UiBuilder.IconFontFixedWidth);
         var glyph = FontAwesomeIcon.List.ToIconString();
         var glyphSize = ImGui.CalcTextSize(glyph);
-        ImGui.GetWindowDrawList().AddText(min + (new Vector2(size, size) - glyphSize) * 0.5f, ImGui.GetColorU32(ImGuiCol.TextDisabled), glyph);
+        ImGui.GetWindowDrawList().AddText(
+            min + (new Vector2(size, size) - glyphSize) * 0.5f,
+            ImGui.GetColorU32(ImGui.IsItemHovered() ? ImGuiCol.Text : ImGuiCol.TextDisabled),
+            glyph);
         ImGui.PopFont();
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("View update changelog");
-
-        ImGui.SetNextWindowSizeConstraints(UiModalSize(360f, 140f), UiModalSize(540f, 390f));
-        if (ImGui.BeginPopup($"{id}-popup"))
-        {
-            ImGui.TextUnformatted($"{plugin.Name} changelog");
-            if (installedVersion is not null)
-                ImGui.TextDisabled($"Installed v{installedVersion} → v{plugin.AssemblyVersion}");
-            ImGui.Separator();
-            DrawChangelogEntries(entries, maximumEntries: 6);
-            ImGui.EndPopup();
-        }
-        return true;
+            ImGui.SetTooltip("View what changes in this update");
+        if (clicked)
+            OpenUpdateChangelogPanel(plugin, installedVersion);
+        return clicked;
     }
 }

@@ -107,7 +107,7 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(usingFallback
                 ? $"{plugin.Name} has no usable artwork. Dalagab Group fallback shown."
-                : string.IsNullOrWhiteSpace(plugin.Punchline) ? $"Open {plugin.Name}" : plugin.Punchline);
+                : string.IsNullOrWhiteSpace(plugin.Punchline) ? $"Open {plugin.Name}" : MarketplaceReadmeMarkup.ToInlineText(plugin.Punchline));
         return clicked;
     }
 

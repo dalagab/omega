@@ -79,8 +79,6 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawCollectionFolders()
     {
-        ImGui.TextDisabled("Collections use a folder-style view. Membership is additive, so a plugin can appear in multiple named folders.");
-        ImGui.TextDisabled("Open a folder to manage its membership. Library > All stays a clean list of installed plugins.");
         ImGui.Spacing();
         if (collectionSnapshot.Length == 0)
         {
@@ -163,11 +161,14 @@ internal sealed partial class MarketplaceWindow
         }
 
         var switchWidth = Ui(44f);
+        var controlsEnabled = collectionOperationTask is null;
         ImGui.SetCursorPosX(startX + Math.Max(0f, (width - switchWidth) * 0.5f));
-        if (DrawToggleSwitch($"collection-toggle-{collection.Id}", collection.IsEnabled))
+        if (DrawToggleSwitch($"collection-toggle-{collection.Id}", collection.IsEnabled, controlsEnabled))
             StartCollectionToggle(collection, !collection.IsEnabled);
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(collection.IsEnabled ? "Disable this collection" : "Enable this collection");
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip(controlsEnabled
+                ? (collection.IsEnabled ? "Disable this collection" : "Enable this collection")
+                : "Another Dalamud collection change is still being applied.");
         ImGui.SetCursorPosX(startX);
     }
 
@@ -207,22 +208,26 @@ internal sealed partial class MarketplaceWindow
         ImGui.SetCursorPosY(headerY + Ui(66f));
         if (collection.IsDefault)
         {
-            ImGui.TextDisabled("This is Dalamud's automatic default folder. Plugin state can be changed here, but membership is automatic.");
+            ImGui.TextDisabled("Default membership is automatic.");
         }
         else
         {
-            ImGui.TextDisabled("Membership is managed here. A plugin can belong to multiple named collections at the same time.");
+            ImGui.TextDisabled("Collection membership");
             ImGui.Spacing();
+            var collectionControlsEnabled = collectionOperationTask is null;
             if (DrawRoundedButton(
                     collectionAddPickerOpen ? "Close picker" : "+ Add plugins",
                     $"collection-add-picker-toggle-{collection.Id}",
                     new Vector2(Ui(collectionAddPickerOpen ? 108f : 112f), Ui(30f)),
-                    active: collectionAddPickerOpen))
+                    active: collectionAddPickerOpen,
+                    enabled: collectionControlsEnabled))
             {
                 collectionAddPickerOpen = !collectionAddPickerOpen;
                 if (!collectionAddPickerOpen)
                     collectionAddSearch = string.Empty;
             }
+            if (!collectionControlsEnabled && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip("Another Dalamud collection change is still being applied.");
             if (collectionAddPickerOpen)
             {
                 ImGui.Spacing();
@@ -245,10 +250,13 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextDisabled("Collection active");
         ImGui.SameLine(0f, Ui(7f));
         ImGui.SetCursorPosY(ImGui.GetCursorPosY() - Ui(2f));
-        if (DrawToggleSwitch($"collection-header-toggle-{collection.Id}", collection.IsEnabled))
+        var controlsEnabled = collectionOperationTask is null;
+        if (DrawToggleSwitch($"collection-header-toggle-{collection.Id}", collection.IsEnabled, controlsEnabled))
             StartCollectionToggle(collection, !collection.IsEnabled);
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(collection.IsEnabled ? "Disable this collection" : "Enable this collection");
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip(controlsEnabled
+                ? (collection.IsEnabled ? "Disable this collection" : "Enable this collection")
+                : "Another Dalamud collection change is still being applied.");
     }
 
     private void DrawCollectionAddPicker(
@@ -310,8 +318,11 @@ internal sealed partial class MarketplaceWindow
             ImGui.SetCursorPos(new Vector2(
                 Math.Max(Ui(220f), ImGui.GetWindowContentRegionMax().X - addWidth - Ui(10f)),
                 startY + Ui(4f)));
-            if (DrawRoundedButton("Add", "collection-add-candidate-action", new Vector2(addWidth, Ui(28f))))
+            var canAdd = collectionOperationTask is null;
+            if (DrawRoundedButton("Add", "collection-add-candidate-action", new Vector2(addWidth, Ui(28f)), enabled: canAdd))
                 StartAddPluginToCollection(collection, plugin.InternalName, plugin.Name);
+            if (!canAdd && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip("Another Dalamud collection change is still being applied.");
 
             ImGui.Separator();
             ImGui.PopID();
@@ -393,14 +404,18 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextDisabled(entry.WantsEnabled ? "Enabled" : "Disabled");
         ImGui.SameLine(0f, gap);
         ImGui.SetCursorPosY(toggleY);
+        var collectionControlsEnabled = collectionOperationTask is null;
         if (DrawToggleSwitch(
                 $"collection-plugin-state-{collection.Id}-{StableId(entry.InternalName)}",
-                entry.WantsEnabled))
+                entry.WantsEnabled,
+                collectionControlsEnabled))
         {
             StartCollectionPluginStateChange(collection, entry, !entry.WantsEnabled);
         }
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(entry.WantsEnabled ? "Disable this plugin in this collection" : "Enable this plugin in this collection");
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip(collectionControlsEnabled
+                ? (entry.WantsEnabled ? "Disable this plugin in this collection" : "Enable this plugin in this collection")
+                : "Another Dalamud collection change is still being applied.");
 
         if (!collection.IsDefault)
         {
@@ -409,10 +424,13 @@ internal sealed partial class MarketplaceWindow
             if (DrawRoundedButton(
                     "Remove",
                     $"collection-plugin-remove-{collection.Id}-{StableId(entry.InternalName)}",
-                    new Vector2(removeWidth, Ui(30f))))
+                    new Vector2(removeWidth, Ui(30f)),
+                    enabled: collectionControlsEnabled))
             {
                 StartRemovePluginFromCollection(collection, entry, plugin.Name);
             }
+            if (!collectionControlsEnabled && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip("Another Dalamud collection change is still being applied.");
         }
 
         ImGui.EndChild();

@@ -81,9 +81,6 @@ internal static partial class RegressionCases
             "images/omega-banner.png",
             "catalog/catalog-endpoint.json",
             "sources/curated-sources.json",
-            "sources/source-url-aliases.json",
-            "tools/catalog/sigmascope.py",
-            "tools/security/production_sigmascope_v2_pipeline.py",
             ".github/workflows/regression-tests.yml",
             ".github/workflows/catalog-builder.yml",
             ".github/workflows/sigmascope.yml",
@@ -98,8 +95,9 @@ internal static partial class RegressionCases
         var catalogWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
         Contains(catalogWorkflow, "cron: \"17 2 * * *\"", "Omega repository metadata enters the once-daily catalog snapshot instead of causing update churn");
         False(Regex.IsMatch(catalogWorkflow, @"(?m)^  push:\s*$"), "repository metadata changes do not trigger extra client database publications");
-        var websiteScraper = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "scrape_websites.py"));
-        Contains(websiteScraper, ".omega/index.json", "daily enrichment still consumes Omega's scrapeable repository metadata");
+        Contains(catalogWorkflow, "uses: dalagab/omega/.github/workflows/catalog-builder.yml@sigmascope", "client repository metadata is handed to the security-services catalog implementation");
+        False(Directory.Exists(Path.Combine(Root, "tools", "catalog")), "client source package does not duplicate catalog-service tooling");
+        False(Directory.Exists(Path.Combine(Root, "tools", "security")), "client source package does not duplicate Sigmascope/security-service tooling");
 
         var readme = File.ReadAllText(Path.Combine(Root, "README.md"));
         Contains(readme, "## I am a developer", "lean production README keeps an obvious developer entry point");
@@ -184,14 +182,13 @@ internal static partial class RegressionCases
         False(sourcesUi.Contains("SQLite catalog:", StringComparison.Ordinal), "source settings do not expose catalog implementation details");
 
         var sigmascopeWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "sigmascope.yml"));
-        Contains(sigmascopeWorkflow, "Omega Sigmascope continuous worker", "third-party plugin analysis is configured through the continuous Sigmascope worker");
-        Contains(sigmascopeWorkflow, "security-evidence-v2", "Sigmascope uses the dedicated detailed evidence snapshot branch");
-        Contains(sigmascopeWorkflow, "publish_security_evidence_v2.py", "detailed evidence publication is fail-closed through the v2 publisher");
-        Contains(sigmascopeWorkflow, "--skip-marketplace", "continuous Sigmascope never publishes the client Definitions database");
-        False(sigmascopeWorkflow.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "continuous security analysis cannot churn the client database");
+        Contains(sigmascopeWorkflow, "name: Omega security services · Sigmascope launcher", "main exposes only the thin Sigmascope launcher");
+        Contains(sigmascopeWorkflow, "uses: dalagab/omega/.github/workflows/sigmascope.yml@sigmascope", "third-party analysis implementation remains isolated on the security-services branch");
+        False(sigmascopeWorkflow.Contains("publish_security_evidence_v2.py", StringComparison.Ordinal), "client branch does not duplicate the evidence publisher");
+        False(sigmascopeWorkflow.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "continuous security launcher cannot churn the client database directly");
         var dailyCatalogWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
-        Contains(dailyCatalogWorkflow, "gh release upload catalog-latest", "only the daily/manual validated catalog compiler publishes the small client marketplace assets");
-        False(sigmascopeWorkflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "production Sigmascope no longer handles the archived giant v1 evidence bundle");
+        Contains(dailyCatalogWorkflow, "uses: dalagab/omega/.github/workflows/catalog-builder.yml@sigmascope", "daily/manual catalog publication is delegated to the security-services branch");
+        False(dailyCatalogWorkflow.Contains("production_sigmascope_v2_pipeline.py", StringComparison.Ordinal), "catalog launcher cannot directly run Sigmascope");
 
         var availability = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Availability.cs"));
         Contains(availability, "ImGuiCol.Text", "unavailable listings replace white primary text");

@@ -1,8 +1,121 @@
-# Changelog
+## 0.9.50 - 2026-08-20
+
+- Regression-only repair: collection tests now verify multi-collection rendering structurally instead of requiring removed explanatory UI copy.
+- Runtime behavior is unchanged from 0.9.49.
+
+## 0.9.49 — Concise UI regression contract repair
+
+<sub>work build: 0.9.49</sub>
+
+- Updates three stale regression assertions after the 0.9.47 concise-language pass.
+- Keeps the removed Collections, repository-policy, and unmanaged-source explanatory sentences out of the normal UI.
+- Continues to guard the underlying collection-management, installed-plugin repository-removal policy, and unmanaged-local source states.
+- No runtime behavior changes from 0.9.48.
+
+## 0.9.48 — Rich-text build repair
+
+<sub>work build: 0.9.48</sub>
+
+- Fixes the 0.9.47 compile failure in changelog rich-text rendering by keeping `DrawChangelogEntries` on the `MarketplaceWindow` instance boundary used by `StableId` and the shared markup renderer.
+- Preserves the concise UI and safe HTML/Markdown rendering behavior introduced in 0.9.47.
+
+## 0.9.47 — Concise UI language and rich plugin text
+
+<sub>work build: 0.9.47</sub>
+
+- Removed explanatory/development-style copy from normal marketplace, Settings, Collections, Library security and About surfaces.
+- Kept state/action/error text concise and moved optional context to tooltips where useful.
+- Removed the About-page explanation of what Sigmascope is; product security now presents findings and state directly.
+- Routed plugin descriptions, summaries, usage sections, Spotlight text and changelogs through Omega's safe Markdown/common-HTML presentation layer.
+- Prevents manifest HTML such as Questionable's description/changelog markup from appearing as raw tags in the UI.
+- Preserves scripts/forms/embedded active content as non-renderable and strips them from presentation.
+
+## 0.9.46 — Repository, Collections, and security provenance polish
+
+<sub>work build: 0.9.46</sub>
+
+- Makes the repository removal policy explicit: any installed plugin, enabled or disabled, keeps its repository relationship and blocks removal until uninstalled.
+- Shows named collection ownership directly in Library metadata.
+- Disables collection toggles/add/remove actions while Dalamud is already applying another collection mutation, with a clear busy tooltip.
+- Applies the same collection-busy feedback to product-page collection switches.
+- Adds a collapsed Sigmascope **Analysis details** section showing the exact analyzed plugin version, scan time, scanner version, package SHA-256, source attribution/revision, and the current marketplace Definitions/evidence snapshot.
+
+## 0.9.45 — Actionable dependencies and update review
+
+<sub>work build: 0.9.45</sub>
+
+- Add an Action column to product dependency tables: resolved required plugin dependencies can open the normal Install repository chooser; optional/feature dependencies remain explicit Open actions.
+- Permit inferred IPC provider installation only when the relationship is required and high-confidence; Omega never silently installs inferred providers.
+- Unify repository vocabulary across product, install, migration, and source-management surfaces: Dalamud official, Recognized community, Unrecognized community, and Unmanaged local.
+- Keep repository-move updates visibly marked Review required and expose a dedicated Review action; Update all leaves those items in the list rather than treating them as ordinary automatic updates.
+- Replace the inline/nested changelog popup with a dedicated Update changes modal showing installed → target version, repository, and the relevant published changelog entries.
+- Prevent a changelog-icon click from being consumed by the surrounding clickable Updates row.
+
+## 0.9.44 — Trust and lifecycle hardening
+
+<sub>work build: 0.9.44</sub>
+
+- Require explicit source acknowledgement before installing from community repositories outside Omega's recognized provider set, independently of package-divergence findings.
+- Keep package-divergence review as a separate stronger acknowledgement reason and combine both reasons in one install-context review dialog when necessary.
+- Replace user-facing artifact-only security wording with plugin-package/review-coverage language and show the prominent static-analysis disclaimer at the top of every product Sigmascope section.
+- Distinguish waiting, queued, in-progress, failed, incomplete, and completed Sigmascope states; never present missing/incomplete evidence as no findings.
+- Persist failed plugin-update diagnostics in Omega configuration across restarts until success, obsolescence, or explicit dismissal.
+- Add installed/target version context plus Open repository and Dismiss actions to failed-update diagnostics while retaining Retry update as the primary product action.
+
+## 0.9.43 — Popularity regression contract repair
+
+<sub>work build: 0.9.43</sub>
+
+- Fixes the one stale regression assertion reported by ZipRunner after 0.9.42 compiled successfully.
+- The Discover header remains intentionally free of catalog-wide plugin/download/average/install totals.
+- Product pages retain raw per-plugin downloads plus the leader-relative 0–100% popularity bar.
+- No runtime popularity, SigmaScope overlay, installation, or update-failure behavior changed from 0.9.42.
+
+# Omega changelog
+
+## 0.9.42 — Relative popularity indicator
+
+<sub>work build: 0.9.42</sub>
+
+- Removed the Discover header sentence that exposed catalog plugin counts, aggregate reported downloads, catalog averages, and local installed totals.
+- Kept the raw per-plugin download/install count on the product page.
+- Changed visible product popularity from an average multiple to a 0–100% leader-relative bar.
+- The highest average-normalized popularity multiple in the current database defines 100%; every other plugin is positioned proportionally.
+- The tooltip still explains the underlying average multiple and the current leader multiple for transparency.
+- Retains 0.9.41 build-regression repairs and 0.9.40 exact-version SigmaScope overlay preservation.
+
+## 0.9.41 — Build regression repair
+
+<sub>work build: 0.9.41</sub>
+
+- Restored the explicit compact Updates row-height baseline while retaining the taller failed-update state.
+- Made popularity multiple/average formatting culture-invariant, so the normalized index is displayed consistently as `8.00×` rather than locale-dependent `8,00×`.
+- Hardened the popularity regression by checking the formatter under `nl-NL` explicitly.
+- No marketplace/security behavior changes beyond these two build-regression repairs.
 
 Omega follows semantic product versions. Development work stays under **Unreleased** until a GitHub tag is cut; the release workflow then assigns that pending work to the tagged version. Small work-build markers preserve which internal package introduced each change without turning every development package into a release entry.
 
 ## [Unreleased]
+
+<sub>work build: 0.9.40</sub>
+- Preserve downloaded Sigmascope/security projections when Dalamud official runtime manifests replace the same source/version in the live marketplace view.
+- Apply the same exact-source/version security merge to manually refreshed repository overlays so live manifests keep current install/update metadata without erasing server-side findings.
+- Clear inherited security before every overlay re-evaluation and refuse cross-version or cross-source inheritance, preventing stale scan results from attaching to a different package.
+
+<sub>work build: 0.9.39</sub>
+- Normalize repository-reported download/install totals into a catalog-relative popularity index where 1.00× equals total reported downloads divided by logical plugin count.
+- Show the daily catalog average in Discover, expose `x.xx× catalog average` on product pages, and label the existing download ordering as Popularity.
+- Preserve Dalamud update result statuses instead of flattening `FailedDownload`/`FailedUnload`/`FailedLoad` into a generic exception.
+- Keep failed update state attached to the affected plugin for the current Omega session, show a clear warning in Updates and on the product page, and turn the action into Retry update until it succeeds or is no longer applicable.
+- Explain that `FailedDownload` leaves the installed version unchanged and surface the repository/status details without pretending Omega can see the HTTP exception that Dalamud internally consumed.
+
+<sub>work build: 0.9.38</sub>
+- Move the online marketplace publication contract to descriptor v2 (`omega.catalog.marketplace.v2`) with `cat-v2-*` revisions while retaining read compatibility with legacy v1 descriptors and local SQLite databases.
+- Add a clear-X control and lighter grey background to the global search field.
+- Show aggregate reported downloads/installations in Discover and per-plugin reported downloads/installations on product pages.
+- Add Settings → Behavior controls for minimized bar mode, ESC/System-menu visibility, and pre-login/title-screen visibility; menu changes apply immediately.
+- Repair client regression CI so it stages the current Dalamud runtime before building.
+
 
 - Split the repository development surface so the Omega client can evolve independently from SigmaScope/DeltaScope security services.
 - Keep only thin default-branch GitHub Actions launchers for security schedules; scanner/catalog implementation is owned by the `sigmascope` branch.

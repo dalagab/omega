@@ -41,6 +41,7 @@ internal sealed partial class MarketplaceWindow
         }
         DrawProductPackageBaselineWarning(plugin, sourcePackages, currentApi, currentDalamudVersion);
         DrawProductHero(plugin, content, installedPlugin, currentApi, currentDalamudVersion);
+        DrawProductUpdateFailure(plugin, installedPlugin, currentApi, currentDalamudVersion);
         DrawProductProjectLinks(plugin);
         DrawProductCollectionMembership(plugin, installedPlugin);
         DrawProductScreenshots(content);
@@ -99,7 +100,7 @@ internal sealed partial class MarketplaceWindow
         DrawProductSigmascopeSummary(plugin);
         ImGui.Spacing();
 
-        var summary = content.Summary;
+        var summary = MarketplaceReadmeMarkup.ToInlineText(content.Summary);
         if (!string.IsNullOrWhiteSpace(summary))
         {
             // The hero is a concise summary surface; the complete description lives in About below.
@@ -302,10 +303,13 @@ internal sealed partial class MarketplaceWindow
             ImGui.SetCursorPos(new Vector2(
                 rowCursor.X + Math.Max(Ui(34f), width - switchWidth - Ui(10f)),
                 rowCursor.Y + MarketplaceLayoutRules.CenterY(rowHeight, Ui(22f))));
-            if (DrawToggleSwitch($"product-collection-state-{collection.Id}", collection.IsEnabled))
+            var collectionControlsEnabled = collectionOperationTask is null;
+            if (DrawToggleSwitch($"product-collection-state-{collection.Id}", collection.IsEnabled, collectionControlsEnabled))
                 StartCollectionToggle(collection, !collection.IsEnabled);
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(collection.IsEnabled ? $"Disable {label}" : $"Enable {label}");
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip(collectionControlsEnabled
+                    ? (collection.IsEnabled ? $"Disable {label}" : $"Enable {label}")
+                    : "Another Dalamud collection change is still being applied.");
         }
 
         ImGui.SetCursorPos(new Vector2(rowCursor.X, rowCursor.Y + rowHeight));
@@ -391,9 +395,10 @@ internal sealed partial class MarketplaceWindow
             {
                 var migration = IsRepositoryMigration(installedPlugin, updateCandidate);
                 var updateBusy = updateTask is not null;
+                var hasPreviousFailure = updateFailures.ContainsKey(plugin.InternalName);
                 var label = updatingInternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase)
                     ? "Updating…"
-                    : migration ? "Migrate & update" : "Update";
+                    : migration ? "Migrate & update" : hasPreviousFailure ? "Retry update" : "Update";
                 if (DrawProductActionButton(label, $"product-update-{plugin.InternalName}", enabled: !updateBusy, accent: true))
                     OpenUpdateOrMigration(plugin, installedPlugin, currentApi, currentDalamudVersion);
                 if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -587,9 +592,7 @@ internal sealed partial class MarketplaceWindow
         var description = CleanProductDescriptionForDisplay(content.Description, content.Summary);
         if (!string.IsNullOrWhiteSpace(description))
         {
-            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(Ui(280f), Math.Min(Ui(940f), ImGui.GetContentRegionAvail().X)));
-            ImGui.TextWrapped(description);
-            ImGui.PopTextWrapPos();
+            DrawMarketplaceMarkupText(description, "description", maximumBlocks: 100);
             ImGui.Dummy(Ui(1f, 8f));
         }
 
@@ -602,6 +605,8 @@ internal sealed partial class MarketplaceWindow
             ImGui.TableSetupColumn("Field", ImGuiTableColumnFlags.WidthFixed, Ui(110f));
             ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
             DrawProductMetadataRow("Version", plugin.AssemblyVersionText);
+            DrawProductMetadataRow("Downloads / installations", plugin.DownloadCount > 0 ? plugin.DownloadCount.ToString("N0") : "—");
+            DrawProductPopularityMetadataRow(plugin, currentApi);
             DrawProductMetadataRow(
                 "Compatibility",
                 plugin.GetCompatibilityText(currentApi, currentDalamudVersion, configuration.PreferTestingBuilds));
@@ -616,13 +621,13 @@ internal sealed partial class MarketplaceWindow
 
     private static string CleanProductDescriptionForDisplay(string description, string summary)
     {
-        var candidate = (description ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(candidate) || candidate.Equals(summary, StringComparison.Ordinal))
+        var candidate = MarketplaceReadmeMarkup.NormalizeHtml(description ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(candidate) ||
+            MarketplaceReadmeMarkup.ToInlineText(candidate).Equals(MarketplaceReadmeMarkup.ToInlineText(summary), StringComparison.Ordinal))
             return string.Empty;
 
-        // Aggregated community manifests often append a provenance line such as
-        // "Plugin from https://...". Source identity is already shown as metadata below,
-        // so omit that transport detail from the human-readable About copy only.
+        // Aggregated community manifests can append a source transport line. The repository is
+        // already shown in metadata, so omit that duplicate line from the visible description.
         var lines = candidate.Replace("\r\n", "\n", StringComparison.Ordinal)
             .Replace('\r', '\n')
             .Split('\n')

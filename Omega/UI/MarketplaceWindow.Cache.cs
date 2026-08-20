@@ -186,7 +186,7 @@ internal sealed partial class MarketplaceWindow
     private static string SortLabel(MarketplaceSort value) => value switch
     {
         MarketplaceSort.LastUpdated => "Recently updated",
-        MarketplaceSort.Downloads => "Downloads",
+        MarketplaceSort.Downloads => "Popularity",
         MarketplaceSort.HighestApi => "Highest API",
         MarketplaceSort.Version => "Version",
         _ => "Name",

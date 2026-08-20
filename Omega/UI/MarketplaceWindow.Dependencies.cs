@@ -41,18 +41,18 @@ internal sealed partial class MarketplaceWindow
     {
         if (plugin.HasCompletedSecurityScan)
         {
-            ImGui.TextDisabled("No external plugin or IPC dependencies were detected for this package.");
+            ImGui.TextDisabled("No external plugin or IPC dependencies found.");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(plugin.SecurityStatus))
         {
-            ImGui.TextDisabled("Dependency information is not present in the current Definitions snapshot for this package.");
+            ImGui.TextDisabled("Dependency data unavailable.");
             return;
         }
 
         var status = plugin.SecurityStatus.Trim();
-        ImGui.TextDisabled($"Dependency analysis is {status} for this package. Published dependency data will appear here when available.");
+        ImGui.TextDisabled($"Dependency analysis: {status}.");
         if (!string.IsNullOrWhiteSpace(plugin.SecurityError) && ImGui.IsItemHovered())
             ImGui.SetTooltip(plugin.SecurityError);
     }
@@ -71,7 +71,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, Ui(8f, 6f));
         if (ImGui.BeginTable(
                 $"product-dependencies-{StableId(title)}",
-                5,
+                6,
                 ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.RowBg))
         {
             ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, Ui(24f));
@@ -79,6 +79,7 @@ internal sealed partial class MarketplaceWindow
             ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthStretch, 1.1f);
             ImGui.TableSetupColumn("Version", ImGuiTableColumnFlags.WidthStretch, 1.25f);
             ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthStretch, 1.7f);
+            ImGui.TableSetupColumn("Action", ImGuiTableColumnFlags.WidthFixed, Ui(78f));
 
             foreach (var dependency in dependencies)
                 DrawDependencyRow(dependency, installed);
@@ -141,6 +142,43 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextColored(new Vector4(0.26f, 0.76f, 0.48f, 1f), status);
         else
             ImGui.TextDisabled(status);
+
+        ImGui.TableSetColumnIndex(5);
+        DrawDependencyAction(dependency, targetVariants, targetInstalled);
+    }
+
+    private void DrawDependencyAction(
+        MarketplaceDependency dependency,
+        IReadOnlyList<MarketplacePlugin> targetVariants,
+        bool targetInstalled)
+    {
+        if (targetVariants.Count == 0)
+        {
+            ImGui.TextDisabled("—");
+            return;
+        }
+
+        var target = ResolveDefaultVariant(targetVariants[0]);
+        var mayInstall = !targetInstalled && CanOfferDependencyInstall(dependency);
+        var label = mayInstall ? "Install…" : "Open";
+        if (!ImGui.SmallButton($"{label}##dependency-{StableId(target.InternalName)}-{StableId(dependency.Name)}"))
+            return;
+
+        if (mayInstall)
+            OpenInstallChooser(target);
+        else
+            OpenPluginDetails(target);
+    }
+
+    private static bool CanOfferDependencyInstall(MarketplaceDependency dependency)
+    {
+        if (!IsRequiredDependency(dependency))
+            return false;
+
+        // Explicit required plugin dependencies may open the normal repository chooser directly.
+        // Inferred IPC relationships only receive the same action when SigmaScope resolved a
+        // required provider with high confidence; Omega never silently installs inferred providers.
+        return !IsIpcDependency(dependency) || IsHighConfidenceRequiredProvider(dependency);
     }
 
     private static bool IsDisplayablePluginDependency(MarketplacePlugin plugin, MarketplaceDependency dependency)

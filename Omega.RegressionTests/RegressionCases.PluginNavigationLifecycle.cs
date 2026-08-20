@@ -236,7 +236,7 @@ internal static partial class RegressionCases
         Contains(security, "Sigmascope · Installed environment", "Sigmascope summarizes the current installed environment");
         Contains(security, "ResolveInstalledSigmascopeVariant", "environment analysis matches installed plugins to repository-specific Sigmascope results");
         Contains(security, "installedPlugin.Manifest.InstalledFromUrl", "third-party Sigmascope environment analysis prefers the actual installed repository URL");
-        Contains(security, "Sigmascope analysis not yet available", "installed plugins without evidence remain visible rather than disappearing");
+        Contains(security, "Waiting for Sigmascope analysis — no result yet", "installed plugins without evidence remain visible and are not mistaken for clean results");
         Contains(security, "BuildEnvironmentPluginIdentityLine", "Library Sigmascope rows describe the plugin identity backing each analysis without user-facing artifact terminology");
         Contains(security, "Sigmascope evidence shared by", "identical package hashes disclose when one canonical Sigmascope analysis is shared by mirrors");
         Contains(security, "DrawSigmascopeDisclaimerPanel", "Library Sigmascope begins with the prominent evidence-analysis warning panel");
@@ -244,6 +244,11 @@ internal static partial class RegressionCases
         DoesNotContain(security, "Artifact identity not yet published", "Library Sigmascope no longer labels the plugin as an artifact");
         var securityVisual = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sigmascope.cs"));
         Contains(securityVisual, "SecuritySeverityRank", "Library Sigmascope posture uses an explicit shared severity ordering helper");
+        Contains(securityVisual, "Plugin package only", "review coverage uses plugin terminology rather than user-facing artifact terminology");
+        Contains(securityVisual, "Equals(\"Artifact only\"", "legacy artifact-only coverage values are translated before presentation");
+        Contains(securityVisual, "DrawSigmascopeDisclaimerPanel();", "product Sigmascope shows the prominent evidence warning before findings");
+        Contains(securityVisual, "BuildSigmascopeLifecycleExplanation", "product security distinguishes missing and incomplete evidence from no findings");
+        Contains(securityVisual, "Analysis failed", "failed analysis has an explicit lifecycle state");
         Contains(securityVisual, "\"critical\" => 4", "Library Sigmascope severity ordering keeps critical above lower findings");
         Contains(security, "OpenPluginDetails(entry.SecurityVariant)", "environment Sigmascope rows remain actionable into the product evidence page");
         Contains(artwork, "detailsReturnView = activeView", "opening a product remembers the originating marketplace surface");
@@ -288,6 +293,9 @@ internal static partial class RegressionCases
         Contains(comparison, "CompareRepositorySecurity", "repository packages compare their exact security reports across sources");
         Contains(comparison, "sameKnownArtifact", "identical artifact hashes are treated as one canonical package identity");
         Contains(comparison, "Definitions integrity anomaly", "same-hash security disagreement is treated as Definitions corruption rather than a repository risk difference");
+        var updateUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Update.cs"));
+        Contains(updateUi, "destinationNeedsSourceReview", "repository migrations cannot bypass the unrecognized/divergent source acknowledgement gate");
+        Contains(updateUi, "Acknowledge & migrate", "migration UI explicitly acknowledges a reviewed destination before changing sources");
         Contains(comparison, "differentKnownArtifact", "packages whose hashes differ from the preferred baseline are explicitly flagged");
         Contains(comparison, "SecurityArtifactSha256", "source divergence can explain differing scanned package artifacts");
         Contains(comparison, "FontAwesomeIcon.ExclamationTriangle", "worse source reports receive an explicit warning icon");
@@ -313,6 +321,7 @@ internal static partial class RegressionCases
     {
         var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
         var content = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductContent.cs"));
+        var updateChangelog = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.UpdateChangelog.cs"));
         var usage = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "MarketplaceUsageRules.cs"));
         var store = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "SqliteCatalogStore.cs"));
         var release = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "release.yml"));
@@ -320,7 +329,11 @@ internal static partial class RegressionCases
 
         Contains(library, "DrawInlineChangelogButton", "Updates exposes changelog access beside the offered version");
         Contains(library, "installedPlugin.Version", "update changelog popup receives the installed version so it can focus on what changed");
-        Contains(content, "UiModalSize(360f, 140f)", "inline update changelog stays a compact popup instead of opening the full product page");
+        Contains(content, "OpenUpdateChangelogPanel", "Updates changelog icon opens the dedicated changes panel instead of relying on a nested row popup");
+        Contains(updateChangelog, "Update changes###DalagabOmegaUpdateChangelog", "update changes owns a stable dedicated modal identity");
+        Contains(updateChangelog, "Installed v{installedText}  →  v{targetText}", "update changes panel explains the installed-to-target version transition");
+        Contains(updateChangelog, "Repository: {SourceLabel(plugin)}", "update changes panel identifies the repository providing the update");
+        Contains(updateChangelog, "DrawChangelogEntries(entries, maximumEntries: 12)", "update changes panel shows the bounded changelog history relevant to the update");
         Contains(content, "DrawProductChangelog", "product pages render changelog history");
         Contains(content, "DrawProductUsage", "product pages render how-to-use information");
         Contains(usage, "how to use", "usage extraction recognizes explicit how-to headings");
@@ -354,7 +367,7 @@ internal static partial class RegressionCases
         var repositoryPresentation = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.RepositoryPresentation.cs"));
         var productAuthors = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Authors.cs"));
         var filters = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Filters.cs"));
-        var builder = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "build_sqlite_catalog.py"));
+        var sqliteStore = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "SqliteCatalogStore.cs"));
 
         Contains(chrome, "DrawSidebarViewIcon(MarketplaceView.Spotlight, FontAwesomeIcon.Star, \"Spotlight\", 0)", "Spotlight navigation no longer advertises a meaningless fixed plugin count");
         Contains(spotlight, "Plugins most recently first seen in Omega Definitions", "Latest additions explains its first-seen chronology");
@@ -375,7 +388,8 @@ internal static partial class RegressionCases
         Contains(sources, "GetInstalledPluginUsageByRepository", "repository rows use Dalamud persisted installed-source provenance for usage counts");
         Contains(sources, "RemoveIfUnusedAsync", "Dalamud repository rows expose the safe explicit removal path");
         Contains(sources, "Cannot remove this repository while", "blocked removal explains installed plugin usage");
-        Contains(sources, "Blue entries are unmanaged local feeds", "Dalamud repositories missing from online Definitions are explained as blue unmanaged sources");
+        DoesNotContain(sources, "Blue entries are unmanaged local feeds", "source manager no longer carries explanatory color-key copy");
+        Contains(sources, "Unmanaged local • enabled", "Dalamud repositories missing from online Definitions still expose their unmanaged-local state directly");
         Contains(sources, "Add to Dalamud", "Add Source registers the repository with Dalamud rather than a second Omega-local list");
         Contains(sources, "ownedByOmega: false", "manually added Dalamud repositories remain user-managed");
         Contains(sources, "IsRepositoryVisibleInSettings", "repository settings hide rows with neither plugin nor API inventory");
@@ -393,8 +407,70 @@ internal static partial class RegressionCases
 
         Contains(productAuthors, "OpenAuthorInDiscover", "individual product authors are clickable navigation targets");
         Contains(filters, "SelectMany(x => x.EffectiveAuthors)", "author filters are built from individual author identities");
-        Contains(builder, "authors_json", "normalized individual authors are persisted by the catalog builder");
-        Contains(builder, "split_authors", "the backend normalizes manifest author strings during catalog ingestion");
+        Contains(sqliteStore, "authors_json", "client consumes normalized individual authors persisted by the catalog service");
+        var pluginModel = File.ReadAllText(Path.Combine(Root, "Omega", "Models", "MarketplacePlugin.cs"));
+        Contains(pluginModel, "MarketplaceAuthorRules.Split", "client retains a safe fallback normalization path for legacy author strings");
+    }
+
+    internal static void TestDependencyActionsRepositoryStateAndUpdateReviewContract()
+    {
+        var dependencies = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Dependencies.cs"));
+        var repositoryRules = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "RepositoryProviderRules.cs"));
+        var repositoryUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.RepositoryPresentation.cs"));
+        var install = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Install.cs"));
+        var sources = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sources.cs"));
+        var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
+        var update = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Update.cs"));
+
+        Contains(dependencies, "ImGui.TableSetupColumn(\"Action\"", "dependency view exposes an explicit action column");
+        Contains(dependencies, "OpenInstallChooser(target)", "resolved required dependencies route through Omega's normal repository chooser rather than installing silently");
+        Contains(dependencies, "CanOfferDependencyInstall", "dependency install eligibility is explicit and bounded");
+        Contains(dependencies, "IsHighConfidenceRequiredProvider(dependency)", "inferred IPC providers only receive Install when the required relationship is high-confidence");
+        Contains(dependencies, "OpenPluginDetails(target)", "optional, feature, installed, and lower-confidence dependencies remain inspectable without silent installation");
+
+        Contains(repositoryRules, "Dalamud official", "repository vocabulary names the official source consistently");
+        Contains(repositoryRules, "Recognized community", "repository vocabulary names recognized community providers consistently");
+        Contains(repositoryRules, "Unrecognized community", "repository vocabulary names unrecognized community sources consistently");
+        Contains(repositoryUi, "Unmanaged local", "repository presentation distinguishes locally configured feeds that are absent from online Definitions");
+        Contains(repositoryUi, "RepositoryStateLabel", "product and repository surfaces share one state-label resolver");
+        Contains(install, "RepositoryStateLabel(candidate.SourceName", "install source rows use the shared repository-state vocabulary");
+        Contains(sources, "Unmanaged local • enabled", "source manager uses the same unmanaged-local wording");
+        Contains(sources, "Unrecognized community", "source manager uses the same unrecognized-community wording");
+
+        Contains(library, "Review required", "repository-move update rows stay visibly marked for review");
+        Contains(library, "DrawRoundedButton(\"Review\"", "repository-move updates expose a dedicated Review action instead of looking like automatic updates");
+        Contains(update, "remain in the list for review", "Update all leaves migration items actionable in the Updates list");
+        Contains(update, "require repository review below", "an all-skipped Update all run points the user to the visible review queue");
+    }
+
+    internal static void TestRepositoryRemovalCollectionsAndSecurityProvenanceContract()
+    {
+        var sources = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sources.cs"));
+        var bridge = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudRepositoryBridge.cs"));
+        var collections = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Collections.cs"));
+        var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
+        var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
+        var sigmascope = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sigmascope.cs"));
+
+        DoesNotContain(sources, "disabled plugins still keep their repository relationship", "repository settings no longer carry the removed explanatory sentence");
+        Contains(sources, "Installed includes enabled and disabled plugins", "repository removal still states the installed-plugin policy in its contextual tooltip");
+        Contains(bridge, "enabled or disabled", "repository bridge documents and enforces installed-plugin servicing provenance regardless of enabled state");
+        Contains(bridge, "plugin.Manifest.InstalledFromUrl", "repository removal remains grounded in Dalamud's persisted install source");
+
+        Contains(collections, "var controlsEnabled = collectionOperationTask is null", "collection folder switches visibly disable during an in-flight mutation");
+        Contains(collections, "var collectionControlsEnabled = collectionOperationTask is null", "opened collection actions share the busy-state gate");
+        Contains(collections, "Another Dalamud collection change is still being applied.", "busy collection controls explain why they are unavailable");
+        Contains(product, "product-collection-state-", "product collection ownership keeps direct collection switches");
+        Contains(product, "collectionOperationTask is null", "product collection switches also honor the collection mutation gate");
+        Contains(library, "BuildLibraryCollectionSummary", "Library visibly reports named collection ownership");
+        Contains(library, "Collection:", "single collection ownership is presented compactly in Library metadata");
+
+        Contains(sigmascope, "Analysis details##sigmascope-analysis-details-", "security provenance is hidden behind a compact expandable analysis-details section");
+        Contains(sigmascope, "Plugin version analyzed:", "security provenance identifies the exact plugin version analyzed");
+        Contains(sigmascope, "Plugin package SHA-256:", "security provenance exposes the exact analyzed package identity");
+        Contains(sigmascope, "Attributed source revision:", "security provenance can expose the attributed source revision without claiming verification");
+        Contains(sigmascope, "Current marketplace Definitions:", "security provenance distinguishes the current client Definitions snapshot from the historical scan itself");
+        Contains(sigmascope, "Published evidence snapshot:", "security provenance exposes the currently projected Evidence-v2 publication revision");
     }
 
 }

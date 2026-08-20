@@ -61,10 +61,10 @@ internal static class MarketplacePresentationRules
     private static string ChooseSummary(MarketplacePlugin plugin)
     {
         if (!string.IsNullOrWhiteSpace(plugin.Punchline))
-            return plugin.Punchline.Trim();
+            return MarketplaceReadmeMarkup.ToInlineText(plugin.Punchline);
         if (!string.IsNullOrWhiteSpace(plugin.Description))
-            return plugin.Description.Trim();
-        return plugin.OmegaWebsiteDescription.Trim();
+            return MarketplaceReadmeMarkup.ToInlineText(plugin.Description);
+        return MarketplaceReadmeMarkup.ToInlineText(plugin.OmegaWebsiteDescription);
     }
 
     private static string ChooseDescription(MarketplacePlugin plugin)

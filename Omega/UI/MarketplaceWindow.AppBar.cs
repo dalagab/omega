@@ -87,16 +87,41 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawGlobalSearch(float x, float searchWidth)
     {
+        var hasSearch = !string.IsNullOrEmpty(search);
+        var gap = Ui(4f);
+        var clearSize = hasSearch ? Ui(AppBarControlSize) : 0f;
+        var inputWidth = Math.Max(Ui(160f), searchWidth - clearSize - (hasSearch ? gap : 0f));
+
         ImGui.SetCursorPos(new Vector2(x, Ui(5f)));
-        ImGui.SetNextItemWidth(searchWidth);
+        ImGui.SetNextItemWidth(inputWidth);
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(0.145f, 0.155f, 0.175f, 0.96f));
+        ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, new Vector4(0.175f, 0.185f, 0.205f, 0.98f));
+        ImGui.PushStyleColor(ImGuiCol.FrameBgActive, new Vector4(0.195f, 0.205f, 0.225f, 1f));
 
         var previous = search;
-        if (!ImGui.InputTextWithHint("##omega-global-search", "Search plugins, descriptions, READMEs, authors, tags...", ref search, 256))
-            return;
-        if (search.Equals(previous, StringComparison.Ordinal))
-            return;
+        var changed = ImGui.InputTextWithHint(
+            "##omega-global-search",
+            "Search plugins, descriptions, READMEs, authors, tags...",
+            ref search,
+            256);
+        ImGui.PopStyleColor(3);
 
-        ActivateGlobalSearch();
+        var clearClicked = false;
+        if (hasSearch)
+        {
+            ImGui.SameLine(0f, gap);
+            clearClicked = DrawApplicationIconButton(FontAwesomeIcon.Times, "search-clear", "Clear search", false);
+        }
+
+        if (clearClicked)
+        {
+            search = string.Empty;
+            ActivateGlobalSearch();
+            return;
+        }
+
+        if (changed && !search.Equals(previous, StringComparison.Ordinal))
+            ActivateGlobalSearch();
     }
 
     private void ActivateGlobalSearch()

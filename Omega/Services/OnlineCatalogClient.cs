@@ -270,9 +270,29 @@ internal sealed class OnlineCatalogClient : IDisposable
         => value is { Length: 64 } && value.All(c => char.IsAsciiHexDigit(c));
 
     internal static bool IsValidCatalogRevision(string? value)
-        => string.IsNullOrWhiteSpace(value) ||
-           (value.StartsWith("cat-v1-", StringComparison.Ordinal) &&
-            value.Length == 23 && value.AsSpan(7).ToString().All(char.IsAsciiHexDigit));
+        => string.IsNullOrWhiteSpace(value) || IsCatalogRevision(value, "cat-v1-") || IsCatalogRevision(value, "cat-v2-");
+
+    private static bool IsCatalogRevision(string value, string prefix)
+        => value.StartsWith(prefix, StringComparison.Ordinal) &&
+           value.Length == prefix.Length + 16 &&
+           value.AsSpan(prefix.Length).ToString().All(char.IsAsciiHexDigit);
+
+    internal static bool IsSupportedDescriptorContract(OnlineCatalogDescriptor descriptor)
+    {
+        if (descriptor.SchemaVersion == 1 &&
+            descriptor.Schema.Equals("omega.catalog.sqlite.v1", StringComparison.Ordinal))
+        {
+            return string.IsNullOrWhiteSpace(descriptor.CatalogRevision) || IsCatalogRevision(descriptor.CatalogRevision, "cat-v1-");
+        }
+
+        if (descriptor.SchemaVersion == 2 &&
+            descriptor.Schema.Equals("omega.catalog.marketplace.v2", StringComparison.Ordinal))
+        {
+            return IsCatalogRevision(descriptor.CatalogRevision, "cat-v2-");
+        }
+
+        return false;
+    }
 
     internal static bool IsValidDefinitionsRevision(string? value)
         => string.IsNullOrWhiteSpace(value) ||
@@ -311,11 +331,8 @@ internal sealed class OnlineCatalogClient : IDisposable
 
     private static void ValidateDescriptor(OnlineCatalogDescriptor descriptor, Uri descriptorUri)
     {
-        if (descriptor.SchemaVersion != 1 ||
-            !string.Equals(descriptor.Schema, "omega.catalog.sqlite.v1", StringComparison.Ordinal))
-        {
-            throw new InvalidDataException("Unsupported Omega online catalog descriptor schema.");
-        }
+        if (!IsSupportedDescriptorContract(descriptor))
+            throw new InvalidDataException("Unsupported Omega online catalog descriptor schema or revision generation.");
 
         if (!IsValidSha256(EffectiveCatalogSha256(descriptor)))
             throw new InvalidDataException("Online catalog descriptor has an invalid catalog SHA-256.");

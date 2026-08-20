@@ -147,7 +147,10 @@ internal static partial class RegressionCases
         Contains(ui, "GetInstallCandidates", "compatible repository variants");
         Contains(ui, "ImGui.Button(actionLabel", "repository chooser keeps one explicit top action while allowing risk review to replace unsafe install");
         Contains(ui, "StartSelectedInstall", "selected source install flow");
-        Contains(ui, "selectedNeedsRiskReview", "unacknowledged divergent repositories cannot be installed by the normal Install action");
+        Contains(ui, "selectedNeedsRiskReview", "sources requiring acknowledgement cannot be installed by the normal Install action");
+        Contains(ui, "NeedsInstallRepositoryReview", "install gating combines unrecognized-source consent with package-divergence review");
+        Contains(ui, "RequiresUntrustedRepositoryAcknowledgement", "unrecognized community repositories require explicit acknowledgement even without divergence findings");
+        Contains(ui, "Acknowledge source", "install-context source review has an explicit source acknowledgement action");
         Contains(ui, "OpenInstallRepositoryRiskReview", "risky source selection opens install-specific repository review instead of installing immediately");
         Contains(ui, "DrawInstallRiskReviewModal", "risk review preserves install context and renders source evidence directly");
         Contains(ui, "Acknowledge risk", "risk review requires an explicit acknowledgement action");
@@ -169,7 +172,8 @@ internal static partial class RegressionCases
 
         Contains(details, ".OrderBy(v => IsPluginPackageArtifactDivergent(v) ? 1 : 0)", "known divergent package variants are demoted before source provider preference");
         Contains(details, "divergentSources.Contains(NormalizeUrl(v.SourceUrl)) ? 1 : 0", "repositories with known package divergence are not auto-preferred when a clean alternative exists");
-        Contains(awareness, "AcknowledgedRepositoryRiskByUrl", "risk acknowledgement is source-specific and invalidates when evidence changes");
+        Contains(awareness, "AcknowledgedRepositoryRiskByUrl", "divergence acknowledgement is source-specific and invalidates when evidence changes");
+        Contains(awareness, "AcknowledgedUntrustedRepositoryByUrl", "unrecognized-source acknowledgement persists separately from divergence evidence");
 
         Contains(details, "IsInstallSourceSelectable", "install candidates are not incorrectly blocked merely because an Omega source is disabled");
         Contains(details, "DescribeInstallUnavailability", "unavailable API-compatible plugins expose a concrete reason");
@@ -208,6 +212,8 @@ internal static partial class RegressionCases
             "recognized preferred providers retain icon identities");
         False(RepositoryProviderRules.Classify("Big community repository", "https://example.invalid/repo.json", false, RepositoryProviderRules.LargeRepositoryPluginThreshold).Label.Contains("large", StringComparison.OrdinalIgnoreCase),
             "broad repository priority is not exposed as a Large list badge");
+        False(RepositoryProviderRules.RequiresExplicitInstallAcknowledgement("Puni.sh", "https://puni.sh/plugins", false), "recognized stable providers do not require the generic unrecognized-source gate");
+        True(RepositoryProviderRules.RequiresExplicitInstallAcknowledgement("Small repository", "https://example.invalid/small.json", false), "unrecognized community sources require explicit install acknowledgement");
         True(RepositoryProviderRules.IsStableProvider("Dalamud official", "", true), "Dalamud can establish the package/security baseline");
         True(RepositoryProviderRules.IsStableProvider("Puni.sh", "https://puni.sh/repository", false), "Puni.sh can establish the package/security baseline");
         True(RepositoryProviderRules.IsStableProvider("NightmareXIV", "https://github.com/NightmareXIV/repo", false), "NightmareXIV can establish the package/security baseline");

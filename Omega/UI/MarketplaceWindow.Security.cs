@@ -13,7 +13,6 @@ internal sealed partial class MarketplaceWindow
     private void DrawSettingsGeneralTab()
     {
         ImGui.TextUnformatted("Updates");
-        ImGui.TextDisabled("Check Omega, Definitions, and plugin-source metadata without leaving Settings.");
         ImGui.Spacing();
         if (ImGui.Button(updates.IsRefreshing ? "Checking for updates…" : "Check for updates") && !updates.IsRefreshing)
             CheckForUpdates();
@@ -37,10 +36,52 @@ internal sealed partial class MarketplaceWindow
         }
     }
 
+    private void DrawSettingsBehaviorTab()
+    {
+        ImGui.TextUnformatted("Plugin behavior");
+        ImGui.Spacing();
+
+        DrawBehaviorSetting(
+            "Minimize Omega as a bar",
+            "Use the compact bar when minimized.",
+            "behavior-minimize-bar",
+            configuration.MinimizeAsBar,
+            value => configuration.MinimizeAsBar = value);
+        DrawBehaviorSetting(
+            "Show Omega in the ESC / System menu",
+            "Show Omega in the ESC/System menu.",
+            "behavior-system-menu",
+            configuration.ShowInSystemMenu,
+            value => configuration.ShowInSystemMenu = value);
+        DrawBehaviorSetting(
+            "Show Omega before login",
+            "Show Omega on the title screen.",
+            "behavior-title-menu",
+            configuration.ShowInTitleScreenMenu,
+            value => configuration.ShowInTitleScreenMenu = value);
+    }
+
+    private void DrawBehaviorSetting(string label, string description, string id, bool value, Action<bool> apply)
+    {
+        var start = ImGui.GetCursorPos();
+        ImGui.TextUnformatted(label);
+        ImGui.TextDisabled(description);
+        var toggleWidth = Ui(44f);
+        ImGui.SetCursorPos(new Vector2(Math.Max(start.X, ImGui.GetWindowWidth() - toggleWidth - Ui(34f)), start.Y));
+        if (DrawToggleSwitch(id, value))
+        {
+            apply(!value);
+            configuration.Save();
+            behaviorConfigurationChanged();
+        }
+        ImGui.SetCursorPosY(Math.Max(ImGui.GetCursorPosY(), start.Y + Ui(52f)));
+        ImGui.Separator();
+        ImGui.Spacing();
+    }
+
     private bool DrawSettingsLegalTab()
     {
         ImGui.TextUnformatted("Agreement");
-        ImGui.TextDisabled("Review the End User License Agreement accepted on first use.");
         ImGui.Spacing();
         DrawSettingsEulaShortcut();
         return eulaReviewOpen;
@@ -206,56 +247,14 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawAboutProductPitch()
     {
-        DrawAboutSigmascopeFeature();
-        ImGui.Dummy(Ui(1f, 10f));
         ImGui.TextUnformatted("Open Omega");
         ImGui.Spacing();
         ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), "/omega   /omg");
-        ImGui.TextDisabled("Either command opens the marketplace from chat.");
-
         ImGui.Spacing();
         ImGui.Spacing();
-        ImGui.TextUnformatted("Find more. Know more. Install with confidence.");
-        ImGui.Spacing();
-        DrawAboutWrappedBullet("Find official and community plugins in Spotlight and Discover.");
-        DrawAboutWrappedBullet("Compare sources, compatibility and Sigmascope results before installing.");
-        DrawAboutWrappedBullet("Manage installed plugins, collections and updates in Library.");
-        DrawAboutWrappedBullet("Dalamud stays in control of installation, updates and removal.");
-    }
-
-    private void DrawAboutSigmascopeFeature()
-    {
-        ImGui.TextUnformatted("Sigmascope");
-        ImGui.Dummy(Ui(1f, 7f));
-
-        var texture = sigmascopeBannerTexture?.GetWrapOrDefault();
-        if (texture is null)
-            return;
-
-        const float bannerAspect = 2048f / 1143f;
-        var available = ImGui.GetContentRegionAvail().X;
-        var width = Math.Min(available, Ui(580f));
-        var height = width / bannerAspect;
-        var originalX = ImGui.GetCursorPosX();
-        var left = originalX + Math.Max(0f, (available - width) * 0.5f);
-        var top = ImGui.GetCursorPosY();
-        ImGui.SetCursorPosX(left);
-        var min = ImGui.GetCursorScreenPos();
-        ImGui.Dummy(new Vector2(width, height));
-        ImGui.GetWindowDrawList().AddImage(
-            texture.Handle,
-            min,
-            min + new Vector2(width, height),
-            Vector2.Zero,
-            Vector2.One,
-            ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 0.92f)));
-        ImGui.SetCursorPosX(originalX);
-        ImGui.SetCursorPosY(top + height);
-        ImGui.Dummy(Ui(1f, 8f));
-        ImGui.PushTextWrapPos(0f);
-        ImGui.TextWrapped("Sigmascope is Omega's online scanning engine. It checks what plugins can do and sends the results to Omega in Definitions packages.");
-        ImGui.TextDisabled("Definitions also carry Omega's plugin listings, repositories, compatibility and dependency data.");
-        ImGui.PopTextWrapPos();
+        DrawAboutWrappedBullet("Discover official and community plugins.");
+        DrawAboutWrappedBullet("Compare sources, compatibility and findings.");
+        DrawAboutWrappedBullet("Manage plugins, collections and updates.");
     }
 
     private static void DrawAboutWrappedBullet(string text)

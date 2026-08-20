@@ -187,7 +187,7 @@ internal sealed partial class MarketplaceCatalogService
             foreach (var pair in liveOverlayByUrl)
             {
                 if (enabledUrls.Contains(pair.Key))
-                    baseVariants.AddRange(pair.Value);
+                    baseVariants.AddRange(pair.Value.Select(MergeDatabaseSecurityLocked));
             }
 
             databaseVariants = baseVariants;

@@ -45,6 +45,9 @@ internal sealed partial class MarketplaceWindow
             case SettingsSection.General:
                 DrawSettingsGeneralTab();
                 break;
+            case SettingsSection.Behavior:
+                DrawSettingsBehaviorTab();
+                break;
             case SettingsSection.Legal:
                 if (DrawSettingsLegalTab())
                 {
@@ -66,6 +69,9 @@ internal sealed partial class MarketplaceWindow
     {
         if (DrawRoundedButton("General", "settings-tab-general", Ui(112f, 32f), settingsSection == SettingsSection.General))
             settingsSection = SettingsSection.General;
+        ImGui.SameLine(0f, Ui(8f));
+        if (DrawRoundedButton("Behavior", "settings-tab-behavior", Ui(112f, 32f), settingsSection == SettingsSection.Behavior))
+            settingsSection = SettingsSection.Behavior;
         ImGui.SameLine(0f, Ui(8f));
         if (DrawRoundedButton("Repositories", "settings-tab-repositories", Ui(142f, 32f), settingsSection == SettingsSection.Repositories))
             settingsSection = SettingsSection.Repositories;
@@ -103,8 +109,8 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.TextDisabled("Plugin sources");
         ImGui.TextWrapped(sourceSection == SourceManagerSection.DalamudConfigured
-            ? "Repositories configured in Dalamud. Blue entries are unmanaged local feeds that are not yet part of Omega's online Definitions."
-            : "Repositories published through Omega Definitions. Local Dalamud repositories are kept in the separate Dalamud list.");
+            ? "Configured in Dalamud. Installed plugins keep their source until uninstalled."
+            : "Repositories in Omega Definitions.");
         ImGui.Separator();
 
         if (DrawPillButton($"Omega ({curatedCount})", "sources-curated", Ui(126f, 32f), sourceSection == SourceManagerSection.Curated))
@@ -309,7 +315,7 @@ internal sealed partial class MarketplaceWindow
         {
             var names = string.Join(", ", usage.PluginNames.Take(8));
             var suffix = usage.PluginNames.Count > 8 ? $" (+{usage.PluginNames.Count - 8} more)" : string.Empty;
-            SetReadableTooltip($"Cannot remove this repository while {usage.InstalledCount} installed plugin(s) use it. {names}{suffix}");
+            SetReadableTooltip($"Cannot remove this repository while {usage.InstalledCount} installed plugin(s) use it. Installed includes enabled and disabled plugins because both still retain this repository as their servicing source. {names}{suffix}");
         }
         else if (busy)
         {
@@ -318,8 +324,8 @@ internal sealed partial class MarketplaceWindow
         else
         {
             SetReadableTooltip(catalog.IsSourceInDefinitions(source.Url)
-                ? "Remove this repository from Dalamud. Its online Omega Definitions entry remains available."
-                : "Remove this unmanaged repository from Dalamud. Its temporary local Omega overlay is removed as well.");
+                ? "Remove this repository from Dalamud. Its online Omega Definitions entry remains available. Removal is allowed only when no installed plugin still points at this repository."
+                : "Remove this unmanaged repository from Dalamud. Its temporary local Omega overlay is removed as well. Removal is allowed only when no installed plugin still points at this repository.");
         }
     }
 
@@ -354,9 +360,18 @@ internal sealed partial class MarketplaceWindow
         if (!catalog.IsSourceInDefinitions(source.Url))
         {
             ImGui.TextColored(new Vector4(0.34f, 0.64f, 0.98f, 1f),
-                dalamudRegistration?.Enabled == true ? "Unmanaged • enabled" : "Unmanaged • disabled");
+                dalamudRegistration?.Enabled == true ? "Unmanaged local • enabled" : "Unmanaged local • disabled");
             if (ImGui.IsItemHovered())
-                SetReadableTooltip("This repository exists locally in Dalamud but is not part of Omega's online Definitions. Omega can show its plugins as a temporary unmanaged overlay.");
+                SetReadableTooltip("This repository exists locally in Dalamud but is not part of Omega's online Definitions. Omega can show its plugins as a temporary unmanaged overlay. Installing from an unrecognized source still requires explicit acknowledgement in the install flow.");
+            return;
+        }
+
+        if (RepositoryProviderRules.RequiresExplicitInstallAcknowledgement(source.Name, source.Url, source.IsOfficial))
+        {
+            ImGui.TextColored(new Vector4(0.95f, 0.64f, 0.20f, 1f),
+                "Unrecognized community");
+            if (ImGui.IsItemHovered())
+                SetReadableTooltip("This repository is present in Omega Definitions but is outside Omega's recognized provider set. Installation from it requires explicit source acknowledgement; this is separate from Sigmascope findings.");
             return;
         }
 
@@ -430,7 +445,7 @@ internal sealed partial class MarketplaceWindow
     {
         ImGui.Separator();
         ImGui.Text("Add repository to Dalamud");
-        ImGui.TextDisabled("Omega does not keep a second local repository list. This adds the PluginMaster URL to Dalamud; Omega then observes it as a normal Dalamud source.");
+        ImGui.TextDisabled("Adds the PluginMaster URL to Dalamud.");
         ImGui.SetNextItemWidth(Math.Min(Ui(560f), ImGui.GetContentRegionAvail().X));
         ImGui.InputTextWithHint("##newRepoUrl", "https://.../pluginmaster.json", ref newRepositoryUrl, 512);
 
@@ -462,7 +477,7 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.Spacing();
         ImGui.Text("Bulk import to Dalamud");
-        ImGui.TextWrapped("Copy HTTPS PluginMaster JSON URLs and press the button. Every valid new URL is registered with Dalamud; Omega does not create a second local source entry.");
+        ImGui.TextWrapped("Paste HTTPS PluginMaster JSON URLs to add them to Dalamud.");
         ImGui.BeginDisabled(repositoryTask is not null);
         if (ImGui.Button("Paste URL list from clipboard"))
         {

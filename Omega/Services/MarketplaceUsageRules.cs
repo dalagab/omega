@@ -114,7 +114,7 @@ internal static class MarketplaceUsageRules
         => (value ?? string.Empty).Trim().Trim(':').Trim().ToLowerInvariant();
 
     private static string[] NormalizeLines(string? value)
-        => (value ?? string.Empty)
+        => MarketplaceReadmeMarkup.NormalizeHtml(value ?? string.Empty)
             .Replace("\r\n", "\n", StringComparison.Ordinal)
             .Replace('\r', '\n')
             .Split('\n')

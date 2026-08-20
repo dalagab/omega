@@ -481,12 +481,14 @@ internal sealed partial class MarketplaceWindow
         Version currentDalamudVersion)
     {
         ImGui.Separator();
-        if (!string.IsNullOrWhiteSpace(plugin.Punchline))
-            ImGui.TextWrapped(plugin.Punchline);
-        if (!string.IsNullOrWhiteSpace(plugin.Description))
+        var punchline = MarketplaceReadmeMarkup.ToInlineText(plugin.Punchline);
+        if (!string.IsNullOrWhiteSpace(punchline))
+            ImGui.TextWrapped(punchline);
+        var description = MarketplaceReadmeMarkup.ToPlainText(plugin.Description);
+        if (!string.IsNullOrWhiteSpace(description))
         {
             ImGui.Spacing();
-            ImGui.TextWrapped(plugin.Description);
+            ImGui.TextWrapped(description);
         }
 
         ImGui.Spacing();

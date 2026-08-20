@@ -11,59 +11,19 @@ internal static partial class RegressionCases
     internal static void TestCatalogBuilderContract()
     {
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
-        Contains(workflow, "name: Omega daily catalog snapshot and client database", "catalog builder owns the daily public snapshot boundary");
-        Contains(workflow, "cron: \"17 2 * * *\"", "catalog and Definitions publish once per day");
+        Contains(workflow, "name: Omega security services · daily catalog launcher", "main keeps only the thin daily catalog launcher");
+        Contains(workflow, "cron: \"17 2 * * *\"", "catalog and Definitions launcher remains scheduled once per day");
         Contains(workflow, "workflow_dispatch:", "operators can deliberately request an out-of-cycle daily snapshot");
-        False(Regex.IsMatch(workflow, @"(?m)^  push:\s*$"), "ordinary source pushes do not create client-visible catalog churn");
-        Contains(workflow, "collect_sources.py", "online source discovery step");
-        Contains(workflow, "enrich_metadata.py", "manifest normalization step");
-        Contains(workflow, "scrape_websites_incremental.py", "incremental website enrichment step");
-        Contains(workflow, "build_sqlite_catalog.py", "temporary relational normalization step remains available");
-        Contains(workflow, "catalog_json_store.py export", "canonical public catalog is exported as sharded JSON");
-        Contains(workflow, "identity-compatible", "legacy pre-identity-epoch catalog state is detected before optional normalization seeding");
-        Contains(workflow, "legacy/incompatible identity epoch", "incompatible legacy catalog state is skipped as a seed instead of blocking the clean rebuild");
-        False(workflow.Contains("--allow-legacy-identity", StringComparison.Ordinal), "strict current-epoch materialization is never weakened for migration");
-        Contains(workflow, "definitions_snapshot.py build", "daily Definitions and OSV inputs are frozen once");
-        Contains(workflow, "scan_queue.py build-seed", "daily snapshot includes a deterministic Sigmascope queue seed");
-        Contains(workflow, "catalog_state.py assemble", "catalog JSON, Definitions and queue are assembled into one named state");
-        Contains(workflow, "catalog_state.py validate", "named canonical state is validated before publication");
-        Contains(workflow, "compile_marketplace_snapshot.py", "Omega's client SQLite is compiled from canonical JSON plus validated evidence");
-        Contains(workflow, "validate_marketplace_catalog.py --root catalog/client-dist", "exact client database is validated before publication");
-        Contains(workflow, "publish_catalog_state.py", "canonical JSON state is published to its dedicated branch");
-        Contains(workflow, "--branch catalog-data", "generated catalog state stays off main");
-        Contains(workflow, "Publish the once-daily client database", "client publication has one explicit daily boundary");
-        Contains(workflow, "gh release upload catalog-latest", "daily compiler publishes the validated small client database");
-        Contains(workflow, "database-build.json", "client publication includes auditable build metadata");
-        False(workflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "catalog builder never downloads or publishes the archived giant v1 security evidence bundle");
-
-        var validateIndex = workflow.IndexOf("Validate exact client publication", StringComparison.Ordinal);
-        var statePublishIndex = workflow.IndexOf("Publish canonical JSON state atomically", StringComparison.Ordinal);
-        var clientPublishIndex = workflow.IndexOf("Publish the once-daily client database", StringComparison.Ordinal);
-        True(validateIndex >= 0 && statePublishIndex > validateIndex && clientPublishIndex > statePublishIndex,
-            "daily publication validates the exact client DB before advancing canonical state and then the matching client release");
-
-        var builder = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "build_sqlite_catalog.py"));
-        Contains(builder, "CREATE TABLE IF NOT EXISTS plugins", "SQLite plugin table");
-        Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_variants", "SQLite variant table");
-        Contains(builder, "CREATE TABLE IF NOT EXISTS websites", "SQLite website cache table");
-        Contains(builder, "CREATE TABLE IF NOT EXISTS presentation", "presentation scoring table");
-        Contains(builder, "CREATE TABLE IF NOT EXISTS plugin_search", "normalized search table");
-        Contains(builder, "raw_manifest_json", "original source manifest fields remain auditable");
-        Contains(builder, "VACUUM", "database is compacted before projection");
-        Contains(builder, "omega.catalog.sqlite.v1", "strict normalization SQLite descriptor schema");
-
-        var jsonStore = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "catalog_json_store.py"));
-        Contains(jsonStore, "omega.catalog-json.v1", "canonical JSON catalog format has an explicit schema");
-        Contains(jsonStore, "omega.catalog-json.identity-compatibility.v1", "catalog migration exposes a bounded identity compatibility probe separate from strict validation");
-        var definitions = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "definitions_snapshot.py"));
-        Contains(definitions, "ruleSetRevision", "Definitions distinguish scanner-rule changes from data-only changes");
-        Contains(definitions, "queriedPackageVersionPairs", "Definitions freeze the exact OSV query universe");
-
-        var scraper = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "scrape_websites_incremental.py"));
-        Contains(scraper, "last_success_utc", "successful website enrichment is reusable");
-        Contains(scraper, "max-age-hours", "fresh website data avoids unnecessary re-scraping");
-        Contains(scraper, "seed-database", "previous compiled database can supply enrichment cache");
-        Contains(scraper, "load_seed_repo_urls", "304 manifests do not freeze stale website rechecks");
+        False(Regex.IsMatch(workflow, @"(?m)^  push:\s*$"), "ordinary client source pushes do not create client-visible catalog churn");
+        Contains(workflow, "uses: dalagab/omega/.github/workflows/catalog-builder.yml@sigmascope", "catalog implementation is delegated to the security-services branch");
+        Contains(workflow, "concurrency: ${{ inputs.concurrency || '8' }}", "launcher forwards bounded catalog concurrency");
+        Contains(workflow, "timeout: ${{ inputs.timeout || '20' }}", "launcher forwards request timeout");
+        Contains(workflow, "website_max_age_hours: ${{ inputs.website_max_age_hours || '168' }}", "launcher forwards website-cache policy");
+        Contains(workflow, "allow_source_removal: ${{ inputs.allow_source_removal || false }}", "launcher forwards explicit source-removal approval");
+        Contains(workflow, "secrets: inherit", "reusable security-services workflow receives the caller's scoped secrets");
+        False(workflow.Contains("production_sigmascope_v2_pipeline.py", StringComparison.Ordinal), "catalog launcher does not directly invoke Sigmascope");
+        False(Directory.Exists(Path.Combine(Root, "tools", "catalog")), "client branch does not duplicate catalog-service implementation");
+        False(Directory.Exists(Path.Combine(Root, "tools", "security")), "client branch does not duplicate security-service implementation");
     }
 
     internal static void TestOnlineCatalogFallbackContract()
@@ -114,8 +74,10 @@ internal static partial class RegressionCases
         True(OnlineCatalogClient.IsValidSha256(new string('a', 64)), "64 hex characters form a valid SHA-256");
         False(OnlineCatalogClient.IsValidSha256(new string('g', 64)), "non-hex SHA-256 is rejected");
         False(OnlineCatalogClient.IsValidSha256("abc"), "short SHA-256 is rejected");
-        True(OnlineCatalogClient.IsValidCatalogRevision("cat-v1-0123456789abcdef"), "semantic Catalog Revision format is accepted");
-        False(OnlineCatalogClient.IsValidCatalogRevision("cat-v1-not-a-hash"), "malformed Catalog Revision is rejected");
+        True(OnlineCatalogClient.IsValidCatalogRevision("cat-v1-0123456789abcdef"), "legacy Catalog Revision format remains accepted");
+        True(OnlineCatalogClient.IsValidCatalogRevision("cat-v2-0123456789abcdef"), "marketplace v2 Catalog Revision format is accepted");
+        False(OnlineCatalogClient.IsValidCatalogRevision("cat-v1-not-a-hash"), "malformed legacy Catalog Revision is rejected");
+        False(OnlineCatalogClient.IsValidCatalogRevision("cat-v2-not-a-hash"), "malformed v2 Catalog Revision is rejected");
         True(OnlineCatalogClient.IsValidDefinitionsRevision("defs-v1-0123456789abcdef"), "semantic Definitions Revision format is accepted");
         False(OnlineCatalogClient.IsValidDefinitionsRevision("defs-v1-not-a-hash"), "malformed Definitions Revision is rejected");
         True(OnlineCatalogClient.IsValidSecurityRevision("sec-2.0.0-0123456789abcdef"), "semantic Security Revision format is accepted");
@@ -124,6 +86,25 @@ internal static partial class RegressionCases
         True(OnlineCatalogClient.IsValidEvidenceRevision("ev-v2-0123456789abcdef"), "Sigmascope Evidence v2 Revision format is accepted");
         False(OnlineCatalogClient.IsValidEvidenceRevision("ev-v1-short"), "malformed Evidence Revision is rejected");
         False(OnlineCatalogClient.IsValidEvidenceRevision("ev-v3-0123456789abcdef"), "unknown Evidence Revision generation is rejected");
+
+        True(OnlineCatalogClient.IsSupportedDescriptorContract(new OnlineCatalogDescriptor
+        {
+            SchemaVersion = 1,
+            Schema = "omega.catalog.sqlite.v1",
+            CatalogRevision = "cat-v1-0123456789abcdef",
+        }), "legacy descriptor contract remains readable");
+        True(OnlineCatalogClient.IsSupportedDescriptorContract(new OnlineCatalogDescriptor
+        {
+            SchemaVersion = 2,
+            Schema = "omega.catalog.marketplace.v2",
+            CatalogRevision = "cat-v2-0123456789abcdef",
+        }), "marketplace descriptor v2 is accepted");
+        False(OnlineCatalogClient.IsSupportedDescriptorContract(new OnlineCatalogDescriptor
+        {
+            SchemaVersion = 2,
+            Schema = "omega.catalog.marketplace.v2",
+            CatalogRevision = "cat-v1-0123456789abcdef",
+        }), "v2 descriptor cannot advertise a v1 catalog revision");
 
         var hashes = new OnlineCatalogDescriptor
         {
@@ -144,8 +125,190 @@ internal static partial class RegressionCases
         var client = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OnlineCatalogClient.cs"));
         Contains(client, "ProbeAsync", "descriptor-only checks can detect a pending Definitions update without downloading it");
         Contains(client, "OnlineCatalogCheckStatus.UpdateAvailable", "descriptor probe distinguishes pending Definitions from current state");
-        Contains(client, "omega.catalog.sqlite.v1", "client accepts only the SQLite catalog descriptor schema");
+        Contains(client, "omega.catalog.sqlite.v1", "client retains legacy online descriptor compatibility");
+        Contains(client, "omega.catalog.marketplace.v2", "client accepts the post-split marketplace v2 descriptor");
+        Contains(client, "cat-v2-", "client recognizes v2 marketplace revisions");
         False(client.Contains("omega.catalog.v1", StringComparison.Ordinal), "legacy JSON bundle schema removed");
+    }
+
+    internal static void TestSearchDownloadsAndBehaviorSettingsContract()
+    {
+        var configuration = File.ReadAllText(Path.Combine(Root, "Omega", "Configuration.cs"));
+        Contains(configuration, "MinimizeAsBar", "minimize presentation preference is persisted");
+        Contains(configuration, "ShowInSystemMenu", "ESC/System menu visibility preference is persisted");
+        Contains(configuration, "ShowInTitleScreenMenu", "pre-login menu visibility preference is persisted");
+
+        var appBar = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.AppBar.cs"));
+        Contains(appBar, "search-clear", "global search exposes a clear X control");
+        Contains(appBar, "Clear search", "search clear control has an accessible tooltip");
+        Contains(appBar, "ImGuiCol.FrameBg", "global search owns a dedicated lighter frame background");
+
+        var discover = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
+        DoesNotContain(discover, "reported downloads / installations", "Discover keeps catalog-wide usage totals out of the header");
+        DoesNotContain(discover, "installed here", "Discover keeps local installed totals out of the removed aggregate header");
+
+        var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
+        Contains(product, "Downloads / installations", "product metadata exposes reported usage");
+
+        var settings = ReadMarketplaceWindowSource();
+        Contains(settings, "SettingsSection.Behavior", "Settings has a dedicated Behavior area");
+        Contains(settings, "Minimize Omega as a bar", "Behavior settings expose compact bar minimize mode");
+        Contains(settings, "Show Omega in the ESC / System menu", "Behavior settings expose ESC menu visibility");
+        Contains(settings, "Show Omega before login", "Behavior settings expose pre-login menu visibility");
+        Contains(settings, "DrawMinimizedBar", "minimized bar presentation is implemented");
+
+        var plugin = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
+        Contains(plugin, "ApplyBehaviorConfiguration", "title-screen visibility changes apply immediately");
+        Contains(plugin, "Configuration.ShowInSystemMenu", "system-menu bridge reads the live preference");
+
+        var systemMenu = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudSystemMenuBridge.cs"));
+        Contains(systemMenu, "Func<bool> isEnabled", "ESC menu injection is dynamically gated");
+        Contains(systemMenu, "if (!isEnabled())", "disabled ESC integration falls through to the original menu");
+    }
+
+    internal static void TestPopularityAndUpdateFailureUiContract()
+    {
+        var popularity = MarketplacePopularityRules.Build(Enumerable.Range(0, 20).Select(index => new MarketplacePlugin
+        {
+            InternalName = $"Popularity{index}",
+            Name = $"Popularity {index}",
+            DownloadCount = index == 0 ? 400 : index == 1 ? 600 : 0,
+        }));
+        Equal(20, popularity.PluginCount, "popularity denominator counts logical plugins");
+        Equal(1000L, popularity.TotalDownloads, "popularity numerator uses total reported downloads");
+        Equal(50d, popularity.AverageDownloads, "catalog average is total downloads divided by logical plugin count");
+        Equal(8d, popularity.MultipleFor(400), "400 downloads is eight times a 50-download catalog average");
+        Equal(12d, popularity.HighestMultiple, "600 downloads is the catalog popularity leader at twelve times average");
+        Equal(100d, popularity.RelativePercentFor(600), "the most popular plugin defines 100 percent");
+        Equal(400d / 600d * 100d, popularity.RelativePercentFor(400), "other plugins are positioned relative to the popularity leader");
+        var leaderScale = new MarketplacePopularitySnapshot(20, 2950, 147.5d, 59d);
+        Equal(6d / 59d * 100d, leaderScale.RelativePercentFor(885), "a six-times-average plugin lands at roughly ten percent when the leader is fifty-nine times average");
+        var originalCulture = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("nl-NL");
+            Equal("8.00×", MarketplacePopularityRules.FormatMultiple(8d), "popularity multiple remains directly readable under a comma-decimal locale");
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = originalCulture;
+        }
+
+        var discover = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
+        DoesNotContain(discover, "average / plugin", "Discover no longer exposes catalog-wide popularity statistics");
+        DoesNotContain(discover, "reported downloads / installations", "Discover keeps aggregate download totals out of the header");
+
+        var cacheUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Cache.cs"));
+        Contains(cacheUi, "MarketplaceSort.Downloads => \"Popularity\"", "download ordering is presented as normalized popularity");
+
+        var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
+        Contains(product, "DrawProductPopularityMetadataRow", "product pages expose normalized popularity beside raw downloads");
+        Contains(product, "Retry update", "product action becomes an explicit retry after a failed update");
+        Contains(product, "DrawProductUpdateFailure", "product pages surface the last structured update failure");
+
+        var popularityUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Popularity.cs"));
+        Contains(popularityUi, "DrawPopularityBar", "product popularity is rendered as a leader-relative bar");
+        Contains(popularityUi, "RelativePercentFor", "product popularity is positioned against the most popular plugin");
+        Contains(popularityUi, "MarketplacePopularityRules.FormatPercent", "product popularity exposes its leader-relative percentage");
+        Contains(popularityUi, "MarketplacePopularityRules.Describe", "popularity tooltip explains the hidden calculation without cluttering Discover");
+        Contains(popularityUi, "catalog.GetDailyPopularitySnapshot", "UI popularity uses the stable daily database snapshot");
+
+        var catalogService = ReadMarketplaceCatalogServiceSource();
+        Contains(catalogService, "GetDailyPopularitySnapshot", "catalog service exposes one stable daily popularity baseline");
+        Contains(catalogService, "allDatabaseVariants", "popularity excludes runtime overlays and user source filters");
+
+        var installer = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudInstallerBridge.cs"));
+        Contains(installer, "UpdateFailureKind.Download", "Dalamud download failures retain a structured failure category");
+        Contains(installer, "faileddownload", "Dalamud FailedDownload status is translated explicitly");
+        Contains(installer, "Your installed v", "download failure copy makes it clear the installed version was kept");
+        Contains(installer, "Task<string> UpdateThroughDalamudInternalsAsync", "Dalamud update status is preserved instead of thrown away");
+        DoesNotContain(installer, "throw new InvalidOperationException($\"Dalamud update returned", "known Dalamud update statuses are no longer flattened into an exception");
+
+        var updateUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Update.cs"));
+        Contains(updateUi, "SetUpdateFailure(updatingInternalName", "failed updates are captured through the persistent per-plugin diagnostic path");
+        Contains(updateUi, "RestorePersistedUpdateFailures", "failed update diagnostics survive Omega restarts");
+        Contains(updateUi, "configuration.UpdateFailures", "failed update diagnostics are stored in plugin configuration");
+        Contains(updateUi, "FailureTargetVersion", "saved update failures are bound to the version that actually failed");
+        Contains(updateUi, "IsUpdateFailureApplicable", "stale failure diagnostics are discarded when a different target update replaces them");
+        Contains(updateUi, "Dismiss##update-failure-dismiss", "users can explicitly dismiss a persisted update diagnostic");
+        Contains(updateUi, "Open repository##update-failure-open", "failed-update diagnostics can open the repository for recovery context");
+        Contains(updateUi, "Update needs attention", "product failure panel has clear user-facing status");
+        Contains(updateUi, "Dalamud status:", "failure details preserve the underlying Dalamud status code");
+
+        var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
+        Contains(library, "previousFailure.Message", "Updates rows display the plugin-specific failure inline");
+        Contains(library, "Retry this update through Dalamud", "Updates rows explain that the action is now a retry");
+    }
+
+    internal static void TestRuntimeOverlaySecurityProjectionContract()
+    {
+        const string official = "https://kamori.goats.dev/Plugin/PluginMaster";
+        var database = new MarketplacePlugin
+        {
+            InternalName = "AbsoluteRoleplay",
+            Name = "Absolute Roleplay",
+            AssemblyVersionText = "0.0.4.4",
+            SourceName = "Dalamud official",
+            SourceUrl = official,
+            SourceIsOfficial = true,
+            SecurityStatus = "complete",
+            SecurityScannedAtUtcText = "2026-08-20T08:19:31Z",
+            SecurityArtifactSha256 = new string('a', 64),
+            SigmascopeVersion = "2.9.0",
+            SecurityHighestSeverity = "high",
+            SecurityCautionCount = 27,
+            SecurityHighCount = 1,
+            SecurityFindings = [new MarketplaceSecurityFinding { RuleId = "rule.high", Severity = "high", Title = "Test finding", Description = "Evidence" }],
+            SecurityAutomationLevel = "ui-automation",
+            SecurityReviewCoverageLabel = "Artifact only",
+        };
+        var live = new MarketplacePlugin
+        {
+            InternalName = "AbsoluteRoleplay",
+            Name = "Absolute Roleplay",
+            AssemblyVersionText = "0.0.4.4",
+            SourceName = "Dalamud official",
+            SourceUrl = official,
+            SourceIsOfficial = true,
+            DownloadCount = 99999,
+        };
+
+        True(live.CanInheritSecurityProjectionFrom(database), "same official plugin/version may inherit the database security projection");
+        live.ApplySecurityProjectionFrom(database);
+        True(live.HasCompletedSecurityScan, "live official manifest retains completed Sigmascope status");
+        Equal("high", live.SecurityHighestSeverity, "live official manifest retains the projected severity");
+        Equal(27, live.SecurityCautionCount, "live official manifest retains finding counts");
+        Equal(1, live.SecurityHighCount, "live official manifest retains high finding count");
+        Equal(1, live.SecurityFindings.Count, "live official manifest retains detailed projected findings");
+        Equal(99999L, live.DownloadCount, "runtime manifest continues to own fresh runtime metadata");
+
+        var newer = new MarketplacePlugin
+        {
+            InternalName = "AbsoluteRoleplay",
+            AssemblyVersionText = "0.0.4.5",
+            SourceUrl = official,
+            SourceIsOfficial = true,
+        };
+        False(newer.CanInheritSecurityProjectionFrom(database), "a newer package version must never inherit an older scan");
+
+        var otherSource = new MarketplacePlugin
+        {
+            InternalName = "AbsoluteRoleplay",
+            AssemblyVersionText = "0.0.4.4",
+            SourceUrl = "https://example.invalid/PluginMaster.json",
+            SourceIsOfficial = false,
+        };
+        False(otherSource.CanInheritSecurityProjectionFrom(database), "community/source identity cannot inherit official evidence by name/version alone");
+
+        live.ApplySecurityProjectionFrom(null);
+        False(live.HasCompletedSecurityScan, "rebuilds clear inherited security when no matching database evidence remains");
+        Equal("none", live.SecurityHighestSeverity, "clearing inherited evidence restores a neutral security state");
+
+        var catalog = ReadMarketplaceCatalogServiceSource();
+        Contains(catalog, "MergeDatabaseSecurityLocked", "catalog projection explicitly merges server security into live runtime manifests");
+        Contains(catalog, "pair.Value.Select(MergeDatabaseSecurityLocked)", "unmanaged live overlays retain exact-version database security");
+        Contains(catalog, "defaultPlugins.Select(MergeDatabaseSecurityLocked)", "Dalamud official runtime manifests retain exact-version database security");
+        Contains(catalog, "runtimePlugin.ApplySecurityProjectionFrom(null)", "projection is cleared before each re-evaluation to prevent stale carry-over");
     }
 
     internal static void TestDefinitionsUpdateUiContract()
@@ -205,31 +368,22 @@ internal static partial class RegressionCases
         Equal("https://github.com/dalagab/omega/releases/download/catalog-latest/catalog.json",
             endpoint.RootElement.GetProperty("descriptorUrl").GetString(), "live production descriptor URL");
 
-        var builder = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
-        Contains(builder, "source_inventory_guard.py", "daily catalog job fail-closes if discovery or normalization silently loses known source URLs");
-        Contains(builder, "--aliases sources/source-url-aliases.json", "source retention accepts only explicit feed migrations/aliases in addition to successful observed redirects");
-        Contains(builder, "source-inventory.json", "validated source coverage is published with catalog-data for developer inspection");
-        Contains(builder, "compile_marketplace_snapshot.py", "daily catalog job compiles the client database from canonical state");
-        Contains(builder, "validate_marketplace_catalog.py --root catalog/client-dist", "daily catalog job validates the exact client database before publication");
-        Contains(builder, "Publish the once-daily client database", "client publication belongs to the daily/manual catalog boundary");
-        Contains(builder, "gh release upload catalog-latest", "validated daily client database updates the stable runtime endpoint");
-        Contains(builder, "omega-marketplace.sqlite.zip", "client release remains the bounded marketplace SQLite transport bundle");
+        var catalogLauncher = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
+        Contains(catalogLauncher, "uses: dalagab/omega/.github/workflows/catalog-builder.yml@sigmascope", "daily catalog work is delegated to the security-services branch");
+        False(catalogLauncher.Contains("production_sigmascope_v2_pipeline.py", StringComparison.Ordinal), "catalog launcher never directly starts a security scan");
 
-        var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "sigmascope.yml"));
-        Contains(workflow, "name: Omega Sigmascope continuous worker", "Sigmascope is the independent continuous evidence worker");
-        Contains(workflow, "--skip-marketplace", "continuous evidence scanning cannot compile or publish the client DB");
-        Contains(workflow, "Publish validated Security Evidence v2 snapshot atomically", "continuous worker can advance validated detailed evidence");
-        False(workflow.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "continuous scanner never publishes the client database");
-        False(workflow.Contains("omega-marketplace.sqlite.zip", StringComparison.Ordinal), "continuous scanner never transports a client database");
-        False(workflow.Contains("omega-security-evidence.sqlite.zip", StringComparison.Ordinal), "live pipeline no longer publishes a giant detailed evidence SQLite bundle");
+        var sigmascopeLauncher = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "sigmascope.yml"));
+        Contains(sigmascopeLauncher, "uses: dalagab/omega/.github/workflows/sigmascope.yml@sigmascope", "continuous evidence scanning is delegated independently to the security-services branch");
+        False(sigmascopeLauncher.Contains("catalog-builder.yml@sigmascope", StringComparison.Ordinal), "Sigmascope launcher cannot masquerade as catalog publication");
+        False(sigmascopeLauncher.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "thin scanner launcher never publishes the client database itself");
 
-        var validator = File.ReadAllText(Path.Combine(Root, "tools", "catalog", "validate_marketplace_catalog.py"));
-        Contains(validator, "catalogSha256", "published database bytes are hash verified");
-        Contains(validator, "bundleSha256", "published ZIP bytes are hash verified");
-        Contains(validator, "catalogRevision", "published semantic Catalog Revision is verified");
-        Contains(validator, "definitionsRevision", "published frozen Definitions Revision is verified");
-        Contains(validator, "securityRevision", "published compiled Security Revision is verified");
-        Contains(validator, "evidenceRevision", "published source Evidence Revision is verified without fetching detailed evidence");
+        var online = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OnlineCatalogClient.cs"));
+        Contains(online, "CatalogSha256", "client verifies published marketplace database bytes");
+        Contains(online, "BundleSha256", "client verifies published marketplace ZIP bytes");
+        Contains(online, "CatalogRevision", "client validates the published Catalog Revision contract");
+        Contains(online, "DefinitionsRevision", "client retains frozen Definitions identity from the descriptor");
+        Contains(online, "SecurityRevision", "client retains compiled Security Revision identity");
+        Contains(online, "EvidenceRevision", "client retains source Evidence Revision identity without downloading detailed evidence");
     }
 
     internal static void TestStorefrontVirtualization()
@@ -358,6 +512,36 @@ internal static partial class RegressionCases
         True(blocks.Any(x => x.Kind == MarketplaceReadmeBlockKind.Quote && x.Text.Contains("Quoted", StringComparison.Ordinal)), "HTML blockquote becomes a quote block");
         True(blocks.Any(x => x.Kind == MarketplaceReadmeBlockKind.Code && x.Text.Contains("DoThing();", StringComparison.Ordinal)), "HTML pre/code becomes a code block");
         False(blocks.Any(x => x.Text.Contains("evil()", StringComparison.Ordinal)), "script contents are removed rather than rendered");
+
+        var inline = MarketplaceReadmeMarkup.ToInlineText("&lt;p&gt;Questionable&lt;br&gt;&lt;strong&gt;updated&lt;/strong&gt;&lt;/p&gt;");
+        Equal("Questionable updated", inline, "entity-encoded manifest HTML is decoded before tag interpretation");
+        False(inline.Contains('<'), "inline plugin metadata cannot expose raw HTML tags");
+    }
+
+    internal static void TestConciseUiLanguageAndPluginMarkupContract()
+    {
+        var security = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sigmascope.cs"));
+        var about = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
+        var collections = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Collections.cs"));
+        var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
+        var productContent = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductContent.cs"));
+        var readmeUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductReadme.cs"));
+        var presentation = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "MarketplacePresentationRules.cs"));
+        var markup = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "MarketplaceReadmeMarkup.cs"));
+
+        DoesNotContain(about, "Sigmascope is Omega's online scanning engine", "About does not explain scanner implementation to users");
+        DoesNotContain(about, "Definitions also carry Omega's plugin listings", "About avoids Definitions implementation prose");
+        DoesNotContain(collections, "Collections use a folder-style view", "Collections page opens directly on the functional UI");
+        DoesNotContain(productContent, "Commands, controls and usage information collected", "usage section does not narrate its data pipeline");
+        DoesNotContain(readmeUi, "Fetched from the project's public repository", "README section does not narrate its ingestion pipeline");
+        Contains(security, "Findings come from static analysis. No findings is not a safety guarantee.", "security keeps only the concise safety qualifier");
+
+        Contains(product, "DrawMarketplaceMarkupText(description", "plugin descriptions render through the shared rich-text layer");
+        Contains(productContent, "DrawMarketplaceMarkupText(entry.Changelog", "plugin changelogs render through the shared rich-text layer");
+        Contains(presentation, "MarketplaceReadmeMarkup.ToInlineText(plugin.Punchline)", "card and hero summaries normalize plugin-provided markup");
+        Contains(markup, "WebUtility.HtmlDecode(text)", "HTML entities are decoded before markup interpretation");
+        Contains(markup, "DangerousHtmlBlockRegex().Replace", "active embedded HTML remains stripped after decoding");
+        DoesNotContain(productContent, "ImGui.TextWrapped(entry.Changelog)", "raw changelog HTML is never sent directly to ImGui");
     }
 
 }

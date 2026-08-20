@@ -120,6 +120,22 @@ internal static class RepositoryProviderRules
         return IsStableProvider(sourceName, sourceUrl, official) ? provider.Priority : int.MaxValue;
     }
 
+    /// <summary>
+    /// Returns whether Omega requires explicit consent before installing from this source.
+    /// Recognized stable providers are not automatically "safe"; this only distinguishes sources
+    /// whose publishing identity Omega already recognizes from other community repositories.
+    /// Sigmascope findings and package-divergence review remain independent gates.
+    /// </summary>
+    public static bool RequiresExplicitInstallAcknowledgement(string? sourceName, string? sourceUrl, bool official)
+        => !official && !IsStableProvider(sourceName, sourceUrl, official);
+
+    public static string TrustLabel(string? sourceName, string? sourceUrl, bool official)
+        => official
+            ? "Dalamud official"
+            : IsStableProvider(sourceName, sourceUrl, official)
+                ? "Recognized community"
+                : "Unrecognized community";
+
     private static bool Contains(string haystack, string needle)
         => haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);
 }

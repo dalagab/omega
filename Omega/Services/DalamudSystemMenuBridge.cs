@@ -20,14 +20,16 @@ internal sealed unsafe class DalamudSystemMenuBridge : IDisposable
     private const int EntryStartIndex = 5;
 
     private readonly Action openOmega;
+    private readonly Func<bool> isEnabled;
     private Hook<AgentHUD.Delegates.OpenSystemMenu>? openSystemMenuHook;
     private Hook<UIModule.Delegates.ExecuteMainCommand>? executeMainCommandHook;
 
     public bool IsAvailable { get; private set; }
 
-    public DalamudSystemMenuBridge(IGameInteropProvider interop, Action openOmega)
+    public DalamudSystemMenuBridge(IGameInteropProvider interop, Action openOmega, Func<bool>? isEnabled = null)
     {
         this.openOmega = openOmega;
+        this.isEnabled = isEnabled ?? (() => true);
 
         try
         {
@@ -54,6 +56,12 @@ internal sealed unsafe class DalamudSystemMenuBridge : IDisposable
         var hook = openSystemMenuHook;
         if (hook is null)
             return;
+
+        if (!isEnabled())
+        {
+            hook.Original(thisPtr, atkValueArgs, menuSize);
+            return;
+        }
 
         try
         {
@@ -101,7 +109,7 @@ internal sealed unsafe class DalamudSystemMenuBridge : IDisposable
         if (hook is null)
             return;
 
-        if (commandId == OmegaCommandId)
+        if (commandId == OmegaCommandId && isEnabled())
         {
             try
             {

@@ -415,6 +415,17 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawMinimizedWindow()
     {
+        if (configuration.MinimizeAsBar)
+        {
+            DrawMinimizedBar();
+            return;
+        }
+
+        DrawMinimizedIconWindow();
+    }
+
+    private void DrawMinimizedIconWindow()
+    {
         var windowSize = Ui(58f);
         var iconSize = Ui(54f);
         ImGui.SetWindowSize(new Vector2(windowSize, windowSize), ImGuiCond.Always);
@@ -439,6 +450,43 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Click to restore Omega • drag to move");
 
+        if (restore)
+            RestoreFromMinimizedMode();
+    }
+
+    private void DrawMinimizedBar()
+    {
+        var barSize = Ui(190f, 42f);
+        ImGui.SetWindowSize(barSize, ImGuiCond.Always);
+        ImGui.SetCursorPos(Vector2.Zero);
+
+        var min = ImGui.GetCursorScreenPos();
+        ImGui.InvisibleButton("##omega-minimized-bar", barSize);
+        if (ImGui.IsItemActivated())
+            minimizedDragMoved = false;
+
+        if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGuiMouseButton.Left, 3f))
+        {
+            var delta = ImGui.GetIO().MouseDelta;
+            minimizedDragMoved = true;
+            ImGui.SetWindowPos(ImGui.GetWindowPos() + delta, ImGuiCond.Always);
+            min += delta;
+        }
+
+        var restore = ImGui.IsItemDeactivated() && !minimizedDragMoved;
+        var draw = ImGui.GetWindowDrawList();
+        var max = min + barSize;
+        draw.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(new Vector4(0.075f, 0.085f, 0.105f, 0.97f)), Ui(8f));
+        draw.AddRect(min, max, ImGui.ColorConvertFloat4ToU32(new Vector4(0.20f, 0.24f, 0.28f, 0.90f)), Ui(8f), ImDrawFlags.None, 1f);
+
+        var iconMin = min + Ui(5f, 5f);
+        var iconSize = Ui(32f);
+        DrawMinimizedOmegaIcon(iconMin, iconSize);
+        var labelPos = min + Ui(48f, 11f);
+        draw.AddText(labelPos, ImGui.GetColorU32(ImGuiCol.Text), "Omega");
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Click to restore Omega • drag to move");
         if (restore)
             RestoreFromMinimizedMode();
     }

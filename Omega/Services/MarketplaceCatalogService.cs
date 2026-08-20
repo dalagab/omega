@@ -154,6 +154,17 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
             return GetMainProjectionLocked(currentApi, sourceName);
     }
 
+    public MarketplacePopularitySnapshot GetDailyPopularitySnapshot(int currentApi)
+    {
+        lock (sync)
+        {
+            // Popularity is anchored to the complete daily SQLite-backed catalog, not runtime
+            // Dalamud overlays, temporary user-added sources, or the current source filter.
+            var daily = MarketplaceCatalogRules.Project(allDatabaseVariants, currentApi);
+            return MarketplacePopularityRules.Build(daily.Plugins);
+        }
+    }
+
     public IReadOnlyList<MarketplacePlugin> GetMainVariants(string internalName, int currentApi)
     {
         lock (sync)
@@ -269,19 +280,36 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
                     .ToArray(),
                 StringComparer.OrdinalIgnoreCase);
 
+    private MarketplacePlugin MergeDatabaseSecurityLocked(MarketplacePlugin runtimePlugin)
+    {
+        // Runtime manifests are deliberately fresher than the compiled catalog for install/update metadata,
+        // but they do not carry Omega's server-side Sigmascope projection. Clear any projection inherited
+        // during an earlier rebuild first, then reattach only evidence from the same source/package version.
+        runtimePlugin.ApplySecurityProjectionFrom(null);
+        var security = allDatabaseVariants
+            .Where(runtimePlugin.CanInheritSecurityProjectionFrom)
+            .Where(x => !string.IsNullOrWhiteSpace(x.SecurityStatus) || !string.IsNullOrWhiteSpace(x.SecurityArtifactSha256))
+            .OrderByDescending(x => x.HasCompletedSecurityScan)
+            .ThenByDescending(x => x.SecurityScannedAtUtc ?? DateTimeOffset.MinValue)
+            .FirstOrDefault();
+        runtimePlugin.ApplySecurityProjectionFrom(security);
+        return runtimePlugin;
+    }
+
     private void RebuildProjectionLocked()
     {
-        var runtimeNames = defaultPlugins.Select(x => x.InternalName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var runtimeDefaults = defaultPlugins.Select(MergeDatabaseSecurityLocked).ToArray();
+        var runtimeNames = runtimeDefaults.Select(x => x.InternalName).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var combined = databaseVariants
             .Where(x => !x.SourceIsOfficial || !runtimeNames.Contains(x.InternalName))
-            .Concat(defaultPlugins)
+            .Concat(runtimeDefaults)
             .ToArray();
         var projection = MarketplaceCatalogRules.Project(combined);
 
         plugins = projection.Plugins;
         variants = projection.Variants;
         variantsByInternalName = BuildVariantIndex(projection.Variants);
-        presentationVariantsByInternalName = BuildVariantIndex(databaseVariants.Concat(defaultPlugins));
+        presentationVariantsByInternalName = BuildVariantIndex(databaseVariants.Concat(runtimeDefaults));
         repositoryStatusCache.Clear();
         repositoryInventoryStatusCache.Clear();
         mainProjectionCache.Clear();

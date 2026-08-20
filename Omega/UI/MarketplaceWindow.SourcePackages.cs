@@ -59,7 +59,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.BeginGroup();
         ImGui.TextUnformatted(warning);
         ImGui.PushTextWrapPos(ImGui.GetWindowContentRegionMax().X - Ui(12f));
-        ImGui.TextDisabled("At least one repository publishes different plugin package bytes for the same version and API. Review Packages & repositories before installing or updating from that source.");
+        ImGui.TextDisabled("Same-version package bytes differ between repositories. Review the source before install or update.");
         ImGui.PopTextWrapPos();
         ImGui.EndGroup();
         ImGui.EndChild();

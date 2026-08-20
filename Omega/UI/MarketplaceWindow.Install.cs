@@ -73,9 +73,7 @@ internal sealed partial class MarketplaceWindow
         EnsurePendingInstallSource(candidates);
         var selected = candidates.FirstOrDefault(x =>
             NormalizeUrl(x.SourceUrl).Equals(NormalizeUrl(pendingInstallSourceUrl), StringComparison.OrdinalIgnoreCase));
-        var selectedNeedsRiskReview = selected is not null &&
-                                      IsRepositoryArtifactDivergent(selected.SourceUrl) &&
-                                      !IsRepositoryRiskAcknowledged(selected.SourceUrl);
+        var selectedNeedsRiskReview = selected is not null && NeedsInstallRepositoryReview(selected);
 
         var headingY = ImGui.GetCursorPosY();
         ImGui.Text($"Install {plugin.Name}");
@@ -119,15 +117,15 @@ internal sealed partial class MarketplaceWindow
                 DrawInstallSourceChoice(candidate, currentApi, currentDalamudVersion);
         }
 
-        if (selectedNeedsRiskReview)
+        if (selectedNeedsRiskReview && selected is not null)
         {
             ImGui.Spacing();
             ImGui.TextColored(new Vector4(0.96f, 0.30f, 0.24f, 1f),
-                "The selected repository has unacknowledged package-divergence evidence. Review and acknowledge that source before installing from it.");
+                BuildInstallRepositoryReviewReason(selected));
         }
 
         ImGui.Separator();
-        ImGui.TextWrapped("Dalamud will perform the installation and continue servicing updates from the selected repository.");
+        ImGui.TextDisabled("Installed and updated by Dalamud from the selected source.");
 
         installPopupOpen = keepOpen && installPopupOpen;
         ImGui.EndPopup();
@@ -164,7 +162,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.BeginGroup();
         ImGui.TextUnformatted(missing.Length == 1 ? "Required provider not installed" : "Required providers not installed");
         ImGui.PushTextWrapPos(ImGui.GetWindowContentRegionMax().X - Ui(12f));
-        ImGui.TextDisabled("Static analysis indicates that core plugin functionality depends on the IPC provider below. Omega will not install it automatically.");
+        ImGui.TextDisabled("Required IPC provider. Install separately.");
         ImGui.PopTextWrapPos();
         ImGui.EndGroup();
 
@@ -222,8 +220,11 @@ internal sealed partial class MarketplaceWindow
                        ?? candidate;
         var sourceComparison = CompareRepositorySecurity(candidate, baseline);
         var repositoryDivergent = IsRepositoryArtifactDivergent(candidate.SourceUrl);
-        var repositoryAcknowledged = repositoryDivergent && IsRepositoryRiskAcknowledged(candidate.SourceUrl);
-        var needsReview = repositoryDivergent && !repositoryAcknowledged;
+        var divergenceAcknowledged = repositoryDivergent && IsRepositoryRiskAcknowledged(candidate.SourceUrl);
+        var untrusted = RequiresUntrustedRepositoryAcknowledgement(candidate);
+        var untrustedAcknowledged = untrusted && IsUntrustedRepositoryAcknowledged(candidate);
+        var repositoryAcknowledged = (repositoryDivergent && divergenceAcknowledged) || (untrusted && untrustedAcknowledged);
+        var needsReview = NeedsInstallRepositoryReview(candidate);
 
         ImGui.PushID($"install-source-{StableId(candidate.SourceUrl)}");
         var rowStart = ImGui.GetCursorPos();
@@ -252,7 +253,7 @@ internal sealed partial class MarketplaceWindow
             DrawInstallRepositoryPresentMarker(rowStart, rowWidth, candidate.SourceIsOfficial);
 
         ImGui.SetCursorPos(rowStart + Ui(10f, 33f));
-        ImGui.TextDisabled($"Version {version}  •  API {api}");
+        ImGui.TextDisabled($"Version {version}  •  API {api}  •  {RepositoryStateLabel(candidate.SourceName, candidate.SourceUrl, candidate.SourceIsOfficial)}");
         ImGui.SetCursorPos(rowStart + Ui(10f, 55f));
         if (sourceComparison.Worse || needsReview)
             ImGui.TextColored(new Vector4(0.94f, 0.28f, 0.26f, 1f), sourceState);
@@ -293,6 +294,35 @@ internal sealed partial class MarketplaceWindow
         return state.Available && state.Present;
     }
 
+    private bool NeedsInstallRepositoryReview(MarketplacePlugin candidate)
+        => (IsRepositoryArtifactDivergent(candidate.SourceUrl) && !IsRepositoryRiskAcknowledged(candidate.SourceUrl)) ||
+           (RequiresUntrustedRepositoryAcknowledgement(candidate) && !IsUntrustedRepositoryAcknowledged(candidate));
+
+    private string BuildInstallRepositoryReviewReason(MarketplacePlugin candidate)
+    {
+        var divergence = IsRepositoryArtifactDivergent(candidate.SourceUrl) && !IsRepositoryRiskAcknowledged(candidate.SourceUrl);
+        var untrusted = RequiresUntrustedRepositoryAcknowledgement(candidate) && !IsUntrustedRepositoryAcknowledged(candidate);
+        if (divergence && untrusted)
+            return "The selected repository is outside Omega's recognized provider set and also has unacknowledged package-divergence findings. Review this source before installing from it.";
+        if (divergence)
+            return "The selected repository has unacknowledged package-divergence findings. Review this source before installing from it.";
+        return "The selected repository is outside Omega's recognized provider set. Review and explicitly acknowledge this source before installing from it.";
+    }
+
+    private static string BuildInstallRepositoryReviewExplanation(
+        MarketplacePlugin selected,
+        bool divergence,
+        bool untrusted)
+    {
+        if (divergence && untrusted)
+            return "Omega does not recognize this repository as one of its established provider identities, and Sigmascope has also recorded package-divergence findings for the source. Neither fact proves malicious intent, but both are reasons to review the repository before allowing Dalamud to install or service its plugins.";
+        if (divergence)
+            return "Sigmascope recorded package-divergence findings for this repository. That does not prove malicious intent, but the source should be reviewed before allowing Dalamud to install or service its plugins.";
+        if (untrusted)
+            return "This community repository is not one of Omega's recognized provider identities. Omega can still install from it, but only after you explicitly acknowledge the source. This source classification is separate from Sigmascope findings.";
+        return $"{selected.SourceName} is already acknowledged for its current source-review state.";
+    }
+
     private string DescribeInstallSourceState(MarketplacePlugin candidate)
     {
         if (IsPluginPackageArtifactDivergent(candidate))
@@ -300,8 +330,13 @@ internal sealed partial class MarketplaceWindow
 
         if (IsRepositoryArtifactDivergent(candidate.SourceUrl))
             return IsRepositoryRiskAcknowledged(candidate.SourceUrl)
-                ? "Repository risk acknowledged — available for explicit installation"
-                : "Repository has known package divergence — acknowledge before use";
+                ? "Package-divergence risk acknowledged — available for explicit installation"
+                : "Repository has known package divergence — acknowledgement required";
+
+        if (RequiresUntrustedRepositoryAcknowledgement(candidate))
+            return IsUntrustedRepositoryAcknowledged(candidate)
+                ? "Unrecognized community acknowledged — available for explicit installation"
+                : "Unrecognized community — acknowledgement required";
 
         return DescribeInstallRepositoryRegistration(candidate);
     }
@@ -379,6 +414,9 @@ internal sealed partial class MarketplaceWindow
         }
 
         var notice = FindRepositoryRiskNotice(selected.SourceUrl);
+        var needsDivergenceAcknowledgement = notice is not null && !IsRepositoryRiskAcknowledged(notice);
+        var needsUntrustedAcknowledgement = RequiresUntrustedRepositoryAcknowledgement(selected) &&
+                                             !IsUntrustedRepositoryAcknowledged(selected);
         var version = selected.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out var testing)
             ? testing ? selected.TestingAssemblyVersionText ?? selected.AssemblyVersionText : selected.AssemblyVersionText
             : selected.AssemblyVersionText;
@@ -389,7 +427,7 @@ internal sealed partial class MarketplaceWindow
         ImGui.BeginChild("install-risk-summary", new Vector2(0f, Ui(92f)), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         ImGui.TextColored(new Vector4(0.98f, 0.37f, 0.31f, 1f), "This repository needs explicit acknowledgement before installation.");
-        ImGui.TextWrapped("Omega found package-divergence evidence for this source. That does not prove the repository is malicious, but packages from it should be reviewed before you allow Dalamud to install or service them.");
+        ImGui.TextWrapped(BuildInstallRepositoryReviewExplanation(selected, needsDivergenceAcknowledgement, needsUntrustedAcknowledgement));
         ImGui.EndChild();
         ImGui.PopStyleColor(2);
 
@@ -402,6 +440,7 @@ internal sealed partial class MarketplaceWindow
             DrawInstallRiskDetailRow("Repository URL", selected.SourceUrl);
             DrawInstallRiskDetailRow("Plugin package", $"{selected.Name}  •  v{version}  •  API {api}");
             DrawInstallRiskDetailRow("Repository state", DescribeInstallRepositoryRegistration(selected));
+            DrawInstallRiskDetailRow("Source recognition", RepositoryStateLabel(selected.SourceName, selected.SourceUrl, selected.SourceIsOfficial));
             DrawInstallRiskDetailRow("Selected package", IsPluginPackageArtifactDivergent(selected)
                 ? "Differs from Omega's preferred same-version package baseline"
                 : "No direct package mismatch recorded for this selected plugin variant");
@@ -414,17 +453,15 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.Spacing();
-        if (notice is null)
+        if (!needsDivergenceAcknowledgement && !needsUntrustedAcknowledgement)
         {
-            ImGui.TextColored(new Vector4(0.96f, 0.64f, 0.20f, 1f),
-                "The repository risk evidence changed while this dialog was open. Return to the repository chooser and refresh Definitions before continuing.");
+            ImGui.TextColored(new Vector4(0.34f, 0.82f, 0.56f, 1f),
+                "This source is already acknowledged for the current review state.");
         }
         else
         {
-            ImGui.Checkbox("I understand and accept this repository risk", ref pendingInstallRiskAcknowledgementChecked);
-            ImGui.SameLine();
-            ImGui.TextDisabled("for this source's current evidence fingerprint");
-            ImGui.TextWrapped("Acknowledgement is source-specific. If Sigmascope observes different divergence evidence later, Omega will require a fresh review.");
+            ImGui.Checkbox("I understand this source is outside Omega's recognized provider set or has additional repository findings", ref pendingInstallRiskAcknowledgementChecked);
+            ImGui.TextDisabled("Acknowledgement applies to this source and current findings.");
         }
 
         ImGui.Spacing();
@@ -435,13 +472,16 @@ internal sealed partial class MarketplaceWindow
             return;
         }
         ImGui.SameLine();
-        var canAcknowledge = notice is not null && pendingInstallRiskAcknowledgementChecked;
+        var canAcknowledge = (needsDivergenceAcknowledgement || needsUntrustedAcknowledgement) && pendingInstallRiskAcknowledgementChecked;
         if (!canAcknowledge)
             ImGui.BeginDisabled();
-        if (ImGui.Button("Acknowledge risk", Ui(170f, 34f)) && canAcknowledge)
+        if (ImGui.Button("Acknowledge source", Ui(170f, 34f)) && canAcknowledge)
         {
-            AcknowledgeRepositoryRisk(notice!);
-            operationMessage = $"Acknowledged the current repository-risk evidence for {notice!.Name}.";
+            if (needsDivergenceAcknowledgement && notice is not null)
+                AcknowledgeRepositoryRisk(notice);
+            if (needsUntrustedAcknowledgement)
+                AcknowledgeUntrustedRepository(selected);
+            operationMessage = $"Acknowledged the current source review state for {selected.SourceName}.";
             ReturnFromInstallRiskReview();
             ImGui.EndPopup();
             return;

@@ -67,7 +67,7 @@ internal sealed partial class MarketplaceWindow
         if (!canImport)
             ImGui.EndDisabled();
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip("Restore a plugin configuration ZIP previously created by Omega. The plugin must already be installed.");
+            ImGui.SetTooltip("Restore an Omega configuration backup.");
 
         ImGui.SetCursorPosX(startX);
         ImGui.Spacing();
@@ -135,6 +135,21 @@ internal sealed partial class MarketplaceWindow
         }
     }
 
+    private static string BuildLibraryCollectionSummary(PluginDirectControlState control)
+    {
+        var named = control.Memberships
+            .Where(x => !x.Collection.IsDefault)
+            .Select(x => CollectionDisplayName(x.Collection))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (named.Length == 0)
+            return string.Empty;
+        return named.Length == 1
+            ? $"Collection: {named[0]}"
+            : $"Collections: {string.Join(", ", named)}";
+    }
+
     private void DrawUpdatesList(
         IReadOnlyList<MarketplacePlugin> plugins,
         IReadOnlyDictionary<string, IExposedPlugin> installed,
@@ -178,6 +193,7 @@ internal sealed partial class MarketplaceWindow
             OpenPluginDetails(plugin);
 
         ImGui.SameLine(0f, Ui(12f));
+        var control = GetPluginDirectControlState(plugin.InternalName);
         var textStart = ImGui.GetCursorPosX();
         var textHeight = ImGui.GetTextLineHeightWithSpacing() * 4f;
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
@@ -187,7 +203,11 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextDisabled(Shorten(
             $"{InstalledVersionText(installedPlugin)}  •  {(installedPlugin.IsLoaded ? "Loaded" : "Not loaded")}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}",
             76));
-        ImGui.TextDisabled(BuildLibraryInstallDateLine(plugin.InternalName));
+        var installLine = BuildLibraryInstallDateLine(plugin.InternalName);
+        var collectionSummary = BuildLibraryCollectionSummary(control);
+        ImGui.TextDisabled(string.IsNullOrWhiteSpace(collectionSummary)
+            ? installLine
+            : Shorten($"{installLine}  •  {collectionSummary}", 78));
         ImGui.EndGroup();
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
             OpenPluginDetails(plugin);
@@ -205,7 +225,6 @@ internal sealed partial class MarketplaceWindow
             MarketplaceLayoutRules.RightAlignedX(ImGui.GetWindowContentRegionMax().X, actionGroupWidth));
         ImGui.SetCursorPos(new Vector2(actionsX, MarketplaceLayoutRules.CenterY(rowHeight, Ui(32f))));
 
-        var control = GetPluginDirectControlState(plugin.InternalName);
         var shownState = control.CanDirectToggle ? control.DesiredEnabled : installedPlugin.IsLoaded;
         var isSelf = plugin.InternalName.Equals(Plugin.PluginInterface.InternalName, StringComparison.OrdinalIgnoreCase);
         var canToggleHere = control.CanDirectToggle && !(isSelf && control.DesiredEnabled);
@@ -403,7 +422,7 @@ internal sealed partial class MarketplaceWindow
             ImGui.Spacing();
             ImGui.TextWrapped(inspection.Message);
             ImGui.Spacing();
-            ImGui.TextDisabled("Import replaces this plugin's current config JSON and auxiliary config directory. Omega creates a temporary safety backup first.");
+            ImGui.TextDisabled("Current configuration will be backed up before import.");
             ImGui.Spacing();
         }
 
@@ -637,7 +656,10 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
+        updateFailures.TryGetValue(plugin.InternalName, out var previousFailure);
         var rowHeight = Ui(MarketplaceLayoutRules.UpdatesRowHeight);
+        if (previousFailure is not null)
+            rowHeight = Ui(112f);
         var rowWidth = Math.Max(Ui(420f), ImGui.GetContentRegionAvail().X);
         ImGui.BeginChild($"updates-row-{StableId(plugin.InternalName)}", new Vector2(rowWidth, rowHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
@@ -652,8 +674,14 @@ internal sealed partial class MarketplaceWindow
         var textStart = ImGui.GetCursorPosX();
         var updateVariant = GetAvailableUpdateCandidate(plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
         var offered = GetAvailableUpdateVersion(plugin.InternalName, installedPlugin, currentApi, currentDalamudVersion);
+        if (previousFailure is not null && !IsUpdateFailureApplicable(previousFailure, offered))
+        {
+            ClearUpdateFailure(plugin.InternalName);
+            previousFailure = null;
+        }
         var migration = updateVariant is not null && IsRepositoryMigration(installedPlugin, updateVariant);
-        var textHeight = ImGui.GetTextLineHeightWithSpacing() * 3f;
+        var changelogClicked = false;
+        var textHeight = ImGui.GetTextLineHeightWithSpacing() * (previousFailure is null ? 3f : 4f);
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
         ImGui.BeginGroup();
         ImGui.TextUnformatted(Shorten(plugin.Name, 42));
@@ -667,32 +695,62 @@ internal sealed partial class MarketplaceWindow
         else
         {
             updateVariant ??= plugin;
-            ImGui.TextDisabled($"{InstalledVersionText(installedPlugin)} → v{offered}{(migration ? "  •  repository move" : string.Empty)}");
+            if (migration)
+            {
+                ImGui.TextDisabled($"{InstalledVersionText(installedPlugin)} → v{offered}  •  repository move");
+                ImGui.SameLine(0f, Ui(6f));
+                ImGui.TextColored(new Vector4(0.95f, 0.64f, 0.20f, 1f), "Review required");
+            }
+            else
+            {
+                ImGui.TextDisabled($"{InstalledVersionText(installedPlugin)} → v{offered}");
+            }
             if (BuildChangelogEntries(updateVariant).Count > 0)
             {
                 ImGui.SameLine(0f, 5f);
-                DrawInlineChangelogButton(updateVariant, $"update-changelog-{StableId(plugin.InternalName)}", installedPlugin.Version);
+                changelogClicked = DrawInlineChangelogButton(updateVariant, $"update-changelog-{StableId(plugin.InternalName)}", installedPlugin.Version);
             }
             ImGui.SameLine(0f, 6f);
             ImGui.TextDisabled(Shorten($"•  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}", 44));
         }
+        if (previousFailure is not null)
+        {
+            ImGui.TextColored(new Vector4(0.96f, 0.48f, 0.24f, 1f), Shorten(previousFailure.Message, 94));
+            if (ImGui.IsItemHovered())
+                SetReadableTooltip(BuildUpdateFailureTooltip(plugin, previousFailure));
+        }
         ImGui.EndGroup();
-        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+        if (!changelogClicked && ImGui.IsItemClicked(ImGuiMouseButton.Left))
             OpenPluginDetails(plugin);
         if (ImGui.IsItemHovered())
             SetReadableTooltip(BuildInstalledMetadataLine(plugin, installedPlugin, currentApi, currentDalamudVersion));
 
-        var actionSize = Ui(38f);
+        var actionSize = migration ? Ui(76f) : Ui(38f);
         ImGui.SameLine();
         ImGui.SetCursorPos(new Vector2(
             Math.Max(textStart + Ui(240f), MarketplaceLayoutRules.RightAlignedX(ImGui.GetWindowContentRegionMax().X, actionSize)),
-            MarketplaceLayoutRules.CenterY(rowHeight, actionSize)));
+            MarketplaceLayoutRules.CenterY(rowHeight, migration ? Ui(32f) : actionSize)));
         var canUpdate = updateVariant is not null && updateTask is null;
-        var actionTooltip = migration && updateVariant is not null
-            ? $"Migrate to {updateVariant.SourceName} and update through Dalamud"
-            : "Update through Dalamud";
-        if (DrawUpdateActionIcon($"update-action-{StableId(plugin.InternalName)}", canUpdate, actionTooltip))
-            OpenUpdateOrMigration(plugin, installedPlugin, currentApi, currentDalamudVersion);
+        if (migration)
+        {
+            if (!canUpdate)
+                ImGui.BeginDisabled();
+            var reviewClicked = DrawRoundedButton("Review", $"update-review-{StableId(plugin.InternalName)}", new Vector2(Ui(76f), Ui(32f)));
+            if (!canUpdate)
+                ImGui.EndDisabled();
+            if (reviewClicked && canUpdate)
+                OpenUpdateOrMigration(plugin, installedPlugin, currentApi, currentDalamudVersion);
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip(updateVariant is null ? "No migration target is currently available" : $"Review the move to {updateVariant.SourceName} before updating");
+        }
+        else
+        {
+            var actionTooltip = previousFailure is not null
+                ? "Retry this update through Dalamud"
+                : "Update through Dalamud";
+            if (DrawUpdateActionIcon($"update-action-{StableId(plugin.InternalName)}", canUpdate, actionTooltip))
+                OpenUpdateOrMigration(plugin, installedPlugin, currentApi, currentDalamudVersion);
+        }
 
         ImGui.EndChild();
     }

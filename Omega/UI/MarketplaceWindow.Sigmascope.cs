@@ -21,20 +21,31 @@ internal sealed partial class MarketplaceWindow
                 FontAwesomeIcon.Question,
                 new Vector4(0.46f, 0.48f, 0.52f, 1f),
                 new Vector4(0.24f, 0.25f, 0.27f, 0.94f),
-                "Not yet indexed",
-                "Not yet indexed: no completed Sigmascope analysis is available for this repository package.");
+                "Waiting for analysis",
+                "No published analysis for this plugin version and source.");
         }
 
         if (!plugin.HasCompletedSecurityScan)
         {
-            var tooltip = "Sigmascope analysis is incomplete for this repository package.";
+            var status = (plugin.SecurityStatus ?? string.Empty).Trim().ToLowerInvariant();
+            var failed = status is "failed" or "error";
+            var pending = status is "pending" or "queued" or "selected";
+            var running = status is "running" or "in-progress" or "in_progress" or "analyzing";
+            var label = failed ? "Analysis failed" : running ? "Analysis in progress" : pending ? "Queued for analysis" : "Analysis incomplete";
+            var tooltip = failed
+                ? "Analysis failed for this plugin version."
+                : running
+                    ? "Analysis in progress."
+                    : pending
+                        ? "Queued for analysis."
+                        : "Analysis incomplete.";
             if (!string.IsNullOrWhiteSpace(plugin.SecurityError))
                 tooltip += $" {plugin.SecurityError}";
             return new SigmascopeVisual(
                 FontAwesomeIcon.ExclamationTriangle,
-                new Vector4(0.94f, 0.43f, 0.10f, 1f),
-                new Vector4(0.46f, 0.25f, 0.08f, 0.96f),
-                "Analysis incomplete",
+                failed ? new Vector4(0.92f, 0.18f, 0.16f, 1f) : new Vector4(0.94f, 0.43f, 0.10f, 1f),
+                failed ? new Vector4(0.50f, 0.10f, 0.10f, 0.96f) : new Vector4(0.46f, 0.25f, 0.08f, 0.96f),
+                label,
                 tooltip);
         }
 
@@ -90,37 +101,37 @@ internal sealed partial class MarketplaceWindow
                 new Vector4(0.92f, 0.12f, 0.15f, 1f),
                 new Vector4(0.55f, 0.08f, 0.10f, 0.96f),
                 "Critical",
-                "Critical: the completed Sigmascope analysis contains at least one critical finding."),
+                "At least one critical finding."),
             "high" => new SigmascopeVisual(
                 FontAwesomeIcon.ExclamationTriangle,
                 new Vector4(0.90f, 0.28f, 0.12f, 1f),
                 new Vector4(0.48f, 0.16f, 0.08f, 0.96f),
                 "High",
-                "High: the completed Sigmascope analysis contains at least one high-severity finding."),
+                "At least one high finding."),
             "caution" or "medium" => new SigmascopeVisual(
                 FontAwesomeIcon.ExclamationTriangle,
                 new Vector4(0.94f, 0.58f, 0.12f, 1f),
                 new Vector4(0.43f, 0.31f, 0.07f, 0.96f),
                 "Medium",
-                "Medium: the completed Sigmascope analysis contains at least one caution-level finding."),
+                "At least one medium finding."),
             "informational" or "low" => new SigmascopeVisual(
                 FontAwesomeIcon.InfoCircle,
                 new Vector4(0.18f, 0.54f, 0.86f, 1f),
                 new Vector4(0.08f, 0.30f, 0.40f, 0.96f),
                 "Low",
-                "Low: the completed Sigmascope analysis contains informational findings only."),
+                "Low-severity findings only."),
             "none" or "" => new SigmascopeVisual(
                 FontAwesomeIcon.InfoCircle,
                 new Vector4(0.20f, 0.72f, 0.42f, 1f),
                 new Vector4(0.10f, 0.34f, 0.22f, 0.96f),
                 "No findings",
-                "No findings were observed by the completed Sigmascope analysis."),
+                "No findings in the published analysis."),
             _ => new SigmascopeVisual(
                 FontAwesomeIcon.InfoCircle,
                 new Vector4(0.20f, 0.72f, 0.42f, 1f),
                 new Vector4(0.10f, 0.34f, 0.22f, 0.96f),
                 "Indexed",
-                "A completed Sigmascope analysis is available for this repository package."),
+                "Published analysis available."),
         };
     }
 
@@ -150,10 +161,16 @@ internal sealed partial class MarketplaceWindow
 
     private static void DrawPublicSourceAvailabilityBadge(MarketplacePlugin plugin)
     {
+        if (!plugin.HasCompletedSecurityScan)
+        {
+            DrawDiscoverTextBadge("Review: pending", new Vector4(0.25f, 0.25f, 0.27f, 0.94f));
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Review coverage pending.");
+            return;
+        }
+
         var confidence = plugin.SecuritySourceAttributionConfidence;
-        var coverage = confidence > 0 && !string.IsNullOrWhiteSpace(plugin.SecurityReviewCoverageLabel)
-            ? plugin.SecurityReviewCoverageLabel
-            : "Artifact only";
+        var coverage = ReviewCoverageLabel(plugin);
         var color = confidence >= 70
             ? new Vector4(0.10f, 0.30f, 0.36f, 0.96f)
             : new Vector4(0.25f, 0.25f, 0.27f, 0.94f);
@@ -163,14 +180,23 @@ internal sealed partial class MarketplaceWindow
 
         if (confidence <= 0)
         {
-            ImGui.SetTooltip("The distributed artifact was analyzed, but Omega has no source attribution for this exact package. This is review coverage, not a security finding, and does not imply anything about the developer's source-disclosure intent.");
+            ImGui.SetTooltip("Source attribution unresolved for this version.");
             return;
         }
 
         var basis = plugin.SecuritySourceAttributionBasis.Count > 0
             ? $" Basis: {string.Join(", ", plugin.SecuritySourceAttributionBasis)}."
             : string.Empty;
-        ImGui.SetTooltip($"Source attribution strength {confidence}. This is an ordinal evidence level, not a probability.{basis}");
+        ImGui.SetTooltip($"Source attribution: {confidence}.{basis}");
+    }
+
+    private static string ReviewCoverageLabel(MarketplacePlugin plugin)
+    {
+        if (plugin.SecuritySourceAttributionConfidence <= 0 || string.IsNullOrWhiteSpace(plugin.SecurityReviewCoverageLabel))
+            return "Plugin package only";
+        return plugin.SecurityReviewCoverageLabel.Trim().Equals("Artifact only", StringComparison.OrdinalIgnoreCase)
+            ? "Plugin package only"
+            : plugin.SecurityReviewCoverageLabel.Trim();
     }
 
     private static void DrawKnownRiskBadge(MarketplacePlugin plugin)
@@ -185,16 +211,23 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawProductSigmascope(MarketplacePlugin plugin)
     {
-        if (!plugin.HasCompletedSecurityScan)
-            return;
-
         DrawProductSectionHeading(SigmascopeInfo.Name);
-        ImGui.TextDisabled(SigmascopeInfo.Description);
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(SigmascopeInfo.Lore);
+        ImGui.Spacing();
+        DrawSigmascopeDisclaimerPanel();
 
         ImGui.Indent(14f);
-        DrawSecuritySeverityBadge(plugin.SecurityHighestSeverity);
+        var lifecycle = ResolveSigmascopeVisual(plugin);
+        DrawPluginFontAwesomeRiskIcon(lifecycle.Icon, lifecycle.IconColor, lifecycle.Tooltip, Ui(20f));
+        ImGui.SameLine(0f, Ui(8f));
+        DrawDiscoverTextBadge(lifecycle.Label, lifecycle.BadgeColor);
+        if (!plugin.HasCompletedSecurityScan)
+        {
+            ImGui.Spacing();
+            ImGui.TextWrapped(BuildSigmascopeLifecycleExplanation(plugin));
+            ImGui.Unindent(14f);
+            return;
+        }
+
         if (plugin.HasKnownAtRiskDependency)
         {
             ImGui.SameLine(0f, 8f);
@@ -209,14 +242,13 @@ internal sealed partial class MarketplaceWindow
         if (plugin.HasKnownAtRiskDependency)
         {
             var noun = plugin.SecurityKnownAdvisoryCount == 1 ? "dependency advisory" : "dependency advisories";
-            ImGui.TextWrapped($"Known at-risk dependency: OSV reports {plugin.SecurityKnownAdvisoryCount} {noun} affecting component versions used by this package. This contributes to Omega's internal risk score even when that score is not shown numerically.");
+            ImGui.TextWrapped($"OSV: {plugin.SecurityKnownAdvisoryCount} known {noun}; highest {plugin.SecurityKnownAdvisoryHighestSeverity}.");
         }
 
         if (plugin.SecurityCapabilities.Count > 0)
         {
             ImGui.Dummy(new Vector2(Ui(1f), Ui(10f)));
             ImGui.TextUnformatted("Observed capabilities");
-            ImGui.TextDisabled("What Sigmascope found the package capable of accessing or invoking.");
             ImGui.Spacing();
             DrawSecurityBulletList(plugin.SecurityCapabilities.Take(12));
         }
@@ -255,19 +287,90 @@ internal sealed partial class MarketplaceWindow
         ImGui.Dummy(new Vector2(Ui(1f), Ui(12f)));
         ImGui.Separator();
         ImGui.Spacing();
-        ImGui.TextDisabled($"Review coverage: {(plugin.SecuritySourceAttributionConfidence > 0 ? plugin.SecurityReviewCoverageLabel : "Artifact only")}");
+        ImGui.TextDisabled($"Review coverage: {ReviewCoverageLabel(plugin)}");
         if (plugin.SecuritySourceAttributionConfidence > 0)
         {
-            ImGui.TextDisabled($"Source attribution strength: {plugin.SecuritySourceAttributionConfidence} (ordinal evidence level, not a probability).");
+            ImGui.TextDisabled($"Source attribution: {plugin.SecuritySourceAttributionConfidence}/100");
             if (plugin.SecuritySourceAttributionConfidence < 100)
-                ImGui.TextDisabled("The published package was not verified to match that source.");
+                ImGui.TextDisabled("Source/package match: unverified");
         }
         else
         {
-            ImGui.TextDisabled("Source attribution is unresolved. This is not a security finding and does not imply anything about the developer's source-disclosure intent.");
+            ImGui.TextDisabled("Source attribution: unresolved");
         }
-        DrawSigmascopeDisclaimer();
+
+        DrawSigmascopeAnalysisDetails(plugin);
         ImGui.Unindent(14f);
+    }
+
+
+    private void DrawSigmascopeAnalysisDetails(MarketplacePlugin plugin)
+    {
+        ImGui.Dummy(new Vector2(Ui(1f), Ui(8f)));
+        if (!ImGui.TreeNode($"Analysis details##sigmascope-analysis-details-{StableId(plugin.InternalName)}"))
+            return;
+
+        ImGui.TextDisabled($"Plugin version analyzed: v{plugin.AssemblyVersionText}");
+        if (plugin.SecurityScannedAtUtc is { } scanned)
+            ImGui.TextDisabled($"Analysis completed: {scanned.ToLocalTime():g}");
+        if (!string.IsNullOrWhiteSpace(plugin.SigmascopeVersion))
+            ImGui.TextDisabled($"Sigmascope: {plugin.SigmascopeVersion}");
+        if (!string.IsNullOrWhiteSpace(plugin.SourceName))
+            ImGui.TextDisabled($"Package repository: {plugin.SourceName}");
+
+        if (!string.IsNullOrWhiteSpace(plugin.SecurityArtifactSha256))
+        {
+            var digest = plugin.SecurityArtifactSha256.Trim();
+            var shortDigest = digest.Length > 16 ? digest[..16] + "…" : digest;
+            ImGui.TextDisabled($"Plugin package SHA-256: {shortDigest}");
+            if (ImGui.IsItemHovered())
+                SetReadableTooltip(digest);
+        }
+
+        if (!string.IsNullOrWhiteSpace(plugin.SecuritySourceRepository))
+        {
+            ImGui.TextDisabled($"Attributed source: {plugin.SecuritySourceRepository}");
+            if (!string.IsNullOrWhiteSpace(plugin.SecuritySourceCommit))
+            {
+                var commit = plugin.SecuritySourceCommit.Trim();
+                var shortCommit = commit.Length > 12 ? commit[..12] : commit;
+                ImGui.TextDisabled($"Attributed source revision: {shortCommit}");
+                if (ImGui.IsItemHovered())
+                    SetReadableTooltip(commit);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(catalog.DefinitionsRevision))
+            ImGui.TextDisabled($"Current marketplace Definitions: {catalog.DefinitionsRevision}");
+        if (!string.IsNullOrWhiteSpace(catalog.EvidenceRevision))
+            ImGui.TextDisabled($"Published evidence snapshot: {catalog.EvidenceRevision}");
+
+        ImGui.TreePop();
+    }
+
+    private string BuildSigmascopeLifecycleExplanation(MarketplacePlugin plugin)
+    {
+        var status = (plugin.SecurityStatus ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            var otherVersion = catalog.GetVariants(plugin.InternalName)
+                .Where(x => x.HasCompletedSecurityScan &&
+                            !x.AssemblyVersion.Equals(plugin.AssemblyVersion))
+                .OrderByDescending(x => x.AssemblyVersion)
+                .FirstOrDefault();
+            return otherVersion is null
+                ? $"No published analysis for v{plugin.AssemblyVersionText}."
+                : $"No analysis for v{plugin.AssemblyVersionText}; v{otherVersion.AssemblyVersionText} has a published result.";
+        }
+        if (status is "failed" or "error")
+            return string.IsNullOrWhiteSpace(plugin.SecurityError)
+                ? "Analysis failed."
+                : $"Analysis failed: {plugin.SecurityError}";
+        if (status is "pending" or "queued" or "selected")
+            return "Queued for analysis.";
+        if (status is "running" or "in-progress" or "in_progress" or "analyzing")
+            return "Analysis in progress.";
+        return "Analysis incomplete.";
     }
 
     private static void DrawSecurityBulletList(IEnumerable<string> values)
@@ -322,7 +425,7 @@ internal sealed partial class MarketplaceWindow
 
     private static void DrawSigmascopeDisclaimerPanel()
     {
-        const string warning = "Static analysis reports observed capabilities and indicators. No findings is not proof that a plugin is safe.";
+        const string warning = "Findings come from static analysis. No findings is not a safety guarantee.";
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.24f, 0.035f, 0.045f, 0.88f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.82f, 0.16f, 0.20f, 0.92f));
         ImGui.BeginChild("omega-security-disclaimer-panel", new Vector2(0f, Ui(66f)), true,
@@ -345,6 +448,6 @@ internal sealed partial class MarketplaceWindow
     private static void DrawSigmascopeDisclaimer()
     {
         ImGui.Spacing();
-        ImGui.TextDisabled("Static analysis reports observed capabilities and indicators. No findings is not proof that a plugin is safe.");
+        ImGui.TextDisabled("Findings come from static analysis. No findings is not a safety guarantee.");
     }
 }

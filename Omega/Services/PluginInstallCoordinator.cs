@@ -117,5 +117,11 @@ internal sealed class PluginInstallCoordinator
         => new(InstallOutcome.Failed, message);
 
     private static UpdateResult FailedUpdate(string message, MarketplacePlugin plugin)
-        => new(UpdateOutcome.Failed, message, NewSourceUrl: plugin.SourceUrl);
+        => new(
+            UpdateOutcome.Failed,
+            message,
+            NewSourceUrl: plugin.SourceUrl,
+            FailureKind: UpdateFailureKind.RepositoryPreparation,
+            FailureCode: "RepositoryNotReady",
+            FailureDetail: message);
 }

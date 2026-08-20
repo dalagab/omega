@@ -80,6 +80,7 @@ internal enum SourceManagerSection
 internal enum SettingsSection
 {
     General,
+    Behavior,
     Repositories,
     Legal,
 }
@@ -105,6 +106,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private readonly PluginLibraryLedger libraryLedger;
     private readonly PluginConfigBackupService configBackups;
     private readonly OmegaSelfUpdateService selfUpdates;
+    private readonly Action behaviorConfigurationChanged;
     private readonly FileDialogManager fileDialogs = new();
     private readonly ISharedImmediateTexture? omegaIconTexture;
     private readonly ISharedImmediateTexture? sigmascopeBannerTexture;
@@ -139,8 +141,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private string installingInternalName = string.Empty;
     private MarketplacePlugin? pendingUpdate;
     private string pendingUpdatePreviousSourceUrl = string.Empty;
+    private bool pendingUpdateSourceAcknowledgementChecked;
     private Task<UpdateResult>? updateTask;
     private string updatingInternalName = string.Empty;
+    private string updatingInstalledVersionText = string.Empty;
+    private string updatingTargetVersionText = string.Empty;
+    private readonly Dictionary<string, UpdateResult> updateFailures = new(StringComparer.OrdinalIgnoreCase);
     private readonly Queue<MarketplacePlugin> updateAllQueue = new();
     private Task? updateAllDefinitionsTask;
     private bool updateAllActive;
@@ -174,6 +180,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private bool requestInstallPopup;
     private bool requestInstallRiskPopup;
     private bool requestUpdateMigrationPopup;
+    private bool requestUpdateChangelogPopup;
     private bool requestUninstallPopup;
     private bool requestSettingsPopup;
     private bool requestAboutPopup;
@@ -267,10 +274,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         string omegaIconPath,
         string sigmascopeBannerPath,
         string fallbackIconPath,
-        string eulaPath)
+        string eulaPath,
+        Action behaviorConfigurationChanged)
         : base("Omega###DalagabOmegaMain")
     {
         this.configuration = configuration;
+        RestorePersistedUpdateFailures();
         this.catalog = catalog;
         this.updates = updates;
         this.installer = installer;
@@ -281,6 +290,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         this.libraryLedger = libraryLedger;
         this.configBackups = configBackups;
         this.selfUpdates = selfUpdates;
+        this.behaviorConfigurationChanged = behaviorConfigurationChanged;
         omegaIconTexture = File.Exists(omegaIconPath) ? Plugin.TextureProvider.GetFromFile(omegaIconPath) : null;
         sigmascopeBannerTexture = File.Exists(sigmascopeBannerPath) ? Plugin.TextureProvider.GetFromFile(sigmascopeBannerPath) : null;
         this.fallbackIconPath = fallbackIconPath;
@@ -380,6 +390,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         DrawInstallModal(currentApi, versionInfo.Version);
         DrawInstallRiskReviewModal(currentApi, versionInfo.Version);
         DrawUpdateMigrationModal(currentApi, versionInfo.Version);
+        DrawUpdateChangelogModal();
         DrawUninstallModal();
         DrawSettingsModal();
         DrawAboutModal();
@@ -411,6 +422,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         {
             ImGui.OpenPopup("Move plugin repository###DalagabOmegaUpdateMigration");
             requestUpdateMigrationPopup = false;
+        }
+
+        if (requestUpdateChangelogPopup)
+        {
+            ImGui.OpenPopup(UpdateChangelogPopupId);
+            requestUpdateChangelogPopup = false;
         }
 
         if (requestUninstallPopup)

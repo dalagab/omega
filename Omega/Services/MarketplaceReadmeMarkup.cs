@@ -185,9 +185,44 @@ internal static partial class MarketplaceReadmeMarkup
         return blocks.Take(320).ToArray();
     }
 
+    public static string ToPlainText(string? input)
+    {
+        var blocks = Parse(input);
+        if (blocks.Count == 0)
+            return string.Empty;
+
+        var lines = blocks.Select(block => block.Kind switch
+        {
+            MarketplaceReadmeBlockKind.Bullet => $"• {block.Text}",
+            MarketplaceReadmeBlockKind.Numbered => $"{Math.Max(1, block.Level)}. {block.Text}",
+            MarketplaceReadmeBlockKind.Quote => block.Text,
+            MarketplaceReadmeBlockKind.Rule => string.Empty,
+            _ => block.Text,
+        });
+        return ExcessBlankLinesRegex().Replace(string.Join("\n", lines), "\n\n").Trim();
+    }
+
+    public static string ToInlineText(string? input)
+        => string.Join(" ", Parse(input)
+            .Where(block => block.Kind != MarketplaceReadmeBlockKind.Rule)
+            .Select(block => block.Text)
+            .Where(text => !string.IsNullOrWhiteSpace(text)))
+            .Trim();
+
     internal static string NormalizeHtml(string input)
     {
-        var text = HtmlCommentRegex().Replace(input, string.Empty);
+        var text = input ?? string.Empty;
+        // Decode before interpreting tags so entity-encoded manifest HTML cannot become raw markup
+        // after the sanitizer has already finished. Two bounded passes cover common double-encoding.
+        for (var pass = 0; pass < 2; pass++)
+        {
+            var decoded = WebUtility.HtmlDecode(text);
+            if (decoded.Equals(text, StringComparison.Ordinal))
+                break;
+            text = decoded;
+        }
+
+        text = HtmlCommentRegex().Replace(text, string.Empty);
         text = DangerousHtmlBlockRegex().Replace(text, string.Empty);
         text = HtmlPreRegex().Replace(text, match => $"\n```\n{RemainingHtmlRegex().Replace(match.Groups[1].Value, string.Empty)}\n```\n");
         text = HtmlBlockquoteRegex().Replace(text, match => $"\n> {RemainingHtmlRegex().Replace(match.Groups[1].Value, string.Empty)}\n");
@@ -201,7 +236,6 @@ internal static partial class MarketplaceReadmeMarkup
         text = HtmlBlockStartRegex().Replace(text, "\n");
         text = HtmlBlockEndRegex().Replace(text, "\n");
         text = RemainingHtmlRegex().Replace(text, string.Empty);
-        text = WebUtility.HtmlDecode(text);
         return ExcessBlankLinesRegex().Replace(text, "\n\n").Trim();
     }
 

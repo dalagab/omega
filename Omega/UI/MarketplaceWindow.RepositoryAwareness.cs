@@ -151,6 +151,33 @@ internal sealed partial class MarketplaceWindow
         configuration.Save();
     }
 
+    private static string UntrustedRepositoryFingerprint(MarketplacePlugin plugin)
+    {
+        var normalized = NormalizeUrl(plugin.SourceUrl);
+        var material = $"omega-untrusted-source-v1|{normalized}|{RepositoryProviderRules.TrustLabel(plugin.SourceName, plugin.SourceUrl, plugin.SourceIsOfficial)}";
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant();
+    }
+
+    private static bool RequiresUntrustedRepositoryAcknowledgement(MarketplacePlugin plugin)
+        => RepositoryProviderRules.RequiresExplicitInstallAcknowledgement(
+            plugin.SourceName, plugin.SourceUrl, plugin.SourceIsOfficial);
+
+    private bool IsUntrustedRepositoryAcknowledged(MarketplacePlugin plugin)
+    {
+        if (!RequiresUntrustedRepositoryAcknowledgement(plugin))
+            return true;
+        var normalized = NormalizeUrl(plugin.SourceUrl);
+        return configuration.AcknowledgedUntrustedRepositoryByUrl.TryGetValue(normalized, out var acknowledged) &&
+               acknowledged.Equals(UntrustedRepositoryFingerprint(plugin), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void AcknowledgeUntrustedRepository(MarketplacePlugin plugin)
+    {
+        configuration.AcknowledgedUntrustedRepositoryByUrl[NormalizeUrl(plugin.SourceUrl)] =
+            UntrustedRepositoryFingerprint(plugin);
+        configuration.Save();
+    }
+
     private void AcknowledgeVisibleRepositoryRisks()
     {
         foreach (var notice in repositoryRiskNotices)
@@ -184,7 +211,7 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.TextColored(new Vector4(0.96f, 0.36f, 0.28f, 1f), "Omega found repository package divergence in sources currently used by this Dalamud installation.");
-        ImGui.TextWrapped("This does not prove a repository is malicious. It means at least one package with the same plugin version differs from Omega's stable-provider plugin package baseline, so the source deserves review before further installs or updates.");
+        ImGui.TextWrapped("Same-version packages differ between repositories. Review the source before installing or updating.");
         ImGui.Spacing();
 
         if (ImGui.BeginTable("repository-risk-table", 3, ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.RowBg, new Vector2(0f, 0f)))

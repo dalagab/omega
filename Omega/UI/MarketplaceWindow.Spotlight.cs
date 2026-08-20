@@ -109,13 +109,13 @@ internal sealed partial class MarketplaceWindow
 
     private static void DrawSpotlightPitch(MarketplacePlugin plugin)
     {
-        var pitch = !string.IsNullOrWhiteSpace(plugin.Punchline)
+        var pitch = MarketplaceReadmeMarkup.ToInlineText(!string.IsNullOrWhiteSpace(plugin.Punchline)
             ? plugin.Punchline
-            : plugin.Description;
+            : plugin.Description);
         if (string.IsNullOrWhiteSpace(pitch))
             pitch = "Highlighted by Omega.";
 
-        ImGui.TextWrapped(Shorten(pitch.Trim(), 78));
+        ImGui.TextWrapped(Shorten(pitch, 78));
     }
 
     private void OpenSpotlightPluginInDiscover(MarketplacePlugin plugin)

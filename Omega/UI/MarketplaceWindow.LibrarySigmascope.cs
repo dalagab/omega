@@ -60,8 +60,6 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
         DrawLibrarySigmascopeSummary(entries.Length, completed, elevated, caution, unknown);
         ImGui.Spacing();
-        ImGui.TextDisabled("Sigmascope results are matched to the installed repository package where possible. Sigmascope examines evidence without executing plugin code.");
-        ImGui.Spacing();
 
         foreach (var entry in entries)
         {
@@ -73,8 +71,6 @@ internal sealed partial class MarketplaceWindow
     private void DrawLibrarySigmascopeSummary(int installed, int scanned, int elevated, int caution, int unknown)
     {
         ImGui.TextUnformatted("Sigmascope · Installed environment");
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(SigmascopeInfo.Lore);
         ImGui.SameLine(0f, Ui(12f));
         ImGui.TextDisabled($"{installed} plugins  •  {scanned} scanned  •  {elevated} high/critical  •  {caution} medium  •  {unknown} pending/unknown");
 
@@ -84,7 +80,7 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.Button(label, new Vector2(width, Ui(30f))) && !updates.IsRefreshing)
             CheckForUpdates();
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Check whether newer Omega Definitions/security summaries are available. Installed plugin code is never executed by this view.");
+            ImGui.SetTooltip("Check for newer Definitions and findings.");
     }
 
     private void DrawLibrarySigmascopeRow(
@@ -199,12 +195,12 @@ internal sealed partial class MarketplaceWindow
     private static string BuildEnvironmentSigmascopeIssueLine(MarketplacePlugin plugin)
     {
         if (!plugin.HasCompletedSecurityScan)
-            return string.IsNullOrWhiteSpace(plugin.SecurityStatus) ? "Sigmascope analysis not yet available" : "Sigmascope analysis incomplete";
+            return string.IsNullOrWhiteSpace(plugin.SecurityStatus) ? "Waiting for Sigmascope analysis — no result yet" : "Sigmascope analysis incomplete — not a clean result";
 
         var total = plugin.SecurityCriticalCount + plugin.SecurityHighCount +
                     plugin.SecurityCautionCount + plugin.SecurityInformationalCount;
         if (total == 0 && !plugin.HasKnownAtRiskDependency)
-            return "No findings in the latest completed static scan";
+            return "No findings recorded in the latest completed static analysis";
 
         var parts = new List<string>();
         if (plugin.SecurityCriticalCount > 0) parts.Add($"{plugin.SecurityCriticalCount} critical");
