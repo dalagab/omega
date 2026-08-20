@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+from pathlib import Path
+import sys
 import unittest
 
 import common  # noqa: F401
+
+ROOT = Path(__file__).resolve().parents[2]
+SECURITY = ROOT / "tools" / "security"
+if str(SECURITY) not in sys.path:
+    sys.path.insert(0, str(SECURITY))
 from security_endpoint_inventory import endpoint_candidates, endpoint_findings, endpoint_summary
 from security_evidence_v2 import compact_report_for_transport
 
