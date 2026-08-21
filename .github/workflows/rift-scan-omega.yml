@@ -156,18 +156,40 @@ jobs:
       - name: Build and test Rift runtime against API 15
         shell: bash
         run: |
-          set -euo pipefail
+          set +e
+          results="$RUNNER_TEMP/rift-results"
           python3 ./tools/check-rift-source-contract.py
+          rc=$?
+          if [[ $rc -ne 0 ]]; then
+            printf '{"schema_version":"rift.workflow.v1","phase":"source-contract","outcome":"failed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
+            exit "$rc"
+          fi
           dotnet test ./tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
             --configuration Release \
             -p:HooksDir="$RIFT_HOOKS"
+          rc=$?
+          if [[ $rc -ne 0 ]]; then
+            printf '{"schema_version":"rift.workflow.v1","phase":"dotnet-test","outcome":"failed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
+            exit "$rc"
+          fi
           dotnet publish ./InterdimensionalRift/InterdimensionalRift.csproj \
             --configuration Release \
             --runtime linux-x64 \
             --self-contained true \
             -p:HooksDir="$RIFT_HOOKS" \
             --output "$RUNNER_TEMP/rift-runtime"
+          rc=$?
+          if [[ $rc -ne 0 ]]; then
+            printf '{"schema_version":"rift.workflow.v1","phase":"dotnet-publish","outcome":"failed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
+            exit "$rc"
+          fi
           test -x "$RUNNER_TEMP/rift-runtime/interdimensional-rift"
+          rc=$?
+          if [[ $rc -ne 0 ]]; then
+            printf '{"schema_version":"rift.workflow.v1","phase":"runtime-validation","outcome":"failed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
+            exit "$rc"
+          fi
+          printf '{"schema_version":"rift.workflow.v1","phase":"build","outcome":"passed"}\n' > "$results/workflow-status.json"
 
       - name: Build versioned seccomp policy
         shell: bash
@@ -286,7 +308,15 @@ jobs:
             echo '- Runtime boundary: cgroup-v2 → Bubblewrap → seccomp → Rift host → Omega'
             echo
             echo '```json'
-            python3 -m json.tool "$results/rift-omega.json" 2>/dev/null || cat "$results/rift-omega.json"
+            report="$results/rift-omega.json"
+            if [[ ! -s "$report" ]]; then
+              report="$results/workflow-status.json"
+            fi
+            if [[ -s "$report" ]]; then
+              python3 -m json.tool "$report" 2>/dev/null || cat "$report"
+            else
+              echo '{"schema_version":"rift.workflow.v1","outcome":"no_diagnostic_report"}'
+            fi
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 

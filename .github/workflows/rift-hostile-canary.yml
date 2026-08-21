@@ -41,8 +41,23 @@ jobs:
           bash ./tools/verify-bwrap.sh
           bash ./tools/verify-rift-cgroup.sh
 
+      - name: Initialize diagnostic result envelope
+        run: |
+          results="$RUNNER_TEMP/rift-hostile-canary-results"
+          mkdir -p "$results"
+          printf '{"schema_version":"rift.workflow.v1","phase":"pre-execution","outcome":"pending"}\n' > "$results/workflow-status.json"
+
       - name: Verify hostile canary source contract
-        run: python3 ./tools/check-hostile-canary-contract.py
+        run: |
+          set +e
+          results="$RUNNER_TEMP/rift-hostile-canary-results"
+          python3 ./tools/check-hostile-canary-contract.py
+          rc=$?
+          if [[ $rc -ne 0 ]]; then
+            printf '{"schema_version":"rift.workflow.v1","phase":"hostile-canary-contract","outcome":"failed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
+            exit "$rc"
+          fi
+          printf '{"schema_version":"rift.workflow.v1","phase":"hostile-canary-contract","outcome":"passed"}\n' > "$results/workflow-status.json"
 
       - name: Download Dalamud API runtime
         run: |
@@ -56,21 +71,32 @@ jobs:
           test -s "$hooks/Dalamud.dll"
           echo "RIFT_HOOKS=$hooks" >> "$GITHUB_ENV"
 
-      - name: Initialize diagnostic result envelope
-        run: |
-          results="$RUNNER_TEMP/rift-hostile-canary-results"
-          mkdir -p "$results"
-          printf '{"schema_version":"rift.workflow.v1","phase":"pre-execution","outcome":"pending"}\n' > "$results/workflow-status.json"
-
       - name: Build/test Rift and canary
         run: |
-          set -euo pipefail
+          set +e
+          results="$RUNNER_TEMP/rift-hostile-canary-results"
           dotnet test ./tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
             --configuration Release -p:HooksDir="$RIFT_HOOKS"
+          rc=$?
+          if [[ $rc -ne 0 ]]; then
+            printf '{"schema_version":"rift.workflow.v1","phase":"dotnet-test","outcome":"failed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
+            exit "$rc"
+          fi
           dotnet publish ./InterdimensionalRift/InterdimensionalRift.csproj \
             --configuration Release --runtime linux-x64 --self-contained true \
             -p:HooksDir="$RIFT_HOOKS" --output "$RUNNER_TEMP/rift-runtime"
+          rc=$?
+          if [[ $rc -ne 0 ]]; then
+            printf '{"schema_version":"rift.workflow.v1","phase":"dotnet-publish","outcome":"failed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
+            exit "$rc"
+          fi
           test -x "$RUNNER_TEMP/rift-runtime/interdimensional-rift"
+          rc=$?
+          if [[ $rc -ne 0 ]]; then
+            printf '{"schema_version":"rift.workflow.v1","phase":"runtime-validation","outcome":"failed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
+            exit "$rc"
+          fi
+          printf '{"schema_version":"rift.workflow.v1","phase":"build","outcome":"passed"}\n' > "$results/workflow-status.json"
 
       - name: Build deliberately non-installable canary artifact
         id: package

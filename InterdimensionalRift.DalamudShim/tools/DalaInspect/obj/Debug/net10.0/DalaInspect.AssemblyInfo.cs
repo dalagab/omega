@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DalaInspect")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e1366875f8b6326320654421651d01dbfa8fd277")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ec68b404ea657185d75ca03da32fcf305b7bad4f")]
 [assembly: System.Reflection.AssemblyProductAttribute("DalaInspect")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DalaInspect")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

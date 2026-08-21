@@ -18,9 +18,12 @@ else:
     text = SOURCE.read_text(encoding="utf-8")
 
 # This fixture is deliberately not a discoverable/installable Dalamud package.
-json_files = sorted(FIXTURE.rglob("*.json"))
+json_files = sorted(
+    p for p in FIXTURE.rglob("*.json")
+    if not ({"bin", "obj"} & set(p.relative_to(FIXTURE).parts))
+)
 if json_files:
-    errors.append("hostile canary fixture must contain zero .json files: " + ", ".join(str(p.relative_to(ROOT)) for p in json_files))
+    errors.append("hostile canary source fixture must contain zero authored .json files: " + ", ".join(str(p.relative_to(ROOT)) for p in json_files))
 
 for forbidden in (
     "DalamudApiLevel",
@@ -89,6 +92,6 @@ if errors:
     raise SystemExit(1)
 
 print("Hostile canary contract: PASS")
-print("- no JSON / Dalamud manifest")
+print("- no authored JSON / Dalamud manifest (bin/obj ignored; packaged artifact is checked separately)")
 print("- reviewed alarm vocabulary present")
 print("- active probes restricted to Rift-local harmless sentinels")

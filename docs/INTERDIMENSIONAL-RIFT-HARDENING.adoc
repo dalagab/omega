@@ -699,3 +699,10 @@ The generated full-surface C# shim is retired from the active execution path. CI
 Rift now loads the frozen trusted real `Dalamud.dll` only as a contract/type-identity assembly. It never instantiates Dalamud host/game services. Plugin-facing services remain Rift `DispatchProxy` instrumentation objects created against the real service interface `Type` objects. The trusted contract directory is mounted read-only at `/contracts` inside Bubblewrap.
 
 DalaInspect remains metadata/provenance tooling and runs with `--inspect-only`; generated C# is no longer a prerequisite for building or running Rift.
+
+
+== Pass 2.5: CI integration repair
+
+The `ec68b40` GitHub runs reconfirmed that user namespaces, Bubblewrap, cgroup-v2 and the seccomp policy all work on hosted Ubuntu 24.04 runners. The remaining failures were pre-execution integration defects: two fixture projects had not received the real-Dalamud contract import in the committed branch, the hostile-canary source checker treated NuGet-generated `obj/*.json` as authored plugin metadata, and the Omega job summary assumed a runtime report existed after a pre-build failure.
+
+Pass 2.5 restores all contract imports, keeps the final canary package hard-gated to one DLL and zero JSON, ignores only generated `bin/obj` files in the authored-source check, and makes both execution workflows preserve phase-specific diagnostics for early failures.
