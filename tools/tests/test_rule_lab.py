@@ -222,6 +222,78 @@ class RuleLabTests(unittest.TestCase):
         self.assertFalse(ref["productionWriteBack"])
         self.assertEqual(1000, ref["limits"]["corpusVariants"])
 
+    def test_editor_intelligence_completes_collections_while_yaml_is_incomplete(self) -> None:
+        text = """schema: omega.sigmascope.rule.v1
+id: candidate.smart
+kind: observation
+status: experimental
+requires: []
+selectors:
+  marker:
+    collection: 
+"""
+        result = rule_lab.editor_intelligence(text, cursor_line=8, cursor_column=17)
+        labels = {item["label"] for item in result["completions"]}
+        self.assertIn("staticPatternMatches", labels)
+        self.assertFalse(result["productionWriteBack"])
+        self.assertEqual("none", result["mutationAuthority"])
+
+    def test_editor_intelligence_understands_typed_fields_and_operators(self) -> None:
+        field_text = """schema: omega.sigmascope.rule.v1
+id: candidate.smart
+kind: observation
+status: experimental
+requires: [staticPatternMatches]
+selectors:
+  marker:
+    collection: staticPatternMatches
+    where:
+      
+"""
+        fields = rule_lab.editor_intelligence(field_text, cursor_line=10, cursor_column=7)
+        field_labels = {item["label"] for item in fields["completions"]}
+        self.assertIn("pattern", field_labels)
+        self.assertIn("evidenceLabel", field_labels)
+
+        operator_text = field_text.rstrip() + "\n      pattern:\n        \n"
+        operators = rule_lab.editor_intelligence(operator_text, cursor_line=11, cursor_column=9)
+        operator_labels = {item["label"] for item in operators["completions"]}
+        self.assertIn("starts-with-ci", operator_labels)
+        self.assertIn("equals-ci", operator_labels)
+        self.assertNotIn("gt", operator_labels)
+
+    def test_editor_intelligence_builds_symbol_outline_and_hover_docs(self) -> None:
+        line = next(i for i, value in enumerate(RULESET.splitlines(), 1) if "condition: http" in value)
+        result = rule_lab.editor_intelligence(RULESET, cursor_line=line, cursor_column=len("    condition: http") + 1)
+        self.assertTrue(result["ok"])
+        self.assertEqual(2, len(result["symbols"]["rules"]))
+        self.assertIn("http", {item["name"] for item in result["symbols"]["selectors"]})
+        self.assertIn("candidate.network.http", {item["name"] for item in result["symbols"]["facts"]})
+        self.assertTrue(any(item["kind"] == "collection→selector" for item in result["graph"]["edges"]))
+
+    def test_editor_linter_suggests_nearby_operator_typo(self) -> None:
+        broken = rule_lab.DEFAULT_EXAMPLE.replace("starts-with-ci", "starts-wth-ci")
+        result = rule_lab.editor_intelligence(broken, cursor_line=11, cursor_column=12)
+        error = next(item for item in result["diagnostics"] if item["severity"] == "error")
+        self.assertEqual(11, error["line"])
+        self.assertEqual("starts-with-ci", error["suggestion"])
+
+    def test_editor_formatter_is_safe_deterministic_and_recompiles(self) -> None:
+        first = rule_lab.format_candidate_text(RULESET)
+        second = rule_lab.format_candidate_text(first["yaml"])
+        self.assertTrue(first["ok"])
+        self.assertEqual(first["yaml"], second["yaml"])
+        self.assertNotIn("&id", first["yaml"])
+        self.assertNotIn("*id", first["yaml"])
+        self.assertTrue(rule_lab.compile_candidate_text(first["yaml"])["ok"])
+
+    def test_reference_exposes_smart_editor_language_contract(self) -> None:
+        ref = rule_lab.reference()
+        self.assertTrue(ref["editor"]["liveLint"])
+        self.assertTrue(ref["editor"]["contextAwareCompletion"])
+        self.assertIn("staticPatternMatches", ref["editor"]["typedCollections"])
+        self.assertEqual("none", ref["editor"]["mutationAuthority"])
+
     def test_http_rule_lab_endpoints_are_local_data_only(self) -> None:
         handler = type("TestRuleLabHandler", (developer_view.AppHandler,), {"inspector": FakeInspector()})
         server = developer_view.ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -232,6 +304,25 @@ class RuleLabTests(unittest.TestCase):
             with urllib.request.urlopen(base + "/api/rule-lab/reference", timeout=5) as response:
                 ref = json.load(response)
             self.assertFalse(ref["productionWriteBack"])
+            self.assertTrue(ref["editor"]["liveLint"])
+
+            intelligence_request = urllib.request.Request(
+                base + "/api/rule-lab/intelligence",
+                data=json.dumps({"yaml": RULESET, "line": 8, "column": 12}).encode("utf-8"),
+                headers={"Content-Type": "application/json"}, method="POST",
+            )
+            with urllib.request.urlopen(intelligence_request, timeout=5) as response:
+                intelligence = json.load(response)
+            self.assertEqual("none", intelligence["mutationAuthority"])
+            self.assertTrue(intelligence["symbols"]["rules"])
+
+            format_request = urllib.request.Request(
+                base + "/api/rule-lab/format", data=json.dumps({"yaml": RULESET}).encode("utf-8"),
+                headers={"Content-Type": "application/json"}, method="POST",
+            )
+            with urllib.request.urlopen(format_request, timeout=5) as response:
+                formatted = json.load(response)
+            self.assertTrue(formatted["ok"])
 
             request = urllib.request.Request(
                 base + "/api/rule-lab/evaluate",

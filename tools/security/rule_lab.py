@@ -10,8 +10,10 @@ from __future__ import annotations
 
 from collections import Counter
 import hashlib
+import difflib
 import io
 import json
+import re
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 import zipfile
@@ -30,6 +32,8 @@ COMPILE_SCHEMA = "omega.deltascope.rule-lab.compile.v1"
 VARIANT_EVALUATION_SCHEMA = "omega.deltascope.rule-lab.variant-evaluation.v1"
 REPLAY_SCHEMA = "omega.deltascope.rule-lab.replay.v1"
 DIFF_SCHEMA = "omega.deltascope.rule-lab.finding-diff.v1"
+EDITOR_INTELLIGENCE_SCHEMA = "omega.deltascope.rule-editor-intelligence.v1"
+FORMAT_SCHEMA = "omega.deltascope.rule-editor-format.v1"
 EXPORT_SCHEMA = "omega.sigmascope.rule-candidate-bundle.v1"
 MAX_REPLAY_VARIANTS = 1000
 MAX_FIXTURE_BYTES = 1024 * 1024
@@ -502,6 +506,404 @@ def build_export_bundle(
     return _zip_bytes(files), manifest_core
 
 
+
+EDITOR_KEY_DOCS: dict[str, str] = {
+    "schema": "SRL document schema. A single rule uses omega.sigmascope.rule.v1; a multi-rule document uses omega.sigmascope.ruleset.v1.",
+    "id": "Stable rule identity. Use a durable namespaced identifier; changing this creates a new logical rule.",
+    "kind": "Rule role: observation/classification emits a fact; correlation consumes selectors/facts and emits a review finding.",
+    "status": "Lifecycle state. Rule Lab normally authors experimental rules; GitHub review is the authority boundary for reviewed state.",
+    "requires": "Exact retained observation collections required by this rule. Collection selectors must be mirrored here.",
+    "selectors": "Named, same-record selectors over retained observations, or fact selectors in correlation rules.",
+    "collection": "An SRL-eligible retained observation collection. Only frozen typed collections are legal inputs.",
+    "where": "Typed predicates that must match the same retained observation row.",
+    "facts": "Correlation-only selector over previously emitted/stable fact identifiers using any/all semantics.",
+    "condition": "Boolean composition of selector names using all/any/not/count. Every declared selector must be referenced.",
+    "emit": "Typed output. Observation/classification rules emit a fact; correlation rules emit a finding.",
+    "fact": "Stable fact identifier emitted by an observation or classification rule.",
+    "findingId": "Stable finding identifier emitted by a correlation rule.",
+    "confidence": "Human-facing confidence metadata for an emitted fact.",
+    "severity": "Human-facing finding severity; SRL does not grant mutation authority or activation semantics.",
+    "title": "Short human-readable title.",
+    "description": "Human-readable explanation of the rule or emitted result.",
+    "category": "Human-facing category metadata.",
+    "license": "Rule/source licensing provenance.",
+    "source": "External/source provenance metadata; it does not grant authority.",
+}
+
+CONDITION_DOCS = {
+    "all": "All child conditions must match.",
+    "any": "At least one child condition must match.",
+    "not": "Negates one child condition.",
+    "count": "Compares a selector match count using gt/gte/lt/lte/equals.",
+}
+
+
+def _line_for_key(text: str, key: str, *, after_line: int = 0) -> int:
+    pattern = re.compile(rf"^\s*(?:-\s*)?{re.escape(key)}\s*:", re.MULTILINE)
+    for match in pattern.finditer(text):
+        line = text.count("\n", 0, match.start()) + 1
+        if line >= after_line:
+            return line
+    return max(1, after_line or 1)
+
+
+def _location_for_diagnostic(text: str, message: str) -> tuple[int, int]:
+    mark = re.search(r"line\s+(\d+),\s*column\s+(\d+)", message, re.IGNORECASE)
+    if mark:
+        return max(1, int(mark.group(1))), max(1, int(mark.group(2)))
+    for pattern in (
+        r"unknown operator ([A-Za-z0-9-]+)",
+        r"unknown field [^.]+\.([A-Za-z0-9_.\[\]-]+)",
+        r"selector ([A-Za-z0-9_.:/-]+)",
+        r"collection ([A-Za-z0-9_.:/-]+)",
+    ):
+        found = re.search(pattern, message)
+        if found:
+            return _line_for_key(text, found.group(1)), 1
+    if "requires" in message:
+        return _line_for_key(text, "requires"), 1
+    if "condition" in message:
+        return _line_for_key(text, "condition"), 1
+    if "emit" in message:
+        return _line_for_key(text, "emit"), 1
+    if "rule id" in message:
+        return _line_for_key(text, "id"), 1
+    return 1, 1
+
+
+def _rules_from_document(document: Any) -> list[Mapping[str, Any]]:
+    if isinstance(document, Mapping) and document.get("schema") == srl.RULE_SCHEMA:
+        return [document]
+    if isinstance(document, Mapping) and document.get("schema") == srl.RULESET_SCHEMA and isinstance(document.get("rules"), list):
+        return [item for item in document["rules"] if isinstance(item, Mapping)]
+    if isinstance(document, list):
+        return [item for item in document if isinstance(item, Mapping)]
+    return []
+
+
+def _line_of_value(text: str, key: str, value: str, *, after_line: int = 0) -> int:
+    escaped = re.escape(str(value))
+    pattern = re.compile(rf"^\s*(?:-\s*)?{re.escape(key)}\s*:\s*['\"]?{escaped}(?:['\"]?\s*(?:#.*)?$)", re.MULTILINE)
+    for match in pattern.finditer(text):
+        line = text.count("\n", 0, match.start()) + 1
+        if line >= after_line:
+            return line
+    return _line_for_key(text, key, after_line=after_line)
+
+
+def _editor_symbols(text: str, document: Any) -> dict[str, Any]:
+    rules_out: list[dict[str, Any]] = []
+    selectors_out: list[dict[str, Any]] = []
+    facts_out: list[dict[str, Any]] = []
+    finding_out: list[dict[str, Any]] = []
+    last_rule_line = 1
+    for raw in _rules_from_document(document):
+        rule_id = str(raw.get("id") or "")
+        rule_line = _line_of_value(text, "id", rule_id, after_line=last_rule_line) if rule_id else last_rule_line
+        last_rule_line = rule_line
+        kind = str(raw.get("kind") or "")
+        rules_out.append({"name": rule_id or "<unnamed>", "kind": kind or "rule", "line": rule_line, "status": str(raw.get("status") or "experimental")})
+        selectors = raw.get("selectors") if isinstance(raw.get("selectors"), Mapping) else {}
+        for name, selector in selectors.items():
+            selector_line = _line_for_key(text, str(name), after_line=rule_line)
+            collection = str(selector.get("collection") or "") if isinstance(selector, Mapping) else ""
+            selectors_out.append({"name": str(name), "rule": rule_id, "line": selector_line, "collection": collection, "type": "facts" if isinstance(selector, Mapping) and "facts" in selector else "collection"})
+        emit = raw.get("emit") if isinstance(raw.get("emit"), Mapping) else {}
+        fact = str(emit.get("fact") or "")
+        if fact:
+            facts_out.append({"name": fact, "rule": rule_id, "line": _line_of_value(text, "fact", fact, after_line=rule_line)})
+        finding_id = str(emit.get("findingId") or "")
+        if finding_id:
+            finding_out.append({"name": finding_id, "rule": rule_id, "line": _line_of_value(text, "findingId", finding_id, after_line=rule_line)})
+    return {"rules": rules_out, "selectors": selectors_out, "facts": facts_out, "findings": finding_out}
+
+
+def _cursor_token(line: str, column: int) -> tuple[str, int, int]:
+    index = max(0, min(len(line), int(column) - 1))
+    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.[]/-")
+    start = index
+    while start > 0 and line[start - 1] in allowed:
+        start -= 1
+    end = index
+    while end < len(line) and line[end] in allowed:
+        end += 1
+    return line[start:end], start + 1, end + 1
+
+
+def _nearest_selector(symbols: Mapping[str, Any], line: int) -> Mapping[str, Any] | None:
+    eligible = [item for item in symbols.get("selectors") or [] if int(item.get("line") or 0) <= line]
+    return max(eligible, key=lambda item: int(item.get("line") or 0), default=None)
+
+
+def _lexical_editor_context(lines: list[str], line_no: int) -> dict[str, Any]:
+    upto = lines[:line_no]
+    selectors: list[dict[str, Any]] = []
+    facts: list[dict[str, Any]] = []
+    in_selectors = False
+    selectors_indent = -1
+    current_selector = ""
+    current_selector_indent = -1
+    current_collection = ""
+    where_indent = -1
+    current_field = ""
+    for index, raw in enumerate(upto, 1):
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        indent = len(raw) - len(raw.lstrip(" "))
+        stripped = raw.strip()
+        if re.match(r"selectors\s*:\s*(?:#.*)?$", stripped):
+            in_selectors = True
+            selectors_indent = indent
+            current_selector = ""
+            current_collection = ""
+            where_indent = -1
+            current_field = ""
+            continue
+        if in_selectors and indent <= selectors_indent and not stripped.startswith("-"):
+            in_selectors = False
+            current_selector = ""
+            current_collection = ""
+            where_indent = -1
+            current_field = ""
+        if in_selectors:
+            key_match = re.match(r"(?:-\s*)?([A-Za-z0-9_.:/-]+)\s*:\s*(.*)$", stripped)
+            if key_match:
+                key, value = key_match.group(1), key_match.group(2).split("#", 1)[0].strip().strip("'\"")
+                if indent == selectors_indent + 2:
+                    current_selector = key
+                    current_selector_indent = indent
+                    current_collection = ""
+                    where_indent = -1
+                    current_field = ""
+                    selectors.append({"name": key, "line": index, "collection": "", "type": "collection"})
+                elif current_selector and key == "collection" and indent > current_selector_indent:
+                    current_collection = value
+                    selectors[-1]["collection"] = value
+                elif current_selector and key == "facts" and indent > current_selector_indent:
+                    selectors[-1]["type"] = "facts"
+                elif current_selector and key == "where" and indent > current_selector_indent:
+                    where_indent = indent
+                    current_field = ""
+                elif current_selector and where_indent >= 0 and indent == where_indent + 2:
+                    current_field = key
+        fact_match = re.match(r"fact\s*:\s*([^#]+)", stripped)
+        if fact_match:
+            facts.append({"name": fact_match.group(1).strip().strip("'\""), "line": index})
+    return {
+        "selectors": selectors, "facts": facts, "currentSelector": current_selector,
+        "currentCollection": current_collection, "currentField": current_field, "whereIndent": where_indent,
+    }
+
+
+def _completion(label: str, *, insert: str | None = None, kind: str = "keyword", detail: str = "", documentation: str = "") -> dict[str, str]:
+    return {"label": label, "insertText": insert if insert is not None else label, "kind": kind, "detail": detail, "documentation": documentation}
+
+
+def _diagnostic_suggestion(message: str, typed: Mapping[str, Mapping[str, str]]) -> str:
+    match = re.search(r"unknown operator ([A-Za-z0-9-]+)", message)
+    if match:
+        found = difflib.get_close_matches(match.group(1), sorted(srl.OPERATORS), n=1, cutoff=0.55)
+        return found[0] if found else ""
+    match = re.search(r"unknown field ([A-Za-z0-9_.:/-]+)\.([A-Za-z0-9_.\[\]-]+)", message)
+    if match:
+        fields = sorted((typed.get(match.group(1)) or {}).keys())
+        found = difflib.get_close_matches(match.group(2), fields, n=1, cutoff=0.5)
+        return found[0] if found else ""
+    match = re.search(r"unknown/non-SRL collection ([A-Za-z0-9_.:/-]+)", message)
+    if match:
+        found = difflib.get_close_matches(match.group(1), sorted(typed), n=1, cutoff=0.5)
+        return found[0] if found else ""
+    return ""
+
+
+def _operator_names(field_type: str) -> list[str]:
+    if field_type == "integer":
+        return ["equals", "gt", "gte", "lt", "lte", "exists", "missing"]
+    if field_type == "boolean":
+        return ["equals", "exists", "missing"]
+    if field_type == "object[]":
+        return ["exists", "missing"]
+    return ["equals", "equals-ci", "contains", "contains-ci", "starts-with", "starts-with-ci", "ends-with", "ends-with-ci", "in", "in-ci", "exists", "missing"]
+
+
+def editor_intelligence(text: str, *, cursor_line: int = 1, cursor_column: int = 1) -> dict[str, Any]:
+    lines = text.splitlines() or [""]
+    line_no = max(1, min(len(lines), int(cursor_line or 1)))
+    column = max(1, min(len(lines[line_no - 1]) + 1, int(cursor_column or 1)))
+    current_line = lines[line_no - 1]
+    token, replace_start, replace_end = _cursor_token(current_line, column)
+    compile_result = compile_candidate_text(text)
+    diagnostics: list[dict[str, Any]] = []
+    for raw in compile_result.get("diagnostics") or []:
+        item = dict(raw)
+        item["line"], item["column"] = _location_for_diagnostic(text, str(item.get("message") or ""))
+        diagnostics.append(item)
+    document: Any = None
+    try:
+        document = srl.parse_yaml_text(text)
+    except srl.SRLError:
+        pass
+    symbols = _editor_symbols(text, document) if document is not None else {"rules": [], "selectors": [], "facts": [], "findings": []}
+    lexical = _lexical_editor_context(lines, line_no)
+    if not symbols.get("selectors"):
+        symbols["selectors"] = lexical.get("selectors") or []
+    if not symbols.get("facts"):
+        symbols["facts"] = lexical.get("facts") or []
+    typed = srl.engine_reference().get("typedCollections") or {}
+    for item in diagnostics:
+        suggestion = _diagnostic_suggestion(str(item.get("message") or ""), typed)
+        if suggestion:
+            item["suggestion"] = suggestion
+    selector = _nearest_selector(symbols, line_no)
+    selector_collection = str((selector or {}).get("collection") or lexical.get("currentCollection") or "")
+    collection_fields = typed.get(selector_collection) if isinstance(typed.get(selector_collection), Mapping) else {}
+
+    stripped_before = current_line[: column - 1]
+    key_match = re.match(r"^\s*(?:-\s*)?([A-Za-z0-9_.\[\]-]+)\s*:\s*(.*)$", stripped_before)
+    key = key_match.group(1) if key_match else ""
+    value_prefix = key_match.group(2) if key_match else token
+    indent = len(current_line) - len(current_line.lstrip(" "))
+    completions: list[dict[str, str]] = []
+
+    def add_values(values: Iterable[str], *, kind: str = "value", detail: str = "", docs: Mapping[str, str] | None = None) -> None:
+        for value in values:
+            completions.append(_completion(str(value), kind=kind, detail=detail, documentation=(docs or {}).get(str(value), "")))
+
+    if key == "schema":
+        add_values([srl.RULE_SCHEMA, srl.RULESET_SCHEMA], detail="SRL schema")
+    elif key == "kind":
+        add_values(["observation", "classification", "correlation"], detail="rule kind")
+    elif key == "status":
+        add_values(["experimental", "reviewed", "deprecated", "disabled"], detail="rule lifecycle")
+    elif key == "collection":
+        add_values(sorted(typed), kind="collection", detail="retained SRL collection")
+    elif key in {"condition", "selector"}:
+        add_values([str(item.get("name")) for item in symbols.get("selectors") or []], kind="selector", detail="named selector")
+        if key == "condition":
+            add_values(["all", "any", "not", "count"], kind="function", detail="condition operator", docs=CONDITION_DOCS)
+    elif key in {"any", "all"} and "facts" in "\n".join(lines[max(0, line_no - 5):line_no]).lower():
+        add_values([str(item.get("name")) for item in symbols.get("facts") or []], kind="fact", detail="fact symbol")
+    elif key == "severity":
+        add_values(["critical", "high", "caution", "informational"], detail="finding severity")
+    elif key == "confidence":
+        add_values(["high", "medium", "low"], detail="confidence metadata")
+    elif key in typed:
+        add_values(sorted(typed), kind="collection", detail="retained SRL collection")
+
+    # Collection/field/operator awareness based on indentation and the nearest selector.
+    recent = "\n".join(lines[max(0, line_no - 8):line_no + 1])
+    if (key == "requires" or ("requires:" in recent and current_line.lstrip().startswith("-"))) and not completions:
+        add_values(sorted(typed), kind="collection", detail="required retained collection")
+    where_line = _line_for_key(text, "where", after_line=int(selector.get("line") or 1)) if selector else 0
+    if selector_collection and line_no >= where_line:
+        field_key = key if key in collection_fields else str(lexical.get("currentField") or "")
+        if not field_key:
+            # The nearest typed field line in this selector determines operator suggestions.
+            candidates = [(name, _line_for_key(text, str(name), after_line=where_line)) for name in collection_fields]
+            candidates = [(name, ln) for name, ln in candidates if where_line <= ln <= line_no]
+            if candidates:
+                field_key = max(candidates, key=lambda item: item[1])[0]
+        field_indent = int(lexical.get("whereIndent") or 4) + 2
+        if key == "" and indent >= field_indent and not lexical.get("currentField"):
+            for name, field_type in sorted(collection_fields.items()):
+                completions.append(_completion(str(name), insert=f"{name}: ", kind="field", detail=str(field_type), documentation=f"{selector_collection}.{name} · {field_type}"))
+        elif field_key and (key == field_key or indent >= field_indent + 2):
+            add_values(_operator_names(str(collection_fields.get(field_key) or "string")), kind="operator", detail=f"operator for {collection_fields.get(field_key)}")
+
+    if not completions and (not stripped_before.strip() or stripped_before.rstrip().endswith("-")):
+        if indent <= 2:
+            for name in ("schema", "id", "kind", "status", "requires", "selectors", "condition", "emit", "title", "description", "category", "severity", "license", "source"):
+                completions.append(_completion(name, insert=f"{name}: ", kind="keyword", documentation=EDITOR_KEY_DOCS.get(name, "")))
+        elif "emit:" in recent:
+            for name in ("fact", "findingId", "confidence", "title", "description", "severity", "category"):
+                completions.append(_completion(name, insert=f"{name}: ", kind="keyword", documentation=EDITOR_KEY_DOCS.get(name, "")))
+        elif "selectors:" in recent:
+            completions.append(_completion("collection", insert="collection: ", kind="keyword", documentation=EDITOR_KEY_DOCS["collection"]))
+            completions.append(_completion("facts", insert="facts:\n  any: []", kind="keyword", documentation=EDITOR_KEY_DOCS["facts"]))
+
+    # Filter duplicate/prefix-insensitive suggestions and cap the payload.
+    unique: dict[tuple[str, str], dict[str, str]] = {}
+    prefix = (value_prefix or token or "").strip().strip("[],'\"")
+    for item in completions:
+        if prefix and not item["label"].lower().startswith(prefix.lower()) and prefix.lower() not in item["label"].lower():
+            continue
+        unique[(item["label"], item["kind"])] = item
+    completions = list(unique.values())[:80]
+
+    hover = {"token": token, "documentation": "", "kind": ""}
+    if token in EDITOR_KEY_DOCS:
+        hover.update({"documentation": EDITOR_KEY_DOCS[token], "kind": "keyword"})
+    elif token in CONDITION_DOCS:
+        hover.update({"documentation": CONDITION_DOCS[token], "kind": "function"})
+    elif token in srl.OPERATORS:
+        hover.update({"documentation": f"Typed SRL predicate operator `{token}`. Validity depends on the selected field type.", "kind": "operator"})
+    elif token in typed:
+        fields = typed[token]
+        hover.update({"documentation": f"Retained observation collection `{token}` with {len(fields)} typed SRL field(s).", "kind": "collection"})
+    elif selector_collection and token in collection_fields:
+        hover.update({"documentation": f"Field `{selector_collection}.{token}` · type `{collection_fields[token]}` · same-record selector semantics.", "kind": "field"})
+    else:
+        for group, kind in ((symbols.get("rules") or [], "rule"), (symbols.get("selectors") or [], "selector"), (symbols.get("facts") or [], "fact"), (symbols.get("findings") or [], "finding")):
+            match = next((item for item in group if item.get("name") == token), None)
+            if match:
+                hover.update({"documentation": f"{kind.title()} `{token}` defined on line {match.get('line')}.", "kind": kind})
+                break
+
+    if compile_result.get("ok") and not diagnostics:
+        diagnostics.append({"severity": "info", "stage": "compile", "message": "SRL candidate compiles cleanly with the frozen typed engine.", "line": 1, "column": 1})
+
+    graph_edges: list[dict[str, str]] = []
+    for item in symbols.get("selectors") or []:
+        if item.get("collection"):
+            graph_edges.append({"from": str(item.get("collection")), "to": str(item.get("name")), "kind": "collection→selector"})
+    for item in symbols.get("facts") or []:
+        graph_edges.append({"from": str(item.get("rule")), "to": str(item.get("name")), "kind": "rule→fact"})
+    for item in symbols.get("findings") or []:
+        graph_edges.append({"from": str(item.get("rule")), "to": str(item.get("name")), "kind": "rule→finding"})
+
+    return {
+        "schema": EDITOR_INTELLIGENCE_SCHEMA,
+        "ok": bool(compile_result.get("ok")),
+        "productionWriteBack": False,
+        "mutationAuthority": "none",
+        "cursor": {"line": line_no, "column": column, "token": token, "replaceStartColumn": replace_start, "replaceEndColumn": replace_end},
+        "diagnostics": diagnostics,
+        "completions": completions,
+        "hover": hover,
+        "symbols": symbols,
+        "graph": {"edges": graph_edges},
+        "metrics": {
+            "bytes": len(text.encode("utf-8")),
+            "lines": len(lines),
+            "rules": len(symbols.get("rules") or []),
+            "selectors": len(symbols.get("selectors") or []),
+            "requiredCollections": len(compile_result.get("requiredCollections") or []),
+        },
+        "compile": {key: compile_result.get(key) for key in ("ok", "ruleSetRevision", "ruleIds", "requiredCollections", "findingIds")},
+    }
+
+
+class _NoAliasDumper(yaml.SafeDumper):
+    def ignore_aliases(self, data: Any) -> bool:  # noqa: ANN401
+        return True
+
+
+def format_candidate_text(text: str) -> dict[str, Any]:
+    try:
+        document = srl.parse_yaml_text(text)
+    except srl.SRLError as exc:
+        line, column = _location_for_diagnostic(text, str(exc))
+        return {
+            "schema": FORMAT_SCHEMA, "ok": False, "productionWriteBack": False, "mutationAuthority": "none",
+            "diagnostics": [{"severity": "error", "stage": "parse", "message": str(exc), "line": line, "column": column}],
+        }
+    rendered = yaml.dump(document, Dumper=_NoAliasDumper, allow_unicode=True, sort_keys=False, default_flow_style=False, width=120).rstrip() + "\n"
+    compiled = compile_candidate_text(rendered)
+    return {
+        "schema": FORMAT_SCHEMA, "ok": bool(compiled.get("ok")), "yaml": rendered,
+        "diagnostics": compiled.get("diagnostics") or [], "productionWriteBack": False, "mutationAuthority": "none",
+    }
+
 def build_github_issue_proposal(
     text: str, *, pack_id: str, pack_title: str, positive_fixture_text: str,
     negative_fixture_text: str, rationale: str, false_positive_expectations: str,
@@ -547,6 +949,17 @@ def reference() -> dict[str, Any]:
         "observationContractRevision": observation_projection.contract_revision(),
         "collections": observation_projection.build_schema_reference().get("collections") or [],
         "exampleYaml": DEFAULT_EXAMPLE,
+        "editor": {
+            "schema": EDITOR_INTELLIGENCE_SCHEMA,
+            "liveLint": True,
+            "contextAwareCompletion": True,
+            "typedCollections": srl.engine_reference().get("typedCollections") or {},
+            "keyDocumentation": EDITOR_KEY_DOCS,
+            "conditionDocumentation": CONDITION_DOCS,
+            "keyboard": {"compile": "Ctrl/Cmd+Enter", "complete": "Ctrl/Cmd+Space", "format": "Shift+Alt+F"},
+            "productionWriteBack": False,
+            "mutationAuthority": "none",
+        },
         "limits": {
             "candidateBytes": srl.MAX_DOCUMENT_BYTES,
             "corpusVariants": MAX_REPLAY_VARIANTS,

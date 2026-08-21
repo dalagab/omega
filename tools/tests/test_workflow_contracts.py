@@ -70,6 +70,20 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("security-evidence-latest", text)
         self.assertNotIn("omega-security-evidence.sqlite.zip", text)
 
+    def test_catalog_publish_installs_security_dependencies_before_definitions_freeze(self) -> None:
+        text = self.read("catalog-builder.yml")
+        publish_start = text.index("\n  publish:\n")
+        publish_block = text[publish_start:]
+        install = "Install pinned Python security dependencies"
+        verify = "Verify Definitions freezer Python dependencies"
+        freeze = "Freeze daily Definitions and OSV data"
+        self.assertIn(install, publish_block)
+        self.assertIn("-r tools/requirements-security.txt", publish_block)
+        self.assertIn(verify, publish_block)
+        self.assertIn("import yaml", publish_block)
+        self.assertLess(publish_block.index(install), publish_block.index(verify))
+        self.assertLess(publish_block.index(verify), publish_block.index(freeze))
+
     def test_catalog_json_is_authoritative_public_state_not_a_main_branch_generated_commit(self) -> None:
         builder = self.read("catalog-builder.yml")
         publisher = (common.ROOT / "tools" / "catalog" / "publish_catalog_state.py").read_text(encoding="utf-8")
