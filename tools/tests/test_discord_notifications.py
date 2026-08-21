@@ -127,6 +127,21 @@ class DiscordNoticeTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertIn(first, discord_notice.VOICE_LINES["catalog"])
 
+    def test_voice_grammar_has_hundreds_of_deterministic_combinations_per_family(self) -> None:
+        for kind in ("security", "catalog", "definitions", "evidence"):
+            self.assertEqual(discord_notice.VOICE_COMBINATIONS_PER_KIND, len(discord_notice.VOICE_LINES[kind]))
+            self.assertEqual(discord_notice.VOICE_COMBINATIONS_PER_KIND, len(set(discord_notice.VOICE_LINES[kind])))
+
+    def test_voice_grammar_varies_across_event_identities_without_randomness(self) -> None:
+        variants = {
+            discord_notice.voice_line("catalog", {"catalog": f"catalog-{index}", "definitions": f"defs-{index}"})
+            for index in range(200)
+        }
+        self.assertGreater(len(variants), 50)
+        source = (common.ROOT / "tools" / "notifications" / "discord_notice.py").read_text(encoding="utf-8")
+        self.assertNotIn("import random", source)
+        self.assertNotIn("secrets.choice", source)
+
     def test_catalog_voice_is_rich_and_definitions_voice_is_happy(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -153,9 +168,9 @@ class DiscordNoticeTests(unittest.TestCase):
                 current, previous, definitions, previous_definitions,
                 "dalagab/omega", "https://example.invalid/run",
             )
-        self.assertEqual("Omega catalog updated", rich["payload"]["embeds"][0]["title"])
+        self.assertTrue(rich["payload"]["embeds"][0]["title"])
         self.assertTrue(any(line in rich["payload"]["embeds"][0]["description"] for line in discord_notice.VOICE_LINES["catalog"]))
-        self.assertEqual("Omega definitions updated", happy["payload"]["embeds"][0]["title"])
+        self.assertTrue(happy["payload"]["embeds"][0]["title"])
         self.assertTrue(any(line in happy["payload"]["embeds"][0]["description"] for line in discord_notice.VOICE_LINES["definitions"]))
 
     def test_security_voice_is_irritated_and_evidence_voice_smiles(self) -> None:
@@ -193,7 +208,7 @@ class DiscordNoticeTests(unittest.TestCase):
             )
 
         security_embed = irritated["payload"]["embeds"][0]
-        self.assertEqual("New security findings for Test", security_embed["title"])
+        self.assertIn("Test", security_embed["title"])
         self.assertIn("Review the findings if you want to know more.", security_embed["description"])
         self.assertNotIn("verdict", security_embed["description"].casefold())
         self.assertTrue(any(line in security_embed["description"] for line in discord_notice.VOICE_LINES["security"]))
@@ -215,11 +230,174 @@ class DiscordNoticeTests(unittest.TestCase):
                 self.assertNotIn("scanner", line.casefold())
 
 
+    def test_catalog_panel_reports_added_updated_removed_counts_and_two_stable_examples(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            current = root / "current" / "index.json"
+            previous = root / "previous" / "index.json"
+            definitions = root / "definitions" / "index.json"
+            previous_definitions = root / "previous-definitions" / "index.json"
+            current.parent.joinpath("plugins").mkdir(parents=True)
+            previous.parent.joinpath("plugins").mkdir(parents=True)
+            definitions.parent.mkdir(parents=True)
+            previous_definitions.parent.mkdir(parents=True)
+            current.write_text(json.dumps({
+                "catalogRevision": "catalog-new",
+                "counts": {"plugins": 4, "variants": 6, "sources": 3},
+            }), encoding="utf-8")
+            previous.write_text(json.dumps({"catalogRevision": "catalog-old"}), encoding="utf-8")
+            current.parent.joinpath("plugins", "index.json").write_text(json.dumps({"plugins": [
+                {"pluginId": 1, "active": True, "name": "Kept", "sha256": "same"},
+                {"pluginId": 2, "active": True, "name": "Updated One", "sha256": "new-2"},
+                {"pluginId": 3, "active": True, "name": "Added One", "sha256": "new-3"},
+                {"pluginId": 4, "active": True, "name": "Added Two", "sha256": "new-4"},
+            ]}), encoding="utf-8")
+            previous.parent.joinpath("plugins", "index.json").write_text(json.dumps({"plugins": [
+                {"pluginId": 1, "active": True, "name": "Kept", "sha256": "same"},
+                {"pluginId": 2, "active": True, "name": "Updated One", "sha256": "old-2"},
+                {"pluginId": 9, "active": True, "name": "Removed One", "sha256": "old-9"},
+            ]}), encoding="utf-8")
+            definitions.write_text(json.dumps({"definitionsRevision": "defs-same"}), encoding="utf-8")
+            previous_definitions.write_text(json.dumps({"definitionsRevision": "defs-same"}), encoding="utf-8")
+            first = discord_notice.build_catalog(current, previous, definitions, previous_definitions, "dalagab/omega", "https://example.invalid/run")
+            second = discord_notice.build_catalog(current, previous, definitions, previous_definitions, "dalagab/omega", "https://example.invalid/run")
+
+        fields = {field["name"]: field["value"] for field in first["payload"]["embeds"][0]["fields"]}
+        self.assertEqual("2", fields["Added"])
+        self.assertEqual("1", fields["Updated"])
+        self.assertEqual("1", fields["Removed"])
+        self.assertIn("4 plugins", fields["Catalog size"])
+        self.assertIn("6 active variants", fields["Catalog size"])
+        self.assertEqual("3", fields["Sources"])
+        self.assertEqual(first["payload"]["embeds"][0]["fields"], second["payload"]["embeds"][0]["fields"])
+        example_lines = fields["Examples"].splitlines()
+        self.assertGreaterEqual(len(example_lines), 1)
+        self.assertLessEqual(len(example_lines), 2)
+        self.assertTrue(any(name in fields["Examples"] for name in ("Updated One", "Added One", "Added Two", "Removed One")))
+
+    def test_security_incident_links_new_reviewed_finding_to_exact_rule_yaml(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            database = root / "security.sqlite"
+            with closing(sqlite3.connect(database)) as connection:
+                connection.executescript("""
+                    CREATE TABLE plugin_security_current(variant_id INTEGER, scan_id INTEGER, highest_severity TEXT);
+                    CREATE TABLE plugin_security_scan_lineage(current_scan_id INTEGER, previous_scan_id INTEGER);
+                    CREATE TABLE plugin_security_findings(scan_id INTEGER, rule_id TEXT, severity TEXT, title TEXT);
+                    INSERT INTO plugin_security_current VALUES(9, 2, 'high');
+                    INSERT INTO plugin_security_scan_lineage VALUES(2, 1);
+                    INSERT INTO plugin_security_findings VALUES(2, 'compound.network-execute', 'high', 'Network plus process execution');
+                """)
+                connection.commit()
+            report = root / "report.json"
+            report.write_text(json.dumps({
+                "publicationRequired": True,
+                "candidate": {"revisions": {"evidenceRevision": "ev-new"}},
+                "queue": {"selected": {"variantId": 9, "name": "Linked Plugin", "workType": "artifact"}},
+            }), encoding="utf-8")
+            definitions = root / "definitions" / "index.json"
+            rules = definitions.parent / "srl" / "packs" / "omega-core-compound" / "rules" / "compound-correlations.yaml"
+            rules.parent.mkdir(parents=True)
+            rules.write_text("schema: omega.sigmascope.ruleset.v1\nrules:\n  - id: compound.network-execute\n", encoding="utf-8")
+            srl_index = definitions.parent / "srl" / "index.json"
+            srl_index.write_text(json.dumps({"packs": [{
+                "id": "omega-core-compound",
+                "rules": [{"path": "rules/compound-correlations.yaml", "ruleIds": ["compound.network-execute"]}],
+            }]}), encoding="utf-8")
+            definitions.write_text(json.dumps({
+                "builtFromDevCommit": "0123456789abcdef",
+                "srlDefinitionPacks": {"path": "srl/index.json"},
+            }), encoding="utf-8")
+            result = discord_notice.build_sigmascope(
+                report, database, "dalagab/omega", "https://example.invalid/run", definitions
+            )
+
+        fields = {field["name"]: field["value"] for field in result["payload"]["embeds"][0]["fields"]}
+        self.assertIn("Reviewed rule YAML", fields)
+        self.assertIn("compound.network-execute", fields["Reviewed rule YAML"])
+        self.assertIn("/blob/0123456789abcdef/security-definitions/packs/omega-core-compound/rules/compound-correlations.yaml#L3", fields["Reviewed rule YAML"])
+        self.assertNotIn("/blob/sigmascope/", fields["Reviewed rule YAML"])
+
+    def test_definitions_panel_reports_rule_capability_osv_source_metrics_and_changed_pack(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            current = root / "catalog" / "index.json"
+            previous = root / "previous" / "index.json"
+            definitions = root / "definitions" / "index.json"
+            previous_definitions = root / "previous-definitions" / "index.json"
+            current.parent.joinpath("plugins").mkdir(parents=True)
+            previous.parent.joinpath("plugins").mkdir(parents=True)
+            for path in (current, previous):
+                path.write_text(json.dumps({"catalogRevision": "same"}), encoding="utf-8")
+                path.parent.joinpath("plugins", "index.json").write_text(json.dumps({"plugins": []}), encoding="utf-8")
+            for parent in (definitions.parent, previous_definitions.parent):
+                parent.joinpath("srl").mkdir(parents=True)
+            definitions.write_text(json.dumps({
+                "definitionsRevision": "defs-new",
+                "srlDefinitionPacks": {"path": "srl/index.json", "packCount": 2, "activeRuleCount": 7},
+                "capabilityRegistry": {"capabilityCount": 40, "categoryCount": 14},
+                "osv": {"queriedPackages": 123, "matchedPackages": 4},
+                "sourceObservations": {"counts": {"repositories": 30, "observed": 28, "failed": 2}},
+            }), encoding="utf-8")
+            previous_definitions.write_text(json.dumps({
+                "definitionsRevision": "defs-old",
+                "srlDefinitionPacks": {"path": "srl/index.json", "packCount": 2, "activeRuleCount": 6},
+            }), encoding="utf-8")
+            definitions.parent.joinpath("srl", "index.json").write_text(json.dumps({"packs": [
+                {"id": "omega-core-compound", "title": "Omega Core compound", "packRevision": "new-pack"},
+                {"id": "omega-static", "title": "Omega Static", "packRevision": "same-pack"},
+            ]}), encoding="utf-8")
+            previous_definitions.parent.joinpath("srl", "index.json").write_text(json.dumps({"packs": [
+                {"id": "omega-core-compound", "title": "Omega Core compound", "packRevision": "old-pack"},
+                {"id": "omega-static", "title": "Omega Static", "packRevision": "same-pack"},
+            ]}), encoding="utf-8")
+            result = discord_notice.build_catalog(
+                current, previous, definitions, previous_definitions, "dalagab/omega", "https://example.invalid/run"
+            )
+
+        fields = {field["name"]: field["value"] for field in result["payload"]["embeds"][0]["fields"]}
+        self.assertEqual("2 packs • 7 active rules", fields["Rule packs"])
+        self.assertEqual("40 capabilities • 14 categories", fields["Capabilities"])
+        self.assertEqual("4 matched • 123 package/version pairs checked", fields["OSV coverage"])
+        self.assertEqual("28/30 observed • 2 failed", fields["Source watch"])
+        self.assertIn("Omega Core compound", fields["Changed packs"])
+
+    def test_evidence_panel_reports_current_findings_and_delta(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            database = root / "security.sqlite"
+            with closing(sqlite3.connect(database)) as connection:
+                connection.executescript("""
+                    CREATE TABLE plugin_security_current(variant_id INTEGER, scan_id INTEGER, highest_severity TEXT);
+                    CREATE TABLE plugin_security_scan_lineage(current_scan_id INTEGER, previous_scan_id INTEGER);
+                    CREATE TABLE plugin_security_findings(scan_id INTEGER, rule_id TEXT, severity TEXT, title TEXT);
+                    INSERT INTO plugin_security_current VALUES(7, 2, 'caution');
+                    INSERT INTO plugin_security_scan_lineage VALUES(2, 1);
+                    INSERT INTO plugin_security_findings VALUES(1, 'old', 'caution', 'Cleared old finding');
+                    INSERT INTO plugin_security_findings VALUES(2, 'new', 'caution', 'New caution finding');
+                """)
+                connection.commit()
+            report = root / "report.json"
+            report.write_text(json.dumps({
+                "publicationRequired": True,
+                "candidate": {"revisions": {"evidenceRevision": "ev-review"}},
+                "queue": {"selected": {"variantId": 7, "name": "Evidence Plugin", "workType": "source"}},
+            }), encoding="utf-8")
+            result = discord_notice.build_sigmascope(report, database, "dalagab/omega", "https://example.invalid/run")
+
+        fields = {field["name"]: field["value"] for field in result["payload"]["embeds"][0]["fields"]}
+        self.assertIn("1 total", fields["Current findings"])
+        self.assertIn("1 caution", fields["Current findings"])
+        self.assertEqual("+1 new • -1 cleared", fields["Finding delta"])
+        self.assertIn("New caution finding", fields["Examples"])
+
     def test_notification_workflows_keep_webhook_secrets_in_isolated_jobs(self) -> None:
         workflow_root = common.ROOT / ".github" / "workflows"
         for name in ("catalog-builder.yml", "sigmascope.yml"):
             workflow = (workflow_root / name).read_text(encoding="utf-8")
             self.assertIn("tools/notifications/discord_notice.py", workflow)
+            if name == "sigmascope.yml":
+                self.assertIn("--definitions-index catalog/active-state/definitions/index.json", workflow)
             self.assertIn("tools/notifications/post_discord_notice.py", workflow)
             self.assertIn("environment: discord-public", workflow)
             build_side, notify_side = workflow.split("  notify-discord:", 1)

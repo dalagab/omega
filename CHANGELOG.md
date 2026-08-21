@@ -1,5 +1,43 @@
 # Omega Security Services changelog
 
+## 2.15.0 unreleased — optional ClamAV freeze isolation
+
+- Make the daily catalog ClamAV refresh genuinely optional: package-install, FreshClam, asset-build, release-create and release-upload failures no longer block the Definitions/catalog publication path.
+- Build new ClamAV transport metadata into a pending manifest and promote it only after the content-addressed release ZIP uploads successfully, preventing a frozen Definitions snapshot from referencing an unpublished asset.
+- On refresh/publication failure, retain only a previously frozen ClamAV transport that passes the intrinsic asset-manifest validator; if none exists, freeze the revision without ClamAV instead of publishing a dangling descriptor.
+- Separate mandatory YARA compilation support from optional ClamAV installation in the fresh `publish` runner. The Definitions freezer now gets an explicit real-YARA install instead of inheriting it incidentally from the ClamAV step.
+- Add regression coverage for valid previous-asset retention, clean no-previous fallback, invalid-transport rejection, atomic pending-manifest promotion, and nonblocking optional workflow behavior. Scanner/artifact/source identities are unchanged.
+
+## 2.15.0 unreleased — operational Discord notice panels
+
+- Make Discord embeds data-first instead of decorative: catalog notices now report active catalog size/source count plus exact added/updated/removed plugin counts and at most two deterministic pseudo-random representative plugin names.
+- Definitions notices now report frozen pack/rule counts, capability/category counts, OSV package coverage, source-observation health, and representative changed Definition Pack names.
+- Evidence notices now report current finding totals/severity mix plus added/cleared deltas and representative finding names. Security notices report the new high/critical count, current finding state and representative findings.
+- Resolve reviewed SRL finding IDs through the exact frozen Definitions pack index and link incidents directly to the source rule YAML pinned to the Definitions `builtFromDevCommit`, including an exact line anchor when available. Legacy findings without reviewed SRL YAML are labelled explicitly instead of receiving a misleading link.
+- Preserve deterministic TONI voice selection, mention sanitisation, webhook isolation and presentation-only authority.
+
+## 2.15.0 unreleased — dynamic TONI Discord voice
+
+- Replace the small fixed Discord voice pools with a deterministic compositional grammar: six openings × six observations × six closers = **216 natural voice combinations per notice family**, or **864 base TONI voices** across security, catalog, Definitions and evidence.
+- Keep wording stable for the same event identity while allowing different revisions/plugins to naturally select different combinations; no random source, AI, network call or generated runtime copy is involved.
+- Add deterministic title variants plus event-aware detail wording: catalog notices react differently to new plugins, updated plugins or metadata-only revisions; security notices state the number of newly introduced high/critical findings; evidence/Definitions notices vary their headings without changing semantics.
+- Preserve mention sanitisation, bounded Discord fields, webhook isolation and `allowed_mentions={parse: []}`. Notification personality remains presentation-only and has no scanner/rule/evidence authority.
+
+## 2.15.0 unreleased — catalog Definitions freezer dependency fix
+
+- Install the pinned security Python requirements inside the **catalog-builder `publish` job**, which is a fresh GitHub runner and therefore cannot inherit PyYAML installed by `preflight` or SigmaScope worker jobs.
+- Add an explicit pre-freeze PyYAML import/version smoke check so dependency setup fails at the correct boundary instead of later inside `definitions_snapshot.py`.
+- Add a workflow regression contract requiring the publish-job dependency install and smoke check to occur before `Freeze daily Definitions and OSV data`.
+- Scanner, Evidence-v2, observation, SRL and analysis identities are unchanged; this is publication orchestration only and does not require a rescan.
+
+## 2.15.0 unreleased — DeltaScope 3.8 smart SRL editor
+
+- Replaced Rule Lab's plain candidate textarea with a self-contained syntax-highlighted SRL editor shell with line numbers, status line, live diagnostics and keyboard-first editing.
+- Added `/api/rule-lab/intelligence`, backed by the same safe SRL parser/compiler and frozen typed collection registry. It recognizes rules, selectors, facts, findings, retained collections, typed fields and legal operators even while YAML is partially incomplete.
+- Added context-sensitive completion, caret help, symbol outline/go-to-line navigation and a live collection→selector→fact/finding rule-flow projection. No editor intelligence becomes an SRL input or gains write authority.
+- Added typo suggestions for near-miss SRL operators/fields/collections plus one-click local replacement, canonical safe YAML formatting via `/api/rule-lab/format`, Ctrl/Cmd+Space completion, Ctrl/Cmd+Enter validation, Shift+Alt+F formatting and optional browser prose spellcheck.
+- Production SRL evaluation/write-back remains disabled and `/api/rule-lab/promote` remains absent.
+
 ## 2.15.0 unreleased — SRL cutover-readiness gate
 
 - Added `tools/security/srl_cutover_readiness.py`, a read-only full-corpus audit over the exact frozen Daily Definitions and published Security Evidence v2 snapshot.

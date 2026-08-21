@@ -211,6 +211,10 @@ jobs:
         run: python -m pip install --disable-pip-version-check -r tools/requirements-security.txt
       - name: Verify Definitions freezer Python dependencies
         run: python -c "import yaml; print('PyYAML', yaml.__version__)"
+      - name: Install YARA compile-check dependency for Definitions freezer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends yara
       - uses: actions/download-artifact@v8
         with:
           name: raw-sources
@@ -314,40 +318,86 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clamav clamav-freshclam yara
-          sudo systemctl stop clamav-freshclam.service 2>/dev/null || true
+          final_manifest="catalog/secondary-security-asset-manifest.json"
+          pending_manifest="catalog/secondary-security-asset-manifest.pending.json"
+          rm -f "$final_manifest" "$pending_manifest"
           mkdir -p catalog/clamav-database catalog/secondary-security-assets
-          set +e
-          sudo freshclam --stdout
-          freshclam_status=$?
-          set -e
-          while IFS= read -r -d '' file; do
-            sudo cp "$file" catalog/clamav-database/
-          done < <(sudo find /var/lib/clamav -maxdepth 1 -type f \( -name '*.cvd' -o -name '*.cld' \) -print0 2>/dev/null)
-          sudo chown -R "$(id -u):$(id -g)" catalog/clamav-database
 
-          if find catalog/clamav-database -maxdepth 1 -type f \( -name '*.cvd' -o -name '*.cld' \) -print -quit | grep -q .; then
-            python tools/catalog/secondary_security_assets.py build-clamav               --database-dir catalog/clamav-database               --output-dir catalog/secondary-security-assets               --asset-base-url "https://github.com/${{ github.repository }}/releases/download/sigmascope-definitions"               --manifest-output catalog/secondary-security-asset-manifest.json
-            if ! gh release view sigmascope-definitions --repo "${{ github.repository }}" >/dev/null 2>&1; then
-              gh release create sigmascope-definitions --repo "${{ github.repository }}"                 --title "Omega frozen secondary-security definitions"                 --notes "Content-addressed large security-definition assets referenced by frozen SigmaScope Definitions. Workers verify SHA-256 and never update these assets in place."
+          retain_previous_clamav() {
+            rm -f "$pending_manifest" "$final_manifest"
+            if python tools/catalog/secondary_security_assets.py retain-previous-clamav \
+              --definitions-root catalog/previous-state/definitions \
+              --manifest-output "$final_manifest"; then
+              echo "::notice::Retained the previously published frozen ClamAV asset for this Definitions revision."
+            else
+              rm -f "$final_manifest"
+              echo "::warning::No valid previously frozen ClamAV asset is available; continuing this Definitions revision without ClamAV."
             fi
-            gh release upload sigmascope-definitions catalog/secondary-security-assets/*.zip               --repo "${{ github.repository }}" --clobber
-          else
-            echo "::warning::FreshClam produced no CVD/CLD files (status=$freshclam_status); attempting to retain the previous frozen ClamAV asset."
-            python - <<'PYCODE'
-          import json
-          from pathlib import Path
-          previous = Path("catalog/previous-state/definitions/secondary-security/index.json")
-          output = Path("catalog/secondary-security-asset-manifest.json")
-          if previous.is_file():
-              document = json.loads(previous.read_text(encoding="utf-8"))
-              clamav = next((item for item in document.get("engines") or [] if isinstance(item, dict) and item.get("engine") == "clamav"), {})
-              transport = clamav.get("transport") if isinstance(clamav.get("transport"), dict) else {}
-              if transport:
-                  output.write_text(json.dumps(transport, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
-          PYCODE
+          }
+
+          clamav_tools_ready=true
+          if ! sudo apt-get install -y --no-install-recommends clamav clamav-freshclam; then
+            echo "::warning::Unable to install optional ClamAV tooling."
+            clamav_tools_ready=false
           fi
+
+          if [ "$clamav_tools_ready" = "true" ]; then
+            sudo systemctl stop clamav-freshclam.service 2>/dev/null || true
+            set +e
+            sudo freshclam --stdout
+            freshclam_status=$?
+            set -e
+            if ! while IFS= read -r -d '' file; do
+              sudo cp "$file" catalog/clamav-database/ || exit 1
+            done < <(sudo find /var/lib/clamav -maxdepth 1 -type f \( -name '*.cvd' -o -name '*.cld' \) -print0 2>/dev/null); then
+              echo "::warning::Unable to stage optional ClamAV database files."
+              clamav_tools_ready=false
+            elif ! sudo chown -R "$(id -u):$(id -g)" catalog/clamav-database; then
+              echo "::warning::Unable to normalize optional ClamAV database ownership."
+              clamav_tools_ready=false
+            fi
+          else
+            freshclam_status=125
+          fi
+
+          published_new_clamav=false
+          if [ "$clamav_tools_ready" = "true" ] && \
+             find catalog/clamav-database -maxdepth 1 -type f \( -name '*.cvd' -o -name '*.cld' \) -print -quit | grep -q .; then
+            if python tools/catalog/secondary_security_assets.py build-clamav \
+              --database-dir catalog/clamav-database \
+              --output-dir catalog/secondary-security-assets \
+              --asset-base-url "https://github.com/${{ github.repository }}/releases/download/sigmascope-definitions" \
+              --manifest-output "$pending_manifest"; then
+              release_ready=true
+              if ! gh release view sigmascope-definitions --repo "${{ github.repository }}" >/dev/null 2>&1; then
+                if ! gh release create sigmascope-definitions --repo "${{ github.repository }}" \
+                  --title "Omega frozen secondary-security definitions" \
+                  --notes "Content-addressed large security-definition assets referenced by frozen SigmaScope Definitions. Workers verify SHA-256 and never update these assets in place."; then
+                  echo "::warning::Unable to create the optional ClamAV release; retaining the previous frozen asset instead."
+                  release_ready=false
+                fi
+              fi
+              if [ "$release_ready" = "true" ]; then
+                if gh release upload sigmascope-definitions catalog/secondary-security-assets/*.zip \
+                  --repo "${{ github.repository }}" --clobber; then
+                  mv "$pending_manifest" "$final_manifest"
+                  published_new_clamav=true
+                  echo "::notice::Published a new content-addressed frozen ClamAV asset."
+                else
+                  echo "::warning::Unable to upload the optional frozen ClamAV asset; retaining the previous frozen asset instead."
+                fi
+              fi
+            else
+              echo "::warning::Unable to build the optional frozen ClamAV asset; retaining the previous frozen asset instead."
+            fi
+          else
+            echo "::warning::FreshClam produced no CVD/CLD files (status=$freshclam_status); retaining the previous frozen ClamAV asset when available."
+          fi
+
+          if [ "$published_new_clamav" != "true" ]; then
+            retain_previous_clamav
+          fi
+          rm -f "$pending_manifest"
       - name: Freeze daily Definitions and OSV data
         shell: bash
         run: |

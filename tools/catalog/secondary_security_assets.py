@@ -324,6 +324,45 @@ def _safe_extract_bundle(bundle: Path, output: Path, files: Iterable[dict[str, A
                 raise RuntimeError(f"ClamAV database identity mismatch after extraction: {rel}")
 
 
+
+def retain_previous_clamav_transport(*, definitions_root: Path, manifest_output: Path) -> dict[str, Any] | None:
+    """Copy a previously frozen ClamAV transport into a new freeze input.
+
+    This is intentionally a *selection* operation, not a refresh.  It is used by the
+    daily catalog boundary when the optional ClamAV feed cannot be refreshed or its
+    content-addressed release asset cannot be published.  Only an already-frozen,
+    intrinsically valid transport descriptor is eligible.
+
+    Returning ``None`` means there is no prior ClamAV transport to retain.  The
+    caller may then continue the Definitions freeze without ClamAV.
+    """
+    secondary_index_path = definitions_root / "secondary-security" / "index.json"
+    if not secondary_index_path.is_file():
+        return None
+    try:
+        secondary_index = json.loads(secondary_index_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"previous frozen secondary-security index is unreadable: {exc}") from exc
+    clamav = next(
+        (item for item in secondary_index.get("engines") or []
+         if isinstance(item, dict) and item.get("engine") == "clamav"),
+        None,
+    )
+    if not isinstance(clamav, dict):
+        return None
+    transport = clamav.get("transport") if isinstance(clamav.get("transport"), dict) else {}
+    if not transport:
+        return None
+    errors = validate_asset_manifest(transport)
+    if errors:
+        raise RuntimeError("previous frozen ClamAV transport is invalid: " + "; ".join(errors))
+    manifest_output.parent.mkdir(parents=True, exist_ok=True)
+    manifest_output.write_text(
+        json.dumps(transport, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return transport
+
 def materialize_clamav_asset(
     *, definitions_root: Path, output: Path, asset_file: Path | None = None,
 ) -> dict[str, Any]:
@@ -388,12 +427,22 @@ def main() -> int:
     materialize.add_argument("--definitions-root", type=Path, required=True)
     materialize.add_argument("--output", type=Path, required=True)
     materialize.add_argument("--asset-file", type=Path)
+    retain = sub.add_parser("retain-previous-clamav")
+    retain.add_argument("--definitions-root", type=Path, required=True)
+    retain.add_argument("--manifest-output", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "build-clamav":
         result = build_clamav_asset(
             database_dir=args.database_dir, output_dir=args.output_dir, asset_base_url=args.asset_base_url,
             executable=args.executable, manifest_output=args.manifest_output,
         )
+    elif args.command == "retain-previous-clamav":
+        result = retain_previous_clamav_transport(
+            definitions_root=args.definitions_root, manifest_output=args.manifest_output,
+        )
+        if result is None:
+            print(json.dumps({"retained": False, "reason": "no-previous-frozen-clamav-transport"}, sort_keys=True, indent=2))
+            return 2
     else:
         result = materialize_clamav_asset(definitions_root=args.definitions_root, output=args.output, asset_file=args.asset_file)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))

@@ -83,6 +83,30 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("import yaml", publish_block)
         self.assertLess(publish_block.index(install), publish_block.index(verify))
         self.assertLess(publish_block.index(verify), publish_block.index(freeze))
+        yara_install = "Install YARA compile-check dependency for Definitions freezer"
+        self.assertIn(yara_install, publish_block)
+        self.assertIn("apt-get install -y --no-install-recommends yara", publish_block)
+        self.assertLess(publish_block.index(yara_install), publish_block.index(freeze))
+
+
+    def test_optional_clamav_freeze_is_atomic_and_never_blocks_definitions(self) -> None:
+        text = self.read("catalog-builder.yml")
+        start = text.index("Freeze optional ClamAV feed into a content-addressed release asset")
+        end = text.index("Freeze daily Definitions and OSV data", start)
+        block = text[start:end]
+        self.assertIn('pending_manifest="catalog/secondary-security-asset-manifest.pending.json"', block)
+        self.assertIn('--manifest-output "$pending_manifest"', block)
+        self.assertIn('gh release upload sigmascope-definitions', block)
+        self.assertIn('mv "$pending_manifest" "$final_manifest"', block)
+        self.assertLess(block.index('gh release upload sigmascope-definitions'), block.index('mv "$pending_manifest" "$final_manifest"'))
+        self.assertIn("retain-previous-clamav", block)
+        self.assertIn("continuing this Definitions revision without ClamAV", block)
+        self.assertIn("if ! sudo apt-get install -y --no-install-recommends clamav clamav-freshclam", block)
+        self.assertIn("if gh release upload", block)
+        build_start = block.index('secondary_security_assets.py build-clamav')
+        build_end = block.index('release_ready=true', build_start)
+        self.assertNotIn('--manifest-output "$final_manifest"', block[build_start:build_end])
+        self.assertNotIn("python - <<", block)
 
     def test_catalog_json_is_authoritative_public_state_not_a_main_branch_generated_commit(self) -> None:
         builder = self.read("catalog-builder.yml")
