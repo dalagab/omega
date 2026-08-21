@@ -674,3 +674,19 @@ Executable mode `100755` remains desirable for normal Linux ergonomics, but it i
 Rift now has a CI workflow that acquires Omega the way Dalamud would: it reads the stable PluginMaster, follows the immutable versioned DownloadLinkInstall, verifies the published SHA-256 sidecar, then passes the opaque package to a separate hostile-execution job.
 
 The hostile job extracts the exact package with ZIP safety checks, verifies DalagabOmega.json against the feed version, and executes DalagabOmega.dll only inside the cgroup-v2 -> Bubblewrap -> seccomp boundary. Results are always preserved as the `rift-omega-results` Actions artifact before a non-zero Rift execution status fails the job.
+
+== Hostile behavior canary fixture
+
+Rift includes a deliberately suspicious regression fixture under `tests/fixtures/RiftHostileCanary`.
+It exists to light up SigmaScope/YARA static rules and Rift runtime observation paths without performing malicious actions.
+
+The fixture has a strict non-distribution contract:
+
+* the executable artifact contains exactly `RiftHostileCanary.dll`;
+* it contains zero JSON files and therefore no Dalamud plugin manifest/feed document;
+* its source contains none of the normal Dalamud feed/manifest keys;
+* outside `RIFT_EXECUTOR=bubblewrap-v2` it is inert;
+* active probes target only Rift tmpfs, isolated loopback, deliberately missing executables/libraries/assemblies, a read-only non-existent registry key, and `libc.getpid()`;
+* credential theft, process injection, persistence, security tampering, AMSI patching and anti-analysis behavior are represented only as static marker vocabulary and are never invoked.
+
+`tools/check-hostile-canary-contract.py` fails closed if those invariants drift. `.github/workflows/rift-hostile-canary.yml` builds a DLL-only opaque fixture artifact, asserts it contains no JSON, executes it through cgroup-v2 -> Bubblewrap -> seccomp, verifies runtime canary observations and preserves the resulting report.

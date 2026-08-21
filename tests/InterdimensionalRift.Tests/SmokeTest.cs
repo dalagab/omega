@@ -117,3 +117,77 @@ public class SmokeTest
         return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
     }
 }
+
+public class HostileCanaryTest
+{
+    [Fact]
+    public void HostileCanary_IsInertOutsideRiftBoundary()
+    {
+        var previous = Environment.GetEnvironmentVariable("RIFT_EXECUTOR");
+        try
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXECUTOR", null);
+            var canaryDll = LocateCanary();
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(canaryDll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+
+            Assert.Equal("ok", report.Plugin.LoadOutcome);
+            Assert.Contains(report.Findings,
+                f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("RIFT_CANARY inert", StringComparison.Ordinal));
+            Assert.DoesNotContain(report.Findings,
+                f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("runtime.network.loopback", StringComparison.Ordinal));
+            Assert.DoesNotContain(report.Findings,
+                f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("runtime.process.missing", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXECUTOR", previous);
+        }
+    }
+
+    [Fact]
+    public void HostileCanary_ArmedModeExercisesOnlySentinelRuntimeBranches()
+    {
+        var previous = Environment.GetEnvironmentVariable("RIFT_EXECUTOR");
+        try
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXECUTOR", "bubblewrap-v2");
+            var canaryDll = LocateCanary();
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(canaryDll, TimeSpan.FromSeconds(10), frameworkTicks: 1);
+
+            Assert.Equal("ok", report.Plugin.LoadOutcome);
+            foreach (var marker in new[]
+            {
+                "RIFT_CANARY armed inside Rift",
+                "runtime.filesystem.tmpfs",
+                "runtime.network.loopback",
+                "runtime.http.loopback",
+                "runtime.process.missing",
+                "runtime.assembly.missing",
+                "runtime.native-load.missing",
+                "runtime.registry.readonly",
+                "runtime.pinvoke.getpid",
+                "runtime.framework.tick",
+            })
+            {
+                Assert.Contains(report.Findings,
+                    f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains(marker, StringComparison.Ordinal));
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXECUTOR", previous);
+        }
+    }
+
+    private static string LocateCanary()
+    {
+        var testBin = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(testBin, "RiftHostileCanary.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftHostileCanary", "bin", "Debug", "net10.0", "RiftHostileCanary.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftHostileCanary", "bin", "Release", "net10.0", "RiftHostileCanary.dll"),
+        };
+        return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
+    }
+}
