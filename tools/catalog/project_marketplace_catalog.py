@@ -21,8 +21,9 @@ import zipfile
 from typing import Any
 
 from source_stability import stable_source_priority
+from behavior_consistency import compact_behavior_consistency, compute_behavior_consistency
 
-PROJECTOR_VERSION = "1.5.0"
+PROJECTOR_VERSION = "1.6.0"
 MARKETPLACE_DB_FILENAME = "omega-marketplace.sqlite"
 MARKETPLACE_BUNDLE_FILENAME = "omega-marketplace.sqlite.zip"
 CLIENT_INTERNAL_DB_FILENAME = "omega-catalog.sqlite"
@@ -43,7 +44,10 @@ ARTIFACT_CANONICAL_RUNTIME_COLUMNS = {
     "security_known_advisory_count", "security_known_advisory_highest_severity", "security_risk_score",
     "security_source_available", "security_source_repository", "security_source_commit",
     "security_source_attribution_confidence", "security_source_attribution_basis_json", "security_review_coverage_label",
-    "security_source_to_binary_verified", "security_error",
+    "security_source_to_binary_verified", "security_developer_profile_status", "security_developer_profile_sha256",
+    "security_developer_profile_json", "security_behavior_consistency_json",
+    "security_behavior_observed_undeclared_count", "security_behavior_not_expected_observed_count",
+    "security_behavior_expected_not_observed_count", "security_behavior_unexplained_destination_count", "security_error",
 }
 
 DETAILED_SECURITY_TABLES = (
@@ -449,6 +453,78 @@ def refresh_marketplace_source_attribution(db: sqlite3.Connection) -> None:
         )
 
 
+def refresh_marketplace_developer_profiles(db: sqlite3.Connection) -> None:
+    """Project bounded developer-authored `.omega` metadata from the current scan report."""
+    rows = db.execute("SELECT variant_id,scan_id FROM marketplace_security_current ORDER BY variant_id").fetchall()
+    for variant_id, scan_id in rows:
+        scan = db.execute("SELECT report_json FROM plugin_security_scans WHERE scan_id=?", (int(scan_id or 0),)).fetchone()
+        if scan is None:
+            continue
+        try:
+            report = json.loads(str(scan[0] or "{}"))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            report = {}
+        source = report.get("source") if isinstance(report, dict) and isinstance(report.get("source"), dict) else {}
+        observation = source.get("developerProfile") if isinstance(source.get("developerProfile"), dict) else {}
+        status = str(observation.get("status") or "absent")[:32]
+        sha256 = str(observation.get("sha256") or "")[:128]
+        encoded = json.dumps(observation, ensure_ascii=False, sort_keys=True, separators=(",", ":")) if observation else "{}"
+        if len(encoded.encode("utf-8")) > 96 * 1024:
+            # The source parser is already bounded; this is a final fail-soft transport guard.
+            encoded = json.dumps({
+                "schema": "omega.plugin-profile-observation.v1",
+                "status": "invalid",
+                "valid": False,
+                "sha256": sha256,
+                "diagnostics": [{"code": "projection-size", "path": "", "message": "developer profile exceeded marketplace projection limit"}],
+            }, separators=(",", ":"))
+            status = "invalid"
+        db.execute(
+            "UPDATE marketplace_security_current SET developer_profile_status=?,developer_profile_sha256=?,developer_profile_json=? WHERE variant_id=?",
+            (status, sha256, encoded, int(variant_id)),
+        )
+
+
+def refresh_marketplace_behavior_consistency(db: sqlite3.Connection) -> None:
+    """Project observation-vs-declaration comparison without changing native findings."""
+    rows = db.execute("SELECT variant_id,scan_id FROM marketplace_security_current ORDER BY variant_id").fetchall()
+    for variant_id, scan_id in rows:
+        scan = db.execute("SELECT report_json FROM plugin_security_scans WHERE scan_id=?", (int(scan_id or 0),)).fetchone()
+        if scan is None:
+            continue
+        try:
+            report = json.loads(str(scan[0] or "{}"))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            report = {}
+        try:
+            comparison = compact_behavior_consistency(
+                report.get("behaviorConsistency") if isinstance(report, dict) and isinstance(report.get("behaviorConsistency"), dict)
+                else compute_behavior_consistency(report if isinstance(report, dict) else {})
+            )
+        except Exception:
+            comparison = {}
+        summary = comparison.get("summary") if isinstance(comparison.get("summary"), dict) else {}
+        encoded = json.dumps(comparison, ensure_ascii=False, sort_keys=True, separators=(",", ":")) if comparison else "{}"
+        if len(encoded.encode("utf-8")) > 128 * 1024:
+            encoded = json.dumps({
+                "schema": "omega.sigmascope.behavior-consistency.v1",
+                "profileStatus": "projection-too-large",
+                "summary": {key: int(summary.get(key) or 0) for key in (
+                    "observedUndeclaredCount", "notExpectedObservedCount", "expectedNotObservedCount", "unexplainedDestinationCount"
+                )},
+            }, separators=(",", ":"))
+        db.execute(
+            """UPDATE marketplace_security_current
+                  SET behavior_consistency_json=?,behavior_observed_undeclared_count=?,behavior_not_expected_observed_count=?,
+                      behavior_expected_not_observed_count=?,behavior_unexplained_destination_count=?
+                WHERE variant_id=?""",
+            (
+                encoded, int(summary.get("observedUndeclaredCount") or 0), int(summary.get("notExpectedObservedCount") or 0),
+                int(summary.get("expectedNotObservedCount") or 0), int(summary.get("unexplainedDestinationCount") or 0), int(variant_id),
+            ),
+        )
+
+
 def create_marketplace_security_current(db: sqlite3.Connection) -> None:
     db.execute("DROP TABLE IF EXISTS marketplace_security_current")
     db.execute(
@@ -484,6 +560,14 @@ def create_marketplace_security_current(db: sqlite3.Connection) -> None:
             source_attribution_basis_json TEXT NOT NULL DEFAULT '[]',
             review_coverage_label TEXT NOT NULL DEFAULT 'Unresolved',
             source_to_binary_verified INTEGER NOT NULL DEFAULT 0,
+            developer_profile_status TEXT NOT NULL DEFAULT 'absent',
+            developer_profile_sha256 TEXT NOT NULL DEFAULT '',
+            developer_profile_json TEXT NOT NULL DEFAULT '{}',
+            behavior_consistency_json TEXT NOT NULL DEFAULT '{}',
+            behavior_observed_undeclared_count INTEGER NOT NULL DEFAULT 0,
+            behavior_not_expected_observed_count INTEGER NOT NULL DEFAULT 0,
+            behavior_expected_not_observed_count INTEGER NOT NULL DEFAULT 0,
+            behavior_unexplained_destination_count INTEGER NOT NULL DEFAULT 0,
             error TEXT NOT NULL DEFAULT ''
         )
         """
@@ -509,6 +593,8 @@ def create_marketplace_security_current(db: sqlite3.Connection) -> None:
     # inherit the exact scan's plugin/IPC dependency summary too.
     backfill_marketplace_security_from_completed_scans(db)
     refresh_marketplace_source_attribution(db)
+    refresh_marketplace_developer_profiles(db)
+    refresh_marketplace_behavior_consistency(db)
     for variant_id, (total_count, encoded) in build_dependency_summaries(db, "marketplace_security_current").items():
         db.execute(
             "UPDATE marketplace_security_current SET dependencies_json=?,dependency_total_count=? WHERE variant_id=?",
@@ -855,7 +941,16 @@ def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
              COALESCE(sc.source_attribution_confidence,0) AS security_source_attribution_confidence,
              COALESCE(sc.source_attribution_basis_json,'[]') AS security_source_attribution_basis_json,
              COALESCE(sc.review_coverage_label,'Unresolved') AS security_review_coverage_label,
-             COALESCE(sc.source_to_binary_verified,0) AS security_source_to_binary_verified,COALESCE(sc.error,'') AS security_error
+             COALESCE(sc.source_to_binary_verified,0) AS security_source_to_binary_verified,
+             COALESCE(sc.developer_profile_status,'absent') AS security_developer_profile_status,
+             COALESCE(sc.developer_profile_sha256,'') AS security_developer_profile_sha256,
+             COALESCE(sc.developer_profile_json,'{{}}') AS security_developer_profile_json,
+             COALESCE(sc.behavior_consistency_json,'{{}}') AS security_behavior_consistency_json,
+             COALESCE(sc.behavior_observed_undeclared_count,0) AS security_behavior_observed_undeclared_count,
+             COALESCE(sc.behavior_not_expected_observed_count,0) AS security_behavior_not_expected_observed_count,
+             COALESCE(sc.behavior_expected_not_observed_count,0) AS security_behavior_expected_not_observed_count,
+             COALESCE(sc.behavior_unexplained_destination_count,0) AS security_behavior_unexplained_destination_count,
+             COALESCE(sc.error,'') AS security_error
            FROM plugin_variants v
            JOIN plugins p ON p.plugin_id=v.plugin_id
            JOIN sources s ON s.source_id=v.source_id

@@ -1,4 +1,169 @@
+# Omega Security Services changelog
+
+## 2.15.0 unreleased — SRL cutover-readiness gate
+
+- Added `tools/security/srl_cutover_readiness.py`, a read-only full-corpus audit over the exact frozen Daily Definitions and published Security Evidence v2 snapshot.
+- Cutover readiness now requires intrinsic Definitions/Evidence integrity, exact frozen SRL identity, complete current-variant coverage, zero retained-evidence audit errors, zero hard-coded-vs-SRL mismatches, zero targeted observation re-analysis requirements, complete rule-only reprojection, and replay/reprojection classification agreement.
+- A clean audit means only `ready-for-human-review`; the report permanently declares `manualApprovalRequired=true`, `activationAuthorized=false`, `hardCodedBaselineRemovalAuthorized=false`, `productionWriteBack=false`, and `queueMutationAuthorized=false`.
+- Added exact re-analysis reason summaries and requests so an incompatible 2.14/early-2.15 corpus can be repaired selectively instead of being mistaken for a negative result or forcing a blind mass rescan.
+- Added a read-only GitHub workflow that checks out `sigmascope`, `catalog-data`, and `security-evidence-v2`, writes only an Actions artifact, and can optionally fail unless the complete corpus is mechanically ready. The default-branch caller reference is `docs/workflow-callers/srl-cutover-readiness-main.yml`.
+- Added regression coverage for compatible, zero-hit, missing-observation, baseline-mismatch, filtered/limited diagnostic, CLI fail-closed, and workflow authority cases. Production SRL evaluation remains disabled.
+
+## 2.15.0 unreleased — Phase 11 slice 8 · DeltaScope 3.7 GitHub proposal handoff
+
+- Complete Phase 11 with a Rule Lab **Propose on GitHub** action that only constructs/opens a normal GitHub Issue Form URL; DeltaScope never submits an issue or performs a GitHub API write.
+- Canonically map the Phase-9 Issue Form element IDs into query-string prefills for pack identity, candidate SRL YAML, positive/negative fixtures, rationale, false-positive expectations, provenance and license.
+- Reuse the authorization-independent candidate validator before URL generation so both fixture polarities must already satisfy the Phase-9 semantic contract; GitHub still re-fetches/revalidates from scratch and remains authoritative for pack collisions and promotion.
+- Add a conservative 7,500-byte complete-prefill limit with deterministic metadata/identity/template fallbacks and explicit copy actions for omitted YAML; never silently truncate candidate data.
+- Extend Rule Lab export to produce deterministic GitHub-ready bundles containing both `positive-fixture.yaml` and `negative-fixture.yaml`.
+- Add an exact default-branch Issue Form reference under `docs/workflow-callers/` and regression-check its IDs against the URL-prefill contract.
+- Keep `/api/rule-lab/promote` absent and preserve `productionRuleEvaluationEnabled=false`, `productionWriteBack=false`, and the GitHub permission/CI/review/normal-PR mutation boundary.
+
+## 2.15.0 unreleased — Phase 11 slices 6–7 · DeltaScope 3.6 Rules provenance + Reports/System
+
+- Publish `indexes/definition-provenance.json` from the exact verified frozen Daily Definitions snapshot so DeltaScope never infers active rules from development-tree YAML.
+- Record exact Definition/pack/SRL revisions, pack/rule review and provenance metadata, source hashes, fixtures and migration-parity status in `omega.security-evidence.definition-provenance.v1`; intrinsically enforce `readOnly=true`, `mutationAuthority=none`, `policyInput=false`.
+- Make provenance-only semantic revision changes publication-worthy so active-rule lineage cannot remain stale when artifact/security semantics are otherwise unchanged; timestamp-only Daily snapshot churn does not move the provenance revision.
+- Add deterministic read-only Active Rules, Reports and System projections/APIs. Rules shows authoritative frozen lineage; Reports summarizes coverage, SRL reprojection/reanalysis and queue state; System shows Evidence/Definitions/scanner/SRL revisions plus explicit production/write-back/queue-authority gates.
+- Keep Rule Lab scratch-only and preserve the GitHub permission/CI/review/normal-PR boundary; `/api/rule-lab/promote` remains absent.
+- Add deterministic/tamper/fail-closed/HTTP coverage and complete regression accounting at 438 tests across 47 modules.
+
+## 2.15.0 unreleased — Phase 11 slices 4–5 · DeltaScope 3.5 Intelligence + Asset relationships
+
+- Add a bounded, deterministic Evidence-v2 `indexes/workbench-relationships.json` navigation index derived from published endpoint, dependency/component and advisory state. It is hash/size/schema verified and explicitly `readOnly=true`, `mutationAuthority=none`, `policyInput=false`.
+- Add cross-plugin Intelligence catalog/pivots for observed endpoints, shared components and advisory matches without requiring the browser to crawl every deep variant dataset.
+- Add deterministic Asset relationship graphs covering plugin→variant→artifact/source→component/endpoint/advisory navigation, with pivots back into ecosystem Intelligence.
+- Keep the relationship layer outside the SigmaScope observation/SRL boundary: it cannot create findings, change severity, queue work, activate rules or become a production policy input.
+- Preserve older Evidence-v2 compatibility: snapshots without the relationship index remain readable and show the ecosystem relationship surface as unavailable.
+- Add relationship-index determinism, intrinsic read-only-boundary, backend projection, HTTP/UI and DeltaScope contract regressions.
+
+## Unreleased 2.15 Phase 9 — authorization-gated GitHub rule candidates
+
+## 2.15.0 unreleased — Phase 10 reprojection + Phase 11 DeltaScope workbench shell
+
+- Add deterministic SRL rule-only reprojection from retained legal observations, independent of legacy finding payloads.
+- Add targeted queue reasons for variants missing exact required observation collections while keeping `srlRuleSetRevision` separate from the hard-coded scanner `ruleSetRevision`.
+- Publish an optional non-authoritative Evidence-v2 `rule-projections/` sidecar and intrinsically validate hashes, sizes, schemas, revisions, non-production flags and orphan cleanup.
+- Add DeltaScope `rule-reproject` inspection/export support.
+- Advance DeltaScope to 3.3 with the first read-only security-information workbench shell: Dashboard, Incidents, Events, Intelligence, Assets, Rules, Reports and System.
+- Add deterministic backend workbench projections (`omega.deltascope.security-workbench.v1`) for incident/event/intelligence navigation, stable IDs/revision, and explicit no-mutation authority; the browser now consumes `/api/workbench` rather than deriving those objects ad hoc.
+- Keep Rule Lab scratch-only and GitHub as the sole authoritative mutation/promotion boundary; no direct incident/rule/evidence/queue/Definitions write path is added.
+
+
+- Add `tools/security/rule_candidate.py` as a network-free candidate-data boundary: bounded issue-section parsing, hardened SRL compilation, positive/negative fixture validation, candidate-wide positive coverage, cross-pack rule/fact collision checks, and transactional reviewed Definition Pack materialization.
+- Treat candidate YAML/fixtures as inert data. YAML anchors/aliases/tags, path-like pack IDs, existing-pack overwrite, disabled/deprecated promotion status, failing fixtures, and duplicate identities fail closed. Candidate/issue author identity and self-declared status/reviewer text never grant authority.
+- Add the `SigmaScope rule candidate` issue form requiring pack identity, candidate YAML, positive/negative fixtures, rationale, false-positive expectations, external provenance and license.
+- Add reusable `.github/workflows/rule-candidates.yml`: validation has no contents-write permission; promotion checks the triggering GitHub actor's repository collaborator permission before checkout/re-fetch, then revalidates from scratch and opens a normal PR without auto-merge or `pull_request_target`.
+- Add `docs/workflow-callers/rule-candidates-main.yml` as the exact thin default-branch event caller for the companion `main` overlay. The `/promote-sigmascope-rule` command only routes the event; the reusable workflow performs the decisive permission check.
+- Keep DeltaScope Rule Lab read-only and production SRL evaluation disabled. A merged reviewed pack still requires normal CI/review and the later Daily Definitions freeze.
+- Add 23 Phase-9 candidate/workflow contract tests; complete regression accounting is 394/394 tests across 43/43 modules, plus all five product self-tests.
+
 # Omega security services changelog
+
+## 2.15.0 — Unreleased migration line: capability vocabulary, developer profiles, behavior consistency, observation replay
+
+### Phase 8 DeltaScope Rule Lab
+
+- Add `tools/security/rule_lab.py` as the local/experimental authoring backend over the exact production SRL compiler/evaluator.
+- Add visual Rule Lab to DeltaScope 3.2 with YAML import/editing, structured compile diagnostics, selected Evidence-v2 plugin dry-run, selector/evidence explorer, candidate-scoped baseline diff, bounded set/corpus replay, fixture creation/edit/test, and deterministic candidate ZIP export.
+- Preserve replay integrity: missing required observations are `rescanRequired`/not evaluated rather than inferred negative, and baseline findings remain comparison-only inputs.
+- Scope baseline comparison to candidate-owned finding IDs so observation-only candidates never appear to remove unrelated production findings.
+- Export deterministic fixed-metadata ZIP bundles with exact SHA-256 manifest, candidate descriptor, optional passing fixture, `productionWriteBack=false`, and no promotion authority.
+- Add no production mutation surface: Rule Lab has no promote/publish/Definitions/Evidence write endpoint. Production SRL evaluation remains disabled.
+
+### Phase 7b retained static-observation replay
+
+- Retain rule-neutral `dependencyIntelligence.staticPatternMatches` rows for legacy static literal matches; rows contain origin/pattern/evidence location only and never a legacy rule ID, severity, capability or finding conclusion.
+- Add `staticPatternMatchContractVersion=1` so a new zero-hit scan can prove an explicitly empty complete observation set, while historical reports without the marker remain distinguishable as missing.
+- Add reviewed `omega-core-static-primitives` Definition Pack producing `network.http`, `network.socket`, `process.launch`, `shell.powershell`, and `credential.api` facts from retained observations.
+- Extend migration parity to **59 primitive literal cases + 32 compound combinations**, using scanner-produced observations rather than parity-only injected facts.
+- Add retained Evidence-v2 SRL replay (`srl_evidence_replay.py`) and DeltaScope `rule-replay`; old findings are comparison baseline only and never recursive evaluator inputs.
+- Treat historical 2.14 variants without the new complete observation as `rescanRequired` for targeted re-analysis; never fabricate negative evidence or facts from an absent dataset.
+- Advance narrow artifact/source analysis identities because observation-retention semantics changed. The legacy hard-coded scanner/queue `ruleSetRevision` remains a separate identity (not repurposed as the SRL ruleset), but it also advances because `sigmascope.py` itself changed.
+- Keep production SRL evaluation disabled and retain the hard-coded primitive/compound implementation until a real compatible 2.15 corpus has replayed cleanly and cutover is reviewed.
+
+
+- Bump Omega Security Services / SigmaScope engine to **2.15.0** for the first implemented behavior-transparency architecture phases.
+- Add source-controlled `omega.sigmascope.capability-registry.v1` with stable canonical capability IDs, categories, labels, descriptions, migration aliases, attributes and deprecation/replacement metadata.
+- Freeze the capability registry as a first-class Definitions payload with exact SHA-256/revision/count metadata while also carrying it inside the immutable worker bundle.
+- Project existing SigmaScope capability/permission/automation outputs onto canonical `capabilityIds` without changing the underlying finding/severity model.
+- Add bounded optional `.omega/plugin.yaml` (`omega.plugin-profile.v1`) ingestion from attributable public source, preferring a plugin-project-local profile in monorepositories and then repository root.
+- Preserve exact profile path/SHA-256/byte count/validation status and capability-registry revision in `omega.plugin-profile-observation.v1`.
+- Allow developers to explain expected or explicitly-not-expected capabilities, reasons, expected destinations, services, native components, IPC integrations, profile links/text and media references. These remain untrusted developer claims/context only.
+- Reject developer attempts to declare safety/trust/verdict/severity/suppression/allowlisting, YARA/ClamAV overrides, review coverage, attribution confidence, artifact hashes, or source-to-artifact verification. Invalid `.omega` enrichment is fail-soft and never removes a plugin or suppresses independent evidence.
+- Harden YAML parsing: 64 KiB maximum, UTF-8, bounded depth/nodes/tokens/lists, SafeLoader, and no aliases/anchors/explicit tags/merge keys/duplicate mapping keys/includes/templates/environment expansion.
+- Carry normalized developer-profile data through source analysis, compact Evidence-v2, marketplace projection and DeltaScope with explicit developer-provided labelling.
+- Advance the narrow **source** analysis revision for the new source input while preserving the existing narrow artifact code-analysis revision (`artifact-analysis-v1-bfac8f5fece4c94e`). Release-version identity is no longer treated as an analysis semantic for legacy ledger/due decisions.
+- Add DeltaScope `capabilities` and `rule-schema` commands. `rule-schema` emits `omega.deltascope.rule-author-reference.v1` over the real current SigmaScope collections/fields and explicitly reports that production SRL evaluation is not yet enabled.
+- Add comprehensive in-branch documentation for plugin developers and future rule authors under `docs/plugin-developers/` and `docs/rule-authors/`, plus the architecture/security/rule-language/Rule-Lab documents.
+- Preserve YARA/ClamAV/OSV as separate specialist security-hygiene systems. Future SRL remains a bounded typed behavior/capability/correlation language and does not replace them.
+- Add `omega.sigmascope.behavior-consistency.v1`, a deterministic derived projection comparing canonical observed capabilities and concrete network destinations with developer declarations without changing native findings/severity.
+- Distinguish `observed-no-profile` from `observed-undeclared`; absence of `.omega` is not treated as a developer omission.
+- Prevent developer metadata from proving itself: `.omega/plugin.yaml` is no longer fed through normal source-text security scanning, and historical endpoint rows originating from that file are filtered from destination comparison.
+- Carry bounded behavior-consistency detail through Evidence-v2, marketplace security projection and DeltaScope. DeltaScope labels developer text explicitly and may use mismatches only as developer-research priority hints.
+- Keep `behaviorConsistency` presentation-only for future SRL authoring: production rules must consume independent observations plus `developerProfile` directly to avoid conclusion-on-conclusion recursion.
+- Implement Phase 4 observation/projection separation with `omega.sigmascope.observation-contract.v1`, `omega.sigmascope.observation-collection.v1`, `omega.sigmascope.projection-contract.v1` and `omega.sigmascope.projection-replay-audit.v1`.
+- Register 18 stable logical input collections and classify legacy `findings`, permission and automation datasets as projection-only/non-SRL while keeping their physical Evidence-v2 transport backward compatible during migration.
+- Promote already-produced report-only native imports, full endpoint rows, source files, binary classifications, developer profile/provenance, artifact/manifest identity and secondary-security results into first-class immutable observation datasets for new 2.15 analysis exports without reopening plugin bytes.
+- Add historical 2.14 compatibility adaptation: active variants can receive observation/projection descriptors from retained immutable datasets plus compact report during candidate synchronization without artifact/source re-analysis. Historical bounded endpoint transport is explicitly marked insufficient for exact full-collection replay.
+- Add deterministic replay auditing so future rules declare required logical collections; compatible retained evidence reprojects without rescan, while missing/bounded collections produce a targeted re-analysis reason and derived recursive inputs are rejected.
+- Add DeltaScope `observation-schema` and document the Phase-4 input/completeness contract for rule authors. The existing Definitions `sourceObservationRevision` remains a separate source-ref identity and is not repurposed.
+- Implement Phase 6 Definition Pack v1 compiler/freezer in `tools/security/definition_packs.py` with `core`, `reviewed`, `experimental`, and `local` trust tiers, bounded manifest/file loading, compatibility checks, per-pack/per-rule provenance/license/reviewer metadata, duplicate rule/fact prevention, exact content hashes, and mandatory fixture execution for production-tier packs.
+- Freeze Definition Pack inventory plus the exact compiled active SRL ruleset into Daily Definitions under `srl/`; parent Definitions now carry a separate `srlDefinitionPacks` descriptor with deterministic `definitionPackRevision` and SRL `ruleSetRevision`.
+- Preserve the existing top-level scanner `ruleSetRevision` as the current hard-coded analysis/queue identity during migration. SRL pack-only changes alter Definitions/SRL identities but do not silently trigger artifact rescans.
+- Add a verified frozen-ruleset loader that never reads source pack YAML at worker runtime, plus DeltaScope `definition-packs --definitions-root ...` provenance inspection. Production SRL projection remains disabled through the Phase-7 migration until a compatible 2.15 retained corpus replays cleanly and cutover is explicitly reviewed.
+- Start Phase 7 with the first reviewed production-tier SRL pack, `omega-core-compound`, preserving the existing `compound.network-execute` and `compound.credential-network` finding IDs and user-visible payload semantics.
+- Add `omega.sigmascope.srl-migration-parity.v1`: compare the reviewed SRL correlations directly against the current hard-coded `finding_payload` implementation over all 32 combinations of the five primitive rule inputs.
+- Add DeltaScope `rule-parity` for deterministic migration auditing. Primitive hard-coded rule IDs are converted to typed initial facts only inside this parity harness; current finding/permission/automation projections remain forbidden SRL observations.
+- Make Daily Definitions fail closed when the migrated compound rules are partial or drift from the hard-coded baseline; freeze/hash-verify `srl/migration-parity.json` alongside the compiled SRL ruleset.
+- Keep `productionRuleEvaluationEnabled=false` and retain the hard-coded primitive/compound logic until a compatible 2.15 retained corpus has replayed cleanly and cutover is explicitly reviewed.
+- Preserve live production 2.14 data collection unchanged; 2.15 remains an unreleased migration line until the remaining architecture phases and migration plan are complete.
+
+## 2.14.1 — Plugin-scoped source follow-up reconciliation
+
+- Consolidate public-source follow-up tracking to one managed GitHub issue per Dalamud `InternalName` instead of one issue per catalog mirror/feed.
+- On each reconciliation pass, keep the oldest unresolved managed issue as canonical, refresh it with all currently affected mirrors and feed-scoped override keys, and close duplicate legacy mirror issues as consolidated.
+- When current SigmaScope evidence successfully inspects public source for a plugin, close all managed source-discovery issues for that `InternalName`, even if some mirror variants still have no source attribution of their own. Closing source discovery never claims artifact-to-source equivalence; that evidence remains per variant.
+- A validated repository reply on the consolidated issue now persists the source override to every affected feed-scoped mapping listed on the issue instead of fixing only one mirror.
+- Advance the source-followup projection document to `omega.source-scan-followups.v3` with plugin-level counts/resolution names while retaining feed-specific rows for auditability.
+- This is worker/human-follow-up orchestration only. SigmaScope detection engine remains **2.14.0** and narrow artifact/source analysis revisions must remain unchanged. A Daily Catalog/Definitions freeze is required before production workers use the new reconciliation code.
+
+## 2026-08-21 - DeltaScope metric wiring hotfix
+
+- Restored the `wireMetricCards` browser helper used by both focused and expanded metric-card groups.
+- Added a regression asserting that the helper is defined before `init()` and wired to both card containers.
+- No SigmaScope scanner, queue, Definitions, artifact-analysis, or source-analysis semantics changed.
+
+
+## 2.14.0 — Coverage-first queue + DeltaScope focus/source/cache hotfix
+
+- Change SigmaScope queue selection to **coverage-first-v1**: untouched artifact work for never-scanned active variants first, then retries for still-uncovered artifacts, then already-covered rescans/source-followups/advisory work. Existing typed reason priorities still order work inside each lane.
+- Publish queue summary coverage counters (`unscannedVariantsPending`, `unscannedRetryVariants`, `coveredWorkPending`) so operators can see breadth progress explicitly.
+- Keep artifact/source analysis revisions unchanged; this is queue scheduling semantics, not scanner evidence semantics. A fresh Catalog freeze is required to distribute the queue policy.
+- Replace DeltaScope's mirrored Evidence-v2 HTTP cache paths with short deterministic revision/path hashes, preventing Windows Store Python cache prefixes from triggering `WinError 206` on deep immutable analysis paths while preserving strict remote SHA-256 verification.
+- Simplify DeltaScope's top area to four research-focused cards: results available, never scanned, needs review, and queue retry. Full counters remain exact-click drill-downs under a collapsed **Metrics & coverage** drawer.
+- Make evidence coverage explicit everywhere: research-queue rows now say **SOURCE CODE** or **ARTIFACT ONLY**, and selected cases show ARTIFACT / SOURCE CODE / SOURCE↔ARTIFACT status before the research tabs, including attribution confidence and source→binary verification state.
+- Keep TONI deterministic/read-only and focused on coverage, queue progress, source availability, malware-engine state, and strongest review signals.
+
+## 2.14.0 — DeltaScope security researcher workbench + snapshot coherency
+
+- Reframe DeltaScope around a security-research workflow rather than a database browser: **Triage → Malware → Findings → Network → Code & native → Supply chain → Immutable evidence**.
+- Demote generic Evidence-v2/SQLite table traversal to an **Advanced** escape hatch while preserving exact metric drill-downs and relationship navigation.
+- Add deterministic researcher signals for incomplete scans/secondary engines, ClamAV/YARA matches, high/critical static findings, network+execution compounds, low source-attribution confidence, unverified source→binary correspondence, undetermined network destinations, and intelligence truncation. These signals guide review only; they do not change SigmaScope severity or publication.
+- Add managed-call search plus direct access to permission, automation, import/PInvoke and reachability evidence from the Code & native tab.
+- Expand endpoint presentation to show URL, host, classification, purpose, origin, confidence and concrete-destination status.
+- Fix `/api/plugin` / `/api/snapshot` failures when the moving `security-evidence-v2` branch publishes between loading the root index and opening a variant. DeltaScope keeps SHA verification fail-closed, refreshes the atomic root/index snapshot after a SHA/404 race, then retries once.
+- Optional immutable manifest/dataset-catalog loading now fails soft in the compact research case so a transient shard race cannot hide the already-integrity-checked current scan report.
+- Server-side 500s now print a traceback with the failing DeltaScope request for researcher diagnostics.
+- DeltaScope remains developer-only/read-only and outside `artifactAnalysisRevision`, `sourceAnalysisRevision`, scanner scoring, queue decisions and publication.
+
+## DeltaScope TONI + metric drill-down UX hotfix
+
+- Replace the Omega glyph in DeltaScope with a compact **O mark with a red center dot**; no image/font asset or network dependency is required.
+- Add **TONI** as a deterministic, read-only evidence guide. TONI only narrates already-loaded DeltaScope evidence and never scans, scores, changes, or publishes security conclusions.
+- Make every headline metric a drill-down. `Immutable analyses` now opens one row per immutable analysis with exact artifact/analysis/manifest identity; aggregate finding cards open contribution rows showing how their totals are summed; queue-state cards open the exact queue items for that state.
+- Add direct immutable-analysis manifest browsing from the row inspector.
+- Refresh the browser styling with a self-contained Tailwind-inspired slate/card layout while preserving offline/local operation and avoiding a Tailwind CDN dependency.
 
 ## 2.14.0 — Reviewed Omega Core YARA and bounded archive-member scanning
 
@@ -22,6 +187,8 @@
 - Expose batch diagnostics (`selectedCount`, selected items, budget stop state, invocation count, and aggregate per-plugin elapsed seconds) without persisting runtime timings into semantic Evidence-v2 or changing artifact/source analysis identities.
 - Fix source-projection persistence exposed by the first 20-item batch: immutable normalized finding rows are now rebuilt from the final combined source+artifact finding set instead of artifact rows plus only direct source findings. This preserves newly derived endpoint/automation findings and keeps immutable scan counters reproducible.
 - Keep the independent developer audit fail-closed; the failed 20-item batch published nothing after it detected five mirrored ActionTimelineReborn source projections with 21/10 recorded caution/informational counts but only 19/9 normalized rows.
+- Modernize DeltaScope as a first-class read-only browser for current Evidence-v2: lifecycle/history snapshots, artifact groups/analysis manifests, queue/revision state, source attribution/provenance, endpoint/component/native summaries, ClamAV/YARA evidence and dynamic immutable forensic datasets are now directly browsable.
+- Keep DeltaScope online access lazy and backward compatible: compact plugin indexes load first, large forensic shards are fetched only on demand, pre-summary Evidence-v2 remains readable, and the legacy SQLite developer mode is preserved. DeltaScope gains no scanner, publication or write-back capability.
 
 ## 2.13.0 — Native structural evidence, endpoint intelligence and component summaries
 
@@ -117,6 +284,25 @@
 
 ## Unreleased
 
+### 2.15 development — Phase 5 SRL compiler/evaluator
+
+- Implement bounded non-executable `omega.sigmascope.rule.v1` and `omega.sigmascope.ruleset.v1` compilation/evaluation for local DeltaScope authoring only.
+- Type-check selectors against the registered Phase-4 observation field registry; forbid current findings/permission/automation/behavior-consistency projections as recursive rule inputs.
+- Add exact/CI equality/membership/contains/prefix/suffix, existence/missing, numeric comparisons, boolean conditions and bounded count thresholds.
+- Enforce same-record matching and repeated-array same-element matching so unrelated observation/profile rows cannot be joined accidentally.
+- Keep the evaluation graph one-directional: observations/classifications emit typed facts; correlations may consume observations/facts but cannot emit facts or consume findings.
+- Add deterministic semantic `ruleRevision` / `ruleSetRevision`, stable output ordering and bounded evidence/fact/finding limits.
+- Add `omega.sigmascope.rule-fixture.v1`, DeltaScope `rule-compile`, `rule-test`, and `rule-eval`, and shipped positive/negative rule-author examples.
+- Keep `productionRuleEvaluationEnabled=false`; Definition Pack compilation/freezing is Phase 6 and no live 2.14 scanner/evidence/catalog state is changed.
+
+- Document the planned behavior-transparency architecture: independent security-hygiene evidence, SigmaScope capabilities, behavior-consistency comparison, and provenance instead of one opaque risk model.
+- Specify optional source-controlled `.omega/plugin.yaml` developer profiles with capability reasons, services/destinations, native-component/IPC explanations, explicit `not-expected` declarations, strict sanitisation, and a non-authoritative trust boundary.
+- Specify a shared capability registry plus a bounded, non-executable Sigma-inspired YAML SigmaScope Rule Language and reviewed Definition Packs compiled/frozen at the Daily Catalog boundary.
+- Specify a DeltaScope Rule Lab for local/experimental YAML validation, selector tracing, dry-run/replay against immutable evidence, fixture generation, baseline diffs, and candidate export.
+- Specify an authorization-gated GitHub candidate-rule workflow that treats issue YAML as inert data, revalidates before promotion, creates a normal reviewed PR, and never auto-trusts a self-declared author.
+- Plan an observation/rule/projection identity split so compatible rule-only Definition changes can re-project retained observations without automatically redownloading/rescanning plugin artifacts.
+
+
 ## 2.9.4 — Evidence source-cache transport integrity
 
 - Preserve an unchanged variant's published source-analysis cache descriptor and bytes when the disposable working database has no materialized cache row.
@@ -147,3 +333,7 @@
 - Convert catalog, SigmaScope, source-submission and legacy-compaction workflows to reusable workflows owned by `sigmascope`.
 - Require service workflows to explicitly check out `sigmascope` when invoked by thin default-branch callers.
 - Keep DeltaScope manual/read-only and outside the production evidence publication path.
+
+## DeltaScope antivirus/YARA visibility hotfix
+
+DeltaScope now exposes a permanent top-level **Antivirus & YARA** panel and moves per-plugin ClamAV/YARA results directly below the selected plugin overview. Clean/no-match results are shown explicitly; scans without secondary-security evidence are labelled as unrecorded rather than implied clean. This is developer-view-only and does not alter SigmaScope analysis or publication semantics.

@@ -17,6 +17,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import observation_projection
+
 
 SEVERITY_RANK = {"none": 0, "informational": 1, "low": 1, "caution": 2, "medium": 2, "high": 3, "critical": 4}
 DEFAULT_ONLINE_BASE_URL = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
@@ -278,6 +280,8 @@ class V2SigmascopeInspector:
         self._identity_maps = None
         self._index_payload_cache: dict[str, Any] = {}
         self._queue_payload_cache: dict[str, Any] = {}
+        self._srl_projection_index_cache: dict[str, Any] | None = None
+        self._srl_reanalysis_cache: dict[int, dict[str, Any]] | None = None
         self._summary_index_available = bool(self.entries) and all(isinstance(row.get("summary"), dict) for row in self.entries.values())
 
     def _index_path(self, name: str) -> str:
@@ -664,6 +668,21 @@ class V2SigmascopeInspector:
             signals.append({"kind": "provenance", "level": "caution", "label": f"Source attribution confidence is {confidence}/100"})
         if provenance and not bool(provenance.get("sourceToBinaryVerified")):
             signals.append({"kind": "provenance", "level": "informational", "label": "Source-to-binary correspondence is not verified"})
+        behavior_consistency = report.get("behaviorConsistency") if isinstance(report.get("behaviorConsistency"), dict) else {}
+        behavior_summary = behavior_consistency.get("summary") if isinstance(behavior_consistency.get("summary"), dict) else {}
+        if bool(behavior_consistency.get("profileAvailable")):
+            not_expected = int(behavior_summary.get("notExpectedObservedCount") or 0)
+            undeclared = int(behavior_summary.get("observedUndeclaredCount") or 0)
+            unexplained = int(behavior_summary.get("unexplainedDestinationCount") or 0)
+            expected_missing = int(behavior_summary.get("expectedNotObservedCount") or 0)
+            if not_expected:
+                signals.append({"kind": "behavior-consistency", "level": "caution", "label": f"{not_expected} observed capability declaration(s) are explicitly marked not expected by the developer"})
+            if undeclared:
+                signals.append({"kind": "behavior-consistency", "level": "informational", "label": f"{undeclared} observed capability declaration(s) have no developer explanation"})
+            if unexplained:
+                signals.append({"kind": "behavior-consistency", "level": "caution", "label": f"{unexplained} observed network destination(s) are not covered by the developer profile"})
+            if expected_missing:
+                signals.append({"kind": "behavior-consistency", "level": "informational", "label": f"{expected_missing} declared expected capability(s) were not observed in this static analysis"})
         endpoint_summary = intelligence.get("endpointSummary") if isinstance(intelligence.get("endpointSummary"), dict) else {}
         if bool(endpoint_summary.get("destinationsUndetermined")):
             signals.append({"kind": "network", "level": "caution", "label": "Network capability observed but concrete destinations are undetermined"})
@@ -710,6 +729,8 @@ class V2SigmascopeInspector:
             "drift": derived.get("dependencyDrift") or [], "marketplaceSecurity": None,
             "snapshotKind": snapshot_kind, "lifecycle": lifecycle or {"state": "active" if snapshot_kind == "current" else snapshot_kind},
             "analysis": analysis,
+            "observations": payload.get("observations") if isinstance(payload.get("observations"), dict) else {},
+            "projection": payload.get("projection") if isinstance(payload.get("projection"), dict) else {},
             "scanProvenance": report.get("scanProvenance") if isinstance(report.get("scanProvenance"), dict) else {},
             "contracts": {
                 key: report.get(key) for key in (
@@ -723,6 +744,7 @@ class V2SigmascopeInspector:
             "sourceProvenance": provenance,
             "sourceCoverage": source_coverage,
             "sourceEvidence": source_report,
+            "behaviorConsistency": behavior_consistency,
             "secondarySecurity": secondary,
             "package": report.get("package") if isinstance(report.get("package"), dict) else {},
             "endpointSummary": intelligence.get("endpointSummary") if isinstance(intelligence.get("endpointSummary"), dict) else {},
@@ -738,6 +760,8 @@ class V2SigmascopeInspector:
                 "findingCounts": finding_counts,
                 "findings": finding_rows,
                 "capabilities": capability_rows,
+                "capabilityIds": list(report.get("capabilityIds") or []) if isinstance(report.get("capabilityIds"), list) else [],
+                "capabilityRegistryRevision": str(report.get("capabilityRegistryRevision") or ""),
                 "automationCapabilities": automation_rows,
                 "automationLevel": str(current.get("automation_level") or ((report.get("automation") or {}).get("level") if isinstance(report.get("automation"), dict) else "") or "none"),
                 "secondaryMatchCount": secondary_match_count,
@@ -811,6 +835,207 @@ class V2SigmascopeInspector:
             if not self._refresh_after_snapshot_race(exc):
                 raise
             return load()
+
+    def _dataset_limited(self, payload: dict[str, Any], name: str, limit: int) -> list[dict[str, Any]]:
+        """Read at most ``limit`` immutable dataset rows for selected-case investigation."""
+        dataset = (self._manifest(payload).get("datasets") or {}).get(name) or {}
+        rows: list[dict[str, Any]] = []
+        remaining = max(0, int(limit))
+        if remaining <= 0:
+            return rows
+        for item in dataset.get("files") or []:
+            if remaining <= 0:
+                break
+            path = str(item.get("path") or "")
+            expected = str(item.get("sha256") or "")
+            encoding = str(item.get("encoding") or "")
+            data = self.source.read_bytes(path, expected_sha256=expected)
+            if encoding == "json":
+                value = json.loads(data.decode("utf-8"))
+                values = value if isinstance(value, list) else [value]
+            elif encoding == "jsonl+gzip":
+                text = gzip.decompress(data).decode("utf-8")
+                values = [json.loads(line) for line in text.splitlines() if line.strip()]
+            else:
+                values = []
+            for value in values:
+                if isinstance(value, dict):
+                    rows.append(value)
+                    remaining -= 1
+                    if remaining <= 0:
+                        break
+        return rows
+
+    def definition_provenance(self) -> dict[str, Any]:
+        """Return the optional exact frozen Definitions/rule provenance sidecar."""
+        value = self._index_payload("definitionProvenance")
+        if not value:
+            return {
+                "schema": "omega.security-evidence.definition-provenance.v1",
+                "available": False, "readOnly": True, "mutationAuthority": "none", "policyInput": False,
+                "provenanceRevision": "", "definitions": {},
+                "srl": {"packCount": 0, "activeRuleCount": 0, "productionRuleEvaluationEnabled": False},
+                "packs": [], "activeRules": [],
+            }
+        if not isinstance(value, dict) or str(value.get("schema") or "") != "omega.security-evidence.definition-provenance.v1":
+            raise ValueError("unsupported DeltaScope Definition provenance index")
+        if value.get("readOnly") is not True or str(value.get("mutationAuthority") or "") != "none" or bool(value.get("policyInput")):
+            raise ValueError("DeltaScope Definition provenance violates the read-only boundary")
+        return {"available": True, **value}
+
+    def workbench_system_context(self) -> dict[str, Any]:
+        """Return bounded published pipeline/revision state for read-only System/Reports views."""
+        projections = self._srl_projection_index()
+        relationship = (self.root.get("indexes") or {}).get("workbenchRelationships") or {}
+        provenance = (self.root.get("indexes") or {}).get("definitionProvenance") or {}
+        queue = self.root.get("scannerQueue") if isinstance(self.root.get("scannerQueue"), dict) else {}
+        source = self.root.get("source") if isinstance(self.root.get("source"), dict) else {}
+        return {
+            "schema": "omega.deltascope.system-context.v1",
+            "readOnly": True, "mutationAuthority": "none",
+            "generatedAtUtc": str(self.root.get("generatedAtUtc") or ""),
+            "evidence": {
+                "schema": str(self.root.get("schema") or ""),
+                "formatVersion": int(self.root.get("formatVersion") or 0),
+                "revisions": dict(self.root.get("revisions") or {}),
+                "counts": dict(self.root.get("counts") or {}),
+                "publication": dict(self.root.get("publication") or {}),
+            },
+            "engine": dict(self.root.get("engine") or {}),
+            "source": {
+                key: source.get(key) for key in (
+                    "engineName", "engineVersion", "scannerVersion", "catalogDataRevision",
+                    "catalogIdentityEpoch", "definitionsRevision", "artifactAnalysisRevision",
+                    "sourceAnalysisRevision", "advisoryRevision",
+                ) if source.get(key) is not None
+            },
+            "queue": {
+                "available": bool(queue),
+                "schema": str(queue.get("schema") or ""),
+                "summary": dict(queue.get("summary") or {}) if isinstance(queue.get("summary"), dict) else {},
+            },
+            "ruleProjections": {
+                "available": bool(projections),
+                "schema": str(projections.get("schema") or ""),
+                "projectionSetRevision": str(projections.get("projectionSetRevision") or ""),
+                "ruleSetRevision": str(projections.get("ruleSetRevision") or ""),
+                "counts": dict(projections.get("counts") or {}) if isinstance(projections.get("counts"), dict) else {},
+                "productionRuleEvaluationEnabled": bool(projections.get("productionRuleEvaluationEnabled")),
+                "productionWriteBack": bool(projections.get("productionWriteBack")),
+                "queueMutationAuthorized": bool(projections.get("queueMutationAuthorized")),
+            },
+            "relationshipIndex": {
+                "available": bool(relationship),
+                "relationshipRevision": str(relationship.get("relationshipRevision") or ""),
+                "path": str(relationship.get("path") or ""),
+            },
+            "definitionProvenance": {
+                "available": bool(provenance),
+                "provenanceRevision": str(provenance.get("provenanceRevision") or ""),
+                "definitionsRevision": str(provenance.get("definitionsRevision") or ""),
+                "ruleSetRevision": str(provenance.get("ruleSetRevision") or ""),
+                "activeRuleCount": int(provenance.get("activeRuleCount") or 0),
+                "packCount": int(provenance.get("packCount") or 0),
+            },
+        }
+
+    def workbench_relationship_index(self) -> dict[str, Any]:
+        """Return the optional read-only ecosystem relationship index used by DeltaScope."""
+        value = self._index_payload("workbenchRelationships")
+        if not value:
+            return {
+                "schema": "omega.security-evidence.workbench-relationships.v1",
+                "relationshipRevision": "", "readOnly": True, "mutationAuthority": "none", "policyInput": False,
+                "counts": {"endpoints": 0, "components": 0, "advisories": 0},
+                "endpoints": [], "components": [], "advisories": [],
+            }
+        if not isinstance(value, dict) or str(value.get("schema") or "") != "omega.security-evidence.workbench-relationships.v1":
+            raise ValueError("unsupported DeltaScope workbench relationship index")
+        if value.get("readOnly") is not True or str(value.get("mutationAuthority") or "") != "none" or bool(value.get("policyInput")):
+            raise ValueError("DeltaScope workbench relationship index violates the read-only boundary")
+        return value
+
+    def workbench_assets_for_variants(self, variant_ids: Iterable[int]) -> list[dict[str, Any]]:
+        """Resolve current variant IDs to the lightweight plugin-index summaries without deep evidence fetches."""
+        rows: list[dict[str, Any]] = []
+        for variant_id in sorted({int(item) for item in variant_ids if int(item) > 0}):
+            if variant_id not in self.entries:
+                continue
+            identity = self._entry_identity(variant_id, require_current=False)
+            identity["variant_id"] = variant_id
+            rows.append(identity)
+        return rows
+
+    def workbench_observation_rows(self, variant_id: int, *, per_collection_limit: int = 40) -> dict[str, list[dict[str, Any]]]:
+        """Load bounded retained observations lazily for one DeltaScope investigation case."""
+        payload = self._payload(variant_id)
+        manifest = self._manifest(payload)
+        report = self._report(payload.get("current") if isinstance(payload.get("current"), dict) else {})
+        compact = observation_projection.report_observation_rows(report)
+        contract = payload.get("observations") if isinstance(payload.get("observations"), dict) else {}
+        collections = contract.get("collections") if isinstance(contract.get("collections"), dict) else {}
+        result: dict[str, list[dict[str, Any]]] = {}
+        for collection in observation_projection.COLLECTIONS:
+            descriptor = collections.get(collection) if isinstance(collections.get(collection), dict) else {}
+            backing = str(descriptor.get("backingDataset") or "")
+            if backing and backing not in {"compact-report"}:
+                try:
+                    result[collection] = self._dataset_limited(payload, backing, per_collection_limit)
+                    continue
+                except (KeyError, ValueError, FileNotFoundError):
+                    # A compact compatibility row may still exist; do not turn a workbench
+                    # preview failure into evidence mutation or a fabricated observation.
+                    pass
+            rows = compact.get(collection) or []
+            result[collection] = [dict(item) for item in rows[:max(0, int(per_collection_limit))] if isinstance(item, dict)]
+        return result
+
+    def _srl_projection_index(self) -> dict[str, Any]:
+        if self._srl_projection_index_cache is not None:
+            return self._srl_projection_index_cache
+        descriptor = self.root.get("srlRuleProjections") if isinstance(self.root.get("srlRuleProjections"), dict) else {}
+        path = str(descriptor.get("path") or "")
+        if not path:
+            self._srl_projection_index_cache = {}
+            return self._srl_projection_index_cache
+        value = self.source.read_json(path, expected_sha256=str(descriptor.get("sha256") or ""))
+        self._srl_projection_index_cache = value if isinstance(value, dict) else {}
+        return self._srl_projection_index_cache
+
+    def srl_projection_state(self, variant_id: int) -> dict[str, Any]:
+        """Return the non-authoritative Phase-10 projection/reanalysis relationship for a variant."""
+        index = self._srl_projection_index()
+        if not index:
+            return {"available": False, "productionWriteBack": False, "queueMutationAuthorized": False}
+        root_path = PurePosixPath(str((self.root.get("srlRuleProjections") or {}).get("path") or "rule-projections/index.json")).parent
+        result: dict[str, Any] = {
+            "available": True,
+            "projectionSetRevision": str(index.get("projectionSetRevision") or ""),
+            "ruleSetRevision": str(index.get("ruleSetRevision") or ""),
+            "productionRuleEvaluationEnabled": bool(index.get("productionRuleEvaluationEnabled")),
+            "productionWriteBack": bool(index.get("productionWriteBack")),
+            "queueMutationAuthorized": bool(index.get("queueMutationAuthorized")),
+        }
+        for entry in index.get("variants") or []:
+            if not isinstance(entry, dict) or int(entry.get("variantId") or 0) != int(variant_id):
+                continue
+            rel = (root_path / _safe_relative(str(entry.get("path") or ""))).as_posix()
+            result["projection"] = self.source.read_json(rel, expected_sha256=str(entry.get("sha256") or ""))
+            break
+        if self._srl_reanalysis_cache is None:
+            request = index.get("reanalysisRequests") if isinstance(index.get("reanalysisRequests"), dict) else {}
+            path = str(request.get("path") or "")
+            requests: dict[int, dict[str, Any]] = {}
+            if path:
+                rel = (root_path / _safe_relative(path)).as_posix()
+                payload = self.source.read_json(rel, expected_sha256=str(request.get("sha256") or ""))
+                for item in payload.get("requests") or [] if isinstance(payload, dict) else []:
+                    if isinstance(item, dict) and int(item.get("variantId") or 0) > 0:
+                        requests[int(item["variantId"])] = dict(item)
+            self._srl_reanalysis_cache = requests
+        if int(variant_id) in self._srl_reanalysis_cache:
+            result["reanalysisRequest"] = dict(self._srl_reanalysis_cache[int(variant_id)])
+        return result
 
     def managed_calls(self, variant_id: int, query: str = "", limit: int = 250) -> list[dict[str, Any]]:
         rows = self.plugin_dataset(variant_id, "calls")

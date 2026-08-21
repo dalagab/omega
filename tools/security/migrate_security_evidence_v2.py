@@ -63,6 +63,7 @@ from security_evidence_v2 import (  # noqa: E402
     variant_index_summary,
     write_record_dataset,
 )
+import observation_projection  # noqa: E402
 
 STATE_FILE = ".omega-security-evidence-v2-migration.json"
 DERIVED_DATASETS = {
@@ -216,6 +217,32 @@ def _analysis_id(artifact_sha: str, scanner_version: str, datasets: dict[str, An
     return sha256_bytes(canonical_json_bytes(semantic))
 
 
+def _export_report_observation_datasets(
+    report: dict[str, Any], stage: Path, output: Path, *, chunk_bytes: int,
+) -> dict[str, Any]:
+    """Persist report-only observation rows so future rules do not depend on a compact summary.
+
+    These rows are already present in the completed scan report. Exporting them is a
+    transport split only: no artifact/source bytes are fetched or re-analysed here.
+    """
+    datasets: dict[str, Any] = {}
+    rows_by_collection = observation_projection.report_observation_rows(report)
+    observations_dir = stage / "observations"
+    for collection_name, rows in sorted(rows_by_collection.items()):
+        if not rows and not observation_projection.report_collection_complete(report, collection_name):
+            continue
+        spec = observation_projection.COLLECTIONS.get(collection_name) or {}
+        dataset_name = str(spec.get("backingDataset") or collection_name)
+        datasets[dataset_name] = write_record_dataset(
+            output,
+            observations_dir,
+            dataset_name,
+            rows,
+            chunk_bytes=chunk_bytes,
+        )
+    return datasets
+
+
 def _export_analysis(
     db: sqlite3.Connection,
     scan: dict[str, Any],
@@ -235,6 +262,8 @@ def _export_analysis(
             datasets[dataset] = _export_dataset(
                 db, scan_id, dataset, table, pk, stage, output, chunk_bytes=chunk_bytes
             )
+        report = scan.get("report_json") if isinstance(scan.get("report_json"), dict) else {}
+        datasets.update(_export_report_observation_datasets(report, stage, output, chunk_bytes=chunk_bytes))
         analysis_id = _analysis_id(artifact_group, str(scan.get("scanner_version") or ""), datasets)
         shard = artifact_group[:2] if artifact_group != "unknown" else "unknown"
         target = output / "artifacts" / shard / artifact_group / "analyses" / analysis_id
@@ -247,7 +276,7 @@ def _export_analysis(
             "engineName": "Sigmascope",
             "engineVersion": str(scan.get("scanner_version") or ""),
             "scannerVersion": str(scan.get("scanner_version") or ""),
-            "datasets": datasets,
+            "datasets": observation_projection.annotate_analysis_datasets(datasets),
         }
         # Paths in staged file entries currently point at .staging. Rebase after moving.
         if target.exists():
@@ -255,16 +284,20 @@ def _export_analysis(
         else:
             target.parent.mkdir(parents=True, exist_ok=True)
             os.replace(stage, target)
-        # Rebuild file entries against their canonical target paths.
+        # Rebuild file entries against their canonical target paths. This preserves
+        # nested ``forensics/`` and ``observations/`` layout rather than assuming one
+        # transport directory.
         rebased_datasets: dict[str, Any] = {}
+        stage_rel = stage.relative_to(output)
         for dataset, item in datasets.items():
             files = []
             for original in item.get("files") or []:
-                filename = Path(str(original["path"])).name
-                if str(original.get("encoding")) == "json":
-                    actual = target / filename
-                else:
-                    actual = target / "forensics" / filename
+                original_rel = Path(str(original["path"]))
+                try:
+                    inside_stage = original_rel.relative_to(stage_rel)
+                except ValueError as exc:
+                    raise RuntimeError(f"staged dataset escaped analysis directory: {original_rel}") from exc
+                actual = target / inside_stage
                 files.append(file_entry(
                     output,
                     actual,
@@ -279,7 +312,8 @@ def _export_analysis(
             }
             if item.get("missingTable"):
                 rebased_datasets[dataset]["missingTable"] = True
-        semantic_manifest["datasets"] = rebased_datasets
+        semantic_manifest["datasets"] = observation_projection.annotate_analysis_datasets(rebased_datasets)
+        semantic_manifest["observationContract"] = observation_projection.analysis_observation_contract(rebased_datasets)
         semantic_manifest["recordCount"] = sum(int(item["records"]) for item in rebased_datasets.values())
         semantic_manifest["createdFromScanId"] = scan_id
         _write_json(target / "manifest.json", semantic_manifest)
@@ -443,6 +477,194 @@ def _export_global_table(db: sqlite3.Connection, output: Path, table: str, filen
     return file_entry(output, path, records=len(rows), encoding="json"), len(rows)
 
 
+WORKBENCH_RELATIONSHIP_SCHEMA = "omega.security-evidence.workbench-relationships.v1"
+WORKBENCH_RELATIONSHIP_LIMIT = 200_000
+
+
+def _json_object(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return dict(value)
+    if not isinstance(value, str) or not value.strip():
+        return {}
+    try:
+        parsed = json.loads(value)
+    except Exception:
+        return {}
+    return dict(parsed) if isinstance(parsed, dict) else {}
+
+
+def _endpoint_identity(item: dict[str, Any]) -> tuple[str, str, str]:
+    host = str(item.get("host") or item.get("domain") or "").strip().casefold().rstrip(".")
+    url = str(item.get("url") or "").strip()
+    if host:
+        return f"host:{host}", host, url
+    if url:
+        # URL-only evidence stays exact; do not invent host parsing semantics in transport code.
+        return f"url:{url.casefold()}", "", url
+    return "", "", ""
+
+
+def _export_workbench_relationship_index(db: sqlite3.Connection, output: Path, *, variant_ids: set[int] | None = None) -> tuple[dict[str, Any], dict[str, int]]:
+    """Export bounded, read-only ecosystem relationships for DeltaScope pivots.
+
+    This is derived transport/navigation data only. It does not become a SigmaScope
+    observation, finding, queue input, or policy signal.
+    """
+    endpoints: dict[str, dict[str, Any]] = {}
+    endpoint_observations = 0
+    current_columns = set(table_columns(db, "plugin_security_current"))
+    variant_columns = set(table_columns(db, "plugin_variants"))
+    if {"variant_id", "scan_id", "status", "report_json"}.issubset(current_columns) and {"variant_id", "plugin_id"}.issubset(variant_columns):
+        for row in db.execute("""
+            SELECT c.variant_id,c.scan_id,v.plugin_id,c.report_json
+              FROM plugin_security_current c
+              JOIN plugin_variants v ON v.variant_id=c.variant_id
+             WHERE c.status='complete'
+             ORDER BY c.variant_id
+        """):
+            if variant_ids is not None and int(row["variant_id"] or 0) not in variant_ids:
+                continue
+            report = _json_object(row["report_json"])
+            intelligence = report.get("intelligence") if isinstance(report.get("intelligence"), dict) else {}
+            for raw in intelligence.get("networkEndpoints") or []:
+                if not isinstance(raw, dict):
+                    continue
+                key, host, url = _endpoint_identity(raw)
+                if not key:
+                    continue
+                item = endpoints.setdefault(key, {
+                    "endpointKey": key, "host": host, "urlSamples": set(), "classifications": set(),
+                    "purposes": set(), "origins": set(), "variantIds": set(), "pluginIds": set(), "observations": 0,
+                })
+                if url:
+                    item["urlSamples"].add(url)
+                for field, target in (("classification", "classifications"), ("purpose", "purposes")):
+                    value = str(raw.get(field) or "").strip()
+                    if value:
+                        item[target].add(value)
+                origin = str(raw.get("originType") or raw.get("endpointOrigin") or raw.get("origin") or "").strip()
+                if origin:
+                    item["origins"].add(origin)
+                item["variantIds"].add(int(row["variant_id"]))
+                item["pluginIds"].add(int(row["plugin_id"]))
+                item["observations"] += 1
+                endpoint_observations += 1
+                if endpoint_observations > WORKBENCH_RELATIONSHIP_LIMIT:
+                    raise RuntimeError(f"DeltaScope endpoint relationship observations exceed hard limit {WORKBENCH_RELATIONSHIP_LIMIT}")
+
+    component_meta: dict[str, dict[str, Any]] = {}
+    if table_exists(db, "plugin_security_dependency_components"):
+        for row in db.execute("SELECT * FROM plugin_security_dependency_components ORDER BY component_key COLLATE NOCASE"):
+            normalized = normalize_row(row)
+            versions = normalized.get("versions_json")
+            if isinstance(versions, str):
+                try:
+                    versions = json.loads(versions)
+                except Exception:
+                    versions = []
+            component_meta[str(normalized.get("component_key") or "")] = {
+                "componentKey": str(normalized.get("component_key") or ""),
+                "kind": str(normalized.get("component_kind") or ""),
+                "displayName": str(normalized.get("display_name") or ""),
+                "versions": list(versions or []) if isinstance(versions, list) else [],
+                "variantCount": int(normalized.get("source_variant_count") or 0),
+                "pluginCount": int(normalized.get("source_plugin_count") or 0),
+                "versionDivergence": str(normalized.get("version_divergence") or "none"),
+            }
+
+    component_edges: dict[str, list[dict[str, Any]]] = {}
+    component_edge_count = 0
+    resolution_columns = set(table_columns(db, "plugin_security_dependency_resolutions"))
+    required_resolution_columns = {
+        "dependency_id", "source_variant_id", "source_plugin_id", "scan_id", "component_key", "dependency_kind",
+        "dependency_name", "dependency_version", "resolved_version", "requirement", "relationship", "relationship_confidence",
+    }
+    if required_resolution_columns.issubset(resolution_columns) and {"variant_id", "scan_id", "status"}.issubset(current_columns):
+        dependency_columns = set(table_columns(db, "plugin_security_dependencies"))
+        has_dependencies = "dependency_id" in dependency_columns
+        dep_join = " LEFT JOIN plugin_security_dependencies d ON d.dependency_id=r.dependency_id" if has_dependencies else ""
+        origin_expr = "COALESCE(d.origin,'')" if has_dependencies and "origin" in dependency_columns else "''"
+        path_expr = "COALESCE(d.path,'')" if has_dependencies and "path" in dependency_columns else "''"
+        sql = f"""
+            SELECT r.source_variant_id,r.source_plugin_id,r.scan_id,r.component_key,r.dependency_kind,r.dependency_name,
+                   r.dependency_version,r.resolved_version,r.requirement,r.relationship,r.relationship_confidence,
+                   {origin_expr} AS origin, {path_expr} AS path
+              FROM plugin_security_dependency_resolutions r
+              JOIN plugin_security_current c ON c.variant_id=r.source_variant_id AND c.scan_id=r.scan_id
+              {dep_join}
+             WHERE c.status='complete' AND TRIM(r.component_key)<>''
+             ORDER BY r.component_key COLLATE NOCASE,r.source_variant_id,r.dependency_id
+        """
+        for row in db.execute(sql):
+            if variant_ids is not None and int(row["source_variant_id"] or 0) not in variant_ids:
+                continue
+            key = str(row["component_key"] or "")
+            component_edges.setdefault(key, []).append({
+                "variantId": int(row["source_variant_id"] or 0), "pluginId": int(row["source_plugin_id"] or 0),
+                "scanId": int(row["scan_id"] or 0), "observedVersion": str(row["resolved_version"] or row["dependency_version"] or ""),
+                "requirement": str(row["requirement"] or ""), "relationship": str(row["relationship"] or ""),
+                "confidence": str(row["relationship_confidence"] or ""), "origin": str(row["origin"] or ""),
+                "path": str(row["path"] or ""),
+            })
+            component_edge_count += 1
+            if component_edge_count > WORKBENCH_RELATIONSHIP_LIMIT:
+                raise RuntimeError(f"DeltaScope component relationship edges exceed hard limit {WORKBENCH_RELATIONSHIP_LIMIT}")
+
+    components: list[dict[str, Any]] = []
+    component_keys = set(component_edges) if variant_ids is not None else (set(component_meta) | set(component_edges))
+    for key in sorted(component_keys, key=str.casefold):
+        meta = component_meta.get(key) or {"componentKey": key, "kind": "", "displayName": key, "versions": [], "variantCount": 0, "pluginCount": 0, "versionDivergence": "none"}
+        edges = component_edges.get(key) or []
+        components.append({**meta, "usage": edges})
+
+    advisories: list[dict[str, Any]] = []
+    if table_exists(db, "plugin_security_dependency_advisory_matches"):
+        for row in db.execute("SELECT * FROM plugin_security_dependency_advisory_matches ORDER BY advisory_id,component_key,affected_version"):
+            normalized = normalize_row(row)
+            component_key = str(normalized.get("component_key") or "")
+            affected_version = str(normalized.get("affected_version") or "")
+            affected = [
+                {"variantId": int(edge.get("variantId") or 0), "pluginId": int(edge.get("pluginId") or 0), "scanId": int(edge.get("scanId") or 0), "observedVersion": str(edge.get("observedVersion") or "")}
+                for edge in component_edges.get(component_key, [])
+                if not affected_version or str(edge.get("observedVersion") or "") == affected_version
+            ]
+            advisories.append({
+                "advisoryId": str(normalized.get("advisory_id") or ""), "componentKey": component_key,
+                "componentKind": str(normalized.get("component_kind") or ""), "componentName": str(normalized.get("component_name") or ""),
+                "affectedVersion": affected_version, "affectedRange": str(normalized.get("affected_range") or ""),
+                "fixedVersion": str(normalized.get("fixed_version") or ""), "severity": str(normalized.get("severity") or ""),
+                "title": str(normalized.get("title") or ""), "url": str(normalized.get("advisory_url") or ""),
+                "source": str(normalized.get("advisory_source") or ""), "affectedAssets": affected,
+            })
+
+    endpoint_rows = []
+    for key, item in sorted(endpoints.items()):
+        endpoint_rows.append({
+            "endpointKey": key, "host": item["host"], "urlSamples": sorted(item["urlSamples"], key=str.casefold)[:16],
+            "classifications": sorted(item["classifications"], key=str.casefold), "purposes": sorted(item["purposes"], key=str.casefold),
+            "origins": sorted(item["origins"], key=str.casefold), "variantIds": sorted(item["variantIds"]),
+            "pluginIds": sorted(item["pluginIds"]), "variantCount": len(item["variantIds"]), "pluginCount": len(item["pluginIds"]),
+            "observations": int(item["observations"]),
+        })
+
+    core = {"endpoints": endpoint_rows, "components": components, "advisories": advisories}
+    revision = "workbench-rel-v1-" + sha256_bytes(canonical_json_bytes(core))[:20]
+    payload = {
+        "schema": WORKBENCH_RELATIONSHIP_SCHEMA, "relationshipRevision": revision,
+        "readOnly": True, "mutationAuthority": "none", "policyInput": False,
+        "counts": {
+            "endpoints": len(endpoint_rows), "components": len(components), "advisories": len(advisories),
+            "endpointVariantEdges": sum(len(item.get("variantIds") or []) for item in endpoint_rows),
+            "componentVariantEdges": sum(len(item.get("usage") or []) for item in components),
+            "advisoryVariantEdges": sum(len(item.get("affectedAssets") or []) for item in advisories),
+        },
+        **core,
+    }
+    path = output / "indexes" / "workbench-relationships.json"
+    _write_json(path, payload)
+    return file_entry(output, path, records=sum(payload["counts"][k] for k in ("endpoints", "components", "advisories")), encoding="json"), dict(payload["counts"])
+
+
 def migrate(
     database: Path,
     output: Path,
@@ -518,7 +740,11 @@ def migrate(
                     or str(((payload.get(field) or {}).get("report_json") or {}).get("schema") or "") == TRANSPORT_REPORT_SCHEMA
                     for field in ("scan", "current")
                 )
-                if analysis_id and (output / analysis_path / "manifest.json").is_file() and has_bounded_derived and has_bounded_reports:
+                has_phase4_contracts = (
+                    str((payload.get("observations") or {}).get("schema") or "") == observation_projection.OBSERVATION_CONTRACT_SCHEMA
+                    and str((payload.get("projection") or {}).get("schema") or "") == observation_projection.PROJECTION_CONTRACT_SCHEMA
+                )
+                if analysis_id and (output / analysis_path / "manifest.json").is_file() and has_bounded_derived and has_bounded_reports and has_phase4_contracts:
                     analysis_paths[analysis_id] = analysis_path
                     artifact_sha = str(current.get("artifact_sha256") or "").strip().lower() or "unknown"
                     bucket = artifact_map.setdefault(artifact_sha, {"artifactSha256": artifact_sha, "analyses": {}, "variants": []})
@@ -531,7 +757,8 @@ def migrate(
             scan_row = db.execute("SELECT * FROM plugin_security_scans WHERE scan_id=?", (scan_id,)).fetchone()
             if scan_row is None:
                 raise RuntimeError(f"current variant {variant_id} references missing scan {scan_id}")
-            scan = transport_security_row(normalize_row(scan_row))
+            raw_scan = normalize_row(scan_row)
+            scan = transport_security_row(raw_scan)
             plugin_id = int(scan["plugin_id"])
             source_id = int(scan["source_id"])
             plugin = _fetch_row(db, "plugins", "plugin_id", plugin_id)
@@ -543,7 +770,7 @@ def migrate(
             analysis_manifest: dict[str, Any] | None = None
             if str(current.get("status") or "") == "complete":
                 analysis_id, analysis_path, analysis_manifest = _export_analysis(
-                    db, scan, output, chunk_bytes=chunk_bytes
+                    db, raw_scan, output, chunk_bytes=chunk_bytes
                 )
                 analysis_paths[analysis_id] = analysis_path
 
@@ -554,6 +781,12 @@ def migrate(
                 derived_evidence[name] = write_record_dataset(
                     output, derived_dir, stem, list(derived.pop(name, []) or []), chunk_bytes=chunk_bytes
                 )
+            observation_contract = observation_projection.build_variant_observation_contract(
+                analysis_manifest, current.get("report_json") if isinstance(current.get("report_json"), dict) else scan.get("report_json") or {}
+            ) if analysis_manifest else {}
+            projection = observation_projection.build_projection_descriptor(
+                analysis_manifest, current.get("report_json") if isinstance(current.get("report_json"), dict) else scan.get("report_json") or {}
+            ) if analysis_manifest else {}
             payload = {
                 "schema": "omega.security-evidence.variant.v2",
                 "formatVersion": FORMAT_VERSION,
@@ -573,6 +806,8 @@ def migrate(
                 },
                 "derived": derived,
                 "derivedEvidence": derived_evidence,
+                "observations": observation_contract,
+                "projection": projection,
             }
             _write_json(variant_path, payload)
             artifact_sha = str(current.get("artifact_sha256") or "").strip().lower() or "unknown"
@@ -590,6 +825,7 @@ def migrate(
         ipc_entry, ipc_count = _export_ipc_index(db, output)
         component_entry, component_count = _export_global_table(db, output, "plugin_security_dependency_components", "dependency-components")
         advisory_entry, advisory_count = _export_global_table(db, output, "plugin_security_dependency_advisory_matches", "advisories")
+        workbench_relationship_entry, workbench_relationship_counts = _export_workbench_relationship_index(db, output, variant_ids=variant_ids)
 
         plugin_payload = {
             "schema": "omega.security-evidence.plugins-index.v2",
@@ -633,6 +869,8 @@ def migrate(
                 "catalogRevision": meta.get("catalog_revision", meta.get("catalog_revision_candidate", "")),
                 "securityRevision": meta.get("security_revision", ""),
                 "evidenceRevision": meta.get("evidence_revision", ""),
+                "observationContractRevision": observation_projection.contract_revision(),
+                "projectionContractRevision": observation_projection.projection_contract_revision(),
             },
             "counts": {
                 "currentVariants": len(current_rows),
@@ -642,6 +880,7 @@ def migrate(
                 "ipcProviders": ipc_count,
                 "dependencyComponents": component_count,
                 "advisories": advisory_count,
+                "workbenchRelationshipObjects": sum(workbench_relationship_counts.get(k, 0) for k in ("endpoints", "components", "advisories")),
             },
             "indexes": {
                 "identities": identity_entry,
@@ -651,6 +890,7 @@ def migrate(
                 "ipc": ipc_entry,
                 "dependencyComponents": component_entry,
                 "advisories": advisory_entry,
+                "workbenchRelationships": workbench_relationship_entry,
             },
             "publication": {
                 "rootWrittenLast": True,

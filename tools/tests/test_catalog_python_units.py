@@ -230,6 +230,108 @@ class CatalogPythonUnitTests(unittest.TestCase):
         closed_numbers = [call[2] for call in calls if call[:2] == ("issue", "close")]
         self.assertEqual(["10"], closed_numbers)
 
+    def test_source_followup_resolution_closes_all_mirror_issues_for_same_plugin(self) -> None:
+        existing = [
+            {"number": 20, "body": "<!-- omega-source-followup:src-one -->\n<!-- omega-source-internal:Cammy -->", "title": "Source needed: Cammy (mirror one)"},
+            {"number": 21, "body": "<!-- omega-source-followup:src-two -->\n<!-- omega-source-internal:Cammy -->", "title": "Source needed: Cammy (mirror two)"},
+        ]
+        calls: list[tuple[str, ...]] = []
+
+        def fake_gh(*args: str) -> str:
+            calls.append(args)
+            return json.dumps(existing) if args[:2] == ("issue", "list") else ""
+
+        document = {
+            "followups": [{"key": "omega-source-followup:src-two", "internalName": "Cammy", "actionable": True}],
+            "resolved": [{
+                "key": "omega-source-followup:src-one", "internalName": "Cammy",
+                "repository": "https://github.com/UnknownX7/Cammy", "commit": "abcdef1234567890",
+                "confidence": "high", "versionMatched": True,
+            }],
+            "resolvedKeys": ["omega-source-followup:src-one"],
+        }
+        with mock.patch.object(create_source_followup_issues, "gh", side_effect=fake_gh):
+            result = create_source_followup_issues.reconcile_issues(document, "example/omega")
+        self.assertEqual((0, 2), result)
+        closed_numbers = [call[2] for call in calls if call[:2] == ("issue", "close")]
+        self.assertEqual(["20", "21"], closed_numbers)
+        self.assertFalse(any(call[:2] == ("issue", "create") for call in calls))
+
+    def test_source_followup_reconciliation_consolidates_mirrors_and_refreshes_override_keys(self) -> None:
+        existing = [
+            {"number": 30, "body": "<!-- omega-source-followup:src-old-one -->\n<!-- omega-source-internal:Brio -->", "title": "Source needed: Brio (one)"},
+            {"number": 31, "body": "<!-- omega-source-followup:src-old-two -->\n<!-- omega-source-internal:Brio -->", "title": "Source needed: Brio (two)"},
+        ]
+        calls: list[tuple[str, ...]] = []
+        edited_body = {"text": ""}
+
+        def fake_gh(*args: str) -> str:
+            calls.append(args)
+            if args[:2] == ("issue", "list"):
+                return json.dumps(existing)
+            if args[:2] == ("issue", "edit"):
+                body_file = args[args.index("--body-file") + 1]
+                edited_body["text"] = Path(body_file).read_text(encoding="utf-8")
+            return ""
+
+        document = {
+            "followups": [
+                {
+                    "key": "omega-source-followup:src-feed-one", "overrideKey": "src-feed-one", "variantId": 1,
+                    "internalName": "Brio", "pluginName": "Brio", "assemblyVersion": "0.8.0.11",
+                    "catalogSource": "Mirror One", "catalogSourceUrl": "https://one.invalid/repo.json",
+                    "artifactUrl": "https://one.invalid/brio.zip", "reason": "source missing",
+                    "sourceCandidates": ["https://github.com/Etheirys/Brio"], "actionable": True,
+                },
+                {
+                    "key": "omega-source-followup:src-feed-two", "overrideKey": "src-feed-two", "variantId": 2,
+                    "internalName": "Brio", "pluginName": "Brio", "assemblyVersion": "0.8.0.11",
+                    "catalogSource": "Mirror Two", "catalogSourceUrl": "https://two.invalid/repo.json",
+                    "artifactUrl": "https://two.invalid/brio.zip", "reason": "source missing",
+                    "sourceCandidates": ["https://github.com/Etheirys/Brio"], "actionable": True,
+                },
+            ],
+            "resolved": [], "resolvedKeys": [],
+        }
+        with mock.patch.object(create_source_followup_issues, "gh", side_effect=fake_gh):
+            result = create_source_followup_issues.reconcile_issues(document, "example/omega")
+        self.assertEqual((0, 1), result)
+        self.assertIn("omega-source-override:src-feed-one", edited_body["text"])
+        self.assertIn("omega-source-override:src-feed-two", edited_body["text"])
+        self.assertIn("Affected catalog mirrors:** 2", edited_body["text"])
+        self.assertTrue(any(call[:3] == ("issue", "close", "31") for call in calls))
+        self.assertTrue(any(call[:3] == ("issue", "edit", "30") for call in calls))
+
+    def test_source_followup_creation_is_one_issue_per_plugin_across_mirrors(self) -> None:
+        created_body = {"text": ""}
+        calls: list[tuple[str, ...]] = []
+
+        def fake_gh(*args: str) -> str:
+            calls.append(args)
+            if args[:2] == ("issue", "list"):
+                return "[]"
+            if args[:2] == ("issue", "create"):
+                body_file = args[args.index("--body-file") + 1]
+                created_body["text"] = Path(body_file).read_text(encoding="utf-8")
+            return ""
+
+        base = {
+            "internalName": "BossMod", "pluginName": "Boss Mod", "assemblyVersion": "7.5.5.8",
+            "artifactUrl": "https://example.invalid/boss.zip", "reason": "source missing",
+            "sourceCandidates": ["https://github.com/awgil/ffxiv_bossmod"], "actionable": True,
+        }
+        document = {"followups": [
+            dict(base, key="omega-source-followup:src-a", overrideKey="src-a", variantId=1, catalogSource="A", catalogSourceUrl="https://a.invalid/repo.json"),
+            dict(base, key="omega-source-followup:src-b", overrideKey="src-b", variantId=2, catalogSource="B", catalogSourceUrl="https://b.invalid/repo.json"),
+        ], "resolved": [], "resolvedKeys": []}
+        with mock.patch.object(create_source_followup_issues, "gh", side_effect=fake_gh):
+            result = create_source_followup_issues.reconcile_issues(document, "example/omega")
+        self.assertEqual((1, 0), result)
+        creates = [call for call in calls if call[:2] == ("issue", "create")]
+        self.assertEqual(1, len(creates))
+        self.assertIn("omega-source-override:src-a", created_body["text"])
+        self.assertIn("omega-source-override:src-b", created_body["text"])
+
     def test_source_candidate_failover_does_not_mix_partial_evidence_from_failed_repository(self) -> None:
         calls = []
         def fake_fetch(url, _token, hits):
@@ -429,6 +531,34 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertEqual("ExamplePlugin", outcome["internalName"])
         self.assertTrue(outcome["validation"]["identityMatched"])
         self.assertEqual("https://github.com/example/Plugin", document["overrides"][key])
+
+    def test_source_followup_reply_applies_validated_source_to_all_mirror_override_keys(self) -> None:
+        validation = {
+            "ok": True, "repository": "https://github.com/example/Plugin", "commit": "abc123",
+            "identityMatched": True, "versionMatched": False, "selectedRef": "main", "error": "",
+        }
+        with mock.patch.object(process_source_submission.socket, "getaddrinfo", return_value=[(None, None, None, None, ("8.8.8.8", 443))]), mock.patch.object(process_source_submission, "github_repository_is_public", return_value=True), mock.patch.object(process_source_submission, "validate_source_repository_identity", return_value=validation), tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            outcome = process_source_submission.process(
+                {"issue": {
+                    "title": "Source needed: ExamplePlugin",
+                    "labels": [{"name": "omega-source-followup"}],
+                    "body": "\n".join((
+                        "<!-- omega-source-submission -->",
+                        "<!-- omega-source-followup:src-one -->",
+                        "<!-- omega-source-override:src-one -->",
+                        "<!-- omega-source-override:src-two -->",
+                        "<!-- omega-source-internal:ExamplePlugin -->",
+                        "<!-- omega-source-version: -->",
+                    )),
+                }, "comment": {"body": "https://github.com/example/Plugin"}},
+                root / "community-sources.json", root / "source-overrides.json",
+            )
+            document = json.loads((root / "source-overrides.json").read_text(encoding="utf-8"))
+        self.assertEqual("accepted-override", outcome["status"])
+        self.assertEqual(["src-one", "src-two"], outcome["overrideKeys"])
+        self.assertEqual("https://github.com/example/Plugin", document["overrides"]["src-one"])
+        self.assertEqual("https://github.com/example/Plugin", document["overrides"]["src-two"])
 
     def test_forged_source_followup_marker_cannot_persist_override_without_managed_label(self) -> None:
         with mock.patch.object(process_source_submission.socket, "getaddrinfo", return_value=[(None, None, None, None, ("8.8.8.8", 443))]), tempfile.TemporaryDirectory() as td:
@@ -1147,7 +1277,7 @@ class CatalogPythonUnitTests(unittest.TestCase):
         now = dt.datetime(2026, 8, 15, 12, 0, tzinfo=dt.timezone.utc)
         entry = {
             "status": "complete",
-            "scannerVersion": sigmascope.SCANNER_VERSION,
+            "scannerVersion": "2.14.0",
             "lastValidatedAtUtc": "2026-08-15T11:00:00Z",
             "assemblyVersion": "1.2.3.4",
             "artifactUrl": "https://example.invalid/plugin.zip",

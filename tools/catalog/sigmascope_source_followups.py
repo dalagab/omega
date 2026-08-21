@@ -22,7 +22,7 @@ from pathlib import Path
 from source_resolution import source_candidates, source_override_key
 
 
-SCHEMA = "omega.source-scan-followups.v2"
+SCHEMA = "omega.source-scan-followups.v3"
 _RETRYABLE = re.compile(
     r"(?:HTTP(?: Error)?\s+(?:408|425|429|500|502|503|504)\b|"
     r"timed?\s*out|timeout|temporar(?:y|ily)|connection reset|"
@@ -132,12 +132,18 @@ def followups(database: Path) -> dict:
             projected[override_key] = item
 
     items = sorted(projected.values(), key=lambda item: (item["internalName"].lower(), item["catalogSource"].lower()))
+    resolved_items = [resolved[key] for key in sorted(resolved)]
+    resolved_internal_names = sorted({str(item.get("internalName") or "") for item in resolved_items if str(item.get("internalName") or "")}, key=str.casefold)
+    actionable_internal_names = {str(item.get("internalName") or "").casefold() for item in items if item.get("actionable", True) and str(item.get("internalName") or "")}
     return {
         "schema": SCHEMA,
         "count": len(items),
         "actionableCount": sum(1 for item in items if item["actionable"]),
+        "pluginCount": len({str(item.get("internalName") or "").casefold() for item in items if str(item.get("internalName") or "")}),
+        "actionablePluginCount": len(actionable_internal_names),
         "resolvedKeys": sorted(resolved),
-        "resolved": [resolved[key] for key in sorted(resolved)],
+        "resolvedInternalNames": resolved_internal_names,
+        "resolved": resolved_items,
         "followups": items,
     }
 

@@ -44,6 +44,7 @@ from security_evidence_v2 import (  # noqa: E402
     transport_security_row,
     verify_file_entry,
 )
+import observation_projection  # noqa: E402
 
 QUICK_SKIP = {"symbols", "calls", "reachability"}
 
@@ -204,6 +205,8 @@ def validate(database: Path, evidence: Path, *, quick: bool = False) -> dict[str
             "catalogRevision": meta.get("catalog_revision", meta.get("catalog_revision_candidate", "")),
             "securityRevision": meta.get("security_revision", ""),
             "evidenceRevision": meta.get("evidence_revision", ""),
+            "observationContractRevision": observation_projection.contract_revision(),
+            "projectionContractRevision": observation_projection.projection_contract_revision(),
         }
         _compare_exact("root revisions", expected_revisions, index.get("revisions") or {}, errors)
         current_rows = list(db.execute("SELECT * FROM plugin_security_current ORDER BY variant_id"))

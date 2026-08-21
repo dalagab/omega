@@ -22,6 +22,7 @@ from source_resolution import source_candidates
 
 MARKER = "omega-source-submission"
 FOLLOWUP_RE = re.compile(r"omega-source-followup:([A-Za-z0-9_-]+)")
+OVERRIDE_RE = re.compile(r"omega-source-override:([A-Za-z0-9_-]+)")
 INTERNAL_RE = re.compile(r"omega-source-internal:([^\s<>]+)")
 VERSION_RE = re.compile(r"omega-source-version:([^\s<>]*)")
 URL_RE = re.compile(r"https://[^\s<>()\[\]{}]+", re.IGNORECASE)
@@ -212,23 +213,31 @@ def process_followup(issue: dict, comment_body: str, overrides_path: Path) -> di
         }
 
     overrides = load_overrides(overrides_path)
-    key, url = match.group(1), str(validation.get("repository") or candidates[0])
-    if overrides.get(key) == url:
+    keys = [match.group(1)]
+    for override_match in OVERRIDE_RE.finditer(issue_body):
+        key = override_match.group(1)
+        if key not in keys:
+            keys.append(key)
+    url = str(validation.get("repository") or candidates[0])
+    changed = [key for key in keys if overrides.get(key) != url]
+    if not changed:
         return {
-            "status": "already-added", "kind": "override", "url": url, "overrideKey": key,
-            "internalName": internal_name, "message": "This validated source override is already queued", "validation": validation,
+            "status": "already-added", "kind": "override", "url": url, "overrideKey": keys[0], "overrideKeys": keys,
+            "internalName": internal_name, "message": "This validated source override is already queued for all affected catalog mirrors", "validation": validation,
         }
-    overrides[key] = url
+    for key in keys:
+        overrides[key] = url
     save_overrides(overrides_path, overrides)
     return {
         "status": "accepted-override",
         "kind": "override",
         "url": url,
-        "overrideKey": key,
+        "overrideKey": keys[0],
+        "overrideKeys": keys,
         "internalName": internal_name,
         "assemblyVersion": assembly_version,
         "validation": validation,
-        "message": "Validated and queued as the public source repository for this plugin/source pair",
+        "message": f"Validated and queued as the public source repository for {len(keys)} affected catalog mirror mapping(s)",
     }
 
 

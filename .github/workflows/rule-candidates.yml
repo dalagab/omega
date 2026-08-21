@@ -1,0 +1,226 @@
+name: Omega SigmaScope rule candidates
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "validate for issue changes, promote for an authorized maintainer action"
+        required: true
+        type: string
+      issue_number:
+        description: "GitHub issue number containing the inert candidate YAML and fixtures"
+        required: true
+        type: number
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Candidate action"
+        required: true
+        type: choice
+        options:
+          - validate
+          - promote
+      issue_number:
+        description: "Candidate issue number"
+        required: true
+        type: number
+
+concurrency:
+  group: omega-rule-candidate-${{ inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: ${{ inputs.mode == 'validate' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install pinned Python security dependencies
+        run: python -m pip install --disable-pip-version-check -r tools/requirements-security.txt
+      - name: Re-fetch candidate issue as inert data
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" > candidate-issue.json
+      - id: candidate
+        name: Validate candidate rule and fixtures without repository mutation
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/rule_candidate.py validate \
+            --issue-json candidate-issue.json \
+            --packs-root security-definitions/packs \
+            --result candidate-result.json \
+            --comment candidate-comment.md
+      - name: Comment candidate validation result
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f candidate-comment.md ]; then
+            gh issue comment "$ISSUE_NUMBER" --body-file candidate-comment.md
+          fi
+      - name: Fail closed when candidate validation failed
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.ok == true' candidate-result.json >/dev/null
+
+  promote:
+    if: ${{ inputs.mode == 'promote' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - id: authorization
+        name: Verify triggering GitHub actor has repository write authority
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROMOTION_ACTOR: ${{ github.actor }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          permission="$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "repos/$GITHUB_REPOSITORY/collaborators/$PROMOTION_ACTOR/permission" \
+            --jq '.permission')"
+          case "$permission" in
+            admin|write) ;;
+            *)
+              echo "Actor $PROMOTION_ACTOR lacks repository write/maintain/admin permission (resolved base permission: $permission)." >&2
+              exit 1
+              ;;
+          esac
+          printf 'permission=%s\n' "$permission" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install pinned Python security dependencies
+        run: python -m pip install --disable-pip-version-check -r tools/requirements-security.txt
+      - name: Re-fetch candidate issue only after authorization
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER" > candidate-issue.json
+      - id: materialize
+        name: Revalidate from scratch and materialize reviewed Definition Pack
+        continue-on-error: true
+        env:
+          REVIEWER: github:${{ github.actor }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          reviewed_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          python tools/security/rule_candidate.py promote \
+            --issue-json candidate-issue.json \
+            --packs-root security-definitions/packs \
+            --reviewer "$REVIEWER" \
+            --reviewed-at "$reviewed_at" \
+            --result candidate-result.json \
+            --comment candidate-comment.md
+      - name: Comment materialization failure
+        if: ${{ steps.materialize.outcome != 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f candidate-comment.md ]; then
+            gh issue comment "$ISSUE_NUMBER" --body-file candidate-comment.md
+          fi
+      - name: Fail closed when fresh validation/materialization failed
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.ok == true' candidate-result.json >/dev/null
+      - name: Commit only the newly materialized reviewed pack
+        id: commit
+        env:
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pack_id="$(jq -r '.packId' candidate-result.json)"
+          if ! printf '%s\n' "$pack_id" | grep -Eq '^[a-z0-9][a-z0-9._-]{2,79}$'; then
+            echo "Invalid materialized pack id" >&2
+            exit 1
+          fi
+          pack_path="security-definitions/packs/$pack_id"
+          test -d "$pack_path"
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="sigmascope-rule-candidate-${ISSUE_NUMBER}-${GITHUB_RUN_ID}"
+          git checkout -b "$branch"
+          git add -- "$pack_path"
+          test -n "$(git diff --cached --name-only)"
+          if git diff --cached --name-only | grep -Ev "^security-definitions/packs/${pack_id//./\\.}/"; then
+            echo "Promotion attempted to stage a path outside the candidate pack." >&2
+            exit 1
+          fi
+          git commit -m "security: promote reviewed rule candidate #$ISSUE_NUMBER"
+          git push origin "$branch"
+          printf 'branch=%s\n' "$branch" >> "$GITHUB_OUTPUT"
+      - name: Open normal review PR; never auto-merge
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          HEAD_BRANCH: ${{ steps.commit.outputs.branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > candidate-pr.md <<EOF
+          Promotes the inert SigmaScope rule candidate from issue #$ISSUE_NUMBER into a reviewed Definition Pack source directory.
+
+          The promotion workflow independently checked the triggering actor's repository permission, re-fetched the issue after authorization, and revalidated the candidate/fixtures from scratch. Candidate-declared author/reviewer fields are not authorization.
+
+          This PR is intentionally **not auto-merged**. Normal branch protection, regression CI, and human review remain required. Production SRL projection is still disabled; a later Daily Catalog/Definitions freeze is a separate operator boundary.
+          EOF
+          pr_url="$(gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --base sigmascope \
+            --head "$HEAD_BRANCH" \
+            --title "security: review SigmaScope rule candidate #$ISSUE_NUMBER" \
+            --body-file candidate-pr.md)"
+          printf 'url=%s\n' "$pr_url" >> "$GITHUB_OUTPUT"
+      - name: Confirm promotion PR on candidate issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Authorized materialization completed and opened a normal review PR: %s\n\nThis is not an auto-merge or production activation. Regression CI, required review, and a later Daily Definitions freeze remain separate gates.\n' "$PR_URL" > candidate-comment.md
+          gh issue comment "$ISSUE_NUMBER" --body-file candidate-comment.md

@@ -33,6 +33,8 @@ for item in (SCRIPT_DIR, SECURITY_DIR):
 from security_evidence_v2 import iter_variant_entries  # noqa: E402
 from artifact_source_model import BASIS_DEFAULT_BRANCH  # noqa: E402
 from source_resolution import public_repository_url, source_candidate_records  # noqa: E402
+import definition_packs  # noqa: E402
+import rule_reprojection  # noqa: E402
 
 SEED_SCHEMA = "omega.sigmascope.queue-seed.v2"
 STATE_SCHEMA = "omega.sigmascope.queue-state.v2"
@@ -47,6 +49,7 @@ REASON_PRIORITIES = {
     "artifact_url_changed": 875,
     "artifact_version_changed": 870,
     "artifact_analysis_changed": 850,
+    "srl_observation_missing": 840,
     "advisory_changed": 800,
     "source_candidates_changed": 725,
     "source_candidate_observed": 710,
@@ -63,6 +66,7 @@ REASON_CONTRACTS = {
     "artifact_url_changed": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "selected_artifact_url_changed"},
     "artifact_version_changed": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "selected_artifact_version_changed"},
     "artifact_analysis_changed": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "artifact_analysis_revision_changed"},
+    "srl_observation_missing": {"workType": "typed", "invalidates": ["required-observation"], "event": "srl_required_observation_missing"},
     "failed_retry": {"workType": "artifact", "invalidates": ["failed-work"], "event": "previous_artifact_attempt_incomplete"},
     "source_followup": {"workType": "source", "invalidates": ["source-attribution", "source-analysis"], "event": "artifact_analysis_completed"},
     "source_candidates_changed": {"workType": "source", "invalidates": ["source-attribution", "source-analysis"], "event": "catalog_source_candidates_changed"},
@@ -633,6 +637,57 @@ def enqueue_source_followup(
     return item
 
 
+def _apply_srl_reanalysis(item: dict[str, Any], request: dict[str, Any], srl_rule_set_revision: str) -> None:
+    """Bind an SRL observation-gap request to one typed queue target."""
+    missing = sorted({str(value) for value in request.get("missingCollections") or [] if str(value)})
+    bounded = sorted({str(value) for value in request.get("boundedCompatibilityCollections") or [] if str(value)})
+    reasons = [str(value) for value in request.get("reasons") or [] if str(value)]
+    item["srlRuleSetRevision"] = srl_rule_set_revision
+    item["requiredObservationCollections"] = sorted(set(missing + bounded))
+    item["srlReanalysisReasons"] = reasons
+    semantic = {
+        "baseTargetFingerprint": str(item.get("targetFingerprint") or ""),
+        "srlRuleSetRevision": srl_rule_set_revision,
+        "requiredObservationCollections": item["requiredObservationCollections"],
+        "srlReanalysisReasons": reasons,
+    }
+    prefix = "source-target-v2" if str(item.get("workType") or "") == "source" else "artifact-target-v2"
+    item["targetFingerprint"] = f"{prefix}-{digest(semantic)[:20]}"
+
+
+def _srl_reprojection_plan(definitions_root: Path, evidence_root: Path, definitions_index: dict[str, Any]) -> dict[str, Any]:
+    descriptor = definitions_index.get("srlDefinitionPacks") if isinstance(definitions_index.get("srlDefinitionPacks"), dict) else {}
+    if not descriptor or not (evidence_root / "index.json").is_file():
+        return {
+            "schema": rule_reprojection.PLAN_SCHEMA,
+            "ruleSetRevision": str(descriptor.get("ruleSetRevision") or ""),
+            "auditOk": True,
+            "checkedVariants": 0,
+            "reprojectedVariants": 0,
+            "reanalysisRequiredVariants": 0,
+            "auditErrorVariants": 0,
+            "reanalysisRequests": [],
+        }
+    compiled = definition_packs.load_frozen_ruleset(definitions_root, descriptor)
+    if not (compiled.get("rules") or []):
+        return {
+            "schema": rule_reprojection.PLAN_SCHEMA,
+            "ruleSetRevision": str(compiled.get("ruleSetRevision") or ""),
+            "auditOk": True,
+            "checkedVariants": 0,
+            "reprojectedVariants": 0,
+            "reanalysisRequiredVariants": 0,
+            "auditErrorVariants": 0,
+            "reanalysisRequests": [],
+        }
+    plan = rule_reprojection.plan_reprojection(evidence_root, compiled)
+    if not plan.get("auditOk"):
+        raise RuntimeError(
+            f"SRL reprojection planning failed closed with {int(plan.get('auditErrorVariants') or 0)} evidence audit error(s)"
+        )
+    return plan
+
+
 def build_seed(
     *,
     catalog_root: Path,
@@ -659,6 +714,13 @@ def build_seed(
     observations = source_observations(definitions_root)
     baseline_security_rebuild = bool(catalog_identity_epoch and previous_evidence_identity_epoch != catalog_identity_epoch)
     current = {} if baseline_security_rebuild else evidence_current(evidence_root)
+    srl_plan = _srl_reprojection_plan(definitions_root, evidence_root, definitions_index) if not baseline_security_rebuild else {
+        "schema": rule_reprojection.PLAN_SCHEMA,
+        "ruleSetRevision": str(((definitions_index.get("srlDefinitionPacks") or {}) if isinstance(definitions_index.get("srlDefinitionPacks"), dict) else {}).get("ruleSetRevision") or ""),
+        "auditOk": True, "checkedVariants": 0, "reprojectedVariants": 0, "reanalysisRequiredVariants": 0, "auditErrorVariants": 0, "reanalysisRequests": [],
+    }
+    srl_rule_set_revision = str(srl_plan.get("ruleSetRevision") or "")
+    srl_requests = {int(item.get("variantId") or 0): dict(item) for item in srl_plan.get("reanalysisRequests") or [] if isinstance(item, dict) and int(item.get("variantId") or 0) > 0}
     items: list[dict[str, Any]] = []
     counts = {reason: 0 for reason in REASON_PRIORITIES}
     for variant in catalog_variants(catalog_root):
@@ -668,6 +730,9 @@ def build_seed(
             current_row,
             artifact_analysis_revision=artifact_analysis_revision,
         )
+        srl_request = srl_requests.get(int(variant["variantId"])) if current_row else None
+        if isinstance(srl_request, dict) and str(srl_request.get("workType") or "artifact") == "artifact":
+            reasons = list(dict.fromkeys([*reasons, "srl_observation_missing"]))
         if reasons:
             item = _queue_item(
                 variant,
@@ -681,6 +746,8 @@ def build_seed(
                 rule_set_revision=rule_set_revision,
                 generated_at=generated,
             )
+            if isinstance(srl_request, dict) and "srl_observation_missing" in reasons:
+                _apply_srl_reanalysis(item, srl_request, srl_rule_set_revision)
             items.append(item)
             for reason in reasons:
                 counts[reason] = counts.get(reason, 0) + 1
@@ -688,6 +755,8 @@ def build_seed(
             source_reasons = source_due_reasons(
                 variant, current_row, source_analysis_revision=source_analysis_revision, observations=observations,
             )
+            if isinstance(srl_request, dict) and str(srl_request.get("workType") or "") == "source":
+                source_reasons = list(dict.fromkeys([*source_reasons, "srl_observation_missing"]))
             if source_reasons:
                 source_item = _source_queue_item(
                     variant, current_row, source_reasons,
@@ -696,6 +765,8 @@ def build_seed(
                     source_analysis_revision=source_analysis_revision, rule_set_revision=rule_set_revision, generated_at=generated,
                     observations=observations,
                 )
+                if isinstance(srl_request, dict) and "srl_observation_missing" in source_reasons:
+                    _apply_srl_reanalysis(source_item, srl_request, srl_rule_set_revision)
                 items.append(source_item)
                 for reason in source_reasons:
                     counts[reason] = counts.get(reason, 0) + 1
@@ -725,6 +796,16 @@ def build_seed(
         "scannerRevision": scanner_revision,
         "scannerBundleSha256": scanner_bundle_sha256,
         "ruleSetRevision": rule_set_revision,
+        "srlRuleSetRevision": srl_rule_set_revision,
+        "srlReprojection": {
+            "schema": str(srl_plan.get("schema") or rule_reprojection.PLAN_SCHEMA),
+            "projectionSetRevision": str(srl_plan.get("projectionSetRevision") or ""),
+            "checkedVariants": int(srl_plan.get("checkedVariants") or 0),
+            "reprojectedVariants": int(srl_plan.get("reprojectedVariants") or 0),
+            "reanalysisRequiredVariants": int(srl_plan.get("reanalysisRequiredVariants") or 0),
+            "auditErrorVariants": int(srl_plan.get("auditErrorVariants") or 0),
+            "productionWriteBack": False,
+        },
         "advisoryRevision": advisory_revision,
         "baselineSecurityRebuild": baseline_security_rebuild,
         "reasonContracts": REASON_CONTRACTS,
@@ -732,7 +813,7 @@ def build_seed(
         "items": [
             {
                 key: item[key]
-                for key in ("queueKey", "workType", "targetFingerprint", "variantId", "assemblyVersion", "artifactUrl", "artifactAnalysisRevision", "sourceAnalysisRevision", "ruleSetRevision", "observedSourceCommit", "reasons", "priority")
+                for key in ("queueKey", "workType", "targetFingerprint", "variantId", "assemblyVersion", "artifactUrl", "artifactAnalysisRevision", "sourceAnalysisRevision", "ruleSetRevision", "srlRuleSetRevision", "requiredObservationCollections", "srlReanalysisReasons", "observedSourceCommit", "reasons", "priority")
                 if key in item
             }
             for item in items
@@ -753,6 +834,16 @@ def build_seed(
         "baselineSecurityRebuild": baseline_security_rebuild,
         "previousEvidenceIdentityEpoch": previous_evidence_identity_epoch,
         "ruleSetRevision": rule_set_revision,
+        "srlRuleSetRevision": srl_rule_set_revision,
+        "srlReprojection": {
+            "schema": str(srl_plan.get("schema") or rule_reprojection.PLAN_SCHEMA),
+            "projectionSetRevision": str(srl_plan.get("projectionSetRevision") or ""),
+            "checkedVariants": int(srl_plan.get("checkedVariants") or 0),
+            "reprojectedVariants": int(srl_plan.get("reprojectedVariants") or 0),
+            "reanalysisRequiredVariants": int(srl_plan.get("reanalysisRequiredVariants") or 0),
+            "auditErrorVariants": int(srl_plan.get("auditErrorVariants") or 0),
+            "productionWriteBack": False,
+        },
         "advisoryRevision": advisory_revision,
         "previousAdvisoryRevision": previous_advisory_revision,
         "reasonContracts": REASON_CONTRACTS,
@@ -830,6 +921,8 @@ def sync_state(seed: dict[str, Any], previous: dict[str, Any] | None, *, now: dt
         "sourceAnalysisRevision": str(seed.get("sourceAnalysisRevision") or ""),
         "sourceObservationRevision": str(seed.get("sourceObservationRevision") or ""),
         "ruleSetRevision": str(seed.get("ruleSetRevision") or ""),
+        "srlRuleSetRevision": str(seed.get("srlRuleSetRevision") or ""),
+        "srlReprojection": dict(seed.get("srlReprojection") or {}),
         "advisoryRevision": str(seed.get("advisoryRevision") or ""),
         "reasonContracts": dict(seed.get("reasonContracts") or REASON_CONTRACTS),
         "selectionPolicy": str(seed.get("selectionPolicy") or SELECTION_POLICY),

@@ -18,6 +18,19 @@ from pathlib import Path
 from typing import Any, Iterable
 
 SCHEMA = "omega.sigmascope.analysis-revisions.v1"
+# Engine release identity is operational metadata, not an artifact/source-analysis semantic.
+# The first narrow-revision release (2.14.0) accidentally included the literal version
+# assignment in the symbol closure. Preserve that historical AST representation as a
+# compatibility anchor so later engine-version bumps do not force plugin re-analysis.
+# Changes to actual parser/rule/source-analysis code still change the appropriate narrow
+# revision normally.
+NON_SEMANTIC_SYMBOL_COMPATIBILITY_AST = {
+    "SIGMASCOPE_VERSION": ast.dump(
+        ast.parse('SIGMASCOPE_VERSION = "2.14.0"').body[0],
+        annotate_fields=True,
+        include_attributes=False,
+    ),
+}
 
 ARTIFACT_ROOT_SYMBOLS = (
     "_build_artifact_analysis",
@@ -50,6 +63,10 @@ SOURCE_SUPPORT_FILES = (
     "tools/catalog/security_endpoint_inventory.py",
     "tools/catalog/security_path_access.py",
     "tools/catalog/security_component_summary.py",
+    "tools/catalog/plugin_profile.py",
+    "tools/catalog/capability_registry.py",
+    "security-definitions/capabilities/registry.json",
+    "tools/requirements-security.txt",
 )
 
 
@@ -96,18 +113,24 @@ def symbol_closure(path: Path, roots: Iterable[str]) -> dict[str, str]:
         for child in ast.walk(node):
             if isinstance(child, ast.Name) and child.id in symbols and child.id not in selected:
                 pending.append(child.id)
-    return {
+    result = {
         name: ast.dump(symbols[name], annotate_fields=True, include_attributes=False)
         for name in sorted(selected)
     }
+    for name, compatibility_ast in NON_SEMANTIC_SYMBOL_COMPATIBILITY_AST.items():
+        if name in result:
+            result[name] = compatibility_ast
+    return result
 
 
-def _python_semantic_sha(path: Path) -> str:
-    """Hash Python semantics rather than formatting/comments for support modules."""
-    source = path.read_text(encoding="utf-8")
-    tree = ast.parse(source, filename=str(path))
-    semantic = ast.dump(tree, annotate_fields=True, include_attributes=False)
-    return _sha256(semantic.encode("utf-8"))
+def _support_semantic_sha(path: Path) -> str:
+    """Hash Python semantics; hash declarative support data byte-for-byte."""
+    if path.suffix.casefold() == ".py":
+        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(path))
+        semantic = ast.dump(tree, annotate_fields=True, include_attributes=False)
+        return _sha256(semantic.encode("utf-8"))
+    return _sha256(path.read_bytes())
 
 
 def _revision(repo_root: Path, *, kind: str, roots: Iterable[str], support_files: Iterable[str]) -> tuple[str, dict[str, Any]]:
@@ -118,7 +141,7 @@ def _revision(repo_root: Path, *, kind: str, roots: Iterable[str], support_files
         path = repo_root / rel
         if not path.is_file():
             raise RuntimeError(f"analysis support file is missing: {rel}")
-        support[rel] = _python_semantic_sha(path)
+        support[rel] = _support_semantic_sha(path)
     semantic = {
         "schema": SCHEMA,
         "kind": kind,

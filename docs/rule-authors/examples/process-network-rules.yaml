@@ -1,0 +1,60 @@
+schema: omega.sigmascope.ruleset.v1
+rules:
+  - schema: omega.sigmascope.rule.v1
+    id: capability.process.execute.example
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      process_start:
+        collection: managedCallSites
+        where:
+          targetDeclaringType:
+            equals-ci: System.Diagnostics.Process
+          targetName:
+            in-ci: [Start]
+    condition: process_start
+    emit:
+      fact: process.execute
+      confidence: high
+      title: Process execution capability
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.network.http.example
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      concrete_endpoint:
+        collection: networkEndpoints
+        where:
+          concreteDestinationEvidence:
+            equals: true
+    condition: concrete_endpoint
+    emit:
+      fact: network.http
+      confidence: high
+      title: Concrete network destination
+
+  - schema: omega.sigmascope.rule.v1
+    id: compound.network-execute.example
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      network:
+        facts:
+          any: [network.http, network.socket]
+      execution:
+        facts:
+          any: [process.execute, shell.powershell]
+    condition:
+      all: [network, execution]
+    emit:
+      findingId: compound.network-execute.example
+      title: Network plus process execution
+      description: >
+        Static evidence contains both a concrete network capability and process
+        execution capability. This combination deserves manual review.
+      severity: high
+      category: behavior

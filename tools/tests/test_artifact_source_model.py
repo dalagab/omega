@@ -469,6 +469,7 @@ class ArtifactSourceModelTests(unittest.TestCase):
                 self.assertEqual(artifact_sha, current["artifact_sha256"])
 
 
+
     def test_source_replay_preserves_artifact_bound_secondary_security_contract(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-secondary-replay-") as td:
             root = Path(td)

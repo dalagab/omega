@@ -96,6 +96,7 @@ class WorkflowContractTests(unittest.TestCase):
             "production_sigmascope_v2_pipeline.py",
             "--skip-marketplace",
             "--frozen-advisories catalog/active-state/definitions/osv-advisories.json",
+            "--frozen-definitions catalog/active-state/definitions",
             '--catalog-revision "${{ steps.frozen.outputs.catalog_revision }}"',
             '--definitions-revision "${{ steps.frozen.outputs.definitions_revision }}"',
             '--scanner-revision "${{ steps.frozen.outputs.scanner_revision }}"',
@@ -184,6 +185,12 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("bind_artifact_analysis_revision", definitions)
         self.assertIn("notCoveredByFrozenDefinitions", pipeline)
         self.assertIn("frozen-definitions", pipeline)
+        self.assertIn("materialize_srl_reprojection_sidecar", pipeline)
+        self.assertIn('root_index["srlRuleProjections"]', pipeline)
+        self.assertIn("materialize_definition_provenance_index", pipeline)
+        self.assertIn('indexes["definitionProvenance"]', pipeline)
+        self.assertIn("provenance_changed", pipeline)
+        self.assertIn('"productionWriteBack": False', pipeline)
         self.assertIn("--skip-marketplace", pipeline)
         self.assertIn("queueSeedRevision", pipeline)
         self.assertIn("primaryReason", pipeline)

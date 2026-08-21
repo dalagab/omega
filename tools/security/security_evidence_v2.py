@@ -27,6 +27,9 @@ if str(CATALOG_DIR) not in sys.path:
 from artifact_source_model import (  # noqa: E402
     ATTRIBUTION_SCHEMA, MANIFEST_OBSERVATION_SCHEMA, attribution_invariant_errors, manifest_observation_key,
 )
+from behavior_consistency import compact_behavior_consistency, compute_behavior_consistency  # noqa: E402
+import observation_projection  # noqa: E402
+import deltascope_provenance  # noqa: E402
 
 SCHEMA = "omega.security-evidence.v2"
 FORMAT_VERSION = 2
@@ -54,6 +57,89 @@ def _countish_transport(value: Any) -> int:
         return int(value or 0)
     except (TypeError, ValueError):
         return 0
+
+
+def _compact_developer_profile(observation: Any) -> dict[str, Any]:
+    if not isinstance(observation, dict):
+        return {}
+    profile = observation.get("profile") if isinstance(observation.get("profile"), dict) else {}
+    profile_meta = profile.get("profile") if isinstance(profile.get("profile"), dict) else {}
+    capabilities = profile.get("capabilities") if isinstance(profile.get("capabilities"), list) else []
+    services = profile.get("services") if isinstance(profile.get("services"), list) else []
+    native_components = profile.get("nativeComponents") if isinstance(profile.get("nativeComponents"), list) else []
+    ipc = profile.get("ipc") if isinstance(profile.get("ipc"), list) else []
+    media = profile.get("media") if isinstance(profile.get("media"), dict) else {}
+    diagnostics = observation.get("diagnostics") if isinstance(observation.get("diagnostics"), list) else []
+    return {
+        "schema": _bounded_text(observation.get("schema"), 128),
+        "path": _bounded_text(observation.get("path"), 1024),
+        "sha256": _bounded_text(observation.get("sha256"), 128),
+        "bytes": int(observation.get("bytes") or 0),
+        "status": _bounded_text(observation.get("status"), 32),
+        "valid": bool(observation.get("valid")),
+        "diagnostics": [
+            {
+                "code": _bounded_text(item.get("code"), 128),
+                "path": _bounded_text(item.get("path"), 512),
+                "message": _bounded_text(item.get("message"), 1200),
+            }
+            for item in diagnostics[:16] if isinstance(item, dict)
+        ],
+        "profile": {
+            "schema": _bounded_text(profile.get("schema"), 128),
+            "capabilityRegistryRevision": _bounded_text(profile.get("capabilityRegistryRevision"), 128),
+            "profile": {
+                key: ([_bounded_text(value, 128) for value in raw[:32]] if isinstance(raw, list) else _bounded_text(raw, 8000 if key == "description" else 2048))
+                for key, raw in profile_meta.items()
+                if key in {"tagline", "description", "categories", "tags", "homepage", "documentation", "support", "source", "license", "securityPolicy", "vulnerabilityReporting"}
+            },
+            "capabilities": [
+                {
+                    "id": _bounded_text(item.get("id"), 128),
+                    "declaredId": _bounded_text(item.get("declaredId"), 128),
+                    "label": _bounded_text(item.get("label"), 180),
+                    "category": _bounded_text(item.get("category"), 64),
+                    "expected": bool(item.get("expected")),
+                    "required": bool(item.get("required")),
+                    "reason": _bounded_text(item.get("reason"), 1200),
+                    "destinations": [_bounded_text(value, 253) for value in (item.get("destinations") or [])[:32]],
+                }
+                for item in capabilities[:64] if isinstance(item, dict)
+            ],
+            "services": [
+                {
+                    "id": _bounded_text(item.get("id"), 128),
+                    "name": _bounded_text(item.get("name"), 180),
+                    "url": _bounded_text(item.get("url"), 2048),
+                    "purpose": _bounded_text(item.get("purpose"), 1200),
+                    "required": bool(item.get("required")),
+                }
+                for item in services[:32] if isinstance(item, dict)
+            ],
+            "nativeComponents": [
+                {
+                    "name": _bounded_text(item.get("name"), 256),
+                    "purpose": _bounded_text(item.get("purpose"), 1200),
+                    "required": bool(item.get("required")),
+                }
+                for item in native_components[:64] if isinstance(item, dict)
+            ],
+            "ipc": [
+                {
+                    "plugin": _bounded_text(item.get("plugin"), 256),
+                    "channel": _bounded_text(item.get("channel"), 256),
+                    "purpose": _bounded_text(item.get("purpose"), 1200),
+                    "required": bool(item.get("required")),
+                }
+                for item in ipc[:64] if isinstance(item, dict)
+            ],
+            "media": {
+                "icon": _bounded_text(media.get("icon"), 1024),
+                "banner": _bounded_text(media.get("banner"), 1024),
+                "screenshots": [_bounded_text(value, 1024) for value in (media.get("screenshots") or [])[:12]],
+            } if media else {},
+        } if profile else {},
+    }
 
 
 def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
@@ -87,6 +173,13 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
     if not intelligence and isinstance(report.get("intelligence"), dict):
         intelligence = report.get("intelligence")
     scan_provenance = report.get("scanProvenance") if isinstance(report.get("scanProvenance"), dict) else {}
+    behavior_raw = report.get("behaviorConsistency") if isinstance(report.get("behaviorConsistency"), dict) else {}
+    if not behavior_raw:
+        try:
+            behavior_raw = compute_behavior_consistency(report)
+        except Exception:
+            behavior_raw = {}
+    behavior_consistency = compact_behavior_consistency(behavior_raw)
 
     capabilities = automation.get("capabilities") if isinstance(automation.get("capabilities"), list) else []
     compact_caps: list[Any] = []
@@ -126,6 +219,10 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
     compact_top_capabilities = [
         item for item in top_capabilities[:128]
         if isinstance(item, (str, int, float, bool))
+    ]
+    capability_ids = report.get("capabilityIds") if isinstance(report.get("capabilityIds"), list) else []
+    compact_capability_ids = [
+        _bounded_text(item, 128) for item in capability_ids[:128] if str(item or "")
     ]
     endpoint_records = intelligence.get("networkEndpoints") if isinstance(intelligence.get("networkEndpoints"), list) else []
     compact_endpoints: list[dict[str, str]] = []
@@ -244,6 +341,9 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
         "highestSeverity": highest,
         "counts": counts,
         "capabilities": compact_top_capabilities,
+        "capabilityIds": compact_capability_ids,
+        "capabilityRegistryRevision": _bounded_text(report.get("capabilityRegistryRevision"), 128),
+        "behaviorConsistency": behavior_consistency,
         "source": {
             "available": bool(row.get("source_available") or source.get("available") or False),
             "repository": _bounded_text(row.get("source_repository") or source.get("repository") or "", 8192),
@@ -269,6 +369,7 @@ def compact_report_for_transport(row: dict[str, Any]) -> dict[str, Any]:
                 if key in source_provenance
             },
             "error": _bounded_text(source.get("error"), 8192),
+            "developerProfile": _compact_developer_profile(source.get("developerProfile")),
             "dependencyIntelligence": {
                 "fingerprints": {
                     "relevantSourceSha256": _bounded_text(source_fingerprints.get("relevantSourceSha256"), 128),
@@ -1077,12 +1178,134 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
             except Exception as exc:
                 errors.append(f"scannerQueue unreadable: {type(exc).__name__}: {exc}")
 
+    # Phase-10 rule projections are a non-authoritative, read-only sidecar.  They are
+    # published with Evidence-v2 for inspection/replay, but they must remain fully
+    # hash-pinned and must never claim production activation or queue authority.
+    srl_rule_projections = index.get("srlRuleProjections") or {}
+    referenced_rule_projection_files: set[str] = set()
+    if srl_rule_projections:
+        if not isinstance(srl_rule_projections, dict):
+            errors.append("srlRuleProjections descriptor is not an object")
+        else:
+            errors.extend(
+                f"srlRuleProjections: {item}"
+                for item in verify_file_entry(root, srl_rule_projections, max_bytes=MAX_PUBLISH_FILE_BYTES)
+            )
+            try:
+                projection_index_rel = safe_relpath(str(srl_rule_projections.get("path") or ""))
+                referenced_rule_projection_files.add(projection_index_rel)
+                projection_index = read_json_file(root, projection_index_rel)
+                if str(projection_index.get("schema") or "") != "omega.sigmascope.srl-rule-projection-set.v1":
+                    errors.append("srlRuleProjections payload has an unsupported schema")
+                for flag in ("productionRuleEvaluationEnabled", "productionWriteBack", "queueMutationAuthorized"):
+                    if bool(srl_rule_projections.get(flag)) or bool(projection_index.get(flag)):
+                        errors.append(f"srlRuleProjections illegally enables {flag}")
+                if str(srl_rule_projections.get("projectionSetRevision") or "") != str(projection_index.get("projectionSetRevision") or ""):
+                    errors.append("srlRuleProjections projectionSetRevision mismatch")
+                if str(srl_rule_projections.get("ruleSetRevision") or "") != str(projection_index.get("ruleSetRevision") or ""):
+                    errors.append("srlRuleProjections ruleSetRevision mismatch")
+                source_evidence_revision = str(projection_index.get("sourceEvidenceRevision") or "")
+                current_evidence_revision = str((index.get("revisions") or {}).get("evidenceRevision") or "")
+                if source_evidence_revision and current_evidence_revision and source_evidence_revision != current_evidence_revision:
+                    errors.append("srlRuleProjections source Evidence revision does not match this snapshot")
+
+                projection_root = Path(projection_index_rel).parent
+                projected_ids: set[int] = set()
+                for entry in projection_index.get("variants") or []:
+                    if not isinstance(entry, dict):
+                        errors.append("srlRuleProjections contains a malformed variant descriptor")
+                        continue
+                    variant_id = int(entry.get("variantId") or 0)
+                    if variant_id <= 0 or variant_id in projected_ids:
+                        errors.append(f"srlRuleProjections contains invalid/duplicate variant {variant_id}")
+                        continue
+                    projected_ids.add(variant_id)
+                    child_rel = safe_relpath((projection_root / safe_relpath(str(entry.get("path") or ""))).as_posix())
+                    child_entry = dict(entry)
+                    child_entry["path"] = child_rel
+                    referenced_rule_projection_files.add(child_rel)
+                    errors.extend(
+                        f"srlRuleProjections variant {variant_id}: {item}"
+                        for item in verify_file_entry(root, child_entry, max_bytes=MAX_PUBLISH_FILE_BYTES)
+                    )
+                    projection = read_json_file(root, child_rel)
+                    if str(projection.get("schema") or "") != "omega.sigmascope.srl-rule-projection.v1":
+                        errors.append(f"srlRuleProjections variant {variant_id} has an unsupported schema")
+                    if str(projection.get("ruleSetRevision") or "") != str(projection_index.get("ruleSetRevision") or ""):
+                        errors.append(f"srlRuleProjections variant {variant_id} ruleset mismatch")
+                    if bool(projection.get("productionWriteBack")):
+                        errors.append(f"srlRuleProjections variant {variant_id} enables production write-back")
+
+                request = projection_index.get("reanalysisRequests") if isinstance(projection_index.get("reanalysisRequests"), dict) else {}
+                request_rel = safe_relpath((projection_root / safe_relpath(str(request.get("path") or ""))).as_posix())
+                request_entry = dict(request)
+                request_entry["path"] = request_rel
+                referenced_rule_projection_files.add(request_rel)
+                errors.extend(
+                    f"srlRuleProjections reanalysis requests: {item}"
+                    for item in verify_file_entry(root, request_entry, max_bytes=MAX_PUBLISH_FILE_BYTES)
+                )
+                request_payload = read_json_file(root, request_rel)
+                if str(request_payload.get("schema") or "") != "omega.sigmascope.srl-reanalysis-requests.v1":
+                    errors.append("srlRuleProjections reanalysis request schema is invalid")
+                if bool(request_payload.get("queueMutationAuthorized")):
+                    errors.append("srlRuleProjections reanalysis requests authorize queue mutation")
+                expected_projected = int((projection_index.get("counts") or {}).get("reprojectedVariants") or 0)
+                if expected_projected != len(projected_ids):
+                    errors.append(
+                        f"srlRuleProjections projected count mismatch: index={expected_projected}, actual={len(projected_ids)}"
+                    )
+                expected_requests = int(request.get("records") or 0)
+                actual_requests = len(request_payload.get("requests") or []) if isinstance(request_payload.get("requests"), list) else -1
+                if expected_requests != actual_requests:
+                    errors.append(
+                        f"srlRuleProjections reanalysis count mismatch: index={expected_requests}, actual={actual_requests}"
+                    )
+            except Exception as exc:
+                errors.append(f"srlRuleProjections unreadable: {type(exc).__name__}: {exc}")
+
     indexes = index.get("indexes") or {}
     for name, entry in sorted(indexes.items()):
         if not isinstance(entry, dict):
             errors.append(f"index entry {name!r} is not an object")
             continue
         errors.extend(f"index {name}: {item}" for item in verify_file_entry(root, entry, max_bytes=MAX_PUBLISH_FILE_BYTES))
+
+    workbench_rel_entry = indexes.get("workbenchRelationships") if isinstance(indexes.get("workbenchRelationships"), dict) else {}
+    if workbench_rel_entry:
+        try:
+            workbench_rel = read_json_file(root, str(workbench_rel_entry.get("path") or ""))
+            if str(workbench_rel.get("schema") or "") != "omega.security-evidence.workbench-relationships.v1":
+                errors.append("workbenchRelationships index has an unsupported schema")
+            if workbench_rel.get("readOnly") is not True or str(workbench_rel.get("mutationAuthority") or "") != "none":
+                errors.append("workbenchRelationships index is not explicitly read-only")
+            if bool(workbench_rel.get("policyInput")):
+                errors.append("workbenchRelationships index incorrectly declares itself a policy input")
+            counts = workbench_rel.get("counts") if isinstance(workbench_rel.get("counts"), dict) else {}
+            for name in ("endpoints", "components", "advisories"):
+                rows = workbench_rel.get(name) if isinstance(workbench_rel.get(name), list) else []
+                if int(counts.get(name) or 0) != len(rows):
+                    errors.append(f"workbenchRelationships {name} count mismatch")
+        except Exception as exc:
+            errors.append(f"workbenchRelationships index unreadable: {type(exc).__name__}: {exc}")
+
+    definition_provenance_entry = indexes.get("definitionProvenance") if isinstance(indexes.get("definitionProvenance"), dict) else {}
+    if definition_provenance_entry:
+        try:
+            definition_provenance = read_json_file(root, str(definition_provenance_entry.get("path") or ""))
+            errors.extend(deltascope_provenance.validate_definition_provenance(definition_provenance))
+            if str(definition_provenance_entry.get("provenanceRevision") or "") != str(definition_provenance.get("provenanceRevision") or ""):
+                errors.append("definitionProvenance provenanceRevision mismatch")
+            definitions = definition_provenance.get("definitions") if isinstance(definition_provenance.get("definitions"), dict) else {}
+            srl = definition_provenance.get("srl") if isinstance(definition_provenance.get("srl"), dict) else {}
+            source = index.get("source") if isinstance(index.get("source"), dict) else {}
+            if str(definitions.get("definitionsRevision") or "") != str(source.get("definitionsRevision") or (index.get("revisions") or {}).get("definitionsRevision") or ""):
+                errors.append("definitionProvenance Definitions revision does not match Evidence-v2 source context")
+            projections = index.get("srlRuleProjections") if isinstance(index.get("srlRuleProjections"), dict) else {}
+            if projections and str(srl.get("ruleSetRevision") or "") != str(projections.get("ruleSetRevision") or ""):
+                errors.append("definitionProvenance SRL ruleset does not match rule projections")
+        except Exception as exc:
+            errors.append(f"definitionProvenance index unreadable: {type(exc).__name__}: {exc}")
 
     plugin_entries: list[dict[str, Any]] = []
     terminal_entries: list[dict[str, Any]] = []
@@ -1284,6 +1507,8 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                     errors.append(f"analysis manifest ID mismatch for variant {variant_id}: {analysis_path}")
                 if str(manifest.get("artifactSha256") or "").lower().strip() != artifact_sha:
                     errors.append(f"analysis artifact SHA mismatch for variant {variant_id}: {analysis_path}")
+                for contract_error in observation_projection.validation_errors(payload, manifest):
+                    errors.append(f"variant {variant_id} phase-4 contract: {contract_error}")
                 for dataset_name, dataset in sorted((manifest.get("datasets") or {}).items()):
                     if not isinstance(dataset, dict):
                         errors.append(f"analysis {analysis_id} dataset {dataset_name} is not an object")
@@ -1484,6 +1709,8 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                     errors.append(f"orphan analysis object is still published: {analysis_dir}")
             if path.startswith("derived/") and path not in referenced_files:
                 errors.append(f"orphan derived evidence file is still published: {path}")
+            if path.startswith("rule-projections/") and path not in referenced_rule_projection_files:
+                errors.append(f"orphan SRL rule projection file is still published: {path}")
 
     return {
         "schema": "omega.security-evidence.snapshot-validation.v2",

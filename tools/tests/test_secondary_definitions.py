@@ -78,6 +78,38 @@ class SecondaryDefinitionsTests(unittest.TestCase):
                 self.assertEqual("omega.sigmascope.yara-rule-metadata.v2", metadata["schema"])
                 self.assertEqual(item["sha256"], metadata["reviewedRuleSha256"])
 
+    def test_capability_registry_is_frozen_as_first_class_definitions_payload(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-capability-definitions-") as td:
+            root = Path(td)
+            bindir = self._fake_yara(root)
+            with mock.patch.dict(os.environ, {"PATH": str(bindir) + os.pathsep + os.environ.get("PATH", "")}):
+                index = self._build(root, "capabilities")
+            descriptor = index.get("capabilityRegistry") or {}
+            self.assertEqual("omega.sigmascope.capability-registry.v1", descriptor.get("schema"))
+            self.assertTrue(str(descriptor.get("revision") or "").startswith("capabilities-v1-"))
+            self.assertEqual("capabilities/registry.json", descriptor.get("path"))
+            self.assertGreaterEqual(int(descriptor.get("capabilityCount") or 0), 30)
+            self.assertGreaterEqual(int(descriptor.get("categoryCount") or 0), 10)
+            frozen = root / "definitions-capabilities" / "capabilities" / "registry.json"
+            self.assertTrue(frozen.is_file())
+            self.assertEqual(definitions_snapshot.sha256_file(frozen), descriptor.get("sha256"))
+            validation = definitions_snapshot.verify_snapshot(definitions_root=root / "definitions-capabilities")
+            self.assertTrue(validation["ok"], validation["errors"])
+
+    def test_capability_registry_tampering_is_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-capability-definitions-tamper-") as td:
+            root = Path(td)
+            bindir = self._fake_yara(root)
+            with mock.patch.dict(os.environ, {"PATH": str(bindir) + os.pathsep + os.environ.get("PATH", "")}):
+                self._build(root, "capability-tamper")
+            frozen = root / "definitions-capability-tamper" / "capabilities" / "registry.json"
+            document = json.loads(frozen.read_text(encoding="utf-8"))
+            document["capabilities"][0]["description"] = "tampered"
+            frozen.write_text(json.dumps(document), encoding="utf-8")
+            validation = definitions_snapshot.verify_snapshot(definitions_root=root / "definitions-capability-tamper")
+            self.assertFalse(validation["ok"])
+            self.assertTrue(any("capability registry" in item for item in validation["errors"]))
+
     def test_yara_definition_change_invalidates_artifact_analysis_revision(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-secondary-definitions-") as td:
             root = Path(td)

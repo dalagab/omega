@@ -21,6 +21,8 @@ from security_evidence_v2 import (
     variant_index_summary, write_record_dataset,
 )
 from validate_security_evidence_v2 import infer_database_from_migration_state, validate
+import definition_packs
+from production_sigmascope_v2_pipeline import materialize_definition_provenance_index
 
 
 class SecurityEvidenceV2Tests(unittest.TestCase):
@@ -286,6 +288,73 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
         self.assertEqual("high", match["confidence"])
         self.assertEqual("c" * 64, match["reviewedRuleSha256"])
 
+    def test_migration_promotes_report_only_observations_into_first_class_datasets(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-observation-export-") as td:
+            root = Path(td)
+            database = self.make_database(root / "evidence.sqlite")
+            report = {
+                "artifactIdentity": {"sha256": "a" * 64, "byteCount": 1234},
+                "manifestObservation": {"internalName": "FixturePlugin", "assemblyVersion": "1.0.0"},
+                "package": {
+                    "binaryClassifications": [{
+                        "path": "FixturePlugin.dll", "format": "pe", "role": "plugin-assembly", "managed": True,
+                    }],
+                },
+                "dependencyIntelligence": {
+                    "nativeImports": [{
+                        "binaryPath": "FixturePlugin.dll", "library": "kernel32.dll", "entryPoint": "CreateFileW",
+                    }],
+                    "networkEndpoints": [{
+                        "host": "api.example.invalid", "origin": "artifact", "classification": "unrecognised-host",
+                        "concreteDestinationEvidence": True,
+                    }],
+                    "staticPatternMatches": [{
+                        "origin": "artifact", "pattern": "Process.Start",
+                        "evidenceLabel": "metadata:FixturePlugin.dll",
+                        "evidence": ["metadata:FixturePlugin.dll: Process.Start"],
+                    }],
+                },
+                "source": {
+                    "developerProfile": {
+                        "schema": "omega.plugin-profile-observation.v1", "status": "valid",
+                        "profile": {"schema": "omega.plugin-profile.v1", "capabilities": []},
+                    },
+                    "attribution": {"confidence": 70, "coverageLabel": "version-correlated"},
+                    "provenance": {"repository": "https://github.com/example/fixture", "selectedRef": "1.0.0"},
+                    "dependencyIntelligence": {
+                        "sourceFiles": [{"path": "FixturePlugin/Plugin.cs", "sha256": "b" * 64}],
+                    },
+                },
+                "secondarySecurity": {"schema": "omega.sigmascope.secondary-security.v3", "engines": []},
+            }
+            with closing(sqlite3.connect(database)) as db:
+                db.execute(
+                    "UPDATE plugin_security_scans SET report_json=? WHERE scan_id=10",
+                    (json.dumps(report, sort_keys=True),),
+                )
+                db.commit()
+
+            output = root / "v2"
+            index = migrate(database, output, reset=True, chunk_bytes=1024 * 1024)
+            self.assertTrue(index["revisions"]["observationContractRevision"].startswith("observations-v1-"))
+            self.assertTrue(index["revisions"]["projectionContractRevision"].startswith("projection-contract-v1-"))
+            variant = json.loads((output / "variants" / "0000" / "1.json").read_text(encoding="utf-8"))
+            manifest = json.loads((output / variant["analysis"]["path"] / "manifest.json").read_text(encoding="utf-8"))
+            datasets = manifest["datasets"]
+            for name in (
+                "nativeImports", "networkEndpoints", "staticPatternMatches", "sourceFiles", "binaryClassifications",
+                "developerProfile", "sourceAttribution", "sourceProvenance", "secondarySecurity",
+                "artifactIdentity", "manifestObservation",
+            ):
+                self.assertIn(name, datasets)
+                self.assertEqual("retained", manifest["observationContract"]["collections"][datasets[name]["collection"]]["completeness"])
+            self.assertEqual("omega.sigmascope.observation-contract.v1", manifest["observationContract"]["schema"])
+            self.assertFalse(variant["observations"]["legacyCompatibility"])
+            self.assertIn("networkEndpoints", variant["observations"]["collections"])
+            self.assertEqual("retained", variant["observations"]["collections"]["networkEndpoints"]["completeness"])
+            validation = validate_snapshot(output)
+            self.assertTrue(validation["ok"], validation)
+
     def test_resume_reuses_completed_variant_state(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -344,6 +413,65 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             self.assertFalse(broken["ok"])
             self.assertTrue(any("sha256" in error or "record" in error for error in broken["errors"]))
 
+
+    def test_intrinsic_validator_rejects_workbench_relationship_write_authority(self) -> None:
+        import hashlib
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            database = self.make_database(root / "evidence.sqlite")
+            output = root / "v2"
+            migrate(database, output, reset=True, chunk_bytes=1024 * 1024)
+            index_path = output / "index.json"
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            entry = index["indexes"]["workbenchRelationships"]
+            relationship_path = output / entry["path"]
+            payload = json.loads(relationship_path.read_text(encoding="utf-8"))
+            payload["readOnly"] = False
+            relationship_path.write_text(json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            data = relationship_path.read_bytes()
+            entry["sha256"] = hashlib.sha256(data).hexdigest()
+            entry["bytes"] = len(data)
+            index_path.write_text(json.dumps(index, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            report = validate_snapshot(output)
+            self.assertFalse(report["ok"])
+            self.assertTrue(any("workbenchRelationships index is not explicitly read-only" in error for error in report["errors"]), report)
+
+    def test_intrinsic_validator_rejects_definition_provenance_policy_authority(self) -> None:
+        import hashlib
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            database = self.make_database(root / "evidence.sqlite")
+            output = root / "v2"
+            migrate(database, output, reset=True, chunk_bytes=1024 * 1024)
+            definitions = root / "definitions"
+            definitions.mkdir(parents=True, exist_ok=True)
+            descriptor = definition_packs.freeze_pack_root(ROOT / "security-definitions" / "packs", definitions, include_local=False)
+            index_path = output / "index.json"
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            revision = str((index.get("source") or {}).get("definitionsRevision") or "")
+            (definitions / "index.json").write_text(json.dumps({
+                "schema": "omega.definitions.v1", "definitionsRevision": revision,
+                "ruleSetRevision": "legacy-test", "srlDefinitionPacks": descriptor,
+            }, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            provenance_entry = materialize_definition_provenance_index(output, definitions)
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            index.setdefault("indexes", {})["definitionProvenance"] = provenance_entry
+            index_path.write_text(json.dumps(index, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            self.assertTrue(validate_snapshot(output)["ok"], validate_snapshot(output))
+
+            provenance_path = output / provenance_entry["path"]
+            payload = json.loads(provenance_path.read_text(encoding="utf-8"))
+            payload["policyInput"] = True
+            provenance_path.write_text(json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            data = provenance_path.read_bytes()
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            entry = index["indexes"]["definitionProvenance"]
+            entry["sha256"] = hashlib.sha256(data).hexdigest()
+            entry["bytes"] = len(data)
+            index_path.write_text(json.dumps(index, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            report = validate_snapshot(output)
+            self.assertFalse(report["ok"])
+            self.assertTrue(any("definition provenance incorrectly declares itself a policy input" in error for error in report["errors"]), report)
 
     def test_intrinsic_validator_accepts_failed_current_variant_artifact_group(self) -> None:
         with tempfile.TemporaryDirectory() as td:

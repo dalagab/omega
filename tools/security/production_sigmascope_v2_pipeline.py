@@ -43,6 +43,10 @@ import project_marketplace_catalog  # noqa: E402
 import scan_queue  # noqa: E402
 import sigmascope  # noqa: E402
 import variant_lifecycle  # noqa: E402
+import observation_projection  # noqa: E402
+import definition_packs  # noqa: E402
+import deltascope_provenance  # noqa: E402
+import rule_reprojection  # noqa: E402
 from local_sigmascope_v2_test import summarize as summarize_database  # noqa: E402
 from migrate_security_evidence_v2 import (  # noqa: E402
     _derived_for_variant,
@@ -50,6 +54,7 @@ from migrate_security_evidence_v2 import (  # noqa: E402
     _export_identity_index,
     _export_ipc_index,
     _export_nuget_index,
+    _export_workbench_relationship_index,
     migrate,
 )
 from security_evidence_v2 import (  # noqa: E402
@@ -771,6 +776,23 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
             # whole branch, not only freshly scanned variants.
             payload["scan"] = transport_security_row(dict(payload.get("scan") or {}))
             payload["current"] = transport_security_row(dict(payload.get("current") or {}))
+            analysis_manifest: dict[str, Any] = {}
+            analysis_path_for_contract = str((payload.get("analysis") or {}).get("path") or "")
+            if analysis_path_for_contract:
+                manifest_file = candidate / safe_relpath(analysis_path_for_contract) / "manifest.json"
+                if manifest_file.is_file():
+                    analysis_manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+            report_for_contract = (
+                payload.get("current", {}).get("report_json")
+                if isinstance(payload.get("current"), dict) and isinstance(payload.get("current", {}).get("report_json"), dict)
+                else payload.get("scan", {}).get("report_json") if isinstance(payload.get("scan"), dict) else {}
+            )
+            payload["observations"] = observation_projection.build_variant_observation_contract(
+                analysis_manifest, report_for_contract if isinstance(report_for_contract, dict) else {}
+            )
+            payload["projection"] = observation_projection.build_projection_descriptor(
+                analysis_manifest, report_for_contract if isinstance(report_for_contract, dict) else {}
+            )
             current = current_rows[variant_id]
             # Successful scans were exported from this DB and already have current/scan
             # payloads. For unchanged variants keep the immutable original scan context.
@@ -1063,6 +1085,7 @@ def rebuild_candidate_indexes(
     previous_index: dict[str, Any],
     scan_context: dict[str, Any],
     osv_coverage: dict[str, Any],
+    definition_provenance_entry: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     candidate.mkdir(parents=True, exist_ok=True)
     (candidate / "indexes").mkdir(exist_ok=True)
@@ -1073,6 +1096,7 @@ def rebuild_candidate_indexes(
         ipc_entry, ipc_count = _export_ipc_index(db, candidate)
         component_entry, component_count = _export_global_table(db, candidate, "plugin_security_dependency_components", "dependency-components")
         advisory_entry, advisory_count = _export_global_table(db, candidate, "plugin_security_dependency_advisory_matches", "advisories")
+        workbench_relationship_entry, workbench_relationship_counts = _export_workbench_relationship_index(db, candidate)
         plugins_entry, artifacts_entry, current_count, terminal_count, historical_count, analysis_count, artifact_count = _build_plugins_artifacts_indexes(candidate)
         indexes = {
             "identities": identity_entry,
@@ -1082,7 +1106,10 @@ def rebuild_candidate_indexes(
             "ipc": ipc_entry,
             "dependencyComponents": component_entry,
             "advisories": advisory_entry,
+            "workbenchRelationships": workbench_relationship_entry,
         }
+        if definition_provenance_entry:
+            indexes["definitionProvenance"] = dict(definition_provenance_entry)
         base_revision = ""
         if table_exists(db, "catalog_meta"):
             row = db.execute("SELECT value FROM catalog_meta WHERE key IN ('catalog_base_revision','base_revision') ORDER BY CASE key WHEN 'catalog_base_revision' THEN 0 ELSE 1 END LIMIT 1").fetchone()
@@ -1136,6 +1163,8 @@ def rebuild_candidate_indexes(
             "artifactAnalysisRevision": scan_context.get("artifactAnalysisRevision", ""),
             "sourceAnalysisRevision": scan_context.get("sourceAnalysisRevision", ""),
             "advisoryRevision": scan_context.get("advisoryRevision", ""),
+            "observationContractRevision": observation_projection.contract_revision(),
+            "projectionContractRevision": observation_projection.projection_contract_revision(),
             "securityRevision": security_revision,
             "evidenceRevision": evidence_revision,
             "previousCatalogRevision": str(previous_revisions.get("catalogRevision") or ""),
@@ -1152,6 +1181,7 @@ def rebuild_candidate_indexes(
             "ipcProviders": ipc_count,
             "dependencyComponents": component_count,
             "advisories": advisory_count,
+            "workbenchRelationshipObjects": sum(workbench_relationship_counts.get(k, 0) for k in ("endpoints", "components", "advisories")),
         },
         "indexes": indexes,
         "publication": {
@@ -1275,6 +1305,72 @@ def _dependency_diagnostics(database: Path) -> dict[str, Any]:
             "nugetMissingVersionObservations": missing,
             "ipcUnresolvedConsumerChannels": unresolved_ipc,
         }
+
+
+def materialize_definition_provenance_index(candidate: Path, frozen_definitions: Path | None) -> dict[str, Any]:
+    """Publish exact frozen Definition/rule lineage for read-only DeltaScope inspection."""
+    path = candidate / "indexes" / "definition-provenance.json"
+    if frozen_definitions is None:
+        path.unlink(missing_ok=True)
+        return {}
+    descriptor = deltascope_provenance.write_definition_provenance(frozen_definitions.resolve(), path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    errors = deltascope_provenance.validate_definition_provenance(payload)
+    if errors:
+        path.unlink(missing_ok=True)
+        raise RuntimeError("DeltaScope Definition provenance failed validation: " + "; ".join(errors))
+    descriptor["path"] = "indexes/definition-provenance.json"
+    return descriptor
+
+
+def materialize_srl_reprojection_sidecar(candidate: Path, frozen_definitions: Path | None) -> dict[str, Any]:
+    """Materialize non-authoritative Phase-10 SRL projections from retained evidence.
+
+    This sidecar never replaces current findings while the frozen Definition descriptor
+    keeps productionRuleEvaluationEnabled false.  It is nevertheless publishable with
+    Evidence-v2 so a pure rule change can produce a new, reviewable projection without
+    opening plugin artifacts.
+    """
+    if frozen_definitions is None:
+        shutil.rmtree(candidate / "rule-projections", ignore_errors=True)
+        return {"enabled": False, "reason": "no frozen Definitions root supplied"}
+    frozen_definitions = frozen_definitions.resolve()
+    definitions_index = json.loads((frozen_definitions / "index.json").read_text(encoding="utf-8"))
+    descriptor = definitions_index.get("srlDefinitionPacks") if isinstance(definitions_index.get("srlDefinitionPacks"), dict) else {}
+    if not descriptor:
+        shutil.rmtree(candidate / "rule-projections", ignore_errors=True)
+        return {"enabled": False, "reason": "frozen Definitions contain no SRL Definition Pack descriptor"}
+    validation = definition_packs.verify_frozen(frozen_definitions, descriptor)
+    if not validation.get("ok"):
+        raise RuntimeError("frozen SRL Definition Packs failed verification: " + "; ".join(validation.get("errors") or []))
+    compiled = definition_packs.load_frozen_ruleset(frozen_definitions, descriptor)
+    plan = rule_reprojection.plan_reprojection(candidate, compiled)
+    if not plan.get("auditOk"):
+        raise RuntimeError(
+            f"SRL rule-only reprojection failed closed with {int(plan.get('auditErrorVariants') or 0)} evidence audit error(s)"
+        )
+    output = candidate / "rule-projections"
+    index = rule_reprojection.materialize_projection_set(output, plan)
+    sidecar_validation = rule_reprojection.verify_projection_set(output)
+    if not sidecar_validation.get("ok"):
+        raise RuntimeError("materialized SRL projection sidecar failed verification: " + "; ".join(sidecar_validation.get("errors") or []))
+    return {
+        "enabled": True,
+        "schema": rule_reprojection.PROJECTION_SET_SCHEMA,
+        "path": "rule-projections/index.json",
+        "bytes": (output / "index.json").stat().st_size,
+        "sha256": sha256_file(output / "index.json"),
+        "projectionSetRevision": str(index.get("projectionSetRevision") or ""),
+        "ruleSetRevision": str(index.get("ruleSetRevision") or ""),
+        "sourceEvidenceRevision": str(index.get("sourceEvidenceRevision") or ""),
+        "sourceEvidenceIndexSha256": str(index.get("sourceEvidenceIndexSha256") or ""),
+        "checkedVariants": int(plan.get("checkedVariants") or 0),
+        "reprojectedVariants": int(plan.get("reprojectedVariants") or 0),
+        "reanalysisRequiredVariants": int(plan.get("reanalysisRequiredVariants") or 0),
+        "productionRuleEvaluationEnabled": False,
+        "productionWriteBack": False,
+        "validation": sidecar_validation,
+    }
 
 
 def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
@@ -1651,7 +1747,12 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "mode": advisory_mode,
         "queryGate": "pass" if (not expected_osv or queried_osv >= expected_osv) else "fail",
     }
-    root_index = rebuild_candidate_indexes(candidate, work_database, previous_index, scan_context, osv_coverage)
+    frozen_definitions_arg = getattr(args, "frozen_definitions", None)
+    frozen_definitions = frozen_definitions_arg.resolve() if frozen_definitions_arg else None
+    definition_provenance = materialize_definition_provenance_index(candidate, frozen_definitions)
+    root_index = rebuild_candidate_indexes(
+        candidate, work_database, previous_index, scan_context, osv_coverage, definition_provenance or None
+    )
     queue_state_changed = False
     if queue_enabled and queue_state is not None:
         queue_path = candidate / "scanner-queue.json"
@@ -1665,6 +1766,10 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         }
         write_json(candidate / "index.json", root_index)
         queue_state_changed = scan_queue.canonical(queue_state) != queue_state_before
+    srl_reprojection = materialize_srl_reprojection_sidecar(candidate, frozen_definitions)
+    if srl_reprojection.get("enabled"):
+        root_index["srlRuleProjections"] = {key: value for key, value in srl_reprojection.items() if key != "validation"}
+        write_json(candidate / "index.json", root_index)
     snapshot_validation = validate_snapshot(candidate, require_no_orphans=True)
     write_json(candidate / "validation-report.json", snapshot_validation)
     if not snapshot_validation.get("ok"):
@@ -1693,10 +1798,19 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
 
     previous_revisions = previous_index.get("revisions") or {}
     revisions = root_index.get("revisions") or {}
+    previous_srl_projection = previous_index.get("srlRuleProjections") if isinstance(previous_index.get("srlRuleProjections"), dict) else {}
+    projection_changed = bool(srl_reprojection.get("enabled")) and (
+        str(srl_reprojection.get("projectionSetRevision") or "") != str(previous_srl_projection.get("projectionSetRevision") or "")
+        or str(srl_reprojection.get("ruleSetRevision") or "") != str(previous_srl_projection.get("ruleSetRevision") or "")
+    )
+    previous_provenance = (previous_index.get("indexes") or {}).get("definitionProvenance") if isinstance(previous_index.get("indexes"), dict) else {}
+    if not isinstance(previous_provenance, dict):
+        previous_provenance = {}
+    provenance_changed = str((definition_provenance or {}).get("provenanceRevision") or "") != str(previous_provenance.get("provenanceRevision") or "")
     publication_required = any(
         str(revisions.get(key) or "") != str(previous_revisions.get(key) or "")
         for key in ("catalogRevision", "securityRevision", "evidenceRevision", "baseRevision")
-    ) or queue_state_changed
+    ) or queue_state_changed or projection_changed or provenance_changed
     result = {
         "schema": PIPELINE_SCHEMA,
         "generatedAtUtc": utc_now(),
@@ -1729,6 +1843,11 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "counts": root_index.get("counts") or {},
             "sync": sync_report,
             "validation": snapshot_validation,
+        },
+        "srlReprojection": srl_reprojection,
+        "definitionProvenance": {
+            "descriptor": definition_provenance,
+            "changed": provenance_changed,
         },
         "marketplace": marketplace_report,
         "queue": {
@@ -1784,6 +1903,7 @@ def main() -> int:
     parser.add_argument("--evidence-index-url", required=True)
     parser.add_argument("--skip-marketplace", action="store_true", help="Do not compile/publish the Omega client DB from the continuous scanner")
     parser.add_argument("--frozen-advisories", type=Path, help="Definitions/osv-advisories.json frozen at the daily boundary")
+    parser.add_argument("--frozen-definitions", type=Path, help="Frozen Daily Definitions root used for non-production SRL rule-only reprojection")
     parser.add_argument("--catalog-revision", default="", help="Canonical JSON catalog revision used for this worker")
     parser.add_argument("--definitions-revision", default="", help="Frozen Definitions revision used for this worker")
     parser.add_argument("--scanner-revision", default="", help="Frozen self-contained worker bundle revision")

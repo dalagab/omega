@@ -73,6 +73,28 @@ class AnalysisRevisionTests(unittest.TestCase):
             self.assertEqual(first["artifactAnalysisRevision"], second["artifactAnalysisRevision"])
             self.assertEqual(first["sourceAnalysisRevision"], second["sourceAnalysisRevision"])
 
+    def test_engine_version_bump_does_not_change_narrow_analysis_revisions(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-analysis-revision-version-") as td:
+            repo = self.copy_analysis_tree(Path(td))
+            first = analysis_revision.compute(repo)
+            sigmascope = repo / "tools/catalog/sigmascope.py"
+            text = sigmascope.read_text(encoding="utf-8")
+            text = text.replace('SIGMASCOPE_VERSION = "2.15.0"', 'SIGMASCOPE_VERSION = "99.99.99"')
+            sigmascope.write_text(text, encoding="utf-8")
+            second = analysis_revision.compute(repo)
+            self.assertEqual(first["artifactAnalysisRevision"], second["artifactAnalysisRevision"])
+            self.assertEqual(first["sourceAnalysisRevision"], second["sourceAnalysisRevision"])
+
+    def test_capability_registry_change_changes_only_source_revision(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-analysis-revision-capabilities-") as td:
+            repo = self.copy_analysis_tree(Path(td))
+            first = analysis_revision.compute(repo)
+            registry = repo / "security-definitions/capabilities/registry.json"
+            registry.write_text(registry.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+            second = analysis_revision.compute(repo)
+            self.assertEqual(first["artifactAnalysisRevision"], second["artifactAnalysisRevision"])
+            self.assertNotEqual(first["sourceAnalysisRevision"], second["sourceAnalysisRevision"])
+
 
 if __name__ == "__main__":
     unittest.main()

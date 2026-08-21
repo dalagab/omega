@@ -1,7 +1,8 @@
 # Secondary security definitions
 
-This tree is the small, reviewable source-controlled input surface for SigmaScope's optional secondary security engines. Everything is supplemental evidence; it never replaces SigmaScope severity, capability, artifact identity, source attribution, or review-coverage logic.
+This tree is SigmaScope's small, reviewable source-controlled Definitions input surface. Everything is supplemental evidence; it never replaces SigmaScope severity, capability, artifact identity, source attribution, or review-coverage logic.
 
+- `packs/`: reviewed/experimental/local SRL Definition Pack source. Daily compilation freezes exact pack provenance, fixtures and active compiled rules without letting source YAML float at worker runtime.
 - `yara/`: reviewed first-party/curated YARA rules and the mandatory provenance/false-positive policy. Rules are disabled unless their metadata explicitly enables them after review.
 - `clamav/`: documentation only. Official CVD/CLD databases are refreshed only at the daily Definitions boundary and transported as content-addressed release assets rather than committed to Git.
 

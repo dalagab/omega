@@ -30,11 +30,17 @@ from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 TOOLS_DIR = SCRIPT_DIR.parent
+SECURITY_DIR = TOOLS_DIR / "security"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+if str(SECURITY_DIR) not in sys.path:
+    sys.path.insert(0, str(SECURITY_DIR))
 
 import analysis_revision  # noqa: E402
+import capability_registry  # noqa: E402
 import collect_public_advisories  # noqa: E402
+import definition_packs  # noqa: E402
+import srl_migration_parity  # noqa: E402
 import sigmascope  # noqa: E402
 import secondary_security_assets  # noqa: E402
 
@@ -44,7 +50,7 @@ FORMAT_VERSION = 1
 WORKER_BUNDLE_SCHEMA = "omega.sigmascope.worker-bundle.v1"
 WORKER_BUNDLE_PATH = "worker"
 WORKER_BUNDLE_DIRS = ("tools/catalog", "tools/security")
-WORKER_BUNDLE_EXTRA_FILES = ("sources/source-overrides.json",)
+WORKER_BUNDLE_EXTRA_FILES = ("sources/source-overrides.json", "security-definitions/capabilities/registry.json", "tools/requirements-security.txt")
 
 SECONDARY_SECURITY_SCHEMA = "omega.secondary-security-definitions.v2"
 SECONDARY_SECURITY_PATH = "secondary-security"
@@ -74,6 +80,10 @@ RULE_SET_FILES = (
     "tools/catalog/source_resolution.py",
     "tools/catalog/public_git_source.py",
     "tools/catalog/source_stability.py",
+    "tools/catalog/plugin_profile.py",
+    "tools/catalog/capability_registry.py",
+    "security-definitions/capabilities/registry.json",
+    "tools/requirements-security.txt",
 )
 
 
@@ -594,6 +604,7 @@ def definitions_revision(
     *, scanner_version: str, scanner_revision: str, scanner_rule_revision: str, fingerprints: dict[str, str],
     artifact_analysis_revision: str, source_analysis_revision: str, source_observation_revision: str,
     osv_document: dict[str, Any], reputation: dict[str, Any], secondary_security: dict[str, Any],
+    srl_definition_packs: dict[str, Any],
 ) -> str:
     semantic = {
         "schema": SCHEMA,
@@ -608,6 +619,14 @@ def definitions_revision(
         "osv": _semantic_osv(osv_document),
         "reputation": reputation,
         "secondarySecurity": _secondary_security_semantic(secondary_security),
+        "srlDefinitionPacks": {
+            "schema": str(srl_definition_packs.get("schema") or ""),
+            "definitionPackRevision": str(srl_definition_packs.get("definitionPackRevision") or ""),
+            "ruleSetRevision": str(srl_definition_packs.get("ruleSetRevision") or ""),
+            "packCount": int(srl_definition_packs.get("packCount") or 0),
+            "activeRuleCount": int(srl_definition_packs.get("activeRuleCount") or 0),
+            "totalRuleCount": int(srl_definition_packs.get("totalRuleCount") or 0),
+        },
     }
     return f"defs-v1-{sha256_bytes(canonical(semantic))[:16]}"
 
@@ -668,6 +687,7 @@ def build_snapshot(
     source_observations_input: Path | None = None,
     secondary_security_input: Path | None = None,
     secondary_security_asset_manifest: Path | None = None,
+    definition_packs_input: Path | None = None,
     timeout: float = 20.0,
     max_packages: int = 2000,
 ) -> dict[str, Any]:
@@ -688,6 +708,65 @@ def build_snapshot(
     )
     secondary_security_document = json.loads((output / str(secondary_security_descriptor["path"])).read_text(encoding="utf-8"))
     artifact_analysis_revision = bind_artifact_analysis_revision(artifact_code_revision, str(secondary_security_descriptor["revision"]))
+    srl_definition_packs_descriptor = definition_packs.freeze_pack_root(
+        definition_packs_input.resolve() if definition_packs_input is not None else repo_root / "security-definitions" / "packs",
+        output,
+        include_local=False,
+    )
+    # Phase 7 keeps production SRL projection disabled, but once any migrated primitive
+    # or compound rule is present the Daily Definitions boundary must prove the complete
+    # migration slice: retained staticPatternMatches -> primitive facts -> legacy compound
+    # finding payloads.  A partial migration fails closed.  An empty/custom pack root
+    # remains valid for tests and pre-migration tooling.
+    frozen_ruleset = definition_packs.load_frozen_ruleset(output, srl_definition_packs_descriptor)
+    active_rule_ids = {
+        str(rule.get("id") or "")
+        for rule in frozen_ruleset.get("rules") or []
+        if isinstance(rule, dict)
+    }
+    migration_rule_ids = set(srl_migration_parity.MIGRATED_FINDING_IDS) | set(srl_migration_parity.MIGRATED_PRIMITIVE_RULE_IDS)
+    migrated_present = active_rule_ids.intersection(migration_rule_ids)
+    parity_path = output / "srl" / "migration-parity.json"
+    if migrated_present:
+        parity_report = srl_migration_parity.run_compound_parity(frozen_ruleset)
+        if not parity_report.get("ok"):
+            raise RuntimeError(
+                f"Phase-7 SRL migration parity failed with {parity_report.get('mismatchCount', 0)} mismatch(es)"
+            )
+        parity_status = "passed"
+    else:
+        parity_report = {
+            "schema": srl_migration_parity.PARITY_SCHEMA,
+            "scope": "phase7-static-primitives-and-core-compound-correlations",
+            "ruleSetRevision": str(frozen_ruleset.get("ruleSetRevision") or ""),
+            "migratedFindingIds": list(srl_migration_parity.MIGRATED_FINDING_IDS),
+            "migratedPrimitiveRuleIds": list(srl_migration_parity.MIGRATED_PRIMITIVE_RULE_IDS),
+            "primitiveFactIds": list(srl_migration_parity.PRIMITIVE_FACT_IDS),
+            "primitiveCasesChecked": 0,
+            "primitiveMismatchCount": 0,
+            "casesChecked": 0,
+            "mismatchCount": 0,
+            "ok": True,
+            "status": "not-applicable",
+            "productionRuleEvaluationEnabled": False,
+            "note": "No Phase-7 migrated primitive/compound rules are active in this custom Definition Pack set.",
+        }
+        parity_status = "not-applicable"
+    parity_path.write_text(json.dumps(parity_report, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    srl_definition_packs_descriptor["migrationParity"] = {
+        "schema": srl_migration_parity.PARITY_SCHEMA,
+        "path": "srl/migration-parity.json",
+        "sha256": sha256_file(parity_path),
+        "status": parity_status,
+        "ok": bool(parity_report.get("ok")),
+        "casesChecked": int(parity_report.get("casesChecked") or 0),
+        "mismatchCount": int(parity_report.get("mismatchCount") or 0),
+        "migratedFindingIds": list(parity_report.get("migratedFindingIds") or []),
+        "migratedPrimitiveRuleIds": list(parity_report.get("migratedPrimitiveRuleIds") or []),
+        "primitiveCasesChecked": int(parity_report.get("primitiveCasesChecked") or 0),
+        "primitiveMismatchCount": int(parity_report.get("primitiveMismatchCount") or 0),
+        "ruleSetRevision": str(parity_report.get("ruleSetRevision") or ""),
+    }
 
     evidence_index_path = evidence_root / "index.json"
     evidence_index = json.loads(evidence_index_path.read_text(encoding="utf-8")) if evidence_index_path.is_file() else {}
@@ -751,6 +830,24 @@ def build_snapshot(
     reputation_path = output / "reputation.json"
     reputation_path.write_text(json.dumps(reputation, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
 
+    # Freeze the shared capability vocabulary as an explicit Definitions payload as
+    # well as inside the immutable worker bundle. This lets tooling/clients identify
+    # the exact vocabulary revision without treating Python code as the data source.
+    source_capability_registry_path = repo_root / "security-definitions/capabilities/registry.json"
+    capability_registry_document = capability_registry.load_registry(source_capability_registry_path)
+    capability_output_path = output / "capabilities" / "registry.json"
+    capability_output_path.parent.mkdir(parents=True, exist_ok=True)
+    capability_output_path.write_bytes(source_capability_registry_path.read_bytes())
+    capability_registry_descriptor = {
+        "schema": str(capability_registry_document.get("schema") or ""),
+        "path": "capabilities/registry.json",
+        "sha256": sha256_file(capability_output_path),
+        "revision": str(capability_registry_document.get("revision") or ""),
+        "version": int(capability_registry_document.get("version") or 0),
+        "capabilityCount": len(capability_registry_document.get("capabilities") or []),
+        "categoryCount": len(capability_registry_document.get("categories") or []),
+    }
+
     revision = definitions_revision(
         scanner_version=sigmascope.SCANNER_VERSION,
         scanner_revision=scanner_revision,
@@ -762,6 +859,7 @@ def build_snapshot(
         osv_document=document,
         reputation=reputation,
         secondary_security=secondary_security_document,
+        srl_definition_packs=srl_definition_packs_descriptor,
     )
     advisory_revision = f"osv-v1-{sha256_bytes(canonical(_semantic_osv(document)))[:16]}"
     index = {
@@ -798,7 +896,9 @@ def build_snapshot(
             "sha256": sha256_file(reputation_path),
             "feeds": 0,
         },
+        "capabilityRegistry": capability_registry_descriptor,
         "secondarySecurity": secondary_security_descriptor,
+        "srlDefinitionPacks": srl_definition_packs_descriptor,
     }
     (output / "index.json").write_text(json.dumps(index, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     return index
@@ -824,9 +924,50 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
         actual = sha256_file(path)
         if actual != expected:
             errors.append(f"frozen scanner rule file hash mismatch: {rel}")
+    capability_descriptor = index.get("capabilityRegistry") if isinstance(index.get("capabilityRegistry"), dict) else {}
+    capability_rel = str(capability_descriptor.get("path") or "")
+    capability_path = definitions_root / capability_rel
+    if not capability_rel or not capability_path.is_file():
+        errors.append("frozen capability registry is missing")
+    elif sha256_file(capability_path) != str(capability_descriptor.get("sha256") or ""):
+        errors.append("frozen capability registry hash mismatch")
+    else:
+        try:
+            frozen_capability_registry = capability_registry.load_registry(capability_path)
+            if str(frozen_capability_registry.get("revision") or "") != str(capability_descriptor.get("revision") or ""):
+                errors.append("frozen capability registry revision mismatch")
+            if len(frozen_capability_registry.get("capabilities") or []) != int(capability_descriptor.get("capabilityCount") or 0):
+                errors.append("frozen capability registry capability count mismatch")
+        except Exception as exc:
+            errors.append(f"frozen capability registry invalid: {type(exc).__name__}: {exc}")
+
     secondary_descriptor = index.get("secondarySecurity") if isinstance(index.get("secondarySecurity"), dict) else {}
     secondary_security_document, secondary_errors = verify_secondary_security_snapshot(definitions_root, secondary_descriptor)
     errors.extend(secondary_errors)
+
+    srl_descriptor = index.get("srlDefinitionPacks") if isinstance(index.get("srlDefinitionPacks"), dict) else {}
+    srl_validation = definition_packs.verify_frozen(definitions_root, srl_descriptor)
+    errors.extend(srl_validation.get("errors") or [])
+    parity_descriptor = srl_descriptor.get("migrationParity") if isinstance(srl_descriptor.get("migrationParity"), dict) else {}
+    parity_rel = str(parity_descriptor.get("path") or "")
+    parity_path = definitions_root / parity_rel
+    if not parity_rel or not parity_path.is_file():
+        errors.append("SRL migration parity report is missing")
+    elif sha256_file(parity_path) != str(parity_descriptor.get("sha256") or ""):
+        errors.append("SRL migration parity report SHA-256 mismatch")
+    else:
+        try:
+            parity_report = json.loads(parity_path.read_text(encoding="utf-8"))
+            if parity_report.get("schema") != srl_migration_parity.PARITY_SCHEMA:
+                errors.append("SRL migration parity report schema is unsupported")
+            if not bool(parity_report.get("ok")) or not bool(parity_descriptor.get("ok")):
+                errors.append("SRL migration parity report did not pass")
+            if str(parity_report.get("ruleSetRevision") or "") != str(srl_descriptor.get("ruleSetRevision") or ""):
+                errors.append("SRL migration parity rule-set revision mismatch")
+            if int(parity_report.get("mismatchCount") or 0) != int(parity_descriptor.get("mismatchCount") or 0):
+                errors.append("SRL migration parity mismatch count descriptor disagreement")
+        except Exception as exc:
+            errors.append(f"SRL migration parity report unreadable: {type(exc).__name__}: {exc}")
 
     payloads: dict[str, dict[str, Any]] = {}
     for key in ("osv", "reputation"):
@@ -899,6 +1040,7 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
             osv_document=payloads["osv"],
             reputation=payloads["reputation"],
             secondary_security=secondary_security_document,
+            srl_definition_packs=srl_descriptor,
         )
         if expected_definitions != str(index.get("definitionsRevision") or ""):
             errors.append("Definitions revision does not match frozen semantic payload")
@@ -914,6 +1056,9 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
         "scannerBundleSha256": str((index.get("scannerBundle") or {}).get("sha256") or ""),
         "advisoryRevision": str(index.get("advisoryRevision") or ""),
         "secondarySecurityRevision": str(secondary_descriptor.get("revision") or ""),
+        "capabilityRegistryRevision": str(capability_descriptor.get("revision") or ""),
+        "srlDefinitionPackRevision": str(srl_descriptor.get("definitionPackRevision") or ""),
+        "srlRuleSetRevision": str(srl_descriptor.get("ruleSetRevision") or ""),
         "builtFromDevCommit": str(index.get("builtFromDevCommit") or ""),
         "errors": errors,
     }
@@ -931,6 +1076,7 @@ def main() -> int:
     build.add_argument("--source-observations", dest="source_observations_input", type=Path)
     build.add_argument("--secondary-security-input", type=Path)
     build.add_argument("--secondary-security-asset-manifest", type=Path)
+    build.add_argument("--definition-packs-input", type=Path, help="Optional Definition Pack root override for local validation/tests; Daily builds default to security-definitions/packs.")
     build.add_argument("--timeout", type=float, default=20.0)
     build.add_argument("--max-packages", type=int, default=2000)
     verify = sub.add_parser("verify")
@@ -946,6 +1092,7 @@ def main() -> int:
             source_observations_input=args.source_observations_input,
             secondary_security_input=args.secondary_security_input,
             secondary_security_asset_manifest=args.secondary_security_asset_manifest,
+            definition_packs_input=args.definition_packs_input,
             timeout=args.timeout,
             max_packages=args.max_packages,
         )

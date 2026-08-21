@@ -29,6 +29,7 @@ import variant_lifecycle
 import catalog_json_store
 import compile_marketplace_snapshot
 import definitions_snapshot
+import definition_packs
 import validate_marketplace_catalog
 import developer_view as developer_view
 from migrate_security_evidence_v2 import migrate
@@ -44,6 +45,7 @@ from production_sigmascope_v2_pipeline import (
     _build_plugins_artifacts_indexes,
     _merge_scan_reports,
     rebuild_candidate_indexes,
+    materialize_srl_reprojection_sidecar,
 )
 from security_evidence_v2 import canonical_json_bytes, read_record_dataset, sha256_bytes, validate_snapshot, write_record_dataset
 
@@ -274,6 +276,118 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_scanner_version',?)", (sigmascope.SCANNER_VERSION,))
             db.commit()
         return database, variant_id, plugin_id
+
+    def _make_reprojection_compatible(self, database: Path) -> None:
+        report = {
+            "schema": "omega.plugin-security.scan.v1",
+            "artifactAnalysisRevision": "artifact-analysis-fixture",
+            "sourceAnalysisRevision": "source-analysis-fixture",
+            "dependencyIntelligence": {
+                "staticPatternMatchContractVersion": 1,
+                "staticPatternMatches": [
+                    {
+                        "origin": "artifact",
+                        "pattern": "System.Net.Http.HttpClient",
+                        "evidenceLabel": "metadata:Fixture.dll",
+                        "evidence": ["metadata:Fixture.dll: System.Net.Http.HttpClient"],
+                    },
+                    {
+                        "origin": "artifact",
+                        "pattern": "Process.Start",
+                        "evidenceLabel": "metadata:Fixture.dll",
+                        "evidence": ["metadata:Fixture.dll: Process.Start"],
+                    },
+                ],
+            },
+        }
+        encoded = json.dumps(report, separators=(",", ":"))
+        with closing(sqlite3.connect(database)) as db:
+            db.execute("UPDATE plugin_security_scans SET report_json=? WHERE scan_id=9001", (encoded,))
+            db.execute("UPDATE plugin_security_current SET report_json=? WHERE scan_id=9001", (encoded,))
+            db.commit()
+
+    def _frozen_srl_definitions(self, root: Path) -> Path:
+        definitions = root / "definitions-srl"
+        definitions.mkdir(parents=True, exist_ok=True)
+        descriptor = definition_packs.freeze_pack_root(
+            common.ROOT / "security-definitions" / "packs", definitions, include_local=False
+        )
+        (definitions / "index.json").write_text(
+            json.dumps({
+                "schema": "omega.definitions.v1",
+                "definitionsRevision": "defs-v1-phase10-fixture",
+                "srlDefinitionPacks": descriptor,
+            }, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        return definitions
+
+    def test_phase10_srl_sidecar_is_hash_pinned_nonproduction_and_snapshot_valid(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-srl-sidecar-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            self._make_reprojection_compatible(database)
+            evidence = root / "evidence"
+            migrate(database, evidence, reset=True)
+            definitions = self._frozen_srl_definitions(root)
+
+            descriptor = materialize_srl_reprojection_sidecar(evidence, definitions)
+            self.assertTrue(descriptor["enabled"], descriptor)
+            self.assertFalse(descriptor["productionRuleEvaluationEnabled"])
+            self.assertFalse(descriptor["productionWriteBack"])
+            root_index = json.loads((evidence / "index.json").read_text(encoding="utf-8"))
+            root_index["srlRuleProjections"] = {key: value for key, value in descriptor.items() if key != "validation"}
+            (evidence / "index.json").write_text(json.dumps(root_index, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+
+            validation = validate_snapshot(evidence, require_no_orphans=True)
+            self.assertTrue(validation["ok"], validation["errors"])
+            projection_index = json.loads((evidence / "rule-projections" / "index.json").read_text(encoding="utf-8"))
+            self.assertEqual(1, projection_index["counts"]["reprojectedVariants"])
+            projection_path = evidence / "rule-projections" / projection_index["variants"][0]["path"]
+            projection = json.loads(projection_path.read_text(encoding="utf-8"))
+            self.assertEqual(variant_id, projection["variantId"])
+            self.assertIn("compound.network-execute", [item["ruleId"] for item in projection["findings"]])
+            self.assertFalse(projection["productionWriteBack"])
+
+    def test_phase10_snapshot_validation_rejects_projection_tampering_and_orphans(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-srl-sidecar-tamper-") as td:
+            root = Path(td)
+            database, _variant_id, _ = self.make_catalog_with_security(root)
+            self._make_reprojection_compatible(database)
+            evidence = root / "evidence"
+            migrate(database, evidence, reset=True)
+            definitions = self._frozen_srl_definitions(root)
+            descriptor = materialize_srl_reprojection_sidecar(evidence, definitions)
+            root_index = json.loads((evidence / "index.json").read_text(encoding="utf-8"))
+            root_index["srlRuleProjections"] = {key: value for key, value in descriptor.items() if key != "validation"}
+            (evidence / "index.json").write_text(json.dumps(root_index, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            projection_index = json.loads((evidence / "rule-projections" / "index.json").read_text(encoding="utf-8"))
+            projection_path = evidence / "rule-projections" / projection_index["variants"][0]["path"]
+            projection_path.write_text(projection_path.read_text(encoding="utf-8") + " ", encoding="utf-8")
+            validation = validate_snapshot(evidence, require_no_orphans=True)
+            self.assertFalse(validation["ok"])
+            self.assertTrue(any("srlRuleProjections" in item and "sha256 mismatch" in item for item in validation["errors"]), validation["errors"])
+
+            # Re-materializing repairs the set; an undeclared leftover must still fail closed.
+            descriptor = materialize_srl_reprojection_sidecar(evidence, definitions)
+            root_index = json.loads((evidence / "index.json").read_text(encoding="utf-8"))
+            root_index["srlRuleProjections"] = {key: value for key, value in descriptor.items() if key != "validation"}
+            (evidence / "index.json").write_text(json.dumps(root_index, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            orphan = evidence / "rule-projections" / "variants" / "999999.json"
+            orphan.write_text("{}\n", encoding="utf-8")
+            validation = validate_snapshot(evidence, require_no_orphans=True)
+            self.assertFalse(validation["ok"])
+            self.assertTrue(any("orphan SRL rule projection file" in item for item in validation["errors"]), validation["errors"])
+
+    def test_phase10_missing_frozen_definitions_removes_stale_sidecar(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-srl-sidecar-disabled-") as td:
+            root = Path(td)
+            candidate = root / "candidate"
+            (candidate / "rule-projections").mkdir(parents=True)
+            (candidate / "rule-projections" / "stale.json").write_text("{}\n", encoding="utf-8")
+            result = materialize_srl_reprojection_sidecar(candidate, None)
+            self.assertFalse(result["enabled"])
+            self.assertFalse((candidate / "rule-projections").exists())
 
     def test_daily_marketplace_compiler_reapplies_frozen_definitions_without_artifact_rescan(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-daily-definitions-projection-") as td:
@@ -525,6 +639,44 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 "c" * 64,
             )
             self.assertNotIn("opaqueLegacyEvidence", variant_path.read_text(encoding="utf-8"))
+
+    def test_candidate_synchronization_adapts_legacy_analysis_without_rescan(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-observation-legacy-adapter-") as td:
+            root = Path(td)
+            database, variant_id, _plugin_id = self.make_catalog_with_security(root)
+            candidate = root / "candidate"
+            migrate(database, candidate, reset=True)
+            variant_path = next((candidate / "variants").rglob(f"{variant_id}.json"))
+            payload = json.loads(variant_path.read_text(encoding="utf-8"))
+            analysis_dir = candidate / payload["analysis"]["path"]
+            manifest_path = analysis_dir / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest.pop("observationContract", None)
+            for descriptor in (manifest.get("datasets") or {}).values():
+                if isinstance(descriptor, dict):
+                    for field in ("collection", "collectionSchema", "semanticClass", "srlEligible", "sameRecordSemantics"):
+                        descriptor.pop(field, None)
+            manifest_path.write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            payload.pop("observations", None)
+            payload.pop("projection", None)
+            variant_path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            analysis_files_before = {
+                path.relative_to(candidate).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in analysis_dir.rglob("*") if path.is_file() and path != manifest_path
+            }
+
+            report = synchronize_candidate(candidate, database, set())
+            self.assertGreaterEqual(report["variantsUpdated"], 1)
+            adapted = json.loads(variant_path.read_text(encoding="utf-8"))
+            self.assertEqual("omega.sigmascope.observation-contract.v1", adapted["observations"]["schema"])
+            self.assertTrue(adapted["observations"]["legacyCompatibility"])
+            self.assertEqual("omega.sigmascope.projection-contract.v1", adapted["projection"]["schema"])
+            self.assertEqual(payload["analysis"]["analysisId"], adapted["analysis"]["analysisId"])
+            analysis_files_after = {
+                path.relative_to(candidate).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in analysis_dir.rglob("*") if path.is_file() and path != manifest_path
+            }
+            self.assertEqual(analysis_files_before, analysis_files_after, "compatibility adaptation must not rewrite retained observation bytes")
 
     def test_failed_revalidation_restores_last_known_good_current_pointer(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-retain-") as td:

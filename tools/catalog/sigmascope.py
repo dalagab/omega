@@ -60,13 +60,16 @@ from security_binary_classifier import classify_binary
 from security_component_summary import build_component_summary
 from source_resolution import github_repository_url, public_repository_url, source_candidate_records, source_candidates, source_override_key
 from public_git_source import MAX_GIT_TREE_ENTRIES, PublicGitSource
+from plugin_profile import observe_profile
+from capability_registry import legacy_capability_ids, load_registry
+from behavior_consistency import refresh_behavior_consistency
 from artifact_source_model import (
     MANIFEST_OBSERVATION_SCHEMA, attribution_from_source_result, attribution_key, basis_json, manifest_observation_contract, repository_key, source_revision_key,
 )
 
 
 SIGMASCOPE_NAME = "Sigmascope"
-SIGMASCOPE_VERSION = "2.14.0"
+SIGMASCOPE_VERSION = "2.15.0"
 # Persisted SQLite columns and v1/v2 JSON contracts retain the historical scanner_version name.
 SCANNER_VERSION = SIGMASCOPE_VERSION
 ARTIFACT_ANALYSIS_SCHEMA = "omega.sigmascope.artifact-analysis.v1"
@@ -107,6 +110,7 @@ MAX_MANAGED_REACHABILITY_RECORDS_PER_SCAN = 20_000
 MAX_PERMISSION_CANDIDATES_PER_SCAN = 4_096
 MAX_SOURCE_FILE_RECORDS_PER_SCAN = 2_048
 MAX_NETWORK_ENDPOINT_RECORDS_PER_SCAN = 1_024
+MAX_STATIC_PATTERN_MATCH_RECORDS_PER_SCAN = 4_096
 MAX_CURRENT_DEPENDENCY_ROWS = 2_000_000
 MAX_CURRENT_IPC_ENDPOINT_ROWS = 500_000
 MAX_ADVISORIES = 100_000
@@ -129,6 +133,7 @@ INTELLIGENCE_LIST_LIMITS = {
     "permissionCandidates": MAX_PERMISSION_CANDIDATES_PER_SCAN,
     "sourceFiles": MAX_SOURCE_FILE_RECORDS_PER_SCAN,
     "networkEndpoints": MAX_NETWORK_ENDPOINT_RECORDS_PER_SCAN,
+    "staticPatternMatches": MAX_STATIC_PATTERN_MATCH_RECORDS_PER_SCAN,
 }
 
 PLATFORM_ASSEMBLY_PREFIXES = ("system.", "microsoft.win32.")
@@ -1205,7 +1210,7 @@ def add_managed_call_site(intel: dict, path: str, call: dict, hits: dict[str, li
     _append_intel(intel, "managedCallSites", item, ("origin", "path", "sourceMethodToken", "ilOffset", "opcode", "targetToken"))
 
     if target:
-        add_rule_hits(target, evidence, hits)
+        add_rule_hits(target, evidence, hits, intel)
     declaring = item["targetDeclaringType"]
     name = item["targetName"]
     for prefix, names, permission_id, risk, _confidence, _reason in MANAGED_MEMBER_PERMISSION_MAP:
@@ -1256,7 +1261,7 @@ def apply_managed_metadata(intel: dict, metadata: dict, hits: dict[str, list[str
         full_name = str(type_ref.get("fullName") or "")
         assembly_name = str(type_ref.get("assemblyName") or "")
         add_managed_symbol(intel, path, "type-reference", full_name, "", assembly_name, f"metadata:{path}: TypeRef {full_name}")
-        add_rule_hits(full_name, f"metadata:{path}", hits)
+        add_rule_hits(full_name, f"metadata:{path}", hits, intel)
         for prefix, permission_id, risk, confidence, reason in MANAGED_TYPE_PERMISSION_MAP:
             if full_name == prefix or full_name.startswith(prefix):
                 add_permission_candidate(intel, permission_id, risk, confidence, reason, f"metadata:{path}: {full_name}")
@@ -1267,7 +1272,7 @@ def apply_managed_metadata(intel: dict, metadata: dict, hits: dict[str, list[str
         assembly_name = str(member.get("assemblyName") or "")
         symbol = f"{declaring}.{name}".strip(".")
         add_managed_symbol(intel, path, "member-reference", declaring, name, assembly_name, f"metadata:{path}: MemberRef {symbol}")
-        add_rule_hits(symbol, f"metadata:{path}", hits)
+        add_rule_hits(symbol, f"metadata:{path}", hits, intel)
         for prefix, names, permission_id, risk, confidence, reason in MANAGED_MEMBER_PERMISSION_MAP:
             matches_type = declaring == prefix or (prefix.endswith(".") and declaring.startswith(prefix))
             if matches_type and (names is None or name in names):
@@ -1281,7 +1286,7 @@ def apply_managed_metadata(intel: dict, metadata: dict, hits: dict[str, list[str
         add_dependency(intel, "native-import", library, "", path, "analyzed", f"metadata:{path}: P/Invoke {library}!{entry_point}", "observed")
         add_managed_symbol(intel, path, "pinvoke", library, entry_point or managed_name, "", f"metadata:{path}: ImplMap")
         add_permission_candidate(intel, "native.interop", "High", "High", "Managed metadata contains a P/Invoke map.", f"metadata:{path}: {library}!{entry_point}")
-        add_rule_hits(f"DllImportAttribute {library} {entry_point}", f"metadata:{path}", hits)
+        add_rule_hits(f"DllImportAttribute {library} {entry_point}", f"metadata:{path}", hits, intel)
 
     for call in metadata.get("callSites") or []:
         add_managed_call_site(intel, path, call, hits)
@@ -1323,7 +1328,21 @@ def record_managed_metadata_error(intel: dict, path: str, sha256: str, error: st
     add_dependency(intel, "managed-assembly", Path(path).name, "", path, "not-analyzed", f"metadata:{path}: parse failed: {error[:180]}", "bundled")
 
 
-def add_rule_hits(text: str, evidence_label: str, hits: dict[str, list[str]]) -> None:
+def add_rule_hits(
+    text: str,
+    evidence_label: str,
+    hits: dict[str, list[str]],
+    intel: dict | None = None,
+) -> None:
+    """Record legacy rule hits and the low-level literal observations behind them.
+
+    ``hits`` remains the 2.14-compatible projection input.  ``staticPatternMatches``
+    is the Phase-7 retained observation seam: it records the exact case-insensitive
+    literal that was present plus where it was observed, but does not record the
+    legacy rule ID or any finding/severity conclusion.  SRL can therefore derive
+    stable primitive facts from retained observations without recursively consuming
+    current findings.
+    """
     lowered = text.lower()
     for rule in RULES:
         matched = [p for p in rule.patterns if p.lower() in lowered]
@@ -1334,6 +1353,18 @@ def add_rule_hits(text: str, evidence_label: str, hits: dict[str, list[str]]) ->
             evidence = f"{evidence_label}: {pattern}"
             if evidence not in existing and len(existing) < 8:
                 existing.append(evidence)
+            if intel is not None:
+                _append_intel(
+                    intel,
+                    "staticPatternMatches",
+                    {
+                        "origin": str(intel.get("origin") or ""),
+                        "pattern": pattern,
+                        "evidenceLabel": evidence_label,
+                        "evidence": [evidence],
+                    },
+                    ("origin", "pattern", "evidenceLabel"),
+                )
 
 
 def add_external_path_hits(text: str, evidence_label: str, hits: dict[str, list[str]]) -> None:
@@ -1356,6 +1387,7 @@ def empty_dependency_intelligence(origin: str) -> dict:
     return {
         "schema": "omega.plugin-security.dependencies.v2",
         "origin": origin,
+        "staticPatternMatchContractVersion": 1,
         "imports": [],
         "dependencies": [],
         "dalamudServices": [],
@@ -1368,6 +1400,7 @@ def empty_dependency_intelligence(origin: str) -> dict:
         "permissionCandidates": [],
         "sourceFiles": [],
         "networkEndpoints": [],
+        "staticPatternMatches": [],
         "endpointSummary": {},
         "componentSummary": {},
         "limits": {"truncated": False, "droppedByCollection": {}},
@@ -1665,7 +1698,7 @@ def infer_ipc_consumer_relationship(text: str, start: int, end: int) -> dict:
 
 def scan_source_text(path: str, raw: bytes, text: str, intel: dict, hits: dict[str, list[str]]) -> None:
     evidence_label = f"source:{path}" if intel["origin"] == "source" else f"artifact:{path}"
-    add_rule_hits(text, evidence_label, hits)
+    add_rule_hits(text, evidence_label, hits, intel)
     add_external_path_hits(text, evidence_label, hits)
     add_network_endpoints(intel, text, evidence_label)
     _append_intel(intel, "sourceFiles", {"origin": intel["origin"], "path": path, "sha256": sha256_bytes(raw), "bytes": len(raw)}, ("origin", "path", "sha256"))
@@ -1756,6 +1789,7 @@ def finalize_intelligence(intel: dict) -> dict:
     intel["managedCallSites"].sort(key=lambda x: (x["path"].lower(), x["sourceMethodToken"], int(x["ilOffset"]), x["opcode"], x["targetToken"]))
     intel["managedReachability"].sort(key=lambda x: (x["path"].lower(), x["rootMethodToken"], int(x["depth"]), x["methodToken"]))
     intel["permissionCandidates"].sort(key=lambda x: (x["permissionId"], x["confidence"], x["risk"]))
+    intel["staticPatternMatches"].sort(key=lambda x: (str(x.get("pattern") or "").casefold(), str(x.get("origin") or ""), str(x.get("evidenceLabel") or "").casefold()))
     intel["componentSummary"] = build_component_summary(intel)
     coverage = {"total": len(intel["dependencies"]), "known": 0, "analyzed": 0, "notAnalyzed": 0, "binaryOnly": 0, "externalPlugin": 0, "dynamicallyDownloaded": 0,
                 "requirements": {"required": 0, "soft": 0, "optional": 0, "bundled": 0, "observed": 0, "unknown": 0}}
@@ -1825,7 +1859,7 @@ def apply_binary_classification(intel: dict, classification: dict, hits: dict[st
                 {"origin": intel["origin"], "library": library, "path": path, "entryPoint": "", "managedName": ""},
                 ("origin", "library", "path", "entryPoint"),
             )
-            add_rule_hits(library, f"native-pe:{path}: import {library}", hits)
+            add_rule_hits(library, f"native-pe:{path}: import {library}", hits, intel)
             continue
         for function in functions:
             evidence = f"native-pe:{path}: import {library}!{function}"
@@ -1834,7 +1868,7 @@ def apply_binary_classification(intel: dict, classification: dict, hits: dict[st
                 {"origin": intel["origin"], "library": library, "path": path, "entryPoint": function, "managedName": ""},
                 ("origin", "library", "path", "entryPoint"),
             )
-            add_rule_hits(f"{library} {function}", evidence, hits)
+            add_rule_hits(f"{library} {function}", evidence, hits, intel)
 
 
 def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = None) -> dict:
@@ -1855,7 +1889,7 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
     }
     if not data.startswith(b"PK"):
         text = decoded_views(data[:MAX_ENTRY_SCAN_BYTES])
-        add_rule_hits(text, "artifact", hits)
+        add_rule_hits(text, "artifact", hits, intel)
         add_external_path_hits(text, "artifact", hits)
         # Binary URL strings are retained with low confidence rather than discarded.
         # Endpoint v2 explicitly records their origin, and certificate/source metadata
@@ -2010,7 +2044,7 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
                 scan_source_text(info.filename, sample, text, intel, hits)
             else:
                 text = decoded_views(sample)
-                add_rule_hits(text, f"artifact:{info.filename}", hits)
+                add_rule_hits(text, f"artifact:{info.filename}", hits, intel)
                 add_external_path_hits(text, f"artifact:{info.filename}", hits)
                 # Preserve binary URL-shaped strings as low-confidence endpoint evidence.
                 # Endpoint v2 keeps origin/confidence and filters certificate/source metadata
@@ -2370,8 +2404,8 @@ def _source_manifest_match(
 def _inspect_source_tree(
     source_entries: dict[str, int], read_file, hits: dict[str, list[str]], internal_name: str, plugin_name: str,
     assembly_version: str, *, analyze: bool = True,
-) -> tuple[dict, dict, int, dict]:
-    """Inspect only selected text blobs from immutable source-tree metadata."""
+) -> tuple[dict, dict, int, dict, dict]:
+    """Inspect selected source blobs plus bounded developer profile metadata."""
     intel = empty_dependency_intelligence("source")
     descriptor_paths = [
         path for path in source_entries
@@ -2395,6 +2429,11 @@ def _inspect_source_tree(
 
     manifest = _source_manifest_match(source_entries, read_file, internal_name, plugin_name, assembly_version)
     scope = select_plugin_source_scope(set(source_entries), descriptor_text, internal_name, plugin_name)
+    # `.omega/plugin.yaml` is developer-authored context, not scanner authority. It is
+    # read independently of the plugin build graph because a monorepo profile may live
+    # beside the primary project. Invalid enrichment is retained as diagnostics and
+    # never prevents ordinary source analysis.
+    developer_profile = observe_profile(set(source_entries), read_file, primary_project=str(scope.get("primaryProject") or ""))
     files_scanned = 0
     total_text = 0
     if analyze:
@@ -2403,6 +2442,12 @@ def _inspect_source_tree(
                 break
             if logical_name not in source_entries:
                 continue
+            # `.omega` is developer-provided explanation/profile data. Never feed it
+            # back into independent source-code observations, otherwise a declared URL
+            # or capability explanation could appear to prove itself.
+            normalized_profile_path = logical_name.replace("\\", "/").casefold()
+            if normalized_profile_path.endswith("/.omega/plugin.yaml") or normalized_profile_path in {".omega/plugin.yaml", ".omega/plugin.yml"}:
+                continue
             raw = read_file(logical_name)
             if not raw:
                 continue
@@ -2410,7 +2455,7 @@ def _inspect_source_tree(
             files_scanned += 1
             total_text += len(raw)
     finalize_intelligence(intel)
-    return intel, scope, files_scanned, manifest
+    return intel, scope, files_scanned, manifest, developer_profile
 
 
 def _github_json(url: str, headers: dict[str, str], *, timeout: float = 20.0) -> dict:
@@ -2513,7 +2558,7 @@ def _fetch_source_candidate(
                 if not sha or not tree_sha:
                     raise RuntimeError("GitHub commit response did not provide immutable commit/tree identity")
                 source_entries, _blob_ids, read_file, retrieval_stats = _github_source_tree(api_url, tree_sha, headers)
-                source_intel, scope, files_scanned, manifest = _inspect_source_tree(
+                source_intel, scope, files_scanned, manifest, developer_profile = _inspect_source_tree(
                     source_entries, read_file, ref_hits, internal_name, plugin_name, assembly_version, analyze=analyze,
                 )
                 manifest_repo = github_repository_url(str(manifest.get("repoUrl") or ""))
@@ -2539,6 +2584,7 @@ def _fetch_source_candidate(
                     "treeSha256": tree_sha,
                     "filesScanned": files_scanned,
                     "scope": scope,
+                    "developerProfile": developer_profile,
                     "dependencyIntelligence": source_intel,
                     "retrieval": {
                         "schema": "omega.source-retrieval.v1", "mode": "github-tree-selected-blobs",
@@ -2591,7 +2637,7 @@ def _fetch_public_git_source_candidate(
                 path: MAX_TEXT_SOURCE_BYTES for path in repository.files
                 if Path(path).suffix.lower() in SOURCE_SUFFIXES
             }
-            source_intel, scope, files_scanned, manifest = _inspect_source_tree(
+            source_intel, scope, files_scanned, manifest, developer_profile = _inspect_source_tree(
                 source_entries,
                 lambda path: repository.read_file(path, MAX_TEXT_SOURCE_BYTES),
                 hits,
@@ -2612,6 +2658,7 @@ def _fetch_public_git_source_candidate(
             return {
                 "available": True, "repository": repository.repository, "commit": repository.commit, "branch": repository.branch,
                 "treeSha256": repository.tree_sha, "filesScanned": files_scanned, "scope": scope,
+                "developerProfile": developer_profile,
                 "dependencyIntelligence": intel, "retrieval": retrieval,
                 "provenance": {
                     "schema": "omega.plugin-source-provenance.v1",
@@ -2751,12 +2798,15 @@ def fetch_source(
 
 def merge_dependency_intelligence(*items: dict) -> dict:
     combined = empty_dependency_intelligence("combined")
+    combined["staticPatternMatchContractVersion"] = 0
+    static_pattern_contract_versions: list[int] = []
     source_archives: list[str] = []
     relevant_hashes: list[str] = []
     project_hashes: list[str] = []
     for intel in items:
         if not isinstance(intel, dict):
             continue
+        static_pattern_contract_versions.append(int(intel.get("staticPatternMatchContractVersion") or 0))
         for item in intel.get("imports") or []:
             _append_intel(combined, "imports", dict(item), ("origin", "namespace", "path"))
         for item in intel.get("dependencies") or []:
@@ -2781,6 +2831,8 @@ def merge_dependency_intelligence(*items: dict) -> dict:
             _append_intel(combined, "sourceFiles", dict(item), ("origin", "path", "sha256"))
         for item in intel.get("networkEndpoints") or []:
             _append_intel(combined, "networkEndpoints", dict(item), ("origin", "originType", "url"))
+        for item in intel.get("staticPatternMatches") or []:
+            _append_intel(combined, "staticPatternMatches", dict(item), ("origin", "pattern", "evidenceLabel"))
         fp = intel.get("fingerprints") or {}
         if fp.get("sourceArchiveSha256"):
             source_archives.append(str(fp["sourceArchiveSha256"]))
@@ -2795,6 +2847,9 @@ def merge_dependency_intelligence(*items: dict) -> dict:
                 dropped = combined["limits"]["droppedByCollection"]
                 dropped[collection] = int(dropped.get(collection, 0)) + int(count or 0)
     finalize_intelligence(combined)
+    combined["staticPatternMatchContractVersion"] = (
+        1 if static_pattern_contract_versions and all(version == 1 for version in static_pattern_contract_versions) else 0
+    )
     if source_archives:
         combined["fingerprints"]["sourceArchiveSha256"] = sha256_bytes("\n".join(sorted(source_archives)).encode())
     if relevant_hashes:
@@ -4658,8 +4713,9 @@ def ledger_entry_is_fresh(entry: object, version: str, url: str, now: dt.datetim
         return False
     if str(entry.get("status") or "") != "complete":
         return False
-    if str(entry.get("scannerVersion") or "") != SCANNER_VERSION:
-        return False
+    # Release identity is provenance, not analysis freshness. Narrow artifact/source
+    # analysis revisions own semantic invalidation, so a version-only SigmaScope bump
+    # must not make an unchanged ledger entry stale.
     if str(entry.get("artifactUrl") or "") != url or str(entry.get("assemblyVersion") or "") != version:
         return False
     validated = parse_utc(str(entry.get("lastValidatedAtUtc") or ""))
@@ -4732,7 +4788,8 @@ def due_rows(db: sqlite3.Connection, max_scans: int, rescan_hours: int, names: s
         due = (
             row["current_status"] is None
             or str(row["current_status"]) != "complete"
-            or str(row["current_scanner_version"] or "") != SCANNER_VERSION
+            # Engine release identity alone is not a due reason. Semantic changes
+            # are represented by the typed queue's analysis revisions.
             or str(row["current_artifact_url"] or "") != url
             or str(row["current_assembly_version"] or "") != version
         )
@@ -5684,7 +5741,7 @@ def scan_source_row(
             "plugin": {"internalName": row["internal_name"], "name": row["name"], "author": row["author"], "sourceName": row["source_name"]},
             "assemblyVersion": str(row["assembly_version"] or ""), "artifactChannel": "", "artifactUrl": "", "artifactSha256": "",
             "highestSeverity": "none", "counts": {"informational": 0, "caution": 0, "high": 0, "critical": 0},
-            "capabilities": [], "findings": [], "automation": {"level": "none", "capabilities": [], "findings": []},
+            "capabilities": [], "capabilityIds": [], "capabilityRegistryRevision": "", "findings": [], "automation": {"level": "none", "capabilities": [], "findings": []},
             "dependencyIntelligence": empty_dependency_intelligence("artifact"),
             "source": {"status": "unresolved", "available": False, "repository": "", "commit": "", "branch": "", "treeSha256": "", "filesScanned": 0, "sourceToBinaryVerified": False, "dependencyIntelligence": empty_dependency_intelligence("source"), "candidates": [], "candidateEvidence": [], "error": "Artifact analysis must complete before source work."},
             "package": {}, "error": "Artifact analysis must complete before source work.",
@@ -5725,6 +5782,8 @@ def scan_source_row(
         payload = _source_payload(resolution, {}, analysis_complete=True)
         _apply_source_analysis(base, payload, artifact_analysis, candidates, candidate_records, reused=False)
         base["sourceAnalysisRevision"] = source_analysis_revision or _source_analysis_revision(db)
+        _refresh_capability_registry_projection(base)
+        refresh_behavior_consistency(base)
         return base
     repository = public_repository_url(str(resolution.get("repository") or ""))
     commit_sha = str(resolution.get("commit") or "").strip()
@@ -5735,6 +5794,8 @@ def scan_source_row(
     cached, representative_scan_id = _load_cached_source_analysis(db, revision_key, root_path, analysis_revision)
     if cached is not None:
         _apply_source_analysis(base, cached, artifact_analysis, candidates, candidate_records, reused=True, representative_scan_id=representative_scan_id)
+        _refresh_capability_registry_projection(base)
+        refresh_behavior_consistency(base)
         return base
     analysis_hits: dict[str, list[str]] = defaultdict(list)
     analyzed = fetch_source(
@@ -5743,6 +5804,8 @@ def scan_source_row(
     )
     payload = _source_payload(analyzed, analysis_hits, analysis_complete=True)
     _apply_source_analysis(base, payload, artifact_analysis, candidates, candidate_records, reused=False)
+    _refresh_capability_registry_projection(base)
+    refresh_behavior_consistency(base)
     return base
 
 
@@ -5865,6 +5928,36 @@ def _secondary_security_definition_config() -> dict:
     result["clamavDatabases"] = sorted(clamav_databases, key=lambda path: path.as_posix().casefold())[:32]
     return result
 
+def _refresh_capability_registry_projection(report: dict) -> None:
+    """Project current human/legacy capability evidence onto stable registry IDs.
+
+    This is a report/transport projection, not a new artifact parser semantic. It can
+    therefore be rebuilt from retained findings/permission/automation evidence without
+    forcing artifact re-analysis. Unknown historical labels are ignored rather than
+    invented.
+    """
+    if not isinstance(report, dict):
+        return
+    intel = report.get("dependencyIntelligence") if isinstance(report.get("dependencyIntelligence"), dict) else {}
+    automation = report.get("automation") if isinstance(report.get("automation"), dict) else {}
+    try:
+        registry = load_registry()
+        report["capabilityRegistryRevision"] = str(registry.get("revision") or "")
+        report["capabilityIds"] = legacy_capability_ids(
+            list(report.get("capabilities") or []),
+            list(intel.get("permissionCandidates") or []),
+            list(automation.get("capabilities") or []),
+            registry,
+        )
+    except Exception as exc:
+        # Registry failure must be visible but must not discard otherwise valid scanner
+        # evidence. Daily Definitions validation is expected to fail closed before a
+        # malformed production registry reaches a frozen worker.
+        report["capabilityRegistryRevision"] = ""
+        report["capabilityIds"] = []
+        report["capabilityRegistryError"] = f"{type(exc).__name__}: {exc}"[:500]
+
+
 def _source_candidates_for_row(row: sqlite3.Row, source_override: str, final_url: str) -> list[dict]:
     return source_candidate_records((
         ("override", source_override),
@@ -5941,6 +6034,8 @@ def scan_row(
         "highestSeverity": "none",
         "counts": {"informational": 0, "caution": 0, "high": 0, "critical": 0},
         "capabilities": [],
+        "capabilityIds": [],
+        "capabilityRegistryRevision": "",
         "findings": [],
         "automation": {"level": "none", "capabilities": [], "findings": []},
         "dependencyIntelligence": empty_dependency_intelligence("artifact"),
@@ -5976,6 +6071,8 @@ def scan_row(
 
         if scan_source:
             _attach_source_analysis(base, row, token, source_override)
+        _refresh_capability_registry_projection(base)
+        refresh_behavior_consistency(base)
         base["status"] = "complete"
     except Exception as exc:
         base["error"] = str(exc)[:1000]

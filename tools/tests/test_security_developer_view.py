@@ -145,6 +145,74 @@ class SecurityDeveloperViewTests(unittest.TestCase):
             finally:
                 inspector.close()
 
+    def test_v2_workbench_case_inputs_are_loaded_lazily_from_retained_observations_and_rule_sidecar(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "security-evidence-v2"
+            (root / "indexes").mkdir(parents=True)
+            (root / "variants" / "0000").mkdir(parents=True)
+            (root / "artifacts" / "aa" / "analysis").mkdir(parents=True)
+            (root / "rule-projections" / "variants").mkdir(parents=True)
+            (root / "indexes" / "plugins.json").write_text(json.dumps({"currentVariants": [{"variantId": 1, "scanId": 1, "variantPath": "variants/0000/1.json"}]}), encoding="utf-8")
+            (root / "artifacts" / "aa" / "analysis" / "manifest.json").write_text(json.dumps({
+                "datasets": {
+                    "staticPatternMatches": {"files": [{"path": "artifacts/aa/analysis/static.json", "encoding": "json"}]},
+                    "networkEndpoints": {"files": [{"path": "artifacts/aa/analysis/endpoints.json", "encoding": "json"}]},
+                }
+            }), encoding="utf-8")
+            (root / "artifacts" / "aa" / "analysis" / "static.json").write_text(json.dumps([
+                {"origin": "artifact", "pattern": "HttpWebRequest", "evidenceLabel": "metadata:Fixture.dll"},
+                {"origin": "artifact", "pattern": "Process.Start", "evidenceLabel": "metadata:Fixture.dll"},
+            ]), encoding="utf-8")
+            (root / "artifacts" / "aa" / "analysis" / "endpoints.json").write_text(json.dumps([
+                {"host": "api.example.test", "url": "https://api.example.test"},
+            ]), encoding="utf-8")
+            (root / "variants" / "0000" / "1.json").write_text(json.dumps({
+                "variantId": 1,
+                "plugin": {"plugin_id": 1, "internal_name": "Fixture", "canonical_name": "Fixture"},
+                "variant": {"name": "Fixture", "author": "Test", "assembly_version": "1.0.0"},
+                "source": {"name": "Fixture feed", "url": "https://example.invalid/repo.json"},
+                "current": {"variant_id": 1, "scan_id": 1, "status": "complete", "scanned_at_utc": "2026-08-21T10:00:00Z", "highest_severity": "high", "high_count": 1, "findings_json": [{"ruleId": "compound.network-execute", "severity": "high", "title": "Network + execution"}]},
+                "analysis": {"path": "artifacts/aa/analysis"}, "derived": {},
+                "observations": {"collections": {
+                    "staticPatternMatches": {"backingDataset": "staticPatternMatches", "completeness": "retained"},
+                    "networkEndpoints": {"backingDataset": "networkEndpoints", "completeness": "retained"},
+                }},
+            }), encoding="utf-8")
+            (root / "rule-projections" / "variants" / "1.json").write_text(json.dumps({
+                "schema": "omega.sigmascope.srl-rule-projection.v1", "variantId": 1,
+                "projectionRevision": "projection-1", "ruleSetRevision": "rules-1",
+                "facts": ["network.http", "process.launch"], "matchedRuleIds": ["compound.network-execute"],
+                "findings": [{"ruleId": "compound.network-execute", "findingId": "compound.network-execute", "severity": "high"}],
+                "productionWriteBack": False,
+            }), encoding="utf-8")
+            (root / "rule-projections" / "reanalysis-requests.json").write_text(json.dumps({
+                "schema": "omega.sigmascope.srl-reanalysis-requests.v1", "requests": [], "queueMutationAuthorized": False,
+            }), encoding="utf-8")
+            (root / "rule-projections" / "index.json").write_text(json.dumps({
+                "schema": "omega.sigmascope.srl-rule-projection-set.v1", "projectionSetRevision": "set-1", "ruleSetRevision": "rules-1",
+                "productionRuleEvaluationEnabled": False, "productionWriteBack": False, "queueMutationAuthorized": False,
+                "variants": [{"variantId": 1, "path": "variants/1.json"}],
+                "reanalysisRequests": {"path": "reanalysis-requests.json"},
+            }), encoding="utf-8")
+            (root / "index.json").write_text(json.dumps({
+                "schema": "omega.security-evidence.v2", "formatVersion": 2, "counts": {},
+                "indexes": {"plugins": {"path": "indexes/plugins.json"}},
+                "srlRuleProjections": {"path": "rule-projections/index.json", "projectionSetRevision": "set-1", "ruleSetRevision": "rules-1", "productionWriteBack": False, "queueMutationAuthorized": False},
+            }), encoding="utf-8")
+            inspector = V2SigmascopeInspector(root)
+            try:
+                rows = inspector.workbench_observation_rows(1, per_collection_limit=1)
+                self.assertEqual(1, len(rows["staticPatternMatches"]))
+                self.assertEqual("HttpWebRequest", rows["staticPatternMatches"][0]["pattern"])
+                self.assertEqual("api.example.test", rows["networkEndpoints"][0]["host"])
+                state = inspector.srl_projection_state(1)
+                self.assertTrue(state["available"])
+                self.assertEqual("projection-1", state["projection"]["projectionRevision"])
+                self.assertFalse(state["productionWriteBack"])
+                self.assertFalse(state["queueMutationAuthorized"])
+            finally:
+                inspector.close()
+
     def test_reproduces_static_advisory_and_marketplace_conclusions(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             evidence = Path(td) / "evidence.sqlite"
@@ -218,6 +286,19 @@ class SecurityDeveloperViewTests(unittest.TestCase):
             finally:
                 inspector.close()
 
+
+    def test_metric_card_wiring_helper_is_defined_for_both_metric_groups(self) -> None:
+        self.assertIn("function wireMetricCards(root)", view.HTML)
+        self.assertIn("wireMetricCards($('summaryCards'))", view.HTML)
+        self.assertIn("wireMetricCards($('allMetricCards'))", view.HTML)
+        self.assertLess(view.HTML.index("function wireMetricCards(root)"), view.HTML.index("async function init()"))
+
+    def test_behavior_consistency_panel_is_present_and_keeps_developer_claims_non_authoritative(self) -> None:
+        self.assertIn("function renderBehaviorConsistency(d)", view.HTML)
+        self.assertIn("Behavior consistency · observed ↔ developer-declared", view.HTML)
+        self.assertIn("Developer explanation:", view.HTML)
+        self.assertIn("Developer claims do not suppress, downgrade, or prove SigmaScope observations.", view.HTML)
+        self.assertLess(view.HTML.index("function renderBehaviorConsistency(d)"), view.HTML.index("function researchCaseHtml(d,id)"))
 
     def test_default_sql_template_contains_real_line_breaks(self) -> None:
         marker = '<textarea id="sqlText">'
