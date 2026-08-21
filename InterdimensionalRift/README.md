@@ -5,28 +5,26 @@
 > The C# host is instrumentation, not the security boundary. On Linux/GitHub
 > use `tools/run-rift-bwrap.sh`; it fails closed unless Bubblewrap can create
 > the required namespaces. See `docs/INTERDIMENSIONAL-RIFT-HARDENING.adoc`.
-> The current API-15 host/shim also still needs the lifecycle/service-injection
-> repair described in that plan before wild-plugin execution is considered
-> production-ready.
+> Rift uses a frozen trusted real `Dalamud.dll` only as the CLR contract/type-identity
+> assembly. Real Dalamud host/game services are never instantiated; plugin-facing
+> services are Rift instrumentation proxies.
 
 
 A Linux-friendly smoke-test runner for opted-in Dalamud plugins. Loads a
-plugin DLL outside FFXIV, stubs the full service surface, captures
-init-time behaviour, and emits a JSON findings report.
+plugin DLL outside FFXIV, supplies instrumented service proxies against the real
+Dalamud API contract, captures lifecycle behaviour, and emits a JSON findings report.
 
 The host never opens a window. ImGui calls go to a no-op stub. The host by
 itself does **not** provide OS isolation. The supported hostile-code execution
-path is the Bubblewrap supervisor described below. The prototype currently
-needs an API-15 lifecycle/service-injection repair before real-world coverage is
-considered reliable.
-
+path is the Bubblewrap supervisor described below. 
 ## What it ships
 
 ```
-InterdimensionalRift.DalamudShim   generated API-15 compatibility surface
-InterdimensionalRift               CLI host + instrumentation prototype
-samples/SamplePlugin               development fixture
-tests/InterdimensionalRift.Tests    xUnit tests (to be tightened in Phase 3)
+InterdimensionalRift               CLI host + instrumentation runtime
+build/Rift.Dalamud.Contract.props   fixture compile-time real-contract reference
+InterdimensionalRift.DalamudShim    historical generator + DalaInspect metadata tooling
+samples/SamplePlugin               API-15 development fixture
+tests/InterdimensionalRift.Tests    strict execution regression tests
 tools/                             fail-closed Bubblewrap runner/probes
 docs/                              hardening and integration plan
 Dockerfile                         development image; not the hostile-code boundary
@@ -35,11 +33,12 @@ Dockerfile                         development image; not the hostile-code bound
 ## Build
 
 ```bash
-dotnet build Sigmascope.sln -c Release
+dotnet build InterdimensionalRift.sln -c Release -p:HooksDir=/path/to/Hooks
 ```
 
-Requires the .NET 10 SDK (`10.0.101` or newer). The target framework is
-`net10.0` — no `-windows` suffix, runs on Linux, Windows, and macOS.
+Requires the .NET 10 SDK. Fixture/test builds also require `HooksDir` (or
+`RIFT_HOOKS`) pointing at a frozen trusted Dalamud runtime containing `Dalamud.dll`.
+The Rift host itself has no compile-time dependency on Dalamud.
 
 Plugins compiled against `net10.0-windows` will load too. The .NET IL is
 portable; only Windows-specific P/Invoke breaks, and that is captured
@@ -66,7 +65,7 @@ Exit codes:
 
 | Code | Meaning |
 |------|---------|
-| 0    | Plugin loaded and `Initialize` completed |
+| 0    | Plugin reached its API-15 initialization boundary successfully |
 | 1    | Load / init failed; report still emitted |
 | 2    | Tool error (bad arg, can't read file) |
 
@@ -85,7 +84,10 @@ plugin artifact:
 ```bash
 ./tools/run-rift-bwrap.sh \
   --runtime-dir ./artifacts/rift-linux-x64 \
+  --contract-dir ./artifacts/dalamud-hooks \
+  --artifact-dir ./staging \
   --plugin ./staging/SomePlugin.dll \
+  --seccomp-policy ./artifacts/rift-seccomp.bpf \
   --out ./results/rift.json \
   --init-timeout 10 \
   --wall-timeout 20
@@ -93,7 +95,7 @@ plugin artifact:
 
 The wrapper creates separate user/PID/IPC/network/UTS namespaces, clears the
 environment, disables nested user namespaces, mounts only the Rift runtime and
-plugin input, uses bounded tmpfs scratch areas, and supervises the whole bwrap
+plugin input plus the trusted Dalamud contract directory read-only, uses bounded tmpfs scratch areas, and supervises the whole bwrap
 process tree with an external wall timeout. There is intentionally no
 unsandboxed fallback.
 
@@ -102,11 +104,10 @@ The boundary itself is regression-tested by
 
 ## Docker (development only)
 
-The Dockerfile is retained as a development/runtime packaging path. It is **not**
-the approved boundary for hostile plugins, and the current generated API-15 shim
-still needs its dependency/build-path cleanup before this is considered a
-reproducible production image. Do not replace the Bubblewrap executor with a raw
-`docker run` fallback.
+The Dockerfile is retained as a host-only development/runtime packaging path. It is
+**not** the approved boundary for hostile plugins. A real run must receive the frozen
+Dalamud contract directory separately and still use the Bubblewrap executor; do not
+replace it with a raw `docker run` fallback.
 
 If Docker is later retained, it should package a self-contained Rift runtime
 which is then consumed by the outer fail-closed execution policy described in
@@ -114,12 +115,16 @@ the hardening plan.
 
 ## Honest limitations
 
-The generated `InterdimensionalRift.DalamudShim` mirrors a current API-15
-surface, but the host/stubs still contain lifecycle assumptions from an older
-generation. In particular, API-15 constructor/service injection and
-`IAsyncDalamudPlugin.LoadAsync(CancellationToken)` are not fully wired yet.
-Therefore a `not_a_plugin`, `load_failed`, or static-only report is **not** proof
-that a plugin was dynamically exercised.
+Rift does not emulate FFXIV or the full Dalamud runtime. It uses the real frozen
+Dalamud assembly only for contract identity and supplies safe instrumentation proxies
+for requested service interfaces. Concrete host/game objects generally resolve to
+default/null values. A plugin may therefore take a different branch, throw, or stop
+early compared with a live game session. `not observed` is never evidence that a
+capability cannot be used.
+
+The former generated full-surface C# shim is retired from the active path after CI
+proved reflection metadata cannot be naively round-tripped into legal C# for all
+Dalamud public shapes. DalaInspect remains metadata/provenance tooling.
 
 Rift is also not allowed to become a duplicate static security scanner. The
 current `HttpReferenceScanner` is prototype code scheduled for retirement once
@@ -201,10 +206,10 @@ BCL types into `System.Runtime`.
 dotnet test InterdimensionalRift.sln -c Release
 ```
 
-`SmokeTest` builds the sample plugin (via the project reference) and
-asserts the report contains the expected log messages, the URL literal
-finding, the reflective load attempt, the `init_threw` outcome, and
-the `IClientState.LocalPlayer` touch.
+`SmokeTest` builds the API-15 fixtures against the frozen real Dalamud contract and
+requires successful constructor/service injection, framework callbacks, async
+`LoadAsync`/`DisposeAsync`, and the hostile-canary inert/armed behavior. Positive
+fixtures cannot pass as `not_a_plugin`, `load_failed`, or `init_timeout`.
 
 ## Next steps
 
@@ -223,6 +228,7 @@ dependencies and content remain available without exposing the repository.
 ./tools/build-rift-seccomp.sh ./artifacts/rift-seccomp.bpf
 ./tools/run-rift-bwrap.sh \
   --runtime-dir ./artifacts/rift-linux-x64 \
+  --contract-dir ./artifacts/dalamud-hooks \
   --artifact-dir ./staging/plugin \
   --plugin ./staging/plugin/Plugin.dll \
   --seccomp-policy ./artifacts/rift-seccomp.bpf \

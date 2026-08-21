@@ -146,6 +146,13 @@ jobs:
           test -s "$hooks/Dalamud.dll"
           echo "RIFT_HOOKS=$hooks" >> "$GITHUB_ENV"
 
+      - name: Initialize diagnostic result envelope
+        shell: bash
+        run: |
+          results="$RUNNER_TEMP/rift-results"
+          mkdir -p "$results"
+          printf '{"schema_version":"rift.workflow.v1","phase":"pre-execution","outcome":"pending"}\n' > "$results/workflow-status.json"
+
       - name: Build and test Rift runtime against API 15
         shell: bash
         run: |
@@ -244,6 +251,7 @@ jobs:
           mkdir -p "$results"
           bash ./tools/run-rift-bwrap.sh \
             --runtime-dir "$RUNNER_TEMP/rift-runtime" \
+            --contract-dir "$RIFT_HOOKS" \
             --plugin '${{ steps.stage.outputs.plugin }}' \
             --artifact-dir '${{ steps.stage.outputs.artifact }}' \
             --seccomp-policy "$RIFT_SECCOMP" \
@@ -255,6 +263,7 @@ jobs:
             --cpu-quota 100%
           rc=$?
           echo "$rc" > "$results/rift-exit-code.txt"
+          printf '{"schema_version":"rift.workflow.v1","phase":"execution","outcome":"completed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
           cp "$RUNNER_TEMP/omega-input/acquisition.json" "$results/acquisition.json"
           cp "$RUNNER_TEMP/omega-input/Omega.zip.sha256" "$results/Omega.zip.sha256"
           if [[ ! -s "$results/rift-omega.json" ]]; then
@@ -291,7 +300,7 @@ jobs:
           retention-days: 14
 
       - name: Enforce Rift execution outcome after preserving report
-        if: always()
+        if: always() && steps.rift.outcome != 'skipped' 
         shell: bash
         run: |
           rc=$(cat "$RUNNER_TEMP/rift-results/rift-exit-code.txt" 2>/dev/null || echo 99)

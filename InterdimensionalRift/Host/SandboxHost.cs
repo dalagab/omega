@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Reflection;
-using Dalamud.Plugin;
 using InterdimensionalRift.Instrumentation;
 using InterdimensionalRift.Reporting;
 using InterdimensionalRift.Runtime;
@@ -16,6 +15,8 @@ public sealed class SandboxHost
 {
     public SandboxReport Run(string pluginPath, TimeSpan initTimeout, int frameworkTicks = 3)
     {
+        DalamudContract.EnsureLoaded();
+
         if (!File.Exists(pluginPath))
         {
             return new SandboxReport

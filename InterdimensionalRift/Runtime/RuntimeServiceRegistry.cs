@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Reflection;
-using Dalamud.Plugin;
 using InterdimensionalRift.Instrumentation;
 
 namespace InterdimensionalRift.Runtime;
@@ -154,7 +153,7 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
             return null;
         }
 
-        if (serviceType == typeof(IDalamudPluginInterface))
+        if (serviceType.FullName == "Dalamud.Plugin.IDalamudPluginInterface")
         {
             var special = InvokePluginInterface(method, args);
             if (special.Handled)
@@ -173,7 +172,7 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
 
     public void FireFrameworkTick()
     {
-        var frameworkType = typeof(IDalamudPlugin).Assembly.GetType("Dalamud.Plugin.Services.IFramework");
+        var frameworkType = DalamudContract.Assembly.GetType("Dalamud.Plugin.Services.IFramework");
         if (frameworkType is null)
             return;
 

@@ -690,3 +690,12 @@ The fixture has a strict non-distribution contract:
 * credential theft, process injection, persistence, security tampering, AMSI patching and anti-analysis behavior are represented only as static marker vocabulary and are never invoked.
 
 `tools/check-hostile-canary-contract.py` fails closed if those invariants drift. `.github/workflows/rift-hostile-canary.yml` builds a DLL-only opaque fixture artifact, asserts it contains no JSON, executes it through cgroup-v2 -> Bubblewrap -> seccomp, verifies runtime canary observations and preserves the resulting report.
+
+
+== Pass 2.4: real Dalamud contract assembly
+
+The generated full-surface C# shim is retired from the active execution path. CI demonstrated that reflection metadata cannot be naively round-tripped into legal C# for static classes, ref structs, default interface members, abstract overrides, pointer signatures, and complex BCL contracts.
+
+Rift now loads the frozen trusted real `Dalamud.dll` only as a contract/type-identity assembly. It never instantiates Dalamud host/game services. Plugin-facing services remain Rift `DispatchProxy` instrumentation objects created against the real service interface `Type` objects. The trusted contract directory is mounted read-only at `/contracts` inside Bubblewrap.
+
+DalaInspect remains metadata/provenance tooling and runs with `--inspect-only`; generated C# is no longer a prerequisite for building or running Rift.

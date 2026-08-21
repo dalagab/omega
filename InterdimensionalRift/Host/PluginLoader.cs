@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Runtime.Loader;
-using Dalamud.Plugin;
 using InterdimensionalRift.Instrumentation;
 
 namespace InterdimensionalRift.Host;
@@ -41,9 +40,9 @@ public sealed class PluginLoader : IDisposable
 
     public (Type? idalamudPlugin, Type? asyncPlugin, Type? basePlugin) ResolvePluginContractTypes()
     {
-        var shared = typeof(IDalamudPlugin).Assembly;
+        var shared = DalamudContract.Assembly;
         return (
-            typeof(IDalamudPlugin),
+            shared.GetType("Dalamud.Plugin.IDalamudPlugin", throwOnError: true),
             shared.GetType("Dalamud.Plugin.IAsyncDalamudPlugin"),
             shared.GetType("Dalamud.Plugin.BasePlugin"));
     }
@@ -100,7 +99,7 @@ public sealed class PluginLoader : IDisposable
         private readonly AssemblyDependencyResolver? resolver;
         private readonly string pluginDirectory;
         private readonly AccessTracker tracker;
-        private readonly Assembly sharedDalamud = typeof(IDalamudPlugin).Assembly;
+        private readonly Assembly sharedDalamud = DalamudContract.Assembly;
 
         public PluginLoadContext(string name, string pluginPath, AccessTracker tracker)
             : base(name, isCollectible: true)
@@ -114,6 +113,10 @@ public sealed class PluginLoader : IDisposable
         {
             if (string.Equals(assemblyName.Name, sharedDalamud.GetName().Name, StringComparison.OrdinalIgnoreCase))
                 return sharedDalamud;
+
+            var trusted = DalamudContract.TryResolveTrusted(assemblyName);
+            if (trusted is not null)
+                return trusted;
 
             var resolved = resolver?.ResolveAssemblyToPath(assemblyName);
             if (resolved is null && !string.IsNullOrWhiteSpace(assemblyName.Name))

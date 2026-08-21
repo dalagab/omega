@@ -56,6 +56,12 @@ jobs:
           test -s "$hooks/Dalamud.dll"
           echo "RIFT_HOOKS=$hooks" >> "$GITHUB_ENV"
 
+      - name: Initialize diagnostic result envelope
+        run: |
+          results="$RUNNER_TEMP/rift-hostile-canary-results"
+          mkdir -p "$results"
+          printf '{"schema_version":"rift.workflow.v1","phase":"pre-execution","outcome":"pending"}\n' > "$results/workflow-status.json"
+
       - name: Build/test Rift and canary
         run: |
           set -euo pipefail
@@ -112,6 +118,7 @@ jobs:
           mkdir -p "$results"
           bash ./tools/run-rift-bwrap.sh \
             --runtime-dir "$RUNNER_TEMP/rift-runtime" \
+            --contract-dir "$RIFT_HOOKS" \
             --plugin '${{ steps.stage.outputs.plugin }}' \
             --artifact-dir '${{ steps.stage.outputs.artifact }}' \
             --seccomp-policy "$RIFT_SECCOMP" \
@@ -120,6 +127,7 @@ jobs:
             --memory-max 256M --tasks-max 32 --cpu-quota 100%
           rc=$?
           echo "$rc" > "$results/rift-exit-code.txt"
+          printf '{"schema_version":"rift.workflow.v1","phase":"execution","outcome":"completed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
           cp "$RUNNER_TEMP/rift-hostile-canary.zip.sha256" "$results/"
           echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
           exit 0
@@ -158,7 +166,7 @@ jobs:
           retention-days: 14
 
       - name: Enforce Rift exit after preserving report
-        if: always()
+        if: always() && steps.execute.outcome != 'skipped'
         run: |
           rc=$(cat "$RUNNER_TEMP/rift-hostile-canary-results/rift-exit-code.txt" 2>/dev/null || echo 99)
           test "$rc" = 0

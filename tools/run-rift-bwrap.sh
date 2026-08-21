@@ -9,6 +9,7 @@ usage() {
 Usage:
   run-rift-bwrap.sh \
     --runtime-dir <self-contained-rift-publish-dir> \
+    --contract-dir <frozen-trusted-dalamud-runtime-dir> \
     --plugin <entry-plugin.dll> \
     --artifact-dir <exact-staged-artifact-dir> \
     --seccomp-policy <rift-policy.bpf> \
@@ -22,6 +23,7 @@ USAGE
 }
 
 runtime_dir=''
+contract_dir=''
 plugin=''
 artifact_dir=''
 seccomp_policy=''
@@ -35,6 +37,7 @@ cpu_quota=100%
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --runtime-dir) runtime_dir=${2:-}; shift 2 ;;
+    --contract-dir) contract_dir=${2:-}; shift 2 ;;
     --plugin) plugin=${2:-}; shift 2 ;;
     --artifact-dir) artifact_dir=${2:-}; shift 2 ;;
     --seccomp-policy) seccomp_policy=${2:-}; shift 2 ;;
@@ -50,6 +53,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$runtime_dir" && -d "$runtime_dir" ]] || { echo "error: --runtime-dir is required" >&2; exit 2; }
+[[ -n "$contract_dir" && -d "$contract_dir" && -s "$contract_dir/Dalamud.dll" ]] || { echo "error: --contract-dir with Dalamud.dll is required" >&2; exit 2; }
 [[ -n "$plugin" && -f "$plugin" ]] || { echo "error: --plugin is required" >&2; exit 2; }
 [[ -n "$artifact_dir" && -d "$artifact_dir" ]] || { echo "error: --artifact-dir is required" >&2; exit 2; }
 [[ -n "$seccomp_policy" && -s "$seccomp_policy" ]] || { echo "error: --seccomp-policy is required" >&2; exit 2; }
@@ -70,6 +74,7 @@ scope_runner="$root/tools/exec-rift-scope.sh"
 [[ -f "$launcher" && -f "$scope_runner" ]] || { echo "error: Rift supervisor helpers missing" >&2; exit 2; }
 
 runtime_dir=$(realpath "$runtime_dir")
+contract_dir=$(realpath "$contract_dir")
 plugin=$(realpath "$plugin")
 artifact_dir=$(realpath "$artifact_dir")
 seccomp_policy=$(realpath "$seccomp_policy")
@@ -121,6 +126,7 @@ bwrap_args=(
   --clearenv
   --hostname interdimensional-rift
   --ro-bind "$runtime_dir" /rift
+  --ro-bind "$contract_dir" /contracts
   --ro-bind "$artifact_dir" /input
   --ro-bind /lib /lib
   --ro-bind-try /lib64 /lib64
@@ -137,6 +143,7 @@ bwrap_args=(
   --setenv DOTNET_NOLOGO 1
   --setenv DOTNET_BUNDLE_EXTRACT_BASE_DIR /tmp/dotnet-bundle
   --setenv RIFT_EXECUTOR bubblewrap-v2
+  --setenv RIFT_DALAMUD_CONTRACT_DIR /contracts
   --chdir /work
 )
 

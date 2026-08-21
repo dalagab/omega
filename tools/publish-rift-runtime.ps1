@@ -13,7 +13,7 @@ foreach ($name in @("Lumina.dll","FFXIVClientStructs.dll","Serilog.dll","Dalamud
 $surface = Join-Path $root "artifacts/dalamud-surface.json"
 New-Item -ItemType Directory -Force -Path (Split-Path $surface) | Out-Null
 
-dotnet run --project (Join-Path $root "InterdimensionalRift.DalamudShim/tools/DalaInspect/DalaInspect.csproj") --configuration Release -- $dalamud $surface
+dotnet run --project (Join-Path $root "InterdimensionalRift.DalamudShim/tools/DalaInspect/DalaInspect.csproj") --configuration Release -- $dalamud $surface --inspect-only
 
 dotnet test (Join-Path $root "tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj") --configuration Release -p:HooksDir="$hooks"
 
