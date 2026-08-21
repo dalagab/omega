@@ -23,7 +23,7 @@ public sealed class Plugin : IDalamudPlugin
         Log.Info("Starting up");
         Log.Warning("Fixture endpoint https://evil.example.com");
 
-        _ = ClientState.LocalPlayer;
+        _ = ClientState.IsLoggedIn;
         Framework.Update += OnFrameworkUpdate;
 
         try

@@ -25,7 +25,7 @@ public class SmokeTest
         Assert.Contains(report.Findings,
             f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("Starting up", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.ServiceAccess && f.Service == "IClientState" && f.Method == "get_LocalPlayer");
+            f => f.Kind == FindingKind.ServiceAccess && f.Service == "IClientState" && f.Method == "get_IsLoggedIn");
         Assert.Contains(report.Findings,
             f => f.Kind == FindingKind.ReflectiveLoad && (f.Message ?? "").Contains("SomeOther", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(report.Findings,

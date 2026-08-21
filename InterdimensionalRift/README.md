@@ -155,7 +155,7 @@ static analysis. See `docs/INTERDIMENSIONAL-RIFT-HARDENING.adoc`.
       "severity": "info | low | medium | high",
       "ts_offset_ms": 42,
       "service": "IClientState",
-      "method": "get_LocalPlayer",
+      "method": "get_IsLoggedIn",
       "message": null,
       "exception_type": null,
       "exception_message": null,

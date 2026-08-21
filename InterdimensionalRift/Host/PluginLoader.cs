@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
 using InterdimensionalRift.Instrumentation;
+using InterdimensionalRift.Runtime;
 
 namespace InterdimensionalRift.Host;
 
@@ -92,7 +93,7 @@ public sealed class PluginLoader : IDisposable
         hook = null;
     }
 
-    private static AssemblyName AssemblyNameFromPath(string pluginPath) => AssemblyName.GetAssemblyName(pluginPath);
+    private static System.Reflection.AssemblyName AssemblyNameFromPath(string pluginPath) => System.Reflection.AssemblyName.GetAssemblyName(pluginPath);
 
     private sealed class PluginLoadContext : AssemblyLoadContext
     {

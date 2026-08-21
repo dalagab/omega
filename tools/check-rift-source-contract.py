@@ -20,6 +20,13 @@ require(Path('InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs'), 'PluginS
 require(Path('InterdimensionalRift/Runtime/DalamudContract.cs'), 'RIFT_DALAMUD_CONTRACT_DIR', 'frozen real Dalamud contract loader')
 require(Path('InterdimensionalRift/Host/PluginLoader.cs'), 'DalamudContract.Assembly', 'shared real Dalamud assembly identity')
 require(Path('InterdimensionalRift/Host/PluginLoader.cs'), 'TryResolveTrusted', 'trusted runtime sibling resolution')
+require(Path('InterdimensionalRift/Host/PluginLoader.cs'), 'using InterdimensionalRift.Runtime;', 'PluginLoader imports real-contract runtime namespace')
+require(Path('InterdimensionalRift/Host/PluginLoader.cs'), 'System.Reflection.AssemblyName.GetAssemblyName', 'AssemblyName factory is unambiguous')
+require(Path('samples/SamplePlugin/Plugin.cs'), 'ClientState.IsLoggedIn', 'sync fixture uses current API-15 IClientState member')
+forbid(Path('samples/SamplePlugin/Plugin.cs'), 'ClientState.LocalPlayer', 'sync fixture does not use removed LocalPlayer member')
+require(Path('tests/fixtures/RiftHostileCanary/Plugin.cs'), 'ClientState.IsLoggedIn', 'hostile canary uses current API-15 IClientState member')
+forbid(Path('tests/fixtures/RiftHostileCanary/Plugin.cs'), 'ClientState.LocalPlayer', 'hostile canary does not use removed LocalPlayer member')
+require(Path('tests/InterdimensionalRift.Tests/SmokeTest.cs'), 'get_IsLoggedIn', 'runtime assertion tracks current IClientState touch')
 forbid(Path('InterdimensionalRift/InterdimensionalRift.csproj'), 'InterdimensionalRift.DalamudShim', 'host no longer builds generated shim')
 for project in [Path('samples/SamplePlugin/SamplePlugin.csproj'), Path('samples/AsyncSamplePlugin/AsyncSamplePlugin.csproj'), Path('tests/fixtures/RiftHostileCanary/RiftHostileCanary.csproj')]:
     require(project, 'Rift.Dalamud.Contract.props', f'{project.parent.name} compiles against frozen real contract')

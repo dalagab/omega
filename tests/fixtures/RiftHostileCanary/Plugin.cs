@@ -81,7 +81,7 @@ public sealed class Plugin : IDalamudPlugin
         Log.Warning("RIFT_CANARY armed inside Rift; all active targets are harmless sentinels.");
 
         // Exercise instrumented Dalamud service paths.
-        _ = ClientState.LocalPlayer;
+        _ = ClientState.IsLoggedIn;
         Framework.Update += OnFrameworkUpdate;
         _ = PluginInterface.GetIpcProvider<object?>("rift.hostile-canary.sentinel");
 
