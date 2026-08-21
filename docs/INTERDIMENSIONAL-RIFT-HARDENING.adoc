@@ -658,3 +658,12 @@ Validation possible in this environment is source/static only: shell syntax and
 the API-15 source-contract gate pass. A live Bubblewrap/cgroup/seccomp run and
 C# build still require the GitHub `ubuntu-24.04` workflow or a machine with the
 pinned Dalamud API-15 Hooks dependency set and .NET 10 SDK.
+
+== Git/ZIP script-mode portability
+
+The GitHub-hosted executor MUST NOT depend on the executable bit surviving a ZIP extraction or a Windows checkout.
+Rift's workflow invokes trusted shell helpers explicitly through `/bin/bash`, and the outer supervisor invokes its helper scripts through `/bin/bash` as well.
+This is intentional: a source import that records `tools/*.sh` as Git mode `100644` must not disable the security boundary.
+
+A `.gitattributes` file pins shell/workflow/source text to stable line endings so a Windows checkout cannot introduce CRLF interpreter failures.
+Executable mode `100755` remains desirable for normal Linux ergonomics, but it is no longer a correctness or security dependency.

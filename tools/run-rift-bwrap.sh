@@ -67,7 +67,7 @@ done
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 launcher="$root/tools/exec-bwrap-seccomp.sh"
 scope_runner="$root/tools/exec-rift-scope.sh"
-[[ -x "$launcher" && -x "$scope_runner" ]] || { echo "error: Rift supervisor helpers missing" >&2; exit 2; }
+[[ -f "$launcher" && -f "$scope_runner" ]] || { echo "error: Rift supervisor helpers missing" >&2; exit 2; }
 
 runtime_dir=$(realpath "$runtime_dir")
 plugin=$(realpath "$plugin")
@@ -154,8 +154,8 @@ sudo systemd-run \
   --property=KillMode=control-group \
   --property=SendSIGKILL=yes \
   --property=NoNewPrivileges=yes \
-  "$scope_runner" "$timeout_marker" "$wall_timeout" \
-  "$launcher" "$seccomp_policy" "$(command -v bwrap)" "${bwrap_args[@]}" -- \
+  /bin/bash "$scope_runner" "$timeout_marker" "$wall_timeout" \
+  /bin/bash "$launcher" "$seccomp_policy" "$(command -v bwrap)" "${bwrap_args[@]}" -- \
   "$host_bin" "/input/$plugin_rel" --timeout "$init_timeout" --no-color \
   >"$tmp_report" 2>"$tmp_stderr"
 rc=$?
