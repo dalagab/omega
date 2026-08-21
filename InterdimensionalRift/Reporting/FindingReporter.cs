@@ -29,6 +29,8 @@ public static class FindingReporter
                     .GroupBy(f => f.Kind switch
                     {
                         FindingKind.ServiceAccess => "service_access",
+                        FindingKind.ServiceInjection => "service_injection",
+                        FindingKind.Lifecycle => "lifecycle",
                         FindingKind.Log => "log",
                         FindingKind.AssemblyReference => "assembly_reference",
                         FindingKind.ReflectiveLoad => "reflective_load",

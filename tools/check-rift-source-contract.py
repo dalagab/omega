@@ -33,4 +33,19 @@ for project in [Path('samples/SamplePlugin/SamplePlugin.csproj'), Path('samples/
     forbid(project, 'InterdimensionalRift.DalamudShim', f'{project.parent.name} does not target generated shim')
 require(Path('tools/publish-rift-runtime.ps1'), '--inspect-only', 'DalaInspect is metadata-only in publication path')
 require(Path('tests/InterdimensionalRift.Tests/SmokeTest.cs'), 'Assert.Equal("ok", report.Plugin.LoadOutcome)', 'positive fixture fails closed')
+
+require(Path('InterdimensionalRift/Host/PluginLoader.cs'), 'ArtifactNativeLibraryResolver.Find', 'artifact RID-native fallback is active')
+require(Path('InterdimensionalRift/Host/ArtifactNativeLibraryResolver.cs'), 'runtimes', 'artifact native resolver understands RID layout')
+require(Path('InterdimensionalRift/Host/ArtifactNativeLibraryResolver.cs'), 'linux-', 'artifact native resolver supports Linux RID assets')
+require(Path('tests/InterdimensionalRift.Tests/ArtifactNativeLibraryResolverTest.cs'), 'libe_sqlite3.so', 'native RID regression fixture covers e_sqlite3 layout')
+require(Path('InterdimensionalRift/Reporting/FindingReporter.cs'), 'FindingKind.ServiceInjection => "service_injection"', 'service injection summary is explicit')
+require(Path('InterdimensionalRift/Reporting/FindingReporter.cs'), 'FindingKind.Lifecycle => "lifecycle"', 'lifecycle summary is explicit')
+
+loader_text=(root/Path('InterdimensionalRift/Host/PluginLoader.cs')).read_text(encoding='utf-8')
+local_pos=loader_text.find('ResolveAssemblyToPath(assemblyName)')
+trusted_pos=loader_text.find('TryResolveTrusted(assemblyName)')
+if local_pos < 0 or trusted_pos < 0 or local_pos > trusted_pos:
+    print('FAIL: plugin-local managed dependencies must resolve before trusted-runtime fallback', file=sys.stderr); sys.exit(1)
+checks.append('plugin-local dependencies precede trusted-runtime fallback')
+
 print(f'Rift source-contract checks: {len(checks)}/{len(checks)} passed')

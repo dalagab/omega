@@ -112,13 +112,15 @@ public sealed class PluginLoader : IDisposable
 
         protected override Assembly? Load(AssemblyName assemblyName)
         {
+            // Dalamud itself is the one mandatory shared CLR identity. This is
+            // what makes PluginService proxy instances assignable to plugin members.
             if (string.Equals(assemblyName.Name, sharedDalamud.GetName().Name, StringComparison.OrdinalIgnoreCase))
                 return sharedDalamud;
 
-            var trusted = DalamudContract.TryResolveTrusted(assemblyName);
-            if (trusted is not null)
-                return trusted;
-
+            // Preserve the artifact's own dependency graph first. The previous
+            // ordering consulted /contracts before the plugin package, which could
+            // accidentally substitute Dalamud's copy of unrelated libraries such
+            // as SQLitePCLRaw for the version shipped by the plugin.
             var resolved = resolver?.ResolveAssemblyToPath(assemblyName);
             if (resolved is null && !string.IsNullOrWhiteSpace(assemblyName.Name))
             {
@@ -126,29 +128,30 @@ public sealed class PluginLoader : IDisposable
                 if (File.Exists(sibling)) resolved = sibling;
             }
 
-            if (resolved is null)
-                return null; // framework/default-context resolution may satisfy it.
+            if (resolved is not null)
+            {
+                tracker.ReflectiveLoad(assemblyName.FullName ?? assemblyName.Name ?? "unknown", resolved, resolved: true);
+                return LoadFromAssemblyPath(resolved);
+            }
 
-            tracker.ReflectiveLoad(assemblyName.FullName ?? assemblyName.Name ?? "unknown", resolved, resolved: true);
-            return LoadFromAssemblyPath(resolved);
+            // Only fall back to the frozen trusted runtime when the artifact did
+            // not provide the dependency itself.
+            var trusted = DalamudContract.TryResolveTrusted(assemblyName);
+            if (trusted is not null)
+                return trusted;
+
+            return null; // framework/default-context resolution may satisfy it.
         }
 
         protected override nint LoadUnmanagedDll(string unmanagedDllName)
         {
-            var resolved = resolver?.ResolveUnmanagedDllToPath(unmanagedDllName);
-            if (resolved is null)
-            {
-                foreach (var name in new[] { unmanagedDllName, $"lib{unmanagedDllName}.so", $"{unmanagedDllName}.so" })
-                {
-                    var sibling = Path.Combine(pluginDirectory, name);
-                    if (File.Exists(sibling)) { resolved = sibling; break; }
-                }
-            }
+            var resolved = resolver?.ResolveUnmanagedDllToPath(unmanagedDllName)
+                ?? ArtifactNativeLibraryResolver.Find(pluginDirectory, unmanagedDllName);
 
             if (resolved is null)
                 return nint.Zero;
 
-            tracker.ReflectiveLoad(unmanagedDllName, resolved, resolved: true);
+            tracker.ReflectiveLoad($"native:{unmanagedDllName}", resolved, resolved: true);
             return LoadUnmanagedDllFromPath(resolved);
         }
     }
