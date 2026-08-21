@@ -1,0 +1,210 @@
+#!/usr/bin/env bash
+# Execute one plugin artifact in a cgroup-v2 + Bubblewrap + seccomp boundary.
+# Production behavior is fail-closed: missing cgroup/systemd, bwrap, or seccomp
+# policy is an error, never a reason to run the plugin directly.
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'USAGE'
+Usage:
+  run-rift-bwrap.sh \
+    --runtime-dir <self-contained-rift-publish-dir> \
+    --plugin <entry-plugin.dll> \
+    --artifact-dir <exact-staged-artifact-dir> \
+    --seccomp-policy <rift-policy.bpf> \
+    --out <report.json> \
+    [--init-timeout 10] \
+    [--wall-timeout 20] \
+    [--memory-max 768M] \
+    [--tasks-max 64] \
+    [--cpu-quota 100%]
+USAGE
+}
+
+runtime_dir=''
+plugin=''
+artifact_dir=''
+seccomp_policy=''
+out=''
+init_timeout=10
+wall_timeout=20
+memory_max=768M
+tasks_max=64
+cpu_quota=100%
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --runtime-dir) runtime_dir=${2:-}; shift 2 ;;
+    --plugin) plugin=${2:-}; shift 2 ;;
+    --artifact-dir) artifact_dir=${2:-}; shift 2 ;;
+    --seccomp-policy) seccomp_policy=${2:-}; shift 2 ;;
+    --out) out=${2:-}; shift 2 ;;
+    --init-timeout) init_timeout=${2:-}; shift 2 ;;
+    --wall-timeout) wall_timeout=${2:-}; shift 2 ;;
+    --memory-max) memory_max=${2:-}; shift 2 ;;
+    --tasks-max) tasks_max=${2:-}; shift 2 ;;
+    --cpu-quota) cpu_quota=${2:-}; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "error: unknown argument: $1" >&2; usage; exit 2 ;;
+  esac
+done
+
+[[ -n "$runtime_dir" && -d "$runtime_dir" ]] || { echo "error: --runtime-dir is required" >&2; exit 2; }
+[[ -n "$plugin" && -f "$plugin" ]] || { echo "error: --plugin is required" >&2; exit 2; }
+[[ -n "$artifact_dir" && -d "$artifact_dir" ]] || { echo "error: --artifact-dir is required" >&2; exit 2; }
+[[ -n "$seccomp_policy" && -s "$seccomp_policy" ]] || { echo "error: --seccomp-policy is required" >&2; exit 2; }
+[[ -n "$out" ]] || { echo "error: --out is required" >&2; exit 2; }
+[[ "$init_timeout" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "error: invalid --init-timeout" >&2; exit 2; }
+[[ "$wall_timeout" =~ ^[0-9]+$ && "$wall_timeout" -gt 0 ]] || { echo "error: invalid --wall-timeout" >&2; exit 2; }
+[[ "$memory_max" =~ ^[0-9]+([KMGTP])?$ ]] || { echo "error: invalid --memory-max" >&2; exit 2; }
+[[ "$tasks_max" =~ ^[0-9]+$ && "$tasks_max" -gt 0 ]] || { echo "error: invalid --tasks-max" >&2; exit 2; }
+[[ "$cpu_quota" =~ ^[0-9]+%$ ]] || { echo "error: invalid --cpu-quota" >&2; exit 2; }
+
+for command in bwrap systemd-run systemctl sudo timeout sha256sum realpath; do
+  command -v "$command" >/dev/null 2>&1 || { echo "error: $command is required" >&2; exit 2; }
+done
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+launcher="$root/tools/exec-bwrap-seccomp.sh"
+scope_runner="$root/tools/exec-rift-scope.sh"
+[[ -x "$launcher" && -x "$scope_runner" ]] || { echo "error: Rift supervisor helpers missing" >&2; exit 2; }
+
+runtime_dir=$(realpath "$runtime_dir")
+plugin=$(realpath "$plugin")
+artifact_dir=$(realpath "$artifact_dir")
+seccomp_policy=$(realpath "$seccomp_policy")
+out=$(realpath -m "$out")
+mkdir -p "$(dirname "$out")"
+
+case "$plugin" in
+  "$artifact_dir"/*) ;;
+  *) echo "error: plugin entry must be contained by --artifact-dir" >&2; exit 2 ;;
+esac
+plugin_rel=${plugin#"$artifact_dir"/}
+[[ -n "$plugin_rel" && "$plugin_rel" != *'..'* ]] || { echo "error: unsafe plugin path" >&2; exit 2; }
+
+host_bin=''
+for candidate in interdimensional-rift sigmascope-sandbox; do
+  if [[ -x "$runtime_dir/$candidate" ]]; then
+    host_bin="/rift/$candidate"
+    break
+  fi
+done
+[[ -n "$host_bin" ]] || { echo "error: runtime directory has no executable self-contained Rift host" >&2; exit 2; }
+
+plugin_sha=$(sha256sum "$plugin" | awk '{print $1}')
+# A stable digest of every regular file in the exact staged artifact tree.
+artifact_sha=$(cd "$artifact_dir" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | awk '{print $1}')
+
+tmp_report=$(mktemp)
+tmp_stderr=$(mktemp)
+timeout_marker=$(mktemp)
+rm -f "$timeout_marker"
+unit="rift-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-0}-$$"
+cleanup() {
+  sudo systemctl stop "$unit.service" >/dev/null 2>&1 || true
+  rm -f "$tmp_report" "$tmp_stderr" "$timeout_marker"
+}
+trap cleanup EXIT
+
+bwrap_args=(
+  --unshare-user
+  --unshare-ipc
+  --unshare-pid
+  --unshare-net
+  --unshare-uts
+  --unshare-cgroup-try
+  --disable-userns
+  --new-session
+  --die-with-parent
+  --cap-drop ALL
+  --clearenv
+  --hostname interdimensional-rift
+  --ro-bind "$runtime_dir" /rift
+  --ro-bind "$artifact_dir" /input
+  --ro-bind /lib /lib
+  --ro-bind-try /lib64 /lib64
+  --ro-bind /usr/lib /usr/lib
+  --proc /proc
+  --dev /dev
+  --size 134217728 --tmpfs /tmp
+  --size 16777216 --tmpfs /home
+  --size 67108864 --tmpfs /work
+  --setenv HOME /home/rift
+  --setenv TMPDIR /tmp
+  --setenv PATH /rift
+  --setenv DOTNET_CLI_TELEMETRY_OPTOUT 1
+  --setenv DOTNET_NOLOGO 1
+  --setenv DOTNET_BUNDLE_EXTRACT_BASE_DIR /tmp/dotnet-bundle
+  --setenv RIFT_EXECUTOR bubblewrap-v2
+  --chdir /work
+)
+
+set +e
+sudo systemd-run \
+  --quiet --wait --pipe --collect --service-type=exec \
+  --unit "$unit" \
+  --uid "$(id -u)" --gid "$(id -g)" \
+  --property="MemoryMax=$memory_max" \
+  --property=MemorySwapMax=0 \
+  --property="TasksMax=$tasks_max" \
+  --property="CPUQuota=$cpu_quota" \
+  --property="RuntimeMaxSec=$((wall_timeout + 5))s" \
+  --property=TimeoutStopSec=2s \
+  --property=KillMode=control-group \
+  --property=SendSIGKILL=yes \
+  --property=NoNewPrivileges=yes \
+  "$scope_runner" "$timeout_marker" "$wall_timeout" \
+  "$launcher" "$seccomp_policy" "$(command -v bwrap)" "${bwrap_args[@]}" -- \
+  "$host_bin" "/input/$plugin_rel" --timeout "$init_timeout" --no-color \
+  >"$tmp_report" 2>"$tmp_stderr"
+rc=$?
+set -e
+
+cat "$tmp_stderr" >&2 || true
+
+if [[ -e "$timeout_marker" ]]; then
+  cat > "$out" <<JSON
+{
+  "schema_version": "rift.supervisor.v2",
+  "producer": "interdimensional-rift-supervisor",
+  "artifact_sha256": "$artifact_sha",
+  "entry_sha256": "$plugin_sha",
+  "execution": {
+    "outcome": "wall_timeout",
+    "wall_timeout_seconds": $wall_timeout,
+    "network": "isolated",
+    "seccomp": "enforced",
+    "cgroup": {"memory_max": "$memory_max", "memory_swap_max": "0", "tasks_max": $tasks_max, "cpu_quota": "$cpu_quota"}
+  }
+}
+JSON
+  echo "Rift wall timeout; supervisor report written to $out" >&2
+  exit 1
+fi
+
+if [[ ! -s "$tmp_report" ]]; then
+  cat > "$out" <<JSON
+{
+  "schema_version": "rift.supervisor.v2",
+  "producer": "interdimensional-rift-supervisor",
+  "artifact_sha256": "$artifact_sha",
+  "entry_sha256": "$plugin_sha",
+  "execution": {
+    "outcome": "host_failed_without_report",
+    "exit_code": $rc,
+    "network": "isolated",
+    "seccomp": "enforced",
+    "cgroup": {"memory_max": "$memory_max", "memory_swap_max": "0", "tasks_max": $tasks_max, "cpu_quota": "$cpu_quota"}
+  }
+}
+JSON
+  echo "Rift host exited without JSON; supervisor report written to $out" >&2
+  exit 1
+fi
+
+mv "$tmp_report" "$out"
+trap - EXIT
+sudo systemctl stop "$unit.service" >/dev/null 2>&1 || true
+rm -f "$tmp_stderr" "$timeout_marker"
+exit "$rc"

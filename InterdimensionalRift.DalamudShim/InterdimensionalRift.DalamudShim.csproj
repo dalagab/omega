@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!--
+      This assembly is named "Dalamud" to satisfy plugins built against the
+      real Dalamud.dll. Its types live under the Dalamud.Plugin namespace
+      so a wild plugin's `using Dalamud.Plugin;` resolves to the types
+      defined here. The checked-in generated surface mirrors API 15 and Rift
+      creates interface implementations dynamically with DispatchProxy. The
+      plugin and host share this one assembly identity.
+
+      Plugin authors do not target this package; they target the real
+      Dalamud.dll their plugin ships against. We satisfy that reference.
+
+      The version number matches what current mainstream API level
+      (15) plugins reference. .NET loose version matching for unsigned
+      assemblies means a 15.0.x.x reference from the plugin will resolve
+      to this 15.0.3.2 assembly without per-minor-version shims.
+    -->
+    <AssemblyName>Dalamud</AssemblyName>
+    <AssemblyVersion>15.0.3.2</AssemblyVersion>
+    <FileVersion>15.0.3.2</FileVersion>
+    <RootNamespace>Dalamud.Plugin</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <!--
+      The real Dalamud.dll exposes methods with `void*` / pointer types
+      and fixed-size buffer structs. To mirror the surface we need
+      unsafe-context code; the shim's bodies never dereference these
+      pointers, but the compiler still wants unsafe code to be permitted.
+    -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!--
+      Path to the canonical Hooks folder that ships the real Dalamud.dll
+      and its dependencies. Used for the reference DLLs below.
+    -->
+    <HooksDir Condition="'$(HooksDir)' == ''">C:\Users\dorbi\AppData\Roaming\XIVLauncher\addon\Hooks\15.0.3.2</HooksDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Reference the dependency DLLs that ship next to the real Dalamud.dll.
+      The shim's generated code references types from these (Lumina,
+      FFXIVClientStructs, Serilog, etc.), so the compiler needs to resolve
+      them. We point to the same directory the real Dalamud.dll lives in
+      (the XIVLauncher addon Hooks folder), which is the canonical source
+      for these binaries. Private="false" keeps them from being copied
+      into the shim's bin directory; the rift's plugin loader is
+      responsible for loading them into the custom ALC at runtime.
+    -->
+    <Reference Include="Lumina">
+      <HintPath>$(HooksDir)\Lumina.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Lumina.Excel">
+      <HintPath>$(HooksDir)\Lumina.Excel.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="FFXIVClientStructs">
+      <HintPath>$(HooksDir)\FFXIVClientStructs.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Serilog">
+      <HintPath>$(HooksDir)\Serilog.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="TerraFX.Interop.Windows">
+      <HintPath>$(HooksDir)\TerraFX.Interop.Windows.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InteropGenerator.Runtime">
+      <HintPath>$(HooksDir)\InteropGenerator.Runtime.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Dalamud.Bindings.ImGui">
+      <HintPath>$(HooksDir)\Dalamud.Bindings.ImGui.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Dalamud.Bindings.ImGuizmo">
+      <HintPath>$(HooksDir)\Dalamud.Bindings.ImGuizmo.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Dalamud.Bindings.ImPlot">
+      <HintPath>$(HooksDir)\Dalamud.Bindings.ImPlot.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Dalamud.Common">
+      <HintPath>$(HooksDir)\Dalamud.Common.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

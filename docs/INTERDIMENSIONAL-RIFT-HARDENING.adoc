@@ -1,0 +1,660 @@
+= Interdimensional Rift: Dynamic Observation and Sandbox Hardening Plan
+:toc:
+:toclevels: 3
+:sectnums:
+
+== Purpose
+
+Interdimensional Rift is the dynamic-observation companion to SigmaScope.
+SigmaScope remains deterministic and static: it MUST NOT load or execute plugin
+code. Rift is allowed to execute a plugin only inside a disposable, externally
+supervised Linux sandbox and records what that exact artifact attempts while a
+small set of deterministic Dalamud lifecycle scenarios are exercised.
+
+Rift is not a malware verdict engine and MUST NOT assign risk or severity merely
+because an API was touched. Its output is evidence. SigmaScope/SRL/Definition
+Packs may later correlate that evidence with static observations and project it
+into user-facing explanations.
+
+The target relationship is:
+
+[source,text]
+----
+installable artifact
+   |-- SigmaScope --> static observations -------------------+
+   |-- Rift -------> runtime observations -------------------+--> SRL/correlation --> Omega evidence
+   `-- YARA/AV/OSV -> specialist security-hygiene evidence --+
+----
+
+== Non-negotiable security invariants
+
+. SigmaScope never imports, loads, reflects over as executable code, or invokes a
+  plugin assembly.
+. Rift receives only the installable artifact being examined plus its own frozen
+  runtime. It never receives the repository checkout, runner home, SSH material,
+  GitHub token, Docker socket, catalog publication credentials, or signing keys.
+. Rift has no route to the public Internet or the runner LAN.
+. A plugin run occurs in a fresh process tree and a fresh Bubblewrap sandbox.
+. Failure to establish the sandbox is terminal. There is no unsandboxed fallback.
+. The hard timeout is enforced by an external supervisor that can kill the whole
+  Bubblewrap process tree; a `Task.Wait()` timeout inside .NET is not a security
+  boundary.
+. The plugin artifact is mounted read-only.
+. Writable state exists only on bounded tmpfs mounts and disappears when the run
+  finishes.
+. Host environment variables are cleared and a tiny allow-list is rebuilt.
+. Bubblewrap must be a modern non-setuid build and must not have file
+  capabilities.
+. Nested user namespace creation is disabled inside the prisoner.
+. Runtime evidence always identifies the exact artifact SHA-256 and the sandbox
+  environment/scenario revision.
+
+== Threat model
+
+Rift must assume the plugin is deliberately hostile. Expected hostile behaviour
+includes:
+
+* arbitrary managed code in a constructor, static constructor, lifecycle method,
+  callback, finalizer, or worker thread;
+* direct `HttpClient`, sockets, DNS, files, registry-like APIs, native libraries,
+  process creation, reflection, dynamic assembly loads, and P/Invoke;
+* infinite loops, thread/fork bombs, memory exhaustion, disk filling and hangs;
+* attempts to inspect environment variables, home directories, process state,
+  source workspaces and credentials;
+* attempts to outlive the scan after the logical Dalamud lifecycle ends.
+
+Rift does not claim that Bubblewrap alone provides VM-grade isolation from Linux
+kernel vulnerabilities. GitHub-hosted jobs add a disposable VM boundary around
+this mechanism. A later executor may use a microVM for artifacts requiring a
+stronger isolation class without changing Rift's observation schema.
+
+== Target execution architecture
+
+[source,text]
+----
+GitHub-hosted ubuntu-24.04 VM
+        |
+        | trusted setup: install bwrap, enable userns, stage ONE artifact
+        v
+Rift supervisor
+        |
+        | hard wall timeout
+        v
+Bubblewrap
+  |-- user namespace
+  |-- PID namespace
+  |-- IPC namespace
+  |-- UTS namespace
+  |-- network namespace (no external route)
+  |-- optional cgroup namespace
+  |-- nested userns disabled
+  |-- no capabilities
+  |-- new terminal session
+  |-- cleared environment
+  |-- read-only Rift runtime
+  |-- read-only plugin artifact
+  |-- bounded tmpfs /tmp, /home, /work
+  `-- minimal /proc and /dev
+        |
+        v
+self-contained Interdimensional Rift host
+        |
+        v
+Dalamud compatibility/instrumentation layer
+        |
+        v
+plugin
+----
+
+== GitHub runner preparation
+
+Ubuntu 24.04 mediates unprivileged user namespaces with AppArmor. Bubblewrap's
+own GitHub Actions CI enables user namespaces on the disposable runner before
+its smoke tests. Rift follows the same pattern and verifies the actual boundary
+before any untrusted artifact is staged.
+
+The repository now contains:
+
+[source,text]
+----
+tools/enable-userns-github.sh
+tools/verify-bwrap.sh
+.github/workflows/rift-bubblewrap-boundary.yml
+----
+
+The setup MUST fail closed. Do not write `|| true` around namespace setup or the
+boundary probe.
+
+A representative setup is:
+
+[source,yaml]
+----
+- name: Install Bubblewrap
+  run: |
+    sudo apt-get update
+    sudo apt-get install -y --no-install-recommends bubblewrap libcap2-bin
+
+- name: Enable user namespaces on disposable runner
+  run: sudo ./tools/enable-userns-github.sh
+
+- name: Verify Rift boundary
+  run: ./tools/verify-bwrap.sh
+----
+
+== Bubblewrap executor
+
+`tools/run-rift-bwrap.sh` is the first hardening implementation. It requires a
+self-contained `linux-x64` Rift publication so `/usr/bin`, the user's home and
+the GitHub workspace do not need to be mounted into the jail.
+
+Representative invocation:
+
+[source,bash]
+----
+./tools/build-rift-seccomp.sh ./artifacts/rift-seccomp.bpf
+./tools/run-rift-bwrap.sh \
+  --runtime-dir ./artifacts/rift-linux-x64 \
+  --artifact-dir ./staging/SomePlugin \
+  --plugin ./staging/SomePlugin/SomePlugin.dll \
+  --seccomp-policy ./artifacts/rift-seccomp.bpf \
+  --out ./results/rift.json \
+  --init-timeout 10 \
+  --wall-timeout 20
+----
+
+The important options are equivalent to:
+
+[source,bash]
+----
+bwrap \
+  --unshare-user \
+  --unshare-ipc \
+  --unshare-pid \
+  --unshare-net \
+  --unshare-uts \
+  --unshare-cgroup-try \
+  --disable-userns \
+  --new-session \
+  --die-with-parent \
+  --cap-drop ALL \
+  --clearenv \
+  --ro-bind "$RIFT_RUNTIME" /rift \
+  --ro-bind "$ARTIFACT_DIR" /input \
+  --proc /proc \
+  --dev /dev \
+  --size 134217728 --tmpfs /tmp \
+  --size 16777216  --tmpfs /home \
+  --size 33554432  --tmpfs /work \
+  ... \
+  /rift/interdimensional-rift /input/plugin.dll
+----
+
+Pass 2 moves the hard wall/resource boundary into a transient systemd service.
+`MemoryMax`, `MemorySwapMax`, `TasksMax`, `CPUQuota`, `RuntimeMaxSec` and
+`KillMode=control-group` apply to the complete Bubblewrap descendant tree. An
+inner GNU `timeout --kill-after` produces an explicit timeout marker/report; the
+cgroup remains authoritative if a descendant tries to outlive that wrapper.
+
+== Resource limits
+
+Bubblewrap is primarily a namespace/filesystem sandbox. Resource accounting is a
+separate control.
+
+Pass 2 implements cgroup-v2 limits around every production invocation using a
+transient systemd service on GitHub-hosted Ubuntu. There is deliberately no
+portable unsandboxed/resource-unbounded production fallback: if the cgroup
+boundary cannot be created, Rift refuses the run.
+
+Initial policy target:
+
+[source,text]
+----
+MemoryMax       768 MiB
+MemorySwapMax   0 (or equal to MemoryMax if runner policy requires it)
+TasksMax        64
+CPUQuota        100%
+wall timeout    20 s default
+/tmp            128 MiB
+/home           16 MiB
+/work           64 MiB
+----
+
+The exact values are policy/versioned data, not hard-coded security conclusions.
+Known-good plugin corpus measurements should drive later tuning.
+
+== Seccomp
+
+Pass 2 introduces a versioned seccomp policy in addition to namespaces.
+`tools/build-rift-seccomp.sh` compiles a libseccomp-generated BPF program and
+`exec-bwrap-seccomp.sh` hands it to Bubblewrap by inherited file descriptor, so
+the policy is applied to the prisoner only after Bubblewrap has constructed the
+namespaces. Production execution requires a non-empty policy file.
+
+Candidate deny set for empirical validation:
+
+[source,text]
+----
+kexec_load / kexec_file_load
+reboot
+init_module / finit_module / delete_module
+swapon / swapoff
+mount / umount2 / pivot_root
+keyctl / add_key / request_key
+bpf
+perf_event_open
+ptrace (except if a future observer explicitly requires a constrained form)
+setns
+unshare
+process_vm_readv / process_vm_writev
+open_by_handle_at / name_to_handle_at
+new mount API calls (fsopen/fsconfig/fsmount/fspick/open_tree/move_mount)
+AF_PACKET and raw sockets
+----
+
+`clone`/`clone3` are intentionally not blanket-denied because the .NET runtime
+needs normal thread creation. Namespace creation is denied with `unshare` and
+`setns` after the jail already exists. The policy remains corpus-tunable and
+must gain syscall-observation regression coverage before Phase 5.
+
+== Dynamic loader and Dalamud compatibility repair
+
+The uploaded prototype mixes two lifecycle generations and cannot currently be
+used as proof that a wild API-15 plugin executes correctly.
+
+Known repairs:
+
+. Use one shared `Dalamud` contract identity between the host and plugin load
+  context. Do not load a second incompatible copy that makes otherwise-identical
+  interface types fail assignability checks.
+. API-15 `IDalamudPlugin` is lifecycle-marker + `IDisposable`; constructor and
+  Dalamud service injection happen before normal operation. Do not search for an
+  `Initialize(IDalamudPluginInterface)` method that no longer exists.
+. API-15 `IAsyncDalamudPlugin` uses `LoadAsync(CancellationToken)` and
+  `IAsyncDisposable.DisposeAsync()`.
+. Implement `[PluginService]` injection before constructor execution where the
+  plugin uses static service properties, then support resolvable constructor
+  injection and instance injection.
+. Model `IDalamudPluginInterface` as the real API-15 contract (or a generated
+  instrumented implementation/proxy), not the old three-member interface.
+. Add services Omega itself needs as mandatory coverage fixtures:
+  `ICommandManager`, `IPluginLog`, `ITextureProvider`, `IDalamudAssetManager`,
+  `ITitleScreenMenu`, `IGameInteropProvider`, and `INotificationManager`.
+. Dependency resolution must be artifact-local and deterministic. It must never
+  probe the runner home, global NuGet caches or arbitrary host paths.
+. Every missing service/member becomes a coverage observation; it must not be
+  silently converted into a security finding.
+
+Pseudo-sequence:
+
+[source,csharp]
+----
+var artifact = VerifyAndHashArtifact(input);
+using var loadContext = CreateRestrictedPluginLoadContext(artifact.Directory);
+var pluginType = LocatePluginType(loadContext, artifact.EntryAssembly);
+
+InjectStaticPluginServices(pluginType, serviceRegistry);
+var plugin = ConstructWithResolvableServices(pluginType, serviceRegistry);
+InjectInstancePluginServices(plugin, serviceRegistry);
+
+if (plugin is IAsyncDalamudPlugin asyncPlugin)
+    await asyncPlugin.LoadAsync(cancellationToken);
+
+RunScenarioTicks(serviceRegistry.Framework, scenario);
+
+if (plugin is IAsyncDisposable asyncDisposable)
+    await asyncDisposable.DisposeAsync();
+else if (plugin is IDisposable disposable)
+    disposable.Dispose();
+----
+
+The external Bubblewrap supervisor remains authoritative even after cancellation
+is added to the host.
+
+== Observation model
+
+Rift should stop acting like a second static security scanner. Static URL,
+metadata and reachability analysis belong to SigmaScope. Rift's enduring output
+is runtime observation.
+
+Target observation classes:
+
+[source,json]
+----
+{
+  "schema": "omega.rift-observation.v1",
+  "producer": "interdimensional-rift",
+  "artifact": {
+    "sha256": "...",
+    "entry_sha256": "...",
+    "internal_name": "..."
+  },
+  "environment": {
+    "executor": "bubblewrap",
+    "executor_version": "...",
+    "image_or_runtime_digest": "...",
+    "dalamud_api": 15,
+    "shim_revision": "...",
+    "scenario_revision": "...",
+    "network": "isolated"
+  },
+  "scenario": "constructed_logged_out",
+  "phase": "constructor",
+  "operation": "service.touch",
+  "subject": "Dalamud.Plugin.Services.ICommandManager",
+  "member": "AddHandler",
+  "parameters": {
+    "command": "/omega"
+  },
+  "outcome": "simulated"
+}
+----
+
+Rift observations do not carry `low`, `medium`, `high` or `critical` merely
+because an operation occurred. Correlation is separate.
+
+Examples:
+
+[source,text]
+----
+SigmaScope: process execution capability statically reachable
+Rift:       process execution attempted during constructor
+SRL:        correlate the two observations into a stronger fact/finding
+
+SigmaScope: endpoint literal api.example.com
+Rift:       DNS/connect attempt observed for api.example.com
+SRL:        correlate endpoint identity + observed runtime use
+----
+
+"Not observed" MUST never be projected as "cannot do this". A report records the
+scenarios and coverage that actually ran.
+
+== Scenario model
+
+Phase 3 introduces deterministic scenarios rather than several identical empty
+framework ticks.
+
+Initial scenarios:
+
+* `constructed_logged_out`
+* `logged_in_idle`
+* `ui_ready`
+* `framework_ticks`
+* `dispose`
+
+Later scenarios may include territory change, condition transition, command
+registration/use, UI draw callback, IPC provider/subscriber interaction and
+addon lifecycle events. Scenarios must be deterministic and versioned.
+
+Each report records:
+
+[source,text]
+----
+scenario id + revision
+start/end outcome
+members simulated
+members unavailable
+callbacks triggered
+callbacks skipped
+coverage truncation / timeout
+----
+
+== OS-level observation
+
+Dalamud service instrumentation sees only calls that pass through the simulated
+Dalamud API. A hostile plugin can bypass it with BCL/native APIs.
+
+Phase 4 therefore adds OS-level observation around the sandbox. Candidate
+sources include seccomp user notifications/audit-style capture, eBPF from a
+trusted outer observer, or a tightly controlled network sink. The observer MUST
+live outside the untrusted plugin process.
+
+Interesting operation families:
+
+[source,text]
+----
+connect / socket / DNS intent
+openat / create / write / rename / unlink
+execve / execveat
+native library mapping/loading
+mprotect executable mappings
+clone/thread/process creation
+attempted namespace operations
+----
+
+The first network implementation remains `--unshare-net` with no route. A later
+controlled network namespace may provide fake DNS/TCP/HTTP sinks to capture
+intended destinations without allowing Internet egress.
+
+== CI trust separation
+
+Rift execution belongs in an untrusted job. Catalog publication belongs in a
+later trusted job.
+
+[source,text]
+----
+trusted fetch/stage job
+    |
+    | artifact + expected SHA only
+    v
+Rift job (no write token, no secrets, no network)
+    |
+    | raw observation artifact
+    v
+trusted ingestion job
+    |
+    | validate schema, artifact hash, producer/environment provenance
+    v
+SigmaScope/SRL evidence store
+----
+
+The Rift job MUST NOT possess credentials that can publish catalog data. A full
+compromise of the plugin/Rift process must therefore be unable to directly alter
+Omega's trusted catalog.
+
+== Omega Client projection
+
+Omega should eventually present three evidence dimensions instead of flattening
+everything into one badge:
+
+[cols="1,3"]
+|===
+|Dimension |Meaning
+
+|SigmaScope
+|What the exact package appears capable of doing from deterministic static analysis.
+
+|Interdimensional Rift
+|What Omega observed the exact artifact attempting while specific isolated scenarios ran.
+
+|Security hygiene
+|Specialist YARA/AV/OSV/integrity/provenance evidence.
+|===
+
+Example projection:
+
+[source,text]
+----
+Network access
+  Static capability: yes
+  Observed in Rift: yes, during startup
+  Destination: api.example.com
+
+Process execution
+  Static capability: yes
+  Observed in Rift: not observed in 4 scenarios
+  Note: absence of observation is not proof the capability cannot be used.
+----
+
+== Test plan and acceptance gates
+
+=== Boundary tests
+
+* Bubblewrap executable exists and is neither setuid nor file-capability enabled.
+* required user/PID/IPC/network/UTS namespaces are successfully created;
+* host environment sentinel is absent inside the jail;
+* no default network route exists;
+* nested user namespace creation fails;
+* plugin input is read-only;
+* runner home/workspace are absent;
+* outer timeout kills a deliberately hanging child/process tree;
+* bounded tmpfs cannot grow beyond policy;
+* production runner refuses to execute if any mandatory probe fails.
+
+=== Host/API tests
+
+The old smoke test MUST NOT accept `not_a_plugin`, `load_failed` or
+`init_timeout` as success for the positive fixture.
+
+Required fixtures:
+
+. synchronous API-15 constructor/plugin-service fixture;
+. asynchronous `LoadAsync` fixture;
+. constructor injection fixture;
+. service-touch fixture;
+. dependency-resolution fixture;
+. deliberate init exception fixture;
+. deliberate dispose exception fixture;
+. deliberate hang + child process fixture;
+. Omega Client compiled plugin as a mandatory real-world positive fixture.
+
+The Omega fixture passes only when Rift gets far enough to record expected Omega
+service registration/touches. Merely reading static strings is not a pass.
+
+=== Security regression corpus
+
+Known-good plugins establish compatibility/noise baselines. Deliberately hostile
+fixtures verify blocking/observation of network, files, process execution,
+reflection/native load and exhaustion attempts.
+
+== Work phases
+
+=== Phase 1 -- fail-closed Bubblewrap foundation
+
+Status: *IMPLEMENTED; live GitHub boundary run still required for this package*
+
+* add GitHub userns setup helper;
+* add Bubblewrap security-boundary probe;
+* add direct Bubblewrap executor with read-only artifact, cleared env, no network,
+  bounded tmpfs and external wall timeout;
+* add GitHub-hosted Ubuntu boundary workflow;
+* document the architecture and hard requirements.
+
+Exit gate: boundary workflow passes on GitHub `ubuntu-24.04` and fails when a
+mandatory namespace control is deliberately removed.
+
+=== Phase 2 -- resource and syscall containment
+
+Status: *IMPLEMENTATION PRESENT / live GitHub validation pending*
+
+* cgroup-v2 transient systemd service for memory, tasks, CPU, swap and runtime;
+* versioned libseccomp BPF deny policy;
+* exact staged artifact directory mounted read-only;
+* cgroup and source-contract boundary probes in GitHub Actions;
+* supervisor report upgraded to `rift.supervisor.v2` with artifact-tree + entry hashes;
+* process-tree/resource exhaustion hostile fixtures still remain.
+
+=== Phase 3 -- repair API-15 execution
+
+Status: *STARTED / core loader and fixture gates implemented*
+
+* shared Dalamud contract identity implemented;
+* `[PluginService]` static/instance injection implemented;
+* resolvable constructor injection implemented;
+* API-15 synchronous constructor lifecycle and async `LoadAsync`/`DisposeAsync` implemented;
+* generic instrumented DispatchProxy services cover Omega service interfaces without hand stubs;
+* artifact-local managed/unmanaged dependency resolver implemented;
+* shim generator fixed to retain visible property setters;
+* synchronous and async positive fixtures now reject static-only outcomes;
+* optional compiled-Omega fixture gate requires all eight Omega services to be injected;
+* deterministic multi-state scenarios and a clean compiled Omega run remain.
+
+=== Phase 4 -- observation-contract cutover
+
+Status: *PLANNED*
+
+* retire Rift's duplicate static URL/capability scanner;
+* replace findings/severity with runtime observations;
+* add artifact/environment/scenario provenance;
+* add coverage model;
+* add SigmaScope ingestion adapter and SRL correlation facts.
+
+=== Phase 5 -- OS-level behavioural observation
+
+Status: *PLANNED*
+
+* file/process/network/native-operation observation from outside plugin process;
+* blocked-attempt outcomes;
+* controlled fake DNS/network sink experiment;
+* corpus-driven false-positive/coverage analysis in DeltaScope.
+
+=== Phase 6 -- Omega Client projection
+
+Status: *PLANNED*
+
+* runtime-evidence storage keyed to exact artifact identity;
+* separate Static / Rift / Hygiene user-facing dimensions;
+* ELI5 wording for observed-vs-capable distinction;
+* scan timestamp/scenario/coverage disclosure;
+* no inference from "not observed" to "safe".
+
+== Current-pass change list
+
+=== Pass 1
+
+Pass 1 established the fail-closed Bubblewrap boundary, GitHub user-namespace
+setup/probe, source cleanup and the initial hardening plan.
+
+=== Pass 2
+
+Pass 2 adds/changes:
+
+[source,text]
+----
+tools/seccomp/rift-seccomp-export.c
+tools/build-rift-seccomp.sh
+tools/exec-bwrap-seccomp.sh
+tools/exec-rift-scope.sh
+tools/verify-rift-cgroup.sh
+tools/check-rift-source-contract.py
+tools/publish-rift-runtime.ps1
+InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs
+InterdimensionalRift/Runtime/InstrumentedServiceProxy.cs
+InterdimensionalRift/Runtime/DefaultValueFactory.cs
+samples/AsyncSamplePlugin/*
+----
+
+`tools/run-rift-bwrap.sh` is upgraded to supervisor v2: it requires a seccomp
+policy, creates a cgroup-v2 transient service with hard limits, mounts the exact
+staged artifact tree read-only and records both the entry-DLL and artifact-tree
+hashes. No production fallback exists when systemd/cgroup, Bubblewrap or seccomp
+is unavailable.
+
+The plugin loader no longer preloads a second `Dalamud.dll` into the collectible
+ALC. It shares the host's frozen contract assembly and resolves only plugin-local
+dependencies from the staged artifact. `RuntimeServiceRegistry` scans
+`[PluginService]`, creates interface implementations with `DispatchProxy`,
+records every injection/service call and drives registered `IFramework.Update`
+callbacks.
+
+API-15 lifecycle handling now treats a successful synchronous constructor as
+initialization and invokes `IAsyncDalamudPlugin.LoadAsync(CancellationToken)`
+for async plugins. Disposal uses BCL `IDisposable`/`IAsyncDisposable`. The old
+hand-written pre-API-15 stubs moved under `historical/`.
+
+The shim generator now preserves externally visible setters on concrete types;
+the checked-in generated surface was repaired from the frozen surface manifest
+so known cases such as `CommandInfo.set_HelpMessage` exist immediately. Frozen
+Dalamud dependency references are copied into runtime publications rather than
+probing arbitrary host paths at execution time.
+
+The positive test contract is intentionally stricter: `not_a_plugin`,
+`load_failed` and `init_timeout` cannot satisfy the synchronous fixture. An
+async fixture verifies `LoadAsync`/`DisposeAsync`. `RIFT_OMEGA_FIXTURE` can point
+to a compiled Omega DLL; the gate requires all eight current Omega services to
+be dynamically injected and the constructor to be entered, while allowing a
+Linux native-dependency exception after that point.
+
+Validation possible in this environment is source/static only: shell syntax and
+the API-15 source-contract gate pass. A live Bubblewrap/cgroup/seccomp run and
+C# build still require the GitHub `ubuntu-24.04` workflow or a machine with the
+pinned Dalamud API-15 Hooks dependency set and .NET 10 SDK.
