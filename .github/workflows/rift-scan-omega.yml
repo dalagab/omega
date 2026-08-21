@@ -1,0 +1,301 @@
+name: Rift scan published Omega
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - rift
+    paths:
+      - 'InterdimensionalRift/**'
+      - 'InterdimensionalRift.DalamudShim/**'
+      - 'tests/InterdimensionalRift.Tests/**'
+      - 'tools/**'
+      - '.github/workflows/rift-scan-omega.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  acquire-omega:
+    name: Acquire Omega as Dalamud would
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Resolve published Dalamud feed and download exact package
+        id: acquire
+        shell: bash
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/omega-acquire"
+          mkdir -p "$work"
+          feed="https://github.com/${REPOSITORY}/releases/download/omega-latest/pluginmaster.json"
+          curl --fail --location --proto '=https' --tlsv1.2 "$feed" -o "$work/pluginmaster.json"
+
+          python3 - "$work/pluginmaster.json" "$work/acquisition.env" <<'PY'
+          import json, pathlib, re, sys, urllib.parse
+          manifest_path = pathlib.Path(sys.argv[1])
+          out_path = pathlib.Path(sys.argv[2])
+          data = json.loads(manifest_path.read_text(encoding='utf-8-sig'))
+          if not isinstance(data, list) or not data:
+              raise SystemExit('published PluginMaster is not a non-empty array')
+          entry = data[0]
+          url = str(entry.get('DownloadLinkInstall') or '')
+          parsed = urllib.parse.urlparse(url)
+          if parsed.scheme != 'https' or parsed.hostname != 'github.com':
+              raise SystemExit(f'install URL must be HTTPS on github.com: {url!r}')
+          m = re.fullmatch(r'/dalagab/omega/releases/download/(v\d+\.\d+\.\d+)/Omega\.zip', parsed.path)
+          if not m:
+              raise SystemExit(f'install URL is not immutable versioned Omega.zip: {url!r}')
+          version = str(entry.get('AssemblyVersion') or '')
+          if not version:
+              raise SystemExit('PluginMaster entry has no AssemblyVersion')
+          out_path.write_text(
+              f'OMEGA_URL={url}\nOMEGA_TAG={m.group(1)}\nOMEGA_ASSEMBLY_VERSION={version}\n',
+              encoding='utf-8'
+          )
+          PY
+
+          source "$work/acquisition.env"
+          curl --fail --location --proto '=https' --tlsv1.2 "$OMEGA_URL" -o "$work/Omega.zip"
+          curl --fail --location --proto '=https' --tlsv1.2 "${OMEGA_URL}.sha256" -o "$work/Omega.zip.sha256"
+
+          expected=$(awk 'NF { print tolower($1); exit }' "$work/Omega.zip.sha256")
+          actual=$(sha256sum "$work/Omega.zip" | awk '{print $1}')
+          [[ "$expected" =~ ^[0-9a-f]{64}$ ]] || { echo 'invalid published SHA-256 sidecar' >&2; exit 1; }
+          [[ "$actual" == "$expected" ]] || { echo "Omega.zip SHA-256 mismatch: expected $expected, got $actual" >&2; exit 1; }
+
+          python3 - "$work/acquisition.json" "$OMEGA_URL" "$OMEGA_TAG" "$OMEGA_ASSEMBLY_VERSION" "$actual" <<'PY'
+          import json, pathlib, sys
+          output, url, tag, version, sha = sys.argv[1:]
+          pathlib.Path(output).write_text(json.dumps({
+              'schema_version': 'rift.acquisition.v1',
+              'producer': 'rift-dalamud-style-acquisition',
+              'feed': 'omega-latest/pluginmaster.json',
+              'download_url': url,
+              'release_tag': tag,
+              'assembly_version': version,
+              'omega_zip_sha256': sha,
+              'selection': 'PluginMaster[0].DownloadLinkInstall',
+          }, indent=2) + '\n', encoding='utf-8')
+          PY
+
+          echo "omega_tag=$OMEGA_TAG" >> "$GITHUB_OUTPUT"
+          echo "omega_version=$OMEGA_ASSEMBLY_VERSION" >> "$GITHUB_OUTPUT"
+          echo "omega_sha256=$actual" >> "$GITHUB_OUTPUT"
+
+      - name: Upload opaque Omega input
+        uses: actions/upload-artifact@v7
+        with:
+          name: rift-omega-input
+          path: |
+            ${{ runner.temp }}/omega-acquire/Omega.zip
+            ${{ runner.temp }}/omega-acquire/Omega.zip.sha256
+            ${{ runner.temp }}/omega-acquire/pluginmaster.json
+            ${{ runner.temp }}/omega-acquire/acquisition.json
+          if-no-files-found: error
+          retention-days: 7
+
+  scan-omega:
+    name: Execute published Omega inside Rift
+    needs: acquire-omega
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - name: Check out Rift branch
+        uses: actions/checkout@v6
+
+      - name: Download opaque Omega input
+        uses: actions/download-artifact@v8
+        with:
+          name: rift-omega-input
+          path: ${{ runner.temp }}/omega-input
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install boundary dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bubblewrap libcap2-bin libseccomp-dev gcc pkg-config unzip
+
+      - name: Enable and verify hostile-code boundary
+        shell: bash
+        run: |
+          sudo bash ./tools/enable-userns-github.sh
+          bash ./tools/verify-bwrap.sh
+          bash ./tools/verify-rift-cgroup.sh
+
+      - name: Download frozen Dalamud runtime for Rift build
+        shell: bash
+        run: |
+          set -euo pipefail
+          hooks="$RUNNER_TEMP/dalamud-hooks"
+          mkdir -p "$hooks"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            'https://goatcorp.github.io/dalamud-distrib/stg/latest.zip' \
+            -o "$RUNNER_TEMP/dalamud.zip"
+          unzip -q "$RUNNER_TEMP/dalamud.zip" -d "$hooks"
+          test -s "$hooks/Dalamud.dll"
+          echo "RIFT_HOOKS=$hooks" >> "$GITHUB_ENV"
+
+      - name: Build and test Rift runtime against API 15
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./tools/check-rift-source-contract.py
+          dotnet test ./tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
+            --configuration Release \
+            -p:HooksDir="$RIFT_HOOKS"
+          dotnet publish ./InterdimensionalRift/InterdimensionalRift.csproj \
+            --configuration Release \
+            --runtime linux-x64 \
+            --self-contained true \
+            -p:HooksDir="$RIFT_HOOKS" \
+            --output "$RUNNER_TEMP/rift-runtime"
+          test -x "$RUNNER_TEMP/rift-runtime/interdimensional-rift"
+
+      - name: Build versioned seccomp policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          policy=$(bash ./tools/build-rift-seccomp.sh "$RUNNER_TEMP/rift-seccomp.bpf")
+          test -s "$policy"
+          echo "RIFT_SECCOMP=$policy" >> "$GITHUB_ENV"
+          sha256sum "$policy"
+
+      - name: Safely stage exact published Omega package
+        id: stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          input="$RUNNER_TEMP/omega-input"
+          artifact="$RUNNER_TEMP/omega-artifact"
+          mkdir -p "$artifact"
+
+          expected=$(awk 'NF { print tolower($1); exit }' "$input/Omega.zip.sha256")
+          actual=$(sha256sum "$input/Omega.zip" | awk '{print $1}')
+          [[ "$actual" == "$expected" ]] || { echo 'Actions artifact no longer matches published Omega SHA-256' >&2; exit 1; }
+
+          python3 - "$input/Omega.zip" "$artifact" <<'PY'
+          import pathlib, stat, sys, zipfile
+          archive = pathlib.Path(sys.argv[1])
+          target = pathlib.Path(sys.argv[2]).resolve()
+          total = 0
+          max_total = 256 * 1024 * 1024
+          max_files = 4096
+          with zipfile.ZipFile(archive) as zf:
+              infos = zf.infolist()
+              if len(infos) > max_files:
+                  raise SystemExit(f'Omega.zip has too many entries: {len(infos)}')
+              for info in infos:
+                  name = info.filename.replace('\\', '/')
+                  p = pathlib.PurePosixPath(name)
+                  if p.is_absolute() or '..' in p.parts:
+                      raise SystemExit(f'unsafe ZIP path: {name!r}')
+                  mode = (info.external_attr >> 16) & 0xFFFF
+                  if stat.S_ISLNK(mode):
+                      raise SystemExit(f'symlink entries are not accepted: {name!r}')
+                  total += info.file_size
+                  if total > max_total:
+                      raise SystemExit('Omega.zip expands beyond the staging limit')
+              zf.extractall(target)
+          PY
+
+          plugin=$(find "$artifact" -type f -name 'DalagabOmega.dll' -print -quit)
+          manifest=$(find "$artifact" -type f -name 'DalagabOmega.json' -print -quit)
+          [[ -n "$plugin" && -s "$plugin" ]] || { echo 'published Omega.zip has no DalagabOmega.dll' >&2; exit 1; }
+          [[ -n "$manifest" && -s "$manifest" ]] || { echo 'published Omega.zip has no DalagabOmega.json' >&2; exit 1; }
+
+          packaged_version=$(python3 - "$manifest" <<'PY'
+          import json, sys
+          with open(sys.argv[1], encoding='utf-8-sig') as f:
+              print(json.load(f).get('AssemblyVersion', ''))
+          PY
+          )
+          feed_version=$(python3 - "$input/acquisition.json" <<'PY'
+          import json, sys
+          with open(sys.argv[1], encoding='utf-8') as f:
+              print(json.load(f)['assembly_version'])
+          PY
+          )
+          [[ -n "$packaged_version" && "$packaged_version" == "$feed_version" ]] || {
+            echo "package/feed version mismatch: package=$packaged_version feed=$feed_version" >&2
+            exit 1
+          }
+
+          echo "plugin=$plugin" >> "$GITHUB_OUTPUT"
+          echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
+          echo "version=$packaged_version" >> "$GITHUB_OUTPUT"
+
+      - name: Execute Omega inside cgroup + Bubblewrap + seccomp
+        id: rift
+        shell: bash
+        run: |
+          set +e
+          results="$RUNNER_TEMP/rift-results"
+          mkdir -p "$results"
+          bash ./tools/run-rift-bwrap.sh \
+            --runtime-dir "$RUNNER_TEMP/rift-runtime" \
+            --plugin '${{ steps.stage.outputs.plugin }}' \
+            --artifact-dir '${{ steps.stage.outputs.artifact }}' \
+            --seccomp-policy "$RIFT_SECCOMP" \
+            --out "$results/rift-omega.json" \
+            --init-timeout 15 \
+            --wall-timeout 30 \
+            --memory-max 768M \
+            --tasks-max 64 \
+            --cpu-quota 100%
+          rc=$?
+          echo "$rc" > "$results/rift-exit-code.txt"
+          cp "$RUNNER_TEMP/omega-input/acquisition.json" "$results/acquisition.json"
+          cp "$RUNNER_TEMP/omega-input/Omega.zip.sha256" "$results/Omega.zip.sha256"
+          if [[ ! -s "$results/rift-omega.json" ]]; then
+            printf '{"schema_version":"rift.workflow.v1","outcome":"missing_report","exit_code":%d}\n' "$rc" > "$results/rift-omega.json"
+          fi
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Write Rift result summary
+        if: always()
+        shell: bash
+        run: |
+          results="$RUNNER_TEMP/rift-results"
+          {
+            echo '## Interdimensional Rift — published Omega'
+            echo
+            echo "- Omega version: \`${{ steps.stage.outputs.version }}\`"
+            echo "- Rift process exit code: \`${{ steps.rift.outputs.exit_code }}\`"
+            echo '- Acquisition: `omega-latest/pluginmaster.json` → immutable versioned `Omega.zip`'
+            echo '- Runtime boundary: cgroup-v2 → Bubblewrap → seccomp → Rift host → Omega'
+            echo
+            echo '```json'
+            python3 -m json.tool "$results/rift-omega.json" 2>/dev/null || cat "$results/rift-omega.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Rift observations
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rift-omega-results
+          path: ${{ runner.temp }}/rift-results
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce Rift execution outcome after preserving report
+        if: always()
+        shell: bash
+        run: |
+          rc=$(cat "$RUNNER_TEMP/rift-results/rift-exit-code.txt" 2>/dev/null || echo 99)
+          if [[ "$rc" != '0' ]]; then
+            echo "Rift execution returned $rc; result artifact was preserved for diagnosis." >&2
+            exit "$rc"
+          fi

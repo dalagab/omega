@@ -667,3 +667,10 @@ This is intentional: a source import that records `tools/*.sh` as Git mode `1006
 
 A `.gitattributes` file pins shell/workflow/source text to stable line endings so a Windows checkout cannot introduce CRLF interpreter failures.
 Executable mode `100755` remains desirable for normal Linux ergonomics, but it is no longer a correctness or security dependency.
+
+
+== Pass 2.2: Dalamud-style published-package self scan
+
+Rift now has a CI workflow that acquires Omega the way Dalamud would: it reads the stable PluginMaster, follows the immutable versioned DownloadLinkInstall, verifies the published SHA-256 sidecar, then passes the opaque package to a separate hostile-execution job.
+
+The hostile job extracts the exact package with ZIP safety checks, verifies DalagabOmega.json against the feed version, and executes DalagabOmega.dll only inside the cgroup-v2 -> Bubblewrap -> seccomp boundary. Results are always preserved as the `rift-omega-results` Actions artifact before a non-zero Rift execution status fails the job.
