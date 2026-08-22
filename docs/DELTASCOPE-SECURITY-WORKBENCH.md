@@ -17,7 +17,7 @@ The workbench uses these stable operator concepts:
 - **Events** — time-oriented security observations/scans and, as the event model expands, normalized observation records.
 - **Intelligence** — advisory, endpoint, reputation, component and other enrichment that can be pivoted across plugins.
 - **Assets** — plugins first, with drill-down into variants, artifacts, source repositories, binaries, dependencies and endpoints.
-- **Rules** — read-only active Definition/pack provenance plus the local Rule Lab. Rule Lab state is scratch data only.
+- **Rules** — unified SRL Core workspace: read-only repository System Rules and active frozen provenance plus versioned local My Rules. Local saves never mutate Definitions or production state.
 - **Reports** — coverage/revision/replay summaries and exportable read-only reports.
 - **System** — evidence/Definitions revisions, pipeline health, audit status and the advanced raw Evidence-v2 browser.
 

@@ -4,6 +4,8 @@ Status: **Phases 5–6 and the first end-to-end Phase 7 migration path are imple
 
 SRL is a deterministic, non-executable, Sigma-inspired YAML language for expressing static capability and behavior rules over SigmaScope's registered observation collections. It does not replace YARA, ClamAV, OSV, endpoint protection, signature verification, or other specialist security systems.
 
+`tools/security/srl.py` is now explicitly the shared **SRL Core** used by both SigmaScope and DeltaScope. DeltaScope 4.0 may project one SRL rule into `omega.sigmascope.srl-authoring-graph.v1` for visual editing, but that graph is not another executable language: graph edits must reconstruct canonical SRL YAML and pass the same compiler before evaluation or local save.
+
 ## Inspect the live authoring contracts
 
 Do not guess collection names or fields. Use the branch-shipped machine-readable references:

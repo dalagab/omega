@@ -1,4 +1,4 @@
-"""SigmaScope Rule Language (SRL) v1 compiler and deterministic evaluator.
+"""SRL Core: SigmaScope Rule Language (SRL) v1 compiler, model bridge and deterministic evaluator.
 
 SRL is deliberately non-executable. Rules may inspect only registered retained
 observation collections (plus facts emitted by observation rules), use a small typed
@@ -16,6 +16,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -36,6 +37,7 @@ RULESET_EVALUATION_SCHEMA = "omega.sigmascope.ruleset-evaluation.v1"
 FIXTURE_SCHEMA = "omega.sigmascope.rule-fixture.v1"
 FIXTURE_RESULT_SCHEMA = "omega.sigmascope.rule-fixture-result.v1"
 ENGINE_SCHEMA = "omega.sigmascope.srl-engine.v1"
+GRAPH_SCHEMA = "omega.sigmascope.srl-authoring-graph.v1"
 
 MAX_DOCUMENT_BYTES = 128 * 1024
 MAX_RULES = 256
@@ -218,6 +220,9 @@ def engine_reference() -> dict[str, Any]:
         "forbiddenInputs": sorted(observation_projection.PROJECTION_DATASETS) + ["behaviorConsistency", "permissionCandidates", "automationCapabilities"],
         "deterministic": True,
         "nonExecutable": True,
+        "component": "SRL Core",
+        "authoringGraphSchema": GRAPH_SCHEMA,
+        "authoringGraphAvailable": True,
     }
 
 
@@ -555,6 +560,252 @@ def compile_yaml_text(text: str) -> dict[str, Any]:
 
 def compile_file(path: str | Path) -> dict[str, Any]:
     return compile_ruleset(load_yaml(path))
+
+
+def single_rule_document(document: Any) -> dict[str, Any]:
+    """Return one raw SRL rule from a validated authoring document.
+
+    The visual authoring bridge intentionally edits one rule at a time. Production
+    rulesets remain supported by the compiler/evaluator but must be opened as their
+    individual rule entries in DeltaScope.
+    """
+    if isinstance(document, Mapping) and str(document.get("schema") or "") == RULE_SCHEMA:
+        return dict(document)
+    if isinstance(document, Mapping) and str(document.get("schema") or "") == RULESET_SCHEMA:
+        rules = [dict(item) for item in document.get("rules") or [] if isinstance(item, Mapping)]
+        if len(rules) != 1:
+            raise SRLCompileError("visual authoring requires exactly one SRL rule")
+        return rules[0]
+    raise SRLCompileError("visual authoring requires an SRL rule or one-rule ruleset")
+
+
+def _graph_node_id(prefix: str, value: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_.:-]+", "-", value).strip("-") if value else "node"
+    return f"{prefix}:{safe}"
+
+
+def rule_to_authoring_graph(document: Any) -> dict[str, Any]:
+    """Project one SRL rule into a deterministic, non-executable authoring graph.
+
+    The graph is an editing/view representation only. SigmaScope never executes it;
+    graph changes must round-trip back through :func:`authoring_graph_to_rule` and the
+    normal SRL compiler before they can be evaluated.
+    """
+    raw = single_rule_document(document)
+    compile_rule(raw)  # fail closed before presenting a graph as meaningful
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    selector_ids: dict[str, str] = {}
+
+    for index, (name, selector) in enumerate((raw.get("selectors") or {}).items()):
+        node_id = _graph_node_id("selector", str(name))
+        selector_ids[str(name)] = node_id
+        selector = dict(selector) if isinstance(selector, Mapping) else {}
+        node_type = "fact-selector" if "facts" in selector else "collection-selector"
+        nodes.append({
+            "id": node_id, "type": node_type, "label": str(name),
+            "config": {"name": str(name), "selector": selector},
+            "position": {"x": 40, "y": 40 + index * 138},
+        })
+
+    logic_counter = 0
+    def condition_node(value: Any, depth: int = 0) -> str:
+        nonlocal logic_counter
+        if isinstance(value, str):
+            node_id = selector_ids.get(value)
+            if not node_id:
+                raise SRLCompileError(f"condition references unknown selector {value}")
+            return node_id
+        if not isinstance(value, Mapping) or len(value) != 1:
+            raise SRLCompileError("visual authoring encountered an invalid condition")
+        op, payload = next(iter(value.items()))
+        op = str(op)
+        logic_counter += 1
+        node_id = f"logic:{logic_counter}:{op}"
+        config: dict[str, Any] = {"operator": op}
+        nodes.append({
+            "id": node_id, "type": "logic", "label": op.upper(), "config": config,
+            "position": {"x": 340 + depth * 170, "y": 60 + (logic_counter - 1) * 118},
+        })
+        if op in {"all", "any"}:
+            if not isinstance(payload, list):
+                raise SRLCompileError(f"condition {op} requires a list")
+            for order, child in enumerate(payload):
+                edges.append({"from": condition_node(child, depth + 1), "to": node_id, "order": order})
+        elif op == "not":
+            edges.append({"from": condition_node(payload, depth + 1), "to": node_id, "order": 0})
+        elif op == "count":
+            if not isinstance(payload, Mapping):
+                raise SRLCompileError("condition count requires a mapping")
+            selector = str(payload.get("selector") or "")
+            source = selector_ids.get(selector)
+            if not source:
+                raise SRLCompileError(f"count references unknown selector {selector}")
+            threshold = [(key, payload.get(key)) for key in ("gt", "gte", "lt", "lte", "equals") if key in payload]
+            if len(threshold) != 1:
+                raise SRLCompileError("condition count requires exactly one threshold")
+            config["thresholdOperator"], config["thresholdValue"] = threshold[0]
+            edges.append({"from": source, "to": node_id, "order": 0})
+        else:
+            raise SRLCompileError(f"unknown condition operator {op}")
+        return node_id
+
+    root_id = condition_node(raw.get("condition"))
+    emit_id = "emit:result"
+    emit = dict(raw.get("emit") or {}) if isinstance(raw.get("emit"), Mapping) else {}
+    nodes.append({
+        "id": emit_id, "type": "emit", "label": "EMIT", "config": {"emit": emit},
+        "position": {"x": 720, "y": 80},
+    })
+    edges.append({"from": root_id, "to": emit_id, "order": 0})
+    return {
+        "schema": GRAPH_SCHEMA,
+        "readOnlyExecutionModel": True,
+        "metadata": {
+            "schema": RULE_SCHEMA,
+            "id": str(raw.get("id") or ""),
+            "kind": str(raw.get("kind") or ""),
+            "status": str(raw.get("status") or "experimental"),
+        },
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+def authoring_graph_to_rule(graph: Mapping[str, Any]) -> dict[str, Any]:
+    """Convert an SRL authoring graph back to one canonical raw SRL rule.
+
+    This function is deliberately strict and compiles the reconstructed rule before
+    returning it, so a malformed visual graph can never bypass SRL validation.
+    """
+    if not isinstance(graph, Mapping) or str(graph.get("schema") or "") != GRAPH_SCHEMA:
+        raise SRLCompileError(f"authoring graph schema must be {GRAPH_SCHEMA}")
+    metadata = graph.get("metadata") if isinstance(graph.get("metadata"), Mapping) else {}
+    raw_nodes = graph.get("nodes") if isinstance(graph.get("nodes"), list) else []
+    raw_edges = graph.get("edges") if isinstance(graph.get("edges"), list) else []
+    nodes: dict[str, dict[str, Any]] = {}
+    for item in raw_nodes:
+        if not isinstance(item, Mapping):
+            raise SRLCompileError("authoring graph nodes must be mappings")
+        node_id = _require_id(item.get("id"), "authoring node id")
+        if node_id in nodes:
+            raise SRLCompileError(f"duplicate authoring node id {node_id}")
+        nodes[node_id] = dict(item)
+    if not nodes or len(nodes) > MAX_NODES:
+        raise SRLCompileError("authoring graph has an invalid node count")
+
+    incoming: dict[str, list[dict[str, Any]]] = {node_id: [] for node_id in nodes}
+    for index, item in enumerate(raw_edges):
+        if not isinstance(item, Mapping):
+            raise SRLCompileError("authoring graph edges must be mappings")
+        source, target = str(item.get("from") or ""), str(item.get("to") or "")
+        if source not in nodes or target not in nodes:
+            raise SRLCompileError("authoring graph edge references an unknown node")
+        order = item.get("order", index)
+        if isinstance(order, bool) or not isinstance(order, int) or order < 0:
+            raise SRLCompileError("authoring graph edge order must be a non-negative integer")
+        incoming[target].append({"from": source, "order": order})
+    for value in incoming.values():
+        value.sort(key=lambda item: (item["order"], item["from"]))
+
+    selectors: dict[str, Any] = {}
+    selector_names: dict[str, str] = {}
+    emit_nodes: list[str] = []
+    for node_id, node in nodes.items():
+        node_type = str(node.get("type") or "")
+        config = node.get("config") if isinstance(node.get("config"), Mapping) else {}
+        if node_type in {"collection-selector", "fact-selector"}:
+            name = _require_id(config.get("name") or node.get("label"), "selector name")
+            selector = config.get("selector")
+            if not isinstance(selector, Mapping):
+                raise SRLCompileError(f"selector node {node_id} is missing selector config")
+            if name in selectors:
+                raise SRLCompileError(f"duplicate selector name {name}")
+            selectors[name] = dict(selector)
+            selector_names[node_id] = name
+        elif node_type == "emit":
+            emit_nodes.append(node_id)
+        elif node_type != "logic":
+            raise SRLCompileError(f"unsupported authoring node type {node_type}")
+    if len(emit_nodes) != 1:
+        raise SRLCompileError("authoring graph requires exactly one emit node")
+
+    visiting: set[str] = set()
+    memo: dict[str, Any] = {}
+    def build_condition(node_id: str) -> Any:
+        if node_id in memo:
+            return memo[node_id]
+        if node_id in visiting:
+            raise SRLCompileError("authoring graph contains a condition cycle")
+        visiting.add(node_id)
+        try:
+            if node_id in selector_names:
+                value: Any = selector_names[node_id]
+            else:
+                node = nodes[node_id]
+                if str(node.get("type") or "") != "logic":
+                    raise SRLCompileError("only selector/logic nodes may feed a condition")
+                config = node.get("config") if isinstance(node.get("config"), Mapping) else {}
+                op = str(config.get("operator") or "").casefold()
+                parents = incoming[node_id]
+                if op in {"all", "any"}:
+                    if not parents:
+                        raise SRLCompileError(f"logic {op} requires at least one input")
+                    value = {op: [build_condition(edge["from"]) for edge in parents]}
+                elif op == "not":
+                    if len(parents) != 1:
+                        raise SRLCompileError("logic not requires exactly one input")
+                    value = {"not": build_condition(parents[0]["from"])}
+                elif op == "count":
+                    if len(parents) != 1 or parents[0]["from"] not in selector_names:
+                        raise SRLCompileError("logic count requires exactly one selector input")
+                    threshold_op = str(config.get("thresholdOperator") or "gte")
+                    threshold_value = config.get("thresholdValue", 1)
+                    value = {"count": {"selector": selector_names[parents[0]["from"]], threshold_op: threshold_value}}
+                else:
+                    raise SRLCompileError(f"unsupported logic operator {op}")
+            memo[node_id] = value
+            return value
+        finally:
+            visiting.discard(node_id)
+
+    emit_id = emit_nodes[0]
+    if len(incoming[emit_id]) != 1:
+        raise SRLCompileError("emit node requires exactly one condition input")
+    root = incoming[emit_id][0]["from"]
+    emit_config = nodes[emit_id].get("config") if isinstance(nodes[emit_id].get("config"), Mapping) else {}
+    emit = emit_config.get("emit")
+    if not isinstance(emit, Mapping):
+        raise SRLCompileError("emit node is missing emit config")
+    requires = sorted({
+        str(selector.get("collection"))
+        for selector in selectors.values()
+        if isinstance(selector, Mapping) and selector.get("collection")
+    })
+    rule = {
+        "schema": RULE_SCHEMA,
+        "id": _require_id(metadata.get("id"), "rule id"),
+        "kind": str(metadata.get("kind") or "observation"),
+        "status": str(metadata.get("status") or "experimental"),
+        "requires": requires,
+        "selectors": selectors,
+        "condition": build_condition(root),
+        "emit": dict(emit),
+    }
+    compile_rule(rule)
+    return rule
+
+
+def authoring_graph_to_yaml(graph: Mapping[str, Any]) -> str:
+    """Serialize a validated authoring graph through canonical SRL YAML."""
+    rule = authoring_graph_to_rule(graph)
+    return yaml.safe_dump(rule, sort_keys=False, allow_unicode=True, default_flow_style=False, width=120).strip() + "\n"
+
+
+def yaml_text_to_authoring_graph(text: str) -> dict[str, Any]:
+    """Parse/compile SRL YAML and expose its one-rule visual authoring graph."""
+    document = parse_yaml_text(text)
+    return rule_to_authoring_graph(document)
 
 
 def _get_path(value: Any, path: str) -> tuple[bool, Any]:

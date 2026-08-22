@@ -1,5 +1,31 @@
 # Omega Security Services changelog
 
+## 2.15.0 unreleased — DeltaScope 4.0 unified SRL Core workspace
+
+- Extract the shared rule-language authoring boundary into **SRL Core** (`tools/security/srl.py`): SigmaScope and DeltaScope use the same parser, validator, compiler/evaluator model, and DeltaScope's visual authoring graph must round-trip through that core before YAML is accepted. The graph is never an executable production rule format.
+- Replace the separate Definition-library inspector and Rule Lab surfaces with one Rules workspace. The left tree now shows **System Rules** from repository Definition Packs and versioned **My Rules** side by side; selecting either rule uses the same YAML / Visual / Explain-Test work area.
+- Add a bounded local rule store at `~/.omega/deltascope/rules/v1` (override: `OMEGA_DELTASCOPE_RULE_HOME`). Local saves are atomic, immutable-revisioned and validated by SRL Core; generated internal paths are used instead of arbitrary filesystem paths.
+- System Rules remain read-only and can be explicitly **Forked to My Rules**. Local/new rules can save revisions without any write path to `security-definitions/`, frozen Definitions, Evidence-v2, scanner queues or production activation.
+- Add the first functional SRL visual composer: collection/fact selectors, ALL/ANY/NOT/COUNT logic, Emit nodes, drag positioning, explicit node connections and typed property editing. Existing YAML is rendered into the graph; graph edits compile back to canonical SRL YAML through SRL Core.
+- Add `/api/workbench/rule-workspace`, local-rule load/save/fork/new endpoints, and YAML↔authoring-graph endpoints. Existing compile/evaluate/replay/fixture/export/GitHub-proposal boundaries remain unchanged.
+- No repository Definition content or production rule-evaluation semantics change in this pass; a future Definitions freeze may naturally receive a new frozen worker transport hash because the shared SRL source file changed.
+
+## 2.15.0 unreleased — terminal-history lifecycle validation repair
+
+- Fix candidate Evidence-v2 publication when an inactive variant already has a retained terminal snapshot and a different current descriptor must replace it. The older terminal descriptor is now converted to an immutable `superseded` historical snapshot instead of being copied into `history/variants` while still labelled `retired`.
+- This directly fixes validation failures such as `historicalSnapshots variant 507 lifecycle state is not superseded` and variant 965 from the bounded production SigmaScope-v2 worker.
+- Preserve the current terminal descriptor as `retired`; only the displaced older descriptor becomes `superseded`, with `terminal=true`, `rescanEligible=false`, and a `supersededBy` identity pointing at the replacement.
+- Add a regression that recreates the terminal-replacement path and asserts the terminal/history lifecycle split. No scanner, rule, artifact-analysis, source-analysis, Definitions, or queue identity changes are required.
+
+## 2.15.0 unreleased — DeltaScope 3.9 Definition library tree
+
+- Make the Rules workspace useful even when the selected Evidence-v2 snapshot publishes no frozen Definition provenance: DeltaScope now exposes the source-controlled `security-definitions/packs` tree separately from active production state.
+- Add a left-hand Definition library tree with pack overview, individual SRL rules, rule source files and fixtures, plus search and expand/collapse controls. The current package exposes 2 repository packs, 7 reviewed SRL rules and 6 fixtures immediately.
+- Selecting a repository rule opens a learning-oriented inspector showing retained collections/facts consumed, selector symbols, condition structure, emitted fact/finding, severity/confidence/category, normalized single-rule YAML, the exact containing source file and compiled semantics/revision.
+- Add **Load a copy into Rule Lab** so an existing rule can become local scratch input without editing the repository, Definitions, Evidence-v2 or production activation state. Rule Lab is collapsed by default and opens when a source example is copied into it.
+- Keep exact frozen active-rule provenance in a distinct collapsed snapshot section. The UI explicitly explains why repository source can contain rules while a historical/current Evidence snapshot legitimately reports `0 active rules`.
+- Add `omega.deltascope.definition-library.v1` and `/api/workbench/rule-library`; the payload is `readOnly=true`, `mutationAuthority=none`, `policyInput=false`, `sourceAuthority=repository-source-only`. The full Definition Pack set is compiled/validated before it is presented.
+
 ## 2.15.0 unreleased — optional ClamAV freeze isolation
 
 - Make the daily catalog ClamAV refresh genuinely optional: package-install, FreshClam, asset-build, release-create and release-upload failures no longer block the Definitions/catalog publication path.

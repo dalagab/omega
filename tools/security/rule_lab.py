@@ -939,6 +939,69 @@ def build_github_issue_proposal(
     return result
 
 
+def visual_graph_from_yaml(text: str) -> dict[str, Any]:
+    """Return DeltaScope's editable visual projection for one SRL rule."""
+    try:
+        graph = srl.yaml_text_to_authoring_graph(text)
+        compiled = compile_candidate_text(text)
+        return {
+            "schema": srl.GRAPH_SCHEMA, "ok": True, "graph": graph,
+            "diagnostics": compiled.get("diagnostics") or [],
+            "productionWriteBack": False, "mutationAuthority": "none",
+        }
+    except srl.SRLError as exc:
+        return {
+            "schema": srl.GRAPH_SCHEMA, "ok": False, "graph": None,
+            "diagnostics": [_diag("visual", str(exc))],
+            "productionWriteBack": False, "mutationAuthority": "none",
+        }
+
+
+def yaml_from_visual_graph(graph: Mapping[str, Any]) -> dict[str, Any]:
+    """Compile a visual graph back through SRL Core and return canonical YAML."""
+    try:
+        text = srl.authoring_graph_to_yaml(graph)
+        compiled = compile_candidate_text(text)
+        if not compiled.get("ok"):
+            return {
+                "schema": srl.GRAPH_SCHEMA, "ok": False, "yaml": text,
+                "diagnostics": compiled.get("diagnostics") or [],
+                "productionWriteBack": False, "mutationAuthority": "none",
+            }
+        return {
+            "schema": srl.GRAPH_SCHEMA, "ok": True, "yaml": text,
+            "compile": compiled, "diagnostics": compiled.get("diagnostics") or [],
+            "productionWriteBack": False, "mutationAuthority": "none",
+        }
+    except srl.SRLError as exc:
+        return {
+            "schema": srl.GRAPH_SCHEMA, "ok": False,
+            "diagnostics": [_diag("visual", str(exc))],
+            "productionWriteBack": False, "mutationAuthority": "none",
+        }
+
+
+def new_rule_yaml(rule_id: str = "local.new-rule", *, kind: str = "observation") -> str:
+    """Create a valid single-rule starter document for the unified workspace."""
+    rule_id = str(rule_id or "local.new-rule").strip() or "local.new-rule"
+    if kind == "correlation":
+        raw = {
+            "schema": srl.RULE_SCHEMA, "id": rule_id, "kind": "correlation", "status": "experimental",
+            "requires": [],
+            "selectors": {"example_fact": {"facts": {"any": ["example.fact"]}}},
+            "condition": "example_fact",
+            "emit": {
+                "findingId": f"{rule_id}.finding", "title": "New local correlation",
+                "description": "Describe why this relationship matters.", "severity": "caution", "category": "experimental",
+            },
+        }
+    else:
+        raw = srl.parse_yaml_text(DEFAULT_EXAMPLE)
+        raw["id"] = rule_id
+        raw["status"] = "experimental"
+    return yaml.safe_dump(raw, sort_keys=False, allow_unicode=True, default_flow_style=False, width=120).strip() + "\n"
+
+
 def reference() -> dict[str, Any]:
     return {
         "schema": RULE_LAB_SCHEMA,
@@ -946,6 +1009,7 @@ def reference() -> dict[str, Any]:
         "productionRuleEvaluationEnabled": False,
         "productionWriteBack": False,
         "engine": srl.engine_reference(),
+        "srlCore": {"component": "SRL Core", "graphSchema": srl.GRAPH_SCHEMA, "visualRoundTrip": True},
         "observationContractRevision": observation_projection.contract_revision(),
         "collections": observation_projection.build_schema_reference().get("collections") or [],
         "exampleYaml": DEFAULT_EXAMPLE,

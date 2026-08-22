@@ -1,12 +1,12 @@
 # DeltaScope rule-development workbench architecture
 
-Status: **Phase 8 Rule Lab execution/export is implemented locally** on the unreleased 2.15 line. `deltascope.py capabilities`, `observation-schema`, and `rule-schema` expose the typed vocabulary; the browser adds inert candidate editing/import, retained-evidence dry-run/replay, fixture tooling, and deterministic export. Production write-back remains impossible from Rule Lab.
+Status: **DeltaScope 4.0 unified SRL Core workspace is implemented locally** on the unreleased 2.15 line. Repository System Rules and versioned local My Rules now share one YAML / Visual / Explain-Test workspace. Production/Definitions/Evidence write-back remains impossible; only the dedicated local rule store is writable.
 
 ## Goal
 
 DeltaScope should be the safe developer environment for creating and testing SigmaScope Rule Language definitions against real, already-generated evidence without putting experimental rules into the production scanner path.
 
-DeltaScope remains developer-only and read-only with respect to catalog/Definitions/Security Evidence publication.
+DeltaScope remains developer-only and read-only with respect to catalog/Definitions/Security Evidence publication. Local authoring is intentionally persisted under `~/.omega/deltascope/rules/v1` (or `OMEGA_DELTASCOPE_RULE_HOME`) with immutable revisions.
 
 ## Phase-4 evidence compatibility gate
 
@@ -24,6 +24,22 @@ The implemented Rule Lab compiles a candidate rule to a list of required logical
 - **Invalid rule input** — candidate requested a derived/conclusion collection rather than a legal observation input.
 
 Rule Lab must never hide this distinction or treat a bounded historical summary as complete evidence. See `docs/OBSERVATION-PROJECTION-CONTRACT.md`.
+
+## DeltaScope 4.0 unified workspace and SRL Core
+
+The Rules page no longer treats the source library and Rule Lab as separate work areas. A permanent tree contains:
+
+- **System Rules** — repository Definition Pack rules; source-readable, semantically inspectable, never directly editable;
+- **My Rules** — local versioned SRL rules; editable and testable;
+- **New Rule** — creates an unsaved local candidate.
+
+A System Rule can be explicitly **Forked to My Rules**. The selected rule always occupies the same main workspace with **YAML**, **Visual**, and **Explain / Test** tabs. Published active frozen provenance remains a distinct read-only snapshot section.
+
+The local store defaults to `~/.omega/deltascope/rules/v1` and may be redirected with `OMEGA_DELTASCOPE_RULE_HOME` or `--rule-home`. DeltaScope generates the storage paths, rejects symlinked storage boundaries, writes atomically, keeps `current.yaml`, and writes immutable numbered content-hash revisions. It cannot accept an arbitrary output pathname from the browser.
+
+`tools/security/srl.py` is the shared **SRL Core**. The authoring graph schema `omega.sigmascope.srl-authoring-graph.v1` is deliberately non-executable. Existing YAML is parsed to a canonical SRL rule, projected to graph nodes/edges, and graph edits are converted back to YAML only after the normal SRL compiler accepts the reconstructed rule. SigmaScope never executes the graph.
+
+The first visual node palette implements collection selectors, fact selectors, ALL, ANY, NOT, COUNT and Emit. Nodes can be positioned, connected, selected and edited using typed collection/operator information from the same SRL language reference. The visual representation is designed to grow without creating a second rule language.
 
 ## Local rule lifecycle
 

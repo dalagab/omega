@@ -118,6 +118,29 @@ class DeltaScopeRuleProvenanceTests(unittest.TestCase):
         self.assertTrue(any("policy input" in item for item in errors), errors)
         self.assertTrue(any("production SRL" in item for item in errors), errors)
 
+    def test_repository_definition_library_surfaces_source_rules_without_claiming_activation(self) -> None:
+        library = developer_view.local_definition_library(common.ROOT / "security-definitions" / "packs")
+        self.assertEqual("omega.deltascope.definition-library.v1", library["schema"])
+        self.assertTrue(library["readOnly"])
+        self.assertEqual("none", library["mutationAuthority"])
+        self.assertFalse(library["policyInput"])
+        self.assertEqual("repository-source-only", library["sourceAuthority"])
+        self.assertEqual(2, library["packCount"])
+        self.assertEqual(7, library["ruleCount"])
+        self.assertEqual(6, library["fixtureCount"])
+        rule = next(
+            item
+            for pack in library["packs"]
+            for item in pack["rules"]
+            if item["ruleId"] == "compound.network-execute"
+        )
+        self.assertEqual("correlation", rule["kind"])
+        self.assertEqual("compound.network-execute", rule["output"])
+        self.assertIn("schema: omega.sigmascope.rule.v1", rule["candidateYaml"])
+        self.assertIn("condition:", rule["candidateYaml"])
+        self.assertTrue(rule["ruleRevision"].startswith("srl-rule-v1-"))
+        self.assertTrue(rule["sourcePath"].startswith("security-definitions/packs/"))
+
     def test_rule_catalog_preserves_review_fixture_and_github_boundary(self) -> None:
         payload = self.provenance()
         payload["available"] = True
@@ -209,6 +232,7 @@ class DeltaScopeRuleProvenanceTests(unittest.TestCase):
         try:
             base = f"http://127.0.0.1:{server.server_address[1]}"
             for endpoint, schema in (
+                ("/api/workbench/rule-library", developer_view.LOCAL_DEFINITION_LIBRARY_SCHEMA),
                 ("/api/workbench/rules", deltascope_workbench.RULE_CATALOG_SCHEMA),
                 ("/api/workbench/reports", deltascope_workbench.REPORT_CATALOG_SCHEMA),
                 ("/api/workbench/system", deltascope_workbench.SYSTEM_STATUS_SCHEMA),

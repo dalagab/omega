@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""DeltaScope: developer-only, read-only inspection/audit entry point for SigmaScope evidence.
+"""DeltaScope: developer-only SigmaScope evidence and SRL Core workbench entry point.
 
-DeltaScope never scans plugins and never publishes catalog or Security Evidence state.
-It delegates to the hardened read-only developer view/audit implementation.
+DeltaScope never scans plugins and never publishes catalog, Definitions, or Security
+Evidence state. Published/security state is inspected read-only. The Rules workspace may
+write only versioned user-authored SRL YAML under the configured local rule home
+(default: ~/.omega/deltascope/rules/v1).
 """
 from __future__ import annotations
 
