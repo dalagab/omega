@@ -176,3 +176,26 @@ The separate trusted compatibility inventory under `tools/platform/PlatformEvide
 This does not put static scanning back into the hostile Rift host. SigmaScope remains the security static-analysis authority. The compatibility inventory is a narrow read-only projection specifically for answering which platform-specific components an artifact carries or invokes.
 
 See `docs/PLATFORM-COMPATIBILITY.adoc`.
+
+
+== Pass 3.2.2: OOM witness and canonical artifact identity
+
+The resource-limited scope runner is part of the hostile cgroup. Under a real
+`memory.max` OOM, that witness may be killed together with the plugin and cannot
+reliably write its own post-mortem status file.
+
+Rift therefore also uses the systemd manager, which remains outside the hostile
+cgroup, as the authoritative fallback. Qualification units set `OOMPolicy=kill`.
+After `systemd-run --wait` returns, the trusted outer launcher reads the unit's
+`Result`. `Result=oom-kill` is normalized to `execution.outcome=memory_limit`.
+
+All exact-artifact records now use one canonical tree hash algorithm:
+
+`sha256(path-nul-file-sha-lf-v1)`
+
+For each relative POSIX path in ordinal order, the aggregate hashes:
+
+`relative-path NUL lowercase-file-sha256 LF`
+
+Both Rift execution evidence and player-environment evidence record the algorithm
+identifier, and the published-Omega workflow fails if their exact tree digests differ.

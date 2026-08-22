@@ -37,7 +37,7 @@ require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "dalamud.internal_serv
 
 # Runtime-only report model.
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v1", "runtime observation schema version")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.1"', "producer version 0.3.1")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.2"', "producer version 0.3.2")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "boundary_profile", "boundary profile provenance")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "tmpfs_tmp_bytes", "tmpfs provenance")
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "RuntimeObservationKind", "neutral observation model")
@@ -136,5 +136,14 @@ require(Path(".github/workflows/rift-scan-omega.yml"), "Build player-environment
 require(Path("schemas/rift-runtime-observation-v1.schema.json"), "rift.runtime-observation.v1", "runtime JSON schema")
 require(Path("schemas/rift-supervisor-v3.schema.json"), "rift.supervisor.v3", "supervisor JSON schema")
 require(Path("docs/RUNTIME-OBSERVATION-SCHEMA.adoc"), "rift.runtime-observation.v1", "runtime schema documentation")
+
+
+require(Path("tools/hash-artifact-tree.py"), 'sha256(path-nul-file-sha-lf-v1)', "canonical artifact tree hash tool")
+require(Path("tools/run-rift-bwrap.sh"), 'OOMPolicy=kill', "systemd OOM policy kills full hostile unit")
+require(Path("tools/run-rift-bwrap.sh"), 'systemd_result', "systemd result captured outside hostile cgroup")
+require(Path("tools/run-rift-bwrap.sh"), '"oom-kill"', "systemd oom-kill maps to memory_limit")
+require(Path("tools/run-rift-bwrap.sh"), 'RIFT_ARTIFACT_TREE_HASH_ALGORITHM', "tree hash algorithm stamped into runtime")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'sha256(path-nul-file-sha-lf-v1)', "platform evidence uses canonical tree hash")
+require(Path(".github/workflows/rift-scan-omega.yml"), 'Artifact-tree correlation: PASS', "Omega CI enforces cross-report artifact identity")
 
 print(f"Rift source-contract checks: {len(checks)}/{len(checks)} passed")

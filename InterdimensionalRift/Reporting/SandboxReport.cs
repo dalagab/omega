@@ -26,6 +26,7 @@ public sealed class ExecutionProvenance
 {
     [JsonPropertyName("executor")] public string? Executor { get; set; }
     [JsonPropertyName("artifact_tree_sha256")] public string? ArtifactTreeSha256 { get; set; }
+    [JsonPropertyName("artifact_tree_hash_algorithm")] public string? ArtifactTreeHashAlgorithm { get; set; }
     [JsonPropertyName("entry_sha256")] public string? EntrySha256 { get; set; }
     [JsonPropertyName("network")] public string? Network { get; set; }
     [JsonPropertyName("seccomp")] public string? Seccomp { get; set; }
@@ -47,6 +48,7 @@ public sealed class ExecutionProvenance
     {
         Executor = Environment.GetEnvironmentVariable("RIFT_EXECUTOR"),
         ArtifactTreeSha256 = Environment.GetEnvironmentVariable("RIFT_ARTIFACT_TREE_SHA256"),
+        ArtifactTreeHashAlgorithm = Environment.GetEnvironmentVariable("RIFT_ARTIFACT_TREE_HASH_ALGORITHM"),
         EntrySha256 = Environment.GetEnvironmentVariable("RIFT_ENTRY_SHA256"),
         Network = Environment.GetEnvironmentVariable("RIFT_NETWORK_MODE"),
         Seccomp = Environment.GetEnvironmentVariable("RIFT_SECCOMP_MODE"),
@@ -75,7 +77,7 @@ public sealed class SandboxReport
     public string Producer { get; set; } = "interdimensional-rift";
 
     [JsonPropertyName("producer_version")]
-    public string ProducerVersion { get; set; } = "0.3.1";
+    public string ProducerVersion { get; set; } = "0.3.2";
 
     [JsonPropertyName("ran_at")]
     public string RanAt { get; set; } = DateTime.UtcNow.ToString("O");

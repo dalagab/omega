@@ -104,7 +104,8 @@ done
 
 plugin_sha=$(sha256sum "$plugin" | awk '{print $1}')
 # A stable digest of every regular file in the exact staged artifact tree.
-artifact_sha=$(cd "$artifact_dir" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | awk '{print $1}')
+artifact_sha=$(python3 "$root/tools/hash-artifact-tree.py" "$artifact_dir")
+artifact_hash_algorithm='sha256(path-nul-file-sha-lf-v1)'
 
 tmp_report=$(mktemp)
 tmp_stderr=$(mktemp)
@@ -114,6 +115,7 @@ rm -f "$timeout_marker" "$scope_status"
 unit="rift-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-0}-$$"
 cleanup() {
   sudo systemctl stop "$unit.service" >/dev/null 2>&1 || true
+  sudo systemctl reset-failed "$unit.service" >/dev/null 2>&1 || true
   rm -f "$tmp_report" "$tmp_stderr" "$timeout_marker" "$scope_status"
 }
 trap cleanup EXIT
@@ -151,6 +153,7 @@ bwrap_args=(
   --setenv RIFT_EXECUTOR bubblewrap-v2
   --setenv RIFT_DALAMUD_CONTRACT_DIR /contracts
   --setenv RIFT_ARTIFACT_TREE_SHA256 "$artifact_sha"
+  --setenv RIFT_ARTIFACT_TREE_HASH_ALGORITHM "$artifact_hash_algorithm"
   --setenv RIFT_ENTRY_SHA256 "$plugin_sha"
   --setenv RIFT_NETWORK_MODE isolated
   --setenv RIFT_SECCOMP_MODE enforced
@@ -169,7 +172,7 @@ bwrap_args=(
 
 set +e
 sudo systemd-run \
-  --quiet --wait --pipe --collect --service-type=exec \
+  --quiet --wait --pipe --service-type=exec \
   --unit "$unit" \
   --uid "$(id -u)" --gid "$(id -g)" \
   --property="MemoryMax=$memory_max" \
@@ -181,12 +184,21 @@ sudo systemd-run \
   --property=KillMode=control-group \
   --property=SendSIGKILL=yes \
   --property=NoNewPrivileges=yes \
+  --property=OOMPolicy=kill \
   /bin/bash "$scope_runner" "$timeout_marker" "$scope_status" "$wall_timeout" \
   /bin/bash "$launcher" "$seccomp_policy" "$(command -v bwrap)" "${bwrap_args[@]}" -- \
   "$host_bin" "/input/$plugin_rel" --timeout "$init_timeout" --no-color \
   >"$tmp_report" 2>"$tmp_stderr"
 rc=$?
 set -e
+
+# exec-rift-scope.sh is intentionally inside the hostile resource cgroup. If
+# memory.max kills that witness too, systemd remains outside the cgroup and is
+# therefore the authoritative fallback for OOM classification.
+systemd_result=$(sudo systemctl show "$unit.service" --property=Result --value 2>/dev/null || true)
+systemd_control_group=$(sudo systemctl show "$unit.service" --property=ControlGroup --value 2>/dev/null || true)
+systemd_exec_main_code=$(sudo systemctl show "$unit.service" --property=ExecMainCode --value 2>/dev/null || true)
+systemd_exec_main_status=$(sudo systemctl show "$unit.service" --property=ExecMainStatus --value 2>/dev/null || true)
 
 cat "$tmp_stderr" >&2 || true
 
@@ -200,6 +212,9 @@ if [[ -s "$scope_status" ]]; then
 fi
 [[ "$scope_oom_kill_delta" =~ ^[0-9]+$ ]] || scope_oom_kill_delta=0
 [[ "$scope_pids_max_delta" =~ ^[0-9]+$ ]] || scope_pids_max_delta=0
+if [[ -z "$scope_cgroup" && -n "$systemd_control_group" ]]; then
+  scope_cgroup="$systemd_control_group"
+fi
 
 if [[ -e "$timeout_marker" ]]; then
   cat > "$out" <<JSON
@@ -207,6 +222,7 @@ if [[ -e "$timeout_marker" ]]; then
   "schema_version": "rift.supervisor.v3",
   "producer": "interdimensional-rift-supervisor",
   "artifact_sha256": "$artifact_sha",
+  "artifact_hash_algorithm": "$artifact_hash_algorithm",
   "entry_sha256": "$plugin_sha",
   "execution": {
     "outcome": "wall_timeout",
@@ -215,6 +231,9 @@ if [[ -e "$timeout_marker" ]]; then
     "wall_timeout_seconds": $wall_timeout,
     "network": "isolated",
     "seccomp": "enforced",
+    "systemd_result": "$systemd_result",
+    "systemd_exec_main_code": "$systemd_exec_main_code",
+    "systemd_exec_main_status": "$systemd_exec_main_status",
     "boundary_profile": "$boundary_profile",
     "contract_mode": "$contract_mode",
     "tmpfs": {"tmp_bytes": $tmpfs_tmp_bytes, "home_bytes": $tmpfs_home_bytes, "work_bytes": $tmpfs_work_bytes},
@@ -237,7 +256,7 @@ fi
 if [[ ! -s "$tmp_report" ]]; then
   outcome=host_failed_without_report
   signal_json=null
-  if (( scope_oom_kill_delta > 0 )); then
+  if [[ "$systemd_result" == "oom-kill" ]] || (( scope_oom_kill_delta > 0 )); then
     outcome=memory_limit
   elif (( scope_pids_max_delta > 0 )); then
     outcome=tasks_limit
@@ -250,6 +269,7 @@ if [[ ! -s "$tmp_report" ]]; then
   "schema_version": "rift.supervisor.v3",
   "producer": "interdimensional-rift-supervisor",
   "artifact_sha256": "$artifact_sha",
+  "artifact_hash_algorithm": "$artifact_hash_algorithm",
   "entry_sha256": "$plugin_sha",
   "execution": {
     "outcome": "$outcome",
@@ -258,6 +278,9 @@ if [[ ! -s "$tmp_report" ]]; then
     "wall_timeout_seconds": $wall_timeout,
     "network": "isolated",
     "seccomp": "enforced",
+    "systemd_result": "$systemd_result",
+    "systemd_exec_main_code": "$systemd_exec_main_code",
+    "systemd_exec_main_status": "$systemd_exec_main_status",
     "boundary_profile": "$boundary_profile",
     "contract_mode": "$contract_mode",
     "tmpfs": {"tmp_bytes": $tmpfs_tmp_bytes, "home_bytes": $tmpfs_home_bytes, "work_bytes": $tmpfs_work_bytes},
@@ -280,5 +303,6 @@ fi
 mv "$tmp_report" "$out"
 trap - EXIT
 sudo systemctl stop "$unit.service" >/dev/null 2>&1 || true
+sudo systemctl reset-failed "$unit.service" >/dev/null 2>&1 || true
 rm -f "$tmp_stderr" "$timeout_marker" "$scope_status"
 exit "$rc"

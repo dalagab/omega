@@ -72,9 +72,10 @@ public sealed class PlayerEnvironmentSupportReport
 {
     public string SchemaVersion { get; set; } = "omega.player-environment-support.v1";
     public string Producer { get; set; } = "rift-platform-evidence";
-    public string ProducerVersion { get; set; } = "0.2.0";
+    public string ProducerVersion { get; set; } = "0.2.1";
     public string GeneratedAt { get; set; } = DateTime.UtcNow.ToString("O");
     public string ArtifactTreeSha256 { get; set; } = string.Empty;
+    public string ArtifactTreeHashAlgorithm { get; set; } = "sha256(path-nul-file-sha-lf-v1)";
 
     /// <summary>
     /// Dalamud plugins are Windows-targeted managed plugins even when the player
@@ -758,18 +759,16 @@ public static class CompatibilityEvidenceBuilder
     private static string ComputeTreeHash(string artifactDirectory)
     {
         using var aggregate = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        var buffer = new byte[64 * 1024];
 
         foreach (var path in Directory.EnumerateFiles(artifactDirectory, "*", SearchOption.AllDirectories)
-                     .OrderBy(x => Path.GetRelativePath(artifactDirectory, x), StringComparer.Ordinal))
+                     .OrderBy(x => Path.GetRelativePath(artifactDirectory, x).Replace('\\', '/'), StringComparer.Ordinal))
         {
             var rel = Path.GetRelativePath(artifactDirectory, path).Replace('\\', '/');
-            aggregate.AppendData(System.Text.Encoding.UTF8.GetBytes(rel + "\0"));
-
-            using var file = File.OpenRead(path);
-            int read;
-            while ((read = file.Read(buffer, 0, buffer.Length)) > 0)
-                aggregate.AppendData(buffer.AsSpan(0, read));
+            var fileSha = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
+            aggregate.AppendData(System.Text.Encoding.UTF8.GetBytes(rel));
+            aggregate.AppendData(new byte[] { 0 });
+            aggregate.AppendData(System.Text.Encoding.ASCII.GetBytes(fileSha));
+            aggregate.AppendData(new byte[] { (byte)'\n' });
         }
 
         return Convert.ToHexString(aggregate.GetHashAndReset()).ToLowerInvariant();

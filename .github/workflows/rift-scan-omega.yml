@@ -317,6 +317,23 @@ jobs:
           dotnet run --project ./tools/platform/PlatformEvidenceTool/PlatformEvidenceTool.csproj \
             --configuration Release -- "${args[@]}"
 
+          if [[ -s "$results/rift-omega.json" ]]; then
+            python3 - "$results/rift-omega.json" "$results/player-environment-support.json" <<'PY'
+          import json, sys
+          rift=json.load(open(sys.argv[1], encoding="utf-8"))
+          compat=json.load(open(sys.argv[2], encoding="utf-8"))
+          a=rift.get("execution",{}).get("artifact_tree_sha256")
+          b=compat.get("artifact_tree_sha256")
+          if not a or a != b:
+              raise SystemExit(f"artifact-tree identity mismatch: rift={a!r} compatibility={b!r}")
+          alg_a=rift.get("execution",{}).get("artifact_tree_hash_algorithm")
+          alg_b=compat.get("artifact_tree_hash_algorithm")
+          if alg_a != alg_b:
+              raise SystemExit(f"artifact-tree hash algorithm mismatch: rift={alg_a!r} compatibility={alg_b!r}")
+          print(f"Artifact-tree correlation: PASS {a}")
+          PY
+          fi
+
       - name: Write Rift result summary
         if: always()
         shell: bash
