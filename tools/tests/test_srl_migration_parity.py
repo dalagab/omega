@@ -37,10 +37,10 @@ class SrlMigrationParityTests(unittest.TestCase):
         report = srl_migration_parity.run_pack_root_parity(ROOT / "security-definitions" / "packs")
         self.assertTrue(report["ok"], report.get("mismatches"))
         self.assertEqual(32, report["casesChecked"])
-        self.assertEqual(59, report["primitiveCasesChecked"])
+        self.assertEqual(147, report["primitiveCasesChecked"])
         self.assertEqual(0, report["primitiveMismatchCount"])
         self.assertEqual(0, report["mismatchCount"])
-        self.assertEqual(7, report["activeRuleCount"])
+        self.assertEqual(16, report["activeRuleCount"])
         self.assertEqual(
             ["compound.credential-network", "compound.network-execute"],
             report["migratedFindingIds"],
@@ -112,7 +112,7 @@ class SrlMigrationParityTests(unittest.TestCase):
             self.assertTrue(parity["ok"])
             self.assertEqual("passed", parity["status"])
             self.assertEqual(32, parity["casesChecked"])
-            self.assertEqual(59, parity["primitiveCasesChecked"])
+            self.assertEqual(147, parity["primitiveCasesChecked"])
             self.assertEqual(0, parity["primitiveMismatchCount"])
             self.assertEqual(0, parity["mismatchCount"])
             self.assertEqual(index["srlDefinitionPacks"]["ruleSetRevision"], parity["ruleSetRevision"])

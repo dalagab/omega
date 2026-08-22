@@ -47,6 +47,7 @@ import observation_projection  # noqa: E402
 import definition_packs  # noqa: E402
 import deltascope_provenance  # noqa: E402
 import rule_reprojection  # noqa: E402
+import deep_scan_queue  # noqa: E402
 from local_sigmascope_v2_test import summarize as summarize_database  # noqa: E402
 from migrate_security_evidence_v2 import (  # noqa: E402
     _derived_for_variant,
@@ -1778,6 +1779,41 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     if srl_reprojection.get("enabled"):
         root_index["srlRuleProjections"] = {key: value for key, value in srl_reprojection.items() if key != "validation"}
         write_json(candidate / "index.json", root_index)
+
+    # Stigma-1 analysisRequest is allowed to request evidence acquisition without
+    # granting rules production finding write-back. Queue state is published on its
+    # own branch and consumed by the separate Deep Scan workflow.
+    deep_scan_state: dict[str, Any] = {"enabled": False, "pending": 0, "blocked": 0, "queueRevision": ""}
+    deep_output_arg = getattr(args, "deep_scan_output", None)
+    if deep_output_arg and srl_reprojection.get("enabled"):
+        projection_root = candidate / "rule-projections"
+        request_doc = read_json_file(projection_root, "analysis-requests.json")
+        requests = [dict(item) for item in request_doc.get("requests") or [] if isinstance(item, dict)]
+        previous_deep = {}
+        previous_deep_arg = getattr(args, "deep_scan_state", None)
+        if previous_deep_arg and previous_deep_arg.is_file():
+            try:
+                previous_deep = json.loads(previous_deep_arg.read_text(encoding="utf-8"))
+            except Exception:
+                previous_deep = {}
+        queue_doc = deep_scan_queue.build_queue(candidate, requests, previous_deep)
+        deep_output = deep_output_arg.resolve()
+        deep_output.mkdir(parents=True, exist_ok=True)
+        # Preserve immutable completed result documents already checked out from the state branch.
+        if previous_deep_arg and previous_deep_arg.is_file():
+            previous_results = previous_deep_arg.parent / "results"
+            if previous_results.is_dir():
+                shutil.copytree(previous_results, deep_output / "results", dirs_exist_ok=True)
+        deep_scan_queue.write_queue(deep_output / "index.json", queue_doc)
+        deep_scan_state = {
+            "enabled": True,
+            "changed": str(queue_doc.get("queueRevision") or "") != str(previous_deep.get("queueRevision") or ""),
+            "pending": int((queue_doc.get("counts") or {}).get("pending") or 0),
+            "blocked": int((queue_doc.get("counts") or {}).get("blocked") or 0),
+            "complete": int((queue_doc.get("counts") or {}).get("complete") or 0),
+            "queueRevision": str(queue_doc.get("queueRevision") or ""),
+            "output": str(deep_output),
+        }
     snapshot_validation = validate_snapshot(candidate, require_no_orphans=True)
     write_json(candidate / "validation-report.json", snapshot_validation)
     if not snapshot_validation.get("ok"):
@@ -1853,6 +1889,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "validation": snapshot_validation,
         },
         "srlReprojection": srl_reprojection,
+        "deepScan": deep_scan_state,
         "definitionProvenance": {
             "descriptor": definition_provenance,
             "changed": provenance_changed,
@@ -1881,6 +1918,9 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             stream.write(f"catalog_revision={revisions.get('catalogRevision','')}\n")
             stream.write(f"security_revision={revisions.get('securityRevision','')}\n")
             stream.write(f"evidence_revision={revisions.get('evidenceRevision','')}\n")
+            stream.write(f"deep_scan_pending={'true' if int(deep_scan_state.get('pending') or 0) > 0 else 'false'}\n")
+            stream.write(f"deep_scan_changed={'true' if bool(deep_scan_state.get('changed')) else 'false'}\n")
+            stream.write(f"deep_scan_queue_revision={deep_scan_state.get('queueRevision','')}\n")
     return result
 
 
@@ -1929,6 +1969,8 @@ def main() -> int:
     parser.add_argument("--skip-source", action="store_true")
     parser.add_argument("--osv-timeout", type=float, default=20.0)
     parser.add_argument("--max-osv-packages", type=int, default=2000)
+    parser.add_argument("--deep-scan-state", type=Path, help="Optional previous deep-scan-state/index.json for durable request deduplication")
+    parser.add_argument("--deep-scan-output", type=Path, help="Optional output directory for the deep-scan queue branch snapshot")
     parser.add_argument("--github-output", type=Path)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()

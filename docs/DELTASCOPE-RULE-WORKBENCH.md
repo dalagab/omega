@@ -1,6 +1,6 @@
 # DeltaScope rule-development workbench architecture
 
-Status: **DeltaScope 4.0 unified SRL Core workspace is implemented locally** on the unreleased 2.15 line. Repository System Rules and versioned local My Rules now share one YAML / Visual / Explain-Test workspace. Production/Definitions/Evidence write-back remains impossible; only the dedicated local rule store is writable.
+Status: **DeltaScope 4.2 unified Stigma-1 / SRL Core workspace is implemented locally** on the unreleased 2.15 line. Repository System Rules and versioned local My Rules now share one YAML / Visual / Explain-Test workspace. Production/Definitions/Evidence write-back remains impossible; only the dedicated local rule store is writable.
 
 ## Goal
 
@@ -25,7 +25,7 @@ The implemented Rule Lab compiles a candidate rule to a list of required logical
 
 Rule Lab must never hide this distinction or treat a bounded historical summary as complete evidence. See `docs/OBSERVATION-PROJECTION-CONTRACT.md`.
 
-## DeltaScope 4.0 unified workspace and SRL Core
+## DeltaScope 4.2 unified workspace and Stigma-1
 
 The Rules page no longer treats the source library and Rule Lab as separate work areas. A permanent tree contains:
 
@@ -37,7 +37,7 @@ A System Rule can be explicitly **Forked to My Rules**. The selected rule always
 
 The local store defaults to `~/.omega/deltascope/rules/v1` and may be redirected with `OMEGA_DELTASCOPE_RULE_HOME` or `--rule-home`. DeltaScope generates the storage paths, rejects symlinked storage boundaries, writes atomically, keeps `current.yaml`, and writes immutable numbered content-hash revisions. It cannot accept an arbitrary output pathname from the browser.
 
-`tools/security/srl.py` is the shared **SRL Core**. The authoring graph schema `omega.sigmascope.srl-authoring-graph.v1` is deliberately non-executable. Existing YAML is parsed to a canonical SRL rule, projected to graph nodes/edges, and graph edits are converted back to YAML only after the normal SRL compiler accepts the reconstructed rule. SigmaScope never executes the graph.
+`tools/security/srl.py` is the shared **Stigma-1 (SRL Core)**. The authoring graph schema `omega.sigmascope.srl-authoring-graph.v1` is deliberately non-executable. Existing YAML is parsed to a canonical SRL rule, projected to graph nodes/edges, and graph edits are converted back to YAML only after the normal SRL compiler accepts the reconstructed rule. SigmaScope never executes the graph.
 
 The first visual node palette implements collection selectors, fact selectors, ALL, ANY, NOT, COUNT and Emit. Nodes can be positioned, connected, selected and edited using typed collection/operator information from the same SRL language reference. The visual representation is designed to grow without creating a second rule language.
 

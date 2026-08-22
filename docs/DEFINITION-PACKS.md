@@ -1,6 +1,6 @@
 # SigmaScope Definition Pack v1
 
-Status: **Phase 6 complete; the first end-to-end Phase 7 migration path is implemented locally on the unreleased 2.15 development line.** Production 2.14 remains untouched. Definition Packs are compiled, fixture-tested, content-addressed and frozen into Daily Definitions. Reviewed packs now cover five primitive observation-to-fact rules and two legacy compound correlations, with fail-closed parity and retained-Evidence replay tooling. Production SRL projection remains gated.
+Status: **Phase 6 complete; the first end-to-end Phase 7 migration path is implemented locally on the unreleased 2.15 development line.** Production 2.14 remains untouched. Definition Packs are compiled, fixture-tested, content-addressed and frozen into Daily Definitions. Reviewed packs now cover 14 literal-backed primitive observation-to-fact rules and two legacy compound correlations, with fail-closed parity and retained-Evidence replay tooling. The source library also carries 39 experimental rules across managed-call capabilities, endpoint classifications, source provenance and research correlations. Production SRL projection remains gated.
 
 ## Pack manifest
 
@@ -68,10 +68,10 @@ python tools/security/deltascope.py definition-packs --definitions-root <path-to
 
 Two source-controlled production-tier packs form the first migration chain:
 
-- `security-definitions/packs/omega-core-static-primitives/` — five reviewed observation rules producing `network.http`, `network.socket`, `process.launch`, `shell.powershell`, and `credential.api` facts from `staticPatternMatches`;
+- `security-definitions/packs/omega-core-static-primitives/` — 14 reviewed literal-backed observation rules producing the current migratable legacy static primitive facts from `staticPatternMatches`; the five facts used by the existing compound rules are `network.http`, `network.socket`, `process.launch`, `shell.powershell`, and `credential.api`;
 - `security-definitions/packs/omega-core-compound/` — reviewed `compound.network-execute` and `compound.credential-network` correlations preserving the legacy user-visible finding payloads.
 
-`tools/security/srl_migration_parity.py` validates the real scanner-observation path. It checks 59 primitive literal cases (canonical/case-perturbed legacy patterns plus near misses) and all 32 combinations of the five primitive facts. Current findings, permission candidates and automation projections are never supplied as SRL raw inputs.
+`tools/security/srl_migration_parity.py` validates the real scanner-observation path. It checks 147 primitive literal cases (canonical/case-perturbed migrated legacy patterns plus near misses) and all 32 combinations of the five primitive facts. Current findings, permission candidates and automation projections are never supplied as SRL raw inputs.
 
 Daily Definitions runs the same migration checker whenever the migrated rules are active. A partial migration or payload/condition drift fails the build. `srl/migration-parity.json` is hash-pinned through `srlDefinitionPacks.migrationParity` and verified with the rest of the snapshot. DeltaScope exposes the check with:
 

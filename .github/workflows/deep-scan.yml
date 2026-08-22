@@ -1,0 +1,136 @@
+name: Omega Deep Scan worker
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: omega-deep-scan-exclusive
+  cancel-in-progress: false
+
+jobs:
+  select:
+    name: Select Stigma-1 deep-scan request and budget
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      request_id: ${{ steps.select.outputs.request_id }}
+      profile: ${{ steps.select.outputs.profile }}
+      depth: ${{ steps.select.outputs.depth }}
+      timeout_minutes: ${{ steps.select.outputs.timeout_minutes }}
+      worker_budget_seconds: ${{ steps.select.outputs.worker_budget_seconds }}
+    steps:
+      - name: Checkout Sigmascope queue selector
+        uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Checkout durable deep-scan queue state
+        id: queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/deep-scan-current
+          if ! git ls-remote --exit-code --heads origin deep-scan-state >/dev/null 2>&1; then
+            echo "No deep-scan-state branch exists yet; nothing to do."
+            printf '%s\n' '{"items":[]}' > catalog/deep-scan-current/index.json
+            exit 0
+          fi
+          git fetch --depth=1 origin deep-scan-state
+          git archive FETCH_HEAD | tar -x -C catalog/deep-scan-current
+      - name: Resolve dynamic scan depth and workflow budget
+        id: select
+        run: >-
+          python tools/security/deep_scan_queue.py select
+          --queue catalog/deep-scan-current/index.json
+          --github-output "$GITHUB_OUTPUT"
+      - name: Show selected budget
+        if: steps.select.outputs.request_id != ''
+        run: >-
+          echo "Selected ${{ steps.select.outputs.profile }} / ${{ steps.select.outputs.depth }};
+          workflow budget ${{ steps.select.outputs.timeout_minutes }} min;
+          worker budget ${{ steps.select.outputs.worker_budget_seconds }} sec"
+
+  deep-scan:
+    name: ${{ needs.select.outputs.profile }} · ${{ needs.select.outputs.depth }}
+    needs: select
+    if: needs.select.outputs.request_id != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(needs.select.outputs.timeout_minutes) }}
+    permissions:
+      contents: write
+    env:
+      OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
+      DEEP_SCAN_REQUEST_ID: ${{ needs.select.outputs.request_id }}
+    steps:
+      - name: Checkout Sigmascope publication transport
+        uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Checkout frozen Definitions and worker
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/active-state
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Checkout durable deep-scan state
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/deep-scan-current
+          git fetch --depth=1 origin deep-scan-state
+          git archive FETCH_HEAD | tar -x -C catalog/deep-scan-current
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install frozen security dependencies
+        run: python -m pip install --disable-pip-version-check -r "$OMEGA_FROZEN_WORKER/tools/requirements-security.txt"
+      - name: Verify frozen worker bundle
+        run: python "$OMEGA_FROZEN_WORKER/tools/catalog/definitions_snapshot.py" verify --definitions-root catalog/active-state/definitions
+      - name: Execute selected safe deep-scan request
+        id: deep
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/deep-scan-work
+          python "$OMEGA_FROZEN_WORKER/tools/security/deep_scan_worker.py" \
+            --queue catalog/deep-scan-current/index.json \
+            --request-id "$DEEP_SCAN_REQUEST_ID" \
+            --output catalog/deep-scan-work/result.json
+          if [ ! -f catalog/deep-scan-work/result.json ]; then
+            echo "Selected request did not produce a result."
+            exit 1
+          fi
+          cp -a catalog/deep-scan-current catalog/deep-scan-next
+          python "$OMEGA_FROZEN_WORKER/tools/security/deep_scan_queue.py" complete \
+            --queue catalog/deep-scan-current/index.json \
+            --result catalog/deep-scan-work/result.json \
+            --output-root catalog/deep-scan-next
+          echo "completed=true" >> "$GITHUB_OUTPUT"
+      - name: Publish updated deep-scan state atomically
+        if: steps.deep.outputs.completed == 'true'
+        run: >-
+          python "$OMEGA_FROZEN_WORKER/tools/security/publish_deep_scan_state.py"
+          --input catalog/deep-scan-next
+          --repo .
+          --branch deep-scan-state
+          --push
+      - name: Upload deep-scan diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-deep-scan-diagnostics-${{ needs.select.outputs.depth }}
+          path: |
+            catalog/deep-scan-current/index.json
+            catalog/deep-scan-work/result.json
+            catalog/deep-scan-next/index.json
+          if-no-files-found: warn
+          retention-days: 30

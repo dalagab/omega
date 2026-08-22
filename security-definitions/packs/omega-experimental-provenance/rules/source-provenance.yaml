@@ -1,0 +1,146 @@
+schema: omega.sigmascope.ruleset.v1
+rules:
+  - schema: omega.sigmascope.rule.v1
+    id: provenance.source.identity-mismatch
+    kind: observation
+    status: experimental
+    requires: [sourceProvenance]
+    selectors:
+      mismatch:
+        collection: sourceProvenance
+        where:
+          identityMatched: {equals: false}
+    condition: mismatch
+    emit:
+      fact: source.identity-mismatch
+      confidence: high
+      title: Source identity mismatch observed
+      description: The selected source did not match the plugin identity expected by the attribution contract.
+      category: provenance
+
+  - schema: omega.sigmascope.rule.v1
+    id: provenance.source.version-mismatch
+    kind: observation
+    status: experimental
+    requires: [sourceProvenance]
+    selectors:
+      mismatch:
+        collection: sourceProvenance
+        where:
+          versionMatched: {equals: false}
+    condition: mismatch
+    emit:
+      fact: source.version-mismatch
+      confidence: high
+      title: Source version mismatch observed
+      description: The selected source revision did not establish the plugin version expected by the attribution contract.
+      category: provenance
+
+  - schema: omega.sigmascope.rule.v1
+    id: provenance.source.manifest-repository-mismatch
+    kind: observation
+    status: experimental
+    requires: [sourceProvenance]
+    selectors:
+      mismatch:
+        collection: sourceProvenance
+        where:
+          manifestRepositoryMatched: {equals: false}
+    condition: mismatch
+    emit:
+      fact: source.manifest-repository-mismatch
+      confidence: high
+      title: Manifest repository mismatch observed
+      description: The manifest repository identity did not match the selected source repository.
+      category: provenance
+
+  - schema: omega.sigmascope.rule.v1
+    id: provenance.source.artifact-origin-mismatch
+    kind: observation
+    status: experimental
+    requires: [sourceProvenance]
+    selectors:
+      mismatch:
+        collection: sourceProvenance
+        where:
+          artifactOriginMatched: {equals: false}
+    condition: mismatch
+    emit:
+      fact: source.artifact-origin-mismatch
+      confidence: high
+      title: Artifact origin mismatch observed
+      description: The artifact origin did not match the selected source provenance context.
+      category: provenance
+
+  - schema: omega.sigmascope.rule.v1
+    id: provenance.source.binary-unverified
+    kind: observation
+    status: experimental
+    requires: [sourceProvenance]
+    selectors:
+      unverified:
+        collection: sourceProvenance
+        where:
+          sourceToBinaryVerified: {equals: false}
+    condition: unverified
+    emit:
+      fact: source.binary-unverified
+      confidence: high
+      title: Source-to-binary verification absent
+      description: Source was attributed, but reproducible source-to-binary verification was not established.
+      category: provenance
+
+  - schema: omega.sigmascope.rule.v1
+    id: provenance.source.reproducible-verified
+    kind: observation
+    status: experimental
+    requires: [sourceProvenance]
+    selectors:
+      verified:
+        collection: sourceProvenance
+        where:
+          sourceToBinaryVerified: {equals: true}
+          reproducibleSourceToArtifact: {equals: true}
+    condition: verified
+    emit:
+      fact: source.reproducible-verified
+      confidence: high
+      title: Reproducible source-to-artifact verification observed
+      description: The source provenance contract records reproducible verification from source revision to artifact.
+      category: provenance
+
+  - schema: omega.sigmascope.rule.v1
+    id: provenance.source.low-attribution
+    kind: observation
+    status: experimental
+    requires: [sourceAttribution]
+    selectors:
+      low:
+        collection: sourceAttribution
+        where:
+          confidence: {lt: 70}
+    condition: low
+    emit:
+      fact: source.attribution-low
+      confidence: high
+      title: Low source-attribution confidence observed
+      description: Source attribution confidence is below the strong-attribution threshold.
+      category: provenance
+
+  - schema: omega.sigmascope.rule.v1
+    id: provenance.source.very-high-attribution
+    kind: observation
+    status: experimental
+    requires: [sourceAttribution]
+    selectors:
+      strong:
+        collection: sourceAttribution
+        where:
+          confidence: {gte: 95}
+    condition: strong
+    emit:
+      fact: source.attribution-very-high
+      confidence: high
+      title: Very-high source-attribution confidence observed
+      description: Source attribution confidence is at least 95 on Omega's machine-confidence ladder.
+      category: provenance

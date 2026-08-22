@@ -21,10 +21,10 @@ import zipfile
 import yaml
 
 try:
-    from . import observation_projection, srl, rule_candidate
+    from . import observation_projection, stigma1 as srl, rule_candidate
 except ImportError:  # direct script/import from tools/security
     import observation_projection  # type: ignore
-    import srl  # type: ignore
+    import stigma1 as srl  # type: ignore
     import rule_candidate  # type: ignore
 
 RULE_LAB_SCHEMA = "omega.deltascope.rule-lab.v1"
@@ -958,7 +958,7 @@ def visual_graph_from_yaml(text: str) -> dict[str, Any]:
 
 
 def yaml_from_visual_graph(graph: Mapping[str, Any]) -> dict[str, Any]:
-    """Compile a visual graph back through SRL Core and return canonical YAML."""
+    """Compile a visual graph back through Stigma-1 (SRL Core) and return canonical YAML."""
     try:
         text = srl.authoring_graph_to_yaml(graph)
         compiled = compile_candidate_text(text)
@@ -1009,7 +1009,8 @@ def reference() -> dict[str, Any]:
         "productionRuleEvaluationEnabled": False,
         "productionWriteBack": False,
         "engine": srl.engine_reference(),
-        "srlCore": {"component": "SRL Core", "graphSchema": srl.GRAPH_SCHEMA, "visualRoundTrip": True},
+        "stigma1": {"component": srl.STIGMA_NAME, "technicalName": srl.STIGMA_TECHNICAL_NAME, "componentId": srl.STIGMA_COMPONENT_ID, "graphSchema": srl.GRAPH_SCHEMA, "visualRoundTrip": True},
+        "srlCore": {"component": srl.STIGMA_NAME, "technicalName": srl.STIGMA_TECHNICAL_NAME, "compatibilityAlias": True, "graphSchema": srl.GRAPH_SCHEMA, "visualRoundTrip": True},
         "observationContractRevision": observation_projection.contract_revision(),
         "collections": observation_projection.build_schema_reference().get("collections") or [],
         "exampleYaml": DEFAULT_EXAMPLE,

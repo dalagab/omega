@@ -176,7 +176,7 @@ For reviewed rules being migrated from current hard-coded SigmaScope semantics, 
 python tools/security/deltascope.py rule-parity
 ```
 
-The current checker covers the first complete chain: five reviewed primitive fact producers in `omega-core-static-primitives` and the two reviewed compound correlations in `omega-core-compound`. It checks 59 primitive literal cases and all 32 combinations of the primitive facts. Inputs are scanner-retained `staticPatternMatches`; current findings or other projections are not converted into SRL facts.
+The current checker covers the reviewed migration chain: 14 literal-backed primitive fact producers in `omega-core-static-primitives` and the two reviewed compound correlations in `omega-core-compound`. It checks 147 primitive literal cases and all 32 combinations of the five primitive facts consumed by those compounds. Inputs are scanner-retained `staticPatternMatches`; current findings or other projections are not converted into SRL facts.
 
 To replay the chain over retained Evidence-v2, run:
 

@@ -619,6 +619,58 @@ class V2SigmascopeInspector:
         rows.sort(key=lambda item: (-SEVERITY_RANK.get(str(item.get("highest_severity") or "none").casefold(), -1), str(item.get("canonical_name") or "").casefold()))
         return rows[max(0, offset):max(0, offset) + min(max(1, limit), 1000)]
 
+    def latest_findings(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Load a bounded newest-finding preview from current immutable variant descriptors."""
+        limit = min(max(1, int(limit or 20)), 100)
+        candidates: list[tuple[str, int, dict[str, Any], dict[str, Any]]] = []
+        for variant_id, entry in self.current_entries.items():
+            summary = dict(entry.get("summary") or {})
+            count_keys = ("informational_count", "caution_count", "high_count", "critical_count")
+            count = sum(int(summary.get(key) or 0) for key in count_keys)
+            # Modern Evidence-v2 indexes carry exact finding counts, allowing us to skip
+            # clean variants without fetching descriptors. Older/pre-summary snapshots do
+            # not; retain a small bounded fallback candidate set for compatibility.
+            has_count_summary = any(key in summary for key in count_keys)
+            if has_count_summary and count <= 0:
+                continue
+            candidates.append((str(summary.get("scanned_at_utc") or ""), int(variant_id), summary, dict(entry)))
+        candidates.sort(key=lambda row: (row[0], row[1]), reverse=True)
+        rows: list[dict[str, Any]] = []
+        # A page opening should not fan out across the whole evidence corpus. Most variants
+        # with findings contribute several rows, so this is enough for a useful preview.
+        max_variants = min(len(candidates), max(8, min(30, limit * 2)))
+        for _scanned, variant_id, summary, entry in candidates[:max_variants]:
+            try:
+                payload = self._payload(variant_id)
+            except Exception:
+                continue
+            current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
+            findings = current.get("findings_json") if isinstance(current.get("findings_json"), list) else []
+            identity = self._identity(payload)
+            occurred = str(current.get("scanned_at_utc") or summary.get("scanned_at_utc") or "")
+            for finding in findings:
+                if not isinstance(finding, dict):
+                    continue
+                rows.append({
+                    "variantId": variant_id,
+                    "scanId": int(current.get("scan_id") or entry.get("scanId") or 0),
+                    "plugin": str(identity.get("canonical_name") or identity.get("name") or identity.get("internal_name") or ""),
+                    "internalName": str(identity.get("internal_name") or ""),
+                    "version": str(identity.get("assembly_version") or ""),
+                    "sourceName": str(identity.get("source_name") or ""),
+                    "occurredAtUtc": occurred,
+                    "findingId": str(finding.get("findingId") or finding.get("finding_id") or ""),
+                    "ruleId": str(finding.get("ruleId") or finding.get("rule_id") or ""),
+                    "title": str(finding.get("title") or finding.get("findingId") or finding.get("finding_id") or "Security finding"),
+                    "category": str(finding.get("category") or ""),
+                    "severity": str(finding.get("severity") or "none").casefold(),
+                    "readOnly": True,
+                })
+            if len(rows) >= limit * 2:
+                break
+        rows.sort(key=lambda row: (str(row.get("occurredAtUtc") or ""), SEVERITY_RANK.get(str(row.get("severity") or "none").casefold(), 0), str(row.get("findingId") or "")), reverse=True)
+        return rows[:limit]
+
     def _detail_from_payload(self, payload: dict[str, Any], *, snapshot_kind: str = "current") -> dict[str, Any]:
         derived = payload.get("derived") or {}
         current = payload.get("current") or {}

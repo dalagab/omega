@@ -26,6 +26,7 @@ jobs:
     timeout-minutes: 75
     outputs:
       publish_v2: ${{ steps.v2.outputs.publish_v2 }}
+      deep_scan_pending: ${{ steps.v2.outputs.deep_scan_pending }}
       discord_notice_ready: ${{ steps.discord_notice.outcome == 'success' }}
     env:
       OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
@@ -34,6 +35,7 @@ jobs:
     permissions:
       contents: write
       issues: write
+      actions: write
     steps:
       - name: Checkout security-services branch for publication transport
         uses: actions/checkout@v6
@@ -105,6 +107,15 @@ jobs:
           path: catalog/security-v2-current
           fetch-depth: 1
           persist-credentials: false
+      - name: Checkout previous deep-scan queue state when it exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/deep-scan-current
+          if git ls-remote --exit-code --heads origin deep-scan-state >/dev/null 2>&1; then
+            git fetch --depth=1 origin deep-scan-state
+            git archive FETCH_HEAD | tar -x -C catalog/deep-scan-current
+          fi
       - name: Run scanner self-tests
         run: |
           python "$OMEGA_FROZEN_WORKER/tools/catalog/sigmascope.py" --self-test
@@ -120,30 +131,63 @@ jobs:
         id: v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pipeline="$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
+          deep_args=()
+          # Rollout compatibility: the workflow can land before the next Definitions freeze.
+          # Only pass deep-scan arguments after the frozen worker advertises that contract.
+          if python "$pipeline" --help 2>&1 | grep -q -- '--deep-scan-output'; then
+            deep_args+=(
+              --deep-scan-state catalog/deep-scan-current/index.json
+              --deep-scan-output catalog/security-v2-work/deep-scan-state
+            )
+          else
+            echo "Frozen worker predates Stigma-1 deep-scan queue support; continuing without deep-scan projection until the next Definitions freeze."
+          fi
+          python "$pipeline" \
+            --base-database catalog/security-input/omega-catalog.sqlite \
+            --current-evidence catalog/security-v2-current \
+            --candidate-evidence catalog/security-v2-candidate \
+            --work-dir catalog/security-v2-work \
+            --skip-marketplace \
+            --frozen-advisories catalog/active-state/definitions/osv-advisories.json \
+            --frozen-definitions catalog/active-state/definitions \
+            --catalog-revision "${{ steps.frozen.outputs.catalog_revision }}" \
+            --definitions-revision "${{ steps.frozen.outputs.definitions_revision }}" \
+            --scanner-revision "${{ steps.frozen.outputs.scanner_revision }}" \
+            --artifact-analysis-revision "${{ steps.frozen.outputs.artifact_analysis_revision }}" \
+            --source-analysis-revision "${{ steps.frozen.outputs.source_analysis_revision }}" \
+            --scanner-bundle-sha256 "${{ steps.frozen.outputs.scanner_bundle_sha256 }}" \
+            --rule-set-revision "${{ steps.frozen.outputs.rule_set_revision }}" \
+            --advisory-revision "${{ steps.frozen.outputs.advisory_revision }}" \
+            --queue-seed catalog/active-state/scan-queue.json \
+            --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json" \
+            --max-scans 20 \
+            --max-batch-seconds 3300 \
+            --internal-names "${{ inputs.internal_names || '' }}" \
+            --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json" \
+            "${deep_args[@]}" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Publish durable Stigma-1 deep-scan queue
+        if: steps.v2.outcome == 'success' && steps.v2.outputs.deep_scan_changed == 'true' && hashFiles('catalog/security-v2-work/deep-scan-state/index.json') != ''
+        continue-on-error: true
         run: >-
-          python "$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
-          --base-database catalog/security-input/omega-catalog.sqlite
-          --current-evidence catalog/security-v2-current
-          --candidate-evidence catalog/security-v2-candidate
-          --work-dir catalog/security-v2-work
-          --skip-marketplace
-          --frozen-advisories catalog/active-state/definitions/osv-advisories.json
-          --frozen-definitions catalog/active-state/definitions
-          --catalog-revision "${{ steps.frozen.outputs.catalog_revision }}"
-          --definitions-revision "${{ steps.frozen.outputs.definitions_revision }}"
-          --scanner-revision "${{ steps.frozen.outputs.scanner_revision }}"
-          --artifact-analysis-revision "${{ steps.frozen.outputs.artifact_analysis_revision }}"
-          --source-analysis-revision "${{ steps.frozen.outputs.source_analysis_revision }}"
-          --scanner-bundle-sha256 "${{ steps.frozen.outputs.scanner_bundle_sha256 }}"
-          --rule-set-revision "${{ steps.frozen.outputs.rule_set_revision }}"
-          --advisory-revision "${{ steps.frozen.outputs.advisory_revision }}"
-          --queue-seed catalog/active-state/scan-queue.json
-          --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json"
-          --max-scans 20
-          --max-batch-seconds 3300
-          --internal-names "${{ inputs.internal_names || '' }}"
-          --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"
-          --github-output "$GITHUB_OUTPUT"
+          python "$OMEGA_FROZEN_WORKER/tools/security/publish_deep_scan_state.py"
+          --input catalog/security-v2-work/deep-scan-state
+          --repo .
+          --branch deep-scan-state
+          --push
+      - name: Dispatch Deep Scan worker when executable requests are pending
+        if: steps.v2.outputs.deep_scan_pending == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Best-effort wake-up. The durable queue plus the scheduled default-branch caller
+          # are the recovery path if dispatch is unavailable during rollout.
+          gh workflow run deep-scan.yml --ref sigmascope
       - name: Project public-source coverage follow-ups
         run: >-
           python "$OMEGA_FROZEN_WORKER/tools/catalog/sigmascope_source_followups.py"

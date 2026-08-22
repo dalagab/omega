@@ -1,6 +1,6 @@
 # DeltaScope security-information workbench
 
-Status: **Phase 11 complete** on the unreleased SigmaScope 2.15 development line. Slices 1–8 are implemented: the permanent navigation/workspace shell, deterministic backend incident/event/intelligence projections, lazy selected-case composition with normalized retained-evidence timelines, cross-plugin intelligence/Asset relationship navigation, exact active-rule/Definition provenance, read-only Reports/System health projections, and the final URL-only GitHub candidate proposal handoff.
+Status: **Phase 11 complete plus DeltaScope 4.6 Stigma-1 expanded rule library and deep-analysis orchestration** on the unreleased SigmaScope 2.15 development line. Slices 1–8 are implemented: the permanent navigation/workspace shell, deterministic backend incident/event/intelligence projections, lazy selected-case composition with normalized retained-evidence timelines, cross-plugin intelligence/Asset relationship navigation, exact active-rule/Definition provenance, read-only Reports/System health projections, and the final URL-only GitHub candidate proposal handoff.
 
 ## Purpose
 
@@ -12,14 +12,27 @@ SigmaScope/GitHub remain authoritative. DeltaScope can browse, correlate, explai
 
 The workbench uses these stable operator concepts:
 
-- **Dashboard** — coverage, queue state, recent/high-priority security activity and revision context.
-- **Incidents** — correlated or elevated security cases worth investigation. Incident state is derived/read-only; DeltaScope does not assign, close or mutate incidents.
-- **Events** — time-oriented security observations/scans and, as the event model expands, normalized observation records.
+- **Dashboard** — coverage, queue state, recent/high-priority security activity, revision context, and read-only component/GitHub Actions status.
+- **Incidents** — newest current security findings first, followed by correlated/elevated investigation cases. Incident state is derived/read-only; DeltaScope does not assign, close or mutate incidents.
+- **Events** — read-only GitHub workflow operations alongside time-oriented Evidence-v2 security observations/scans.
 - **Intelligence** — advisory, endpoint, reputation, component and other enrichment that can be pivoted across plugins.
 - **Assets** — plugins first, with drill-down into variants, artifacts, source repositories, binaries, dependencies and endpoints.
-- **Rules** — unified SRL Core workspace: read-only repository System Rules and active frozen provenance plus versioned local My Rules. Local saves never mutate Definitions or production state.
+- **Rules** — unified Stigma-1 / SRL Core workspace: read-only repository System Rules and active frozen provenance plus versioned local My Rules. Local saves never mutate Definitions or production state.
 - **Reports** — coverage/revision/replay summaries and exportable read-only reports.
+- **Documentation** — allow-listed local Stigma-1/SRL authoring, examples, Definition Pack and security-architecture references.
 - **System** — evidence/Definitions revisions, pipeline health, audit status and the advanced raw Evidence-v2 browser.
+
+## DeltaScope 4.6 Stigma-1 rule library + deep-analysis orchestration
+
+Rules can now describe a typed evidence-acquisition outcome. System/frozen rules can feed the durable SigmaScope Deep Scan queue; My Rules only preview the same outcome. The visual Emit node exposes the approved deep-analysis profiles without exposing commands or runner controls. Deep Scan runs as its own GitHub Actions workflow and therefore does not consume the normal bounded SigmaScope scan budget. See `DEEP-SCAN-WORKFLOW.md`.
+
+## DeltaScope 4.3 operational visibility
+
+The dashboard and Events page may query GitHub's public Actions metadata for `dalagab/omega` (or an explicitly configured `owner/name`) so the workbench can answer whether SigmaScope, Omega builds, Catalog/Definitions, DeltaScope, Stigma-1/regression/source-intake workflows are running or recently failed. This is deliberately not a control plane: only GET metadata is used; DeltaScope exposes no dispatch/retry/cancel action. A short in-process cache avoids repeated API calls, and an unavailable/rate-limited GitHub response degrades to an `unavailable` status without affecting Evidence-v2 browsing.
+
+Incidents separately asks the selected Evidence source for a bounded newest-current-finding preview. Modern Evidence-v2 summary counts let the online inspector avoid fetching clean variants; older pre-summary snapshots use a bounded compatibility fallback. Clicking a finding composes the same read-only case projection already used elsewhere.
+
+The Documentation workspace reads exact docs shipped with the checkout via stable document IDs. The server never accepts an arbitrary documentation path. Start rule work with `STIGMA-1.md`, then the rule-author README, SRL language specification, data reference and examples.
 
 ## Investigation flow
 

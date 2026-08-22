@@ -15,6 +15,7 @@ if str(SECURITY) not in sys.path:
     sys.path.insert(0, str(SECURITY))
 
 import srl
+import stigma1
 import rule_lab
 import deltascope_rule_store
 import developer_view
@@ -64,6 +65,12 @@ emit:
   category: experimental
 """
 
+DEEP_REQUEST_RULE = CORRELATION + """analysisRequest:
+  profile: artifact-differential-v1
+  compareWith: stable-artifact-baseline
+  reason: Compare candidate and stable baseline.
+"""
+
 
 class SRLCoreAuthoringTests(unittest.TestCase):
     def test_rule_round_trips_through_authoring_graph(self) -> None:
@@ -85,6 +92,16 @@ class SRLCoreAuthoringTests(unittest.TestCase):
         parsed = srl.parse_yaml_text(rendered)
         self.assertEqual({"all": ["network", {"not": "execution"}]}, parsed["condition"])
 
+
+    def test_visual_graph_preserves_deep_analysis_outcome(self) -> None:
+        graph = srl.yaml_text_to_authoring_graph(DEEP_REQUEST_RULE)
+        emit = next(node for node in graph["nodes"] if node["type"] == "emit")
+        self.assertEqual("artifact-differential-v1", emit["config"]["analysisRequest"]["profile"])
+        rebuilt = srl.parse_yaml_text(srl.authoring_graph_to_yaml(graph))
+        self.assertEqual("stable-artifact-baseline", rebuilt["analysisRequest"]["compareWith"])
+        self.assertIn("visualDeepProfile", developer_view.HTML)
+        self.assertIn("Local rules only preview the queue request", developer_view.HTML)
+
     def test_visual_graph_rejects_missing_emit_connection(self) -> None:
         graph = srl.yaml_text_to_authoring_graph(RULE)
         graph["edges"] = [e for e in graph["edges"] if e["to"] != "emit:result"]
@@ -97,7 +114,20 @@ class SRLCoreAuthoringTests(unittest.TestCase):
         rebuilt = rule_lab.yaml_from_visual_graph(visual["graph"])
         self.assertTrue(rebuilt["ok"])
         self.assertIn("local.graph-demo", rebuilt["yaml"])
-        self.assertEqual("SRL Core", rule_lab.reference()["srlCore"]["component"])
+        ref = rule_lab.reference()
+        self.assertEqual("Stigma-1", ref["stigma1"]["component"])
+        self.assertEqual("SRL Core", ref["stigma1"]["technicalName"])
+        self.assertEqual("Stigma-1", ref["srlCore"]["component"])
+        self.assertTrue(ref["srlCore"]["compatibilityAlias"])
+
+    def test_stigma1_is_the_canonical_srl_core_facade(self) -> None:
+        self.assertEqual("Stigma-1", stigma1.STIGMA_NAME)
+        self.assertEqual("SRL Core", stigma1.STIGMA_TECHNICAL_NAME)
+        self.assertEqual("omega.stigma-1", stigma1.STIGMA_COMPONENT_ID)
+        engine = stigma1.engine_reference()
+        self.assertEqual("Stigma-1", engine["component"])
+        self.assertEqual("SRL Core", engine["technicalName"])
+        self.assertEqual(srl.compile_yaml_text(RULE), stigma1.compile_yaml_text(RULE))
 
     def test_local_store_versions_validated_rules_only(self) -> None:
         with tempfile.TemporaryDirectory() as td:

@@ -178,6 +178,25 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertLess(text.index("Verify frozen worker bundle before execution"), text.index("Examine bounded due-variant batch"))
 
 
+
+    def test_stigma_deep_scan_is_a_separate_frozen_worker_queue(self) -> None:
+        sigmascope = self.read("sigmascope.yml")
+        deep = self.read("deep-scan.yml")
+        caller = (common.ROOT / "docs" / "workflow-callers" / "deep-scan-main.yml").read_text(encoding="utf-8")
+        self.assertIn("--deep-scan-output", sigmascope)
+        self.assertIn("deep_scan_pending", sigmascope)
+        self.assertIn("Frozen worker predates Stigma-1 deep-scan queue support", sigmascope)
+        self.assertIn("gh workflow run deep-scan.yml --ref sigmascope", sigmascope)
+        self.assertIn("continue-on-error: true", sigmascope[sigmascope.index("Publish durable Stigma-1 deep-scan queue"):sigmascope.index("Project public-source coverage follow-ups")])
+        self.assertIn("workflow_call:", deep)
+        self.assertIn("workflow_dispatch:", deep)
+        self.assertNotIn("schedule:", deep)
+        self.assertIn("$OMEGA_FROZEN_WORKER/tools/security/deep_scan_worker.py", deep)
+        self.assertIn("$OMEGA_FROZEN_WORKER/tools/security/deep_scan_queue.py", deep)
+        self.assertIn("$OMEGA_FROZEN_WORKER/tools/security/publish_deep_scan_state.py", deep)
+        self.assertIn('cron: "37 * * * *"', caller)
+        self.assertIn("uses: dalagab/omega/.github/workflows/deep-scan.yml@sigmascope", caller)
+
     def test_regression_workflow_runs_for_yara_definition_changes_and_installs_real_yara(self) -> None:
         text = self.read("regression-tests.yml")
         self.assertIn('"security-definitions/**"', text)

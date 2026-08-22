@@ -1,8 +1,8 @@
 # SigmaScope Definition Packs
 
-This directory is the source-controlled authority for reviewed SigmaScope Rule Language (SRL) packs on the unreleased 2.15 development line.
+This directory is the source-controlled authority for SigmaScope Rule Language (SRL / Stigma-1) packs on the unreleased 2.15 development line.
 
-Each pack lives at `packs/<pack-id>/pack.yaml` and uses schema `omega.sigmascope.definition-pack.v1`. Daily Definitions compilation treats pack YAML, SRL rule files, and fixtures as inert bounded data. The compiler validates compatibility and metadata, compiles rules with the exact SRL v1 engine, runs every declared fixture, prevents duplicate rule/fact identities, hashes all content, and freezes a compiled ruleset under `definitions/srl/`.
+Each pack lives at `packs/<pack-id>/pack.yaml` and uses schema `omega.sigmascope.definition-pack.v1`. Daily Definitions compilation treats pack YAML, SRL rule files, and fixtures as inert bounded data. The compiler validates compatibility and metadata, compiles rules with the exact Stigma-1 engine, runs every declared fixture, prevents duplicate rule/fact identities, hashes all content, and freezes a compiled ruleset under `definitions/srl/`.
 
 Trust tiers:
 
@@ -13,4 +13,17 @@ Trust tiers:
 
 Production workers must never read this source tree directly. The only production-facing loader is the verified frozen Definition Pack payload in the Daily Definitions snapshot. YARA, ClamAV, OSV and other secondary evidence engines remain independent of SRL packs.
 
-The first Phase-7 reviewed pack is `omega-core-compound`. It migrates only the two legacy compound correlations; its primitive facts are migration-parity inputs for now, not production observation projections. `python tools/security/deltascope.py rule-parity` must remain green before Daily Definitions can freeze that pack.
+## Current library
+
+DeltaScope 4.5 ships **6 packs, 54 rules and 14 fixtures**:
+
+- `omega-core-static-primitives` — **14 reviewed** literal-backed legacy static observation-to-fact migrations;
+- `omega-core-compound` — **2 reviewed** legacy compound correlations;
+- `omega-experimental-managed-capabilities` — **13 experimental** managed-call/game-input capability facts;
+- `omega-experimental-network-endpoints` — **9 experimental** endpoint-classification facts;
+- `omega-experimental-provenance` — **8 experimental** source-provenance/attribution facts;
+- `omega-experimental-correlations` — **8 experimental** higher-order research correlations, including a typed Deep Scan request example.
+
+The reviewed production-tier migration set is therefore **16 rules**. It is parity-tested against the current hard-coded legacy behavior over **147 primitive cases** and **32 compound combinations**. Production SRL finding writeback remains separately gated by the cutover process; being reviewed/frozen does not itself switch production evaluation on.
+
+The 38 experimental rules exist so DeltaScope has a useful corpus for inspection, learning, forking, fixture replay, and future review. Experimental rules are never production-active merely because they compile or freeze.

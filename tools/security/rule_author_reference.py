@@ -133,7 +133,7 @@ def build_reference() -> dict[str, Any]:
         "schema": SCHEMA,
         "status": "srl-v1-phase7-static-observation-replay-production-disabled",
         "productionRuleEvaluationEnabled": False,
-        "warning": "DeltaScope can compile/evaluate SRL v1 locally and Daily Definitions freezes reviewed Definition Packs. Five reviewed primitive fact producers and two compound correlations now have exhaustive legacy parity plus retained-Evidence replay tooling, but production SRL projection remains gated until compatible 2.15 observations have been collected and corpus replay/cutover review succeeds. Candidate YAML cannot affect production evidence.",
+        "warning": "DeltaScope can compile/evaluate SRL v1 locally and Daily Definitions freezes reviewed Definition Packs. Fourteen reviewed literal-backed primitive fact producers and two compound correlations now have exhaustive legacy parity plus retained-Evidence replay tooling, but production SRL projection remains gated until compatible 2.15 observations have been collected and corpus replay/cutover review succeeds. Candidate YAML cannot affect production evidence.",
         "sameRecordSemantics": True,
         "observationBoundary": observation_projection.build_schema_reference(),
         "capabilityRegistry": {

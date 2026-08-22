@@ -131,7 +131,7 @@ class SecurityDeveloperViewTests(unittest.TestCase):
                 "variantId": 1, "plugin": {"plugin_id": 1, "internal_name": "Fixture", "canonical_name": "Fixture"},
                 "variant": {"name": "Fixture", "author": "Test", "assembly_version": "1.0.0"},
                 "source": {"name": "Fixture feed", "url": "https://example.invalid/repo.json"},
-                "current": {"variant_id": 1, "scan_id": 1, "status": "complete", "highest_severity": "caution", "caution_count": 1},
+                "current": {"variant_id": 1, "scan_id": 1, "status": "complete", "scanned_at_utc": "2026-08-17T07:00:00Z", "highest_severity": "caution", "caution_count": 1, "findings_json": [{"ruleId": "network.endpoint.public-ip-literal", "severity": "caution", "title": "Endpoint: 8.8.8.8"}]},
                 "analysis": {"path": "artifacts/aa/analysis"}, "derived": {},
             }), encoding="utf-8")
             (root / "index.json").write_text(json.dumps({"schema": "omega.security-evidence.v2", "formatVersion": 2, "counts": {}, "indexes": {"plugins": {"path": "indexes/plugins.json"}}}), encoding="utf-8")
@@ -140,6 +140,10 @@ class SecurityDeveloperViewTests(unittest.TestCase):
                 self.assertEqual("security-evidence-v2", inspector.summary()["format"])
                 self.assertEqual("Fixture", inspector.list_plugins()[0]["canonical_name"])
                 self.assertEqual("network.endpoint.public-ip-literal", inspector.plugin_detail(1)["findings"][0]["rule_id"])
+                latest = inspector.latest_findings(5)
+                self.assertEqual(1, len(latest))
+                self.assertEqual("Endpoint: 8.8.8.8", latest[0]["title"])
+                self.assertEqual(1, latest[0]["variantId"])
                 with self.assertRaises(ValueError):
                     inspector.read_sql("SELECT 1")
             finally:

@@ -1,10 +1,10 @@
 # SigmaScope Rule Language (SRL) v1
 
-Status: **Phases 5–6 and the first end-to-end Phase 7 migration path are implemented locally on the unreleased 2.15 development line.** SRL v1 and Definition Pack freezing are implemented; five reviewed primitive fact producers plus two reviewed compound correlations pass exhaustive old-vs-SRL parity, and retained Evidence-v2 replay is available. Production SRL projection remains deliberately disabled until a compatible 2.15 corpus has replayed cleanly and cutover is reviewed. Production 2.14 remains untouched while scans continue.
+Status: **Phases 5–6 and the first end-to-end Phase 7 migration path are implemented locally on the unreleased 2.15 development line.** SRL v1 and Definition Pack freezing are implemented; 14 reviewed literal-backed primitive fact producers plus two reviewed compound correlations pass exhaustive old-vs-SRL parity, and retained Evidence-v2 replay is available. Production SRL projection remains deliberately disabled until a compatible 2.15 corpus has replayed cleanly and cutover is reviewed. Production 2.14 remains untouched while scans continue.
 
 SRL is a deterministic, non-executable, Sigma-inspired YAML language for expressing static capability and behavior rules over SigmaScope's registered observation collections. It does not replace YARA, ClamAV, OSV, endpoint protection, signature verification, or other specialist security systems.
 
-`tools/security/srl.py` is now explicitly the shared **SRL Core** used by both SigmaScope and DeltaScope. DeltaScope 4.0 may project one SRL rule into `omega.sigmascope.srl-authoring-graph.v1` for visual editing, but that graph is not another executable language: graph edits must reconstruct canonical SRL YAML and pass the same compiler before evaluation or local save.
+`tools/security/srl.py` is now explicitly the shared **Stigma-1 (SRL Core)** used by both SigmaScope and DeltaScope. DeltaScope 4.2 may project one SRL rule into `omega.sigmascope.srl-authoring-graph.v1` for visual editing, but that graph is not another executable language: graph edits must reconstruct canonical SRL YAML and pass the same compiler before evaluation or local save.
 
 ## Inspect the live authoring contracts
 
@@ -311,7 +311,7 @@ A rule status is one of:
 "productionRuleEvaluationEnabled": false
 ```
 
-Definition Pack v1 and the Daily Catalog compiler/freezer are implemented. The first Phase-7 migration chain now starts from retained `staticPatternMatches`, emits five reviewed primitive facts, and evaluates `compound.network-execute` / `compound.credential-network`. Migration checks cover 59 primitive literal cases plus all 32 compound input combinations and are enforced by Daily Definitions. `rule-replay` can compare compatible retained Evidence-v2 against the hard-coded baseline without feeding old findings into SRL. Reviewed frozen SRL output still cannot affect production projections until a real compatible 2.15 corpus has replayed cleanly and cutover is reviewed.
+Definition Pack v1 and the Daily Catalog compiler/freezer are implemented. The first Phase-7 migration chain now starts from retained `staticPatternMatches`, emits 14 reviewed literal-backed primitive facts, and evaluates `compound.network-execute` / `compound.credential-network`. Migration checks cover 147 primitive literal cases plus all 32 compound input combinations and are enforced by Daily Definitions. `rule-replay` can compare compatible retained Evidence-v2 against the hard-coded baseline without feeding old findings into SRL. Reviewed frozen SRL output still cannot affect production projections until a real compatible 2.15 corpus has replayed cleanly and cutover is reviewed.
 
 ## Why not Snort syntax
 
@@ -326,3 +326,7 @@ Snort's useful lesson is declarative security rules, but its language is packet/
 - static plugin capability/behavior transparency -> SigmaScope/SRL.
 
 SRL may correlate bounded outputs from other systems where appropriate, but it does not attempt to reimplement them.
+
+## Deep-analysis outcome
+
+Rules may optionally add `analysisRequest` with `profile`, bounded `depth`, `compareWith`, and `reason`. `depth` is `standard`, `extended`, or `exhaustive`; it is an evidence-acquisition escalation hint, not a raw runtime setting. Commands, timeouts and runner controls are invalid SRL. Production queue mutation is available only to matched frozen rules; DeltaScope local rules preview the request only.

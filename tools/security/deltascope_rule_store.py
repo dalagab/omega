@@ -14,7 +14,7 @@ The on-disk contract is deliberately simple and recoverable:
           000001-<content-hash>.yaml
           000002-<content-hash>.yaml
 
-Every save is validated by SRL Core first. Revisions are immutable, current.yaml is
+Every save is validated by Stigma-1 (SRL Core) first. Revisions are immutable, current.yaml is
 atomically replaced, paths are generated internally, and symlinked store entries are
 rejected.
 """
@@ -30,9 +30,9 @@ import threading
 from typing import Any, Mapping
 
 try:
-    from . import srl
+    from . import stigma1 as srl
 except ImportError:  # direct script/import from tools/security
-    import srl  # type: ignore
+    import stigma1 as srl  # type: ignore
 
 STORE_SCHEMA = "omega.deltascope.local-rule-store.v1"
 ENTRY_SCHEMA = "omega.deltascope.local-rule.v1"
@@ -85,7 +85,7 @@ def _atomic_write(path: Path, data: bytes) -> None:
 
 def _single_rule(text: str) -> tuple[dict[str, Any], dict[str, Any]]:
     document = srl.parse_yaml_text(text)
-    rule = srl.single_rule_document(document)  # shared SRL Core one-rule authoring boundary
+    rule = srl.single_rule_document(document)  # shared Stigma-1 / SRL Core one-rule authoring boundary
     compiled = srl.compile_rule(rule)
     return rule, compiled
 

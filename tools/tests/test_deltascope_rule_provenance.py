@@ -62,10 +62,10 @@ class DeltaScopeRuleProvenanceTests(unittest.TestCase):
         self.assertEqual("none", payload["mutationAuthority"])
         self.assertFalse(payload["policyInput"])
         self.assertEqual("github-permission-ci-review-normal-pr", payload["authoritativeChangeBoundary"])
-        self.assertEqual(2, payload["srl"]["packCount"])
-        self.assertEqual(7, payload["srl"]["activeRuleCount"])
+        self.assertEqual(6, payload["srl"]["packCount"])
+        self.assertEqual(16, payload["srl"]["activeRuleCount"])
         self.assertFalse(payload["srl"]["productionRuleEvaluationEnabled"])
-        self.assertEqual(7, len(payload["activeRules"]))
+        self.assertEqual(16, len(payload["activeRules"]))
         self.assertTrue(all(item.get("review", {}).get("reviewer") for item in payload["activeRules"]))
         self.assertTrue(all(item.get("sourceSha256") for item in payload["activeRules"]))
         self.assertTrue(all(pack["fixtures"] for pack in payload["packs"]))
@@ -125,9 +125,9 @@ class DeltaScopeRuleProvenanceTests(unittest.TestCase):
         self.assertEqual("none", library["mutationAuthority"])
         self.assertFalse(library["policyInput"])
         self.assertEqual("repository-source-only", library["sourceAuthority"])
-        self.assertEqual(2, library["packCount"])
-        self.assertEqual(7, library["ruleCount"])
-        self.assertEqual(6, library["fixtureCount"])
+        self.assertEqual(6, library["packCount"])
+        self.assertEqual(55, library["ruleCount"])
+        self.assertEqual(15, library["fixtureCount"])
         rule = next(
             item
             for pack in library["packs"]
@@ -140,6 +140,14 @@ class DeltaScopeRuleProvenanceTests(unittest.TestCase):
         self.assertIn("condition:", rule["candidateYaml"])
         self.assertTrue(rule["ruleRevision"].startswith("srl-rule-v1-"))
         self.assertTrue(rule["sourcePath"].startswith("security-definitions/packs/"))
+        experimental = next(
+            item
+            for pack in library["packs"]
+            for item in pack["rules"]
+            if item["ruleId"] == "experimental.deep-scan.divergent-artifact"
+        )
+        self.assertEqual("experimental", experimental["status"])
+        self.assertIn("analysisRequest:", experimental["candidateYaml"])
 
     def test_rule_catalog_preserves_review_fixture_and_github_boundary(self) -> None:
         payload = self.provenance()
@@ -149,8 +157,8 @@ class DeltaScopeRuleProvenanceTests(unittest.TestCase):
         self.assertTrue(catalog["readOnly"])
         self.assertEqual("none", catalog["mutationAuthority"])
         self.assertFalse(catalog["policyInput"])
-        self.assertEqual(2, len(catalog["packs"]))
-        self.assertEqual(7, len(catalog["rules"]))
+        self.assertEqual(6, len(catalog["packs"]))
+        self.assertEqual(16, len(catalog["rules"]))
         self.assertTrue(all(pack["fixtureCount"] == pack["fixturesPassed"] for pack in catalog["packs"]))
         self.assertEqual("github-permission-ci-review-normal-pr", catalog["authoritativeChangeBoundary"])
 

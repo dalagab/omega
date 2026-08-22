@@ -4,12 +4,13 @@ This module is migration tooling only.  It does not scan/download plugins and it
 uses current finding/permission/automation projections as SRL inputs.
 
 Phase 7b introduces ``staticPatternMatches`` as the retained low-level observation seam
-for the first five primitive facts.  The checker proves two boundaries:
+for every literal-backed legacy static primitive except the separately-derived external-path
+case. The checker proves two boundaries:
 
 * every legacy literal pattern for those primitive rules produces the same fact through
   the reviewed observation rules; and
 * the two reviewed compound correlations still match the current hard-coded finding
-  payload across the complete 32-case boolean primitive space.
+  payload across the complete 32-case boolean space of the five facts they consume.
 
 Production SRL projection remains disabled until the later cutover phase.
 """
@@ -39,6 +40,22 @@ MIGRATED_FINDING_IDS = (
     "compound.network-execute",
 )
 PRIMITIVE_FACT_IDS = (
+    "clipboard",
+    "credential.api",
+    "dynamic.assembly",
+    "filesystem.write",
+    "game.hooking",
+    "local.listener",
+    "memory.process",
+    "memory.remote-thread",
+    "native.pinvoke",
+    "network.http",
+    "network.socket",
+    "process.launch",
+    "registry.access",
+    "shell.powershell",
+)
+COMPOUND_PRIMITIVE_FACT_IDS = (
     "credential.api",
     "network.http",
     "network.socket",
@@ -46,10 +63,19 @@ PRIMITIVE_FACT_IDS = (
     "shell.powershell",
 )
 PRIMITIVE_RULE_IDS = {
+    "clipboard": "primitive.clipboard",
     "credential.api": "primitive.credential.api",
+    "dynamic.assembly": "primitive.dynamic.assembly",
+    "filesystem.write": "primitive.filesystem.write",
+    "game.hooking": "primitive.game.hooking",
+    "local.listener": "primitive.local.listener",
+    "memory.process": "primitive.memory.process",
+    "memory.remote-thread": "primitive.memory.remote-thread",
+    "native.pinvoke": "primitive.native.pinvoke",
     "network.http": "primitive.network.http",
     "network.socket": "primitive.network.socket",
     "process.launch": "primitive.process.launch",
+    "registry.access": "primitive.registry.access",
     "shell.powershell": "primitive.shell.powershell",
 }
 MIGRATED_PRIMITIVE_RULE_IDS = tuple(sorted(PRIMITIVE_RULE_IDS.values()))
@@ -221,8 +247,8 @@ def run_compound_parity(compiled_ruleset: Mapping[str, Any]) -> dict[str, Any]:
     primitive = run_primitive_pattern_parity(compiled_ruleset)
     mismatches: list[dict[str, Any]] = []
     cases: list[dict[str, Any]] = []
-    for mask in itertools.product((False, True), repeat=len(PRIMITIVE_FACT_IDS)):
-        facts = [fact for fact, enabled in zip(PRIMITIVE_FACT_IDS, mask) if enabled]
+    for mask in itertools.product((False, True), repeat=len(COMPOUND_PRIMITIVE_FACT_IDS)):
+        facts = [fact for fact, enabled in zip(COMPOUND_PRIMITIVE_FACT_IDS, mask) if enabled]
         legacy = _normalized_findings(_legacy_findings(facts))
         migrated = _normalized_findings(_srl_findings(compiled_ruleset, facts))
         case = {
@@ -246,6 +272,7 @@ def run_compound_parity(compiled_ruleset: Mapping[str, Any]) -> dict[str, Any]:
         "migratedFindingIds": list(MIGRATED_FINDING_IDS),
         "migratedPrimitiveRuleIds": list(MIGRATED_PRIMITIVE_RULE_IDS),
         "primitiveFactIds": list(PRIMITIVE_FACT_IDS),
+        "compoundPrimitiveFactIds": list(COMPOUND_PRIMITIVE_FACT_IDS),
         "primitiveCasesChecked": int(primitive["casesChecked"]),
         "primitiveMismatchCount": int(primitive["mismatchCount"]),
         "casesChecked": len(cases),
@@ -297,7 +324,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.summary:
             report = {key: report[key] for key in (
                 "schema", "scope", "definitionPackRevision", "ruleSetRevision", "activeRuleCount",
-                "migratedFindingIds", "migratedPrimitiveRuleIds", "primitiveFactIds",
+                "migratedFindingIds", "migratedPrimitiveRuleIds", "primitiveFactIds", "compoundPrimitiveFactIds",
                 "primitiveCasesChecked", "primitiveMismatchCount", "casesChecked", "compoundMismatchCount",
                 "mismatchCount", "ok", "productionRuleEvaluationEnabled", "note",
             )}

@@ -1,4 +1,4 @@
-"""SRL Core: SigmaScope Rule Language (SRL) v1 compiler, model bridge and deterministic evaluator.
+"""Stigma-1 (SRL Core): SigmaScope Rule Language (SRL) v1 compiler, model bridge and deterministic evaluator.
 
 SRL is deliberately non-executable. Rules may inspect only registered retained
 observation collections (plus facts emitted by observation rules), use a small typed
@@ -23,10 +23,11 @@ from typing import Any, Iterable, Mapping, Sequence
 import yaml
 
 try:
-    from . import observation_projection, rule_author_reference
+    from . import observation_projection, rule_author_reference, deep_scan_contract
 except ImportError:  # direct script/import from tools/security
     import observation_projection  # type: ignore
     import rule_author_reference  # type: ignore
+    import deep_scan_contract  # type: ignore
 
 RULE_SCHEMA = "omega.sigmascope.rule.v1"
 RULESET_SCHEMA = "omega.sigmascope.ruleset.v1"
@@ -38,6 +39,13 @@ FIXTURE_SCHEMA = "omega.sigmascope.rule-fixture.v1"
 FIXTURE_RESULT_SCHEMA = "omega.sigmascope.rule-fixture-result.v1"
 ENGINE_SCHEMA = "omega.sigmascope.srl-engine.v1"
 GRAPH_SCHEMA = "omega.sigmascope.srl-authoring-graph.v1"
+
+# Canonical component identity.  The stable SRL schemas stay unchanged; Stigma-1 is
+# the shared implementation identity consumed by SigmaScope and DeltaScope.
+STIGMA_NAME = "Stigma-1"
+STIGMA_TECHNICAL_NAME = "SRL Core"
+STIGMA_COMPONENT_ID = "omega.stigma-1"
+STIGMA_GENERATION = 1
 
 MAX_DOCUMENT_BYTES = 128 * 1024
 MAX_RULES = 256
@@ -196,6 +204,10 @@ FIELD_REGISTRY = _observation_field_registry()
 def engine_reference() -> dict[str, Any]:
     return {
         "schema": ENGINE_SCHEMA,
+        "component": STIGMA_NAME,
+        "technicalName": STIGMA_TECHNICAL_NAME,
+        "componentId": STIGMA_COMPONENT_ID,
+        "generation": STIGMA_GENERATION,
         "ruleSchema": RULE_SCHEMA,
         "rulesetSchema": RULESET_SCHEMA,
         "fixtureSchema": FIXTURE_SCHEMA,
@@ -220,9 +232,11 @@ def engine_reference() -> dict[str, Any]:
         "forbiddenInputs": sorted(observation_projection.PROJECTION_DATASETS) + ["behaviorConsistency", "permissionCandidates", "automationCapabilities"],
         "deterministic": True,
         "nonExecutable": True,
-        "component": "SRL Core",
         "authoringGraphSchema": GRAPH_SCHEMA,
         "authoringGraphAvailable": True,
+        "analysisRequestAvailable": True,
+        "analysisRequestSchema": deep_scan_contract.REQUEST_SCHEMA,
+        "deepScanProfiles": {name: deep_scan_contract.profile_status(name) for name in sorted(deep_scan_contract.PROFILES)},
     }
 
 
@@ -482,6 +496,10 @@ def compile_rule(raw: Mapping[str, Any]) -> dict[str, Any]:
     if unused_selectors:
         raise SRLCompileError(f"rule defines selectors not referenced by condition: {unused_selectors}")
     emit = _compile_emit(kind, raw.get("emit"))
+    try:
+        analysis_request = deep_scan_contract.compile_analysis_request(raw.get("analysisRequest"))
+    except ValueError as exc:
+        raise SRLCompileError(str(exc)) from exc
     metadata: dict[str, Any] = {}
     for key in ("title", "description", "category", "severity", "license", "source"):
         if key in raw:
@@ -496,6 +514,7 @@ def compile_rule(raw: Mapping[str, Any]) -> dict[str, Any]:
         "selectors": [selectors[name] for name in sorted(selectors)],
         "condition": condition,
         "emit": emit,
+        "analysisRequest": analysis_request,
         "metadata": metadata,
     }
     compiled_core["ruleRevision"] = f"srl-rule-v1-{_sha(compiled_core)[:24]}"
@@ -653,8 +672,9 @@ def rule_to_authoring_graph(document: Any) -> dict[str, Any]:
     root_id = condition_node(raw.get("condition"))
     emit_id = "emit:result"
     emit = dict(raw.get("emit") or {}) if isinstance(raw.get("emit"), Mapping) else {}
+    analysis_request = dict(raw.get("analysisRequest") or {}) if isinstance(raw.get("analysisRequest"), Mapping) else {}
     nodes.append({
-        "id": emit_id, "type": "emit", "label": "EMIT", "config": {"emit": emit},
+        "id": emit_id, "type": "emit", "label": "EMIT", "config": {"emit": emit, "analysisRequest": analysis_request},
         "position": {"x": 720, "y": 80},
     })
     edges.append({"from": root_id, "to": emit_id, "order": 0})
@@ -792,6 +812,9 @@ def authoring_graph_to_rule(graph: Mapping[str, Any]) -> dict[str, Any]:
         "condition": build_condition(root),
         "emit": dict(emit),
     }
+    analysis_request = emit_config.get("analysisRequest")
+    if isinstance(analysis_request, Mapping) and analysis_request:
+        rule["analysisRequest"] = dict(analysis_request)
     compile_rule(rule)
     return rule
 
@@ -974,6 +997,7 @@ def evaluate_rule(compiled_rule: Mapping[str, Any], observations: Mapping[str, S
             evidence.append({"selector": name, **row})
     emitted_fact = ""
     finding: dict[str, Any] | None = None
+    analysis_request: dict[str, Any] | None = None
     if matched and compiled_rule["status"] not in {"disabled", "deprecated"}:
         if compiled_rule["kind"] in {"observation", "classification"}:
             emitted_fact = str(compiled_rule["emit"]["fact"])
@@ -988,6 +1012,13 @@ def evaluate_rule(compiled_rule: Mapping[str, Any], observations: Mapping[str, S
                 "category": emit.get("category", compiled_rule.get("metadata", {}).get("category", "behavior")),
                 "evidence": evidence,
             }
+        request = compiled_rule.get("analysisRequest") if isinstance(compiled_rule.get("analysisRequest"), Mapping) else {}
+        if request:
+            analysis_request = {
+                **dict(request),
+                "ruleId": str(compiled_rule.get("id") or ""),
+                "ruleRevision": str(compiled_rule.get("ruleRevision") or ""),
+            }
     return {
         "schema": EVALUATION_SCHEMA,
         "ruleId": compiled_rule["id"],
@@ -998,6 +1029,7 @@ def evaluate_rule(compiled_rule: Mapping[str, Any], observations: Mapping[str, S
         "selectors": [selector_results[name] for name in sorted(selector_results)],
         "emittedFact": emitted_fact,
         "finding": finding,
+        "analysisRequest": analysis_request,
         "evidenceTruncated": len(evidence) >= MAX_EVIDENCE_ROWS_PER_RULE,
         "fixtureReplay": replay,
     }
@@ -1031,10 +1063,12 @@ def evaluate_ruleset(
             "replayAudit": replay,
             "facts": sorted(facts),
             "findings": [],
+            "analysisRequests": [],
             "rules": [],
         }
     evaluations: list[dict[str, Any]] = []
     findings: list[dict[str, Any]] = []
+    analysis_requests: list[dict[str, Any]] = []
     # Compiler ordering guarantees observation/classification before correlation.
     for rule in rules:
         result = evaluate_rule(rule, observations, facts)
@@ -1044,6 +1078,9 @@ def evaluate_ruleset(
             facts.add(fact)
             if len(facts) > MAX_FACTS:
                 raise SRLEvaluationError(f"evaluation emitted more than {MAX_FACTS} facts")
+        request = result.get("analysisRequest")
+        if isinstance(request, dict):
+            analysis_requests.append(dict(request))
         finding = result.get("finding")
         if isinstance(finding, dict):
             findings.append(finding)
@@ -1057,6 +1094,7 @@ def evaluate_ruleset(
         "replayAudit": replay,
         "facts": sorted(facts),
         "findings": findings,
+        "analysisRequests": sorted(analysis_requests, key=lambda item: (str(item.get("ruleId") or ""), str(item.get("profile") or ""))),
         "rules": evaluations,
     }
 

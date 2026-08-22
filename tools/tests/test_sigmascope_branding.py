@@ -33,7 +33,12 @@ class SigmascopeBrandingTests(unittest.TestCase):
         self.assertFalse((root / "Omega").exists())
         deltascope = (root / "tools" / "security" / "deltascope.py").read_text(encoding="utf-8")
         self.assertIn("DeltaScope", deltascope)
-        self.assertIn("developer-only, read-only", deltascope)
+        self.assertIn("developer-only", deltascope)
+        self.assertIn("never scans plugins", deltascope)
+        self.assertIn("never publishes catalog, Definitions, or Security", deltascope)
+        self.assertIn("Published/security state is inspected read-only", deltascope)
+        self.assertIn("versioned user-authored SRL YAML", deltascope)
+        self.assertIn("Stigma-1", deltascope)
 
 
 

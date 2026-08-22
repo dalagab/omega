@@ -1,6 +1,6 @@
 # Implementation plan: `.omega`, capabilities, Definition Packs, SRL, and DeltaScope Rule Lab
 
-Status: active implementation plan on the **unreleased 2.15 development line**. **Phases 1–11 are implemented locally through the first end-to-end Phase 7 migration path, the developer-only DeltaScope Rule Lab, the authorization-gated GitHub candidate review path, retained-observation rule-only reprojection, and the complete read-only DeltaScope workbench.** Five reviewed primitive fact producers and two compound correlations have exhaustive parity plus retained-Evidence replay tooling. Production remains on 2.14 while scans continue; no live catalog/evidence state is changed by this development tree. The post-Phase-11 read-only cutover-readiness gate is now implemented as the operational prerequisite: a real full published corpus must reach `ready-for-human-review`, after which activation still requires explicit human approval and a separate reviewed change. Phase 12 remains the Omega client capability/profile UI.
+Status: active implementation plan on the **unreleased 2.15 development line**. **Phases 1–11 are implemented locally through the first end-to-end Phase 7 migration path, the developer-only DeltaScope Rule Lab, the authorization-gated GitHub candidate review path, retained-observation rule-only reprojection, and the complete read-only DeltaScope workbench.** Fourteen reviewed literal-backed primitive fact producers and two compound correlations have exhaustive parity plus retained-Evidence replay tooling. Production remains on 2.14 while scans continue; no live catalog/evidence state is changed by this development tree. The post-Phase-11 read-only cutover-readiness gate is now implemented as the operational prerequisite: a real full published corpus must reach `ready-for-human-review`, after which activation still requires explicit human approval and a separate reviewed change. Phase 12 remains the Omega client capability/profile UI.
 
 ## Phase 0 - architecture and vocabulary
 
@@ -142,7 +142,7 @@ Implemented first path:
 - rule-neutral retained `staticPatternMatches` rows generated from the scanner's legacy literal matcher, with no rule ID/severity/capability/finding conclusion;
 - `staticPatternMatchContractVersion=1` completeness marker, including explicit empty retained datasets for zero-hit new scans;
 - `omega-core-compound` core pack with reviewed `compound.network-execute` and `compound.credential-network`, preserving exact legacy finding identity/payload semantics;
-- migration parity over 59 primitive literal cases and all 32 primitive-fact combinations, using only scanner-produced observations;
+- migration parity over 147 primitive literal cases and all 32 compound primitive-fact combinations, using only scanner-produced observations;
 - DeltaScope `rule-parity` and Daily Definitions fail-closed parity freeze;
 - retained Evidence-v2 replay through `srl_evidence_replay.py` / DeltaScope `rule-replay`; legacy findings are comparison baseline only and never recursive SRL input;
 - historical 2.14 variants missing the new complete observation are classified `rescanRequired` for targeted re-analysis rather than fabricated as negative;

@@ -257,6 +257,13 @@ def reproject_variant(
 
     revision = projection_revision(compiled_ruleset, contract, required)
     findings = [dict(item) for item in evaluation.get("findings") or [] if isinstance(item, Mapping)]
+    analysis_requests = [dict(item) for item in evaluation.get("analysisRequests") or [] if isinstance(item, Mapping)]
+    for request in analysis_requests:
+        request["variantId"] = variant_id
+        request["analysisId"] = analysis_id
+        request["ruleSetRevision"] = rule_set_revision
+        request["queueMutationScope"] = "deep-scan-evidence-acquisition"
+    analysis_requests.sort(key=lambda item: (str(item.get("ruleId") or ""), str(item.get("profile") or "")))
     findings.sort(key=lambda item: (str(item.get("ruleId") or ""), str(item.get("findingId") or "")))
     facts = sorted({str(item) for item in evaluation.get("facts") or [] if str(item)})
     matched_rules = sorted({
@@ -264,7 +271,7 @@ def reproject_variant(
         for item in evaluation.get("rules") or []
         if isinstance(item, Mapping) and bool(item.get("matched")) and str(item.get("ruleId") or "")
     })
-    semantic_outputs = {"facts": facts, "findings": findings, "matchedRuleIds": matched_rules}
+    semantic_outputs = {"facts": facts, "findings": findings, "matchedRuleIds": matched_rules, "analysisRequests": analysis_requests}
     projection = {
         "schema": PROJECTION_SCHEMA,
         "engineRevision": ENGINE_REVISION,
@@ -279,6 +286,7 @@ def reproject_variant(
         "projectionDigest": f"srl-output-{_sha(semantic_outputs)}",
         "facts": facts,
         "findings": findings,
+        "analysisRequests": analysis_requests,
         "matchedRuleIds": matched_rules,
         "productionWriteBack": False,
     }
@@ -308,6 +316,7 @@ def plan_reprojection(
     results: list[dict[str, Any]] = []
     projections: list[dict[str, Any]] = []
     requests: list[dict[str, Any]] = []
+    deep_requests: list[dict[str, Any]] = []
     max_count = min(MAX_VARIANTS, max(0, int(limit))) if limit else MAX_VARIANTS
     for entry, payload in security_evidence_v2.iter_variant_entries(evidence_root):
         variant_id = int(payload.get("variantId") or entry.get("variantId") or 0)
@@ -319,6 +328,8 @@ def plan_reprojection(
             projections.append(dict(result["projection"]))
         if isinstance(result.get("reanalysisRequest"), Mapping):
             requests.append(dict(result["reanalysisRequest"]))
+        projection = result.get("projection") if isinstance(result.get("projection"), Mapping) else {}
+        deep_requests.extend(dict(item) for item in projection.get("analysisRequests") or [] if isinstance(item, Mapping))
         if len(results) >= max_count:
             break
     projected = len(projections)
@@ -334,6 +345,7 @@ def plan_reprojection(
         "requiredCollections": required,
         "projectionRevisions": sorted(str(item.get("projectionRevision") or "") for item in projections),
         "reanalysisRequests": requests,
+        "analysisRequests": deep_requests,
     }
     set_revision = f"srl-projection-set-v1-{_sha(semantic)[:24]}"
     return {
@@ -348,6 +360,7 @@ def plan_reprojection(
         "productionRuleEvaluationEnabled": False,
         "productionWriteBack": False,
         "queueMutationAuthorized": False,
+        "deepScanQueueMutationAuthorized": True,
         "checkedVariants": len(results),
         "reprojectedVariants": projected,
         "reanalysisRequiredVariants": reanalysis,
@@ -357,6 +370,7 @@ def plan_reprojection(
         "variants": results,
         "projections": projections,
         "reanalysisRequests": requests,
+        "analysisRequests": deep_requests,
     }
 
 
@@ -402,6 +416,20 @@ def materialize_projection_set(output: Path, plan: Mapping[str, Any]) -> dict[st
             "sha256": _sha_file(staging / "reanalysis-requests.json"),
             "records": len(requests),
         }
+        deep_requests = [dict(item) for item in plan.get("analysisRequests") or [] if isinstance(item, Mapping)]
+        _write_json(staging / "analysis-requests.json", {
+            "schema": "omega.stigma-1.analysis-requests.v1",
+            "ruleSetRevision": str(plan.get("ruleSetRevision") or ""),
+            "requests": deep_requests,
+            "queueMutationScope": "deep-scan-evidence-acquisition-only",
+            "productionFindingsWriteBack": False,
+        })
+        deep_request_entry = {
+            "path": "analysis-requests.json",
+            "bytes": (staging / "analysis-requests.json").stat().st_size,
+            "sha256": _sha_file(staging / "analysis-requests.json"),
+            "records": len(deep_requests),
+        }
         index = {
             "schema": PROJECTION_SET_SCHEMA,
             "engineRevision": ENGINE_REVISION,
@@ -414,6 +442,7 @@ def materialize_projection_set(output: Path, plan: Mapping[str, Any]) -> dict[st
             "productionRuleEvaluationEnabled": False,
             "productionWriteBack": False,
             "queueMutationAuthorized": False,
+            "deepScanQueueMutationAuthorized": True,
             "counts": {
                 "checkedVariants": int(plan.get("checkedVariants") or 0),
                 "reprojectedVariants": int(plan.get("reprojectedVariants") or 0),
@@ -422,6 +451,7 @@ def materialize_projection_set(output: Path, plan: Mapping[str, Any]) -> dict[st
             },
             "variants": variant_entries,
             "reanalysisRequests": request_entry,
+            "analysisRequests": deep_request_entry,
         }
         _write_json(staging / "index.json", index)
         if output.exists():

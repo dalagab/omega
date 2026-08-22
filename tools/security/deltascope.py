@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DeltaScope: developer-only SigmaScope evidence and SRL Core workbench entry point.
+"""DeltaScope: developer-only SigmaScope evidence and Stigma-1 / SRL Core workbench entry point.
 
 DeltaScope never scans plugins and never publishes catalog, Definitions, or Security
 Evidence state. Published/security state is inspected read-only. The Rules workspace may
