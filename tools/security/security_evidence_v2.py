@@ -1304,17 +1304,90 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
     if workbench_rel_entry:
         try:
             workbench_rel = read_json_file(root, str(workbench_rel_entry.get("path") or ""))
-            if str(workbench_rel.get("schema") or "") != "omega.security-evidence.workbench-relationships.v1":
+            relationship_schema = str(workbench_rel.get("schema") or "")
+            if relationship_schema not in {
+                "omega.security-evidence.workbench-relationships.v1",
+                "omega.security-evidence.workbench-relationships.v2",
+            }:
                 errors.append("workbenchRelationships index has an unsupported schema")
             if workbench_rel.get("readOnly") is not True or str(workbench_rel.get("mutationAuthority") or "") != "none":
                 errors.append("workbenchRelationships index is not explicitly read-only")
             if bool(workbench_rel.get("policyInput")):
                 errors.append("workbenchRelationships index incorrectly declares itself a policy input")
             counts = workbench_rel.get("counts") if isinstance(workbench_rel.get("counts"), dict) else {}
+
+            relationship_rows: dict[str, list[dict[str, Any]]] = {}
+            if relationship_schema == "omega.security-evidence.workbench-relationships.v1":
+                for name in ("endpoints", "components", "advisories"):
+                    relationship_rows[name] = [dict(item) for item in (workbench_rel.get(name) or []) if isinstance(item, dict)]
+            elif relationship_schema == "omega.security-evidence.workbench-relationships.v2":
+                if str(workbench_rel.get("storage") or "") != "sharded-jsonl-gzip":
+                    errors.append("workbenchRelationships v2 has an unsupported storage mode")
+                if str(workbench_rel_entry.get("relationshipRevision") or "") != str(workbench_rel.get("relationshipRevision") or ""):
+                    errors.append("workbenchRelationships relationshipRevision mismatch")
+                if str(workbench_rel_entry.get("storage") or "") != str(workbench_rel.get("storage") or ""):
+                    errors.append("workbenchRelationships storage descriptor mismatch")
+                root_counts = workbench_rel_entry.get("counts") if isinstance(workbench_rel_entry.get("counts"), dict) else {}
+                if root_counts and root_counts != counts:
+                    errors.append("workbenchRelationships root counts mismatch")
+                datasets = workbench_rel.get("datasets") if isinstance(workbench_rel.get("datasets"), dict) else {}
+                for name in ("endpoints", "components", "advisories"):
+                    descriptor = datasets.get(name) if isinstance(datasets.get(name), dict) else {}
+                    rows: list[dict[str, Any]] = []
+                    row_hashes: list[str] = []
+                    for file_info in descriptor.get("files") or []:
+                        if not isinstance(file_info, dict):
+                            errors.append(f"workbenchRelationships {name} has malformed file entry")
+                            continue
+                        errors.extend(
+                            f"workbenchRelationships {name}: {item}"
+                            for item in verify_file_entry(root, file_info, max_bytes=MAX_PUBLISH_FILE_BYTES)
+                        )
+                        rel = safe_relpath(str(file_info.get("path") or ""))
+                        data_path = root / rel
+                        encoding = str(file_info.get("encoding") or "")
+                        if encoding == "json":
+                            value = json.loads(data_path.read_text(encoding="utf-8"))
+                            values = value if isinstance(value, list) else [value]
+                            file_rows = [dict(item) for item in values if isinstance(item, dict)]
+                        elif encoding == "jsonl+gzip":
+                            file_rows = []
+                            with gzip.open(data_path, "rt", encoding="utf-8") as stream:
+                                for line in stream:
+                                    if not line.strip():
+                                        continue
+                                    value = json.loads(line)
+                                    if isinstance(value, dict):
+                                        file_rows.append(dict(value))
+                        else:
+                            errors.append(f"workbenchRelationships {name}: unsupported encoding {encoding!r}")
+                            file_rows = []
+                        rows.extend(file_rows)
+                        row_hashes.extend(sha256_bytes(canonical_json_bytes(item)) for item in file_rows)
+                    actual_count, digest = dataset_record_digest_from_hashes(row_hashes)
+                    if actual_count != int(descriptor.get("records") or 0):
+                        errors.append(f"workbenchRelationships {name} record count mismatch")
+                    if str(descriptor.get("recordDigest") or "") != digest:
+                        errors.append(f"workbenchRelationships {name} semantic record digest mismatch")
+                    relationship_rows[name] = rows
+
             for name in ("endpoints", "components", "advisories"):
-                rows = workbench_rel.get(name) if isinstance(workbench_rel.get(name), list) else []
+                rows = relationship_rows.get(name) or []
                 if int(counts.get(name) or 0) != len(rows):
                     errors.append(f"workbenchRelationships {name} count mismatch")
+            if relationship_schema == "omega.security-evidence.workbench-relationships.v2":
+                edge_counts = {
+                    "endpointVariantEdges": sum(len(item.get("variantIds") or []) for item in relationship_rows.get("endpoints") or []),
+                    "componentVariantEdges": sum(len(item.get("usage") or []) for item in relationship_rows.get("components") or []),
+                    "advisoryVariantEdges": sum(len(item.get("affectedAssets") or []) for item in relationship_rows.get("advisories") or []),
+                }
+                for name, actual in edge_counts.items():
+                    if int(counts.get(name) or 0) != actual:
+                        errors.append(f"workbenchRelationships {name} count mismatch")
+                semantic_core = {name: relationship_rows.get(name) or [] for name in ("endpoints", "components", "advisories")}
+                expected_revision = "workbench-rel-v2-" + sha256_bytes(canonical_json_bytes(semantic_core))[:20]
+                if str(workbench_rel.get("relationshipRevision") or "") != expected_revision:
+                    errors.append("workbenchRelationships semantic revision mismatch")
         except Exception as exc:
             errors.append(f"workbenchRelationships index unreadable: {type(exc).__name__}: {exc}")
 

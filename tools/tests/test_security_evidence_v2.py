@@ -23,6 +23,7 @@ from security_evidence_v2 import (
 from validate_security_evidence_v2 import infer_database_from_migration_state, validate
 import definition_packs
 from production_sigmascope_v2_pipeline import materialize_definition_provenance_index
+from evidence_v2_inspector import V2SigmascopeInspector
 
 
 class SecurityEvidenceV2Tests(unittest.TestCase):
@@ -413,6 +414,47 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             self.assertFalse(broken["ok"])
             self.assertTrue(any("sha256" in error or "record" in error for error in broken["errors"]))
 
+
+
+    def test_sharded_workbench_relationship_index_is_readable_and_shard_tamper_is_rejected(self) -> None:
+        import hashlib
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            database = self.make_database(root / "evidence.sqlite")
+            output = root / "v2"
+            migrate(database, output, reset=True, chunk_bytes=1024 * 1024)
+
+            inspector = V2SigmascopeInspector(output)
+            relationship = inspector.workbench_relationship_index()
+            self.assertEqual("omega.security-evidence.workbench-relationships.v2", relationship["schema"])
+            self.assertTrue(relationship["readOnly"])
+            self.assertFalse(relationship["policyInput"])
+            inspector.close()
+
+            index = json.loads((output / "index.json").read_text(encoding="utf-8"))
+            manifest_entry = index["indexes"]["workbenchRelationships"]
+            manifest_path = output / manifest_entry["path"]
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            shard = next(
+                (file_info for descriptor in manifest["datasets"].values() for file_info in descriptor.get("files") or []
+                 if str(file_info.get("encoding") or "") == "jsonl+gzip"),
+                None,
+            )
+            if shard is None:
+                # Empty test relations legitimately use a tiny inline JSON dataset; force
+                # a manifest-level digest failure instead so the v2 integrity path is still covered.
+                manifest["datasets"]["endpoints"]["recordDigest"] = "0" * 64
+                manifest_path.write_text(json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+                data = manifest_path.read_bytes()
+                manifest_entry["sha256"] = hashlib.sha256(data).hexdigest()
+                manifest_entry["bytes"] = len(data)
+                (output / "index.json").write_text(json.dumps(index, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            else:
+                shard_path = output / shard["path"]
+                shard_path.write_bytes(shard_path.read_bytes() + b"tamper")
+            report = validate_snapshot(output)
+            self.assertFalse(report["ok"], report)
+            self.assertTrue(any("workbenchRelationships" in error for error in report["errors"]), report)
 
     def test_intrinsic_validator_rejects_workbench_relationship_write_authority(self) -> None:
         import hashlib

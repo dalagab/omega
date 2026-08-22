@@ -38,6 +38,18 @@ def _sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _record_digest(rows: list[dict[str, Any]]) -> str:
+    hashes = sorted(
+        _sha256_bytes(json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+        for row in rows
+    )
+    digest = hashlib.sha256()
+    for item in hashes:
+        digest.update(item.encode("ascii"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
 class LocalEvidenceSource:
     mode = "local"
 
@@ -251,6 +263,7 @@ class V2SigmascopeInspector:
     def close(self) -> None:
         self._payload_cache.clear()
         self._manifest_cache.clear()
+        self._workbench_relationship_cache = None
 
     @staticmethod
     def _revision(root: dict[str, Any]) -> str:
@@ -282,6 +295,7 @@ class V2SigmascopeInspector:
         self._queue_payload_cache: dict[str, Any] = {}
         self._srl_projection_index_cache: dict[str, Any] | None = None
         self._srl_reanalysis_cache: dict[int, dict[str, Any]] | None = None
+        self._workbench_relationship_cache: dict[str, Any] | None = None
         self._summary_index_available = bool(self.entries) and all(isinstance(row.get("summary"), dict) for row in self.entries.values())
 
     def _index_path(self, name: str) -> str:
@@ -991,21 +1005,100 @@ class V2SigmascopeInspector:
             },
         }
 
+    def _read_record_descriptor(self, descriptor: dict[str, Any], *, label: str) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for file_info in descriptor.get("files") or []:
+            if not isinstance(file_info, dict):
+                raise ValueError(f"{label} contains a malformed shard descriptor")
+            path = str(file_info.get("path") or "")
+            data = self.source.read_bytes(path, expected_sha256=str(file_info.get("sha256") or ""))
+            encoding = str(file_info.get("encoding") or "")
+            if encoding == "json":
+                value = json.loads(data.decode("utf-8"))
+                values = value if isinstance(value, list) else [value]
+                rows.extend(dict(item) for item in values if isinstance(item, dict))
+            elif encoding == "jsonl+gzip":
+                text = gzip.decompress(data).decode("utf-8")
+                for line in text.splitlines():
+                    if not line.strip():
+                        continue
+                    value = json.loads(line)
+                    if isinstance(value, dict):
+                        rows.append(dict(value))
+            else:
+                raise ValueError(f"{label} has unsupported encoding {encoding!r}")
+        if len(rows) != int(descriptor.get("records") or 0):
+            raise ValueError(f"{label} record count mismatch")
+        if str(descriptor.get("recordDigest") or "") != _record_digest(rows):
+            raise ValueError(f"{label} semantic record digest mismatch")
+        return rows
+
     def workbench_relationship_index(self) -> dict[str, Any]:
-        """Return the optional read-only ecosystem relationship index used by DeltaScope."""
+        """Return the optional read-only ecosystem relationship index used by DeltaScope.
+
+        V2 keeps only a small manifest in the root graph and fetches the bounded
+        compressed relationship shards on first use. Older monolithic V1 snapshots
+        remain readable during rollout.
+        """
+        if self._workbench_relationship_cache is not None:
+            return self._workbench_relationship_cache
         value = self._index_payload("workbenchRelationships")
         if not value:
-            return {
-                "schema": "omega.security-evidence.workbench-relationships.v1",
+            result = {
+                "schema": "omega.security-evidence.workbench-relationships.v2",
                 "relationshipRevision": "", "readOnly": True, "mutationAuthority": "none", "policyInput": False,
                 "counts": {"endpoints": 0, "components": 0, "advisories": 0},
                 "endpoints": [], "components": [], "advisories": [],
             }
-        if not isinstance(value, dict) or str(value.get("schema") or "") != "omega.security-evidence.workbench-relationships.v1":
+            self._workbench_relationship_cache = result
+            return result
+        if not isinstance(value, dict):
+            raise ValueError("unsupported DeltaScope workbench relationship index")
+        schema = str(value.get("schema") or "")
+        if schema not in {
+            "omega.security-evidence.workbench-relationships.v1",
+            "omega.security-evidence.workbench-relationships.v2",
+        }:
             raise ValueError("unsupported DeltaScope workbench relationship index")
         if value.get("readOnly") is not True or str(value.get("mutationAuthority") or "") != "none" or bool(value.get("policyInput")):
             raise ValueError("DeltaScope workbench relationship index violates the read-only boundary")
-        return value
+        if schema == "omega.security-evidence.workbench-relationships.v1":
+            self._workbench_relationship_cache = value
+            return value
+        if str(value.get("storage") or "") != "sharded-jsonl-gzip":
+            raise ValueError("unsupported DeltaScope workbench relationship storage")
+        datasets = value.get("datasets") if isinstance(value.get("datasets"), dict) else {}
+        rows = {
+            name: self._read_record_descriptor(
+                datasets.get(name) if isinstance(datasets.get(name), dict) else {},
+                label=f"workbenchRelationships {name}",
+            )
+            for name in ("endpoints", "components", "advisories")
+        }
+        counts = value.get("counts") if isinstance(value.get("counts"), dict) else {}
+        for name, records in rows.items():
+            if int(counts.get(name) or 0) != len(records):
+                raise ValueError(f"workbenchRelationships {name} count mismatch")
+        edge_counts = {
+            "endpointVariantEdges": sum(len(item.get("variantIds") or []) for item in rows["endpoints"]),
+            "componentVariantEdges": sum(len(item.get("usage") or []) for item in rows["components"]),
+            "advisoryVariantEdges": sum(len(item.get("affectedAssets") or []) for item in rows["advisories"]),
+        }
+        for name, actual in edge_counts.items():
+            if int(counts.get(name) or 0) != actual:
+                raise ValueError(f"workbenchRelationships {name} count mismatch")
+        semantic_core = {name: rows[name] for name in ("endpoints", "components", "advisories")}
+        expected_revision = "workbench-rel-v2-" + _sha256_bytes(
+            json.dumps(semantic_core, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        )[:20]
+        if str(value.get("relationshipRevision") or "") != expected_revision:
+            raise ValueError("workbenchRelationships semantic revision mismatch")
+        root_meta = (self.root.get("indexes") or {}).get("workbenchRelationships") or {}
+        if str(root_meta.get("relationshipRevision") or "") != expected_revision:
+            raise ValueError("workbenchRelationships root relationshipRevision mismatch")
+        result = {**value, **rows}
+        self._workbench_relationship_cache = result
+        return result
 
     def workbench_assets_for_variants(self, variant_ids: Iterable[int]) -> list[dict[str, Any]]:
         """Resolve current variant IDs to the lightweight plugin-index summaries without deep evidence fetches."""

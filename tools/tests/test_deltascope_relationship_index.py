@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 from migrate_security_evidence_v2 import _export_workbench_relationship_index
-from security_evidence_v2 import sha256_file, validate_snapshot
+from security_evidence_v2 import read_record_dataset, sha256_file, validate_snapshot
 from tools.tests import common
 
 
@@ -75,13 +75,24 @@ class DeltaScopeRelationshipIndexTests(unittest.TestCase):
             finally:
                 db.close()
             payload = json.loads((root / entry["path"]).read_text(encoding="utf-8"))
-            self.assertEqual("omega.security-evidence.workbench-relationships.v1", payload["schema"])
+            self.assertEqual("omega.security-evidence.workbench-relationships.v2", payload["schema"])
+            self.assertEqual("sharded-jsonl-gzip", payload["storage"])
             self.assertTrue(payload["readOnly"])
             self.assertFalse(payload["policyInput"])
+            self.assertEqual(payload["relationshipRevision"], entry["relationshipRevision"])
             self.assertEqual(1, counts["endpoints"])
-            self.assertEqual([10, 11], payload["endpoints"][0]["variantIds"])
-            self.assertEqual(2, len(payload["components"][0]["usage"]))
-            self.assertEqual([10, 11], [row["variantId"] for row in payload["advisories"][0]["affectedAssets"]])
+            endpoints = read_record_dataset(root, payload["datasets"]["endpoints"])
+            components = read_record_dataset(root, payload["datasets"]["components"])
+            advisories = read_record_dataset(root, payload["datasets"]["advisories"])
+            self.assertEqual([10, 11], endpoints[0]["variantIds"])
+            self.assertEqual(2, len(components[0]["usage"]))
+            self.assertEqual([10, 11], [row["variantId"] for row in advisories[0]["affectedAssets"]])
+            self.assertTrue(all(
+                str(file_info.get("encoding") or "") == "jsonl+gzip"
+                for descriptor in payload["datasets"].values()
+                for file_info in descriptor.get("files") or []
+                if int(descriptor.get("records") or 0) > 0
+            ))
 
     def test_relationship_index_is_deterministic(self):
         with tempfile.TemporaryDirectory() as td:
@@ -95,10 +106,9 @@ class DeltaScopeRelationshipIndexTests(unittest.TestCase):
                 _export_workbench_relationship_index(db, out_b)
             finally:
                 db.close()
-            self.assertEqual(
-                (out_a / "indexes" / "workbench-relationships.json").read_bytes(),
-                (out_b / "indexes" / "workbench-relationships.json").read_bytes(),
-            )
+            files_a = {p.relative_to(out_a).as_posix(): p.read_bytes() for p in out_a.rglob("*") if p.is_file()}
+            files_b = {p.relative_to(out_b).as_posix(): p.read_bytes() for p in out_b.rglob("*") if p.is_file()}
+            self.assertEqual(files_a, files_b)
 
 
 

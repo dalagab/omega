@@ -1,6 +1,6 @@
 # DeltaScope security-information workbench
 
-Status: **Phase 11 complete plus DeltaScope 4.6.1 Stigma-1 expanded rule library and deep-analysis orchestration** on the unreleased SigmaScope 2.15 development line. Slices 1–8 are implemented: the permanent navigation/workspace shell, deterministic backend incident/event/intelligence projections, lazy selected-case composition with normalized retained-evidence timelines, cross-plugin intelligence/Asset relationship navigation, exact active-rule/Definition provenance, read-only Reports/System health projections, and the final URL-only GitHub candidate proposal handoff.
+Status: **Phase 11 complete plus DeltaScope 4.6.2 Stigma-1 deep-analysis orchestration and sharded relationship transport** on the unreleased SigmaScope 2.15 development line. Slices 1–8 are implemented: the permanent navigation/workspace shell, deterministic backend incident/event/intelligence projections, lazy selected-case composition with normalized retained-evidence timelines, cross-plugin intelligence/Asset relationship navigation, exact active-rule/Definition provenance, read-only Reports/System health projections, and the final URL-only GitHub candidate proposal handoff.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ The workbench uses these stable operator concepts:
 - **Documentation** — allow-listed local Stigma-1/SRL authoring, examples, Definition Pack and security-architecture references.
 - **System** — evidence/Definitions revisions, pipeline health, audit status and the advanced raw Evidence-v2 browser.
 
-## DeltaScope 4.6.1 Stigma-1 rule library + deep-analysis orchestration
+## DeltaScope 4.6.2 Stigma-1 rule library + deep-analysis orchestration
 
 Rules can now describe a typed evidence-acquisition outcome. System/frozen rules can feed the durable SigmaScope Deep Scan queue; My Rules only preview the same outcome. The visual Emit node exposes the approved deep-analysis profiles without exposing commands or runner controls. Deep Scan runs as its own GitHub Actions workflow and therefore does not consume the normal bounded SigmaScope scan budget. See `DEEP-SCAN-WORKFLOW.md`.
 
@@ -81,7 +81,7 @@ The UI should favor dense, comprehensible operator workflows over decorative lan
 1. **Implemented:** workbench shell + stable primary navigation over existing read-only data.
 2. **Implemented:** deterministic read-only incident/event/intelligence navigation objects from current asset/security summaries, with stable IDs/revisions and `mutationAuthority=none`.
 3. **Implemented:** selected incident/event composition over current findings, researcher signals, advisory intelligence, bounded retained observation collections and the non-authoritative Phase-10 SRL projection/reanalysis sidecar. `/api/workbench/case` loads this detail lazily for one variant, emits `omega.deltascope.incident-case-projection.v1` plus `omega.deltascope.security-timeline.v1`, and never turns a reprojection/reanalysis relationship into queue or production state.
-4. **Implemented:** cross-plugin Intelligence pivots over the published read-only relationship index. Endpoint, component and advisory rows expose affected variants/plugins and can pivot back into Asset investigations without scanning the corpus in the browser. The index is `omega.security-evidence.workbench-relationships.v1`, explicitly `readOnly=true`, `mutationAuthority=none`, and `policyInput=false`.
+4. **Implemented:** cross-plugin Intelligence pivots over the published read-only relationship index. Endpoint, component and advisory rows expose affected variants/plugins and can pivot back into Asset investigations without scanning the corpus in the browser. The current sharded index is `omega.security-evidence.workbench-relationships.v2` (with v1 read compatibility), explicitly `readOnly=true`, `mutationAuthority=none`, and `policyInput=false`.
 5. **Implemented:** Asset relationship navigation: plugin -> variant -> artifact/source -> component/endpoint/advisory. `/api/workbench/asset-relations` returns a deterministic `omega.deltascope.asset-relationship-projection.v1` graph; relationship clicks pivot into Intelligence for ecosystem-wide context.
 6. **Implemented:** exact active-rule browser backed by the published frozen Definitions provenance sidecar, including Definition Pack/rule revisions, review/provenance metadata, source hashes, fixtures and migration-parity state. It never reads development-tree packs to decide what is active.
 7. **Implemented:** deterministic Reports/System projections for coverage, SRL reprojection/reanalysis readiness, queue state, Evidence/Definitions/scanner/SRL revision lineage and explicit production/read-only safety gates. These are derived views only.
@@ -89,7 +89,7 @@ The UI should favor dense, comprehensible operator workflows over decorative lan
 
 ## Relationship-index boundary
 
-Cross-plugin questions must not require DeltaScope to download every variant's deep evidence. Evidence-v2 therefore publishes a small derived `indexes/workbench-relationships.json` navigation index containing endpoint↔variant, component↔variant and advisory↔affected-variant relationships. It is derived from already-published evidence/resolution state, hash-verified by the Evidence-v2 root, bounded during export, and intrinsically rejected if it claims write or policy authority. It is **not** a SigmaScope observation collection, SRL input, finding, queue instruction or production-policy surface.
+Cross-plugin questions must not require DeltaScope to download every variant's deep evidence. Evidence-v2 therefore publishes a small derived `indexes/workbench-relationships/index.json` manifest plus bounded deterministic JSONL+gzip datasets containing endpoint↔variant, component↔variant and advisory↔affected-variant relationships. It is derived from already-published evidence/resolution state, hash-verified by the Evidence-v2 root, bounded during export, and intrinsically rejected if any shard is invalid or the index claims write/policy authority. Legacy v1 monolithic snapshots remain readable. It is **not** a SigmaScope observation collection, SRL input, finding, queue instruction or production-policy surface.
 
 DeltaScope exposes it through read-only endpoints `/api/workbench/relationships`, `/api/workbench/pivot`, and `/api/workbench/asset-relations`. Older Evidence-v2 snapshots without the index remain browseable and simply show relationship intelligence as unavailable.
 

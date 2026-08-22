@@ -477,8 +477,10 @@ def _export_global_table(db: sqlite3.Connection, output: Path, table: str, filen
     return file_entry(output, path, records=len(rows), encoding="json"), len(rows)
 
 
-WORKBENCH_RELATIONSHIP_SCHEMA = "omega.security-evidence.workbench-relationships.v1"
+WORKBENCH_RELATIONSHIP_SCHEMA = "omega.security-evidence.workbench-relationships.v2"
+WORKBENCH_RELATIONSHIP_LEGACY_SCHEMA = "omega.security-evidence.workbench-relationships.v1"
 WORKBENCH_RELATIONSHIP_LIMIT = 200_000
+WORKBENCH_RELATIONSHIP_CHUNK_BYTES = 8 * 1024 * 1024
 
 
 def _json_object(value: Any) -> dict[str, Any]:
@@ -648,21 +650,54 @@ def _export_workbench_relationship_index(db: sqlite3.Connection, output: Path, *
         })
 
     core = {"endpoints": endpoint_rows, "components": components, "advisories": advisories}
-    revision = "workbench-rel-v1-" + sha256_bytes(canonical_json_bytes(core))[:20]
-    payload = {
-        "schema": WORKBENCH_RELATIONSHIP_SCHEMA, "relationshipRevision": revision,
-        "readOnly": True, "mutationAuthority": "none", "policyInput": False,
-        "counts": {
-            "endpoints": len(endpoint_rows), "components": len(components), "advisories": len(advisories),
-            "endpointVariantEdges": sum(len(item.get("variantIds") or []) for item in endpoint_rows),
-            "componentVariantEdges": sum(len(item.get("usage") or []) for item in components),
-            "advisoryVariantEdges": sum(len(item.get("affectedAssets") or []) for item in advisories),
-        },
-        **core,
+    revision = "workbench-rel-v2-" + sha256_bytes(canonical_json_bytes(core))[:20]
+    counts = {
+        "endpoints": len(endpoint_rows), "components": len(components), "advisories": len(advisories),
+        "endpointVariantEdges": sum(len(item.get("variantIds") or []) for item in endpoint_rows),
+        "componentVariantEdges": sum(len(item.get("usage") or []) for item in components),
+        "advisoryVariantEdges": sum(len(item.get("affectedAssets") or []) for item in advisories),
     }
-    path = output / "indexes" / "workbench-relationships.json"
+
+    # Phase 11 originally emitted one human-readable JSON object.  The relationship
+    # graph has now outgrown the global 32 MiB Evidence-v2 file ceiling, so keep the
+    # tiny hash-pinned manifest in the root index and move each logical collection to
+    # deterministic bounded JSONL+gzip shards.  This remains navigation-only data.
+    legacy_path = output / "indexes" / "workbench-relationships.json"
+    legacy_path.unlink(missing_ok=True)
+    relationship_dir = output / "indexes" / "workbench-relationships"
+    if relationship_dir.exists():
+        shutil.rmtree(relationship_dir)
+    relationship_dir.mkdir(parents=True, exist_ok=True)
+    datasets = {
+        name: write_record_dataset(
+            output, relationship_dir, name, rows,
+            chunk_bytes=WORKBENCH_RELATIONSHIP_CHUNK_BYTES, inline_bytes=0,
+        )
+        for name, rows in (("endpoints", endpoint_rows), ("components", components), ("advisories", advisories))
+    }
+    payload = {
+        "schema": WORKBENCH_RELATIONSHIP_SCHEMA,
+        "relationshipRevision": revision,
+        "storage": "sharded-jsonl-gzip",
+        "readOnly": True,
+        "mutationAuthority": "none",
+        "policyInput": False,
+        "counts": counts,
+        "datasets": datasets,
+    }
+    path = relationship_dir / "index.json"
     _write_json(path, payload)
-    return file_entry(output, path, records=sum(payload["counts"][k] for k in ("endpoints", "components", "advisories")), encoding="json"), dict(payload["counts"])
+    entry = file_entry(
+        output, path,
+        records=sum(counts[k] for k in ("endpoints", "components", "advisories")),
+        encoding="json",
+    )
+    entry.update({
+        "relationshipRevision": revision,
+        "storage": "sharded-jsonl-gzip",
+        "counts": dict(counts),
+    })
+    return entry, dict(counts)
 
 
 def migrate(
