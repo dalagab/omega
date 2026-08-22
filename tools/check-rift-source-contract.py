@@ -146,4 +146,15 @@ require(Path("tools/run-rift-bwrap.sh"), 'RIFT_ARTIFACT_TREE_HASH_ALGORITHM', "t
 require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'sha256(path-nul-file-sha-lf-v1)', "platform evidence uses canonical tree hash")
 require(Path(".github/workflows/rift-scan-omega.yml"), 'Artifact-tree correlation: PASS', "Omega CI enforces cross-report artifact identity")
 
+
+# Real-world complex plugin regression scan.
+require(Path(".github/workflows/rift-scan-artisan.yml"), "Rift scan published Artisan", "Artisan exact-artifact scan workflow")
+require(Path(".github/workflows/rift-scan-artisan.yml"), "https://love.puni.sh/ment.json", "Artisan canonical Puni feed acquisition")
+require(Path(".github/workflows/rift-scan-artisan.yml"), "expected exactly one stable Artisan entry", "Artisan stable entry uniqueness gate")
+require(Path(".github/workflows/rift-scan-artisan.yml"), "versions/{version}/install/latest.zip", "Artisan version-pinned Puni artifact gate")
+require(Path(".github/workflows/rift-scan-artisan.yml"), "summarize-rift-coverage.py", "Artisan engineering coverage-gap projection")
+require(Path("tools/summarize-rift-coverage.py"), "rift.coverage-gap.v1", "coverage-gap report schema producer")
+require(Path("tools/summarize-rift-coverage.py"), "full_plugin_functionality_proven", "coverage report avoids overstating startup")
+require(Path("schemas/rift-coverage-gap-v1.schema.json"), "rift.coverage-gap.v1", "coverage-gap JSON schema")
+
 print(f"Rift source-contract checks: {len(checks)}/{len(checks)} passed")

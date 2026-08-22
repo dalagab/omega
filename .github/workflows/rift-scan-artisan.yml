@@ -1,0 +1,280 @@
+name: Rift scan published Artisan
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - rift
+    paths:
+      - 'InterdimensionalRift/**'
+      - 'tests/InterdimensionalRift.Tests/**'
+      - 'tools/**'
+      - 'schemas/**'
+      - '.github/workflows/rift-scan-artisan.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  acquire-artisan:
+    name: Acquire Artisan as Dalamud would
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Resolve Puni Dalamud feed and download exact stable package
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/artisan-acquire"
+          mkdir -p "$work"
+          feed='https://love.puni.sh/ment.json'
+          curl --fail --location --proto '=https' --tlsv1.2 "$feed" -o "$work/pluginmaster.json"
+
+          python3 - "$work/pluginmaster.json" "$work/acquisition.env" "$work/acquisition.json" <<'PY'
+          import json, pathlib, re, sys, urllib.parse
+          feed_path, env_path, json_path = map(pathlib.Path, sys.argv[1:])
+          entries=json.loads(feed_path.read_text(encoding='utf-8-sig'))
+          matches=[x for x in entries if str(x.get('InternalName'))=='Artisan']
+          if len(matches)!=1:
+              raise SystemExit(f'expected exactly one stable Artisan entry, got {len(matches)}')
+          e=matches[0]
+          version=str(e.get('AssemblyVersion') or '')
+          api=str(e.get('DalamudApiLevel') or '')
+          url=str(e.get('DownloadLinkInstall') or '')
+          if api!='15':
+              raise SystemExit(f'Artisan stable API level is not 15: {api!r}')
+          if not re.fullmatch(r'\d+\.\d+\.\d+\.\d+', version):
+              raise SystemExit(f'unexpected Artisan AssemblyVersion: {version!r}')
+          p=urllib.parse.urlparse(url)
+          expected=f'/api/plugins/download/6/Artisan/versions/{version}/install/latest.zip'
+          if p.scheme!='https' or p.hostname!='puni.sh' or p.path!=expected:
+              raise SystemExit(f'Artisan install URL is not exact-version Puni artifact: {url!r}')
+          env_path.write_text(
+              f'ARTISAN_VERSION={version}\nARTISAN_API={api}\nARTISAN_URL={url}\n',
+              encoding='utf-8')
+          json_path.write_text(json.dumps({
+              'schema_version':'rift.acquisition.v1',
+              'producer':'rift-dalamud-style-acquisition',
+              'subject':'Artisan',
+              'internal_name':'Artisan',
+              'feed': 'https://love.puni.sh/ment.json',
+              'assembly_version':version,
+              'dalamud_api_level':api,
+              'download_url':url,
+              'repo_url':e.get('RepoUrl'),
+              'author':e.get('Author'),
+              'selection':'InternalName == Artisan; stable DownloadLinkInstall',
+          }, indent=2)+'\n', encoding='utf-8')
+          PY
+
+          source "$work/acquisition.env"
+          curl --fail --location --proto '=https' --tlsv1.2 "$ARTISAN_URL" -o "$work/Artisan.zip"
+          sha=$(sha256sum "$work/Artisan.zip" | awk '{print $1}')
+          printf '%s  Artisan.zip\n' "$sha" > "$work/Artisan.zip.sha256"
+
+          python3 - "$work/acquisition.json" "$sha" <<'PY'
+          import json, pathlib, sys
+          p=pathlib.Path(sys.argv[1]); d=json.loads(p.read_text())
+          d['artifact_zip_sha256']=sys.argv[2]
+          p.write_text(json.dumps(d,indent=2)+'\n')
+          PY
+
+          echo "Acquired Artisan $ARTISAN_VERSION API $ARTISAN_API SHA256=$sha"
+
+      - name: Upload opaque Artisan input
+        uses: actions/upload-artifact@v7
+        with:
+          name: rift-artisan-input
+          path: |
+            ${{ runner.temp }}/artisan-acquire/Artisan.zip
+            ${{ runner.temp }}/artisan-acquire/Artisan.zip.sha256
+            ${{ runner.temp }}/artisan-acquire/pluginmaster.json
+            ${{ runner.temp }}/artisan-acquire/acquisition.json
+          if-no-files-found: error
+          retention-days: 7
+
+  scan-artisan:
+    name: Execute published Artisan inside Rift
+    needs: acquire-artisan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    permissions:
+      contents: read
+    steps:
+      - name: Check out Rift branch
+        uses: actions/checkout@v6
+
+      - name: Download opaque Artisan input
+        uses: actions/download-artifact@v8
+        with:
+          name: rift-artisan-input
+          path: ${{ runner.temp }}/artisan-input
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install boundary dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bubblewrap libcap2-bin libseccomp-dev gcc pkg-config unzip
+
+      - name: Enable and verify Rift boundary
+        run: |
+          sudo bash ./tools/enable-userns-github.sh
+          bash ./tools/verify-bwrap.sh
+          bash ./tools/verify-rift-cgroup.sh
+
+      - name: Download frozen Dalamud API 15 runtime
+        run: |
+          set -euo pipefail
+          hooks="$RUNNER_TEMP/dalamud-hooks"
+          mkdir -p "$hooks"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            'https://goatcorp.github.io/dalamud-distrib/stg/latest.zip' \
+            -o "$RUNNER_TEMP/dalamud.zip"
+          unzip -q "$RUNNER_TEMP/dalamud.zip" -d "$hooks"
+          test -s "$hooks/Dalamud.dll"
+          echo "RIFT_HOOKS=$hooks" >> "$GITHUB_ENV"
+
+      - name: Build/test qualified Rift
+        run: |
+          python3 ./tools/check-rift-source-contract.py
+          dotnet test ./tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
+            --configuration Release -p:HooksDir="$RIFT_HOOKS"
+          dotnet publish ./InterdimensionalRift/InterdimensionalRift.csproj \
+            --configuration Release --runtime linux-x64 --self-contained true \
+            -p:HooksDir="$RIFT_HOOKS" --output "$RUNNER_TEMP/rift-runtime"
+          test -x "$RUNNER_TEMP/rift-runtime/interdimensional-rift"
+
+      - name: Build seccomp policy
+        run: |
+          policy=$(bash ./tools/build-rift-seccomp.sh "$RUNNER_TEMP/rift-seccomp.bpf")
+          test -s "$policy"
+          echo "RIFT_SECCOMP=$policy" >> "$GITHUB_ENV"
+
+      - name: Safely stage exact Artisan package
+        id: stage
+        run: |
+          set -euo pipefail
+          input="$RUNNER_TEMP/artisan-input"
+          artifact="$RUNNER_TEMP/artisan-artifact"
+          mkdir -p "$artifact"
+
+          expected=$(awk 'NF {print tolower($1); exit}' "$input/Artisan.zip.sha256")
+          actual=$(sha256sum "$input/Artisan.zip" | awk '{print $1}')
+          [[ "$expected" == "$actual" ]] || { echo 'Artisan input hash changed after acquisition' >&2; exit 1; }
+
+          python3 - "$input/Artisan.zip" "$artifact" <<'PY'
+          import pathlib, stat, sys, zipfile
+          archive=pathlib.Path(sys.argv[1]); target=pathlib.Path(sys.argv[2]).resolve()
+          total=0; max_total=512*1024*1024; max_files=8192
+          with zipfile.ZipFile(archive) as zf:
+              infos=zf.infolist()
+              if len(infos)>max_files: raise SystemExit(f'too many ZIP entries: {len(infos)}')
+              seen=set()
+              for info in infos:
+                  name=info.filename.replace('\\','/')
+                  p=pathlib.PurePosixPath(name)
+                  norm='/'.join(p.parts).lower()
+                  if p.is_absolute() or '..' in p.parts: raise SystemExit(f'unsafe ZIP path: {name!r}')
+                  if norm in seen: raise SystemExit(f'duplicate normalized ZIP path: {name!r}')
+                  seen.add(norm)
+                  mode=(info.external_attr>>16)&0xFFFF
+                  if stat.S_ISLNK(mode): raise SystemExit(f'symlink ZIP entry: {name!r}')
+                  if info.flag_bits & 0x1: raise SystemExit(f'encrypted ZIP entry: {name!r}')
+                  total += info.file_size
+                  if total>max_total: raise SystemExit('Artisan ZIP expands beyond staging limit')
+              zf.extractall(target)
+          PY
+
+          plugin=$(find "$artifact" -type f -name 'Artisan.dll' -print -quit)
+          manifest=$(find "$artifact" -type f -name 'Artisan.json' -print -quit)
+          [[ -n "$plugin" && -s "$plugin" ]] || { echo 'Artisan.dll missing' >&2; exit 1; }
+          [[ -n "$manifest" && -s "$manifest" ]] || { echo 'Artisan.json missing' >&2; exit 1; }
+
+          python3 - "$manifest" "$input/acquisition.json" <<'PY'
+          import json, sys
+          m=json.load(open(sys.argv[1],encoding='utf-8-sig'))
+          a=json.load(open(sys.argv[2],encoding='utf-8'))
+          pv=str(m.get('AssemblyVersion') or '')
+          fv=str(a.get('assembly_version') or '')
+          if pv and pv!=fv:
+              raise SystemExit(f'package/feed version mismatch: package={pv} feed={fv}')
+          print(f"Artisan staged: feed={fv} package={pv or 'manifest-does-not-declare-version'}")
+          PY
+
+          echo "plugin=$plugin" >> "$GITHUB_OUTPUT"
+          echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Execute Artisan inside qualified Rift
+        id: rift
+        run: |
+          set +e
+          results="$RUNNER_TEMP/rift-artisan-results"
+          mkdir -p "$results"
+          bash ./tools/run-rift-bwrap.sh \
+            --runtime-dir "$RUNNER_TEMP/rift-runtime" \
+            --contract-dir "$RIFT_HOOKS" \
+            --plugin '${{ steps.stage.outputs.plugin }}' \
+            --artifact-dir '${{ steps.stage.outputs.artifact }}' \
+            --seccomp-policy "$RIFT_SECCOMP" \
+            --out "$results/rift-artisan.json" \
+            --init-timeout 15 --wall-timeout 30 \
+            --memory-max 768M --tasks-max 64 --cpu-quota 100%
+          rc=$?
+          echo "$rc" > "$results/rift-exit-code.txt"
+          cp "$RUNNER_TEMP/artisan-input/acquisition.json" "$results/acquisition.json"
+          cp "$RUNNER_TEMP/artisan-input/Artisan.zip.sha256" "$results/Artisan.zip.sha256"
+          echo "Rift process exit code: $rc"
+          exit 0
+
+      - name: Build player-environment evidence
+        if: always() && steps.stage.outcome == 'success'
+        run: |
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-artisan-results"
+          args=(--artifact-dir '${{ steps.stage.outputs.artifact }}' --out "$results/player-environment-support.json")
+          if python3 - "$results/rift-artisan.json" <<'PY'
+          import json,sys
+          try:
+              d=json.load(open(sys.argv[1]))
+              raise SystemExit(0 if d.get('schema_version')=='rift.runtime-observation.v1' else 1)
+          except Exception:
+              raise SystemExit(1)
+          PY
+          then
+            args+=(--rift-report "$results/rift-artisan.json")
+          fi
+          dotnet run --project ./tools/platform/PlatformEvidenceTool/PlatformEvidenceTool.csproj \
+            --configuration Release -- "${args[@]}"
+
+      - name: Project engineering coverage gaps
+        if: always() && steps.rift.outcome != 'skipped'
+        run: |
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-artisan-results"
+          python3 ./tools/summarize-rift-coverage.py "$results/rift-artisan.json" \
+            --subject Artisan --out "$results/coverage-gaps.json"
+          python3 -m json.tool "$results/coverage-gaps.json"
+
+      - name: Validate scan evidence
+        if: always() && steps.rift.outcome != 'skipped'
+        run: |
+          python3 - "$RUNNER_TEMP/rift-artisan-results/rift-artisan.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          if d.get('schema_version') not in {'rift.runtime-observation.v1','rift.supervisor.v3'}:
+              raise SystemExit(f"unexpected Rift schema: {d.get('schema_version')!r}")
+          print("Artisan Rift evidence: PASS", d.get('schema_version'))
+          PY
+
+      - name: Upload Artisan Rift evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rift-artisan-results
+          path: ${{ runner.temp }}/rift-artisan-results
+          if-no-files-found: error
+          retention-days: 14
