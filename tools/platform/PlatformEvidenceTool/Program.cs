@@ -14,7 +14,9 @@ public static class Program
         try
         {
             var options = Options.Parse(args);
-            var report = CompatibilityEvidenceBuilder.Build(options.ArtifactDirectory, options.RiftReport);
+            var report = CompatibilityEvidenceBuilder.Build(
+                options.ArtifactDirectory, options.RiftReport,
+                options.ArtifactTreeSha256, options.ArtifactTreeHashAlgorithm);
             Directory.CreateDirectory(Path.GetDirectoryName(options.OutputPath) ?? ".");
             File.WriteAllText(options.OutputPath, JsonSerializer.Serialize(report, JsonOptions) + Environment.NewLine);
             Console.WriteLine($"Player-environment evidence written: {options.OutputPath}");
@@ -40,11 +42,17 @@ public static class Program
     };
 }
 
-public sealed record Options(string ArtifactDirectory, string OutputPath, string? RiftReport)
+public sealed record Options(
+    string ArtifactDirectory,
+    string OutputPath,
+    string? RiftReport,
+    string ArtifactTreeSha256,
+    string ArtifactTreeHashAlgorithm)
 {
     public static Options Parse(string[] args)
     {
-        string? artifact = null, output = null, rift = null;
+        string? artifact = null, output = null, rift = null, treeSha = null;
+        var treeAlgorithm = "sha256(path-nul-file-sha-lf-v1)";
         for (var i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -52,19 +60,25 @@ public sealed record Options(string ArtifactDirectory, string OutputPath, string
                 case "--artifact-dir" when i + 1 < args.Length: artifact = args[++i]; break;
                 case "--out" when i + 1 < args.Length: output = args[++i]; break;
                 case "--rift-report" when i + 1 < args.Length: rift = args[++i]; break;
+                case "--artifact-tree-sha256" when i + 1 < args.Length: treeSha = args[++i]; break;
+                case "--artifact-tree-hash-algorithm" when i + 1 < args.Length: treeAlgorithm = args[++i]; break;
                 case "-h" or "--help":
-                    throw new ArgumentException("usage: rift-platform-evidence --artifact-dir DIR --out FILE [--rift-report FILE]");
+                    throw new ArgumentException("usage: rift-platform-evidence --artifact-dir DIR --artifact-tree-sha256 SHA256 --out FILE [--rift-report FILE]");
                 default: throw new ArgumentException($"unknown or incomplete argument: {args[i]}");
             }
         }
 
-        if (string.IsNullOrWhiteSpace(artifact) || string.IsNullOrWhiteSpace(output))
-            throw new ArgumentException("--artifact-dir and --out are required");
+        if (string.IsNullOrWhiteSpace(artifact) || string.IsNullOrWhiteSpace(output) || string.IsNullOrWhiteSpace(treeSha))
+            throw new ArgumentException("--artifact-dir, --artifact-tree-sha256, and --out are required");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(treeSha, "^[0-9a-fA-F]{64}$"))
+            throw new ArgumentException("--artifact-tree-sha256 must be a 64-character SHA-256 hex digest");
 
         return new(
             Path.GetFullPath(artifact),
             Path.GetFullPath(output),
-            string.IsNullOrWhiteSpace(rift) ? null : Path.GetFullPath(rift));
+            string.IsNullOrWhiteSpace(rift) ? null : Path.GetFullPath(rift),
+            treeSha.ToLowerInvariant(),
+            treeAlgorithm);
     }
 }
 
@@ -72,7 +86,7 @@ public sealed class PlayerEnvironmentSupportReport
 {
     public string SchemaVersion { get; set; } = "omega.player-environment-support.v1";
     public string Producer { get; set; } = "rift-platform-evidence";
-    public string ProducerVersion { get; set; } = "0.2.1";
+    public string ProducerVersion { get; set; } = "0.2.2";
     public string GeneratedAt { get; set; } = DateTime.UtcNow.ToString("O");
     public string ArtifactTreeSha256 { get; set; } = string.Empty;
     public string ArtifactTreeHashAlgorithm { get; set; } = "sha256(path-nul-file-sha-lf-v1)";
@@ -196,24 +210,30 @@ public static class CompatibilityEvidenceBuilder
     private static readonly HashSet<string> WindowsSystemLibraries = new(StringComparer.OrdinalIgnoreCase)
     {
         "advapi32", "advapi32.dll", "bcrypt", "bcrypt.dll", "combase", "combase.dll",
-        "crypt32", "crypt32.dll", "d3d11", "d3d11.dll", "d3d12", "d3d12.dll",
-        "dbghelp", "dbghelp.dll", "dxgi", "dxgi.dll", "gdi32", "gdi32.dll",
+        "comdlg32", "comdlg32.dll", "crypt32", "crypt32.dll",
+        "d2d1", "d2d1.dll", "d3d11", "d3d11.dll", "d3d12", "d3d12.dll",
+        "dbghelp", "dbghelp.dll", "dsound", "dsound.dll", "dwrite", "dwrite.dll",
+        "dxgi", "dxgi.dll", "gdi32", "gdi32.dll",
         "iphlpapi", "iphlpapi.dll", "kernel32", "kernel32.dll", "mpr", "mpr.dll",
-        "ntdll", "ntdll.dll", "ole32", "ole32.dll", "oleaut32", "oleaut32.dll",
+        "mf", "mf.dll", "mfplat", "mfplat.dll", "mfreadwrite", "mfreadwrite.dll",
+        "mmdevapi", "mmdevapi.dll", "msacm32", "msacm32.dll", "mscoree", "mscoree.dll",
+        "msdmo", "msdmo.dll", "ntdll", "ntdll.dll",
+        "ole32", "ole32.dll", "oleaut32", "oleaut32.dll",
         "psapi", "psapi.dll", "secur32", "secur32.dll", "setupapi", "setupapi.dll",
         "shell32", "shell32.dll", "shlwapi", "shlwapi.dll", "user32", "user32.dll",
         "version", "version.dll", "winhttp", "winhttp.dll", "wininet", "wininet.dll",
-        "winmm", "winmm.dll", "ws2_32", "ws2_32.dll",
+        "winmm", "winmm.dll", "wofutil", "wofutil.dll", "ws2_32", "ws2_32.dll",
     };
 
-    public static PlayerEnvironmentSupportReport Build(string artifactDirectory, string? riftReport)
+    public static PlayerEnvironmentSupportReport Build(string artifactDirectory, string? riftReport, string artifactTreeSha256, string artifactTreeHashAlgorithm)
     {
         if (!Directory.Exists(artifactDirectory))
             throw new DirectoryNotFoundException(artifactDirectory);
 
         var report = new PlayerEnvironmentSupportReport
         {
-            ArtifactTreeSha256 = ComputeTreeHash(artifactDirectory),
+            ArtifactTreeSha256 = artifactTreeSha256,
+            ArtifactTreeHashAlgorithm = artifactTreeHashAlgorithm,
         };
 
         foreach (var file in Directory.EnumerateFiles(artifactDirectory, "*", SearchOption.AllDirectories)
@@ -639,14 +659,20 @@ public static class CompatibilityEvidenceBuilder
             return "core-win32";
         if (x is "user32" or "gdi32" or "winmm")
             return "windowing-input";
-        if (x is "dxgi" or "d3d11" or "d3d12")
+        if (x is "d2d1" or "dwrite" or "dxgi" or "d3d11" or "d3d12")
             return "graphics-overlay";
+        if (x is "dsound" or "mmdevapi" or "mf" or "mfplat" or "mfreadwrite" or "msacm32" or "msdmo")
+            return "media-audio";
         if (x is "advapi32" or "secur32" or "crypt32")
             return "registry-security";
         if (x is "ole32" or "oleaut32" or "combase")
             return "com";
-        if (x is "shell32" or "shlwapi")
+        if (x is "shell32" or "shlwapi" or "comdlg32")
             return "windows-shell";
+        if (x is "wofutil")
+            return "windows-filesystem";
+        if (x is "mscoree")
+            return "windows-dotnet-runtime";
         if (x is "ws2_32" or "winhttp" or "wininet" or "iphlpapi")
             return "networking";
         if (x.EndsWith(".so", StringComparison.OrdinalIgnoreCase) || x.StartsWith("libc"))
@@ -756,21 +782,4 @@ public static class CompatibilityEvidenceBuilder
         return "unknown";
     }
 
-    private static string ComputeTreeHash(string artifactDirectory)
-    {
-        using var aggregate = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-
-        foreach (var path in Directory.EnumerateFiles(artifactDirectory, "*", SearchOption.AllDirectories)
-                     .OrderBy(x => Path.GetRelativePath(artifactDirectory, x).Replace('\\', '/'), StringComparer.Ordinal))
-        {
-            var rel = Path.GetRelativePath(artifactDirectory, path).Replace('\\', '/');
-            var fileSha = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
-            aggregate.AppendData(System.Text.Encoding.UTF8.GetBytes(rel));
-            aggregate.AppendData(new byte[] { 0 });
-            aggregate.AppendData(System.Text.Encoding.ASCII.GetBytes(fileSha));
-            aggregate.AppendData(new byte[] { (byte)'\n' });
-        }
-
-        return Convert.ToHexString(aggregate.GetHashAndReset()).ToLowerInvariant();
-    }
 }

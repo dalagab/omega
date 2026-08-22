@@ -141,6 +141,7 @@ jobs:
       - name: Build/test qualified Rift
         run: |
           python3 ./tools/check-rift-source-contract.py
+          python3 ./tools/test-rift-artifact-tools.py
           dotnet test ./tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
             --configuration Release -p:HooksDir="$RIFT_HOOKS"
           dotnet publish ./InterdimensionalRift/InterdimensionalRift.csproj \
@@ -166,28 +167,8 @@ jobs:
           actual=$(sha256sum "$input/Artisan.zip" | awk '{print $1}')
           [[ "$expected" == "$actual" ]] || { echo 'Artisan input hash changed after acquisition' >&2; exit 1; }
 
-          python3 - "$input/Artisan.zip" "$artifact" <<'PY'
-          import pathlib, stat, sys, zipfile
-          archive=pathlib.Path(sys.argv[1]); target=pathlib.Path(sys.argv[2]).resolve()
-          total=0; max_total=512*1024*1024; max_files=8192
-          with zipfile.ZipFile(archive) as zf:
-              infos=zf.infolist()
-              if len(infos)>max_files: raise SystemExit(f'too many ZIP entries: {len(infos)}')
-              seen=set()
-              for info in infos:
-                  name=info.filename.replace('\\','/')
-                  p=pathlib.PurePosixPath(name)
-                  norm='/'.join(p.parts).lower()
-                  if p.is_absolute() or '..' in p.parts: raise SystemExit(f'unsafe ZIP path: {name!r}')
-                  if norm in seen: raise SystemExit(f'duplicate normalized ZIP path: {name!r}')
-                  seen.add(norm)
-                  mode=(info.external_attr>>16)&0xFFFF
-                  if stat.S_ISLNK(mode): raise SystemExit(f'symlink ZIP entry: {name!r}')
-                  if info.flag_bits & 0x1: raise SystemExit(f'encrypted ZIP entry: {name!r}')
-                  total += info.file_size
-                  if total>max_total: raise SystemExit('Artisan ZIP expands beyond staging limit')
-              zf.extractall(target)
-          PY
+          python3 ./tools/extract-rift-artifact.py "$input/Artisan.zip" "$artifact" \
+            --max-total $((512*1024*1024)) --max-files 8192
 
           plugin=$(find "$artifact" -type f -name 'Artisan.dll' -print -quit)
           manifest=$(find "$artifact" -type f -name 'Artisan.json' -print -quit)
@@ -235,7 +216,11 @@ jobs:
         run: |
           set -euo pipefail
           results="$RUNNER_TEMP/rift-artisan-results"
-          args=(--artifact-dir '${{ steps.stage.outputs.artifact }}' --out "$results/player-environment-support.json")
+          tree_sha=$(python3 ./tools/hash-artifact-tree.py '${{ steps.stage.outputs.artifact }}')
+          args=(--artifact-dir '${{ steps.stage.outputs.artifact }}'
+                --artifact-tree-sha256 "$tree_sha"
+                --artifact-tree-hash-algorithm 'sha256(path-nul-file-sha-lf-v1)'
+                --out "$results/player-environment-support.json")
           if python3 - "$results/rift-artisan.json" <<'PY'
           import json,sys
           try:
@@ -249,6 +234,17 @@ jobs:
           fi
           dotnet run --project ./tools/platform/PlatformEvidenceTool/PlatformEvidenceTool.csproj \
             --configuration Release -- "${args[@]}"
+
+          python3 - "$results/rift-artisan.json" "$results/player-environment-support.json" <<'PY'
+          import json,sys
+          r=json.load(open(sys.argv[1],encoding='utf-8'))
+          p=json.load(open(sys.argv[2],encoding='utf-8'))
+          a=r.get('execution',{}).get('artifact_tree_sha256')
+          b=p.get('artifact_tree_sha256')
+          if not a or a!=b:
+              raise SystemExit(f'Artisan artifact-tree identity mismatch: rift={a!r} compatibility={b!r}')
+          print(f'Artisan artifact-tree correlation: PASS {a}')
+          PY
 
       - name: Project engineering coverage gaps
         if: always() && steps.rift.outcome != 'skipped'

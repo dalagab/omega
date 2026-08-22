@@ -20,7 +20,7 @@ def uniq_append(lst, item):
 inj=[]; access=[]; gaps=[]; blockers=[]
 for o in obs:
     kind=str(o.get("kind") or "").lower()
-    item={k:o.get(k) for k in ("component","operation","outcome","message","exception_type","exception_message","parameters")}
+    item={k:o.get(k) for k in ("component","operation","outcome","message","exception_type","exception_message","exception_detail","context","parameters")}
     if kind=="service_injection": uniq_append(inj,item)
     elif kind=="service_access": uniq_append(access,item)
     elif kind in {"assembly_load","native_library"} and str(o.get("outcome")).lower() not in {"ok","loaded","resolved","success"}:
@@ -34,7 +34,7 @@ load=plugin.get("load_outcome")
 if load and load!="ok":
     blockers.insert(0, {"type":"plugin-load","outcome":load,"detail":plugin.get("load_error")})
 
-blob=json.dumps(d, sort_keys=True).lower()
+blob=json.dumps(obs, sort_keys=True).lower()
 cats=[]
 for needle,cat in (
     ("ipc","plugin-ipc"),("ffxivclientstructs","game-native-structs"),

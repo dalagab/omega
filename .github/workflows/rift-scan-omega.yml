@@ -160,6 +160,7 @@ jobs:
           set +e
           results="$RUNNER_TEMP/rift-results"
           python3 ./tools/check-rift-source-contract.py
+          python3 ./tools/test-rift-artifact-tools.py
           rc=$?
           if [[ $rc -ne 0 ]]; then
             printf '{"schema_version":"rift.workflow.v1","phase":"source-contract","outcome":"failed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
@@ -214,30 +215,8 @@ jobs:
           actual=$(sha256sum "$input/Omega.zip" | awk '{print $1}')
           [[ "$actual" == "$expected" ]] || { echo 'Actions artifact no longer matches published Omega SHA-256' >&2; exit 1; }
 
-          python3 - "$input/Omega.zip" "$artifact" <<'PY'
-          import pathlib, stat, sys, zipfile
-          archive = pathlib.Path(sys.argv[1])
-          target = pathlib.Path(sys.argv[2]).resolve()
-          total = 0
-          max_total = 256 * 1024 * 1024
-          max_files = 4096
-          with zipfile.ZipFile(archive) as zf:
-              infos = zf.infolist()
-              if len(infos) > max_files:
-                  raise SystemExit(f'Omega.zip has too many entries: {len(infos)}')
-              for info in infos:
-                  name = info.filename.replace('\\', '/')
-                  p = pathlib.PurePosixPath(name)
-                  if p.is_absolute() or '..' in p.parts:
-                      raise SystemExit(f'unsafe ZIP path: {name!r}')
-                  mode = (info.external_attr >> 16) & 0xFFFF
-                  if stat.S_ISLNK(mode):
-                      raise SystemExit(f'symlink entries are not accepted: {name!r}')
-                  total += info.file_size
-                  if total > max_total:
-                      raise SystemExit('Omega.zip expands beyond the staging limit')
-              zf.extractall(target)
-          PY
+          python3 ./tools/extract-rift-artifact.py "$input/Omega.zip" "$artifact" \
+            --max-total $((256*1024*1024)) --max-files 4096
 
           plugin=$(find "$artifact" -type f -name 'DalagabOmega.dll' -print -quit)
           manifest=$(find "$artifact" -type f -name 'DalagabOmega.json' -print -quit)
@@ -307,8 +286,11 @@ jobs:
         run: |
           set -euo pipefail
           results="$RUNNER_TEMP/rift-results"
+          tree_sha=$(python3 ./tools/hash-artifact-tree.py '${{ steps.stage.outputs.artifact }}')
           args=(
             --artifact-dir '${{ steps.stage.outputs.artifact }}'
+            --artifact-tree-sha256 "$tree_sha"
+            --artifact-tree-hash-algorithm 'sha256(path-nul-file-sha-lf-v1)'
             --out "$results/player-environment-support.json"
           )
           if [[ -s "$results/rift-omega.json" ]]; then

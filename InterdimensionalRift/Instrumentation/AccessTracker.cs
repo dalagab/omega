@@ -37,6 +37,7 @@ public sealed class AccessTracker
             Message = message,
             ExceptionType = exception?.GetType().FullName,
             ExceptionMessage = exception?.Message,
+            ExceptionDetail = ExceptionDetail(exception),
             Context = context,
             Parameters = parameters,
         });
@@ -88,6 +89,14 @@ public sealed class AccessTracker
 
     public void Timeout(string phase)
         => Record(RuntimeObservationKind.Timeout, "plugin", phase, "timeout", message: $"Timed out during {phase}");
+
+    private static string? ExceptionDetail(Exception? exception)
+    {
+        if (exception is null)
+            return null;
+        var text = exception.ToString();
+        return text.Length <= 16384 ? text : text[..16384] + "\n...[truncated by Rift]";
+    }
 
     public long ElapsedMs => clock.ElapsedMilliseconds;
 }

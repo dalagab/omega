@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using InterdimensionalRift.Instrumentation;
+using InterdimensionalRift.Reporting;
 
 namespace InterdimensionalRift.Runtime;
 
@@ -217,11 +218,64 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                 return (true, new DirectoryInfo(AppContext.BaseDirectory));
             case "get_InstalledPlugins":
                 return (true, DefaultValueFactory.Create(method.ReturnType, this));
+            case "Create" when method.IsGenericMethod:
+            {
+                var requested = method.GetGenericArguments()[0];
+                var scoped = ExtractScopedObjects(args);
+                tracker.ServiceTouch("IDalamudPluginInterface", "Create",
+                    parameters: new Dictionary<string, string?>
+                    {
+                        ["type"] = requested.FullName,
+                        ["scoped_count"] = scoped.Length.ToString(),
+                    });
+                try
+                {
+                    return (true, CreateInjectedObject(requested, scoped));
+                }
+                catch (Exception ex)
+                {
+                    tracker.Record(RuntimeObservationKind.ServiceAccess,
+                        "IDalamudPluginInterface", "Create", "failed", exception: ex,
+                        parameters: new Dictionary<string, string?> { ["type"] = requested.FullName });
+                    return (true, null);
+                }
+            }
+            case "CreateAsync" when method.IsGenericMethod:
+            {
+                var requested = method.GetGenericArguments()[0];
+                var scoped = ExtractScopedObjects(args);
+                tracker.ServiceTouch("IDalamudPluginInterface", "CreateAsync",
+                    parameters: new Dictionary<string, string?>
+                    {
+                        ["type"] = requested.FullName,
+                        ["scoped_count"] = scoped.Length.ToString(),
+                    });
+                try
+                {
+                    var created = CreateInjectedObject(requested, scoped);
+                    var task = typeof(Task).GetMethod(nameof(Task.FromResult))!
+                        .MakeGenericMethod(requested)
+                        .Invoke(null, new[] { created });
+                    return (true, task);
+                }
+                catch (Exception ex)
+                {
+                    tracker.Record(RuntimeObservationKind.ServiceAccess,
+                        "IDalamudPluginInterface", "CreateAsync", "failed", exception: ex,
+                        parameters: new Dictionary<string, string?> { ["type"] = requested.FullName });
+                    var fromException = typeof(Task).GetMethods(BindingFlags.Public | BindingFlags.Static)
+                        .Single(m => m.Name == nameof(Task.FromException) && m.IsGenericMethodDefinition &&
+                                     m.GetGenericArguments().Length == 1 && m.GetParameters().Length == 1);
+                    var task = fromException.MakeGenericMethod(requested)
+                        .Invoke(null, new object[] { ex });
+                    return (true, task);
+                }
+            }
             case "Inject" when args.FirstOrDefault() is object target:
-                InjectInstance(target);
+                InjectInstance(target, ExtractScopedObjects(args.Skip(1).ToArray()));
                 return (true, true);
             case "InjectAsync" when args.FirstOrDefault() is object asyncTarget:
-                InjectInstance(asyncTarget);
+                InjectInstance(asyncTarget, ExtractScopedObjects(args.Skip(1).ToArray()));
                 return (true, Task.CompletedTask);
             default:
                 tracker.ServiceTouch("IDalamudPluginInterface", method.Name,
@@ -230,8 +284,90 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
         }
     }
 
-    private void InjectInstance(object target)
+    private object CreateInjectedObject(Type objectType, object?[] scopedObjects)
     {
+        // Dalamud Create<T> is an IoC creation operation. Static [PluginService]
+        // members (ECommons.Svc is a major real-world example) must be populated
+        // even though they are not members of the newly-created instance.
+        InjectPluginServices(objectType);
+
+        object? instance = null;
+        Exception? lastError = null;
+        var constructors = objectType
+            .GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .Where(c => !c.IsPrivate)
+            .OrderBy(c => c.GetParameters().Length)
+            .ToArray();
+
+        foreach (var ctor in constructors)
+        {
+            var parameters = ctor.GetParameters();
+            var ctorArgs = new object?[parameters.Length];
+            var supported = true;
+            for (var i = 0; i < parameters.Length; i++)
+            {
+                if (!TryResolve(parameters[i].ParameterType, scopedObjects, out var value))
+                {
+                    if (parameters[i].HasDefaultValue)
+                        value = parameters[i].DefaultValue;
+                    else
+                    {
+                        supported = false;
+                        break;
+                    }
+                }
+                ctorArgs[i] = value;
+            }
+            if (!supported)
+                continue;
+            try
+            {
+                instance = ctor.Invoke(ctorArgs);
+                break;
+            }
+            catch (TargetInvocationException ex)
+            {
+                lastError = ex.InnerException ?? ex;
+            }
+        }
+
+        if (instance is null)
+        {
+            if (lastError is not null)
+                throw lastError;
+            throw new InvalidOperationException($"Rift could not construct IoC object {objectType.FullName}.");
+        }
+
+        InjectInstance(instance, scopedObjects);
+        return instance;
+    }
+
+    private static object?[] ExtractScopedObjects(object?[] args)
+    {
+        if (args.Length == 0 || args[0] is null)
+            return Array.Empty<object?>();
+        if (args.Length == 1 && args[0] is object[] array)
+            return array;
+        return args;
+    }
+
+    private bool TryResolve(Type requestedType, object?[] scopedObjects, out object? value)
+    {
+        foreach (var candidate in scopedObjects)
+        {
+            if (candidate is not null && requestedType.IsInstanceOfType(candidate))
+            {
+                value = candidate;
+                return true;
+            }
+        }
+        value = GetService(requestedType);
+        return value is not null;
+    }
+
+    private void InjectInstance(object target, object?[]? scopedObjects = null)
+    {
+        scopedObjects ??= Array.Empty<object?>();
         var type = target.GetType();
         const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
         foreach (var property in type.GetProperties(flags))
@@ -239,11 +375,18 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
             if (!HasPluginServiceAttribute(property)) continue;
             var setter = property.GetSetMethod(true);
             if (setter is null) continue;
-            var value = GetService(property.PropertyType);
-            if (value is null) continue;
+            if (!TryResolve(property.PropertyType, scopedObjects, out var value) || value is null) continue;
             setter.Invoke(target, new[] { value });
             tracker.ServiceInjection(property.PropertyType.FullName ?? property.PropertyType.Name,
                 $"{type.FullName}.{property.Name}", "instance_property");
+        }
+        foreach (var field in type.GetFields(flags))
+        {
+            if (!HasPluginServiceAttribute(field) || field.IsInitOnly) continue;
+            if (!TryResolve(field.FieldType, scopedObjects, out var value) || value is null) continue;
+            field.SetValue(target, value);
+            tracker.ServiceInjection(field.FieldType.FullName ?? field.FieldType.Name,
+                $"{type.FullName}.{field.Name}", "instance_field");
         }
     }
 

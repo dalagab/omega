@@ -37,7 +37,7 @@ require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "dalamud.internal_serv
 
 # Runtime-only report model.
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v1", "runtime observation schema version")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.2"', "producer version 0.3.2")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.3"', "producer version 0.3.3")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "boundary_profile", "boundary profile provenance")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "tmpfs_tmp_bytes", "tmpfs provenance")
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "RuntimeObservationKind", "neutral observation model")
@@ -156,5 +156,30 @@ require(Path(".github/workflows/rift-scan-artisan.yml"), "summarize-rift-coverag
 require(Path("tools/summarize-rift-coverage.py"), "rift.coverage-gap.v1", "coverage-gap report schema producer")
 require(Path("tools/summarize-rift-coverage.py"), "full_plugin_functionality_proven", "coverage report avoids overstating startup")
 require(Path("schemas/rift-coverage-gap-v1.schema.json"), "rift.coverage-gap.v1", "coverage-gap JSON schema")
+
+
+# Pass 3.3.1: real PluginInterface IoC semantics + canonical Windows ZIP staging.
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), 'case "Create" when method.IsGenericMethod', "PluginInterface Create<T> handled as IoC")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), 'CreateInjectedObject', "Create<T> constructs and injects requested object")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), 'ExtractScopedObjects', "Create/Inject scoped objects preserved")
+require(Path("tests/fixtures/RiftCreateSemantics/Plugin.cs"), "RIFT_CREATE semantics complete", "Create<T>/CreateAsync<T> runtime regression fixture")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "PluginInterface_CreateAndCreateAsync_InjectServicesAndScopedObjects", "Create semantics regression test")
+require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "exception_detail", "bounded exception stack/detail evidence")
+require(Path("tools/extract-rift-artifact.py"), "duplicate normalized ZIP path", "canonical safe ZIP extractor")
+require(Path("tools/extract-rift-artifact.py"), "raw.replace('\\\\','/')", "Windows ZIP separators normalized")
+require(Path(".github/workflows/rift-scan-artisan.yml"), "extract-rift-artifact.py", "Artisan uses shared canonical extractor")
+require(Path(".github/workflows/rift-scan-omega.yml"), "extract-rift-artifact.py", "Omega uses shared canonical extractor")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "ArtifactTreeSha256", "platform evidence accepts canonical tree identity")
+require(Path(".github/workflows/rift-scan-artisan.yml"), "Artisan artifact-tree correlation: PASS", "Artisan cross-report artifact correlation enforced")
+
+
+require(Path("tools/test-rift-artifact-tools.py"), "Rift artifact tool self-test: PASS", "canonical artifact extractor/hash regression test")
+require(Path(".github/workflows/rift-scan-artisan.yml"), "test-rift-artifact-tools.py", "Artisan scan executes artifact tool regression")
+require(Path(".github/workflows/rift-scan-omega.yml"), "test-rift-artifact-tools.py", "Omega scan executes artifact tool regression")
+
+
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'return "media-audio"', "Artisan audio/media Windows dependencies classified")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'return "windows-filesystem"', "Windows filesystem compatibility dependencies classified")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'return "windows-dotnet-runtime"', "Windows .NET runtime compatibility dependency classified")
 
 print(f"Rift source-contract checks: {len(checks)}/{len(checks)} passed")

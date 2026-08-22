@@ -272,3 +272,39 @@ public class StressFixtureSafetyTest
         return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
     }
 }
+
+public class CreateSemanticsTest
+{
+    [Fact]
+    public void PluginInterface_CreateAndCreateAsync_InjectServicesAndScopedObjects()
+    {
+        var dll = LocateFixture("RiftCreateSemantics");
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+
+        Assert.Equal("ok", report.Plugin.LoadOutcome);
+        Assert.Contains(report.Observations, o =>
+            o.Kind == RuntimeObservationKind.ServiceAccess &&
+            o.Component == "IDalamudPluginInterface" && o.Operation == "Create");
+        Assert.Contains(report.Observations, o =>
+            o.Kind == RuntimeObservationKind.ServiceAccess &&
+            o.Component == "IDalamudPluginInterface" && o.Operation == "CreateAsync");
+        Assert.Contains(report.Observations, o =>
+            o.Kind == RuntimeObservationKind.ServiceInjection &&
+            (o.Message ?? "").Contains("CreatedService.ClientState", StringComparison.Ordinal));
+        Assert.Contains(report.Observations, o =>
+            o.Kind == RuntimeObservationKind.Log &&
+            (o.Message ?? "").Contains("RIFT_CREATE semantics complete", StringComparison.Ordinal));
+    }
+
+    private static string LocateFixture(string assemblyName)
+    {
+        var testBin = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(testBin, assemblyName + ".dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", assemblyName, "bin", "Debug", "net10.0", assemblyName + ".dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", assemblyName, "bin", "Release", "net10.0", assemblyName + ".dll"),
+        };
+        return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
+    }
+}

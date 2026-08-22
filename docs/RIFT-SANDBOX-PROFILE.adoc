@@ -171,7 +171,7 @@ SigmaScope owns static capability/signature analysis. DeltaScope/workbench may c
 
 Rift runtime reports now include host OS, architecture and runtime identifier and record native-library resolution attempts whether they succeed or fail.
 
-The separate trusted compatibility inventory under `tools/platform/PlatformEvidenceTool/` combines that runtime evidence with package RID/native assets and managed metadata (assembly references and P/Invoke declarations) into `omega.platform-support.v1`.
+The separate trusted compatibility inventory under `tools/platform/PlatformEvidenceTool/` combines that runtime evidence with package RID/native assets and managed metadata (assembly references and P/Invoke declarations) into `omega.player-environment-support.v1`.
 
 This does not put static scanning back into the hostile Rift host. SigmaScope remains the security static-analysis authority. The compatibility inventory is a narrow read-only projection specifically for answering which platform-specific components an artifact carries or invokes.
 
@@ -199,3 +199,29 @@ For each relative POSIX path in ordinal order, the aggregate hashes:
 
 Both Rift execution evidence and player-environment evidence record the algorithm
 identifier, and the published-Omega workflow fails if their exact tree digests differ.
+
+
+== Pass 3.3.1: Dalamud Create<T> semantics and Windows ZIP canonicalization
+
+A real Artisan 4.0.5.18 scan reached `ECommonsMain.Init` and then called
+`IDalamudPluginInterface.Create<Svc>()`. Rift previously returned a default/null
+reference for this generic IoC operation. Current Rift now treats `Create<T>` and
+`CreateAsync<T>` as actual controlled DI operations:
+
+* static `[PluginService]` members are injected;
+* constructor scoped objects are preserved by assignable type;
+* instance `[PluginService]` properties and fields are injected;
+* every operation remains observed through the runtime tracker.
+
+This is necessary for ECommons, whose `Svc.Init` uses `pi.Create<Svc>()` to populate
+its static service facade.
+
+The same Artisan run exposed Windows-style backslashes in ZIP entry names. Rift now
+uses `tools/extract-rift-artifact.py` for external plugin packages. Validation and
+extraction use the same normalized path (`\\` and `/` are separators), reject
+case-insensitive duplicate logical paths, and produce one canonical tree for hashing.
+The opaque source ZIP SHA-256 is retained separately as the exact package identity.
+
+Player-environment evidence no longer independently reimplements the tree hash. CI
+computes the canonical hash once with `tools/hash-artifact-tree.py`, supplies it to
+the evidence producer, and explicitly correlates it with the Rift execution report.

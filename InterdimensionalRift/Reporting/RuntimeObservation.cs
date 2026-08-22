@@ -48,6 +48,9 @@ public sealed class RuntimeObservation
     [JsonPropertyName("exception_message")]
     public string? ExceptionMessage { get; set; }
 
+    [JsonPropertyName("exception_detail")]
+    public string? ExceptionDetail { get; set; }
+
     [JsonPropertyName("context")]
     public string? Context { get; set; }
 

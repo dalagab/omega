@@ -15,11 +15,16 @@ def hash_tree(root: Path) -> str:
     aggregate = hashlib.sha256()
     files = sorted(
         (p for p in root.rglob("*") if p.is_file()),
-        key=lambda p: p.relative_to(root).as_posix(),
+        key=lambda p: p.relative_to(root).as_posix().replace('\\', '/'),
     )
 
+    seen: set[str] = set()
     for path in files:
-        rel = path.relative_to(root).as_posix()
+        rel = path.relative_to(root).as_posix().replace('\\', '/')
+        key = rel.casefold()
+        if key in seen:
+            raise SystemExit(f'artifact tree has duplicate normalized path: {rel!r}')
+        seen.add(key)
         file_sha = hashlib.sha256(path.read_bytes()).hexdigest()
         aggregate.update(rel.encode("utf-8"))
         aggregate.update(b"\0")
