@@ -38,6 +38,7 @@ require(Path('InterdimensionalRift/Host/PluginLoader.cs'), 'ArtifactNativeLibrar
 require(Path('InterdimensionalRift/Host/ArtifactNativeLibraryResolver.cs'), 'runtimes', 'artifact native resolver understands RID layout')
 require(Path('InterdimensionalRift/Host/ArtifactNativeLibraryResolver.cs'), 'linux-', 'artifact native resolver supports Linux RID assets')
 require(Path('tests/InterdimensionalRift.Tests/ArtifactNativeLibraryResolverTest.cs'), 'libe_sqlite3.so', 'native RID regression fixture covers e_sqlite3 layout')
+require(Path('tests/InterdimensionalRift.Tests/ArtifactNativeLibraryResolverTest.cs'), 'using Xunit;', 'native RID regression fixture imports xUnit')
 require(Path('InterdimensionalRift/Reporting/FindingReporter.cs'), 'FindingKind.ServiceInjection => "service_injection"', 'service injection summary is explicit')
 require(Path('InterdimensionalRift/Reporting/FindingReporter.cs'), 'FindingKind.Lifecycle => "lifecycle"', 'lifecycle summary is explicit')
 

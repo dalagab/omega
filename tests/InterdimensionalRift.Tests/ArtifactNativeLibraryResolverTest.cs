@@ -1,3 +1,4 @@
+using Xunit;
 using InterdimensionalRift.Host;
 
 namespace InterdimensionalRift.Tests;
