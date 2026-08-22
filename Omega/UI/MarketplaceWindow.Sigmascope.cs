@@ -70,6 +70,53 @@ internal sealed partial class MarketplaceWindow
         };
     }
 
+    private static SigmascopeVisual ResolveSimpleSigmascopeVisual(MarketplacePlugin plugin)
+    {
+        if (string.IsNullOrWhiteSpace(plugin.SecurityStatus))
+        {
+            return new SigmascopeVisual(
+                FontAwesomeIcon.Question,
+                new Vector4(0.46f, 0.48f, 0.52f, 1f),
+                new Vector4(0.24f, 0.25f, 0.27f, 0.94f),
+                "Not checked yet",
+                "Omega does not have a completed check for this exact plugin version yet.");
+        }
+
+        if (!plugin.HasCompletedSecurityScan)
+        {
+            var status = (plugin.SecurityStatus ?? string.Empty).Trim().ToLowerInvariant();
+            var failed = status is "failed" or "error";
+            var pending = status is "pending" or "queued" or "selected";
+            var running = status is "running" or "in-progress" or "in_progress" or "analyzing";
+            var label = failed ? "Check failed" : running ? "Checking now" : pending ? "Waiting to be checked" : "Check not finished";
+            var tooltip = failed
+                ? "Omega tried to check this plugin version but could not finish."
+                : running
+                    ? "Omega is checking this plugin version now."
+                    : pending
+                        ? "This plugin version is waiting for its check."
+                        : "Omega does not have a finished check for this plugin version yet.";
+            return new SigmascopeVisual(
+                FontAwesomeIcon.ExclamationTriangle,
+                failed ? new Vector4(0.92f, 0.18f, 0.16f, 1f) : new Vector4(0.94f, 0.43f, 0.10f, 1f),
+                failed ? new Vector4(0.50f, 0.10f, 0.10f, 0.96f) : new Vector4(0.46f, 0.25f, 0.08f, 0.96f),
+                label,
+                tooltip);
+        }
+
+        var severity = EffectiveRibbonSecuritySeverity(plugin);
+        var visual = ResolveCompletedSigmascopeVisual(severity);
+        return severity switch
+        {
+            "critical" => visual with { Label = "Very serious", Tooltip = "Omega found something very serious. Review it before using this plugin." },
+            "high" => visual with { Label = "Serious", Tooltip = "Omega found something serious. Review it before using this plugin." },
+            "caution" or "medium" => visual with { Label = "Warning", Tooltip = "Omega found something worth checking before you use this plugin." },
+            "informational" or "info" or "low" => visual with { Label = "Minor", Tooltip = "Omega found only minor things to be aware of." },
+            "none" or "" => visual with { Label = "Nothing found", Tooltip = "Omega did not find anything in this check. That does not prove the plugin is safe." },
+            _ => visual with { Label = "Checked", Tooltip = "Omega has finished checking this plugin version." },
+        };
+    }
+
     private static int EffectiveSecuritySeverityRank(MarketplacePlugin plugin)
         => Math.Max(
             SecuritySeverityRank(plugin.SecurityHighestSeverity),
@@ -135,9 +182,11 @@ internal sealed partial class MarketplaceWindow
         };
     }
 
-    private static void DrawPluginSigmascopeIndicator(MarketplacePlugin plugin, float size)
+    private void DrawPluginSigmascopeIndicator(MarketplacePlugin plugin, float size)
     {
-        var visual = ResolveSigmascopeVisual(plugin);
+        var visual = configuration.ShowAdvancedSecurityInformation
+            ? ResolveSigmascopeVisual(plugin)
+            : ResolveSimpleSigmascopeVisual(plugin);
         DrawPluginFontAwesomeRiskIcon(visual.Icon, visual.IconColor, visual.Tooltip, size);
     }
 
@@ -146,7 +195,9 @@ internal sealed partial class MarketplaceWindow
         // The product hero and every marketplace card intentionally consume the same exact-variant
         // Sigmascope visual. This prevents Spotlight from aggregating another repository's analysis and
         // then showing a different state after the user opens the product page.
-        var visual = ResolveSigmascopeVisual(plugin);
+        var visual = configuration.ShowAdvancedSecurityInformation
+            ? ResolveSigmascopeVisual(plugin)
+            : ResolveSimpleSigmascopeVisual(plugin);
         DrawPluginFontAwesomeRiskIcon(visual.Icon, visual.IconColor, visual.Tooltip, 20f);
         ImGui.SameLine(0f, 8f);
         DrawDiscoverTextBadge(visual.Label, visual.BadgeColor);
@@ -155,8 +206,11 @@ internal sealed partial class MarketplaceWindow
             ImGui.SameLine(0f, 8f);
             DrawKnownRiskBadge(plugin);
         }
-        ImGui.SameLine(0f, 8f);
-        DrawPublicSourceAvailabilityBadge(plugin);
+        if (configuration.ShowAdvancedSecurityInformation)
+        {
+            ImGui.SameLine(0f, 8f);
+            DrawPublicSourceAvailabilityBadge(plugin);
+        }
     }
 
     private static void DrawPublicSourceAvailabilityBadge(MarketplacePlugin plugin)
@@ -199,20 +253,35 @@ internal sealed partial class MarketplaceWindow
             : plugin.SecurityReviewCoverageLabel.Trim();
     }
 
-    private static void DrawKnownRiskBadge(MarketplacePlugin plugin)
+    private void DrawKnownRiskBadge(MarketplacePlugin plugin)
     {
-        DrawDiscoverTextBadge("Known risk", new Vector4(0.58f, 0.08f, 0.11f, 0.96f));
-        if (ImGui.IsItemHovered())
+        var simple = !configuration.ShowAdvancedSecurityInformation;
+        DrawDiscoverTextBadge(simple ? "Known problem" : "Known risk", new Vector4(0.58f, 0.08f, 0.11f, 0.96f));
+        if (!ImGui.IsItemHovered())
+            return;
+
+        if (simple)
         {
-            var noun = plugin.SecurityKnownAdvisoryCount == 1 ? "advisory" : "advisories";
-            ImGui.SetTooltip($"OSV reports {plugin.SecurityKnownAdvisoryCount} known {noun} affecting dependency versions used by this plugin package. Highest advisory severity: {plugin.SecurityKnownAdvisoryHighestSeverity}.");
+            var noun = plugin.SecurityKnownAdvisoryCount == 1 ? "known security problem" : "known security problems";
+            ImGui.SetTooltip($"A library used by this plugin has {plugin.SecurityKnownAdvisoryCount} {noun}.");
+            return;
         }
+
+        var advisoryNoun = plugin.SecurityKnownAdvisoryCount == 1 ? "advisory" : "advisories";
+        ImGui.SetTooltip($"OSV reports {plugin.SecurityKnownAdvisoryCount} known {advisoryNoun} affecting dependency versions used by this plugin package. Highest advisory severity: {plugin.SecurityKnownAdvisoryHighestSeverity}.");
     }
 
     private void DrawProductSigmascope(MarketplacePlugin plugin)
     {
         DrawProductSectionHeading(SigmascopeInfo.Name);
         ImGui.Spacing();
+
+        if (!configuration.ShowAdvancedSecurityInformation)
+        {
+            DrawCompactProductSigmascope(plugin);
+            return;
+        }
+
         DrawSigmascopeDisclaimerPanel();
 
         ImGui.Indent(14f);
@@ -301,6 +370,124 @@ internal sealed partial class MarketplaceWindow
 
         DrawSigmascopeAnalysisDetails(plugin);
         ImGui.Unindent(14f);
+    }
+
+
+    private void DrawCompactProductSigmascope(MarketplacePlugin plugin)
+    {
+        ImGui.Indent(14f);
+        var lifecycle = ResolveSimpleSigmascopeVisual(plugin);
+        if (!plugin.HasCompletedSecurityScan)
+        {
+            DrawPluginFontAwesomeRiskIcon(lifecycle.Icon, lifecycle.IconColor, lifecycle.Tooltip, Ui(20f));
+            ImGui.SameLine(0f, Ui(8f));
+            DrawDiscoverTextBadge(lifecycle.Label, lifecycle.BadgeColor);
+            ImGui.Unindent(14f);
+            return;
+        }
+
+        var drewBadge = false;
+        drewBadge |= DrawCompactFindingBadge(plugin, "Very serious", plugin.SecurityCriticalCount, "critical");
+        drewBadge |= DrawCompactFindingBadge(plugin, "Serious", plugin.SecurityHighCount, "high", drewBadge);
+        drewBadge |= DrawCompactFindingBadge(plugin, "Warning", plugin.SecurityCautionCount, "medium", drewBadge);
+        drewBadge |= DrawCompactFindingBadge(plugin, "Minor", plugin.SecurityInformationalCount, "low", drewBadge);
+
+        if (!drewBadge)
+        {
+            DrawDiscoverTextBadge("Nothing found", ResolveCompletedSigmascopeVisual("none").BadgeColor);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Omega did not find anything in this check. That does not prove the plugin is safe.");
+        }
+
+        if (plugin.HasKnownAtRiskDependency)
+        {
+            ImGui.SameLine(0f, Ui(8f));
+            DrawKnownRiskBadge(plugin);
+        }
+
+        ImGui.Unindent(14f);
+    }
+
+    private static bool DrawCompactFindingBadge(
+        MarketplacePlugin plugin,
+        string label,
+        int count,
+        string severityGroup,
+        bool sameLine = false)
+    {
+        if (count <= 0)
+            return false;
+
+        if (sameLine)
+            ImGui.SameLine(0f, Ui(8f));
+
+        var visual = ResolveCompletedSigmascopeVisual(severityGroup);
+        DrawDiscoverTextBadge($"{label} {count}", visual.BadgeColor);
+        if (ImGui.IsItemHovered())
+            SetReadableTooltip(BuildCompactFindingTooltip(plugin, label, count, severityGroup));
+        return true;
+    }
+
+    private static string BuildCompactFindingTooltip(
+        MarketplacePlugin plugin,
+        string label,
+        int count,
+        string severityGroup)
+    {
+        var lines = new List<string>
+        {
+            count == 1
+                ? $"Omega found 1 {label.ToLowerInvariant()} thing."
+                : $"Omega found {count} {label.ToLowerInvariant()} things."
+        };
+        var matching = plugin.SecurityFindings
+            .Where(x => FindingMatchesCompactSeverity(x.Severity, severityGroup))
+            .Take(8)
+            .ToArray();
+        foreach (var finding in matching)
+            lines.Add($"• {PlainLanguageFindingTitle(finding)}");
+        if (count > matching.Length)
+            lines.Add($"+{count - matching.Length} more");
+        return string.Join("\n", lines);
+    }
+
+    private static string PlainLanguageFindingTitle(MarketplaceSecurityFinding finding)
+    {
+        var text = $"{finding.RuleId} {finding.Title} {finding.Description}".ToLowerInvariant();
+        if (text.Contains("credential") || text.Contains("password") || text.Contains("login"))
+            return "Can touch login or credential-related data";
+        if (text.Contains("clipboard"))
+            return "Can read or change the clipboard";
+        if (text.Contains("remote thread") || text.Contains("process memory") || text.Contains("inject"))
+            return "Can interact with other running programs at a low level";
+        if (text.Contains("powershell") || text.Contains("process launch") || text.Contains("start process") || text.Contains("execution"))
+            return "Can start other programs or commands";
+        if (text.Contains("registry"))
+            return "Can read or change Windows settings";
+        if (text.Contains("socket") || text.Contains("http") || text.Contains("network") || text.Contains("webhook"))
+            return "Can connect to the internet";
+        if (text.Contains("file") || text.Contains("path") || text.Contains("directory") || text.Contains("filesystem"))
+            return "Can read or change files on your computer";
+        if (text.Contains("native") || text.Contains("pinvoke") || text.Contains("dll"))
+            return "Uses low-level system code";
+        if (text.Contains("automation") || text.Contains("hook") || text.Contains("input"))
+            return "Can automate or control actions";
+
+        var title = string.IsNullOrWhiteSpace(finding.Title) ? finding.RuleId : finding.Title.Trim();
+        return string.IsNullOrWhiteSpace(title) ? "Something worth reviewing" : Shorten(title, 96);
+    }
+
+    private static bool FindingMatchesCompactSeverity(string? severity, string severityGroup)
+    {
+        var normalized = (severity ?? string.Empty).Trim().ToLowerInvariant();
+        return severityGroup switch
+        {
+            "critical" => normalized == "critical",
+            "high" => normalized == "high",
+            "medium" => normalized is "caution" or "medium",
+            "low" => normalized is "informational" or "info" or "low",
+            _ => false,
+        };
     }
 
 

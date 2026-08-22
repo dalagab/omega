@@ -2,6 +2,6 @@ namespace Dalagab.Omega;
 
 internal static class BuildInfo
 {
-    public const string Version = "0.9.51";
-    public const string BuildStamp = "omega-0.9.51";
+    public const string Version = "0.9.69";
+    public const string BuildStamp = "omega-0.9.69";
 }

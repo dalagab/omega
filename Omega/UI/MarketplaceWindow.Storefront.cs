@@ -26,6 +26,7 @@ internal sealed partial class MarketplaceWindow
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.04f, 0.32f, 0.34f, 0.94f));
         if (ImGui.Button($"{label}  {triangle}##panel-filters-{activeView}", new Vector2(buttonWidth, Ui(30f))))
             filtersOpen = !filtersOpen;
+        RememberTutorialTarget("filters");
         if (openStylePushed)
             ImGui.PopStyleColor();
         ImGui.PopStyleVar();

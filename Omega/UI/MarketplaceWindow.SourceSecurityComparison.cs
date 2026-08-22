@@ -113,7 +113,7 @@ internal sealed partial class MarketplaceWindow
                $"baseline {baselineVisual.Label.ToLowerInvariant()} ({baseline.SecurityCriticalCount} critical, {baseline.SecurityHighCount} high, {baseline.SecurityCautionCount} medium, {baseline.SecurityKnownAdvisoryCount} known OSV risk(s)).";
     }
 
-    private static void DrawRepositorySecurityDifferenceIndicator(RepositorySecurityComparison comparison)
+    private void DrawRepositorySecurityDifferenceIndicator(RepositorySecurityComparison comparison)
     {
         if (!comparison.Different)
             return;
@@ -124,7 +124,23 @@ internal sealed partial class MarketplaceWindow
             comparison.Worse ? new Vector4(0.94f, 0.22f, 0.20f, 1f) : new Vector4(0.28f, 0.62f, 0.92f, 1f),
             (comparison.Worse ? FontAwesomeIcon.ExclamationTriangle : FontAwesomeIcon.InfoCircle).ToIconString());
         ImGui.PopFont();
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(comparison.Tooltip);
+        if (!ImGui.IsItemHovered())
+            return;
+
+        ImGui.SetTooltip(RepositorySecurityComparisonTooltip(comparison));
+    }
+
+    private string RepositorySecurityComparisonTooltip(RepositorySecurityComparison comparison)
+    {
+        if (configuration.ShowAdvancedSecurityInformation)
+            return comparison.Tooltip;
+
+        return comparison.IntegrityAnomaly
+            ? "Omega found conflicting information about the same plugin file. Review this source before continuing."
+            : comparison.ArtifactDiffers
+                ? "This source has a different copy of the plugin than Omega's preferred source."
+                : comparison.Worse
+                    ? "This source has less or different security information than Omega's preferred source."
+                    : "This source has different security information than Omega's preferred source.";
     }
 }

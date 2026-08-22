@@ -47,9 +47,10 @@ internal sealed partial class MarketplaceWindow
         query = ApplySecurityFilter(query);
         query = ApplyContentRatingFilter(query);
 
-        if (!string.IsNullOrWhiteSpace(search))
+        var effectiveSearch = EffectiveSearchQuery();
+        if (!string.IsNullOrWhiteSpace(effectiveSearch))
         {
-            var needle = search.Trim();
+            var needle = effectiveSearch.Trim();
             query = query.Where(x =>
                 Contains(x.Name, needle) ||
                 Contains(x.InternalName, needle) ||

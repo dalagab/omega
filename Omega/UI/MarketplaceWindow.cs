@@ -80,7 +80,6 @@ internal enum SourceManagerSection
 internal enum SettingsSection
 {
     General,
-    Behavior,
     Repositories,
     Legal,
 }
@@ -100,6 +99,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private readonly CatalogUpdateCoordinator updates;
     private readonly PluginInstallCoordinator installer;
     private readonly DalamudRepositoryBridge repositoryBridge;
+    private readonly RepositoryRemediationService repositoryRemediation;
     private readonly DalamudProfileBridge profileBridge;
     private readonly PluginIconCache iconCache;
     private readonly PluginRecencyLedger pluginRecency;
@@ -265,6 +265,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         CatalogUpdateCoordinator updates,
         PluginInstallCoordinator installer,
         DalamudRepositoryBridge repositoryBridge,
+        RepositoryRemediationService repositoryRemediation,
         DalamudProfileBridge profileBridge,
         PluginIconCache iconCache,
         PluginRecencyLedger pluginRecency,
@@ -279,11 +280,14 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         : base("Omega###DalagabOmegaMain")
     {
         this.configuration = configuration;
+        tutorialOpen = !configuration.TutorialCompleted;
+        requestTutorialPopup = tutorialOpen;
         RestorePersistedUpdateFailures();
         this.catalog = catalog;
         this.updates = updates;
         this.installer = installer;
         this.repositoryBridge = repositoryBridge;
+        this.repositoryRemediation = repositoryRemediation;
         this.profileBridge = profileBridge;
         this.iconCache = iconCache;
         this.pluginRecency = pluginRecency;
@@ -320,6 +324,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         CompleteUpdateAllDefinitionsTaskIfReady();
         CompleteUninstallTaskIfReady();
         CompleteRepositoryTaskIfReady();
+        CompleteRepositoryRemediationIfReady();
         CompleteCollectionOperationIfReady();
         CompleteConfigBackupTaskIfReady();
         CompleteConfigImportTaskIfReady();
@@ -332,6 +337,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         libraryLedger.ObserveInstalled(installed.Keys);
 
         PushOmegaTheme();
+        tutorialTargets.Clear();
 
         if (isMinimized)
         {
@@ -352,7 +358,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
             return;
         }
 
-        EvaluateRepositoryRiskWarnings(installed, currentApi);
+        if (!tutorialOpen)
+            EvaluateRepositoryRiskWarnings(installed, currentApi);
 
         var sidebarWidth = Ui(64f);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Ui(8f, 16f));
@@ -387,8 +394,10 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         ImGui.EndChild();
 
         OpenRequestedPopups();
+        DrawTutorialModal();
         DrawInstallModal(currentApi, versionInfo.Version);
         DrawInstallRiskReviewModal(currentApi, versionInfo.Version);
+        DrawInstallPermissionModal(currentApi, versionInfo.Version);
         DrawUpdateMigrationModal(currentApi, versionInfo.Version);
         DrawUpdateChangelogModal();
         DrawUninstallModal();
@@ -416,6 +425,18 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         {
             ImGui.OpenPopup(InstallRiskPopupId);
             requestInstallRiskPopup = false;
+        }
+
+        if (requestInstallPermissionPopup)
+        {
+            ImGui.OpenPopup(InstallPermissionPopupId);
+            requestInstallPermissionPopup = false;
+        }
+
+        if (requestTutorialPopup)
+        {
+            ImGui.OpenPopup(TutorialPopupId);
+            requestTutorialPopup = false;
         }
 
         if (requestUpdateMigrationPopup)

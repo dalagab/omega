@@ -233,7 +233,8 @@ internal static partial class RegressionCases
 
         Contains(window, "Sigmascope,", "Library owns a dedicated installed-environment Sigmascope section");
         Contains(library, "library-tab-sigmascope", "Library exposes Sigmascope as an in-panel destination");
-        Contains(security, "Sigmascope · Installed environment", "Sigmascope summarizes the current installed environment");
+        Contains(security, "Sigmascope · Installed plugins", "Sigmascope summarizes the installed plugin list in plain language");
+        Contains(security, "not checked yet", "compact Sigmascope summary keeps the installed-plugin status wording simple");
         Contains(security, "ResolveInstalledSigmascopeVariant", "environment analysis matches installed plugins to repository-specific Sigmascope results");
         Contains(security, "installedPlugin.Manifest.InstalledFromUrl", "third-party Sigmascope environment analysis prefers the actual installed repository URL");
         Contains(security, "Waiting for Sigmascope analysis — no result yet", "installed plugins without evidence remain visible and are not mistaken for clean results");
@@ -329,6 +330,9 @@ internal static partial class RegressionCases
 
         Contains(library, "DrawInlineChangelogButton", "Updates exposes changelog access beside the offered version");
         Contains(library, "installedPlugin.Version", "update changelog popup receives the installed version so it can focus on what changed");
+        Contains(library, "changelogOwnsPointer", "update rows give the changelog control ownership of its click instead of navigating the parent row");
+        Contains(library, "ImGui.IsMouseReleased(ImGuiMouseButton.Left)", "update row navigation waits for release so the changelog button can complete first");
+        Contains(content, "ownsPointer = ImGui.IsItemHovered() || ImGui.IsItemActive()", "the changelog icon suppresses parent-row navigation while hovered or active");
         Contains(content, "OpenUpdateChangelogPanel", "Updates changelog icon opens the dedicated changes panel instead of relying on a nested row popup");
         Contains(updateChangelog, "Update changes###DalagabOmegaUpdateChangelog", "update changes owns a stable dedicated modal identity");
         Contains(updateChangelog, "Installed v{installedText}  →  v{targetText}", "update changes panel explains the installed-to-target version transition");
@@ -456,6 +460,20 @@ internal static partial class RegressionCases
         Contains(sources, "Installed includes enabled and disabled plugins", "repository removal still states the installed-plugin policy in its contextual tooltip");
         Contains(bridge, "enabled or disabled", "repository bridge documents and enforces installed-plugin servicing provenance regardless of enabled state");
         Contains(bridge, "plugin.Manifest.InstalledFromUrl", "repository removal remains grounded in Dalamud's persisted install source");
+
+        var remediation = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "RepositoryRemediationService.cs"));
+        var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginInstallCoordinator.cs"));
+        var installer = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudInstallerBridge.cs"));
+        var awareness = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.RepositoryAwareness.cs"));
+        Contains(remediation, "artifact.cross-source-hash-mismatch", "risky-repository remediation is driven by concrete package divergence rather than unrecognized-source identity");
+        Contains(remediation, "RepositoryProviderRules.IsStableProvider", "repository remediation only selects recognized preferred destinations");
+        Contains(remediation, "MarketplacePermissionRules.FindBlockedCapabilities", "repository remediation preserves install permission preferences");
+        Contains(remediation, "RepositoryRemediationCleanup", "old repositories are staged for later cleanup instead of being removed in the migration transaction");
+        Contains(remediation, "!pending.OmegaManaged", "user-owned repositories are not silently deleted on the next launch");
+        Contains(coordinator, "MigrateRepositoryAsync", "reviewed repository moves have a dedicated coordinator path");
+        Contains(installer, "allowSameVersionRepositoryMigration", "same-version repository remediation can use Dalamud's normal replacement lifecycle");
+        Contains(bridge, "SetEnabledForReviewedMigrationAsync", "reviewed migration may disable a user-owned old source without taking ownership");
+        Contains(awareness, "Move {movable} plugin", "risky repository warning exposes the remediation action directly");
 
         Contains(collections, "var controlsEnabled = collectionOperationTask is null", "collection folder switches visibly disable during an in-flight mutation");
         Contains(collections, "var collectionControlsEnabled = collectionOperationTask is null", "opened collection actions share the busy-state gate");

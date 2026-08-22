@@ -91,7 +91,7 @@ internal sealed partial class MarketplaceWindow
             if (selectedNeedsRiskReview)
                 OpenInstallRepositoryRiskReview(selected!);
             else
-                StartSelectedInstall(selected!);
+                TryStartSelectedInstall(selected!);
         }
         if (!canAct)
             ImGui.EndDisabled();
@@ -570,8 +570,11 @@ internal sealed partial class MarketplaceWindow
         pendingInstallSourceUrl = string.Empty;
         pendingInstallRiskSourceUrl = string.Empty;
         pendingInstallRiskAcknowledgementChecked = false;
+        pendingInstallPermissionSourceUrl = string.Empty;
+        pendingInstallPermissionAcknowledgementChecked = false;
         installPopupOpen = false;
         installRiskPopupOpen = false;
+        installPermissionPopupOpen = false;
         ImGui.CloseCurrentPopup();
     }
 }

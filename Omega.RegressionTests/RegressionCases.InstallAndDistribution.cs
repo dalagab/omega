@@ -141,12 +141,24 @@ internal static partial class RegressionCases
         var awareness = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.RepositoryAwareness.cs"));
         var coordinator = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginInstallCoordinator.cs"));
         var installer = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudInstallerBridge.cs"));
+        var permissions = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "MarketplacePermissionRules.cs"));
+
+        Contains(permissions, "BotLikeAutomation", "permission model includes bot-like automation");
+        Contains(permissions, "CameraControl", "permission model includes camera control");
+        Contains(permissions, "ChatControl", "permission model includes chat control");
+        Contains(permissions, "MenuControl", "permission model includes menu control");
+        Contains(permissions, "This is an install-time warning layer, not an API sandbox", "permission model does not claim sandbox enforcement");
 
         Contains(ui, "Choose repository###DalagabOmegaInstall", "repository chooser popup");
         Contains(ui, "Choose which repository to use", "repository choice explanation");
         Contains(ui, "GetInstallCandidates", "compatible repository variants");
         Contains(ui, "ImGui.Button(actionLabel", "repository chooser keeps one explicit top action while allowing risk review to replace unsafe install");
         Contains(ui, "StartSelectedInstall", "selected source install flow");
+        Contains(ui, "TryStartSelectedInstall", "selected source passes through install permission preferences before installation");
+        Contains(ui, "DrawInstallPermissionModal", "permission concerns use an install-context confirmation popup");
+        Contains(ui, "Check before installing", "permission warning uses plain user-facing language");
+        Contains(ui, "Install anyway", "permission warning requires an explicit continue action");
+        Contains(ui, "MarketplacePermissionRules.FindBlockedCapabilities", "install permission gate uses catalog/security capability observations");
         Contains(ui, "selectedNeedsRiskReview", "sources requiring acknowledgement cannot be installed by the normal Install action");
         Contains(ui, "NeedsInstallRepositoryReview", "install gating combines unrecognized-source consent with package-divergence review");
         Contains(ui, "RequiresUntrustedRepositoryAcknowledgement", "unrecognized community repositories require explicit acknowledgement even without divergence findings");
@@ -174,6 +186,8 @@ internal static partial class RegressionCases
         Contains(details, "divergentSources.Contains(NormalizeUrl(v.SourceUrl)) ? 1 : 0", "repositories with known package divergence are not auto-preferred when a clean alternative exists");
         Contains(awareness, "AcknowledgedRepositoryRiskByUrl", "divergence acknowledgement is source-specific and invalidates when evidence changes");
         Contains(awareness, "AcknowledgedUntrustedRepositoryByUrl", "unrecognized-source acknowledgement persists separately from divergence evidence");
+        Contains(awareness, "!configuration.TrustUnrecognizedSources", "generic unrecognized-source acknowledgement can be skipped only by the explicit user preference");
+        Contains(ui, "IsRepositoryArtifactDivergent(candidate.SourceUrl)", "source-trust preference does not bypass package-divergence review");
 
         Contains(details, "IsInstallSourceSelectable", "install candidates are not incorrectly blocked merely because an Omega source is disabled");
         Contains(details, "DescribeInstallUnavailability", "unavailable API-compatible plugins expose a concrete reason");
@@ -197,6 +211,7 @@ internal static partial class RegressionCases
         var puni = RepositoryProviderRules.Classify("Puni.sh — erdelf", "https://puni.sh/plugins", false, 5);
         var nightmare = RepositoryProviderRules.Classify("NightmareXIV", "https://github.com/NightmareXIV/MyDalamudPlugins", false, 5);
         var combatReborn = RepositoryProviderRules.Classify("Combat Reborn", "https://raw.githubusercontent.com/FFXIV-CombatReborn/CombatRebornRepo/main/pluginmaster.json", false, 5);
+        var seaOfStars = RepositoryProviderRules.Classify("Sea of Stars", "https://raw.githubusercontent.com/Ottermandias/SeaOfStars/main/repo.json", false, 5);
         var large = RepositoryProviderRules.Classify("Big community repository", "https://example.invalid/repo.json", false, RepositoryProviderRules.LargeRepositoryPluginThreshold);
         var other = RepositoryProviderRules.Classify("Small repository", "https://example.invalid/small.json", false, 2);
 
@@ -204,20 +219,23 @@ internal static partial class RegressionCases
         Equal(RepositoryProviderKind.PuniSh, puni.Kind, "Puni.sh identity is recognized");
         Equal(RepositoryProviderKind.NightmareXiv, nightmare.Kind, "NightmareXIV identity is recognized");
         Equal(RepositoryProviderKind.CombatReborn, combatReborn.Kind, "Combat Reborn is recognized as an explicit preferred provider");
+        Equal(RepositoryProviderKind.SeaOfStars, seaOfStars.Kind, "Sea of Stars is recognized as an explicit preferred provider");
         Equal(RepositoryProviderKind.LargeRepository, large.Kind, "broad repositories receive the promoted community tier");
         Equal(RepositoryProviderKind.Other, other.Kind, "small unrecognized repositories form the final tier");
-        True(dalamud.Priority < puni.Priority && puni.Priority < nightmare.Priority && nightmare.Priority < combatReborn.Priority && combatReborn.Priority < large.Priority && large.Priority < other.Priority,
-            "provider tiers remain ordered Dalamud, Puni.sh, NightmareXIV, Combat Reborn, broad repositories, other");
-        True(!string.IsNullOrWhiteSpace(dalamud.IconUrl) && !string.IsNullOrWhiteSpace(puni.IconUrl) && !string.IsNullOrWhiteSpace(nightmare.IconUrl) && !string.IsNullOrWhiteSpace(combatReborn.IconUrl),
+        True(dalamud.Priority < puni.Priority && puni.Priority < nightmare.Priority && nightmare.Priority < combatReborn.Priority && combatReborn.Priority < seaOfStars.Priority && seaOfStars.Priority < large.Priority && large.Priority < other.Priority,
+            "provider tiers remain ordered Dalamud, Puni.sh, NightmareXIV, Combat Reborn, Sea of Stars, broad repositories, other");
+        True(!string.IsNullOrWhiteSpace(dalamud.IconUrl) && !string.IsNullOrWhiteSpace(puni.IconUrl) && !string.IsNullOrWhiteSpace(nightmare.IconUrl) && !string.IsNullOrWhiteSpace(combatReborn.IconUrl) && !string.IsNullOrWhiteSpace(seaOfStars.IconUrl),
             "recognized preferred providers retain icon identities");
         False(RepositoryProviderRules.Classify("Big community repository", "https://example.invalid/repo.json", false, RepositoryProviderRules.LargeRepositoryPluginThreshold).Label.Contains("large", StringComparison.OrdinalIgnoreCase),
             "broad repository priority is not exposed as a Large list badge");
         False(RepositoryProviderRules.RequiresExplicitInstallAcknowledgement("Puni.sh", "https://puni.sh/plugins", false), "recognized stable providers do not require the generic unrecognized-source gate");
+        False(RepositoryProviderRules.RequiresExplicitInstallAcknowledgement("Sea of Stars", "https://raw.githubusercontent.com/Ottermandias/SeaOfStars/main/repo.json", false), "Sea of Stars does not require the generic unrecognized-source gate");
         True(RepositoryProviderRules.RequiresExplicitInstallAcknowledgement("Small repository", "https://example.invalid/small.json", false), "unrecognized community sources require explicit install acknowledgement");
         True(RepositoryProviderRules.IsStableProvider("Dalamud official", "", true), "Dalamud can establish the package/security baseline");
         True(RepositoryProviderRules.IsStableProvider("Puni.sh", "https://puni.sh/repository", false), "Puni.sh can establish the package/security baseline");
         True(RepositoryProviderRules.IsStableProvider("NightmareXIV", "https://github.com/NightmareXIV/repo", false), "NightmareXIV can establish the package/security baseline");
         True(RepositoryProviderRules.IsStableProvider("Combat Reborn", "https://github.com/FFXIV-CombatReborn/CombatRebornRepo", false), "Combat Reborn can establish the package/security baseline");
+        True(RepositoryProviderRules.IsStableProvider("Sea of Stars", "https://raw.githubusercontent.com/Ottermandias/SeaOfStars/main/repo.json", false), "Sea of Stars can establish the package/security baseline");
         False(RepositoryProviderRules.IsStableProvider("Large community repository", "https://example.invalid/repo.json", false), "catalog size alone never makes a source a security baseline provider");
     }
 

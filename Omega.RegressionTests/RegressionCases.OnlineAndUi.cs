@@ -137,11 +137,22 @@ internal static partial class RegressionCases
         Contains(configuration, "MinimizeAsBar", "minimize presentation preference is persisted");
         Contains(configuration, "ShowInSystemMenu", "ESC/System menu visibility preference is persisted");
         Contains(configuration, "ShowInTitleScreenMenu", "pre-login menu visibility preference is persisted");
+        Contains(configuration, "SearchEverywhere { get; set; } = true", "global search visibility defaults on");
+        Contains(configuration, "DiscoverLayoutMode.Dynamic", "Discover presentation defaults to the existing dynamic screenshot-first view");
+        Contains(configuration, "ShowAdvancedSecurityInformation { get; set; } = false", "advanced security details default off");
+        Contains(configuration, "TrustUnrecognizedSources", "unrecognized-source trust preference is persisted and defaults off");
+        Contains(configuration, "TutorialCompleted", "first-use tutorial completion is persisted");
+        Contains(configuration, "WarnOnBotLikeAutomation { get; set; } = true", "bot-like automation warning starts enabled");
+        Contains(configuration, "WarnOnCameraControl", "camera-control install preference is persisted");
+        Contains(configuration, "WarnOnChatControl", "chat-control install preference is persisted");
+        Contains(configuration, "WarnOnMenuControl", "menu-control install preference is persisted");
 
         var appBar = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.AppBar.cs"));
         Contains(appBar, "search-clear", "global search exposes a clear X control");
         Contains(appBar, "Clear search", "search clear control has an accessible tooltip");
         Contains(appBar, "ImGuiCol.FrameBg", "global search owns a dedicated lighter frame background");
+        Contains(appBar, "configuration.SearchEverywhere || activeView == MarketplaceView.Discover", "search can be hidden outside Discover without losing Discover search");
+        Contains(appBar, "EffectiveSearchQuery", "hidden global search cannot silently filter non-Discover pages");
 
         var discover = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
         DoesNotContain(discover, "reported downloads / installations", "Discover keeps catalog-wide usage totals out of the header");
@@ -151,14 +162,91 @@ internal static partial class RegressionCases
         Contains(product, "Downloads / installations", "product metadata exposes reported usage");
 
         var settings = ReadMarketplaceWindowSource();
-        Contains(settings, "SettingsSection.Behavior", "Settings has a dedicated Behavior area");
-        Contains(settings, "Minimize Omega as a bar", "Behavior settings expose compact bar minimize mode");
-        Contains(settings, "Show Omega in the ESC / System menu", "Behavior settings expose ESC menu visibility");
-        Contains(settings, "Show Omega before login", "Behavior settings expose pre-login menu visibility");
+        DoesNotContain(settings, "SettingsSection.Behavior", "Settings no longer has a dedicated Behavior area");
+        DoesNotContain(settings, "settings-tab-behavior", "Behavior is removed from the Settings tab bar");
+        Contains(settings, "DrawSettingsGeneralTab", "General owns the combined settings surface");
+        Contains(settings, "Minimize Omega as a bar", "General settings expose compact bar minimize mode");
+        Contains(settings, "Show Omega in the ESC / System menu", "General settings expose ESC menu visibility");
+        Contains(settings, "Show Omega before login", "General settings expose pre-login menu visibility");
+        Contains(settings, "Search everywhere", "General settings expose the global-search visibility toggle");
+        Contains(settings, "Discover layout", "General settings expose the Discover presentation selector");
+        Contains(settings, "Compact cards", "Discover presentation selector includes icon-only compact cards");
+        Contains(settings, "One row per plugin", "Discover presentation selector includes a dense list mode");
+        Contains(settings, "omega-settings-general-scroll", "General settings scroll so install permissions cannot be clipped below the modal");
+        Contains(settings, "ImGuiWindowFlags.AlwaysVerticalScrollbar", "General settings visibly expose their vertical scroll path");
+        Contains(settings, "Advanced security information", "General settings expose the detailed security toggle");
+        Contains(settings, "Leave this off for the simpler view", "General explains the simple security mode without developer jargon");
+        Contains(settings, "Source trust", "General settings separates source identity trust from plugin capability preferences");
+        Contains(settings, "Trust unrecognized sources", "General exposes the opt-in unrecognized-source trust preference");
+        Contains(settings, "Skip only the extra source acknowledgement", "source trust explains that protection/reporting remains active");
+        Contains(settings, "Install permissions", "General settings expose install permission preferences");
+        Contains(settings, "Warn about gameplay automation", "General exposes the bot-like automation permission preference");
+        Contains(settings, "Warn about camera control", "General exposes the camera permission preference");
+        Contains(settings, "Warn about chat control", "General exposes the chat permission preference");
+        Contains(settings, "Warn about menu control", "General exposes the menu permission preference");
+        Contains(settings, "Show tutorial again", "General can replay the first-use tour");
         Contains(settings, "DrawMinimizedBar", "minimized bar presentation is implemented");
+
+        var tutorial = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Tutorial.cs"));
+        Contains(tutorial, "Welcome to Omega", "first-use tour introduces Omega");
+        Contains(tutorial, "plus some of the latest additions", "Spotlight tour copy focuses on discovery and new additions rather than security");
+        Contains(tutorial, "new(\"sidebar-view-Discover\", \"Discover\"", "Discover has its own highlighted tour step instead of borrowing the Filters control");
+        Contains(tutorial, "browse the full Omega catalog", "Discover tour explains the full catalog in user-facing language");
+        Contains(tutorial, "new(\"filters\", \"Filters\"", "Filters have their own highlighted tour step");
+        Contains(tutorial, "project page, and help links", "Discover tour points users to community and help information");
+        Contains(tutorial, "The changelog is there to give you more details without needing you to go to each individual plugin", "Updates tour explains the changelog as a convenience view");
+        Contains(tutorial, "What do the little flags mean?", "first-use tour explains ribbon symbols");
+        Contains(tutorial, "Question mark", "ribbon tutorial includes the unresolved/not-yet-known icon");
+        Contains(tutorial, "What the finding colour means", "ribbon tutorial explains finding colours separately from status colours");
+        Contains(tutorial, "Omega is built to help you make informed decisions", "permission tour frames Omega around informed user decisions");
+        Contains(tutorial, "Omega will warn you before installing it", "permission tour explains the comfort-level install warning in plain language");
+        Contains(tutorial, "omega-tutorial-scroll-body", "tutorial content scrolls instead of clipping long steps");
+        Contains(tutorial, "ImGuiWindowFlags.AlwaysVerticalScrollbar", "tutorial exposes a visible vertical scrollbar for long explanations");
+        Contains(tutorial, "filtersOpen = tutorialStep == 3", "the dedicated Filters step opens the filter panel after the Discover step");
+        Contains(tutorial, "tutorialRibbonLegendReviewed", "the flag guide tracks whether the user reached the bottom");
+        Contains(tutorial, "GetScrollMaxY", "the flag guide checks the actual scroll extent before allowing progression");
+        Contains(tutorial, "Scroll to the bottom of the flag guide to continue", "the flag guide tells the user why Next is disabled");
+        Contains(tutorial, "ImGui.BeginDisabled(!canAdvance)", "Next stays disabled until the required flag-guide scroll is completed");
+        Contains(tutorial, "Thank you for trusting Omega", "the final tour page thanks the user for trusting Omega");
+        Contains(tutorial, "safe searching", "the final tour page closes with a friendly safe-searching send-off");
+        Contains(tutorial, "Should I worry?", "first-use tour gives a plain-language safety explanation");
+        Contains(tutorial, "Choose your install permissions", "first-use tour includes permission choices");
+        Contains(tutorial, "DrawTutorialHighlight", "tour highlights the relevant live Omega controls");
+        Contains(tutorial, "RememberTutorialTarget", "tour follows actual UI control geometry rather than hard-coded screen coordinates");
+
+        var sigmascope = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sigmascope.cs"));
+        Contains(sigmascope, "if (!configuration.ShowAdvancedSecurityInformation)", "product security has a compact mode");
+        Contains(sigmascope, "DrawCompactProductSigmascope", "compact security is rendered as badges rather than detailed sections");
+        Contains(sigmascope, "ResolveSimpleSigmascopeVisual", "compact security owns a plain-language visual model");
+        Contains(sigmascope, "Not checked yet", "compact security avoids analysis jargon for missing results");
+        Contains(sigmascope, "Checking now", "compact security uses simple progress language");
+        Contains(sigmascope, "Very serious", "compact critical results use ELI5 severity wording");
+        Contains(sigmascope, "Nothing found", "compact clean results use ELI5 wording");
+        Contains(sigmascope, "Known problem", "compact dependency-risk wording avoids OSV jargon");
+        Contains(sigmascope, "PlainLanguageFindingTitle", "compact hover details translate common finding types to plain language");
+        Contains(sigmascope, "Can connect to the internet", "compact finding translation includes simple network wording");
+        Contains(sigmascope, "BuildCompactFindingTooltip", "compact finding badges expose findings on hover");
+        Contains(sigmascope, "if (configuration.ShowAdvancedSecurityInformation)", "hero review coverage is hidden with advanced security details");
+
+        var ribbons = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Ribbons.cs"));
+        Contains(ribbons, "ResolveSimpleSigmascopeVisual", "ribbon tooltips also use simple language when advanced security is off");
+        Contains(ribbons, "This plugin does not support your current Dalamud version", "unsupported ribbon tooltip stays understandable without API jargon in simple mode");
+
+        var librarySecurity = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.LibrarySigmascope.cs"));
+        Contains(librarySecurity, "BuildSimpleEnvironmentSigmascopeIssueLine", "installed security view has simple-mode issue summaries");
+        Contains(librarySecurity, "Omega matched this exact installed plugin file", "installed security identity is expressed plainly in simple mode");
 
         var plugin = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
         Contains(plugin, "ApplyBehaviorConfiguration", "title-screen visibility changes apply immediately");
+        Contains(plugin, "Configuration.Version < 14", "configuration migration retains the schema 14 compact-security migration");
+        Contains(plugin, "Configuration.ShowAdvancedSecurityInformation = false", "schema 14 applies the compact security default once to existing clients");
+        Contains(plugin, "Configuration.Version < 15", "configuration migration advances clients to the tutorial/permission schema");
+        Contains(plugin, "Configuration.Version < 16", "configuration migration advances clients to the Discover-layout schema");
+        Contains(plugin, "Configuration.DiscoverLayout = DiscoverLayoutMode.Dynamic", "schema 16 preserves the existing dynamic Discover layout on upgrade");
+        Contains(plugin, "Configuration.Version < 17", "configuration migration advances clients to the source-trust schema");
+        Contains(plugin, "Configuration.TrustUnrecognizedSources = false", "schema 17 keeps unrecognized-source trust opt-in by default");
+        Contains(plugin, "Configuration.WarnOnBotLikeAutomation = true", "schema 15 applies the bot-like automation warning default");
+        Contains(plugin, "Configuration.TutorialCompleted = false", "schema 15 shows the first-use tour once after upgrade");
         Contains(plugin, "Configuration.ShowInSystemMenu", "system-menu bridge reads the live preference");
 
         var systemMenu = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudSystemMenuBridge.cs"));

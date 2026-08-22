@@ -60,11 +60,21 @@ internal sealed partial class MarketplaceWindow
                     ? "Configured in Dalamud; not in Omega Definitions."
                     : RepositoryProviderRules.IsStableProvider(sourceName, sourceUrl, official)
                         ? "Recognized community source."
-                        : "Unrecognized community source; acknowledgement required before install.");
+                        : configuration.TrustUnrecognizedSources
+                            ? "Unrecognized community source. You chose to skip the generic source acknowledgement; Omega still reports security, permission, package, compatibility, and support concerns."
+                            : "Unrecognized community source; acknowledgement required before install.");
     }
 
     private void DrawRepositoryProviderIcon(RepositoryProviderPresentation provider, float size)
     {
+        if (provider.Kind == RepositoryProviderKind.Dalamud)
+        {
+            // Use Dalamud's shipped mark everywhere instead of the Goatcorp avatar, which carries
+            // a dark-red square background and reads like a warning state in Omega.
+            DrawDalamudOfficialLogoBadge(size);
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(provider.IconUrl))
             return;
 
@@ -195,12 +205,31 @@ internal sealed partial class MarketplaceWindow
         var cursorX = min.X + 12f;
         if (hasIcon)
         {
-            var texture = iconCache.GetOrQueue(provider.IconUrl);
-            if (texture is not null && texture.Size.X > 0 && texture.Size.Y > 0)
+            var iconSize = Math.Min(18f, size.Y - 8f);
+            var iconY = min.Y + Math.Max(Ui(4f), (size.Y - iconSize) * 0.5f);
+            if (provider.Kind == RepositoryProviderKind.Dalamud)
             {
-                var iconSize = Math.Min(18f, size.Y - 8f);
-                var iconY = min.Y + Math.Max(Ui(4f), (size.Y - iconSize) * 0.5f);
-                draw.AddImage(texture.Handle, new Vector2(cursorX, iconY), new Vector2(cursorX + iconSize, iconY + iconSize));
+                try
+                {
+                    var texture = Plugin.DalamudAssets.GetDalamudTextureWrap(global::Dalamud.DalamudAsset.LogoSmall);
+                    var sourceSize = texture.Size;
+                    var scale = Math.Min(iconSize / sourceSize.X, iconSize / sourceSize.Y);
+                    var drawSize = sourceSize * scale;
+                    var imageMin = new Vector2(
+                        cursorX + ((iconSize - drawSize.X) * 0.5f),
+                        iconY + ((iconSize - drawSize.Y) * 0.5f));
+                    draw.AddImage(texture.Handle, imageMin, imageMin + drawSize);
+                }
+                catch
+                {
+                    // Keep the reserved icon slot if the shared Dalamud asset is temporarily unavailable.
+                }
+            }
+            else
+            {
+                var texture = iconCache.GetOrQueue(provider.IconUrl);
+                if (texture is not null && texture.Size.X > 0 && texture.Size.Y > 0)
+                    draw.AddImage(texture.Handle, new Vector2(cursorX, iconY), new Vector2(cursorX + iconSize, iconY + iconSize));
             }
             cursorX += Ui(23f);
         }

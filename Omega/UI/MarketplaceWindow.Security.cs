@@ -17,51 +17,160 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.Button(updates.IsRefreshing ? "Checking for updates…" : "Check for updates") && !updates.IsRefreshing)
             CheckForUpdates();
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Check for new Omega Definitions and refresh your added plugin sources.");
+            ImGui.SetTooltip("Check for Omega, plugin list, and source updates.");
 
         ImGui.Spacing();
         if (selfUpdates.UpdateAvailable)
         {
-            ImGui.TextColored(new Vector4(0.35f, 0.64f, 0.92f, 1f), $"Omega {selfUpdates.AvailableDisplayVersion} is available — open Updates to install through Dalamud.");
+            ImGui.TextColored(new Vector4(0.35f, 0.64f, 0.92f, 1f), $"Omega {selfUpdates.AvailableDisplayVersion} is available — open Updates to install it.");
         }
         if (updates.DefinitionsUpdateAvailable)
         {
-            ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), "Definitions update available — open Updates to apply it.");
+            ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), "Plugin information update available — open Updates to apply it.");
         }
         else if (!string.IsNullOrWhiteSpace(updates.LastOnlineError))
         {
-            ImGui.TextDisabled("The online Definitions check failed; your current local Definitions remain active.");
+            ImGui.TextDisabled("Omega could not check online right now. Your current plugin information is still available.");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(updates.LastOnlineError);
         }
-    }
 
-    private void DrawSettingsBehaviorTab()
-    {
-        ImGui.TextUnformatted("Plugin behavior");
+        ImGui.Dummy(new Vector2(Ui(1f), Ui(10f)));
+        ImGui.Separator();
+        ImGui.Dummy(new Vector2(Ui(1f), Ui(10f)));
+        ImGui.TextUnformatted("General");
         ImGui.Spacing();
 
-        DrawBehaviorSetting(
+        DrawGeneralSetting(
             "Minimize Omega as a bar",
-            "Use the compact bar when minimized.",
-            "behavior-minimize-bar",
+            "Show a small Omega bar instead of hiding the window completely.",
+            "general-minimize-bar",
             configuration.MinimizeAsBar,
             value => configuration.MinimizeAsBar = value);
-        DrawBehaviorSetting(
+        DrawGeneralSetting(
             "Show Omega in the ESC / System menu",
-            "Show Omega in the ESC/System menu.",
-            "behavior-system-menu",
+            "Add Omega to the in-game System menu.",
+            "general-system-menu",
             configuration.ShowInSystemMenu,
             value => configuration.ShowInSystemMenu = value);
-        DrawBehaviorSetting(
+        DrawGeneralSetting(
             "Show Omega before login",
             "Show Omega on the title screen.",
-            "behavior-title-menu",
+            "general-title-menu",
             configuration.ShowInTitleScreenMenu,
             value => configuration.ShowInTitleScreenMenu = value);
+        DrawGeneralSetting(
+            "Search everywhere",
+            "Keep the search bar visible on every Omega page. Turn this off to show it only in Discover.",
+            "general-search-everywhere",
+            configuration.SearchEverywhere,
+            value => configuration.SearchEverywhere = value);
+        DrawDiscoverLayoutSetting();
+        DrawGeneralSetting(
+            "Advanced security information",
+            "Show technical security details. Leave this off for the simpler view.",
+            "general-advanced-security",
+            configuration.ShowAdvancedSecurityInformation,
+            value => configuration.ShowAdvancedSecurityInformation = value);
+
+        ImGui.Dummy(new Vector2(Ui(1f), Ui(8f)));
+        ImGui.TextUnformatted("Source trust");
+        ImGui.TextWrapped("Choose whether Omega should ask just because it does not recognize a repository.");
+        ImGui.Spacing();
+        DrawGeneralSetting(
+            "Trust unrecognized sources",
+            "Skip only the extra source acknowledgement. Security findings, permission warnings, package differences, compatibility checks, and unsupported-plugin warnings still work.",
+            "general-trust-unrecognized-sources",
+            configuration.TrustUnrecognizedSources,
+            value => configuration.TrustUnrecognizedSources = value);
+
+        ImGui.Dummy(new Vector2(Ui(1f), Ui(8f)));
+        ImGui.TextUnformatted("Install permissions");
+        ImGui.TextWrapped("Stop and ask before installing a plugin that can do something you do not want.");
+        ImGui.TextWrapped("Omega can warn before install, but Dalamud does not let Omega remove abilities after a plugin starts.");
+        ImGui.Spacing();
+
+        DrawGeneralSetting(
+            "Warn about gameplay automation",
+            "The plugin can control your character or play parts of the game for you.",
+            "permission-bot-like",
+            configuration.WarnOnBotLikeAutomation,
+            value => configuration.WarnOnBotLikeAutomation = value);
+        DrawGeneralSetting(
+            "Warn about camera control",
+            "The plugin can move or change the in-game camera.",
+            "permission-camera",
+            configuration.WarnOnCameraControl,
+            value => configuration.WarnOnCameraControl = value);
+        DrawGeneralSetting(
+            "Warn about chat control",
+            "The plugin can send, change, or automate messages in game chat.",
+            "permission-chat",
+            configuration.WarnOnChatControl,
+            value => configuration.WarnOnChatControl = value);
+        DrawGeneralSetting(
+            "Warn about menu control",
+            "The plugin can click, select, or move through game windows and menus for you.",
+            "permission-menu",
+            configuration.WarnOnMenuControl,
+            value => configuration.WarnOnMenuControl = value);
+
+        ImGui.Spacing();
+        if (ImGui.Button("Show tutorial again", Ui(170f, 32f)))
+            StartTutorial();
     }
 
-    private void DrawBehaviorSetting(string label, string description, string id, bool value, Action<bool> apply)
+    private void DrawDiscoverLayoutSetting()
+    {
+        var startY = ImGui.GetCursorPosY();
+        ImGui.TextUnformatted("Discover layout");
+        ImGui.TextDisabled("Choose how plugin results are shown in Discover.");
+
+        var comboWidth = Ui(190f);
+        ImGui.SetCursorPos(new Vector2(
+            Math.Max(ImGui.GetCursorPosX(), ImGui.GetWindowWidth() - comboWidth - Ui(34f)),
+            startY));
+        ImGui.SetNextItemWidth(comboWidth);
+        if (ImGui.BeginCombo("##general-discover-layout", DiscoverLayoutLabel(configuration.DiscoverLayout)))
+        {
+            foreach (var mode in Enum.GetValues<DiscoverLayoutMode>())
+            {
+                var selected = mode == configuration.DiscoverLayout;
+                if (ImGui.Selectable(DiscoverLayoutLabel(mode), selected))
+                {
+                    configuration.DiscoverLayout = mode;
+                    configuration.Save();
+                    resetDiscoverListScroll = true;
+                    resetStorefrontScroll = true;
+                }
+            }
+            ImGui.EndCombo();
+        }
+
+        ImGui.SetCursorPosY(Math.Max(ImGui.GetCursorPosY(), startY + Ui(30f)));
+        ImGui.TextWrapped(DiscoverLayoutDescription(configuration.DiscoverLayout));
+        ImGui.SetCursorPosY(Math.Max(ImGui.GetCursorPosY(), startY + Ui(72f)));
+        ImGui.Separator();
+        ImGui.Spacing();
+    }
+
+    private static string DiscoverLayoutLabel(DiscoverLayoutMode mode)
+        => mode switch
+        {
+            DiscoverLayoutMode.CompactCards => "Compact cards",
+            DiscoverLayoutMode.List => "List",
+            _ => "Dynamic",
+        };
+
+    private static string DiscoverLayoutDescription(DiscoverLayoutMode mode)
+        => mode switch
+        {
+            DiscoverLayoutMode.CompactCards => "Small cards with plugin icons and the same status indicators, without screenshots.",
+            DiscoverLayoutMode.List => "One row per plugin for the densest overview.",
+            _ => "Show screenshots when a plugin has them, then use list rows for the rest.",
+        };
+
+    private void DrawGeneralSetting(string label, string description, string id, bool value, Action<bool> apply)
     {
         var start = ImGui.GetCursorPos();
         ImGui.TextUnformatted(label);
@@ -92,7 +201,7 @@ internal sealed partial class MarketplaceWindow
         if (updates.IsRefreshing)
             return;
         InvalidateSourceCaches();
-        operationMessage = "Checking for Omega, plugin and Definitions updates…";
+        operationMessage = "Checking for updates…";
         _ = CheckForUpdatesFromUiAsync();
     }
 
@@ -100,7 +209,7 @@ internal sealed partial class MarketplaceWindow
     {
         await Task.WhenAll(updates.CheckForUpdatesAsync(), selfUpdates.CheckNowAsync()).ConfigureAwait(false);
         if (!string.IsNullOrWhiteSpace(updates.LastOnlineError))
-            operationMessage = $"Update check completed with an online Definitions error: {updates.LastOnlineError}";
+            operationMessage = $"Omega could not refresh the online plugin information: {updates.LastOnlineError}";
         else if (!string.IsNullOrWhiteSpace(selfUpdates.LastError))
             operationMessage = $"Omega update check failed: {selfUpdates.LastError}";
         else
@@ -111,9 +220,9 @@ internal sealed partial class MarketplaceWindow
     {
         await updates.ApplyDefinitionsUpdateAsync().ConfigureAwait(false);
         operationMessage = !string.IsNullOrWhiteSpace(updates.LastOnlineError)
-            ? $"Definitions update failed: {updates.LastOnlineError}"
+            ? $"Plugin information update failed: {updates.LastOnlineError}"
             : updates.DefinitionsUpdateAvailable
-                ? "Definitions update is still pending."
+                ? "Plugin information update is still waiting to be applied."
                 : string.Empty;
     }
 

@@ -22,7 +22,8 @@ internal sealed partial class MarketplaceWindow
         DrawApplicationMark();
         var (searchX, searchWidth) = GetGlobalSearchLayout();
         DrawProductBackButton(searchX);
-        DrawGlobalSearch(searchX, searchWidth);
+        if (ShouldShowGlobalSearch())
+            DrawGlobalSearch(searchX, searchWidth);
         DrawApplicationControls();
 
         ImGui.EndChild();
@@ -53,6 +54,12 @@ internal sealed partial class MarketplaceWindow
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Omega");
     }
+
+    private bool ShouldShowGlobalSearch()
+        => configuration.SearchEverywhere || activeView == MarketplaceView.Discover;
+
+    private string EffectiveSearchQuery()
+        => ShouldShowGlobalSearch() ? search : string.Empty;
 
     private static (float X, float Width) GetGlobalSearchLayout()
     {
@@ -104,6 +111,7 @@ internal sealed partial class MarketplaceWindow
             "Search plugins, descriptions, READMEs, authors, tags...",
             ref search,
             256);
+        RememberTutorialTarget("search");
         ImGui.PopStyleColor(3);
 
         var clearClicked = false;

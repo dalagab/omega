@@ -6,14 +6,18 @@ using Dalamud.Plugin;
 namespace Dalagab.Omega;
 
 /// <summary>
-/// Owns Discover's two-tier presentation: screenshot-rich plugins receive Store-style cards first,
-/// then metadata-only plugins continue in the compact virtualized list. Both tiers open the same
-/// full product page and preserve bounded ImGui submission for large catalogues.
+/// Owns Discover's user-selectable presentation. Dynamic keeps the screenshot-rich Store cards plus
+/// list fallback, CompactCards renders every plugin as a smaller icon-first card, and List renders
+/// every plugin as a dense row. All modes open the same product page and stay virtualized.
 /// </summary>
 internal sealed partial class MarketplaceWindow
 {
     private const int DiscoverRichColumns = 3;
+    private const int DiscoverCompactColumns = 4;
     private const float DiscoverRichCardHeight = 314f;
+    private const float DiscoverCompactCardHeight = 132f;
+    private const float DiscoverCompactCardGap = 12f;
+    private const float DiscoverCompactIconSize = 54f;
     private const float DiscoverRichRowGap = 14f;
     private const float DiscoverRichColumnGap = 14f;
     private const float DiscoverRichScreenshotHeight = 150f;
@@ -24,6 +28,8 @@ internal sealed partial class MarketplaceWindow
         new(StringComparer.OrdinalIgnoreCase);
     private long discoverPresentationRevision = -1;
     private bool resetDiscoverListScroll;
+    private Vector2? discoverListingClipMin;
+    private Vector2? discoverListingClipMax;
 
     private void DrawDiscoverList(
         IReadOnlyList<MarketplacePlugin> plugins,
@@ -32,26 +38,186 @@ internal sealed partial class MarketplaceWindow
         Version currentDalamudVersion)
     {
         EnsureDiscoverPresentationCache();
-        var rich = new List<(MarketplacePlugin Plugin, MarketplacePresentationContent Content)>();
-        var basic = new List<MarketplacePlugin>();
-        foreach (var plugin in plugins)
-        {
-            var content = GetDiscoverPresentation(plugin);
-            if (content.Images.Count > 0)
-                rich.Add((plugin, content));
-            else
-                basic.Add(plugin);
-        }
 
         ImGui.BeginChild("omega-discover-results", Vector2.Zero, false, ImGuiWindowFlags.AlwaysVerticalScrollbar);
+        // The ribbon clip must be anchored to the child WINDOW, not its content region.
+        // Content-region coordinates include the current scroll offset, which caused the clip
+        // rectangle itself to travel upward while scrolling and let buffered/off-screen ribbons
+        // escape into Discover's search/filter header. The window rectangle stays fixed on screen.
+        var resultsWindowPos = ImGui.GetWindowPos();
+        var resultsWindowSize = ImGui.GetWindowSize();
+        discoverListingClipMin = resultsWindowPos;
+        discoverListingClipMax = resultsWindowPos + resultsWindowSize;
         if (resetDiscoverListScroll)
         {
             ImGui.SetScrollY(0f);
             resetDiscoverListScroll = false;
         }
 
-        DrawDiscoverHybridResults(rich, basic, installed, currentApi, currentDalamudVersion);
+        switch (configuration.DiscoverLayout)
+        {
+            case DiscoverLayoutMode.CompactCards:
+                DrawDiscoverCompactResults(plugins, installed, currentApi, currentDalamudVersion);
+                break;
+            case DiscoverLayoutMode.List:
+                DrawDiscoverListResults(plugins, installed, currentApi, currentDalamudVersion);
+                break;
+            default:
+            {
+                var rich = new List<(MarketplacePlugin Plugin, MarketplacePresentationContent Content)>();
+                var basic = new List<MarketplacePlugin>();
+                foreach (var plugin in plugins)
+                {
+                    var content = GetDiscoverPresentation(plugin);
+                    if (content.Images.Count > 0)
+                        rich.Add((plugin, content));
+                    else
+                        basic.Add(plugin);
+                }
+                DrawDiscoverHybridResults(rich, basic, installed, currentApi, currentDalamudVersion);
+                break;
+            }
+        }
+
+        discoverListingClipMin = null;
+        discoverListingClipMax = null;
         ImGui.EndChild();
+    }
+
+    private void DrawDiscoverCompactResults(
+        IReadOnlyList<MarketplacePlugin> plugins,
+        IReadOnlyDictionary<string, IExposedPlugin> installed,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
+        if (plugins.Count == 0)
+            return;
+
+        var contentStartY = ImGui.GetCursorPosY();
+        var availableWidth = Math.Max(Ui(1f), ImGui.GetContentRegionAvail().X - Ui(4f));
+        var columns = ResponsiveColumns(availableWidth, 205f, DiscoverCompactColumns, DiscoverCompactCardGap);
+        var gap = Ui(DiscoverCompactCardGap);
+        var cardWidth = ResponsiveCardWidth(availableWidth, columns, DiscoverCompactCardGap, 180f);
+        var cardHeight = Ui(DiscoverCompactCardHeight);
+        var stride = cardHeight + gap;
+        var visible = StorefrontVirtualization.Calculate(
+            plugins.Count,
+            columns,
+            stride,
+            ImGui.GetScrollY(),
+            ImGui.GetWindowHeight(),
+            contentStartY,
+            bufferRows: 2);
+
+        for (var row = visible.FirstRow; row < visible.LastRowExclusive; row++)
+        {
+            for (var column = 0; column < columns; column++)
+            {
+                var index = (row * columns) + column;
+                if (index >= plugins.Count)
+                    break;
+
+                var plugin = plugins[index];
+                installed.TryGetValue(plugin.InternalName, out var installedPlugin);
+                ImGui.SetCursorPos(new Vector2(
+                    column * (cardWidth + gap),
+                    contentStartY + (row * stride)));
+                DrawDiscoverCompactCard(plugin, installedPlugin, currentApi, currentDalamudVersion, cardWidth);
+            }
+        }
+
+        ImGui.SetCursorPosY(contentStartY + (visible.TotalRows * stride));
+        ImGui.Dummy(Ui(1f, 1f));
+    }
+
+    private void DrawDiscoverCompactCard(
+        MarketplacePlugin plugin,
+        IExposedPlugin? installedPlugin,
+        int currentApi,
+        Version currentDalamudVersion,
+        float cardWidth)
+    {
+        var availabilityStyle = PushUnavailableListingStyle(
+            IsListingCurrentlyAvailable(plugin, installedPlugin, currentApi, currentDalamudVersion));
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Ui(8f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.045f, 0.052f, 0.064f, 0.76f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.18f, 0.20f, 0.23f, 0.48f));
+        ImGui.BeginChild($"discover-compact-{plugin.InternalName}",
+            new Vector2(cardWidth, Ui(DiscoverCompactCardHeight)), true,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+
+        var cardMin = ImGui.GetWindowPos();
+        var cardMax = cardMin + ImGui.GetWindowSize();
+        ImGui.SetCursorPos(Ui(12f, 38f));
+        var artworkClicked = DrawPluginArtwork(
+            plugin, installedPlugin, Ui(DiscoverCompactIconSize), Ui(DiscoverCompactIconSize), currentApi, currentDalamudVersion,
+            queueIfVisible: true, showOverlays: false, showInstalledMarker: false, showListingRibbons: true,
+            listingPanelMin: cardMin, listingPanelMax: cardMax);
+
+        ImGui.SameLine(0f, Ui(10f));
+        ImGui.BeginGroup();
+        ImGui.SetCursorPosY(Ui(40f));
+        DrawDiscoverPluginTitle(Shorten(plugin.Name, 28), installedPlugin is not null);
+        var author = string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author;
+        ImGui.TextDisabled(Shorten(author, 30));
+        var category = PrimaryPluginCategory(plugin);
+        if (!string.IsNullOrWhiteSpace(category))
+            ImGui.TextDisabled(Shorten(category, 30));
+        ImGui.EndGroup();
+
+        var hovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows);
+        if (artworkClicked || (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left)))
+            OpenPluginDetails(plugin);
+        DrawPluginPanelUpdateState(plugin, installedPlugin, currentApi, currentDalamudVersion, cardMax);
+        ImGui.EndChild();
+
+        if (hovered)
+        {
+            ImGui.GetWindowDrawList().AddRect(
+                cardMin + Ui(0.5f, 0.5f),
+                cardMax - Ui(0.5f, 0.5f),
+                ImGui.ColorConvertFloat4ToU32(new Vector4(0.18f, 0.54f, 0.54f, 0.48f)),
+                Ui(8f),
+                ImDrawFlags.None,
+                Ui(1.2f));
+        }
+
+        ImGui.PopStyleColor(2);
+        ImGui.PopStyleVar(2);
+        PopUnavailableListingStyle(availabilityStyle);
+    }
+
+    private void DrawDiscoverListResults(
+        IReadOnlyList<MarketplacePlugin> plugins,
+        IReadOnlyDictionary<string, IExposedPlugin> installed,
+        int currentApi,
+        Version currentDalamudVersion)
+    {
+        if (plugins.Count == 0)
+            return;
+
+        var contentStartY = ImGui.GetCursorPosY();
+        var stride = Ui(DiscoverListRowHeight + DiscoverListRowGap);
+        var visible = StorefrontVirtualization.Calculate(
+            plugins.Count,
+            1,
+            stride,
+            ImGui.GetScrollY(),
+            ImGui.GetWindowHeight(),
+            contentStartY,
+            bufferRows: 2);
+
+        for (var index = visible.FirstRow; index < visible.LastRowExclusive && index < plugins.Count; index++)
+        {
+            ImGui.SetCursorPosY(contentStartY + (index * stride));
+            var plugin = plugins[index];
+            installed.TryGetValue(plugin.InternalName, out var installedPlugin);
+            DrawDiscoverResultRow(plugin, installedPlugin, currentApi, currentDalamudVersion);
+        }
+
+        ImGui.SetCursorPosY(contentStartY + (visible.TotalRows * stride));
+        ImGui.Dummy(Ui(1f, 1f));
     }
 
     private void DrawDiscoverHybridResults(
@@ -421,8 +587,9 @@ internal sealed partial class MarketplaceWindow
         var nextX = scanX - gap - iconSize;
         if (plugin.HasKnownAtRiskDependency)
         {
-            var noun = plugin.SecurityKnownAdvisoryCount == 1 ? "advisory" : "advisories";
-            var tooltip = $"Known risk: OSV reports {plugin.SecurityKnownAdvisoryCount} {noun} affecting dependency versions used by this plugin package. Highest advisory severity: {plugin.SecurityKnownAdvisoryHighestSeverity}.";
+            var tooltip = configuration.ShowAdvancedSecurityInformation
+                ? $"Known risk: OSV reports {plugin.SecurityKnownAdvisoryCount} {(plugin.SecurityKnownAdvisoryCount == 1 ? "advisory" : "advisories")} affecting dependency versions used by this plugin package. Highest advisory severity: {plugin.SecurityKnownAdvisoryHighestSeverity}."
+                : $"A library used by this plugin has {plugin.SecurityKnownAdvisoryCount} known security {(plugin.SecurityKnownAdvisoryCount == 1 ? "problem" : "problems")}.";
             ImGui.SetCursorPos(new Vector2(nextX, y));
             DrawPluginFontAwesomeRiskIcon(FontAwesomeIcon.ExclamationTriangle, new Vector4(0.96f, 0.16f, 0.19f, 1f), tooltip, iconSize);
             hovered |= ImGui.IsItemHovered();
@@ -464,7 +631,7 @@ internal sealed partial class MarketplaceWindow
             pluginAutomationStateCache.Clear();
         }
 
-        var cacheKey = $"{plugin.InternalName}\u001f{plugin.SourceUrl}\u001f{plugin.AssemblyVersionText}\u001f{plugin.SecurityArtifactSha256}";
+        var cacheKey = $"{plugin.InternalName}\u001f{plugin.SourceUrl}\u001f{plugin.AssemblyVersionText}\u001f{plugin.SecurityArtifactSha256}\u001f{configuration.ShowAdvancedSecurityInformation}";
         if (pluginAutomationStateCache.TryGetValue(cacheKey, out var cached))
             return cached;
 
@@ -484,8 +651,9 @@ internal sealed partial class MarketplaceWindow
         {
             return new PluginAutomationState(
                 new Vector4(0.96f, 0.76f, 0.10f, 1f),
-                $"Automation capability observed: {AutomationLevelLabel(plugin.SecurityAutomationLevel)}. " +
-                "Open the plugin page for the static-analysis evidence.");
+                configuration.ShowAdvancedSecurityInformation
+                    ? $"Automation capability observed: {AutomationLevelLabel(plugin.SecurityAutomationLevel)}. Open the plugin page for the static-analysis evidence."
+                    : "This plugin can automate actions in the game.");
         }
 
         var dependencyAutomation = FindRequiredDependencyAutomation(
@@ -497,8 +665,9 @@ internal sealed partial class MarketplaceWindow
 
         return new PluginAutomationState(
             new Vector4(0.96f, 0.76f, 0.10f, 1f),
-            $"Automation exposure through required dependency {dependencyAutomation.DependencyName}: " +
-            $"{AutomationLevelLabel(dependencyAutomation.AutomationLevel)}. Path: {dependencyAutomation.Path}.");
+            configuration.ShowAdvancedSecurityInformation
+                ? $"Automation exposure through required dependency {dependencyAutomation.DependencyName}: {AutomationLevelLabel(dependencyAutomation.AutomationLevel)}. Path: {dependencyAutomation.Path}."
+                : $"This plugin needs {dependencyAutomation.DependencyName}, which can automate actions in the game.");
     }
 
     private sealed record DependencyAutomationMatch(string DependencyName, string AutomationLevel, string Path);
@@ -683,11 +852,6 @@ internal sealed partial class MarketplaceWindow
         var min = ImGui.GetCursorScreenPos();
         ImGui.Dummy(new Vector2(size, size));
         var draw = ImGui.GetWindowDrawList();
-        draw.AddRectFilled(
-            min,
-            min + new Vector2(size, size),
-            ImGui.ColorConvertFloat4ToU32(new Vector4(0.10f, 0.035f, 0.045f, 0.78f)),
-            5f);
         try
         {
             var texture = Plugin.DalamudAssets.GetDalamudTextureWrap(global::Dalamud.DalamudAsset.LogoSmall);

@@ -361,7 +361,7 @@ internal sealed partial class MarketplaceWindow
                 ImGui.PopStyleColor();
             if (ImGui.IsItemHovered() && !string.IsNullOrWhiteSpace(repository.Url))
                 ImGui.SetTooltip(repository.SecurityComparison.Different
-                    ? repository.SecurityComparison.Tooltip
+                    ? RepositorySecurityComparisonTooltip(repository.SecurityComparison)
                     : repository.Url);
 
             DrawRepositorySecurityDifferenceIndicator(repository.SecurityComparison);
@@ -375,7 +375,7 @@ internal sealed partial class MarketplaceWindow
                     ImGui.TextDisabled(PackageLocationLabel(repository.Url));
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip(repository.SecurityComparison.Different
-                        ? repository.SecurityComparison.Tooltip
+                        ? RepositorySecurityComparisonTooltip(repository.SecurityComparison)
                         : repository.Url);
             }
         }

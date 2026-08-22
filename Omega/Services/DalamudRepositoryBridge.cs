@@ -263,6 +263,55 @@ internal sealed class DalamudRepositoryBridge
     }
 
     /// <summary>
+    /// Enables or disables a pre-existing user-owned repository after the user explicitly approved
+    /// a repository-remediation operation. Ownership is not transferred to Omega, and this method
+    /// never removes the row.
+    /// </summary>
+    public async Task<RepositoryBridgeResult> SetEnabledForReviewedMigrationAsync(
+        string url,
+        bool enabled,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryNormalizeUrl(url, out var normalized, out var error))
+            return new RepositoryBridgeResult(RepositoryBridgeOutcome.InvalidUrl, error);
+
+        try
+        {
+            var context = ResolveContext();
+            var existing = FindRepositorySetting(context.RepositoryList, normalized);
+            if (existing is null)
+                return new RepositoryBridgeResult(RepositoryBridgeOutcome.NotFound, "The repository is no longer present in Dalamud.");
+
+            var previous = ReadBool(existing, "IsEnabled");
+            if (previous == enabled)
+                return new RepositoryBridgeResult(RepositoryBridgeOutcome.Updated, enabled ? "Repository is already enabled." : "Repository is already disabled.", OwnedByOmega: false);
+
+            Set(existing, "IsEnabled", enabled);
+            QueueSave(context.Configuration);
+            try
+            {
+                await RefreshDalamudRepositoriesAsync(context.PluginManager, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                Set(existing, "IsEnabled", previous);
+                QueueSave(context.Configuration);
+                throw;
+            }
+
+            return new RepositoryBridgeResult(
+                RepositoryBridgeOutcome.Updated,
+                enabled ? "Repository enabled for the reviewed migration." : "Old repository disabled after the reviewed migration.",
+                OwnedByOmega: false);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Failed to update reviewed repository migration state for {Repository}", url);
+            return new RepositoryBridgeResult(RepositoryBridgeOutcome.Failed, $"Could not update repository state: {ex.GetBaseException().Message}");
+        }
+    }
+
+    /// <summary>
     /// Stages or completes migration of one exact, caller-supplied repository URL while preserving
     /// Dalamud's installed-plugin servicing semantics. This is intentionally used only for Omega's
     /// own historical repository URL.

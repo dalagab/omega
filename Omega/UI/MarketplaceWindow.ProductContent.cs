@@ -86,14 +86,22 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextDisabled($"{entries.Count - maximumEntries} older changelog entr{(entries.Count - maximumEntries == 1 ? "y" : "ies")}");
     }
 
-    private bool DrawInlineChangelogButton(MarketplacePlugin plugin, string id, Version? installedVersion = null)
+    private bool DrawInlineChangelogButton(
+        MarketplacePlugin plugin,
+        string id,
+        Version? installedVersion,
+        out bool ownsPointer)
     {
         var entries = BuildUpdateChangelogEntries(plugin, installedVersion);
         if (entries.Count == 0)
+        {
+            ownsPointer = false;
             return false;
+        }
 
         var size = Ui(20f);
         var clicked = ImGui.InvisibleButton($"##{id}", new Vector2(size, size));
+        ownsPointer = ImGui.IsItemHovered() || ImGui.IsItemActive();
         var min = ImGui.GetItemRectMin();
         ImGui.PushFont(UiBuilder.IconFontFixedWidth);
         var glyph = FontAwesomeIcon.List.ToIconString();

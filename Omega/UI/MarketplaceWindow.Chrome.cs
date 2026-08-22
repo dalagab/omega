@@ -146,7 +146,7 @@ internal sealed partial class MarketplaceWindow
         resetStorefrontScroll = true;
     }
 
-    private static bool DrawSidebarIcon(
+    private bool DrawSidebarIcon(
         FontAwesomeIcon icon,
         string id,
         string tooltip,
@@ -162,6 +162,7 @@ internal sealed partial class MarketplaceWindow
 
         var screen = ImGui.GetCursorScreenPos();
         ImGui.InvisibleButton($"##omega-nav-{id}", new Vector2(size, size));
+        RememberTutorialTarget(id);
         var hovered = ImGui.IsItemHovered();
         var held = ImGui.IsItemActive();
         var clicked = ImGui.IsItemClicked();

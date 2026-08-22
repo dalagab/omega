@@ -14,6 +14,7 @@ internal sealed partial class MarketplaceWindow
     private string repositoryRiskDismissedFingerprint = string.Empty;
     private RepositoryRiskNotice[] repositoryRiskNotices = [];
     private RepositoryRiskNotice[] repositoryRiskAllNotices = [];
+    private Task<RepositoryRemediationResult>? repositoryRemediationTask;
 
     private sealed record RepositoryRiskNotice(
         string Name,
@@ -158,9 +159,10 @@ internal sealed partial class MarketplaceWindow
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant();
     }
 
-    private static bool RequiresUntrustedRepositoryAcknowledgement(MarketplacePlugin plugin)
-        => RepositoryProviderRules.RequiresExplicitInstallAcknowledgement(
-            plugin.SourceName, plugin.SourceUrl, plugin.SourceIsOfficial);
+    private bool RequiresUntrustedRepositoryAcknowledgement(MarketplacePlugin plugin)
+        => !configuration.TrustUnrecognizedSources &&
+           RepositoryProviderRules.RequiresExplicitInstallAcknowledgement(
+               plugin.SourceName, plugin.SourceUrl, plugin.SourceIsOfficial);
 
     private bool IsUntrustedRepositoryAcknowledged(MarketplacePlugin plugin)
     {
@@ -184,6 +186,38 @@ internal sealed partial class MarketplaceWindow
             configuration.AcknowledgedRepositoryRiskByUrl[NormalizeUrl(notice.Url)] = notice.NoticeFingerprint;
         configuration.AcknowledgedRepositoryRiskFingerprint = repositoryRiskFingerprint;
         configuration.Save();
+    }
+
+    private void CompleteRepositoryRemediationIfReady()
+    {
+        if (repositoryRemediationTask is null || !repositoryRemediationTask.IsCompleted)
+            return;
+
+        try
+        {
+            var result = repositoryRemediationTask.GetAwaiter().GetResult();
+            operationMessage = result.Message;
+            RefreshDalamudRepositoryAwareness();
+            repositoryRiskAllNotices = BuildRepositoryRiskNotices(Plugin.PluginInterface.InstalledPlugins);
+            repositoryRiskNotices = repositoryRiskAllNotices
+                .Where(x => x.EnabledInDalamud || x.UsedByInstalledPlugin)
+                .Where(x => !IsRepositoryRiskAcknowledged(x))
+                .ToArray();
+            if (repositoryRiskNotices.Length == 0)
+            {
+                repositoryRiskPopupOpen = false;
+                repositoryRiskFingerprint = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            operationMessage = $"Could not finish repository migration: {ex.GetBaseException().Message}";
+            Plugin.Log.Warning(ex, "Omega repository remediation failed.");
+        }
+        finally
+        {
+            repositoryRemediationTask = null;
+        }
     }
 
     private void DrawRepositoryRiskModal()
@@ -210,8 +244,8 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        ImGui.TextColored(new Vector4(0.96f, 0.36f, 0.28f, 1f), "Omega found repository package divergence in sources currently used by this Dalamud installation.");
-        ImGui.TextWrapped("Same-version packages differ between repositories. Review the source before installing or updating.");
+        ImGui.TextColored(new Vector4(0.96f, 0.36f, 0.28f, 1f), "Omega found a repository where plugin packages do not match other sources.");
+        ImGui.TextWrapped("If you have plugins installed from it, Omega can move them to a preferred source using Dalamud's normal plugin update system.");
         ImGui.Spacing();
 
         if (ImGui.BeginTable("repository-risk-table", 3, ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.RowBg, new Vector2(0f, 0f)))
@@ -239,6 +273,26 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.Spacing();
+        var remediationPlans = repositoryRemediation.BuildPlans(repositoryRiskNotices.Select(x => x.Url));
+        var movable = remediationPlans.Sum(plan => plan.Moves.Count(move => move.PermissionConcerns.Count == 0));
+        var permissionBlocked = remediationPlans.Sum(plan => plan.Moves.Count(move => move.PermissionConcerns.Count > 0));
+        if (repositoryRemediationTask is not null)
+            ImGui.BeginDisabled();
+        if (ImGui.Button(movable > 0 ? $"Move {movable} plugin{(movable == 1 ? string.Empty : "s")}" : "No safe move available", Ui(170f, 34f)) && movable > 0)
+        {
+            operationMessage = "Moving plugins to preferred sources…";
+            repositoryRemediationTask = repositoryRemediation.RemediateAsync(repositoryRiskNotices.Select(x => x.Url));
+        }
+        if (repositoryRemediationTask is not null)
+            ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+        {
+            var tooltip = "Uses Dalamud's normal update lifecycle. Equal-version moves replace the package from the preferred source; Omega does not copy plugin DLLs itself.";
+            if (permissionBlocked > 0)
+                tooltip += $"\n{permissionBlocked} plugin{(permissionBlocked == 1 ? string.Empty : "s")} are held back by your install permission preferences.";
+            ImGui.SetTooltip(tooltip);
+        }
+        ImGui.SameLine();
         if (ImGui.Button("Review Sources", Ui(150f, 34f)))
         {
             repositoryRiskDismissedFingerprint = repositoryRiskFingerprint;
@@ -256,6 +310,17 @@ internal sealed partial class MarketplaceWindow
             AcknowledgeVisibleRepositoryRisks();
             repositoryRiskPopupOpen = false;
             ImGui.CloseCurrentPopup();
+        }
+
+        if (repositoryRemediationTask is not null)
+        {
+            ImGui.Spacing();
+            ImGui.TextDisabled("Moving plugins… the old repository stays available until every move is verified.");
+        }
+        else if (permissionBlocked > 0)
+        {
+            ImGui.Spacing();
+            ImGui.TextDisabled($"{permissionBlocked} plugin{(permissionBlocked == 1 ? string.Empty : "s")} need your permission settings reviewed before Omega will move them.");
         }
 
         repositoryRiskPopupOpen = keepOpen && repositoryRiskPopupOpen;

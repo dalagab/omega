@@ -12,7 +12,6 @@ namespace Dalagab.Omega;
 internal sealed partial class MarketplaceWindow
 {
     private const float ProductHeroIconSize = 132f;
-    private const float ProductHeroMaxWidth = 820f;
     private const float ProductHeroHeight = 310f;
     private const float ProductScreenshotWidth = 360f;
     private const float ProductScreenshotHeight = 210f;
@@ -61,18 +60,18 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        var heroWidth = Math.Min(Ui(ProductHeroMaxWidth), ImGui.GetContentRegionAvail().X);
+        var heroWidth = Math.Max(Ui(1f), ImGui.GetContentRegionAvail().X);
         var heroHeight = Ui(ProductHeroHeight);
-        DrawProductHeroBanner(plugin, heroWidth, heroHeight);
 
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Ui(10f));
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
-        // Keep the existing product panel on top of the optional repository banner. The translucent
-        // child background makes the banner contextual rather than competing with plugin metadata.
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.045f, 0.052f, 0.064f, 0.74f));
-        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.17f, 0.19f, 0.22f, 0.44f));
-        ImGui.BeginChild("discover-product-hero", new Vector2(heroWidth, heroHeight), true,
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 0f);
+        // The banner itself should own the top product surface. Keep the child nearly transparent
+        // and paint the repository artwork as the hero background instead of as an inset panel.
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0f, 0f, 0f, 0.03f));
+        ImGui.BeginChild("discover-product-hero", new Vector2(heroWidth, heroHeight), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+
+        DrawProductHeroBanner(plugin, heroWidth, heroHeight);
 
         ImGui.SetCursorPos(Ui(22f, 24f));
         DrawPluginArtwork(
@@ -105,7 +104,7 @@ internal sealed partial class MarketplaceWindow
         {
             // The hero is a concise summary surface; the complete description lives in About below.
             summary = Shorten(summary.Trim(), 180);
-            var available = Math.Max(Ui(240f), ImGui.GetContentRegionAvail().X - Ui(24f));
+            var available = Math.Max(Ui(240f), ImGui.GetContentRegionAvail().X - Ui(28f));
             ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + available);
             ImGui.TextWrapped(summary);
             ImGui.PopTextWrapPos();
@@ -116,38 +115,59 @@ internal sealed partial class MarketplaceWindow
         ImGui.EndGroup();
 
         ImGui.EndChild();
-        ImGui.PopStyleColor(2);
+        ImGui.PopStyleColor();
         ImGui.PopStyleVar(2);
     }
 
     private void DrawProductHeroBanner(MarketplacePlugin plugin, float heroWidth, float heroHeight)
     {
-        if (string.IsNullOrWhiteSpace(plugin.OmegaBannerUrl))
-            return;
-
-        var texture = iconCache.GetOrQueue(plugin.OmegaBannerUrl);
-        if (texture is null)
-            return;
-
-        // .omega banners are designed as wide repository artwork. Only the upper part of the hero
-        // receives the artwork; the normal product panel is drawn over it with a translucent fill.
-        const float recommendedAspect = 16f / 9f;
-        var visibleHeight = Math.Min(heroHeight, Ui(214f));
-        var imageHeight = Math.Max(visibleHeight, heroWidth / recommendedAspect);
-        var heroMin = ImGui.GetCursorScreenPos();
-        var clipMax = heroMin + new Vector2(heroWidth, visibleHeight);
-        var imageMin = new Vector2(heroMin.X, heroMin.Y - Math.Max(0f, (imageHeight - visibleHeight) * 0.5f));
-        var imageMax = imageMin + new Vector2(heroWidth, imageHeight);
         var draw = ImGui.GetWindowDrawList();
-        draw.PushClipRect(heroMin, clipMax, true);
-        draw.AddImage(
-            texture.Handle,
-            imageMin,
-            imageMax,
-            Vector2.Zero,
-            Vector2.One,
-            ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 0.88f)));
-        draw.PopClipRect();
+        var heroMin = ImGui.GetWindowPos();
+        var heroMax = heroMin + new Vector2(heroWidth, heroHeight);
+        var rounding = Ui(10f);
+        var clipMax = heroMax;
+
+        draw.AddRectFilled(heroMin, heroMax, ImGui.GetColorU32(new Vector4(0.05f, 0.06f, 0.08f, 0.98f)), rounding);
+
+        if (!string.IsNullOrWhiteSpace(plugin.OmegaBannerUrl))
+        {
+            var texture = iconCache.GetOrQueue(plugin.OmegaBannerUrl);
+            if (texture is not null)
+            {
+                // .omega banners are wide artwork. Fill the whole top product area and crop to cover
+                // so the banner reads as the page background rather than as a separate inset card.
+                const float recommendedAspect = 16f / 9f;
+                var imageHeight = Math.Max(heroHeight, heroWidth / recommendedAspect);
+                var imageMin = new Vector2(heroMin.X, heroMin.Y - Math.Max(0f, (imageHeight - heroHeight) * 0.5f));
+                var imageMax = imageMin + new Vector2(heroWidth, imageHeight);
+                draw.PushClipRect(heroMin, clipMax, true);
+                draw.AddImage(
+                    texture.Handle,
+                    imageMin,
+                    imageMax,
+                    Vector2.Zero,
+                    Vector2.One,
+                    ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 0.94f)));
+                draw.PopClipRect();
+            }
+        }
+
+        // Darken the left and lower areas so text and actions remain readable on bright banners.
+        draw.AddRectFilledMultiColor(
+            heroMin,
+            heroMax,
+            ImGui.GetColorU32(new Vector4(0.01f, 0.02f, 0.03f, 0.80f)),
+            ImGui.GetColorU32(new Vector4(0.01f, 0.02f, 0.03f, 0.18f)),
+            ImGui.GetColorU32(new Vector4(0.01f, 0.02f, 0.03f, 0.42f)),
+            ImGui.GetColorU32(new Vector4(0.01f, 0.02f, 0.03f, 0.72f)));
+        draw.AddRectFilledMultiColor(
+            heroMin,
+            heroMax,
+            ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0f)),
+            ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0f)),
+            ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0.62f)),
+            ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0.62f)));
+        draw.AddRect(heroMin, heroMax, ImGui.GetColorU32(new Vector4(0.17f, 0.19f, 0.22f, 0.36f)), rounding, ImDrawFlags.None, 1f);
     }
 
     private readonly HashSet<string> expandedProductCollections = new(StringComparer.OrdinalIgnoreCase);

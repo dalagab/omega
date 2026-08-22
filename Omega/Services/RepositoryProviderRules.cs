@@ -6,6 +6,7 @@ internal enum RepositoryProviderKind
     PuniSh,
     NightmareXiv,
     CombatReborn,
+    SeaOfStars,
     LargeRepository,
     Other,
 }
@@ -19,8 +20,8 @@ internal sealed record RepositoryProviderPresentation(
 /// <summary>
 /// Gives repositories a stable provider tier for ordering and presentation. Explicitly recognized
 /// publishers are preferred first; broad community repositories are then promoted by current
-/// catalog size without exposing a "large list" label in the UI. Dalamud, Puni.sh, NightmareXIV
-/// and Combat Reborn may establish the canonical package/security baseline. This provenance tier
+/// catalog size without exposing a "large list" label in the UI. Dalamud, Puni.sh, NightmareXIV,
+/// Combat Reborn and Sea of Stars may establish the canonical package/security baseline. This provenance tier
 /// never lowers, hides, or overrides findings produced for the selected artifact.
 /// </summary>
 internal static class RepositoryProviderRules
@@ -31,6 +32,7 @@ internal static class RepositoryProviderRules
     public const string PuniShIconUrl = "https://puni.sh/favicon.png";
     public const string NightmareXivIconUrl = "https://avatars.githubusercontent.com/u/111540168?v=4";
     public const string CombatRebornIconUrl = "https://avatars.githubusercontent.com/u/165236076?v=4";
+    public const string SeaOfStarsIconUrl = "https://avatars.githubusercontent.com/u/70807659?v=4";
 
     public static RepositoryProviderPresentation Classify(
         string? sourceName,
@@ -84,19 +86,31 @@ internal static class RepositoryProviderRules
                 CombatRebornIconUrl);
         }
 
+
+        if (Contains(identity, "sea of stars") ||
+            Contains(identity, "seaofstars") ||
+            Contains(identity, "ottermandias/seaofstars"))
+        {
+            return new RepositoryProviderPresentation(
+                RepositoryProviderKind.SeaOfStars,
+                "Sea of Stars",
+                4,
+                SeaOfStarsIconUrl);
+        }
+
         if (pluginCount >= LargeRepositoryPluginThreshold)
         {
             return new RepositoryProviderPresentation(
                 RepositoryProviderKind.LargeRepository,
                 "Community",
-                4,
+                5,
                 string.Empty);
         }
 
         return new RepositoryProviderPresentation(
             RepositoryProviderKind.Other,
             "Community",
-            5,
+            6,
             string.Empty);
     }
 
@@ -112,7 +126,8 @@ internal static class RepositoryProviderRules
             RepositoryProviderKind.Dalamud or
             RepositoryProviderKind.PuniSh or
             RepositoryProviderKind.NightmareXiv or
-            RepositoryProviderKind.CombatReborn;
+            RepositoryProviderKind.CombatReborn or
+            RepositoryProviderKind.SeaOfStars;
 
     public static int SecurityBaselinePriority(string? sourceName, string? sourceUrl, bool official)
     {

@@ -33,7 +33,21 @@ internal sealed partial class MarketplaceWindow
         // draw-list clip to the card bounds keeps the ribbons on the card's top edge while
         // guaranteeing that they composite in front of the artwork instead of behind it.
         var draw = ImGui.GetWindowDrawList();
-        draw.PushClipRect(panelMin, panelMax, false);
+        // The artwork child owns the draw layer so ribbons composite above the plugin image, but
+        // its normal clip is only the icon. Expand to the card bounds, then clamp those bounds to
+        // Discover's fixed on-screen results-window rectangle when present. This keeps card-top
+        // ribbons visible while preventing buffered/off-screen cards from painting over the
+        // search/filter header or another visible row while the results child scrolls.
+        var clipMin = panelMin;
+        var clipMax = panelMax;
+        if (discoverListingClipMin is { } viewportMin && discoverListingClipMax is { } viewportMax)
+        {
+            clipMin = Vector2.Max(clipMin, viewportMin);
+            clipMax = Vector2.Min(clipMax, viewportMax);
+            if (clipMax.X <= clipMin.X || clipMax.Y <= clipMin.Y)
+                return;
+        }
+        draw.PushClipRect(clipMin, clipMax, false);
         try
         {
             var ribbonWidth = Ui(24f);
@@ -89,8 +103,7 @@ internal sealed partial class MarketplaceWindow
                 security.Background,
                 security.Icon,
                 security.IconColor,
-                security.Tooltip,
-                emphasizeGlyph: security.Icon == FontAwesomeIcon.Star && security.IconColor != 0xFFFFFFFF);
+                security.Tooltip);
 
             var automation = GetPluginAutomationState(plugin);
             if (automation is not null)
@@ -133,7 +146,9 @@ internal sealed partial class MarketplaceWindow
 
         if (!plugin.HasCompletedSecurityScan)
         {
-            var visual = ResolveSigmascopeVisual(plugin);
+            var visual = configuration.ShowAdvancedSecurityInformation
+                ? ResolveSigmascopeVisual(plugin)
+                : ResolveSimpleSigmascopeVisual(plugin);
             return new SigmascopeRibbonVisual(
                 background,
                 FontAwesomeIcon.Question,
@@ -147,22 +162,28 @@ internal sealed partial class MarketplaceWindow
                 background,
                 FontAwesomeIcon.Question,
                 0xFFFFFFFF,
-                $"{SigmascopeRibbonLabel(severity)} Sigmascope finding level. Plugin package analysis is available, but source attribution is unresolved. This does not imply anything about the developer's source-disclosure intent.");
+                configuration.ShowAdvancedSecurityInformation
+                    ? $"{SigmascopeRibbonLabel(severity)} Sigmascope finding level. Plugin package analysis is available, but source attribution is unresolved. This does not imply anything about the developer's source-disclosure intent."
+                    : "Omega checked this plugin, but could not confirm where this copy came from.");
         }
 
         var highestKnownApi = HighestKnownApiFor(plugin.InternalName, currentApi);
         var outdated = highestKnownApi > 0 && highestKnownApi < currentApi;
-        var starColor = outdated
-            ? ImGui.ColorConvertFloat4ToU32(new Vector4(0.98f, 0.14f, 0.18f, 1f))
-            : 0xFFFFFFFF;
+        var iconColor = 0xFFFFFFFF;
         var status = outdated
-            ? $"Public source indexed by Omega, but the newest known API is {highestKnownApi} while Dalamud is API {currentApi}."
+            ? $"Unsupported on Dalamud API {currentApi}; newest known API is {highestKnownApi}."
             : "Public source indexed by Omega.";
+        var simpleStatus = outdated
+            ? "This plugin does not support your current Dalamud version."
+            : "Omega found a public source for this plugin.";
+        var simpleVisual = ResolveSimpleSigmascopeVisual(plugin);
         return new SigmascopeRibbonVisual(
             background,
-            FontAwesomeIcon.Star,
-            starColor,
-            $"{SigmascopeRibbonLabel(severity)} Sigmascope finding level. {status}");
+            outdated ? FontAwesomeIcon.Lock : FontAwesomeIcon.Star,
+            iconColor,
+            configuration.ShowAdvancedSecurityInformation
+                ? $"{SigmascopeRibbonLabel(severity)} Sigmascope finding level. {status}"
+                : $"{simpleVisual.Tooltip} {simpleStatus}");
     }
 
     private static string EffectiveRibbonSecuritySeverity(MarketplacePlugin plugin)
@@ -216,8 +237,7 @@ internal sealed partial class MarketplaceWindow
         Vector4 background,
         FontAwesomeIcon icon,
         uint iconColor,
-        string tooltip,
-        bool emphasizeGlyph = false)
+        string tooltip)
     {
         var draw = ImGui.GetWindowDrawList();
         var tailHeight = Math.Min(Ui(6f), height * 0.25f);
@@ -256,16 +276,28 @@ internal sealed partial class MarketplaceWindow
         ImGui.PushFont(UiBuilder.IconFontFixedWidth);
         var glyph = icon.ToIconString();
         var glyphSize = ImGui.CalcTextSize(glyph);
-        var glyphCenter = new Vector2(centerX, min.Y + (height * 0.5f));
-        if (emphasizeGlyph)
+        // Most fixed-width Font Awesome glyphs need a small optical correction in the narrow flag.
+        // Robot/folder were slightly over-corrected, while the star is already centered as-is.
+        var glyphOffsetX = icon switch
         {
-            var diskRadius = Math.Max(Ui(7f), Math.Min(width, height) * 0.34f);
-            draw.AddCircleFilled(glyphCenter, diskRadius, 0xF2FFFFFF, 24);
+            FontAwesomeIcon.Star => 0f,
+            FontAwesomeIcon.Robot => Ui(1.0f),
+            FontAwesomeIcon.Folder => Ui(1.0f),
+            _ => Ui(1.5f),
+        };
+        var glyphScale = icon == FontAwesomeIcon.Folder ? 0.92f : 1f;
+        var scaledGlyphSize = glyphSize * glyphScale;
+        var glyphCenter = new Vector2(centerX + glyphOffsetX, min.Y + (height * 0.5f));
+        var glyphOrigin = glyphCenter - (scaledGlyphSize * 0.5f);
+        var glyphFont = ImGui.GetFont();
+        var glyphFontSize = ImGui.GetFontSize() * glyphScale;
+        if (icon == FontAwesomeIcon.Lock)
+        {
+            // Give the unsupported lock a little more visual weight without adding a backing disk.
+            draw.AddText(glyphFont, glyphFontSize, glyphOrigin + new Vector2(-Ui(0.45f), 0f), iconColor, glyph);
+            draw.AddText(glyphFont, glyphFontSize, glyphOrigin + new Vector2(Ui(0.45f), 0f), iconColor, glyph);
         }
-        draw.AddText(
-            glyphCenter - (glyphSize * 0.5f),
-            iconColor,
-            glyph);
+        draw.AddText(glyphFont, glyphFontSize, glyphOrigin, iconColor, glyph);
         ImGui.PopFont();
 
         var mouse = ImGui.GetMousePos();

@@ -80,22 +80,23 @@ internal sealed partial class MarketplaceWindow
     private void DrawCollectionFolders()
     {
         ImGui.Spacing();
-        if (collectionSnapshot.Length == 0)
+        var visibleCollections = collectionSnapshot.Where(x => !x.IsDefault).ToArray();
+        if (visibleCollections.Length == 0)
         {
-            ImGui.TextDisabled("No Dalamud collections are available yet.");
+            ImGui.TextDisabled("No named collections are available yet.");
             return;
         }
 
-        var tileWidth = Ui(166f);
+        var tileWidth = Ui(148f);
         var gap = Ui(18f);
         var available = ImGui.GetContentRegionAvail().X;
-        var columns = ResponsiveColumns(available, 166f, Math.Max(1, collectionSnapshot.Length), 18f);
-        for (var index = 0; index < collectionSnapshot.Length; index++)
+        var columns = ResponsiveColumns(available, 148f, Math.Max(1, visibleCollections.Length), 18f);
+        for (var index = 0; index < visibleCollections.Length; index++)
         {
-            DrawCollectionFolder(collectionSnapshot[index], tileWidth);
-            if ((index + 1) % columns != 0 && index + 1 < collectionSnapshot.Length)
+            DrawCollectionFolder(visibleCollections[index], tileWidth);
+            if ((index + 1) % columns != 0 && index + 1 < visibleCollections.Length)
                 ImGui.SameLine(0f, gap);
-            else if (index + 1 < collectionSnapshot.Length)
+            else if (index + 1 < visibleCollections.Length)
                 ImGui.Spacing();
         }
     }
@@ -104,7 +105,8 @@ internal sealed partial class MarketplaceWindow
     {
         ImGui.BeginGroup();
         var startX = ImGui.GetCursorPosX();
-        var folderSize = new Vector2(width, Ui(92f));
+        var folderSize = new Vector2(Ui(126f), Ui(82f));
+        ImGui.SetCursorPosX(startX + Math.Max(0f, (width - folderSize.X) * 0.5f));
         var screen = ImGui.GetCursorScreenPos();
         ImGui.InvisibleButton($"##collection-folder-{collection.Id}", folderSize);
         var hovered = ImGui.IsItemHovered();
@@ -116,6 +118,7 @@ internal sealed partial class MarketplaceWindow
         }
 
         DrawFolderShape(screen, folderSize, collection.IsEnabled, hovered);
+        ImGui.SetCursorPosX(startX);
 
         DrawCenteredTileText(Shorten(CollectionDisplayName(collection), 22), width, false);
         DrawCenteredTileText($"{collection.Plugins.Count} plugin{(collection.Plugins.Count == 1 ? string.Empty : "s")}", width, true);
@@ -151,14 +154,7 @@ internal sealed partial class MarketplaceWindow
     {
         var startX = ImGui.GetCursorPosX();
         if (collection.IsDefault)
-        {
-            var label = "Always active";
-            var textWidth = ImGui.CalcTextSize(label).X;
-            ImGui.SetCursorPosX(startX + Math.Max(0f, (width - textWidth) * 0.5f));
-            ImGui.TextDisabled(label);
-            ImGui.SetCursorPosX(startX);
             return;
-        }
 
         var switchWidth = Ui(44f);
         var controlsEnabled = collectionOperationTask is null;
@@ -242,10 +238,7 @@ internal sealed partial class MarketplaceWindow
     private void DrawCollectionHeaderToggle(DalamudPluginCollection collection)
     {
         if (collection.IsDefault)
-        {
-            ImGui.TextDisabled("Always active");
             return;
-        }
 
         ImGui.TextDisabled("Collection active");
         ImGui.SameLine(0f, Ui(7f));

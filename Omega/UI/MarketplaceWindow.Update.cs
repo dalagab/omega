@@ -202,11 +202,26 @@ internal sealed partial class MarketplaceWindow
     }
 
 
-    private static string BuildMigrationSecurityMessage(
+    private string BuildMigrationSecurityMessage(
         MarketplacePlugin destination,
         MarketplacePlugin installedSource,
         RepositorySecurityComparison comparison)
     {
+        if (!configuration.ShowAdvancedSecurityInformation)
+        {
+            if (comparison.IntegrityAnomaly)
+                return "Omega found conflicting information about the same plugin file. Review the new source before switching.";
+            if (comparison.ArtifactDiffers)
+            {
+                var destinationVisual = ResolveSimpleSigmascopeVisual(destination);
+                var installedVisual = ResolveSimpleSigmascopeVisual(installedSource);
+                return $"The new source has a different copy of this plugin. New source: {destinationVisual.Label.ToLowerInvariant()}. Installed source: {installedVisual.Label.ToLowerInvariant()}.";
+            }
+            return comparison.Worse
+                ? "The new source has less or different security information than your installed source. Review it before switching."
+                : "The new source has different security information. Review it before switching.";
+        }
+
         if (comparison.IntegrityAnomaly)
             return "Definitions integrity warning: the two repositories identify the same plugin package bytes but expose different security reports. Review the destination before migrating.";
 

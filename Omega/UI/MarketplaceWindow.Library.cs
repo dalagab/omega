@@ -41,8 +41,9 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.SameLine(0f, 8f);
+        var namedCollectionCount = collectionSnapshot.Count(x => !x.IsDefault);
         if (DrawRoundedButton(
-                $"Collections   {collectionSnapshot.Length}",
+                $"Collections   {namedCollectionCount}",
                 "library-tab-collections",
                 Ui(142f, 32f),
                 active: librarySection == LibrarySection.Collections))
@@ -681,6 +682,7 @@ internal sealed partial class MarketplaceWindow
         }
         var migration = updateVariant is not null && IsRepositoryMigration(installedPlugin, updateVariant);
         var changelogClicked = false;
+        var changelogOwnsPointer = false;
         var textHeight = ImGui.GetTextLineHeightWithSpacing() * (previousFailure is null ? 3f : 4f);
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
         ImGui.BeginGroup();
@@ -708,7 +710,11 @@ internal sealed partial class MarketplaceWindow
             if (BuildChangelogEntries(updateVariant).Count > 0)
             {
                 ImGui.SameLine(0f, 5f);
-                changelogClicked = DrawInlineChangelogButton(updateVariant, $"update-changelog-{StableId(plugin.InternalName)}", installedPlugin.Version);
+                changelogClicked = DrawInlineChangelogButton(
+                    updateVariant,
+                    $"update-changelog-{StableId(plugin.InternalName)}",
+                    installedPlugin.Version,
+                    out changelogOwnsPointer);
             }
             ImGui.SameLine(0f, 6f);
             ImGui.TextDisabled(Shorten($"•  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}", 44));
@@ -720,8 +726,16 @@ internal sealed partial class MarketplaceWindow
                 SetReadableTooltip(BuildUpdateFailureTooltip(plugin, previousFailure));
         }
         ImGui.EndGroup();
-        if (!changelogClicked && ImGui.IsItemClicked(ImGuiMouseButton.Left))
+        // The changelog button completes on mouse release. Do not let the parent text group
+        // navigate on mouse-down first, otherwise Discover replaces the Updates row before the
+        // changelog control can open its modal.
+        if (!changelogClicked &&
+            !changelogOwnsPointer &&
+            ImGui.IsItemHovered() &&
+            ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+        {
             OpenPluginDetails(plugin);
+        }
         if (ImGui.IsItemHovered())
             SetReadableTooltip(BuildInstalledMetadataLine(plugin, installedPlugin, currentApi, currentDalamudVersion));
 

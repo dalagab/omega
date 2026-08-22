@@ -1,3 +1,129 @@
+## 0.9.69 - 2026-08-22
+
+- Makes Library > Collections folder tiles narrower and more naturally proportioned.
+- Hides Dalamud's implicit Default plugins profile from the Collections overview.
+- Counts only named collections in the Collections tab.
+- Removes the obsolete Always active label from the Collections UI.
+
+## 0.9.68 - 2026-08-22
+
+- Gives Discover and Filters separate highlighted steps in the first-use tutorial instead of pointing the Discover explanation at the Filters button.
+- Discover now focuses on browsing the full catalog and opening plugins for screenshots, details, community, project, and help links; Filters gets its own follow-up explanation.
+- Requires the ribbon/flag guide to be scrolled to the bottom before Next is enabled, while Skip tour remains available.
+- Expands the final tutorial page with a short Omega recap, replay reminder, a thank-you for the user's trust, and a safe-searching send-off.
+- Runtime repository remediation, source trust, permissions, Discover layouts, and configuration schema 18 are unchanged.
+
+## 0.9.67 - 2026-08-22
+
+- Fixes Discover card/list ribbons escaping into the search/filter header while scrolling.
+- The previous clip used scroll-relative content-region coordinates; Discover now anchors ribbon clipping to the fixed results-child screen rectangle.
+- The shared fix applies to Dynamic, Compact cards, and List layouts without changing ribbon placement or meanings.
+- Risky-repository remediation, source-trust preferences, permission gates, and configuration schema 18 are unchanged.
+
+## 0.9.66 - 2026-08-22
+
+- Added reviewed risky-repository remediation from the repository warning. Omega can move installed plugins to recognized preferred sources while keeping risky-source evidence separate from unrecognized-source trust.
+- Newer preferred packages use the normal Dalamud update lifecycle; equal-version repository moves can now deliberately use the same Dalamud replacement lifecycle so the preferred package actually replaces the installed one without manual DLL copying or uninstall/reinstall.
+- Repository remediation respects API compatibility and the user's install-permission preferences. Plugins without an eligible preferred destination are left untouched.
+- After every installed dependency has left the old source, Omega disables it. Omega-owned repository rows are removed only on a later clean launch after usage is checked again; user-owned rows are never silently deleted.
+- Fixed the stale configuration-schema regression guard from schema 16 and advanced configuration to schema 18 for deferred repository cleanup state.
+
+## 0.9.65 - 2026-08-21
+
+- Adds Settings → General → Source trust → Trust unrecognized sources, default off.
+- When enabled, Omega skips only the generic unrecognized-source identity acknowledgement during install/migration.
+- Sigmascope findings, install-permission warnings, package-divergence review, compatibility checks, and unsupported-plugin warnings remain active.
+- Unrecognized repositories remain visibly labeled Unrecognized community even when the convenience trust preference is enabled.
+- Fixes virtualized listing ribbons leaking outside their Discover card/viewport and overlapping the header or neighboring results.
+- Advances configuration schema to 17 while keeping unrecognized-source trust opt-in.
+
+## 0.9.64 - 2026-08-21
+
+- Rewrites the first-use tour around finding plugins and making informed choices instead of leading with security language.
+- Spotlight now explains the hand-picked shelf and latest additions; Discover opens and highlights Filters and points users toward plugin details, community, project, and help links.
+- Updates explains that its changelog provides details without opening every plugin individually.
+- Reworks the ribbon tutorial into wrapped indicator/meaning rows plus a clearer ELI5 colour legend.
+- Makes the tutorial body vertically scrollable so long steps never clip, while keeping Back/Next/Skip visible.
+- Makes Settings → General vertically scrollable so Install permissions remains reachable at every supported UI scale.
+- Adds a persisted Discover layout selector: Dynamic (default screenshot-first view), Compact cards (icon-first, no screenshots, indicators retained), and List.
+- Advances configuration schema to 16 while preserving Dynamic as the upgrade/default Discover presentation.
+
+## 0.9.63 - 2026-08-21
+
+- Fixes the C# definite-assignment compile failure in the first-use tutorial target lookup.
+- Runtime tutorial, permission preferences, and install-gate behavior are unchanged from 0.9.62.
+
+## 0.9.62 - 2026-08-21
+
+- Adds a first-use guided Omega tour with live control highlighting for Spotlight, Discover, Search, Library, and Updates.
+- Explains listing ribbons, simple security, and the limits of Omega's safety signals in ELI5 language.
+- Adds install permission preferences for gameplay automation, camera control, chat control, and game-menu control.
+- Bot-like/gameplay automation warnings start enabled; camera/chat/menu warnings are user-selectable.
+- Installation now stops for a small confirmation popup when a selected package has a known capability the user chose to avoid.
+- Permission preferences are install-time gates, not a sandbox; Omega does not claim it can revoke Dalamud APIs after a plugin loads.
+- Adds Show tutorial again under Settings → General.
+
+## 0.9.61 - 2026-08-21
+
+- Fixes the Updates changelog icon so it opens the dedicated `Update changes` modal without the parent row navigating to Discover first.
+- Update-row navigation now waits for mouse release and yields pointer ownership while the changelog control is hovered or active.
+- Recognizes Sea of Stars (`Ottermandias/SeaOfStars`) as an explicit preferred repository/provider with preferred ordering, recognized-community trust treatment, and canonical package/security baseline eligibility.
+- Keeps security findings, source divergence, and package review independent of repository preference.
+
+## 0.9.60 - 2026-08-21
+
+- Regression-only repair for the ELI5 Sigmascope installed-plugin heading.
+- Updates the stale `Sigmascope · Installed environment` assertion to the current `Sigmascope · Installed plugins` wording and guards the compact `not checked yet` status language.
+- Runtime behavior is unchanged from 0.9.59.
+
+## 0.9.59 - 2026-08-21
+
+- Removes the Settings → Behavior tab and moves all of its options into General.
+- Gives Advanced-security-off mode a plain-language/ELI5 vocabulary across product badges, hover help, ribbons, installed-plugin security summaries, automation warnings, dependency warnings, and repository-migration warnings.
+- Uses simple labels such as `Not checked yet`, `Checking now`, `Very serious`, `Serious`, `Warning`, `Minor`, `Nothing found`, and `Known problem` while keeping technical SigmaScope/provenance language available when Advanced security is enabled.
+- Adds plain-language translations for common finding types in compact badge tooltips.
+- Simplifies normal Settings update copy so internal `Definitions` terminology does not leak into routine status messages.
+
+## 0.9.58 - 2026-08-21
+
+- Pulls the automation robot and collection folder ribbon glyphs 0.5 px left from the previous correction.
+- Renders the folder glyph slightly smaller while preserving the flag geometry.
+- Removes the dark-red square behind the small Dalamud official badge.
+- Uses Dalamud's shipped `LogoSmall` asset for Dalamud repository/provider marks instead of the Goatcorp avatar, keeping official-source presentation neutral across the client.
+
+## 0.9.57 - 2026-08-21
+
+- Removes the white backing disk behind the unsupported lock ribbon glyph.
+- Changes the unsupported lock to white and reinforces it with a restrained double draw for slightly heavier visual weight.
+- Nudges all non-star ribbon glyphs 1.5 UI pixels to the right for optical centering; the star remains unchanged.
+- Makes Advanced security information disabled by default and migrates existing pre-14 configurations to the compact security view once.
+
+## 0.9.56 - 2026-08-21
+
+- Changes the unsupported-plugin lock glyph from red to black so it stays visible on red warning ribbons.
+- Keeps the existing lock meaning and tooltip unchanged.
+
+## 0.9.55 - 2026-08-21
+
+- Adds a default-on **Search everywhere** setting. When disabled, the top search bar is shown only in Discover and retained Discover queries do not silently filter other pages.
+- Adds a default-on **Advanced security information** setting. When disabled, plugin SigmaScope sections collapse to severity/count badges with finding details on hover.
+- Keeps source-review, capability, automation, provenance, hash, and expanded finding detail hidden in compact security mode.
+- Replaces the red unsupported public-source star with a red lock icon; supported indexed source keeps the normal star.
+- Advances the client configuration schema to 13 and preserves the new settings for existing installations.
+
+## 0.9.54 - 2026-08-20
+
+- Regression-only repair for the full-width banner-backed product hero.
+- Removes the final test expectation for the old translucent inset hero panel.
+- Guards the nearly transparent hero surface and readability scrims used by the new banner-as-background layout.
+- Runtime behavior is unchanged from 0.9.53.
+
+## 0.9.52 - 2026-08-20
+
+- Reworks the Discover product hero so the plugin banner fills the full top area of the product page instead of appearing as artwork inside a bordered panel.
+- The hero now uses the banner as the actual background surface with readability scrims layered over it.
+- Expands the hero to the full available product-page width for a cleaner storefront presentation.
+
 ## 0.9.51 - 2026-08-20
 
 - Fixes the tagged release packaging path for the published marketplace SQLite bootstrap.
@@ -103,8 +229,6 @@
 Omega follows semantic product versions. Development work stays under **Unreleased** until a GitHub tag is cut; the release workflow then assigns that pending work to the tagged version. Small work-build markers preserve which internal package introduced each change without turning every development package into a release entry.
 
 ## [Unreleased]
-
-## [0.9.51] - 2026-08-20
 
 <sub>work build: 0.9.40</sub>
 - Preserve downloaded Sigmascope/security projections when Dalamud official runtime manifests replace the same source/version in the live marketplace view.

@@ -43,10 +43,12 @@ internal sealed partial class MarketplaceWindow
         switch (settingsSection)
         {
             case SettingsSection.General:
+                // General can grow as user-facing preferences are added. Keep the Settings header
+                // and tab bar fixed while the body scrolls, so Install permissions is always reachable.
+                ImGui.BeginChild("omega-settings-general-scroll", Vector2.Zero, false,
+                    ImGuiWindowFlags.AlwaysVerticalScrollbar);
                 DrawSettingsGeneralTab();
-                break;
-            case SettingsSection.Behavior:
-                DrawSettingsBehaviorTab();
+                ImGui.EndChild();
                 break;
             case SettingsSection.Legal:
                 if (DrawSettingsLegalTab())
@@ -69,9 +71,6 @@ internal sealed partial class MarketplaceWindow
     {
         if (DrawRoundedButton("General", "settings-tab-general", Ui(112f, 32f), settingsSection == SettingsSection.General))
             settingsSection = SettingsSection.General;
-        ImGui.SameLine(0f, Ui(8f));
-        if (DrawRoundedButton("Behavior", "settings-tab-behavior", Ui(112f, 32f), settingsSection == SettingsSection.Behavior))
-            settingsSection = SettingsSection.Behavior;
         ImGui.SameLine(0f, Ui(8f));
         if (DrawRoundedButton("Repositories", "settings-tab-repositories", Ui(142f, 32f), settingsSection == SettingsSection.Repositories))
             settingsSection = SettingsSection.Repositories;
@@ -362,7 +361,9 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextColored(new Vector4(0.34f, 0.64f, 0.98f, 1f),
                 dalamudRegistration?.Enabled == true ? "Unmanaged local • enabled" : "Unmanaged local • disabled");
             if (ImGui.IsItemHovered())
-                SetReadableTooltip("This repository exists locally in Dalamud but is not part of Omega's online Definitions. Omega can show its plugins as a temporary unmanaged overlay. Installing from an unrecognized source still requires explicit acknowledgement in the install flow.");
+                SetReadableTooltip(configuration.TrustUnrecognizedSources
+                    ? "This repository exists locally in Dalamud but is not part of Omega's online Definitions. You chose to trust unrecognized source identity; Omega still reports security, permission, package, compatibility, and support concerns."
+                    : "This repository exists locally in Dalamud but is not part of Omega's online Definitions. Omega can show its plugins as a temporary unmanaged overlay. Installing from an unrecognized source still requires explicit acknowledgement in the install flow.");
             return;
         }
 
@@ -371,7 +372,9 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextColored(new Vector4(0.95f, 0.64f, 0.20f, 1f),
                 "Unrecognized community");
             if (ImGui.IsItemHovered())
-                SetReadableTooltip("This repository is present in Omega Definitions but is outside Omega's recognized provider set. Installation from it requires explicit source acknowledgement; this is separate from Sigmascope findings.");
+                SetReadableTooltip(configuration.TrustUnrecognizedSources
+                    ? "This repository is outside Omega's recognized provider set. You chose to trust unrecognized source identity, so Omega skips that acknowledgement only; findings and other install protections remain active."
+                    : "This repository is present in Omega Definitions but is outside Omega's recognized provider set. Installation from it requires explicit source acknowledgement; this is separate from Sigmascope findings.");
             return;
         }
 

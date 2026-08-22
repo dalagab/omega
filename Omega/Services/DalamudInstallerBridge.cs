@@ -113,7 +113,8 @@ internal sealed class DalamudInstallerBridge
     public async Task<UpdateResult> UpdateAsync(
         MarketplacePlugin plugin,
         bool allowTesting,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool allowSameVersionRepositoryMigration = false)
     {
         var exposed = pluginInterface.InstalledPlugins.FirstOrDefault(x =>
             x.InternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase));
@@ -140,12 +141,15 @@ internal sealed class DalamudInstallerBridge
         var targetVersion = useTesting
             ? plugin.TestingAssemblyVersion ?? plugin.AssemblyVersion
             : plugin.AssemblyVersion;
-        if (targetVersion <= installedVersion)
+        var previousSource = exposed.Manifest.InstalledFromUrl ?? string.Empty;
+        var sourceMove = !PluginUpdateRules.IsSamePublishingSource(previousSource, plugin.SourceUrl, plugin.SourceIsOfficial);
+        if (targetVersion < installedVersion ||
+            (targetVersion == installedVersion && (!allowSameVersionRepositoryMigration || !sourceMove)))
         {
             return new UpdateResult(
                 UpdateOutcome.AlreadyCurrent,
                 $"{plugin.Name} is already at v{installedVersion} or newer.",
-                exposed.Manifest.InstalledFromUrl ?? string.Empty,
+                previousSource,
                 plugin.SourceUrl);
         }
 
@@ -158,7 +162,6 @@ internal sealed class DalamudInstallerBridge
                 plugin.SourceUrl);
         }
 
-        var previousSource = exposed.Manifest.InstalledFromUrl ?? string.Empty;
         try
         {
             var status = await UpdateThroughDalamudInternalsAsync(plugin, useTesting, cancellationToken).ConfigureAwait(false);
@@ -172,11 +175,13 @@ internal sealed class DalamudInstallerBridge
                 return BuildDalamudStatusFailure(plugin, installedVersion, targetVersion, previousSource, status);
             }
 
-            var moved = !PluginUpdateRules.IsSamePublishingSource(previousSource, plugin.SourceUrl, plugin.SourceIsOfficial);
+            var moved = sourceMove;
             return new UpdateResult(
                 UpdateOutcome.Updated,
                 moved
-                    ? $"Updated {plugin.Name} to v{targetVersion} and migrated it to {plugin.SourceName}."
+                    ? targetVersion == installedVersion
+                        ? $"Replaced {plugin.Name} v{targetVersion} with the package from {plugin.SourceName}."
+                        : $"Updated {plugin.Name} to v{targetVersion} and migrated it to {plugin.SourceName}."
                     : $"Updated {plugin.Name} to v{targetVersion}.",
                 previousSource,
                 plugin.SourceUrl,

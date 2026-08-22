@@ -64,6 +64,31 @@ internal sealed class PluginInstallCoordinator
     }
 
     /// <summary>
+    /// Performs a reviewed repository remediation through Dalamud's normal update lifecycle. Equal
+    /// versions are allowed only here so a same-version package from a preferred source can replace
+    /// the installed package without uninstalling or copying DLLs manually.
+    /// </summary>
+    public async Task<UpdateResult> MigrateRepositoryAsync(
+        MarketplacePlugin plugin,
+        RepositorySource? source,
+        bool allowTesting,
+        CancellationToken cancellationToken = default)
+    {
+        if (!plugin.SourceIsOfficial)
+        {
+            var error = await EnsureRepositoryReadyAsync(plugin, source, cancellationToken).ConfigureAwait(false);
+            if (error is not null)
+                return FailedUpdate(error, plugin);
+        }
+
+        return await installer.UpdateAsync(
+            plugin,
+            allowTesting,
+            cancellationToken,
+            allowSameVersionRepositoryMigration: true).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Uninstalls one installed plugin through Dalamud's lifecycle manager.
     /// </summary>
     public Task<UninstallResult> UninstallAsync(

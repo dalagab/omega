@@ -35,6 +35,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly DailyCatalogUpdateService dailyCatalogUpdate;
     private readonly OmegaSelfUpdateService selfUpdates;
     private readonly OmegaRepositoryMigrationService repositoryMigration;
+    private readonly RepositoryRemediationService repositoryRemediation;
     private readonly string assemblyDirectory;
     private IReadOnlyTitleScreenMenuEntry? titleScreenEntry;
 
@@ -69,8 +70,14 @@ public sealed class Plugin : IDalamudPlugin
         configBackups = new PluginConfigBackupService(PluginInterface.ConfigFile.FullName);
         selfUpdates = new OmegaSelfUpdateService(Configuration);
         repositoryMigration = new OmegaRepositoryMigrationService(Configuration, catalog, repositoryBridge);
+        var installCoordinator = new PluginInstallCoordinator(
+            Configuration,
+            new DalamudInstallerBridge(PluginInterface),
+            repositoryBridge);
+        repositoryRemediation = new RepositoryRemediationService(
+            Configuration, catalog, installCoordinator, repositoryBridge);
         var profileBridge = new DalamudProfileBridge();
-        marketplaceWindow = CreateMarketplaceWindow(assemblyDirectory, repositoryBridge, profileBridge);
+        marketplaceWindow = CreateMarketplaceWindow(assemblyDirectory, repositoryBridge, profileBridge, installCoordinator, repositoryRemediation);
         windowSystem.AddWindow(marketplaceWindow);
 
         RegisterUiCallbacks();
@@ -91,10 +98,57 @@ public sealed class Plugin : IDalamudPlugin
 
     private void MigrateConfigurationSchema()
     {
-        if (Configuration.Version >= 11)
-            return;
-        Configuration.Version = 11;
-        Configuration.Save();
+        var changed = false;
+        if (Configuration.Version < 14)
+        {
+            // Schema 14 changes the product security default from full detail to compact badges.
+            Configuration.ShowAdvancedSecurityInformation = false;
+            Configuration.Version = 14;
+            changed = true;
+        }
+
+        if (Configuration.Version < 15)
+        {
+            // Schema 15 introduces the first-use tour and install-time capability preferences.
+            // Show the tour once after upgrade and start with only bot-like automation warned by default.
+            Configuration.TutorialCompleted = false;
+            Configuration.WarnOnBotLikeAutomation = true;
+            Configuration.WarnOnCameraControl = false;
+            Configuration.WarnOnChatControl = false;
+            Configuration.WarnOnMenuControl = false;
+            Configuration.Version = 15;
+            changed = true;
+        }
+
+        if (Configuration.Version < 16)
+        {
+            // Schema 16 adds a Discover presentation preference. Existing users retain the
+            // screenshot-first storefront as Dynamic, which is also the new-install default.
+            Configuration.DiscoverLayout = DiscoverLayoutMode.Dynamic;
+            Configuration.Version = 16;
+            changed = true;
+        }
+
+        if (Configuration.Version < 17)
+        {
+            // Schema 17 adds an opt-in convenience preference for unrecognized source identity.
+            // Default remains cautious: users must explicitly choose to skip the generic source gate.
+            Configuration.TrustUnrecognizedSources = false;
+            Configuration.Version = 17;
+            changed = true;
+        }
+
+        if (Configuration.Version < 18)
+        {
+            // Schema 18 persists deferred cleanup after reviewed risky-repository remediation.
+            // Existing users start with no pending cleanup.
+            Configuration.RepositoryRemediationCleanup ??= [];
+            Configuration.Version = 18;
+            changed = true;
+        }
+
+        if (changed)
+            Configuration.Save();
     }
 
     private void MergeDalamudRepositoryAwareness(DalamudRepositoryBridge repositoryBridge)
@@ -156,18 +210,17 @@ public sealed class Plugin : IDalamudPlugin
     private MarketplaceWindow CreateMarketplaceWindow(
         string assemblyDirectory,
         DalamudRepositoryBridge repositoryBridge,
-        DalamudProfileBridge profileBridge)
+        DalamudProfileBridge profileBridge,
+        PluginInstallCoordinator installCoordinator,
+        RepositoryRemediationService repositoryRemediation)
     {
-        var installCoordinator = new PluginInstallCoordinator(
-            Configuration,
-            new DalamudInstallerBridge(PluginInterface),
-            repositoryBridge);
         return new MarketplaceWindow(
             Configuration,
             catalog,
             catalogUpdates,
             installCoordinator,
             repositoryBridge,
+            repositoryRemediation,
             profileBridge,
             iconCache,
             pluginRecency,
@@ -225,6 +278,7 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         dailyCatalogUpdate.Dispose();
+        repositoryRemediation.Dispose();
         repositoryMigration.Dispose();
         selfUpdates.Dispose();
         catalogUpdates.Dispose();

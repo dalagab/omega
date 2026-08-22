@@ -90,6 +90,7 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
+        var effectiveSearch = EffectiveSearchQuery();
         var installedSignature = GetInstalledSignature(installed);
         var revision = catalog.Revision;
         if (filterCatalogRevision == revision &&
@@ -99,7 +100,7 @@ internal sealed partial class MarketplaceWindow
             Equals(filterDalamudVersion, currentDalamudVersion) &&
             filterView == activeView &&
             filterSort == sort &&
-            filterSearch.Equals(search, StringComparison.Ordinal) &&
+            filterSearch.Equals(effectiveSearch, StringComparison.Ordinal) &&
             filterAuthors.Equals(AuthorSelectionKey(), StringComparison.Ordinal) &&
             filterSource.Equals(selectedSource, StringComparison.Ordinal) &&
             filterCategory.Equals(selectedCategory, StringComparison.Ordinal) &&
@@ -122,7 +123,7 @@ internal sealed partial class MarketplaceWindow
         filterDalamudVersion = currentDalamudVersion;
         filterView = activeView;
         filterSort = sort;
-        filterSearch = search;
+        filterSearch = effectiveSearch;
         filterAuthors = AuthorSelectionKey();
         filterSource = selectedSource;
         filterCategory = selectedCategory;
