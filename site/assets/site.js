@@ -47,6 +47,19 @@
     });
   }
 
+  for (const card of document.querySelectorAll('article')) {
+    const label = card.querySelector('p');
+    if (!label || label.textContent.trim().toLowerCase() !== 'iferniton') continue;
+    if (card.querySelector('.manifesto-link')) continue;
+    const description = card.querySelector('p:last-of-type');
+    if (!description) continue;
+    const link = document.createElement('a');
+    link.className = 'manifesto-link';
+    link.href = 'developers-manifesto.html';
+    link.textContent = 'Read the developers’ manifesto →';
+    description.insertAdjacentElement('afterend', link);
+  }
+
   const progress = document.querySelector('[data-reading-progress]');
   const updateProgress = () => {
     if (!progress) return;
