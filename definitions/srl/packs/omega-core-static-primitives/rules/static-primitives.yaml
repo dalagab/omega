@@ -1,0 +1,267 @@
+schema: omega.sigmascope.ruleset.v1
+rules:
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.network.http
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [System.Net.Http.HttpClient, WebRequest, HttpWebRequest, DownloadString, DownloadData, DownloadFile]
+    condition: marker
+    emit:
+      fact: network.http
+      confidence: high
+      title: HTTP/network static marker observed
+      description: A retained static literal observation matches the reviewed HTTP/network client marker vocabulary.
+      category: network
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.network.socket
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [System.Net.Sockets, TcpClient, UdpClient, Socket.Connect, SocketAsyncEventArgs]
+    condition: marker
+    emit:
+      fact: network.socket
+      confidence: high
+      title: Socket static marker observed
+      description: A retained static literal observation matches the reviewed raw-socket marker vocabulary.
+      category: network
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.filesystem.write
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [WriteAllText, WriteAllBytes, FileStream, FileMode.Create, File.Delete, File.Move, Directory.CreateDirectory, Directory.Delete]
+    condition: marker
+    emit:
+      fact: filesystem.write
+      confidence: high
+      title: Filesystem mutation static marker observed
+      description: A retained static literal observation matches the reviewed filesystem create, write, move, or delete marker vocabulary.
+      category: filesystem
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.process.launch
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [System.Diagnostics.Process, Process.Start, ProcessStartInfo, CreateProcess, ShellExecute]
+    condition: marker
+    emit:
+      fact: process.launch
+      confidence: high
+      title: Process-launch static marker observed
+      description: A retained static literal observation matches the reviewed process-launch marker vocabulary.
+      category: process
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.shell.powershell
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [powershell.exe, pwsh.exe, cmd.exe, -EncodedCommand, System.Management.Automation]
+    condition: marker
+    emit:
+      fact: shell.powershell
+      confidence: high
+      title: Shell/PowerShell static marker observed
+      description: A retained static literal observation matches the reviewed command-shell or PowerShell marker vocabulary.
+      category: process
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.registry.access
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [Microsoft.Win32.Registry, RegistryKey, RegOpenKey, RegSetValue]
+    condition: marker
+    emit:
+      fact: registry.access
+      confidence: high
+      title: Windows Registry static marker observed
+      description: A retained static literal observation matches the reviewed Windows Registry marker vocabulary.
+      category: system
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.native.pinvoke
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [DllImportAttribute, System.Runtime.InteropServices.DllImport, NativeLibrary.Load, LoadLibrary, GetProcAddress]
+    condition: marker
+    emit:
+      fact: native.pinvoke
+      confidence: high
+      title: Native interop static marker observed
+      description: A retained static literal observation matches the reviewed P/Invoke or native-library loading marker vocabulary.
+      category: native
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.dynamic.assembly
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [Assembly.Load, Assembly.LoadFrom, Assembly.LoadFile, AssemblyLoadContext, Reflection.Emit]
+    condition: marker
+    emit:
+      fact: dynamic.assembly
+      confidence: high
+      title: Dynamic-code static marker observed
+      description: A retained static literal observation matches the reviewed dynamic assembly or code-loading marker vocabulary.
+      category: dynamic-code
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.memory.process
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [OpenProcess, ReadProcessMemory, WriteProcessMemory, VirtualAllocEx, VirtualProtectEx]
+    condition: marker
+    emit:
+      fact: memory.process
+      confidence: high
+      title: Cross-process memory static marker observed
+      description: A retained static literal observation matches the reviewed process-memory access marker vocabulary.
+      category: memory
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.memory.remote-thread
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [CreateRemoteThread, NtCreateThreadEx, QueueUserAPC]
+    condition: marker
+    emit:
+      fact: memory.remote-thread
+      confidence: high
+      title: Remote-execution static marker observed
+      description: A retained static literal observation matches the reviewed remote-thread or APC execution marker vocabulary.
+      category: memory
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.game.hooking
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [Dalamud.Hooking, SignatureScanner, SigScanner, "Hook<", HookFromAddress, CreateHook]
+    condition: marker
+    emit:
+      fact: game.hooking
+      confidence: high
+      title: Game hooking/signature static marker observed
+      description: A retained static literal observation matches the reviewed Dalamud hooking or signature-scanning marker vocabulary.
+      category: game-memory
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.local.listener
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [HttpListener, TcpListener, Kestrel, WebApplication.CreateBuilder]
+    condition: marker
+    emit:
+      fact: local.listener
+      confidence: high
+      title: Listener/server static marker observed
+      description: A retained static literal observation matches the reviewed local or network listener marker vocabulary.
+      category: network
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.clipboard
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [System.Windows.Forms.Clipboard, TextCopy.ClipboardService, SDL_GetClipboardText, SDL_SetClipboardText]
+    condition: marker
+    emit:
+      fact: clipboard
+      confidence: high
+      title: Clipboard static marker observed
+      description: A retained static literal observation matches the reviewed clipboard API marker vocabulary.
+      category: privacy
+
+  - schema: omega.sigmascope.rule.v1
+    id: primitive.credential.api
+    kind: observation
+    status: reviewed
+    requires: [staticPatternMatches]
+    selectors:
+      marker:
+        collection: staticPatternMatches
+        where:
+          pattern:
+            in-ci: [CredentialManager, PasswordVault, Windows.Security.Credentials, ProtectedData.Unprotect, CryptUnprotectData, CredRead]
+    condition: marker
+    emit:
+      fact: credential.api
+      confidence: high
+      title: Credential/protected-data static marker observed
+      description: A retained static literal observation matches the reviewed credential/protected-data marker vocabulary.
+      category: privacy

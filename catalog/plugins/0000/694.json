@@ -1,0 +1,216 @@
+{
+  "plugin": {
+    "active": 1,
+    "canonical_name": "FCCH",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "FCCH",
+    "last_seen_utc": "2026-08-22T22:29:52Z",
+    "plugin_id": 694
+  },
+  "presentation": {
+    "description": "Free Company Chest Helper. Automate deposits, withdrawals, organization, crystals, workshop project pulls, and custom item lists.",
+    "image_urls_json": "[]",
+    "nsfw": 0,
+    "official": 0,
+    "plugin_id": 694,
+    "preferred_variant_id": 947,
+    "presentation_variant_id": 947,
+    "rich_card": 0,
+    "richness_score": 1239,
+    "summary": "Automate Free Company chest deposits, withdrawals, organization, and workshop material pulls.",
+    "web_enriched": 1
+  },
+  "schema": "omega.catalog-json.plugin.v1",
+  "search": {
+    "author": "Nexai",
+    "description": "Free Company Chest Helper. Automate deposits, withdrawals, organization, crystals, workshop project pulls, and custom item lists.",
+    "internal_name": "FCCH",
+    "name": "FCCH",
+    "plugin_id": 694,
+    "punchline": "Automate Free Company chest deposits, withdrawals, organization, and workshop material pulls.",
+    "tags": "automation chest crystals deposit fc free company inventory utility withdraw workshop",
+    "website_text": "Automates moving existing items to and from the Free Company Chest. <div align=\"center\">\n  <h1>FCCH</h1>\n  <h3>Free Company Chest Helper</h3>\n  <p>\n    Automate deposits, withdrawals, organization, crystals, workshop project pulls, and custom item lists.\n    <br />\n    <a href=\"#installation\">Installation</a> · <a href=\"#features\">Features</a> · <a href=\"#commands\">Commands</a> · <a href=\"#ipc\">IPC</a>\n  </p>\n<p align=\"center\">\n    <a href=\"https://www.patreon.com/cw/Nexairi\">\n    <img src=\"https://img.shields.io/badge/Support%20on-Patreon-FF424D?style=for-the-badge&logo=patreon&logoColor=white\" alt=\"Patreon\" />\n</a>\n</p>\n\n\n</div>\n\n## Installation\n1. **Prerequisites**: [FFXIVQuickLauncher](https://github.com/goatcorp/FFXIVQuickLauncher) with Dalamud enabled.\n2. **Add Repository**: `/xlsettings` → Experimental → Custom Plugin Repositories:\n   ```\n   https://puni.sh/api/repository/nexai\n   ```\n3. **Install**: `/xlplugins` → Search **FCCH** → Install.\n\n## Features\n\n### Deposit & Withdraw\n- **All / Per Tab** - Deposit or withdraw everything, or target a specific FC tab (1-5).\n- **Duplicates** - Deposit only items matching existing chest stacks.\n- **Custom List** - Saved deposit/withdraw item lists for repeat tasks (ceruleum, repair kits, etc.).\n- **Workshop** - Pull exact materials for Company Workshop projects. Refreshes when the project list changes.\n- **Crystals** - Deposit/withdraw shards/crystals/clusters with configurable keep amounts.\n- **Gil** - Deposit/withdraw with shorthand amounts (`5k`, `1m`, `all`). Optional auto-deposit by percentage or fixed amount with an `always keep` floor.\n- **Lower Quality on Deposit** - Optionally convert HQ items to NQ as they deposit.\n\n### Organizer\n- **Move** - Transfer items between FC chest tabs with filters.\n- **Sort** - Reorder items within a tab by category, ID, name, or quantity.\n- **Merge** - Combine partial stacks of the same item within a tab.\n\n### Toolbar\n- **Dropdowns** - Deposit/Withdraw split-buttons expose tabs 1-5 inline.\n- **Crystal Button** - Left click deposits crystals, right click withdraws.\n- **Customizable Buttons** - Show or hide each toolbar button, lock position, snap to grid.\n\n### Utilities\n- **Chest Search** - Search bar on the FC chest window filters visible items by name. Optional controller focus.\n- **Fast Move** - Hold a modifier key (default Ctrl) and right-click an item to move a full stack instantly, skipping the quantity prompt. Also hold a number key (1-5) to pick the destination FC tab, otherwise the open tab is used. Works on crystals too: modifier + right-click a shard/crystal/cluster to deposit (from your inventory) or withdraw (from the chest) it. No number key needed for crystals.\n- **Ignore List** - Exclude items from operations. Supports presets.\n- **Crystal Config** - Global or per crystal keep amounts.\n- **Leave One per Stack** - Reserve slots so a stack always remains in your inventory.\n- **Completion Sound** - Optional sound when an operation finishes, with custom sound file support.\n- **Export/Import** - Share lists via clipboard.\n- **Item Context Menu** - Right-click any inventory item to add or remove from Custom or Ignore list. Toggleable.\n- **Compact Item Names** - Shortens materia, grade, and level item names in lists. Original names still used for sorting, search, IPC, and chest operations.\n\n## Commands\n\n| Command | Description |\n| :--- | :--- |\n| `/fcch` | Open settings window |\n| `/fcch da` / `da1`..`da5` | Deposit All (or into FC tab N) |\n| `/fcch dd` | Deposit Duplicates |\n| `/fcch ds` | Deposit Custom List |\n| `/fcch dc` | Deposit Crystals |\n| `/fcch wa` / `wa1`..`wa5` | Withdraw All (or from FC tab N) |\n| `/fcch ws` | Withdraw Custom List |\n| `/fcch wc` | Withdraw Crystals |\n| `/fcch wp` | Withdraw Workshop |\n| `/fcch gd <amount>` | Deposit Gil |\n| `/fcch gw <amount>` | Withdraw Gil |\n| `/fcch info` | Show FC rank, permissions, and tab access |\n| `/fcch help` | List the deposit, withdraw, gil, and info commands |\n\n> **Amount Shorthand:** Gil commands accept raw numbers (`5000`), thousands (`5k`, `15k`), or millions (`1m`, `2.5m`).\n\n## IPC\n\nOther plugins can drive FCCH via Dalamud IPC. Mutation calls return `bool`. `true` means FCCH accepted the request, `false` means refused (busy, invalid args, or nothing to do).\n\n### Readiness\n\n| IPC | Signature | Description |\n| :--- | :--- | :--- |\n| `FCCH.IsAvailable` | `bool()` | FCCH plugin is loaded |\n| `FCCH.IsBusy` | `bool()` | An operation is running |\n\n### Counts\n\n| IPC | Signature | Description |\n| :--- | :--- | :--- |\n| `FCCH.GetChestItemCount` | `long(uint itemId)` | Items in the FC chest (cached) |\n| `FCCH.GetWithdrawableItemCount` | `long(uint itemId)` | Withdrawable items in the FC chest (cached) |\n| `FCCH.GetPlayerInventoryCount` | `long(uint itemId)` | Items in player inventory |\n\n### Deposit\n\n| IPC | Signature | Description |\n| :--- | :--- | :--- |\n| `FCCH.DepositAll` | `bool()` | Deposit all allowed items |\n| `FCCH.DepositCustom` | `bool()` | Deposit Custom List items |\n| `FCCH.DepositDuplicates` | `bool()` | Deposit duplicates of items in the chest |\n| `FCCH.DepositGil` | `bool(string amount)` | Deposit gil (5000, 5k, 1m, all) |\n| `FCCH.DepositItem` | `bool(uint itemId, int quantity)` | Deposit one item up to quantity |\n| `FCCH.DepositItems` | `bool(Dictionary<uint,int> items)` | Deposit requested item quantities |\n\n### Withdraw\n\n| IPC | Signature | Description |\n| :--- | :--- | :--- |\n| `FCCH.WithdrawAll` | `bool()` | Withdraw all allowed items |\n| `FCCH.WithdrawCustom` | `bool()` | Withdraw Custom List items |\n| `FCCH.WithdrawGil` | `bool(string amount)` | Withdraw gil (5000, 5k, 1m, all) |\n| `FCCH.WithdrawItem` | `bool(uint itemId, int quantity)` | Withdraw one item up to quantity |\n| `FCCH.WithdrawItems` | `bool(Dictionary<uint,int> items)` | Withdraw exact quantities per item |\n| `FCCH.WithdrawMissingItems` | `bool(Dictionary<uint,int> requiredTotals)` | Withdraw only the missing amount to reach each total |\n| `FCCH.WithdrawWorkshop` | `bool()` | Withdraw Workshop materials |\n\n### Control\n\n| IPC | Signature | Description |\n| :--- | :--- | :--- |\n| `FCCH.Stop` | `bool()` | Stop the current operation |\n\nMutations need the FC chest open. FCCH opens it automatically if closed."
+  },
+  "variants": [
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 947
+        },
+        {
+          "kind": "tag",
+          "tag": "chest",
+          "variant_id": 947
+        },
+        {
+          "kind": "tag",
+          "tag": "crystals",
+          "variant_id": 947
+        },
+        {
+          "kind": "tag",
+          "tag": "deposit",
+          "variant_id": 947
+        },
+        {
+          "kind": "tag",
+          "tag": "fc",
+          "variant_id": 947
+        },
+        {
+          "kind": "tag",
+          "tag": "free company",
+          "variant_id": 947
+        },
+        {
+          "kind": "tag",
+          "tag": "inventory",
+          "variant_id": 947
+        },
+        {
+          "kind": "tag",
+          "tag": "utility",
+          "variant_id": 947
+        },
+        {
+          "kind": "tag",
+          "tag": "withdraw",
+          "variant_id": 947
+        },
+        {
+          "kind": "tag",
+          "tag": "workshop",
+          "variant_id": 947
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "2.4.6.0",
+        "author": "Nexai",
+        "authors_json": "[\"Nexai\"]",
+        "category_tags_json": "[]",
+        "changelog": "Fix: Specific HQ condition bug.",
+        "dalamud_api_level": 15,
+        "description": "Free Company Chest Helper. Automate deposits, withdrawals, organization, crystals, workshop project pulls, and custom item lists.",
+        "dip17_channel": "",
+        "download_count": 1763,
+        "download_link_install": "https://puni.sh/api/plugins/download/149/FCCH/versions/2.4.6.0/install/latest.zip",
+        "download_link_testing": "",
+        "download_link_update": "https://puni.sh/api/plugins/download/149/FCCH/versions/2.4.6.0/update/latest.zip",
+        "first_seen_utc": "2026-08-19T22:49:06Z",
+        "icon_url": "https://puni.sh/api/plugins/icon/149",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-22T22:29:52Z",
+        "last_update": 1785790722,
+        "minimum_dalamud_version": null,
+        "name": "FCCH",
+        "plugin_id": 694,
+        "punchline": "Automate Free Company chest deposits, withdrawals, organization, and workshop material pulls.",
+        "raw_manifest_json": "{\"Author\":\"Nexai\",\"Name\":\"FCCH\",\"Punchline\":\"Automate Free Company chest deposits, withdrawals, organization, and workshop material pulls.\",\"Description\":\"Free Company Chest Helper. Automate deposits, withdrawals, organization, crystals, workshop project pulls, and custom item lists.\",\"Tags\":[\"free company\",\"fc\",\"chest\",\"inventory\",\"workshop\",\"crystals\",\"deposit\",\"withdraw\",\"utility\",\"automation\"],\"InternalName\":\"FCCH\",\"RepoUrl\":\"https://github.com/Nexaii/FCCH\",\"DownloadCount\":1763,\"LastUpdate\":1785790722,\"DownloadLinkInstall\":\"https://puni.sh/api/plugins/download/149/FCCH/versions/2.4.6.0/install/latest.zip\",\"DownloadLinkUpdate\":\"https://puni.sh/api/plugins/download/149/FCCH/versions/2.4.6.0/update/latest.zip\",\"AssemblyVersion\":\"2.4.6.0\",\"ApplicableVersion\":\"any\",\"DalamudApiLevel\":\"15\",\"Changelog\":\"Fix: Specific HQ condition bug.\",\"IconUrl\":\"https://puni.sh/api/plugins/icon/149\"}",
+        "repo_url": "https://github.com/Nexaii/FCCH",
+        "source_entry_key": "fcch|2.4.6.0|15|0|1",
+        "source_id": 148,
+        "tags_json": "[\"free company\",\"fc\",\"chest\",\"inventory\",\"workshop\",\"crystals\",\"deposit\",\"withdraw\",\"utility\",\"automation\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 947
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 1767
+        },
+        {
+          "kind": "tag",
+          "tag": "chest",
+          "variant_id": 1767
+        },
+        {
+          "kind": "tag",
+          "tag": "crystals",
+          "variant_id": 1767
+        },
+        {
+          "kind": "tag",
+          "tag": "deposit",
+          "variant_id": 1767
+        },
+        {
+          "kind": "tag",
+          "tag": "fc",
+          "variant_id": 1767
+        },
+        {
+          "kind": "tag",
+          "tag": "free company",
+          "variant_id": 1767
+        },
+        {
+          "kind": "tag",
+          "tag": "inventory",
+          "variant_id": 1767
+        },
+        {
+          "kind": "tag",
+          "tag": "utility",
+          "variant_id": 1767
+        },
+        {
+          "kind": "tag",
+          "tag": "withdraw",
+          "variant_id": 1767
+        },
+        {
+          "kind": "tag",
+          "tag": "workshop",
+          "variant_id": 1767
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "2.4.6.0",
+        "author": "Nexai",
+        "authors_json": "[\"Nexai\"]",
+        "category_tags_json": "[]",
+        "changelog": "Fix: Specific HQ condition bug.",
+        "dalamud_api_level": 15,
+        "description": "Free Company Chest Helper. Automate deposits, withdrawals, organization, crystals, workshop project pulls, and custom item lists.",
+        "dip17_channel": "",
+        "download_count": 1687,
+        "download_link_install": "https://puni.sh/api/plugins/download/149/FCCH/versions/2.4.6.0/install/latest.zip",
+        "download_link_testing": "",
+        "download_link_update": "https://puni.sh/api/plugins/download/149/FCCH/versions/2.4.6.0/update/latest.zip",
+        "first_seen_utc": "2026-08-20T06:02:54Z",
+        "icon_url": "https://puni.sh/api/plugins/icon/149",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-20T06:02:54Z",
+        "last_update": 1785790722,
+        "minimum_dalamud_version": null,
+        "name": "FCCH",
+        "plugin_id": 694,
+        "punchline": "Automate Free Company chest deposits, withdrawals, organization, and workshop material pulls.",
+        "raw_manifest_json": "{\"Author\":\"Nexai\",\"Name\":\"FCCH\",\"Punchline\":\"Automate Free Company chest deposits, withdrawals, organization, and workshop material pulls.\",\"Description\":\"Free Company Chest Helper. Automate deposits, withdrawals, organization, crystals, workshop project pulls, and custom item lists.\",\"Tags\":[\"free company\",\"fc\",\"chest\",\"inventory\",\"workshop\",\"crystals\",\"deposit\",\"withdraw\",\"utility\",\"automation\"],\"InternalName\":\"FCCH\",\"RepoUrl\":\"https://github.com/Nexaii/FCCH\",\"DownloadCount\":1687,\"LastUpdate\":1785790722,\"DownloadLinkInstall\":\"https://puni.sh/api/plugins/download/149/FCCH/versions/2.4.6.0/install/latest.zip\",\"DownloadLinkUpdate\":\"https://puni.sh/api/plugins/download/149/FCCH/versions/2.4.6.0/update/latest.zip\",\"AssemblyVersion\":\"2.4.6.0\",\"ApplicableVersion\":\"any\",\"DalamudApiLevel\":15,\"Changelog\":\"Fix: Specific HQ condition bug.\",\"IconUrl\":\"https://puni.sh/api/plugins/icon/149\",\"IsHide\":false,\"IsTestingExclusive\":false,\"_SourceId\":\"punish-nexai\",\"_SourceName\":\"Nexai's Repo\",\"_SourceUrl\":\"https://puni.sh/api/repository/nexai\"}",
+        "repo_url": "https://github.com/Nexaii/FCCH",
+        "source_entry_key": "fcch|2.4.6.0|15|0|1",
+        "source_id": 490,
+        "tags_json": "[\"free company\",\"fc\",\"chest\",\"inventory\",\"workshop\",\"crystals\",\"deposit\",\"withdraw\",\"utility\",\"automation\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 1767
+      }
+    }
+  ]
+}

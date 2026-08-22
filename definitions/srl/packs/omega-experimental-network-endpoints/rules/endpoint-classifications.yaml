@@ -1,0 +1,163 @@
+schema: omega.sigmascope.ruleset.v1
+rules:
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.concrete
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          concreteDestinationEvidence: {equals: true}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.concrete
+      confidence: high
+      title: Concrete network destination observed
+      description: SigmaScope retained a normalized endpoint with concrete-destination evidence. This remains static evidence, not proof of a runtime connection.
+      category: network-endpoint
+
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.public-ip-literal
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          classification: {equals-ci: public-ip-literal}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.public-ip
+      confidence: high
+      title: Direct public IP endpoint observed
+      description: A normalized endpoint uses a public IP literal rather than a hostname.
+      category: network-endpoint
+
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.private-or-loopback
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          classification: {equals-ci: private-or-loopback}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.private-or-loopback
+      confidence: high
+      title: Private or loopback endpoint observed
+      description: A normalized endpoint targets localhost, loopback, link-local, or private-address space.
+      category: network-endpoint
+
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.special-use-ip
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          classification: {equals-ci: special-use-ip}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.special-use-ip
+      confidence: high
+      title: Special-use IP endpoint observed
+      description: A normalized endpoint uses an unspecified, multicast, reserved, or other special-use IP literal.
+      category: network-endpoint
+
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.discord-webhook
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          classification: {equals-ci: webhook-endpoint}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.discord-webhook
+      confidence: high
+      title: Discord webhook endpoint observed
+      description: A sanitized normalized endpoint is classified as a Discord webhook URL.
+      category: network-endpoint
+
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.telemetry
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          classification: {equals-ci: telemetry-endpoint}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.telemetry
+      confidence: high
+      title: Telemetry/error-service endpoint observed
+      description: A normalized endpoint belongs to a known telemetry or error-reporting service.
+      category: network-endpoint
+
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.insecure-http
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          classification: {equals-ci: insecure-http}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.insecure-http
+      confidence: high
+      title: Unencrypted HTTP endpoint observed
+      description: A normalized endpoint uses plain HTTP rather than HTTPS.
+      category: network-endpoint
+
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.collection-service
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          classification: {equals-ci: collection-endpoint}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.collection-service
+      confidence: high
+      title: Collection-service endpoint observed
+      description: A normalized endpoint targets a service classified by Omega as a data-collection endpoint.
+      category: network-endpoint
+
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.unrecognised-host
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          classification: {equals-ci: unrecognised-host}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.unrecognised-host
+      confidence: high
+      title: Unrecognised public endpoint observed
+      description: A normalized public endpoint is not currently in Omega's recognised platform list.
+      category: network-endpoint

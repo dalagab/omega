@@ -1,0 +1,266 @@
+{
+  "plugin": {
+    "active": 1,
+    "canonical_name": "TextToTalk",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "TextToTalk",
+    "last_seen_utc": "2026-08-22T22:29:52Z",
+    "plugin_id": 218
+  },
+  "presentation": {
+    "description": "Chat and game dialogue TTS. Use /tttconfig to configure the enabled channels and triggers/exceptions.",
+    "image_urls_json": "[\"https://user-images.githubusercontent.com/49822414/126075774-a97d7a11-98c6-40e4-9937-711a8da96926.png\",\"https://user-images.githubusercontent.com/49822414/126075784-1af622f3-df16-4e00-8de5-bf11f6acb017.png\",\"https://user-images.githubusercontent.com/49822414/126075793-8b4587e0-1863-44ca-a13f-27a1fcd336d6.png\",\"https://user-images.githubusercontent.com/49822414/126075802-c694a821-82da-4d87-bf97-06fba9d1e5e4.png\",\"https://user-images.githubusercontent.com/49822414/126075852-f2aee169-c83c-4916-aca2-e715951eab36.png\"]",
+    "nsfw": 0,
+    "official": 0,
+    "plugin_id": 218,
+    "preferred_variant_id": 2969,
+    "presentation_variant_id": 2969,
+    "rich_card": 1,
+    "richness_score": 51183,
+    "summary": "Chat and game dialogue TTS plugin.",
+    "web_enriched": 1
+  },
+  "schema": "omega.catalog-json.plugin.v1",
+  "search": {
+    "author": "karashiiro",
+    "description": "Chat and game dialogue TTS. Use /tttconfig to configure the enabled channels and triggers/exceptions.",
+    "internal_name": "TextToTalk",
+    "name": "TextToTalk",
+    "plugin_id": 218,
+    "punchline": "Chat and game dialogue TTS plugin.",
+    "tags": "karashiiro speech trigger triggers tts voice voices",
+    "website_text": "Chat TTS plugin for Dalamud. Has support for triggers/exclusions, several TTS providers, and more! [![Download count](https://img.shields.io/endpoint?url=https://qzysathwfhebdai6xgauhz4q7m0mzmrf.lambda-url.us-east-1.on.aws/TextToTalk)](https://github.com/karashiiro/TextToTalk)\n\n# TextToTalk\nChat TTS plugin for [Dalamud](https://github.com/goatcorp/Dalamud). Has support for triggers/exclusions, several TTS providers, and more!\n\n## Commands\n* `/tttconfig`: Opens the configuration window.\n* `/canceltts`: Cancel all queued TTS messages.\n* `/toggletts`: Turns TTS on or off.\n* `/disabletts`: Turns TTS off.\n* `/enabletts`: Turns TTS on.\n\n## Lexicons\nTextToTalk supports custom lexicons to modify how words are pronounced. For more information, please join our [community lexicons discussion](https://github.com/karashiiro/TextToTalk/discussions/62).\n\nDirect links to information will be added here eventually.\n\n## Supported TTS providers\n* System (Windows)\n* Megaphone\n* Websocket\n* AWS Polly\n* Azure (Microsoft Cognitive Services)\n* Google Cloud\n* ElevenLabs\n* OpenAI\n* Fish Audio\n* Kokoro\n* Uberduck\n\n## WebSocket interfacing\nTextToTalk can optionally open a WebSocket server to serve messages over.\nThere are currently three JSON-format messages that can be sent (see\n[`IpcMessage`](https://github.com/karashiiro/TextToTalk/blob/main/src/TextToTalk/Backends/Websocket/IpcMessage.cs)):\n\nTTS prompt:\n```json5\n{\n  \"Type\": \"Say\",\n  \"Payload\": \"Firstname Lastname says something\",\n  // Will replace the logged-in player's name with {{FULL_NAME}}, {{FIRST_NAME}}, or {{LAST_NAME}} as appropriate.\n  // Does not currently apply to players other than the logged-in player.\n  \"PayloadTemplate\": \"{{FULL_NAME}} says something\",\n  \"Voice\": {\n    \"Name\": \"Gender\"\n  },\n  \"Speaker\": \"Firstname Lastname\",\n  // Speaker's home world display name, or null when unavailable.\n  \"SpeakerWorld\": \"Cactuar\",\n  // or \"AddonTalk\", or \"AddonBattleTalk\"\n  \"Source\": \"Chat\",\n  \"StuttersRemoved\": false,\n  // or null, for non-NPCs\n  \"NpcId\": 1000115,\n  // \"Hyur\", \"Elezen\", \"Lalafell\", \"Miqo'te\", \"Roegadyn\", \"Au Ra\", \"Hrothgar\", \"Viera\", or null\n  \"Race\": null,\n  // The speaker's ModelChara ID, or null when unavailable/non-NPC.\n  \"ModelCharaId\": null,\n  // \"Unknown\", \"Youth\", \"Adult\", \"Elder\", or null\n  \"BodyType\": null,\n  // \"None\", \"Male\", \"Female\", or null\n  \"Gender\": null,\n  // Refer to https://dalamud.dev/api/Dalamud.Game.Text/Enums/XivChatType\n  \"ChatType\": 10,\n  // Refer to https://dalamud.dev/api/Dalamud/Enums/ClientLanguage\n  \"Language\": \"English\",\n  // Game voice volume level (0.0-1.0)\n  \"Volume\": 1.0\n}\n```\n\nTTS cancel:\n```json5\n{\n  \"Type\": \"Cancel\",\n  \"Payload\": \"\",\n  \"PayloadTemplate\": \"\",\n  \"Voice\": null,\n  \"Speaker\": null,\n  // or \"Chat\", \"AddonTalk\", or \"AddonBattleTalk\"\n  \"Source\": \"None\",\n  \"StuttersRemoved\": false,\n  \"NpcId\": null,\n  \"ChatType\": null,\n  \"Language\": null\n}\n```\n\n### Dialogue event:\n\n```json5\n{\n  \"Type\": \"Event\",\n  // or \"Chat\", \"AddonTalk\", or \"AddonBattleTalk\"\n  \"Source\": \"AddonTalk\",\n  // \"NpcDialogueSessionStarted\" or \"NpcDialogueSessionEnded\"\n  \"EventType\": \"NpcDialogueSessionStarted\",\n  // Unique identifier for the session\n  \"EventSessionId\": \"3f2504e0-4f89-41d3-9a0c-0305e82c3301\",\n  // Reason for the event: \"TextReceived\", \"AddonShown\", \"DialogueContextEnded\",\n  // \"TerritoryChanged\", \"LoggedOut\", or \"PluginStopped\"\n  \"EventReason\": \"TextReceived\"\n}\n```\n\nA dialogue session starts when NPC or battle dialogue text arrives (or the Talk/BattleTalk addon becomes visible) and ends when all dialogue signals are absent for 3 consecutive frames, or immediately on territory change/logout/plugin shutdown.\n\n## Screenshots\n![image](https://user-images.githubusercontent.com/49822414/126075774-a97d7a11-98c6-40e4-9937-711a8da96926.png)\n![image](https://user-images.githubusercontent.com/49822414/126075784-1af622f3-df16-4e00-8de5-bf11f6acb017.png)\n![image](https://user-images.githubusercontent.com/49822414/126075793-8b4587e0-1863-44ca-a13f-27a1fcd336d6.png)\n![image](https://user-images.githubusercontent.com/49822414/126075802-c694a821-82da-4d87-bf97-06fba9d1e5e4.png)\n![image](https://user-images.githubusercontent.com/49822414/126075852-f2aee169-c83c-4916-aca2-e715951eab36.png)\n![image](https://user-images.githubusercontent.com/49822414/126075869-480cacb2-8537-41da-aaba-553da5ec9abb.png)\n![image](https://user-images.githubusercontent.com/49822414/126075873-aa329726-92eb-4ea1-9127-39810016596b.png)\n\n## Development\nRefer to the [wiki](https://github.com/karashiiro/TextToTalk/wiki/Development) for dev documentation."
+  },
+  "variants": [
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "karashiiro",
+          "variant_id": 218
+        },
+        {
+          "kind": "tag",
+          "tag": "speech",
+          "variant_id": 218
+        },
+        {
+          "kind": "tag",
+          "tag": "trigger",
+          "variant_id": 218
+        },
+        {
+          "kind": "tag",
+          "tag": "triggers",
+          "variant_id": 218
+        },
+        {
+          "kind": "tag",
+          "tag": "tts",
+          "variant_id": 218
+        },
+        {
+          "kind": "tag",
+          "tag": "voice",
+          "variant_id": 218
+        },
+        {
+          "kind": "tag",
+          "tag": "voices",
+          "variant_id": 218
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "1.40.2.0",
+        "author": "karashiiro",
+        "authors_json": "[\"karashiiro\"]",
+        "category_tags_json": "[]",
+        "changelog": "- **WebSocket**: Adds speaker world to speech messages for external TTS engines to consume (thanks `@barrcodes`!).\n- **Megaphone**: Internal API changes to support reacting to specific NPC dialogue events (thanks `@barrcodes`!).",
+        "dalamud_api_level": 15,
+        "description": "Chat and game dialogue TTS. Use /tttconfig to configure the enabled channels and triggers/exceptions.",
+        "dip17_channel": "testing-live",
+        "download_count": 158864,
+        "download_link_install": "https://kamori.goats.dev/Plugin/Download/TextToTalk?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+        "download_link_testing": "https://kamori.goats.dev/Plugin/Download/TextToTalk?isUpdate=False&isTesting=True&branch=api9&isDip17=True",
+        "download_link_update": "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api9/plugins/TextToTalk/latest.zip",
+        "first_seen_utc": "2026-08-19T22:49:06Z",
+        "icon_url": "https://raw.githubusercontent.com/karashiiro/TextToTalk/main/images/icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 1,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-22T22:29:52Z",
+        "last_update": 1786548334,
+        "minimum_dalamud_version": null,
+        "name": "TextToTalk",
+        "plugin_id": 218,
+        "punchline": "Chat and game dialogue TTS plugin.",
+        "raw_manifest_json": "{\"Author\":\"karashiiro\",\"Name\":\"TextToTalk\",\"Punchline\":\"Chat and game dialogue TTS plugin.\",\"Description\":\"Chat and game dialogue TTS. Use /tttconfig to configure the enabled channels and triggers/exceptions.\",\"Changelog\":\"- **WebSocket**: Adds speaker world to speech messages for external TTS engines to consume (thanks `@barrcodes`!).\\n- **Megaphone**: Internal API changes to support reacting to specific NPC dialogue events (thanks `@barrcodes`!).\",\"TestingChangelog\":\"- **Megaphone**: Internal API changes to support reacting to specific NPC messages.\",\"Tags\":[\"tts\",\"trigger\",\"triggers\",\"voice\",\"voices\",\"speech\",\"karashiiro\"],\"CategoryTags\":null,\"IsHide\":true,\"InternalName\":\"TextToTalk\",\"AssemblyVersion\":\"1.40.2.0\",\"TestingAssemblyVersion\":\"1.40.3.0\",\"IsTestingExclusive\":false,\"RepoUrl\":\"https://github.com/karashiiro/TextToTalk\",\"ApplicableVersion\":\"any\",\"DalamudApiLevel\":15,\"TestingDalamudApiLevel\":15,\"DownloadCount\":158864,\"LastUpdate\":1786548334,\"DownloadLinkInstall\":\"https://kamori.goats.dev/Plugin/Download/TextToTalk?isUpdate=False&isTesting=False&branch=api9&isDip17=True\",\"DownloadLinkUpdate\":\"https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api9/plugins/TextToTalk/latest.zip\",\"DownloadLinkTesting\":\"https://kamori.goats.dev/Plugin/Download/TextToTalk?isUpdate=False&isTesting=True&branch=api9&isDip17=True\",\"LoadPriority\":0,\"ImageUrls\":[],\"IconUrl\":\"https://raw.githubusercontent.com/karashiiro/TextToTalk/main/images/icon.png\",\"AcceptsFeedback\":true,\"FeedbackMessage\":null,\"FeedbackWebhook\":null,\"_isDip17Plugin\":true,\"_Dip17Channel\":\"testing-live\"}",
+        "repo_url": "https://github.com/karashiiro/TextToTalk",
+        "source_entry_key": "texttotalk|1.40.2.0|15|15|206",
+        "source_id": 1,
+        "tags_json": "[\"tts\",\"trigger\",\"triggers\",\"voice\",\"voices\",\"speech\",\"karashiiro\"]",
+        "testing_assembly_version": "1.40.3.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 218
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "UI",
+          "variant_id": 2819
+        },
+        {
+          "kind": "tag",
+          "tag": "karashiiro",
+          "variant_id": 2819
+        },
+        {
+          "kind": "tag",
+          "tag": "speech",
+          "variant_id": 2819
+        },
+        {
+          "kind": "tag",
+          "tag": "trigger",
+          "variant_id": 2819
+        },
+        {
+          "kind": "tag",
+          "tag": "triggers",
+          "variant_id": 2819
+        },
+        {
+          "kind": "tag",
+          "tag": "tts",
+          "variant_id": 2819
+        },
+        {
+          "kind": "tag",
+          "tag": "voice",
+          "variant_id": 2819
+        },
+        {
+          "kind": "tag",
+          "tag": "voices",
+          "variant_id": 2819
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "1.16.0.0",
+        "author": "karashiiro",
+        "authors_json": "[\"karashiiro\"]",
+        "category_tags_json": "[\"UI\"]",
+        "changelog": "",
+        "dalamud_api_level": 6,
+        "description": "Chat TTS. Use /tttconfig to configure the enabled channels and triggers/exceptions.",
+        "dip17_channel": "",
+        "download_count": 23239,
+        "download_link_install": "https://kamori.goats.dev/Plugin/Download/TextToTalk?isUpdate=False&isTesting=False&branch=api6",
+        "download_link_testing": "https://kamori.goats.dev/Plugin/Download/TextToTalk?isUpdate=False&isTesting=True&branch=api6",
+        "download_link_update": "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api6/plugins/TextToTalk/latest.zip",
+        "first_seen_utc": "2026-08-22T09:49:09Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-22T09:49:09Z",
+        "last_update": 1656041930,
+        "minimum_dalamud_version": null,
+        "name": "TextToTalk",
+        "plugin_id": 218,
+        "punchline": "",
+        "raw_manifest_json": "{\"Author\":\"karashiiro\",\"Name\":\"TextToTalk\",\"InternalName\":\"TextToTalk\",\"AssemblyVersion\":\"1.16.0.0\",\"Description\":\"Chat TTS. Use /tttconfig to configure the enabled channels and triggers/exceptions.\",\"ApplicableVersion\":\"any\",\"RepoUrl\":\"https://github.com/karashiiro/TextToTalk\",\"Tags\":[\"tts\",\"trigger\",\"triggers\",\"voice\",\"voices\",\"speech\",\"karashiiro\"],\"DalamudApiLevel\":6,\"LoadPriority\":0,\"IsHide\":false,\"TestingAssemblyVersion\":\"1.13.0.0\",\"IsTestingExclusive\":false,\"DownloadCount\":23239,\"CategoryTags\":[\"UI\"],\"LastUpdate\":\"1656041930\",\"DownloadLinkInstall\":\"https://kamori.goats.dev/Plugin/Download/TextToTalk?isUpdate=False&isTesting=False&branch=api6\",\"DownloadLinkTesting\":\"https://kamori.goats.dev/Plugin/Download/TextToTalk?isUpdate=False&isTesting=True&branch=api6\",\"DownloadLinkUpdate\":\"https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api6/plugins/TextToTalk/latest.zip\",\"_SourceId\":\"caraxi-dalamudplugins\",\"_SourceName\":\"Caraxi / DalamudPlugins\",\"_SourceUrl\":\"https://raw.githubusercontent.com/Caraxi/DalamudPlugins/master/pluginmaster.json\"}",
+        "repo_url": "https://github.com/karashiiro/TextToTalk",
+        "source_entry_key": "texttotalk|1.16.0.0|6|0|107",
+        "source_id": 600,
+        "tags_json": "[\"tts\",\"trigger\",\"triggers\",\"voice\",\"voices\",\"speech\",\"karashiiro\"]",
+        "testing_assembly_version": "1.13.0.0",
+        "testing_dalamud_api_level": null,
+        "variant_id": 2819
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "karashiiro",
+          "variant_id": 2969
+        },
+        {
+          "kind": "tag",
+          "tag": "speech",
+          "variant_id": 2969
+        },
+        {
+          "kind": "tag",
+          "tag": "trigger",
+          "variant_id": 2969
+        },
+        {
+          "kind": "tag",
+          "tag": "triggers",
+          "variant_id": 2969
+        },
+        {
+          "kind": "tag",
+          "tag": "tts",
+          "variant_id": 2969
+        },
+        {
+          "kind": "tag",
+          "tag": "voice",
+          "variant_id": 2969
+        },
+        {
+          "kind": "tag",
+          "tag": "voices",
+          "variant_id": 2969
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "1.40.3.0",
+        "author": "karashiiro",
+        "authors_json": "[\"karashiiro\"]",
+        "category_tags_json": "[]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Chat and game dialogue TTS. Use /tttconfig to configure the enabled channels and triggers/exceptions.",
+        "dip17_channel": "testing-live",
+        "download_count": 0,
+        "download_link_install": "",
+        "download_link_testing": "",
+        "download_link_update": "",
+        "first_seen_utc": "2026-08-22T22:29:52Z",
+        "icon_url": "https://raw.githubusercontent.com/karashiiro/TextToTalk/main/images/icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-22T22:29:52Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "TextToTalk",
+        "plugin_id": 218,
+        "punchline": "Chat and game dialogue TTS plugin.",
+        "raw_manifest_json": "{\"Author\":\"karashiiro\",\"Name\":\"TextToTalk\",\"InternalName\":\"TextToTalk\",\"AssemblyVersion\":\"1.40.3.0\",\"Description\":\"Chat and game dialogue TTS. Use /tttconfig to configure the enabled channels and triggers/exceptions.\",\"ApplicableVersion\":\"any\",\"RepoUrl\":\"https://github.com/karashiiro/TextToTalk\",\"Tags\":[\"tts\",\"trigger\",\"triggers\",\"voice\",\"voices\",\"speech\",\"karashiiro\"],\"DalamudApiLevel\":15,\"LoadRequiredState\":0,\"LoadSync\":false,\"CanUnloadAsync\":false,\"LoadPriority\":0,\"ImageUrls\":[],\"IconUrl\":\"https://raw.githubusercontent.com/karashiiro/TextToTalk/main/images/icon.png\",\"Punchline\":\"Chat and game dialogue TTS plugin.\",\"AcceptsFeedback\":true,\"_isDip17Plugin\":true,\"_Dip17Channel\":\"testing-live\"}",
+        "repo_url": "https://github.com/karashiiro/TextToTalk",
+        "source_entry_key": "texttotalk|1.40.3.0|15|0|0",
+        "source_id": 649,
+        "tags_json": "[\"tts\",\"trigger\",\"triggers\",\"voice\",\"voices\",\"speech\",\"karashiiro\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 2969
+      }
+    }
+  ]
+}

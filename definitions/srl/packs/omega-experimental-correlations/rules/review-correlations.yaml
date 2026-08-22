@@ -1,0 +1,157 @@
+schema: omega.sigmascope.ruleset.v1
+rules:
+  - schema: omega.sigmascope.rule.v1
+    id: experimental.compound.process-injection-capability
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      memory: {facts: {any: [memory.process]}}
+      remote_execution: {facts: {any: [memory.remote-thread]}}
+    condition: {all: [memory, remote_execution]}
+    emit:
+      findingId: experimental.compound.process-injection-capability
+      title: Cross-process memory plus remote execution capability
+      description: Static evidence contains both cross-process memory access and remote execution primitives. This is capability evidence, not proof of injection.
+      severity: high
+      category: compound
+
+  - schema: omega.sigmascope.rule.v1
+    id: experimental.compound.network-dynamic-code
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      network: {facts: {any: [network.http, network.socket]}}
+      dynamic_code: {facts: {any: [dynamic.assembly]}}
+    condition: {all: [network, dynamic_code]}
+    emit:
+      findingId: experimental.compound.network-dynamic-code
+      title: Network plus dynamic code-loading capability
+      description: Static evidence contains network access and dynamic assembly/code-loading primitives. Manual review should establish whether externally obtained code can be loaded.
+      severity: high
+      category: compound
+
+  - schema: omega.sigmascope.rule.v1
+    id: experimental.compound.clipboard-network
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      clipboard: {facts: {any: [clipboard]}}
+      network: {facts: {any: [network.http, network.socket]}}
+    condition: {all: [clipboard, network]}
+    emit:
+      findingId: experimental.compound.clipboard-network
+      title: Clipboard plus network capability
+      description: Static evidence contains both clipboard and network primitives. This does not prove clipboard contents are transmitted.
+      severity: caution
+      category: compound
+
+  - schema: omega.sigmascope.rule.v1
+    id: experimental.compound.registry-execution
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      registry: {facts: {any: [registry.access]}}
+      execution: {facts: {any: [process.launch, shell.powershell]}}
+    condition: {all: [registry, execution]}
+    emit:
+      findingId: experimental.compound.registry-execution
+      title: Registry plus external execution capability
+      description: Static evidence contains Registry access together with process or shell execution capability. Review for persistence or launcher behavior.
+      severity: caution
+      category: compound
+
+  - schema: omega.sigmascope.rule.v1
+    id: experimental.compound.native-process-memory
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      native: {facts: {any: [native.pinvoke]}}
+      memory: {facts: {any: [memory.process]}}
+    condition: {all: [native, memory]}
+    emit:
+      findingId: experimental.compound.native-process-memory
+      title: Native interoperability plus process-memory capability
+      description: Static evidence contains native interop and cross-process memory primitives. Review the specific imported APIs and call reachability.
+      severity: high
+      category: compound
+
+  - schema: omega.sigmascope.rule.v1
+    id: experimental.compound.credential-direct-ip
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      credential: {facts: {any: [credential.api]}}
+      direct_ip: {facts: {any: [network.endpoint.public-ip]}}
+    condition: {all: [credential, direct_ip]}
+    emit:
+      findingId: experimental.compound.credential-direct-ip
+      title: Credential capability plus direct public-IP endpoint
+      description: Credential/protected-data APIs and a direct public-IP endpoint are both present in static evidence. This is not proof of credential transmission.
+      severity: high
+      category: compound
+
+  - schema: omega.sigmascope.rule.v1
+    id: experimental.compound.unverified-source-execution
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      source: {facts: {any: [source.binary-unverified, source.identity-mismatch, source.version-mismatch]}}
+      execution: {facts: {any: [process.launch, shell.powershell]}}
+    condition: {all: [source, execution]}
+    emit:
+      findingId: experimental.compound.unverified-source-execution
+      title: Unverified source provenance plus execution capability
+      description: Source provenance has an unresolved verification/match state while static evidence also exposes process or shell execution capability.
+      severity: caution
+      category: provenance
+
+  - schema: omega.sigmascope.rule.v1
+    id: experimental.deep-scan.divergent-artifact
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      divergence:
+        facts:
+          any: [artifact.cross-source-hash-mismatch]
+    condition: divergence
+    emit:
+      findingId: experimental.deep-scan.divergent-artifact
+      title: Divergent artifact needs differential analysis
+      description: A cross-source artifact mismatch should be compared against the stable publisher baseline using the approved non-executing deep-scan profile.
+      severity: caution
+      category: provenance
+    analysisRequest:
+      profile: artifact-differential-v1
+      depth: extended
+      compareWith: stable-artifact-baseline
+      reason: Compare divergent package bytes with the stable publisher baseline using a longer equal-profile static analysis pass.
+
+  - schema: omega.sigmascope.rule.v1
+    id: experimental.deep-scan.divergent-artifact-high-risk
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      divergence: {facts: {any: [artifact.cross-source-hash-mismatch]}}
+      execution: {facts: {any: [process.launch, shell.powershell, dynamic.assembly, memory.remote-thread]}}
+      network: {facts: {any: [network.http, network.socket, network.endpoint.public-ip]}}
+    condition: {all: [divergence, execution, network]}
+    emit:
+      findingId: experimental.deep-scan.divergent-artifact-high-risk
+      title: Divergent artifact has additional high-risk capabilities
+      description: Artifact divergence coincides with both execution/dynamic-code and network capability evidence; request the deepest currently approved non-executing differential pass.
+      severity: high
+      category: provenance
+    analysisRequest:
+      profile: artifact-differential-v1
+      depth: exhaustive
+      compareWith: stable-artifact-baseline
+      reason: Divergence plus execution and network capability warrants the deepest approved static differential scan.
