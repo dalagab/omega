@@ -37,7 +37,7 @@ require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "dalamud.internal_serv
 
 # Runtime-only report model.
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v1", "runtime observation schema version")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.3"', "producer version 0.3.3")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.4"', "producer version 0.3.4")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "boundary_profile", "boundary profile provenance")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "tmpfs_tmp_bytes", "tmpfs provenance")
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "RuntimeObservationKind", "neutral observation model")
@@ -181,5 +181,28 @@ require(Path(".github/workflows/rift-scan-omega.yml"), "test-rift-artifact-tools
 require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'return "media-audio"', "Artisan audio/media Windows dependencies classified")
 require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'return "windows-filesystem"', "Windows filesystem compatibility dependencies classified")
 require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'return "windows-dotnet-runtime"', "Windows .NET runtime compatibility dependency classified")
+
+
+# Pass 3.3.2: published scans use the stable Dalamud release contract and record it.
+for workflow in (
+    ".github/workflows/rift-alpha.yml",
+    ".github/workflows/rift-canary.yml",
+    ".github/workflows/rift-containment-stress.yml",
+    ".github/workflows/rift-scan-artisan.yml",
+    ".github/workflows/rift-scan-omega.yml",
+):
+    require(Path(workflow), "https://goatcorp.github.io/dalamud-distrib/latest.zip",
+            f"{workflow} uses stable Dalamud release contract")
+    forbid(Path(workflow), "dalamud-distrib/stg/latest.zip",
+           f"{workflow} does not use prerelease staging contract")
+    require(Path(workflow), "--contract-track release",
+            f"{workflow} stamps release contract track")
+require(Path("tools/run-rift-bwrap.sh"), "--contract-track", "Rift supervisor accepts contract track")
+require(Path("tools/run-rift-bwrap.sh"), "RIFT_DALAMUD_CONTRACT_TRACK", "contract track stamped into sandbox")
+require(Path("tools/run-rift-bwrap.sh"), "RIFT_DALAMUD_CONTRACT_SHA256", "Dalamud.dll SHA stamped into sandbox")
+require(Path("tools/run-rift-bwrap.sh"), "RIFT_DALAMUD_CONTRACT_TREE_SHA256", "contract tree SHA stamped into sandbox")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "dalamud_contract_track", "managed report records contract track")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "dalamud_contract_sha256", "managed report records Dalamud.dll SHA")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "dalamud_contract_tree_sha256", "managed report records contract tree SHA")
 
 print(f"Rift source-contract checks: {len(checks)}/{len(checks)} passed")

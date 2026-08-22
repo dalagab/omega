@@ -48,12 +48,12 @@ jobs:
           python3 ./tools/check-alpha-contract.py
           printf '{"schema_version":"rift.workflow.v1","phase":"alpha-contract","outcome":"passed"}\n' > "$RUNNER_TEMP/rift-alpha-results/workflow-status.json"
 
-      - name: Download Dalamud API runtime
+      - name: Download stable Dalamud API runtime
         run: |
           hooks="$RUNNER_TEMP/dalamud-hooks"
           mkdir -p "$hooks"
           curl --fail --location --proto '=https' --tlsv1.2 \
-            'https://goatcorp.github.io/dalamud-distrib/stg/latest.zip' \
+            'https://goatcorp.github.io/dalamud-distrib/latest.zip' \
             -o "$RUNNER_TEMP/dalamud.zip"
           unzip -q "$RUNNER_TEMP/dalamud.zip" -d "$hooks"
           test -s "$hooks/Dalamud.dll"
@@ -103,6 +103,7 @@ jobs:
           bash ./tools/run-rift-bwrap.sh \
             --runtime-dir "$RUNNER_TEMP/rift-runtime" \
             --contract-dir "$RIFT_HOOKS" \
+            --contract-track release \
             --plugin '${{ steps.stage.outputs.plugin }}' \
             --artifact-dir '${{ steps.stage.outputs.artifact }}' \
             --seccomp-policy "$RIFT_SECCOMP" \

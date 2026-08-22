@@ -10,6 +10,7 @@ Usage:
   run-rift-bwrap.sh \
     --runtime-dir <self-contained-rift-publish-dir> \
     --contract-dir <frozen-trusted-dalamud-runtime-dir> \
+    [--contract-track unknown] \
     --plugin <entry-plugin.dll> \
     --artifact-dir <exact-staged-artifact-dir> \
     --seccomp-policy <rift-policy.bpf> \
@@ -38,11 +39,13 @@ tmpfs_home_bytes=16777216
 tmpfs_work_bytes=67108864
 boundary_profile=rift-linux-bwrap-v3
 contract_mode=real-dalamud-contract-failfast
+contract_track=unknown
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --runtime-dir) runtime_dir=${2:-}; shift 2 ;;
     --contract-dir) contract_dir=${2:-}; shift 2 ;;
+    --contract-track) contract_track=${2:-}; shift 2 ;;
     --plugin) plugin=${2:-}; shift 2 ;;
     --artifact-dir) artifact_dir=${2:-}; shift 2 ;;
     --seccomp-policy) seccomp_policy=${2:-}; shift 2 ;;
@@ -85,6 +88,14 @@ artifact_dir=$(realpath "$artifact_dir")
 seccomp_policy=$(realpath "$seccomp_policy")
 out=$(realpath -m "$out")
 mkdir -p "$(dirname "$out")"
+
+[[ "$contract_track" == "release" || "$contract_track" == "stg" || "$contract_track" == "unknown" ]] || {
+  echo "error: --contract-track must be release, stg, or unknown" >&2
+  exit 2
+}
+contract_dalamud_sha=$(sha256sum "$contract_dir/Dalamud.dll" | awk '{print $1}')
+contract_tree_sha=$(python3 "$root/tools/hash-artifact-tree.py" "$contract_dir")
+contract_hash_algorithm='sha256(path-nul-file-sha-lf-v1)'
 
 case "$plugin" in
   "$artifact_dir"/*) ;;
@@ -152,6 +163,10 @@ bwrap_args=(
   --setenv DOTNET_BUNDLE_EXTRACT_BASE_DIR /tmp/dotnet-bundle
   --setenv RIFT_EXECUTOR bubblewrap-v2
   --setenv RIFT_DALAMUD_CONTRACT_DIR /contracts
+  --setenv RIFT_DALAMUD_CONTRACT_TRACK "$contract_track"
+  --setenv RIFT_DALAMUD_CONTRACT_SHA256 "$contract_dalamud_sha"
+  --setenv RIFT_DALAMUD_CONTRACT_TREE_SHA256 "$contract_tree_sha"
+  --setenv RIFT_DALAMUD_CONTRACT_HASH_ALGORITHM "$contract_hash_algorithm"
   --setenv RIFT_ARTIFACT_TREE_SHA256 "$artifact_sha"
   --setenv RIFT_ARTIFACT_TREE_HASH_ALGORITHM "$artifact_hash_algorithm"
   --setenv RIFT_ENTRY_SHA256 "$plugin_sha"
@@ -236,6 +251,12 @@ if [[ -e "$timeout_marker" ]]; then
     "systemd_exec_main_status": "$systemd_exec_main_status",
     "boundary_profile": "$boundary_profile",
     "contract_mode": "$contract_mode",
+    "dalamud_contract": {
+      "track": "$contract_track",
+      "dalamud_sha256": "$contract_dalamud_sha",
+      "tree_sha256": "$contract_tree_sha",
+      "hash_algorithm": "$contract_hash_algorithm"
+    },
     "tmpfs": {"tmp_bytes": $tmpfs_tmp_bytes, "home_bytes": $tmpfs_home_bytes, "work_bytes": $tmpfs_work_bytes},
     "cgroup": {
       "path": "$scope_cgroup",
@@ -283,6 +304,12 @@ if [[ ! -s "$tmp_report" ]]; then
     "systemd_exec_main_status": "$systemd_exec_main_status",
     "boundary_profile": "$boundary_profile",
     "contract_mode": "$contract_mode",
+    "dalamud_contract": {
+      "track": "$contract_track",
+      "dalamud_sha256": "$contract_dalamud_sha",
+      "tree_sha256": "$contract_tree_sha",
+      "hash_algorithm": "$contract_hash_algorithm"
+    },
     "tmpfs": {"tmp_bytes": $tmpfs_tmp_bytes, "home_bytes": $tmpfs_home_bytes, "work_bytes": $tmpfs_work_bytes},
     "cgroup": {
       "path": "$scope_cgroup",
