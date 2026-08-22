@@ -16,24 +16,24 @@ public class SmokeTest
         var report = host.Run(sampleDll, TimeSpan.FromSeconds(10));
 
         Assert.Equal("ok", report.Plugin.LoadOutcome);
-        Assert.DoesNotContain(report.Findings, f => f.Kind == FindingKind.Timeout);
+        Assert.DoesNotContain(report.Observations, f => f.Kind == RuntimeObservationKind.Timeout);
 
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.ServiceInjection && f.Service == "Dalamud.Plugin.Services.IPluginLog");
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.Lifecycle && f.Method == "constructor" && f.Message == "completed");
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("Starting up", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.ServiceAccess && f.Service == "IClientState" && f.Method == "get_IsLoggedIn");
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.ReflectiveLoad && (f.Message ?? "").Contains("SomeOther", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.ServiceAccess && f.Service == "IDalamudPluginInterface" && f.Method.StartsWith("GetIpcProvider", StringComparison.Ordinal));
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("framework tick", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("Shutting down", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.ServiceInjection && f.Component == "Dalamud.Plugin.Services.IPluginLog");
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.Lifecycle && f.Operation == "constructor" && f.Outcome == "completed");
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.Log && (f.Message ?? "").Contains("Starting up", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.ServiceAccess && f.Component == "IClientState" && f.Operation == "get_IsLoggedIn");
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.AssemblyLoad && (f.Message ?? "").Contains("SomeOther", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.ServiceAccess && f.Component == "IDalamudPluginInterface" && f.Operation!.StartsWith("GetIpcProvider", StringComparison.Ordinal));
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.Log && (f.Message ?? "").Contains("framework tick", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.Log && (f.Message ?? "").Contains("Shutting down", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -47,12 +47,12 @@ public class SmokeTest
 
         Assert.Equal("ok", report.Plugin.LoadOutcome);
         Assert.Equal("ok", report.Plugin.DisposeOutcome);
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.Lifecycle && f.Method == "LoadAsync" && f.Message == "completed");
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("async load completed", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("async dispose completed", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.Lifecycle && f.Operation == "LoadAsync" && f.Outcome == "completed");
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.Log && (f.Message ?? "").Contains("async load completed", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.Log && (f.Message ?? "").Contains("async dispose completed", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -77,9 +77,9 @@ public class SmokeTest
         var report = new InterdimensionalRift.Host.SandboxHost().Run(omega, TimeSpan.FromSeconds(15), frameworkTicks: 0);
         Assert.DoesNotContain(report.Plugin.LoadOutcome, new[] { "not_a_plugin", "load_failed", "init_timeout" });
 
-        var injected = report.Findings
-            .Where(f => f.Kind == FindingKind.ServiceInjection)
-            .Select(f => f.Service ?? string.Empty)
+        var injected = report.Observations
+            .Where(f => f.Kind == RuntimeObservationKind.ServiceInjection)
+            .Select(f => f.Component ?? string.Empty)
             .ToHashSet(StringComparer.Ordinal);
 
         foreach (var expected in new[]
@@ -101,9 +101,9 @@ public class SmokeTest
         // artifact. A plugin may still throw because the synthetic Dalamud host
         // cannot reproduce every game/runtime condition, but it must not deadlock
         // waiting for Dalamud's real internal Service<T> graph.
-        Assert.Contains(report.Findings,
-            f => f.Kind == FindingKind.Lifecycle && f.Method == "constructor" &&
-                 (f.Message == "completed" || f.Message == "threw"));
+        Assert.Contains(report.Observations,
+            f => f.Kind == RuntimeObservationKind.Lifecycle && f.Operation == "constructor" &&
+                 (f.Outcome == "completed" || f.Outcome == "threw"));
     }
 
     private static string LocateFixture(string assemblyName)
@@ -119,25 +119,25 @@ public class SmokeTest
     }
 }
 
-public class HostileCanaryTest
+public class AlphaTest
 {
     [Fact]
-    public void HostileCanary_IsInertOutsideRiftBoundary()
+    public void Alpha_IsInertOutsideRiftBoundary()
     {
         var previous = Environment.GetEnvironmentVariable("RIFT_EXECUTOR");
         try
         {
             Environment.SetEnvironmentVariable("RIFT_EXECUTOR", null);
-            var canaryDll = LocateCanary();
-            var report = new InterdimensionalRift.Host.SandboxHost().Run(canaryDll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+            var alphaDll = LocateAlpha();
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(alphaDll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
 
             Assert.Equal("ok", report.Plugin.LoadOutcome);
-            Assert.Contains(report.Findings,
-                f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("RIFT_CANARY inert", StringComparison.Ordinal));
-            Assert.DoesNotContain(report.Findings,
-                f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("runtime.network.loopback", StringComparison.Ordinal));
-            Assert.DoesNotContain(report.Findings,
-                f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains("runtime.process.missing", StringComparison.Ordinal));
+            Assert.Contains(report.Observations,
+                o => o.Kind == RuntimeObservationKind.Log &&
+                     (o.Message ?? string.Empty).Contains("RIFT_ALPHA inert", StringComparison.Ordinal));
+            Assert.DoesNotContain(report.Observations,
+                o => o.Kind == RuntimeObservationKind.Log &&
+                     (o.Message ?? string.Empty).Contains("runtime.network.loopback", StringComparison.Ordinal));
         }
         finally
         {
@@ -146,19 +146,19 @@ public class HostileCanaryTest
     }
 
     [Fact]
-    public void HostileCanary_ArmedModeExercisesOnlySentinelRuntimeBranches()
+    public void Alpha_ArmedModeExercisesHarmlessReferenceBranches()
     {
         var previous = Environment.GetEnvironmentVariable("RIFT_EXECUTOR");
         try
         {
             Environment.SetEnvironmentVariable("RIFT_EXECUTOR", "bubblewrap-v2");
-            var canaryDll = LocateCanary();
-            var report = new InterdimensionalRift.Host.SandboxHost().Run(canaryDll, TimeSpan.FromSeconds(10), frameworkTicks: 1);
+            var alphaDll = LocateAlpha();
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(alphaDll, TimeSpan.FromSeconds(10), frameworkTicks: 1);
 
             Assert.Equal("ok", report.Plugin.LoadOutcome);
             foreach (var marker in new[]
             {
-                "RIFT_CANARY armed inside Rift",
+                "RIFT_ALPHA armed inside Rift",
                 "runtime.filesystem.tmpfs",
                 "runtime.network.loopback",
                 "runtime.http.loopback",
@@ -170,9 +170,49 @@ public class HostileCanaryTest
                 "runtime.framework.tick",
             })
             {
-                Assert.Contains(report.Findings,
-                    f => f.Kind == FindingKind.Log && (f.Message ?? "").Contains(marker, StringComparison.Ordinal));
+                Assert.Contains(report.Observations,
+                    o => o.Kind == RuntimeObservationKind.Log &&
+                         (o.Message ?? string.Empty).Contains(marker, StringComparison.Ordinal));
             }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXECUTOR", previous);
+        }
+    }
+
+    private static string LocateAlpha()
+    {
+        var testBin = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(testBin, "RiftAlpha.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftAlpha", "bin", "Debug", "net10.0", "RiftAlpha.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftAlpha", "bin", "Release", "net10.0", "RiftAlpha.dll"),
+        };
+        return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
+    }
+}
+
+public class CanaryTest
+{
+    [Fact]
+    public void Canary_IsInertOutsideRiftBoundary()
+    {
+        var previous = Environment.GetEnvironmentVariable("RIFT_EXECUTOR");
+        try
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXECUTOR", null);
+            var dll = LocateCanary();
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+
+            Assert.Equal("ok", report.Plugin.LoadOutcome);
+            Assert.Contains(report.Observations,
+                o => o.Kind == RuntimeObservationKind.Log &&
+                     (o.Message ?? string.Empty).Contains("RIFT_CANARY inert outside Rift", StringComparison.Ordinal));
+            Assert.DoesNotContain(report.Observations,
+                o => o.Kind == RuntimeObservationKind.Log &&
+                     (o.Message ?? string.Empty).Contains("boundary.artifact_readonly", StringComparison.Ordinal));
         }
         finally
         {
@@ -185,9 +225,49 @@ public class HostileCanaryTest
         var testBin = AppContext.BaseDirectory;
         var candidates = new[]
         {
-            Path.Combine(testBin, "RiftHostileCanary.dll"),
-            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftHostileCanary", "bin", "Debug", "net10.0", "RiftHostileCanary.dll"),
-            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftHostileCanary", "bin", "Release", "net10.0", "RiftHostileCanary.dll"),
+            Path.Combine(testBin, "RiftCanary.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftCanary", "bin", "Debug", "net10.0", "RiftCanary.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftCanary", "bin", "Release", "net10.0", "RiftCanary.dll"),
+        };
+        return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
+    }
+}
+
+public class StressFixtureSafetyTest
+{
+    [Theory]
+    [InlineData("RiftMemoryPressure", "RIFT_STRESS memory inert outside Rift")]
+    [InlineData("RiftTaskPressure", "RIFT_STRESS tasks inert outside Rift")]
+    [InlineData("RiftTmpfsPressure", "RIFT_STRESS tmpfs inert outside Rift")]
+    [InlineData("RiftHangTree", "RIFT_STRESS hangtree inert outside Rift")]
+    public void ContainmentStressFixtures_AreInertOutsideRift(string assemblyName, string inertMarker)
+    {
+        var previous = Environment.GetEnvironmentVariable("RIFT_EXECUTOR");
+        try
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXECUTOR", null);
+            var dll = LocateFixture(assemblyName);
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(5), frameworkTicks: 0);
+
+            Assert.Equal("ok", report.Plugin.LoadOutcome);
+            Assert.Contains(report.Observations,
+                o => o.Kind == RuntimeObservationKind.Log &&
+                     (o.Message ?? string.Empty).Contains(inertMarker, StringComparison.Ordinal));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXECUTOR", previous);
+        }
+    }
+
+    private static string LocateFixture(string assemblyName)
+    {
+        var testBin = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(testBin, assemblyName + ".dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", assemblyName, "bin", "Debug", "net10.0", assemblyName + ".dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", assemblyName, "bin", "Release", "net10.0", assemblyName + ".dll"),
         };
         return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
     }

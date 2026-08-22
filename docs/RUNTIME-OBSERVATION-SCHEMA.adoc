@@ -1,0 +1,59 @@
+= Interdimensional Rift Runtime Observation Schema
+:toc:
+
+== Purpose
+
+Rift records what an exact plugin artifact *attempted or did while exercised* inside the
+sandbox. The schema is neutral evidence. It does not assign security severity, infer
+malware intent, or duplicate SigmaScope static capability analysis.
+
+A missing observation means only "not observed in this scenario".
+
+== Contract
+
+Current schema identifier:
+
+`rift.runtime-observation.v1`
+
+Top-level fields:
+
+* `schema_version` — observation contract identifier.
+* `producer` / `producer_version` — Rift producer identity.
+* `ran_at` — UTC report time.
+* `execution` — supervisor-stamped provenance and containment state.
+* `plugin` — exact entry and lifecycle outcome.
+* `observations` — ordered runtime facts.
+* `summary` — count by observation kind only.
+
+There is deliberately no `severity` field.
+
+== Execution provenance
+
+For production Bubblewrap runs the trusted supervisor stamps:
+
+* exact staged artifact-tree SHA-256;
+* entry DLL SHA-256;
+* executor (`bubblewrap-v2`);
+* network mode (`isolated`);
+* seccomp state (`enforced`);
+* cgroup memory/task/CPU limits.
+
+This provenance travels with the runtime report so SRL can correlate evidence to the exact
+artifact bytes and execution boundary.
+
+== Observation kinds
+
+`service_injection`:: A PluginService/constructor dependency was supplied by Rift.
+`service_access`:: Plugin code invoked an instrumented Dalamud-facing member.
+`lifecycle`:: Constructor, async load, deterministic scenario, or disposal progress.
+`log`:: Plugin output through `IPluginLog`.
+`assembly_load`:: Runtime managed/native dependency resolution or load attempt.
+`exception`:: Plugin initialization/disposal threw.
+`timeout`:: A managed lifecycle phase exceeded its bounded timeout.
+`boundary`:: Rift recorded an execution-boundary mode/invariant such as internal-service fail-fast.
+
+== Ownership boundary
+
+SigmaScope owns static capabilities and code-derived facts. YARA/AV/OSV and similar tools
+own specialist signals. Rift owns dynamic observations. SRL/downstream rules correlate
+those independent evidence sources and Omega explains the result to users.

@@ -1,0 +1,131 @@
+name: Rift Alpha reference subject
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [rift]
+    paths:
+      - 'InterdimensionalRift/**'
+      - 'tests/fixtures/RiftAlpha/**'
+      - 'tests/InterdimensionalRift.Tests/**'
+      - 'tools/**'
+      - 'build/**'
+      - '.github/workflows/rift-alpha.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  alpha:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install boundary/build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bubblewrap libcap2-bin libseccomp-dev gcc pkg-config unzip zip
+
+      - name: Enable and verify Rift boundary
+        run: |
+          sudo bash ./tools/enable-userns-github.sh
+          bash ./tools/verify-bwrap.sh
+          bash ./tools/verify-rift-cgroup.sh
+
+      - name: Initialize diagnostic result envelope
+        run: |
+          results="$RUNNER_TEMP/rift-alpha-results"
+          mkdir -p "$results"
+          printf '{"schema_version":"rift.workflow.v1","phase":"pre-execution","outcome":"pending"}\n' > "$results/workflow-status.json"
+
+      - name: Verify Alpha source contract
+        run: |
+          python3 ./tools/check-alpha-contract.py
+          printf '{"schema_version":"rift.workflow.v1","phase":"alpha-contract","outcome":"passed"}\n' > "$RUNNER_TEMP/rift-alpha-results/workflow-status.json"
+
+      - name: Download Dalamud API runtime
+        run: |
+          hooks="$RUNNER_TEMP/dalamud-hooks"
+          mkdir -p "$hooks"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            'https://goatcorp.github.io/dalamud-distrib/stg/latest.zip' \
+            -o "$RUNNER_TEMP/dalamud.zip"
+          unzip -q "$RUNNER_TEMP/dalamud.zip" -d "$hooks"
+          test -s "$hooks/Dalamud.dll"
+          echo "RIFT_HOOKS=$hooks" >> "$GITHUB_ENV"
+
+      - name: Build/test Rift and Alpha
+        run: |
+          python3 ./tools/check-rift-source-contract.py
+          dotnet test ./tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
+            --configuration Release -p:HooksDir="$RIFT_HOOKS"
+          dotnet publish ./InterdimensionalRift/InterdimensionalRift.csproj \
+            --configuration Release --runtime linux-x64 --self-contained true \
+            -p:HooksDir="$RIFT_HOOKS" --output "$RUNNER_TEMP/rift-runtime"
+          test -x "$RUNNER_TEMP/rift-runtime/interdimensional-rift"
+
+      - name: Build DLL-only Alpha package
+        id: package
+        run: |
+          out="$RUNNER_TEMP/rift-alpha.zip"
+          bash ./tools/package-alpha.sh "$out" Release -p:HooksDir="$RIFT_HOOKS"
+          test -s "$out"
+          echo "zip=$out" >> "$GITHUB_OUTPUT"
+
+      - name: Stage Alpha from opaque package
+        id: stage
+        run: |
+          artifact="$RUNNER_TEMP/rift-alpha-artifact"
+          mkdir -p "$artifact"
+          unzip -q '${{ steps.package.outputs.zip }}' -d "$artifact"
+          test -s "$artifact/RiftAlpha.dll"
+          test "$(find "$artifact" -type f -printf '%f\n')" = 'RiftAlpha.dll'
+          find "$artifact" -type f -name '*.json' -print -quit | (! grep .)
+          echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
+          echo "plugin=$artifact/RiftAlpha.dll" >> "$GITHUB_OUTPUT"
+
+      - name: Build seccomp policy
+        run: |
+          policy=$(bash ./tools/build-rift-seccomp.sh "$RUNNER_TEMP/rift-seccomp.bpf")
+          test -s "$policy"
+          echo "RIFT_SECCOMP=$policy" >> "$GITHUB_ENV"
+
+      - name: Execute Alpha inside Rift
+        id: execute
+        run: |
+          set +e
+          results="$RUNNER_TEMP/rift-alpha-results"
+          bash ./tools/run-rift-bwrap.sh \
+            --runtime-dir "$RUNNER_TEMP/rift-runtime" \
+            --contract-dir "$RIFT_HOOKS" \
+            --plugin '${{ steps.stage.outputs.plugin }}' \
+            --artifact-dir '${{ steps.stage.outputs.artifact }}' \
+            --seccomp-policy "$RIFT_SECCOMP" \
+            --out "$results/rift-alpha.json" \
+            --init-timeout 10 --wall-timeout 20 \
+            --memory-max 256M --tasks-max 32 --cpu-quota 100%
+          rc=$?
+          echo "$rc" > "$results/rift-exit-code.txt"
+          printf '{"schema_version":"rift.workflow.v1","phase":"execution","outcome":"completed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
+          exit 0
+
+      - name: Verify Alpha observations
+        run: python3 ./tools/validate-rift-report.py "$RUNNER_TEMP/rift-alpha-results/rift-alpha.json" --mode alpha
+
+      - name: Upload Alpha report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rift-alpha-results
+          path: ${{ runner.temp }}/rift-alpha-results
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce Alpha execution outcome
+        if: always() && steps.execute.outcome != 'skipped'
+        run: test "$(cat "$RUNNER_TEMP/rift-alpha-results/rift-exit-code.txt" 2>/dev/null || echo 99)" = 0

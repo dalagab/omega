@@ -1,0 +1,102 @@
+= Alpha: Rift Reference Subject
+:toc:
+
+== Purpose
+
+`RiftAlpha.dll` is Interdimensional Rift's deliberately suspicious, harmless reference subject.
+
+Alpha answers:
+
+> Can SigmaScope and Rift recognize the behaviors we intentionally expect them to recognize?
+
+The name is product terminology, not a severity label. Alpha is not a user plugin and is not the environmental sentinel. The environmental sentinel is *Canary*.
+
+== Non-distribution contract
+
+Alpha is intentionally unusable as a normal Dalamud package.
+
+* The CI-produced archive contains exactly `RiftAlpha.dll`.
+* The archive contains zero `.json` files.
+* There is no Dalamud manifest, repository entry, PluginMaster entry, download URL, API-level declaration, or normal plugin metadata document.
+* Source lives under `tests/fixtures/RiftAlpha/`.
+* `tools/check-alpha-contract.py` fails if normal Dalamud manifest/feed keys are introduced.
+* Active runtime probes are inert unless `RIFT_EXECUTOR=bubblewrap-v2` is present.
+
+== Safety model
+
+Alpha contains two kinds of material.
+
+=== Static-only suspicious vocabulary
+
+Strings intentionally cover the reviewed SigmaScope/YARA regression corpus for high-signal combinations such as:
+
+* credential/browser material plus exfiltration vocabulary;
+* classic and NT process injection;
+* encoded PowerShell download/execute;
+* Defender tamper;
+* embedded PE/dynamic loading;
+* AMSI patch vocabulary;
+* Run/RunOnce, scheduled-task and service persistence;
+* anti-debug and anti-VM clusters.
+
+These are data only. Alpha does not execute those behaviors.
+
+=== Harmless runtime probes
+
+When and only when executed inside Rift, Alpha exercises bounded sentinel paths:
+
+[cols="1,2,2"]
+|===
+|Probe |Target |Safety property
+
+|Filesystem
+|`/tmp/rift-alpha/sentinel.txt`
+|Rift tmpfs only; removed immediately.
+
+|TCP
+|`127.0.0.1:9`
+|Loopback inside the isolated network namespace.
+
+|HTTP
+|`http://127.0.0.1:9/rift-alpha`
+|Same loopback target with a 250 ms timeout.
+
+|Process launch
+|`/rift/RIFT_ALPHA_DOES_NOT_EXIST`
+|Deliberately absent.
+
+|Managed load
+|`RiftAlpha.Does.Not.Exist`
+|Deliberately missing assembly.
+
+|Native load
+|`rift_alpha_does_not_exist.so`
+|Deliberately missing library.
+
+|Registry
+|`Software\RiftAlpha\Sentinel`
+|Read-only, non-existent key.
+
+|P/Invoke
+|`libc.getpid()`
+|Harmless process-ID query.
+|===
+
+== Expected Rift observations
+
+The runtime report must show:
+
+* `RIFT_ALPHA armed inside Rift`;
+* temporary-filesystem probe;
+* loopback TCP/HTTP probes;
+* missing process/assembly/native-library probes;
+* read-only registry probe;
+* harmless native call;
+* framework tick;
+* normal disposal.
+
+Outside Rift, Alpha must remain inert.
+
+== Publication rule
+
+Never add Alpha to Omega's repository feed, PluginMaster, release package, catalog registry, or public plugin discovery surface. It is a security regression subject only.

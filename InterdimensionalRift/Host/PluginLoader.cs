@@ -52,7 +52,8 @@ public sealed class PluginLoader : IDisposable
     {
         notFoundReason = null;
         Type? sync = null, async = null, basePlugin = null;
-        var (idp, iap, bp) = ResolvePluginContractTypes();
+        var (idpMaybe, iap, bp) = ResolvePluginContractTypes();
+        var idp = idpMaybe ?? throw new InvalidOperationException("Dalamud.Plugin.IDalamudPlugin was not found in the frozen contract runtime.");
 
         IEnumerable<Type?> types;
         try
@@ -61,8 +62,8 @@ public sealed class PluginLoader : IDisposable
         }
         catch (ReflectionTypeLoadException ex)
         {
-            foreach (var le in ex.LoaderExceptions.Take(12))
-                Console.Error.WriteLine($"  [type-load] {le.GetType().Name}: {le.Message}");
+            foreach (var le in ex.LoaderExceptions.Where(e => e is not null).Take(12))
+                Console.Error.WriteLine($"  [type-load] {le!.GetType().Name}: {le.Message}");
             types = ex.Types;
         }
 
@@ -130,7 +131,7 @@ public sealed class PluginLoader : IDisposable
 
             if (resolved is not null)
             {
-                tracker.ReflectiveLoad(assemblyName.FullName ?? assemblyName.Name ?? "unknown", resolved, resolved: true);
+                tracker.AssemblyLoad(assemblyName.FullName ?? assemblyName.Name ?? "unknown", resolved, resolved: true);
                 return LoadFromAssemblyPath(resolved);
             }
 
@@ -151,7 +152,7 @@ public sealed class PluginLoader : IDisposable
             if (resolved is null)
                 return nint.Zero;
 
-            tracker.ReflectiveLoad($"native:{unmanagedDllName}", resolved, resolved: true);
+            tracker.AssemblyLoad($"native:{unmanagedDllName}", resolved, resolved: true);
             return LoadUnmanagedDllFromPath(resolved);
         }
     }

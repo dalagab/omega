@@ -1,0 +1,32 @@
+= Canary: Rift Environmental Sentinel
+:toc:
+
+== Purpose
+
+`RiftCanary.dll` continuously answers the engineering question behind the coal-mine analogy: *is the Rift environment still safe?*
+
+Canary is not a suspicious-behavior sample. That role belongs to Alpha.
+
+== Contract
+
+* DLL-only, zero plugin-manifest JSON.
+* Inert unless `RIFT_EXECUTOR=bubblewrap-v2`.
+* Finite and non-destructive.
+* Any `FAILED` marker is a qualification failure.
+
+== Current checks
+
+* `/input`, `/rift`, `/contracts` are read-only.
+* runner secrets/workspace/socket paths are absent.
+* no-new-privileges is active.
+* effective Linux capabilities are zero.
+* no non-loopback default route exists.
+* nested user namespaces are denied.
+* `ptrace` is denied.
+* raw/AF_PACKET sockets are denied.
+* `/tmp`, `/home`, `/work` match bounded tmpfs limits.
+* hostname is `interdimensional-rift`.
+
+== CI
+
+`.github/workflows/rift-canary.yml` builds the exact DLL-only Canary package, executes it through the full cgroup-v2 -> Bubblewrap -> seccomp boundary, validates the runtime-observation report, and preserves diagnostics.

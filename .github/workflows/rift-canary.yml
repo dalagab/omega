@@ -1,0 +1,131 @@
+name: Rift environmental Canary
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [rift]
+    paths:
+      - 'InterdimensionalRift/**'
+      - 'tests/fixtures/RiftCanary/**'
+      - 'tests/InterdimensionalRift.Tests/**'
+      - 'tools/**'
+      - 'build/**'
+      - '.github/workflows/rift-canary.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install boundary/build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bubblewrap libcap2-bin libseccomp-dev gcc pkg-config unzip zip
+
+      - name: Enable and verify Rift boundary
+        run: |
+          sudo bash ./tools/enable-userns-github.sh
+          bash ./tools/verify-bwrap.sh
+          bash ./tools/verify-rift-cgroup.sh
+
+      - name: Initialize diagnostic result envelope
+        run: |
+          results="$RUNNER_TEMP/rift-canary-results"
+          mkdir -p "$results"
+          printf '{"schema_version":"rift.workflow.v1","phase":"pre-execution","outcome":"pending"}\n' > "$results/workflow-status.json"
+
+      - name: Verify Canary source contract
+        run: |
+          python3 ./tools/check-canary-contract.py
+          printf '{"schema_version":"rift.workflow.v1","phase":"canary-contract","outcome":"passed"}\n' > "$RUNNER_TEMP/rift-canary-results/workflow-status.json"
+
+      - name: Download Dalamud API runtime
+        run: |
+          hooks="$RUNNER_TEMP/dalamud-hooks"
+          mkdir -p "$hooks"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            'https://goatcorp.github.io/dalamud-distrib/stg/latest.zip' \
+            -o "$RUNNER_TEMP/dalamud.zip"
+          unzip -q "$RUNNER_TEMP/dalamud.zip" -d "$hooks"
+          test -s "$hooks/Dalamud.dll"
+          echo "RIFT_HOOKS=$hooks" >> "$GITHUB_ENV"
+
+      - name: Build/test Rift and Canary
+        run: |
+          python3 ./tools/check-rift-source-contract.py
+          dotnet test ./tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
+            --configuration Release -p:HooksDir="$RIFT_HOOKS"
+          dotnet publish ./InterdimensionalRift/InterdimensionalRift.csproj \
+            --configuration Release --runtime linux-x64 --self-contained true \
+            -p:HooksDir="$RIFT_HOOKS" --output "$RUNNER_TEMP/rift-runtime"
+          test -x "$RUNNER_TEMP/rift-runtime/interdimensional-rift"
+
+      - name: Build DLL-only Canary package
+        id: package
+        run: |
+          out="$RUNNER_TEMP/rift-canary.zip"
+          bash ./tools/package-canary.sh "$out" Release -p:HooksDir="$RIFT_HOOKS"
+          test -s "$out"
+          echo "zip=$out" >> "$GITHUB_OUTPUT"
+
+      - name: Stage Canary from opaque package
+        id: stage
+        run: |
+          artifact="$RUNNER_TEMP/rift-canary-artifact"
+          mkdir -p "$artifact"
+          unzip -q '${{ steps.package.outputs.zip }}' -d "$artifact"
+          test -s "$artifact/RiftCanary.dll"
+          test "$(find "$artifact" -type f -printf '%f\n')" = 'RiftCanary.dll'
+          find "$artifact" -type f -name '*.json' -print -quit | (! grep .)
+          echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
+          echo "plugin=$artifact/RiftCanary.dll" >> "$GITHUB_OUTPUT"
+
+      - name: Build seccomp policy
+        run: |
+          policy=$(bash ./tools/build-rift-seccomp.sh "$RUNNER_TEMP/rift-seccomp.bpf")
+          test -s "$policy"
+          echo "RIFT_SECCOMP=$policy" >> "$GITHUB_ENV"
+
+      - name: Execute environmental Canary inside Rift
+        id: execute
+        run: |
+          set +e
+          results="$RUNNER_TEMP/rift-canary-results"
+          bash ./tools/run-rift-bwrap.sh \
+            --runtime-dir "$RUNNER_TEMP/rift-runtime" \
+            --contract-dir "$RIFT_HOOKS" \
+            --plugin '${{ steps.stage.outputs.plugin }}' \
+            --artifact-dir '${{ steps.stage.outputs.artifact }}' \
+            --seccomp-policy "$RIFT_SECCOMP" \
+            --out "$results/rift-canary.json" \
+            --init-timeout 5 --wall-timeout 10 \
+            --memory-max 192M --tasks-max 32 --cpu-quota 100%
+          rc=$?
+          echo "$rc" > "$results/rift-exit-code.txt"
+          printf '{"schema_version":"rift.workflow.v1","phase":"execution","outcome":"completed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
+          exit 0
+
+      - name: Verify environmental boundary
+        run: python3 ./tools/validate-rift-report.py "$RUNNER_TEMP/rift-canary-results/rift-canary.json" --mode canary
+
+      - name: Upload Canary report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rift-canary-results
+          path: ${{ runner.temp }}/rift-canary-results
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce Canary execution outcome
+        if: always() && steps.execute.outcome != 'skipped'
+        run: test "$(cat "$RUNNER_TEMP/rift-canary-results/rift-exit-code.txt" 2>/dev/null || echo 99)" = 0

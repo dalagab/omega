@@ -7,7 +7,7 @@ namespace InterdimensionalRift.Tests;
 public sealed class DalamudInternalServiceFailFastTest
 {
     [Fact]
-    public void InternalDalamudServiceLocator_FailsFastInsteadOfBlocking()
+    public async Task InternalDalamudServiceLocator_FailsFastInsteadOfBlocking()
     {
         DalamudContract.EnsureLoaded();
         DalamudContract.EnterSandboxFailFastHostMode();
@@ -37,10 +37,9 @@ public sealed class DalamudInternalServiceFailFastTest
             }
         });
 
-        Assert.True(
-            attempt.Wait(TimeSpan.FromSeconds(2)),
-            "Dalamud.Service<DalamudConfiguration>.Get() blocked instead of failing fast inside Rift.");
-
+        var completed = await Task.WhenAny(attempt, Task.Delay(TimeSpan.FromSeconds(2)));
+        Assert.Same(attempt, completed);
+        await attempt;
         Assert.NotNull(observed);
     }
 }

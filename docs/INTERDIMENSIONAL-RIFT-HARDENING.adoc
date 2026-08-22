@@ -675,21 +675,21 @@ Rift now has a CI workflow that acquires Omega the way Dalamud would: it reads t
 
 The hostile job extracts the exact package with ZIP safety checks, verifies DalagabOmega.json against the feed version, and executes DalagabOmega.dll only inside the cgroup-v2 -> Bubblewrap -> seccomp boundary. Results are always preserved as the `rift-omega-results` Actions artifact before a non-zero Rift execution status fails the job.
 
-== Hostile behavior canary fixture
+== Alpha reference subject (original canary-fixture lineage)
 
-Rift includes a deliberately suspicious regression fixture under `tests/fixtures/RiftHostileCanary`.
+Rift includes a deliberately suspicious regression fixture under `tests/fixtures/RiftAlpha`.
 It exists to light up SigmaScope/YARA static rules and Rift runtime observation paths without performing malicious actions.
 
 The fixture has a strict non-distribution contract:
 
-* the executable artifact contains exactly `RiftHostileCanary.dll`;
+* the executable artifact contains exactly `RiftAlpha.dll`;
 * it contains zero JSON files and therefore no Dalamud plugin manifest/feed document;
 * its source contains none of the normal Dalamud feed/manifest keys;
 * outside `RIFT_EXECUTOR=bubblewrap-v2` it is inert;
 * active probes target only Rift tmpfs, isolated loopback, deliberately missing executables/libraries/assemblies, a read-only non-existent registry key, and `libc.getpid()`;
 * credential theft, process injection, persistence, security tampering, AMSI patching and anti-analysis behavior are represented only as static marker vocabulary and are never invoked.
 
-`tools/check-hostile-canary-contract.py` fails closed if those invariants drift. `.github/workflows/rift-hostile-canary.yml` builds a DLL-only opaque fixture artifact, asserts it contains no JSON, executes it through cgroup-v2 -> Bubblewrap -> seccomp, verifies runtime canary observations and preserves the resulting report.
+`tools/check-alpha-contract.py` fails closed if those invariants drift. `.github/workflows/rift-alpha.yml` builds a DLL-only opaque fixture artifact, asserts it contains no JSON, executes it through cgroup-v2 -> Bubblewrap -> seccomp, verifies Alpha runtime observations and preserves the resulting report.
 
 
 == Pass 2.4: real Dalamud contract assembly
@@ -703,9 +703,9 @@ DalaInspect remains metadata/provenance tooling and runs with `--inspect-only`; 
 
 == Pass 2.5: CI integration repair
 
-The `ec68b40` GitHub runs reconfirmed that user namespaces, Bubblewrap, cgroup-v2 and the seccomp policy all work on hosted Ubuntu 24.04 runners. The remaining failures were pre-execution integration defects: two fixture projects had not received the real-Dalamud contract import in the committed branch, the hostile-canary source checker treated NuGet-generated `obj/*.json` as authored plugin metadata, and the Omega job summary assumed a runtime report existed after a pre-build failure.
+The `ec68b40` GitHub runs reconfirmed that user namespaces, Bubblewrap, cgroup-v2 and the seccomp policy all work on hosted Ubuntu 24.04 runners. The remaining failures were pre-execution integration defects: two fixture projects had not received the real-Dalamud contract import in the committed branch, the Alpha source checker treated NuGet-generated `obj/*.json` as authored plugin metadata, and the Omega job summary assumed a runtime report existed after a pre-build failure.
 
-Pass 2.5 restores all contract imports, keeps the final canary package hard-gated to one DLL and zero JSON, ignores only generated `bin/obj` files in the authored-source check, and makes both execution workflows preserve phase-specific diagnostics for early failures.
+Pass 2.5 restores all contract imports, keeps the final Alpha package hard-gated to one DLL and zero JSON, ignores only generated `bin/obj` files in the authored-source check, and makes both execution workflows preserve phase-specific diagnostics for early failures.
 
 
 == Pass 2.8: Dalamud internal-service fail-fast mode
@@ -724,3 +724,47 @@ than deadlocking the sandbox.
 
 This does not make real Dalamud internal services available and does not instantiate
 game/host internals. Plugin-facing public services remain Rift instrumentation proxies.
+
+
+== Phase 3: runtime-observation contract
+
+Rift's active report schema is now `rift.runtime-observation.v1`.
+The previous `FindingSeverity`, static `Capability` findings, and `HttpReferenceScanner`
+are removed from the runtime path. Static capability and specialist signature analysis
+belong to SigmaScope/YARA/etc. Rift emits neutral evidence only: lifecycle, service
+injection/access, logs, assembly loading, exceptions/timeouts, and explicit boundary
+mode observations.
+
+The absence of a runtime observation means only "not observed in this scenario".
+It must never be interpreted as proof that the artifact lacks the corresponding capability.
+
+A new DLL-only `RiftCanary` provides finite boundary probes. It is inert outside
+`RIFT_EXECUTOR=bubblewrap-v2` and contains no plugin manifest JSON. The dedicated workflow
+asserts that the exact staged artifact is read-only, GitHub runner credentials/workspace
+are absent, nested user namespaces are denied, and AF_PACKET raw sockets are denied.
+
+
+== Pass 3.1: canonical Alpha/Canary naming and containment qualification
+
+The active terminology is now:
+
+* Rift = sandbox;
+* Alpha = known suspicious-looking, harmless observation-calibration subject;
+* Canary = environmental boundary sentinel.
+
+The old `RiftHostileCanary` and `RiftBoundaryCanary` source/workflow identities are retired from the active tree.
+
+Canary now checks read-only `/input`, `/rift`, and `/contracts`; secret/workspace absence; no-new-privileges; zero effective capabilities; network-route isolation; nested-userns denial; ptrace denial; raw-packet denial; bounded tmpfs mounts; and the isolated hostname.
+
+Four additional non-distributable stress fixtures qualify cgroup/tmpfs/process-tree containment:
+
+* `RiftMemoryPressure`;
+* `RiftTaskPressure`;
+* `RiftTmpfsPressure`;
+* `RiftHangTree`.
+
+`RiftHangTree` includes a tiny test helper that intentionally ignores SIGTERM. The outer service remains configured with `KillMode=control-group`, `TimeoutStopSec=2s`, and `SendSIGKILL=yes`; the workflow verifies no helper process survives teardown.
+
+The managed producer version advances to `0.3.0`. `rift.supervisor.v3` classifies pre-report process kills and records the same boundary profile information needed to interpret destructive qualification runs.
+
+See `docs/RIFT-SANDBOX-PROFILE.adoc`.

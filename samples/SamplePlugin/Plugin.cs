@@ -1,4 +1,3 @@
-using System.Net.Http;
 using System.Reflection;
 using System.Runtime.Loader;
 using Dalamud.IoC;
@@ -33,9 +32,6 @@ public sealed class Plugin : IDalamudPlugin
         }
         catch { }
 
-        // Keep durable metadata references for the transitional static layer.
-        _ = typeof(HttpClient);
-        _ = typeof(System.Net.Sockets.UdpClient);
 
         // Exercise an API-15 plugin-interface call that returns an instrumented
         // interface proxy without requiring a live Dalamud IPC broker.

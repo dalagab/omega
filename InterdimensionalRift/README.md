@@ -12,7 +12,7 @@
 
 A Linux-friendly smoke-test runner for opted-in Dalamud plugins. Loads a
 plugin DLL outside FFXIV, supplies instrumented service proxies against the real
-Dalamud API contract, captures lifecycle behaviour, and emits a JSON findings report.
+Dalamud API contract, captures lifecycle behaviour, and emits a JSON runtime-observation report.
 
 The host never opens a window. ImGui calls go to a no-op stub. The host by
 itself does **not** provide OS isolation. The supported hostile-code execution
@@ -102,6 +102,15 @@ unsandboxed fallback.
 The boundary itself is regression-tested by
 `.github/workflows/rift-bubblewrap-boundary.yml`.
 
+
+The boundary is also self-tested by:
+
+* `.github/workflows/rift-canary.yml` — environmental Canary;
+* `.github/workflows/rift-containment-stress.yml` — memory/task/tmpfs/hang-tree containment;
+* `.github/workflows/rift-alpha.yml` — observation calibration subject.
+
+See `docs/RIFT-SANDBOX-PROFILE.adoc` for the current boundary profile.
+
 ## Docker (development only)
 
 The Dockerfile is retained as a host-only development/runtime packaging path. It is
@@ -127,78 +136,90 @@ proved reflection metadata cannot be naively round-tripped into legal C# for all
 Dalamud public shapes. DalaInspect remains metadata/provenance tooling.
 
 Rift is also not allowed to become a duplicate static security scanner. The
-current `HttpReferenceScanner` is prototype code scheduled for retirement once
-the runtime observation contract is landed; SigmaScope remains authoritative for
-static analysis. See `docs/INTERDIMENSIONAL-RIFT-HARDENING.adoc`.
+`HttpReferenceScanner` has been retired; SigmaScope remains authoritative for static analysis. See `docs/INTERDIMENSIONAL-RIFT-HARDENING.adoc`.
 
-## Findings shape
+## Runtime observation shape
+
+Rift reports neutral runtime evidence. It does not assign security severity and does
+not repeat SigmaScope's static capability analysis.
 
 ```json
 {
-  "schema_version": "1",
-  "scanner_version": "0.1.0",
-  "ran_at": "2026-08-21T12:00:00Z",
+  "schema_version": "rift.runtime-observation.v1",
+  "producer": "interdimensional-rift",
+  "producer_version": "0.3.0",
+  "ran_at": "2026-08-22T08:00:00Z",
+  "execution": {
+    "executor": "bubblewrap-v2",
+    "artifact_tree_sha256": "...",
+    "entry_sha256": "...",
+    "network": "isolated",
+    "seccomp": "enforced",
+    "memory_max": "768M",
+    "tasks_max": "64",
+    "cpu_quota": "100%",
+    "memory_swap_max": "0",
+    "wall_timeout_seconds": "20",
+    "tmpfs_tmp_bytes": "134217728",
+    "tmpfs_home_bytes": "16777216",
+    "tmpfs_work_bytes": "67108864",
+    "boundary_profile": "rift-linux-bwrap-v3",
+    "contract_mode": "real-dalamud-contract-failfast"
+  },
   "plugin": {
-    "path": "...",
+    "path": "/input/SamplePlugin.dll",
     "assembly_name": "SamplePlugin",
     "internal_name": "SamplePlugin",
-    "load_outcome": "ok | init_threw | init_timeout | load_failed | not_a_plugin",
-    "load_error": null,
-    "init_duration_ms": 142,
-    "dispose_outcome": "ok | threw | timeout",
-    "dispose_error": null
+    "load_outcome": "ok",
+    "init_duration_ms": 101,
+    "dispose_outcome": "ok"
   },
-  "findings": [
+  "observations": [
     {
-      "id": "...",
-      "kind": "service_access | log | assembly_reference | reflective_load | init_exception | timeout | capability",
-      "severity": "info | low | medium | high",
+      "id": "0000000000000001",
+      "kind": "service_access",
       "ts_offset_ms": 42,
-      "service": "IClientState",
-      "method": "get_IsLoggedIn",
-      "message": null,
-      "exception_type": null,
-      "exception_message": null,
-      "context": "SamplePlugin.Plugin.Initialize",
-      "parameters": { "name": "..." }
+      "component": "IClientState",
+      "operation": "get_IsLoggedIn",
+      "outcome": "observed"
     }
   ],
   "summary": {
-    "total_findings": 12,
-    "by_severity": { "high": 1, "medium": 2, "low": 3, "info": 6 },
-    "by_kind": { "service_access": 8, "log": 2, "reflective_load": 1, "init_exception": 1 }
+    "total_observations": 12,
+    "by_kind": {
+      "service_access": 8,
+      "service_injection": 2,
+      "lifecycle": 2
+    }
   }
 }
 ```
 
 ## What gets instrumented
 
-`AccessTracker` is the thread-safe sink. Stubs call into it from the
-following services; everything else is recorded at `info`/`low`
-severity on call:
+`AccessTracker` is the thread-safe runtime sink. Current observation kinds are:
 
-| Service              | Severity cap | Why |
-|----------------------|--------------|-----|
-| `IPluginLog`         | per-level    | Log messages are the most direct signal |
-| `ISigScanner`        | low          | Pattern scans are suspicious outside FFXIV |
-| `IGameNetwork`       | low          | Network access is high value |
-| `IFramework`         | low          | Tick subscriptions reveal the plugin's update strategy |
-| `IAddonLifecycle`    | low          | Addon event registration is a UI-affecting surface |
-| `IDataManager`       | low          | Excel sheet lookups leak the data the plugin cares about |
-| `IChatGui`           | low–medium   | Error/print to chat is a low-trust signal |
+| Kind | Meaning |
+|---|---|
+| `service_injection` | a Dalamud-facing service proxy was injected into plugin code |
+| `service_access` | the plugin invoked a method/property/event on an instrumented service |
+| `lifecycle` | constructor, `LoadAsync`, framework scenario, or disposal progress |
+| `log` | plugin output through `IPluginLog` |
+| `assembly_load` | runtime managed/native assembly resolution or load attempt |
+| `exception` | plugin initialization/disposal threw |
+| `timeout` | a managed lifecycle phase exceeded its bounded timeout |
+| `boundary` | Rift recorded an execution-boundary compatibility mode or invariant |
 
-`IUiBuilder` is a no-op stub. The plugin can subscribe but nothing
-ever draws; the subscription is recorded.
+Rift intentionally has no `severity` field. Downstream rules may correlate observations
+with SigmaScope/YARA/other evidence, but Rift itself does not decide whether an observation
+is malicious.
 
-## Static side of the scan
+## Static analysis ownership
 
-`HttpReferenceScanner` runs *before* load. It reads the DLL's metadata
-tables for `AssemblyRef` / `TypeRef` rows that look like network
-capability, and walks the user-string heap for URL literals and host
-names. The user-string scan is what catches the case where a plugin
-bakes `https://attacker.example.com` into a log line — the `AssemblyRef`
-walk alone is unreliable on .NET 10 because the SDK type-forwards most
-BCL types into `System.Runtime`.
+Static capability analysis belongs to SigmaScope. The former `HttpReferenceScanner` and
+its static `capability` findings have been removed from Rift's active source and report.
+A missing runtime observation means only **not observed in the exercised scenario**; it
+must never be interpreted as proof that the plugin cannot perform that action.
 
 ## Tests
 
@@ -208,7 +229,7 @@ dotnet test InterdimensionalRift.sln -c Release
 
 `SmokeTest` builds the API-15 fixtures against the frozen real Dalamud contract and
 requires successful constructor/service injection, framework callbacks, async
-`LoadAsync`/`DisposeAsync`, and the hostile-canary inert/armed behavior. Positive
+`LoadAsync`/`DisposeAsync`, Alpha's inert/armed behavior, Canary's inert behavior, and inert-by-default containment stress fixtures. Positive
 fixtures cannot pass as `not_a_plugin`, `load_failed`, or `init_timeout`.
 
 ## Next steps
@@ -237,3 +258,8 @@ dependencies and content remain available without exposing the repository.
 
 There is no production fallback when systemd/cgroup-v2, Bubblewrap, or the
 seccomp policy is unavailable.
+
+
+## Runtime observation contract
+
+Current reports use `schema_version: rift.runtime-observation.v1`. They contain neutral `observations` and a `by_kind` summary only. Rift does not emit a security severity, static capability inventory, or malware verdict.

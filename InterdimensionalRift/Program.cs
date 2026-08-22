@@ -75,7 +75,7 @@ internal static class Program
         }
         sw.Stop();
 
-        var json = FindingReporter.Serialize(report);
+        var json = RuntimeObservationReporter.Serialize(report);
 
         if (outPath is not null)
         {
@@ -104,7 +104,7 @@ internal static class Program
         Console.Error.WriteLine("interdimensional-rift <plugin.dll> [--out <path>] [--timeout <seconds>] [--no-color]");
         Console.Error.WriteLine();
         Console.Error.WriteLine("Loads a plugin targeting Dalamud.Plugin into a sandbox and");
-        Console.Error.WriteLine("emits a JSON findings report to --out (or stdout).");
+        Console.Error.WriteLine("emits a neutral JSON runtime-observation report to --out (or stdout).");
     }
 
     private static void PrintHumanSummary(SandboxReport report, TimeSpan elapsed, bool noColor)
@@ -115,8 +115,7 @@ internal static class Program
         Console.Error.WriteLine($"load outcome   : {report.Plugin.LoadOutcome}{(report.Plugin.LoadError is null ? "" : " (" + report.Plugin.LoadError + ")")}");
         Console.Error.WriteLine($"init duration  : {report.Plugin.InitDurationMs} ms");
         Console.Error.WriteLine($"dispose outcome: {report.Plugin.DisposeOutcome}{(report.Plugin.DisposeError is null ? "" : " (" + report.Plugin.DisposeError + ")")}");
-        Console.Error.WriteLine($"findings       : {report.Summary.TotalFindings} total");
-        Console.Error.WriteLine($"by severity    : {string.Join(", ", report.Summary.BySeverity.Select(kv => $"{kv.Key}={kv.Value}"))}");
+        Console.Error.WriteLine($"observations   : {report.Summary.TotalObservations} total");
         Console.Error.WriteLine($"by kind        : {string.Join(", ", report.Summary.ByKind.Select(kv => $"{kv.Key}={kv.Value}"))}");
         Console.Error.WriteLine($"wall time      : {elapsed.TotalMilliseconds:F0} ms");
     }

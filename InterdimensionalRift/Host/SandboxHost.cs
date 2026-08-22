@@ -19,7 +19,7 @@ public sealed class SandboxHost
 
         DalamudContract.EnsureLoaded();
         DalamudContract.EnterSandboxFailFastHostMode();
-        tracker.Lifecycle(
+        tracker.Boundary(
             "dalamud.internal_service_locator",
             "fail_fast",
             "real Dalamud host services intentionally unavailable in Rift");
@@ -36,12 +36,6 @@ public sealed class SandboxHost
                 },
             };
         }
-
-        // Transitional compatibility only. Static scanning moves out of Rift in
-        // the observation-schema pass; SigmaScope remains the authoritative
-        // static producer.
-        foreach (var f in HttpReferenceScanner.Scan(pluginPath, tracker))
-            tracker.Record(f.Kind, f.Severity, f.Service, f.Method, f.Message, context: f.Context);
 
         var internalName = Path.GetFileNameWithoutExtension(pluginPath);
         var info = new PluginInfo
@@ -119,7 +113,7 @@ public sealed class SandboxHost
         if (initOk)
             info.LoadOutcome = "ok";
         else if (info.LoadOutcome is "loaded")
-            info.LoadOutcome = tracker.Snapshot().Any(f => f.Kind == FindingKind.Timeout) ? "init_timeout" : "init_threw";
+            info.LoadOutcome = tracker.Snapshot().Any(f => f.Kind == RuntimeObservationKind.Timeout) ? "init_timeout" : "init_threw";
 
         if (initOk)
         {
@@ -233,5 +227,5 @@ public sealed class SandboxHost
     }
 
     private static SandboxReport Finalize(AccessTracker tracker, PluginInfo info) =>
-        FindingReporter.Finalize(tracker.Snapshot(), info);
+        RuntimeObservationReporter.Finalize(tracker.Snapshot(), info);
 }

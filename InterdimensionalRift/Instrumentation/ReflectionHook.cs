@@ -58,7 +58,7 @@ public sealed class ReflectionHook : IDisposable
                 return;
             }
         }
-        _tracker.ReflectiveLoad(fullName, path);
+        _tracker.AssemblyLoad(fullName, path);
     }
 
     public void Dispose()

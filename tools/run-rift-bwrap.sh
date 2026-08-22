@@ -33,6 +33,11 @@ wall_timeout=20
 memory_max=768M
 tasks_max=64
 cpu_quota=100%
+tmpfs_tmp_bytes=134217728
+tmpfs_home_bytes=16777216
+tmpfs_work_bytes=67108864
+boundary_profile=rift-linux-bwrap-v3
+contract_mode=real-dalamud-contract-failfast
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -104,11 +109,12 @@ artifact_sha=$(cd "$artifact_dir" && find . -type f -print0 | sort -z | xargs -0
 tmp_report=$(mktemp)
 tmp_stderr=$(mktemp)
 timeout_marker=$(mktemp)
-rm -f "$timeout_marker"
+scope_status=$(mktemp)
+rm -f "$timeout_marker" "$scope_status"
 unit="rift-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-0}-$$"
 cleanup() {
   sudo systemctl stop "$unit.service" >/dev/null 2>&1 || true
-  rm -f "$tmp_report" "$tmp_stderr" "$timeout_marker"
+  rm -f "$tmp_report" "$tmp_stderr" "$timeout_marker" "$scope_status"
 }
 trap cleanup EXIT
 
@@ -133,9 +139,9 @@ bwrap_args=(
   --ro-bind /usr/lib /usr/lib
   --proc /proc
   --dev /dev
-  --size 134217728 --tmpfs /tmp
-  --size 16777216 --tmpfs /home
-  --size 67108864 --tmpfs /work
+  --size "$tmpfs_tmp_bytes" --tmpfs /tmp
+  --size "$tmpfs_home_bytes" --tmpfs /home
+  --size "$tmpfs_work_bytes" --tmpfs /work
   --setenv HOME /home/rift
   --setenv TMPDIR /tmp
   --setenv PATH /rift
@@ -144,6 +150,20 @@ bwrap_args=(
   --setenv DOTNET_BUNDLE_EXTRACT_BASE_DIR /tmp/dotnet-bundle
   --setenv RIFT_EXECUTOR bubblewrap-v2
   --setenv RIFT_DALAMUD_CONTRACT_DIR /contracts
+  --setenv RIFT_ARTIFACT_TREE_SHA256 "$artifact_sha"
+  --setenv RIFT_ENTRY_SHA256 "$plugin_sha"
+  --setenv RIFT_NETWORK_MODE isolated
+  --setenv RIFT_SECCOMP_MODE enforced
+  --setenv RIFT_MEMORY_MAX "$memory_max"
+  --setenv RIFT_TASKS_MAX "$tasks_max"
+  --setenv RIFT_CPU_QUOTA "$cpu_quota"
+  --setenv RIFT_MEMORY_SWAP_MAX "0"
+  --setenv RIFT_WALL_TIMEOUT_SECONDS "$wall_timeout"
+  --setenv RIFT_TMPFS_TMP_BYTES "$tmpfs_tmp_bytes"
+  --setenv RIFT_TMPFS_HOME_BYTES "$tmpfs_home_bytes"
+  --setenv RIFT_TMPFS_WORK_BYTES "$tmpfs_work_bytes"
+  --setenv RIFT_BOUNDARY_PROFILE "$boundary_profile"
+  --setenv RIFT_CONTRACT_MODE "$contract_mode"
   --chdir /work
 )
 
@@ -161,7 +181,7 @@ sudo systemd-run \
   --property=KillMode=control-group \
   --property=SendSIGKILL=yes \
   --property=NoNewPrivileges=yes \
-  /bin/bash "$scope_runner" "$timeout_marker" "$wall_timeout" \
+  /bin/bash "$scope_runner" "$timeout_marker" "$scope_status" "$wall_timeout" \
   /bin/bash "$launcher" "$seccomp_policy" "$(command -v bwrap)" "${bwrap_args[@]}" -- \
   "$host_bin" "/input/$plugin_rel" --timeout "$init_timeout" --no-color \
   >"$tmp_report" 2>"$tmp_stderr"
@@ -170,19 +190,43 @@ set -e
 
 cat "$tmp_stderr" >&2 || true
 
+scope_oom_kill_delta=0
+scope_pids_max_delta=0
+scope_cgroup=''
+if [[ -s "$scope_status" ]]; then
+  scope_oom_kill_delta=$(awk -F= '$1=="memory_oom_kill_delta" {print $2}' "$scope_status")
+  scope_pids_max_delta=$(awk -F= '$1=="pids_max_delta" {print $2}' "$scope_status")
+  scope_cgroup=$(awk -F= '$1=="cgroup" {sub(/^cgroup=/, ""); print}' "$scope_status")
+fi
+[[ "$scope_oom_kill_delta" =~ ^[0-9]+$ ]] || scope_oom_kill_delta=0
+[[ "$scope_pids_max_delta" =~ ^[0-9]+$ ]] || scope_pids_max_delta=0
+
 if [[ -e "$timeout_marker" ]]; then
   cat > "$out" <<JSON
 {
-  "schema_version": "rift.supervisor.v2",
+  "schema_version": "rift.supervisor.v3",
   "producer": "interdimensional-rift-supervisor",
   "artifact_sha256": "$artifact_sha",
   "entry_sha256": "$plugin_sha",
   "execution": {
     "outcome": "wall_timeout",
+    "exit_code": $rc,
+    "signal": null,
     "wall_timeout_seconds": $wall_timeout,
     "network": "isolated",
     "seccomp": "enforced",
-    "cgroup": {"memory_max": "$memory_max", "memory_swap_max": "0", "tasks_max": $tasks_max, "cpu_quota": "$cpu_quota"}
+    "boundary_profile": "$boundary_profile",
+    "contract_mode": "$contract_mode",
+    "tmpfs": {"tmp_bytes": $tmpfs_tmp_bytes, "home_bytes": $tmpfs_home_bytes, "work_bytes": $tmpfs_work_bytes},
+    "cgroup": {
+      "path": "$scope_cgroup",
+      "memory_max": "$memory_max",
+      "memory_swap_max": "0",
+      "tasks_max": $tasks_max,
+      "cpu_quota": "$cpu_quota",
+      "memory_oom_kill_delta": $scope_oom_kill_delta,
+      "pids_max_delta": $scope_pids_max_delta
+    }
   }
 }
 JSON
@@ -191,27 +235,50 @@ JSON
 fi
 
 if [[ ! -s "$tmp_report" ]]; then
+  outcome=host_failed_without_report
+  signal_json=null
+  if (( scope_oom_kill_delta > 0 )); then
+    outcome=memory_limit
+  elif (( scope_pids_max_delta > 0 )); then
+    outcome=tasks_limit
+  elif [[ $rc -ge 128 && $rc -le 255 ]]; then
+    outcome=process_killed
+    signal_json=$((rc - 128))
+  fi
   cat > "$out" <<JSON
 {
-  "schema_version": "rift.supervisor.v2",
+  "schema_version": "rift.supervisor.v3",
   "producer": "interdimensional-rift-supervisor",
   "artifact_sha256": "$artifact_sha",
   "entry_sha256": "$plugin_sha",
   "execution": {
-    "outcome": "host_failed_without_report",
+    "outcome": "$outcome",
     "exit_code": $rc,
+    "signal": $signal_json,
+    "wall_timeout_seconds": $wall_timeout,
     "network": "isolated",
     "seccomp": "enforced",
-    "cgroup": {"memory_max": "$memory_max", "memory_swap_max": "0", "tasks_max": $tasks_max, "cpu_quota": "$cpu_quota"}
+    "boundary_profile": "$boundary_profile",
+    "contract_mode": "$contract_mode",
+    "tmpfs": {"tmp_bytes": $tmpfs_tmp_bytes, "home_bytes": $tmpfs_home_bytes, "work_bytes": $tmpfs_work_bytes},
+    "cgroup": {
+      "path": "$scope_cgroup",
+      "memory_max": "$memory_max",
+      "memory_swap_max": "0",
+      "tasks_max": $tasks_max,
+      "cpu_quota": "$cpu_quota",
+      "memory_oom_kill_delta": $scope_oom_kill_delta,
+      "pids_max_delta": $scope_pids_max_delta
+    }
   }
 }
 JSON
-  echo "Rift host exited without JSON; supervisor report written to $out" >&2
+  echo "Rift host exited without JSON ($outcome, rc=$rc); supervisor report written to $out" >&2
   exit 1
 fi
 
 mv "$tmp_report" "$out"
 trap - EXIT
 sudo systemctl stop "$unit.service" >/dev/null 2>&1 || true
-rm -f "$tmp_stderr" "$timeout_marker"
+rm -f "$tmp_stderr" "$timeout_marker" "$scope_status"
 exit "$rc"

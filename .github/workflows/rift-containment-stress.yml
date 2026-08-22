@@ -1,0 +1,213 @@
+name: Rift containment stress qualification
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [rift]
+    paths:
+      - 'InterdimensionalRift/**'
+      - 'tests/fixtures/RiftMemoryPressure/**'
+      - 'tests/fixtures/RiftTaskPressure/**'
+      - 'tests/fixtures/RiftTmpfsPressure/**'
+      - 'tests/fixtures/RiftHangTree/**'
+      - 'tests/InterdimensionalRift.Tests/**'
+      - 'tools/**'
+      - 'build/**'
+      - '.github/workflows/rift-containment-stress.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  containment-stress:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install boundary/build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bubblewrap libcap2-bin libseccomp-dev gcc pkg-config unzip zip procps
+
+      - name: Enable and verify Rift boundary
+        run: |
+          sudo bash ./tools/enable-userns-github.sh
+          bash ./tools/verify-bwrap.sh
+          bash ./tools/verify-rift-cgroup.sh
+
+      - name: Initialize qualification results
+        run: |
+          mkdir -p "$RUNNER_TEMP/rift-containment-stress-results"
+          printf '{"schema_version":"rift.qualification.v1","status":"running"}\n' \
+            > "$RUNNER_TEMP/rift-containment-stress-results/qualification.json"
+
+      - name: Verify fixture source contracts
+        run: python3 ./tools/check-sandbox-fixtures.py
+
+      - name: Download Dalamud API runtime
+        run: |
+          hooks="$RUNNER_TEMP/dalamud-hooks"
+          mkdir -p "$hooks"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            'https://goatcorp.github.io/dalamud-distrib/stg/latest.zip' \
+            -o "$RUNNER_TEMP/dalamud.zip"
+          unzip -q "$RUNNER_TEMP/dalamud.zip" -d "$hooks"
+          test -s "$hooks/Dalamud.dll"
+          echo "RIFT_HOOKS=$hooks" >> "$GITHUB_ENV"
+
+      - name: Build/test Rift and stress fixtures
+        run: |
+          python3 ./tools/check-rift-source-contract.py
+          dotnet test ./tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
+            --configuration Release -p:HooksDir="$RIFT_HOOKS"
+          dotnet publish ./InterdimensionalRift/InterdimensionalRift.csproj \
+            --configuration Release --runtime linux-x64 --self-contained true \
+            -p:HooksDir="$RIFT_HOOKS" --output "$RUNNER_TEMP/rift-runtime"
+          test -x "$RUNNER_TEMP/rift-runtime/interdimensional-rift"
+
+      - name: Build seccomp policy
+        run: |
+          policy=$(bash ./tools/build-rift-seccomp.sh "$RUNNER_TEMP/rift-seccomp.bpf")
+          test -s "$policy"
+          echo "RIFT_SECCOMP=$policy" >> "$GITHUB_ENV"
+
+      - name: Package exact stress fixtures
+        run: |
+          mkdir -p "$RUNNER_TEMP/rift-stress-packages"
+          for name in RiftMemoryPressure RiftTaskPressure RiftTmpfsPressure RiftHangTree; do
+            bash ./tools/package-sandbox-fixture.sh \
+              "$name" "$RUNNER_TEMP/rift-stress-packages/$name.zip" Release \
+              -p:HooksDir="$RIFT_HOOKS"
+            test -s "$RUNNER_TEMP/rift-stress-packages/$name.zip"
+          done
+
+      - name: Exercise memory cgroup boundary
+        run: |
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-containment-stress-results"
+          artifact="$RUNNER_TEMP/stress-memory"
+          mkdir -p "$artifact"
+          unzip -q "$RUNNER_TEMP/rift-stress-packages/RiftMemoryPressure.zip" -d "$artifact"
+          set +e
+          bash ./tools/run-rift-bwrap.sh \
+            --runtime-dir "$RUNNER_TEMP/rift-runtime" \
+            --contract-dir "$RIFT_HOOKS" \
+            --plugin "$artifact/RiftMemoryPressure.dll" \
+            --artifact-dir "$artifact" \
+            --seccomp-policy "$RIFT_SECCOMP" \
+            --out "$results/memory.json" \
+            --init-timeout 5 --wall-timeout 10 \
+            --memory-max 192M --tasks-max 32 --cpu-quota 100%
+          rc=$?
+          set -e
+          echo "$rc" > "$results/memory.exit"
+          python3 ./tools/validate-rift-report.py "$results/memory.json" --mode memory
+
+      - name: Exercise task/thread cgroup boundary
+        run: |
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-containment-stress-results"
+          artifact="$RUNNER_TEMP/stress-tasks"
+          mkdir -p "$artifact"
+          unzip -q "$RUNNER_TEMP/rift-stress-packages/RiftTaskPressure.zip" -d "$artifact"
+          set +e
+          bash ./tools/run-rift-bwrap.sh \
+            --runtime-dir "$RUNNER_TEMP/rift-runtime" \
+            --contract-dir "$RIFT_HOOKS" \
+            --plugin "$artifact/RiftTaskPressure.dll" \
+            --artifact-dir "$artifact" \
+            --seccomp-policy "$RIFT_SECCOMP" \
+            --out "$results/tasks.json" \
+            --init-timeout 5 --wall-timeout 10 \
+            --memory-max 768M --tasks-max 24 --cpu-quota 100%
+          rc=$?
+          set -e
+          echo "$rc" > "$results/tasks.exit"
+          python3 ./tools/validate-rift-report.py "$results/tasks.json" --mode tasks
+
+      - name: Exercise bounded tmpfs
+        run: |
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-containment-stress-results"
+          artifact="$RUNNER_TEMP/stress-tmpfs"
+          mkdir -p "$artifact"
+          unzip -q "$RUNNER_TEMP/rift-stress-packages/RiftTmpfsPressure.zip" -d "$artifact"
+          set +e
+          bash ./tools/run-rift-bwrap.sh \
+            --runtime-dir "$RUNNER_TEMP/rift-runtime" \
+            --contract-dir "$RIFT_HOOKS" \
+            --plugin "$artifact/RiftTmpfsPressure.dll" \
+            --artifact-dir "$artifact" \
+            --seccomp-policy "$RIFT_SECCOMP" \
+            --out "$results/tmpfs.json" \
+            --init-timeout 8 --wall-timeout 12 \
+            --memory-max 512M --tasks-max 32 --cpu-quota 100%
+          rc=$?
+          set -e
+          echo "$rc" > "$results/tmpfs.exit"
+          python3 ./tools/validate-rift-report.py "$results/tmpfs.json" --mode tmpfs
+
+      - name: Exercise hang + stubborn child cleanup
+        run: |
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-containment-stress-results"
+          artifact="$RUNNER_TEMP/stress-hangtree"
+          mkdir -p "$artifact"
+          unzip -q "$RUNNER_TEMP/rift-stress-packages/RiftHangTree.zip" -d "$artifact"
+          chmod 0755 "$artifact/rift-hang-child"
+          set +e
+          bash ./tools/run-rift-bwrap.sh \
+            --runtime-dir "$RUNNER_TEMP/rift-runtime" \
+            --contract-dir "$RIFT_HOOKS" \
+            --plugin "$artifact/RiftHangTree.dll" \
+            --artifact-dir "$artifact" \
+            --seccomp-policy "$RIFT_SECCOMP" \
+            --out "$results/hangtree.json" \
+            --init-timeout 2 --wall-timeout 8 \
+            --memory-max 256M --tasks-max 32 --cpu-quota 100%
+          rc=$?
+          set -e
+          echo "$rc" > "$results/hangtree.exit"
+          python3 ./tools/validate-rift-report.py "$results/hangtree.json" --mode hangtree
+          sleep 1
+          if pgrep -af '[/]input/rift-hang-child'; then
+            echo "stubborn child escaped Rift cgroup cleanup" >&2
+            exit 1
+          fi
+          echo "Rift process-tree cleanup: PASS"
+
+      - name: Write qualification summary
+        if: always()
+        run: |
+          python3 - "$RUNNER_TEMP/rift-containment-stress-results" <<'PY'
+          import json, pathlib, sys
+          root=pathlib.Path(sys.argv[1])
+          scenarios={}
+          for name in ("memory","tasks","tmpfs","hangtree"):
+              report=root/f"{name}.json"
+              if report.exists():
+                  try:
+                      data=json.loads(report.read_text())
+                      scenarios[name]={
+                          "schema":data.get("schema_version"),
+                          "outcome":data.get("plugin",{}).get("load_outcome") or data.get("execution",{}).get("outcome"),
+                      }
+                  except Exception as exc:
+                      scenarios[name]={"error":str(exc)}
+          payload={"schema_version":"rift.qualification.v1","status":"completed","scenarios":scenarios}
+          (root/"qualification.json").write_text(json.dumps(payload,indent=2)+"\n")
+          PY
+
+      - name: Upload containment qualification
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rift-containment-stress-results
+          path: ${{ runner.temp }}/rift-containment-stress-results
+          if-no-files-found: error
+          retention-days: 14

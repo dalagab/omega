@@ -1,0 +1,168 @@
+= Interdimensional Rift Sandbox Profile
+:toc:
+
+== Naming model
+
+* *Rift* is the sandbox/execution environment.
+* *Alpha* is the known suspicious-looking but harmless reference subject used to calibrate observation.
+* *Canary* is the environmental sentinel that verifies the Rift itself is safe.
+* *Containment stress fixtures* deliberately pressure one outer boundary at a time.
+
+== Current Linux boundary profile
+
+Profile identifier: `rift-linux-bwrap-v3`.
+
+A normal untrusted execution is nested as:
+
+[source,text]
+----
+GitHub-hosted disposable Ubuntu VM
+  -> trusted systemd transient cgroup
+    -> trusted wall-time supervisor
+      -> Bubblewrap user/PID/IPC/network/UTS namespaces
+        -> seccomp BPF policy
+          -> self-contained Rift host
+            -> exact read-only plugin artifact
+----
+
+The managed Rift host is instrumentation. It is not the hard security boundary.
+
+== Filesystem exposure
+
+The Bubblewrap filesystem is allowlisted:
+
+* `/rift` — self-contained trusted Rift runtime, read-only;
+* `/contracts` — frozen trusted Dalamud runtime closure, read-only;
+* `/input` — exact plugin artifact tree, read-only;
+* `/lib`, `/lib64` when present, `/usr/lib` — runtime loader dependencies, read-only;
+* `/proc` — fresh namespace procfs;
+* `/dev` — minimal Bubblewrap device set;
+* `/tmp` — 128 MiB tmpfs;
+* `/home` — 16 MiB tmpfs;
+* `/work` — 64 MiB tmpfs.
+
+Rift does not bind the runner workspace, repository checkout, host home, `.git`, SSH state, Docker sockets, or catalog credentials.
+
+== Namespace / privilege controls
+
+Current profile requires:
+
+* user namespace;
+* PID namespace;
+* IPC namespace;
+* isolated network namespace;
+* UTS namespace with hostname `interdimensional-rift`;
+* nested user namespaces disabled;
+* new session;
+* die-with-parent;
+* all Linux capabilities dropped;
+* `NoNewPrivileges=yes`;
+* cleared environment followed only by trusted allowlisted variables.
+
+== Seccomp
+
+The current seccomp policy is default-allow plus explicit `EPERM` denials for dangerous host-control primitives, including:
+
+* `ptrace`;
+* mount/new-mount API and namespace manipulation;
+* reboot/kexec and swap controls;
+* keyring operations;
+* BPF/perf/userfaultfd;
+* process-vm access;
+* kernel module operations;
+* I/O privilege operations;
+* AF_PACKET and raw sockets.
+
+`clone`/`clone3` are not globally denied because the .NET runtime requires normal thread creation. Task/thread containment is therefore additionally enforced by cgroup `TasksMax`.
+
+== Cgroup/resource controls
+
+Default production profile:
+
+* `MemoryMax=768M`;
+* `MemorySwapMax=0`;
+* `TasksMax=64`;
+* `CPUQuota=100%`;
+* managed initialization timeout;
+* outer wall timeout;
+* `KillMode=control-group`;
+* `TimeoutStopSec=2s`;
+* `SendSIGKILL=yes`.
+
+Per-test fixtures may use stricter limits to prove the boundary.
+
+== Dalamud contract model
+
+Rift uses the frozen real `Dalamud.dll` for CLR type identity only.
+
+It does not start the real Dalamud/game host. Public plugin-facing services are controlled instrumentation proxies. Unsupported reflective access to Dalamud's internal `Service<T>` graph is put into a deliberate fail-fast/unloaded state so plugin reflection cannot deadlock Rift waiting for a host that intentionally does not exist.
+
+== Canary
+
+`RiftCanary.dll` is the environmental sentinel.
+
+It is DLL-only, contains no plugin manifest JSON, and is inert outside Rift. In the sandbox it verifies:
+
+* `/input`, `/rift`, and `/contracts` are read-only;
+* runner secrets/workspace/socket paths are absent;
+* `NoNewPrivileges` is active;
+* effective capabilities are zero;
+* no non-loopback default route exists;
+* nested user namespaces are denied;
+* `ptrace` is denied;
+* AF_PACKET/raw sockets are denied;
+* `/tmp`, `/home`, and `/work` are bounded to the trusted profile values;
+* the isolated hostname is present.
+
+Any `FAILED` marker makes the Canary workflow fail.
+
+== Alpha
+
+`RiftAlpha.dll` is not an environmental safety test. It is the observation calibration subject.
+
+Its suspicious static vocabulary is inert data. Its active runtime paths are harmless, local, and bounded. Alpha proves that expected static and runtime security signals remain observable.
+
+== Containment stress qualification
+
+The dedicated `rift-containment-stress.yml` workflow uses four non-distributable fixtures.
+
+[cols="1,2,2"]
+|===
+|Fixture |Pressure |Acceptable protected outcome
+
+|`RiftMemoryPressure`
+|Touches memory until the configured memory boundary is reached.
+|Managed `OutOfMemoryException` observation or outer `process_killed` supervisor result.
+
+|`RiftTaskPressure`
+|Creates background threads until `TasksMax`/runtime creation fails.
+|Bounded thread-creation exception or outer process kill.
+
+|`RiftTmpfsPressure`
+|Writes only to `/tmp` until the tmpfs limit is reached.
+|Bounded `IOException`; test file is deleted best-effort.
+
+|`RiftHangTree`
+|Starts a helper child which ignores SIGTERM, then never returns from construction.
+|Plugin init timeout or wall timeout, followed by proof that no helper process survives cgroup teardown.
+|===
+
+The expected success condition is not always process exit code zero. These tests validate whether the trusted outer boundary contained the pressure.
+
+== Report contracts
+
+Successful managed observations use `rift.runtime-observation.v1`.
+
+Runs terminated before a managed report exists use `rift.supervisor.v3`.
+
+Both carry exact artifact identity. The runtime report additionally carries the active boundary profile, network/seccomp mode, cgroup limits, zero-swap policy, wall timeout, tmpfs limits, and contract mode.
+
+Machine-readable schemas live under `schemas/`.
+
+== Security interpretation
+
+Rift emits observations and boundary outcomes, not malware verdicts.
+
+SigmaScope owns static capability/signature analysis. DeltaScope/workbench may correlate SigmaScope evidence, Rift observations, historical scans, and sandbox qualification state. Omega may then present the resulting security information to the player.
+
+`not observed` always means only `not observed in this exercised scenario`.
