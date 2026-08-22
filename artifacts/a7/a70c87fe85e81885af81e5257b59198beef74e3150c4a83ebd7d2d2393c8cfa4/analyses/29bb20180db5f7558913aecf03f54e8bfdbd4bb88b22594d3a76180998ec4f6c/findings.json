@@ -1,0 +1,103 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:FCCH.dll:FCCH.Managers.ChestHelper.InteractWithChest+0x7f: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+    ],
+    "rule_id": "automation.game.character.interact",
+    "severity": "caution",
+    "title": "World/NPC interaction control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:FCCH.dll:FCCH.Managers.ChestHelper.OnUpdate+0x192: call FCCH.Common.Callback.Fire",
+      "il:FCCH.dll:FCCH.Managers.ChestManager.SwitchToPage+0xd5: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:FCCH.dll:FCCH.Managers.Gil.GilExecutor.FireBankDeposit+0x1a: call FCCH.Common.Callback.Fire",
+      "il:FCCH.dll:FCCH.Managers.Gil.GilExecutor.FireBankDeposit+0x30: call FCCH.Common.Callback.Fire"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for inventory ui/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:FCCH.dll:FCCH.Managers.MoveManager.DispatchMove+0x27: call FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.MoveItemSlot",
+      "il:FCCH.dll:FCCH.Managers.MoveManager.DispatchMove+0x233: call FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.MoveItemSlot"
+    ],
+    "rule_id": "automation.game.ui.inventory_control",
+    "severity": "caution",
+    "title": "Inventory UI/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:FCCH.dll: s://github.com/Nexaii/FCCH.git",
+      "artifact:FCCH.dll: s://www.patreon.com/c/Nexairi"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:FCCH.dll: SigScanner",
+      "metadata:FCCH.dll: Dalamud.Hooking",
+      "metadata:FCCH.dll: HookFromAddress",
+      "il:FCCH.dll:FCCH.Managers.MoveManager.ResolveInvManagerMoveItem+0x0: call FCCH.Plugin.get_SigScanner: SigScanner",
+      "il:FCCH.dll:FCCH.Managers.MoveManager.ResolveInvManagerMoveItem+0xc: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:FCCH.dll:FCCH.Managers.Gil.GilManager.TryResolveDebugHook+0xb: call FCCH.Plugin.get_SigScanner: SigScanner",
+      "il:FCCH.dll:FCCH.Managers.Gil.GilManager.TryResolveDebugHook+0x15: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:FCCH.dll:FCCH.Managers.Gil.GilManager.TryResolveDebugHook+0x2f: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:FCCH.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:FCCH.dll: System.Diagnostics.Process",
+      "metadata:FCCH.dll: ProcessStartInfo",
+      "metadata:FCCH.dll: ShellExecute",
+      "metadata:FCCH.dll: Process.Start",
+      "il:FCCH.dll:FCCH.UI.SettingsWindow.OpenDonateLink+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:FCCH.dll:FCCH.UI.SettingsWindow.OpenDonateLink+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:FCCH.dll:FCCH.UI.SettingsWindow.OpenDonateLink+0xb: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:FCCH.dll:FCCH.UI.SettingsWindow.OpenDonateLink+0xb: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:FCCH.dll: FileStream",
+      "il:FCCH.dll:FCCH.Common.DebugFileLogger.WritePathSafely+0xa: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:FCCH.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
