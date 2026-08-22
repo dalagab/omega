@@ -1178,9 +1178,10 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
             except Exception as exc:
                 errors.append(f"scannerQueue unreadable: {type(exc).__name__}: {exc}")
 
-    # Phase-10 rule projections are a non-authoritative, read-only sidecar.  They are
-    # published with Evidence-v2 for inspection/replay, but they must remain fully
-    # hash-pinned and must never claim production activation or queue authority.
+    # Phase-10 rule projections are a non-authoritative sidecar for findings/replay.
+    # They may carry tightly-scoped Stigma-1 deep-scan evidence-acquisition requests,
+    # but must remain fully hash-pinned and may never authorize production finding
+    # write-back or general queue mutation.
     srl_rule_projections = index.get("srlRuleProjections") or {}
     referenced_rule_projection_files: set[str] = set()
     if srl_rule_projections:
@@ -1261,6 +1262,34 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                     errors.append(
                         f"srlRuleProjections reanalysis count mismatch: index={expected_requests}, actual={actual_requests}"
                     )
+
+                raw_deep_request = projection_index.get("analysisRequests")
+                if raw_deep_request is not None:
+                    if not isinstance(raw_deep_request, dict):
+                        errors.append("srlRuleProjections analysisRequests descriptor is not an object")
+                    else:
+                        deep_request = dict(raw_deep_request)
+                        deep_request_rel = safe_relpath((projection_root / safe_relpath(str(deep_request.get("path") or ""))).as_posix())
+                        deep_request_entry = dict(deep_request)
+                        deep_request_entry["path"] = deep_request_rel
+                        referenced_rule_projection_files.add(deep_request_rel)
+                        errors.extend(
+                            f"srlRuleProjections analysis requests: {item}"
+                            for item in verify_file_entry(root, deep_request_entry, max_bytes=MAX_PUBLISH_FILE_BYTES)
+                        )
+                        deep_request_payload = read_json_file(root, deep_request_rel)
+                        if str(deep_request_payload.get("schema") or "") != "omega.stigma-1.analysis-requests.v1":
+                            errors.append("srlRuleProjections analysis request schema is invalid")
+                        if str(deep_request_payload.get("queueMutationScope") or "") != "deep-scan-evidence-acquisition-only":
+                            errors.append("srlRuleProjections analysis requests have an invalid queue mutation scope")
+                        if bool(deep_request_payload.get("productionFindingsWriteBack")):
+                            errors.append("srlRuleProjections analysis requests enable production findings write-back")
+                        expected_deep_requests = int(deep_request.get("records") or 0)
+                        actual_deep_requests = len(deep_request_payload.get("requests") or []) if isinstance(deep_request_payload.get("requests"), list) else -1
+                        if expected_deep_requests != actual_deep_requests:
+                            errors.append(
+                                f"srlRuleProjections analysis request count mismatch: index={expected_deep_requests}, actual={actual_deep_requests}"
+                            )
             except Exception as exc:
                 errors.append(f"srlRuleProjections unreadable: {type(exc).__name__}: {exc}")
 

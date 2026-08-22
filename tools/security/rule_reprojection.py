@@ -517,6 +517,35 @@ def verify_projection_set(root: Path) -> dict[str, Any]:
             errors.append("reanalysis request set authorizes queue mutation")
     except Exception as exc:
         errors.append(f"reanalysis request set could not be verified: {type(exc).__name__}: {exc}")
+
+    raw_deep_request = index.get("analysisRequests")
+    if raw_deep_request is not None:
+        if not isinstance(raw_deep_request, Mapping):
+            errors.append("analysis request set descriptor is malformed")
+        else:
+            deep_request = dict(raw_deep_request)
+            try:
+                rel = security_evidence_v2.safe_relpath(str(deep_request.get("path") or ""))
+                path = root / rel
+                if not path.is_file():
+                    raise FileNotFoundError(rel)
+                if path.stat().st_size != int(deep_request.get("bytes") or -1):
+                    errors.append(f"size mismatch for {rel}")
+                if _sha_file(path) != str(deep_request.get("sha256") or ""):
+                    errors.append(f"sha256 mismatch for {rel}")
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                if str(payload.get("schema") or "") != "omega.stigma-1.analysis-requests.v1":
+                    errors.append("analysis request set schema is invalid")
+                if str(payload.get("queueMutationScope") or "") != "deep-scan-evidence-acquisition-only":
+                    errors.append("analysis request set has an invalid queue mutation scope")
+                if bool(payload.get("productionFindingsWriteBack")):
+                    errors.append("analysis request set enables production findings write-back")
+                expected = int(deep_request.get("records") or 0)
+                actual = len(payload.get("requests") or []) if isinstance(payload.get("requests"), list) else -1
+                if expected != actual:
+                    errors.append(f"analysis request count mismatch: index={expected}, actual={actual}")
+            except Exception as exc:
+                errors.append(f"analysis request set could not be verified: {type(exc).__name__}: {exc}")
     return {
         "schema": "omega.sigmascope.srl-rule-projection-validation.v1",
         "ok": not errors,

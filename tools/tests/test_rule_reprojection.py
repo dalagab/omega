@@ -181,6 +181,22 @@ class RuleReprojectionTests(unittest.TestCase):
             self.assertFalse(validation["ok"])
             self.assertTrue(any("sha256 mismatch" in item for item in validation["errors"]))
 
+    def test_analysis_request_sidecar_is_hash_pinned_and_tamper_detected(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-reproject-analysis-requests-") as td:
+            root = Path(td)
+            evidence = self.evidence(root)
+            plan = rule_reprojection.plan_reprojection(evidence, self.compiled())
+            output = root / "projection"
+            index = rule_reprojection.materialize_projection_set(output, plan)
+            deep_entry = index["analysisRequests"]
+            self.assertEqual("analysis-requests.json", deep_entry["path"])
+            self.assertTrue(rule_reprojection.verify_projection_set(output)["ok"])
+            deep_path = output / deep_entry["path"]
+            deep_path.write_text(deep_path.read_text(encoding="utf-8") + " ", encoding="utf-8")
+            validation = rule_reprojection.verify_projection_set(output)
+            self.assertFalse(validation["ok"])
+            self.assertTrue(any("sha256 mismatch for analysis-requests.json" in item for item in validation["errors"]))
+
     def test_rule_only_revision_changes_projection_not_analysis_revisions(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-reproject-revision-") as td:
             root = Path(td)

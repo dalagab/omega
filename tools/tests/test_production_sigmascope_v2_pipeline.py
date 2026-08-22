@@ -385,6 +385,12 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertTrue(validation["ok"], validation["errors"])
             projection_index = json.loads((evidence / "rule-projections" / "index.json").read_text(encoding="utf-8"))
             self.assertEqual(1, projection_index["counts"]["reprojectedVariants"])
+            self.assertEqual("analysis-requests.json", projection_index["analysisRequests"]["path"])
+            deep_request_path = evidence / "rule-projections" / projection_index["analysisRequests"]["path"]
+            deep_request_payload = json.loads(deep_request_path.read_text(encoding="utf-8"))
+            self.assertEqual("omega.stigma-1.analysis-requests.v1", deep_request_payload["schema"])
+            self.assertEqual("deep-scan-evidence-acquisition-only", deep_request_payload["queueMutationScope"])
+            self.assertFalse(deep_request_payload["productionFindingsWriteBack"])
             projection_path = evidence / "rule-projections" / projection_index["variants"][0]["path"]
             projection = json.loads(projection_path.read_text(encoding="utf-8"))
             self.assertEqual(variant_id, projection["variantId"])

@@ -1,5 +1,64 @@
 # Omega Security Services changelog
 
+## 2.15.0 unreleased — DeltaScope 4.6.1 / Stigma-1 analysis-request sidecar validation fix
+
+- Fix Evidence-v2 intrinsic validation for the new hash-pinned `rule-projections/analysis-requests.json` sidecar. The 4.6 materializer correctly indexed the file, but the snapshot validator still only recognized variant projections plus `reanalysis-requests.json`, so a valid deep-analysis request sidecar was incorrectly reported as an orphan.
+- Extend `rule_reprojection.verify_projection_set()` to verify the Stigma-1 analysis-request sidecar SHA-256/size, schema, bounded `deep-scan-evidence-acquisition-only` queue scope, record count, and `productionFindingsWriteBack=false` boundary.
+- Preserve compatibility with pre-Deep-Scan projection sets that legitimately have no `analysisRequests` descriptor.
+- Add regression coverage for successful intrinsic snapshot validation and tamper detection of `analysis-requests.json`. No rule Definitions changed in this hotfix.
+
+## 2.15.0 unreleased — DeltaScope 4.6 / adaptive Stigma-1 Deep Scan
+
+- Add bounded `analysisRequest.depth: standard|extended|exhaustive`. Rules can say “look harder” but cannot set raw timeouts, commands, runner options or arbitrary resource values.
+- The durable Deep Scan queue coalesces same artifact/baseline/profile requests and automatically keeps the **deepest requested depth** while retaining every requesting rule/reason.
+- Split the Deep Scan Actions workflow into selection and execution jobs. The selection job reads the queue and supplies a code-owned dynamic workflow timeout (20/40/65 minutes) plus worker budget to the execution job.
+- `artifact-differential-v1` now performs additional bounded member-content/literal inspection at extended/exhaustive depth while still never executing plugin code.
+- Add `experimental.deep-scan.divergent-artifact-high-risk`: divergence plus execution/dynamic-code and network capability requests exhaustive differential analysis. The ordinary divergent-artifact example requests extended depth.
+- Source Definition library is now **6 packs / 55 rules / 15 fixtures** (16 reviewed production-tier + 39 experimental).
+
+## 2.15.0 unreleased — DeltaScope 4.5 / expanded Stigma-1 definitions
+
+- Expand the source Definition library from **2 packs / 7 rules / 6 fixtures** to **6 packs / 54 rules / 14 fixtures** so DeltaScope has a meaningful rule corpus to browse, learn from, fork and replay.
+- Promote the remaining literal-backed legacy static-pattern primitives into the reviewed core migration pack: **14 primitive rules + 2 compound rules = 16 reviewed production-tier definitions**. Production SRL finding writeback remains separately gated.
+- Expand migration parity to **147 primitive cases + 32 compound combinations**, all using scanner-retained observations and preserving fail-closed old-vs-Stigma semantics.
+- Add **38 experimental rules** in four packs: managed-call/game capabilities, network endpoint classifications, source-provenance facts, and higher-order research correlations. Experimental trust-tier rules freeze deterministically but are never production-active merely by being present.
+- Add `experimental.deep-scan.divergent-artifact` as an authoring/reference example of the Stigma-1 `analysisRequest` outcome. It requests `artifact-differential-v1` against `stable-artifact-baseline` but remains experimental until cross-source divergence is exposed as a legal first-class Stigma input/fact.
+- Keep the 4.4 durable Deep Scan queue/worker contract unchanged: reviewed frozen rules may request bounded Omega-owned analysis profiles; local My Rules only preview requests; arbitrary commands/runner controls remain impossible.
+
+## 2.15.0 unreleased — DeltaScope 4.4 / Stigma-1 deep-analysis queue
+
+- Added typed Stigma-1 `analysisRequest` outcomes with strict profile/reason/comparison schema; arbitrary commands, paths, timeouts, network policy and runner controls are rejected.
+- Added durable `deep-scan-state` queue projection from matched exact frozen rules. Requests coalesce by exact candidate artifact + stable baseline + profile revision while retaining all requesting-rule provenance. Completed evidence is reused when another rule later asks for the same work.
+- Added separate reusable/manual `Omega Deep Scan worker` workflow plus a thin default-branch hourly recovery caller. Normal SigmaScope publishes queue state and best-effort dispatches the worker without making deep analysis part of its bounded scan budget.
+- Added `artifact-differential-v1`, a non-executing equal-profile comparison of candidate and stable baseline package inventory plus SigmaScope static behavior observations.
+- Reserved `sandbox-differential-v1` as unavailable until a genuine isolated executor exists; the Actions worker never substitutes direct plugin execution.
+- Added DeltaScope visual Emit-node controls and Explain/Test visibility for deep-analysis outcomes. Local rules remain preview-only and cannot mutate the production queue.
+- Added rollout compatibility so a newly updated `sigmascope.yml` continues to work with an older frozen worker until the next Catalog/Definitions freeze.
+- Added deep-scan documentation, workflow contract tests, stable-baseline fail-closed tests and cross-rule completed-result reuse tests.
+
+## 2.15.0 unreleased — DeltaScope 4.3 findings, operations and documentation
+
+- Put **Latest security findings** at the top of Incidents. The preview is derived only from current published findings, sorted by newest scan time and severity, and opens the existing read-only incident/case investigation when selected.
+- Add a read-only **Components & Actions** dashboard panel plus **Operations / Actions** event stream backed by bounded GitHub Actions metadata for `dalagab/omega`. SigmaScope, Omega builds, Catalog / Definitions, DeltaScope, Stigma-1, security regression and source intake get explicit component rows, including running/healthy/failed/unknown state and direct links to GitHub runs. DeltaScope never starts, cancels or retries Actions.
+- Add a local **Documentation** workspace. It exposes an allow-listed set of shipped documentation only, headed by the new `docs/STIGMA-1.md` quick start, rule-authoring guide, SRL language reference, examples/fixtures, Definition Pack contract and security architecture. Arbitrary filesystem paths are not accepted.
+- Keep the DeltaScope 4.1 fixed-viewport contract: these new pages/panels scroll internally and do not restore browser/main-window scrolling.
+- GitHub status is fail-soft and cached for 60 seconds. Public repositories work without credentials; an optional server-side `OMEGA_GITHUB_TOKEN`, `GITHUB_TOKEN` or `GH_TOKEN` only raises API limits and is never exposed to the browser.
+
+## 2.15.0 unreleased — DeltaScope 4.2 Stigma-1 component identity
+
+- Name the shared SRL Core component **Stigma-1**. `tools/security/srl.py` remains the stable implementation/import used by frozen and compatibility paths; new `tools/security/stigma1.py` is the canonical developer-facing facade and re-exports the exact same parser, validator, compiler, evaluator and visual-graph bridge. No second rule implementation is introduced.
+- Expose Stigma-1 identity in the SRL engine/reference contract (`component=Stigma-1`, `technicalName=SRL Core`, `componentId=omega.stigma-1`) while preserving the existing SRL schemas and the `srlCore` API field as an explicit compatibility alias.
+- Update DeltaScope Rules UI and documentation to present **Stigma-1 · SRL Core**, and bump DeltaScope to **4.2**.
+- Repair the stale SigmaScope branding regression: DeltaScope is no longer globally read-only because My Rules are intentionally local/versioned; the test now verifies the precise boundary instead (developer-only, never scans/publishes, published state read-only, local SRL writes only).
+
+## 2.15.0 unreleased — DeltaScope 4.1 fixed-viewport workspaces
+
+- Remove document/main-interface vertical scrolling from every DeltaScope page. The browser document, application main area and active workspace are now fixed to the available viewport below the header.
+- Keep Dashboard, Incidents, Events, Intelligence, Assets, Rules, Reports and System framing stationary; long content scrolls only inside the panel that owns it (tables, case/evidence panes, rule tree/editor/canvas, report rows, raw Evidence browser, SQL output).
+- Make the Rules workspace consume the remaining viewport instead of extending the page: the System/My Rules tree and YAML/Visual/Explain-Test work area stay visible together, while the visual canvas and property editor use bounded internal scrolling.
+- Convert Assets and raw Evidence browsing to true height-bounded split panes, preventing large plugin details or database rows from pushing the navigation/header off screen.
+- This is a DeltaScope browser-layout change only. It changes no SigmaScope scanner/evidence/rule semantics, requires no Definitions update and requires no security rescan.
+
 ## 2.15.0 unreleased — DeltaScope 4.0 unified SRL Core workspace
 
 - Extract the shared rule-language authoring boundary into **SRL Core** (`tools/security/srl.py`): SigmaScope and DeltaScope use the same parser, validator, compiler/evaluator model, and DeltaScope's visual authoring graph must round-trip through that core before YAML is accepted. The graph is never an executable production rule format.

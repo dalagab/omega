@@ -1,6 +1,6 @@
 # DeltaScope security-information workbench
 
-Status: **Phase 11 complete plus DeltaScope 4.6 Stigma-1 expanded rule library and deep-analysis orchestration** on the unreleased SigmaScope 2.15 development line. Slices 1–8 are implemented: the permanent navigation/workspace shell, deterministic backend incident/event/intelligence projections, lazy selected-case composition with normalized retained-evidence timelines, cross-plugin intelligence/Asset relationship navigation, exact active-rule/Definition provenance, read-only Reports/System health projections, and the final URL-only GitHub candidate proposal handoff.
+Status: **Phase 11 complete plus DeltaScope 4.6.1 Stigma-1 expanded rule library and deep-analysis orchestration** on the unreleased SigmaScope 2.15 development line. Slices 1–8 are implemented: the permanent navigation/workspace shell, deterministic backend incident/event/intelligence projections, lazy selected-case composition with normalized retained-evidence timelines, cross-plugin intelligence/Asset relationship navigation, exact active-rule/Definition provenance, read-only Reports/System health projections, and the final URL-only GitHub candidate proposal handoff.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ The workbench uses these stable operator concepts:
 - **Documentation** — allow-listed local Stigma-1/SRL authoring, examples, Definition Pack and security-architecture references.
 - **System** — evidence/Definitions revisions, pipeline health, audit status and the advanced raw Evidence-v2 browser.
 
-## DeltaScope 4.6 Stigma-1 rule library + deep-analysis orchestration
+## DeltaScope 4.6.1 Stigma-1 rule library + deep-analysis orchestration
 
 Rules can now describe a typed evidence-acquisition outcome. System/frozen rules can feed the durable SigmaScope Deep Scan queue; My Rules only preview the same outcome. The visual Emit node exposes the approved deep-analysis profiles without exposing commands or runner controls. Deep Scan runs as its own GitHub Actions workflow and therefore does not consume the normal bounded SigmaScope scan budget. See `DEEP-SCAN-WORKFLOW.md`.
 
