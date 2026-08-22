@@ -15,7 +15,14 @@ public sealed class SandboxHost
 {
     public SandboxReport Run(string pluginPath, TimeSpan initTimeout, int frameworkTicks = 3)
     {
+        var tracker = new AccessTracker();
+
         DalamudContract.EnsureLoaded();
+        DalamudContract.EnterSandboxFailFastHostMode();
+        tracker.Lifecycle(
+            "dalamud.internal_service_locator",
+            "fail_fast",
+            "real Dalamud host services intentionally unavailable in Rift");
 
         if (!File.Exists(pluginPath))
         {
@@ -29,8 +36,6 @@ public sealed class SandboxHost
                 },
             };
         }
-
-        var tracker = new AccessTracker();
 
         // Transitional compatibility only. Static scanning moves out of Rift in
         // the observation-schema pass; SigmaScope remains the authoritative

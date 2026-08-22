@@ -706,3 +706,21 @@ DalaInspect remains metadata/provenance tooling and runs with `--inspect-only`; 
 The `ec68b40` GitHub runs reconfirmed that user namespaces, Bubblewrap, cgroup-v2 and the seccomp policy all work on hosted Ubuntu 24.04 runners. The remaining failures were pre-execution integration defects: two fixture projects had not received the real-Dalamud contract import in the committed branch, the hostile-canary source checker treated NuGet-generated `obj/*.json` as authored plugin metadata, and the Omega job summary assumed a runtime report existed after a pre-build failure.
 
 Pass 2.5 restores all contract imports, keeps the final canary package hard-gated to one DLL and zero JSON, ignores only generated `bin/obj` files in the authored-source check, and makes both execution workflows preserve phase-specific diagnostics for early failures.
+
+
+== Pass 2.8: Dalamud internal-service fail-fast mode
+
+Rift uses the real frozen `Dalamud.dll` only as a trusted CLR contract/type-identity source.
+Some plugins nevertheless reflect into unsupported Dalamud internals such as
+`Dalamud.Service<T>.Get()`. In a normal client those calls are satisfied by Dalamud's
+`ServiceManager`; in Rift the real host is intentionally never started.
+
+Current Dalamud's `Service<T>.Get()` waits on an internal `TaskCompletionSource<T>` and
+uses `ServiceManager.UnloadCancellationToken` to abort that wait during host unload.
+Rift now deliberately cancels the corresponding trusted runtime unload token before
+plugin execution. This makes unsupported internal service-locator calls fail immediately,
+allowing well-defended plugin reflection bridges to take their own fallback paths rather
+than deadlocking the sandbox.
+
+This does not make real Dalamud internal services available and does not instantiate
+game/host internals. Plugin-facing public services remain Rift instrumentation proxies.

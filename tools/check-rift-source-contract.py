@@ -49,4 +49,11 @@ if local_pos < 0 or trusted_pos < 0 or local_pos > trusted_pos:
     print('FAIL: plugin-local managed dependencies must resolve before trusted-runtime fallback', file=sys.stderr); sys.exit(1)
 checks.append('plugin-local dependencies precede trusted-runtime fallback')
 
+
+require(Path('InterdimensionalRift/Runtime/DalamudContract.cs'), 'EnterSandboxFailFastHostMode', 'real contract exposes Rift internal-service fail-fast mode')
+require(Path('InterdimensionalRift/Runtime/DalamudContract.cs'), 'UnloadCancellationTokenSource', 'fail-fast mode uses Dalamud unload cancellation path')
+require(Path('InterdimensionalRift/Host/SandboxHost.cs'), 'dalamud.internal_service_locator', 'host records internal service-locator compatibility mode')
+require(Path('tests/InterdimensionalRift.Tests/DalamudInternalServiceFailFastTest.cs'), 'InternalDalamudServiceLocator_FailsFastInsteadOfBlocking', 'internal service locator has non-blocking regression test')
+require(Path('tests/InterdimensionalRift.Tests/DalamudInternalServiceFailFastTest.cs'), 'TimeSpan.FromSeconds(2)', 'internal service fail-fast test is bounded')
+
 print(f'Rift source-contract checks: {len(checks)}/{len(checks)} passed')

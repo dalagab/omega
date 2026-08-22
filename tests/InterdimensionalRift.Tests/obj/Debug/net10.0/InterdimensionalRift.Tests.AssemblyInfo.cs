@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("InterdimensionalRift.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+51fb14cad20c1c23494eddf33377d1dd5f5c4720")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1d98ca15e8d7fc3706453cd45b4b2ec1f32dbd30")]
 [assembly: System.Reflection.AssemblyProductAttribute("InterdimensionalRift.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("InterdimensionalRift.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -63,6 +63,46 @@ public static class DalamudContract
     }
 
     /// <summary>
+    /// Marks Dalamud's internal service locator as unavailable inside Rift.
+    ///
+    /// The real Dalamud Service&lt;T&gt;.Get() waits on an internal
+    /// TaskCompletionSource until the full Dalamud host provides that service.
+    /// Rift intentionally never starts the real host/game service graph, so
+    /// allowing reflected internal Service&lt;T&gt;.Get() calls to run normally
+    /// would deadlock plugin initialization.
+    ///
+    /// Cancelling ServiceManager's unload token uses Dalamud's own failure path:
+    /// pending Service&lt;T&gt; tasks are faulted and unsupported reflective
+    /// internal-service access fails immediately. Public plugin-facing services
+    /// continue to come from RuntimeServiceRegistry instrumentation proxies.
+    /// </summary>
+    public static void EnterSandboxFailFastHostMode()
+    {
+        EnsureLoaded();
+
+        lock (Gate)
+        {
+            var serviceManager = dalamud!.GetType("Dalamud.ServiceManager", throwOnError: true)
+                ?? throw new InvalidOperationException("Dalamud.ServiceManager was not found in the frozen contract runtime.");
+
+            var unloadSource = serviceManager.GetField(
+                "UnloadCancellationTokenSource",
+                BindingFlags.Static | BindingFlags.NonPublic)
+                ?? throw new MissingFieldException(
+                    serviceManager.FullName,
+                    "UnloadCancellationTokenSource");
+
+            if (unloadSource.GetValue(null) is not CancellationTokenSource cts)
+                throw new InvalidOperationException(
+                    "Dalamud ServiceManager unload cancellation source was not a CancellationTokenSource.");
+
+            if (!cts.IsCancellationRequested)
+                cts.Cancel();
+        }
+    }
+
+
+    /// <summary>
     /// Gives a plugin ALC the exact trusted assembly identity for Dalamud and for
     /// dependencies that are part of the frozen runtime. Artifact-local dependencies
     /// remain plugin-local when no trusted sibling exists.

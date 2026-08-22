@@ -97,9 +97,10 @@ public class SmokeTest
             Assert.Contains(expected, injected);
         }
 
-        // Omega carries a Windows native SQLite payload today, so a Linux Rift
-        // run may legitimately end in init_threw after dynamic execution. The
-        // regression gate is that it was identified, injected and entered.
+        // Rift now resolves RID-native dependencies from the exact plugin
+        // artifact. A plugin may still throw because the synthetic Dalamud host
+        // cannot reproduce every game/runtime condition, but it must not deadlock
+        // waiting for Dalamud's real internal Service<T> graph.
         Assert.Contains(report.Findings,
             f => f.Kind == FindingKind.Lifecycle && f.Method == "constructor" &&
                  (f.Message == "completed" || f.Message == "threw"));
