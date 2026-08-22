@@ -147,7 +147,7 @@ not repeat SigmaScope's static capability analysis.
 {
   "schema_version": "rift.runtime-observation.v1",
   "producer": "interdimensional-rift",
-  "producer_version": "0.3.0",
+  "producer_version": "0.3.1",
   "ran_at": "2026-08-22T08:00:00Z",
   "execution": {
     "executor": "bubblewrap-v2",
@@ -263,3 +263,8 @@ seccomp policy is unavailable.
 ## Runtime observation contract
 
 Current reports use `schema_version: rift.runtime-observation.v1`. They contain neutral `observations` and a `by_kind` summary only. Rift does not emit a security severity, static capability inventory, or malware verdict.
+
+
+## Platform compatibility evidence
+
+Rift reports the analysis host OS/architecture/RID and native-library resolution attempts. `tools/platform/PlatformEvidenceTool` combines those observations with package RID/native assets and managed metadata into `omega.player-environment-support.v1`. See `docs/PLATFORM-COMPATIBILITY.adoc`.

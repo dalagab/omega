@@ -10,6 +10,7 @@ on:
       - 'InterdimensionalRift.DalamudShim/**'
       - 'tests/InterdimensionalRift.Tests/**'
       - 'tools/**'
+      - 'schemas/**'
       - '.github/workflows/rift-scan-omega.yml'
 
 permissions:
@@ -300,6 +301,22 @@ jobs:
           echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
           exit 0
 
+      - name: Build player-environment compatibility evidence
+        if: always() && steps.stage.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-results"
+          args=(
+            --artifact-dir '${{ steps.stage.outputs.artifact }}'
+            --out "$results/player-environment-support.json"
+          )
+          if [[ -s "$results/rift-omega.json" ]]; then
+            args+=(--rift-report "$results/rift-omega.json")
+          fi
+          dotnet run --project ./tools/platform/PlatformEvidenceTool/PlatformEvidenceTool.csproj \
+            --configuration Release -- "${args[@]}"
+
       - name: Write Rift result summary
         if: always()
         shell: bash
@@ -312,6 +329,9 @@ jobs:
             echo "- Rift process exit code: \`${{ steps.rift.outputs.exit_code }}\`"
             echo '- Acquisition: `omega-latest/pluginmaster.json` → immutable versioned `Omega.zip`'
             echo '- Runtime boundary: cgroup-v2 → Bubblewrap → seccomp → Rift host → Omega'
+            if [[ -s "$results/player-environment-support.json" ]]; then
+              python3 ./tools/platform/print-platform-summary.py "$results/player-environment-support.json"
+            fi
             echo
             echo '```json'
             report="$results/rift-omega.json"

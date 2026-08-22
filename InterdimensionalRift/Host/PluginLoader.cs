@@ -150,9 +150,12 @@ public sealed class PluginLoader : IDisposable
                 ?? ArtifactNativeLibraryResolver.Find(pluginDirectory, unmanagedDllName);
 
             if (resolved is null)
+            {
+                tracker.NativeLibrary(unmanagedDllName, null, "unresolved");
                 return nint.Zero;
+            }
 
-            tracker.AssemblyLoad($"native:{unmanagedDllName}", resolved, resolved: true);
+            tracker.NativeLibrary(unmanagedDllName, resolved, "resolved");
             return LoadUnmanagedDllFromPath(resolved);
         }
     }

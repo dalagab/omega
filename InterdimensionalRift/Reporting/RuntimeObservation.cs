@@ -13,6 +13,7 @@ public enum RuntimeObservationKind
     Lifecycle,
     Log,
     AssemblyLoad,
+    NativeLibrary,
     Exception,
     Timeout,
     Boundary,

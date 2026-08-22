@@ -1,0 +1,232 @@
+= Omega Player Environment Compatibility Evidence
+:toc:
+
+== Core model
+
+Dalamud plugins are *Windows-targeted plugins*.
+
+Omega therefore does not model Linux and macOS as native Dalamud plugin targets.
+
+The player-facing environments are:
+
+[cols="1,1,2"]
+|===
+|Omega row |Evidence ID |Execution model
+
+|Windows
+|`windows-native`
+|Windows FFXIV + Dalamud running natively.
+
+|Linux
+|`linux-wine-proton`
+|The Windows FFXIV/Dalamud process running through Wine or Proton on Linux.
+
+|macOS
+|`macos-crossover-wine`
+|The Windows FFXIV/Dalamud process running through CrossOver/Wine or an equivalent compatibility layer on macOS.
+|===
+
+Schema: `omega.player-environment-support.v1`.
+
+The target runtime is explicitly recorded as:
+
+[source,json]
+----
+"target_runtime": "windows-dalamud"
+----
+
+== Why this distinction matters
+
+A package can contain:
+
+[source,text]
+----
+runtimes/win-x64/native/e_sqlite3.dll
+runtimes/linux-x64/native/libe_sqlite3.so
+runtimes/osx-x64/native/libe_sqlite3.dylib
+----
+
+Those files do *not* prove that a Dalamud plugin has three native player targets.
+
+Under Wine/Proton/CrossOver the plugin still executes as a Windows process. The Windows-targeted .NET runtime normally resolves the Windows native dependency, for example `e_sqlite3.dll`. Whether that works depends on:
+
+* the compatibility layer's Windows API implementation;
+* the Windows DLL/native dependency bundled by the plugin;
+* transitive Windows runtime dependencies;
+* architecture;
+* DLL search/override behavior;
+* graphics/input/COM/registry behavior;
+* the particular Wine/Proton/CrossOver environment.
+
+Linux/macOS RID assets remain useful package and analysis evidence. They are not a player-support verdict.
+
+== Status vocabulary
+
+[cols="1,3"]
+|===
+|Status |Meaning
+
+|`target-runtime`
+|Windows is the canonical Dalamud plugin target. This is a target declaration, not a claim that a broken plugin cannot fail on Windows.
+
+|`unverified`
+|The compatibility environment has not been exercised and no significant direct OS dependency was found.
+
+|`compatibility-sensitive-unverified`
+|The plugin directly depends on Windows APIs, managed Windows facilities, or native Windows modules which may matter under the compatibility layer. No qualified player-environment execution has verified them.
+
+|`verified`
+|The exact artifact initialized successfully in a *qualified representative player environment* whose report explicitly declares the compatibility environment and Windows guest/runtime semantics.
+
+|`blocked`
+|A qualified representative player-environment execution reached a compatibility-specific blocker.
+|===
+
+== Evidence inventory
+
+=== Windows native dependencies
+
+The analyzer records every managed P/Invoke and matches imports against native PE assets packaged with the artifact.
+
+Examples:
+
+* `e_sqlite3` -> bundled `e_sqlite3.dll`;
+* `user32.dll`;
+* `kernel32.dll`;
+* `advapi32.dll`;
+* `ole32.dll`;
+* `dxgi.dll`;
+* `d3d11.dll`;
+* third-party Windows native DLLs.
+
+Each dependency is categorized for compatibility review, for example:
+
+* `core-win32`;
+* `windowing-input`;
+* `graphics-overlay`;
+* `registry-security`;
+* `com`;
+* `windows-shell`;
+* `networking`;
+* `bundled-native`;
+* `windows-managed-api`.
+
+These categories are compatibility descriptors, not risk/severity ratings.
+
+=== Host-native auxiliary assets
+
+ELF/Linux and Mach-O/macOS assets in the plugin package are still inventoried.
+
+They are labeled:
+
+[source,text]
+----
+host-native-auxiliary
+----
+
+unless a future explicit execution contract proves the Windows plugin actually uses them in the player environment.
+
+Their presence alone must never produce a green Linux/macOS badge.
+
+== Rift runtime evidence
+
+The existing native Linux Bubblewrap Rift remains extremely useful for:
+
+* security/runtime observation;
+* artifact initialization;
+* locating dynamic native-library requests;
+* determining whether a package has alternate native assets;
+* detecting platform-specific exceptions.
+
+However a report such as:
+
+[source,text]
+----
+host_os: linux
+runtime_identifier: linux-x64
+e_sqlite3 -> libe_sqlite3.so
+load_outcome: ok
+----
+
+is classified as:
+
+[source,text]
+----
+analysis-only-not-player-compatibility
+----
+
+and must *not* change `linux-wine-proton` to `verified`.
+
+== Future Wine/CrossOver Rift executors
+
+A representative compatibility executor should identify itself in the runtime report, for example:
+
+[source,json]
+----
+{
+  "guest_os": "windows",
+  "compatibility_environment": "linux-wine-proton"
+}
+----
+
+or:
+
+[source,json]
+----
+{
+  "guest_os": "windows",
+  "compatibility_environment": "macos-crossover-wine"
+}
+----
+
+Only such a qualified execution may move that player environment to `verified` or `blocked`.
+
+This lets Rift eventually test the real path that matters:
+
+[source,text]
+----
+Windows Dalamud plugin
+  -> Windows .NET runtime
+  -> Windows P/Invoke/native dependency
+  -> Wine/Proton/CrossOver implementation or bundled DLL
+  -> host Linux/macOS
+----
+
+== Omega UI
+
+Omega may keep the compact user-facing row:
+
+[source,text]
+----
+Compatibility
+Windows   Target
+Linux     Wine/Proton — unverified
+macOS     CrossOver/Wine — unverified
+----
+
+If a representative executor later succeeds:
+
+[source,text]
+----
+Compatibility
+Windows   Target
+Linux     Wine/Proton — verified
+macOS     CrossOver/Wine — unverified
+----
+
+Expanding Linux/macOS should show the evidence, for example:
+
+[source,text]
+----
+Linux via Wine/Proton
+
+Direct Windows dependencies:
+  e_sqlite3       bundled Windows DLL
+  kernel32.dll    core Win32 API
+  user32.dll      windowing/input
+
+Verification:
+  not yet exercised in qualified Wine Rift
+----
+
+This is more useful and more honest than saying that a plugin is a "Linux plugin" merely because its NuGet dependencies also contain Linux RID assets.

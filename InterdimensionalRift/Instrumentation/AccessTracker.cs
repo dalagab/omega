@@ -66,6 +66,20 @@ public sealed class AccessTracker
             message: assemblyName,
             context: path);
 
+    public void NativeLibrary(string requestedName, string? resolvedPath, string outcome)
+        => Record(
+            RuntimeObservationKind.NativeLibrary,
+            "native_loader",
+            "load",
+            outcome,
+            message: requestedName,
+            context: resolvedPath,
+            parameters: new Dictionary<string, string?>
+            {
+                ["requested_library"] = requestedName,
+                ["resolved_path"] = resolvedPath,
+            });
+
     public void InitException(Exception exception)
         => Record(RuntimeObservationKind.Exception, "plugin", "Initialize", "threw", exception: exception, context: "plugin init threw");
 

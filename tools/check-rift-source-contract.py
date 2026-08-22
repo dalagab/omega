@@ -37,7 +37,7 @@ require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "dalamud.internal_serv
 
 # Runtime-only report model.
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v1", "runtime observation schema version")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.0"', "producer version 0.3.0")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.1"', "producer version 0.3.1")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "boundary_profile", "boundary profile provenance")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "tmpfs_tmp_bytes", "tmpfs provenance")
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "RuntimeObservationKind", "neutral observation model")
@@ -114,6 +114,23 @@ require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "ContainmentStres
 require(Path("tests/InterdimensionalRift.Tests/DalamudInternalServiceFailFastTest.cs"), "InternalDalamudServiceLocator_FailsFastInsteadOfBlocking", "internal service fail-fast regression")
 require(Path("tests/InterdimensionalRift.Tests/RuntimeObservationSchemaTest.cs"), 'Assert.False(root.TryGetProperty("findings"', "no findings key regression")
 require(Path("tests/InterdimensionalRift.Tests/RuntimeObservationSchemaTest.cs"), 'Assert.DoesNotContain("severity"', "no severity regression")
+
+require(Path("tests/InterdimensionalRift.Tests/AssemblyInfo.cs"), "DisableTestParallelization = true", "process-global Rift tests are serialized")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "host_os", "runtime host OS provenance")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "runtime_identifier", "runtime RID provenance")
+require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "NativeLibrary", "native library observation kind")
+require(Path("InterdimensionalRift/Host/PluginLoader.cs"), 'tracker.NativeLibrary(unmanagedDllName, null, "unresolved")', "unresolved native loads are observed")
+require(Path("InterdimensionalRift/Host/PluginLoader.cs"), 'tracker.NativeLibrary(unmanagedDllName, resolved, "resolved")', "resolved native loads are observed")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "omega.player-environment-support.v1", "player-environment evidence producer")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "GetImport()", "PInvoke metadata inventory")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'TargetRuntime { get; set; } = "windows-dalamud"', "Dalamud target runtime is Windows")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "windows-guest-dependency", "Windows guest native dependency inventory")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "host-native-auxiliary", "host-native auxiliary asset classification")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "analysis-only-not-player-compatibility", "native Rift cannot falsely verify Wine/CrossOver support")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "linux-wine-proton", "Linux player environment is Wine/Proton")
+require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "macos-crossover-wine", "macOS player environment is CrossOver/Wine")
+require(Path("schemas/omega-player-environment-support-v1.schema.json"), "omega.player-environment-support.v1", "player-environment support JSON schema")
+require(Path(".github/workflows/rift-scan-omega.yml"), "Build player-environment compatibility evidence", "published Omega compatibility evidence step")
 
 # Machine-readable contracts.
 require(Path("schemas/rift-runtime-observation-v1.schema.json"), "rift.runtime-observation.v1", "runtime JSON schema")

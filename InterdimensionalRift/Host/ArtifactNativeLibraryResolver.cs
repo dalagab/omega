@@ -51,18 +51,18 @@ internal static class ArtifactNativeLibraryResolver
         if (!string.IsNullOrWhiteSpace(RuntimeInformation.RuntimeIdentifier))
             yield return RuntimeInformation.RuntimeIdentifier;
 
-        if (OperatingSystem.IsLinux())
+        var arch = RuntimeInformation.ProcessArchitecture switch
         {
-            var arch = RuntimeInformation.ProcessArchitecture switch
-            {
-                Architecture.X64 => "x64",
-                Architecture.X86 => "x86",
-                Architecture.Arm64 => "arm64",
-                Architecture.Arm => "arm",
-                _ => RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant(),
-            };
-            yield return $"linux-{arch}";
-        }
+            Architecture.X64 => "x64",
+            Architecture.X86 => "x86",
+            Architecture.Arm64 => "arm64",
+            Architecture.Arm => "arm",
+            _ => RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant(),
+        };
+
+        if (OperatingSystem.IsLinux()) yield return $"linux-{arch}";
+        else if (OperatingSystem.IsWindows()) yield return $"win-{arch}";
+        else if (OperatingSystem.IsMacOS()) yield return $"osx-{arch}";
     }
 
     private static IEnumerable<string> CandidateNames(string requested)
@@ -79,12 +79,35 @@ internal static class ArtifactNativeLibraryResolver
                 yield break;
             }
 
-            // Prefer the normal Unix library spelling. For DllImport("e_sqlite3")
-            // this resolves the packaged libe_sqlite3.so rather than the Windows DLL.
             if (!stem.StartsWith("lib", StringComparison.Ordinal))
                 yield return $"lib{stem}.so";
             yield return $"{stem}.so";
             yield return stem;
+            yield break;
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            var stem = requested.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+                ? Path.GetFileNameWithoutExtension(requested)
+                : requested;
+            if (stem.EndsWith(".dylib", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return stem;
+                yield break;
+            }
+            if (!stem.StartsWith("lib", StringComparison.Ordinal))
+                yield return $"lib{stem}.dylib";
+            yield return $"{stem}.dylib";
+            yield return stem;
+            yield break;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            yield return requested;
+            if (!requested.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                yield return requested + ".dll";
             yield break;
         }
 

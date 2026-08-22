@@ -19,6 +19,9 @@ public sealed class RuntimeObservationSchemaTest
         Assert.Equal("rift.runtime-observation.v1", root.GetProperty("schema_version").GetString());
         Assert.True(root.TryGetProperty("execution", out var execution));
         Assert.Equal(JsonValueKind.Object, execution.ValueKind);
+        Assert.True(execution.TryGetProperty("host_os", out _));
+        Assert.True(execution.TryGetProperty("host_arch", out _));
+        Assert.True(execution.TryGetProperty("runtime_identifier", out _));
         Assert.True(root.TryGetProperty("observations", out var observations));
         Assert.Equal(JsonValueKind.Array, observations.ValueKind);
         Assert.False(root.TryGetProperty("findings", out _));

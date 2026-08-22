@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 
 namespace InterdimensionalRift.Reporting;
@@ -38,6 +39,9 @@ public sealed class ExecutionProvenance
     [JsonPropertyName("tmpfs_work_bytes")] public string? TmpfsWorkBytes { get; set; }
     [JsonPropertyName("boundary_profile")] public string? BoundaryProfile { get; set; }
     [JsonPropertyName("contract_mode")] public string? ContractMode { get; set; }
+    [JsonPropertyName("host_os")] public string? HostOs { get; set; }
+    [JsonPropertyName("host_arch")] public string? HostArch { get; set; }
+    [JsonPropertyName("runtime_identifier")] public string? RuntimeIdentifier { get; set; }
 
     public static ExecutionProvenance Capture() => new()
     {
@@ -56,6 +60,9 @@ public sealed class ExecutionProvenance
         TmpfsWorkBytes = Environment.GetEnvironmentVariable("RIFT_TMPFS_WORK_BYTES"),
         BoundaryProfile = Environment.GetEnvironmentVariable("RIFT_BOUNDARY_PROFILE"),
         ContractMode = Environment.GetEnvironmentVariable("RIFT_CONTRACT_MODE"),
+        HostOs = OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsLinux() ? "linux" : OperatingSystem.IsMacOS() ? "macos" : "unknown",
+        HostArch = RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant(),
+        RuntimeIdentifier = RuntimeInformation.RuntimeIdentifier,
     };
 }
 
@@ -68,7 +75,7 @@ public sealed class SandboxReport
     public string Producer { get; set; } = "interdimensional-rift";
 
     [JsonPropertyName("producer_version")]
-    public string ProducerVersion { get; set; } = "0.3.0";
+    public string ProducerVersion { get; set; } = "0.3.1";
 
     [JsonPropertyName("ran_at")]
     public string RanAt { get; set; } = DateTime.UtcNow.ToString("O");
