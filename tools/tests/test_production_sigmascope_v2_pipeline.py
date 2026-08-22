@@ -109,6 +109,48 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertEqual([], index["currentVariants"])
             self.assertEqual(variant_id, index["terminalVariants"][0]["variantId"])
 
+    def test_replaced_terminal_snapshot_is_archived_as_superseded_history(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-terminal-history-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            candidate = root / "candidate"
+            migrate(database, candidate, reset=True)
+            current_path = next((candidate / "variants").rglob(f"{variant_id}.json"))
+            current_rel = current_path.relative_to(candidate)
+            current_payload = json.loads(current_path.read_text(encoding="utf-8"))
+            with closing(sqlite3.connect(database)) as db:
+                db.execute("UPDATE plugin_variants SET active=0 WHERE variant_id=?", (variant_id,))
+                db.commit()
+
+            synchronize_candidate(candidate, database, set())
+            terminal = variant_lifecycle.terminal_path(candidate, variant_id)
+            first_terminal = json.loads(terminal.read_text(encoding="utf-8"))
+            self.assertEqual("retired", first_terminal["lifecycle"]["state"])
+
+            replacement = json.loads(json.dumps(current_payload))
+            replacement["current"]["scan_id"] = int(replacement["current"].get("scan_id") or 0) + 1
+            replacement["current"]["artifact_sha256"] = "b" * 64
+            replacement["analysis"]["artifactSha256"] = "b" * 64
+            replacement["current"]["artifact_url"] = "https://example.invalid/replacement.zip"
+            replacement_path = candidate / current_rel
+            replacement_path.parent.mkdir(parents=True, exist_ok=True)
+            replacement_path.write_text(json.dumps(replacement), encoding="utf-8")
+
+            synchronize_candidate(candidate, database, set())
+
+            history = list((candidate / "history" / "variants").rglob("*.json"))
+            self.assertEqual(1, len(history))
+            archived = json.loads(history[0].read_text(encoding="utf-8"))
+            self.assertEqual("superseded", archived["lifecycle"]["state"])
+            self.assertTrue(archived["lifecycle"]["terminal"])
+            self.assertFalse(archived["lifecycle"]["rescanEligible"])
+            self.assertEqual("terminal_snapshot_replaced", archived["lifecycle"]["reason"])
+            self.assertEqual(first_terminal["current"]["artifact_sha256"], archived["current"]["artifact_sha256"])
+
+            current_terminal = json.loads(terminal.read_text(encoding="utf-8"))
+            self.assertEqual("retired", current_terminal["lifecycle"]["state"])
+            self.assertEqual("b" * 64, current_terminal["current"]["artifact_sha256"])
+
     def test_terminal_snapshot_is_validated_and_counted_in_rebuilt_evidence_index(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-terminal-validation-") as td:
             root = Path(td)

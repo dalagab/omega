@@ -748,7 +748,15 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
                         history = variant_lifecycle.history_path(candidate, variant_id, previous_terminal)
                         history.parent.mkdir(parents=True, exist_ok=True)
                         if not history.exists():
-                            write_json(history, previous_terminal)
+                            write_json(
+                                history,
+                                variant_lifecycle.superseded_snapshot(
+                                    previous_terminal,
+                                    replacement=payload,
+                                    reason="terminal_snapshot_replaced",
+                                    observed_at_utc=utc_now(),
+                                ),
+                            )
                 terminal.parent.mkdir(parents=True, exist_ok=True)
                 write_json(terminal, variant_lifecycle.terminal_snapshot(
                     payload, reason=reason, catalog_revision=catalog_revision, observed_at_utc=utc_now(),
