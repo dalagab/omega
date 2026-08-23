@@ -290,6 +290,7 @@ internal static class PostInitExerciseEngine
             var invocation = Task.Run(() =>
             {
                 using var frameworkInvocation = frameworkTick.HasValue ? registry.EnterFrameworkInvocation() : null;
+                using var dalamudMainThread = frameworkTick.HasValue ? DalamudMainThreadRuntime.Enter(tracker) : null;
                 return candidate.Handler.DynamicInvoke(candidate.Arguments);
             });
             if (!WaitWithinDeadline(invocation, deadline))

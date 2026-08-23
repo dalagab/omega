@@ -147,7 +147,7 @@ not repeat SigmaScope's static capability analysis.
 {
   "schema_version": "rift.runtime-observation.v2",
   "producer": "interdimensional-rift",
-  "producer_version": "0.4.0",
+  "producer_version": "0.4.1",
   "ran_at": "2026-08-22T08:00:00Z",
   "execution": {
     "executor": "bubblewrap-v2",
@@ -296,3 +296,10 @@ Rift now inventories callback registrations and, after successful initialization
 Reports include `phase` on every observation plus a top-level `rift.exercise.v1` inventory with exercised/unexercised registrations and reasons. The default world remains empty, no local player is fabricated, real game memory is absent, native hooks remain inert, and the outer cgroup/Bubblewrap/seccomp boundary is unchanged.
 
 See `docs/POST-INIT-EXERCISE.adoc`.
+
+## Pass 3.4.1 — framework-thread and empty-inventory fidelity
+
+Published Artisan qualification exposed two exercised post-init fidelity gaps: KamiToolKit calls `Dalamud.Utility.ThreadSafety.AssertMainThread()` from deferred framework work, while Artisan's real Framework.Update path initializes `CraftingListUI` through `InventoryManager.Instance()`. Rift now mirrors Dalamud's trusted `[ThreadStatic]` main-thread identity only for the duration of a synthetic framework invocation and restores the previous per-thread value before the worker can be reused. This does not claim to run on the real game thread.
+
+The FFXIVClientStructs model advances to `bounded-empty-v3` by adding a Rift-owned zeroed `InventoryManager`. `Inventories` remains null and no slots, items, currencies, character inventory, or inventory member functions are fabricated. The post-init regression executes both `ThreadSafety.AssertMainThread()` and `InventoryManager.Instance()` from Framework.Update/deferred framework work and verifies that command exercise sees the non-framework thread identity afterward.
+

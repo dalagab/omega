@@ -3,10 +3,12 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace RiftPostInitExerciseSemantics;
 
-public sealed class Plugin : IDalamudPlugin
+public sealed unsafe class Plugin : IDalamudPlugin
 {
     [PluginService] private static IPluginLog Log { get; set; } = null!;
     [PluginService] private static IFramework Framework { get; set; } = null!;
@@ -20,7 +22,14 @@ public sealed class Plugin : IDalamudPlugin
     {
         Framework.Update += OnFrameworkUpdate;
         Framework.Update += OnSelfRemovingUpdate;
-        _ = Framework.RunOnFrameworkThread(() => Log.Info("RIFT_EXERCISE deferred framework callback"));
+        _ = Framework.RunOnFrameworkThread(() =>
+        {
+            // Mirrors the KamiToolKit failure discovered by the first published
+            // Artisan post-init exercise: framework work must satisfy Dalamud's
+            // own ThreadSafety identity, not only IFramework's synthetic property.
+            ThreadSafety.AssertMainThread("RIFT_EXERCISE trusted Dalamud main-thread identity missing");
+            Log.Info($"RIFT_EXERCISE deferred framework callback main_thread={ThreadSafety.IsMainThread}");
+        });
         _ = Framework.RunOnTick(async () =>
         {
             await Task.Yield();
@@ -47,8 +56,17 @@ public sealed class Plugin : IDalamudPlugin
         Log.Info("RIFT_EXERCISE startup complete");
     }
 
-    private static void OnFrameworkUpdate(IFramework framework) =>
-        Log.Info($"RIFT_EXERCISE framework update in_thread={framework.IsInFrameworkUpdateThread}");
+    private static void OnFrameworkUpdate(IFramework framework)
+    {
+        ThreadSafety.AssertMainThread("RIFT_EXERCISE Framework.Update was not marked as Dalamud main thread");
+        var inventoryManager = InventoryManager.Instance();
+        if (inventoryManager is null)
+            throw new InvalidOperationException("Synthetic InventoryManager.Instance returned null during Framework.Update.");
+        if (inventoryManager->Inventories is not null || inventoryManager->NextContextId != 0)
+            throw new InvalidOperationException("Synthetic InventoryManager unexpectedly exposed inventory state.");
+
+        Log.Info($"RIFT_EXERCISE framework update in_thread={framework.IsInFrameworkUpdateThread} main_thread={ThreadSafety.IsMainThread} inventory=empty");
+    }
 
     private static void OnSelfRemovingUpdate(IFramework framework)
     {
@@ -62,6 +80,12 @@ public sealed class Plugin : IDalamudPlugin
 
     private static void OnCommand(string command, string arguments)
     {
+        // A framework worker can later be reused by the thread pool for this command.
+        // If Rift leaks Dalamud's ThreadStatic state, this catches it deterministically
+        // whenever that reuse occurs and the log still records the expected false state.
+        if (ThreadSafety.IsMainThread)
+            throw new InvalidOperationException("RIFT_EXERCISE Dalamud main-thread identity leaked outside framework invocation");
+
         var mode = Environment.GetEnvironmentVariable("RIFT_EXERCISE_FIXTURE_MODE");
         if (mode == "throw-command")
             throw new InvalidOperationException("RIFT_EXERCISE synthetic command throw");
@@ -71,7 +95,7 @@ public sealed class Plugin : IDalamudPlugin
             Log.Error("RIFT_EXERCISE timeout command eventually returned");
             return;
         }
-        Log.Info($"RIFT_EXERCISE command {command} args='{arguments}'");
+        Log.Info($"RIFT_EXERCISE command {command} args='{arguments}' main_thread={ThreadSafety.IsMainThread}");
     }
 
     private static void OnIpcSubscriber() => Log.Info("RIFT_EXERCISE ipc subscriber");

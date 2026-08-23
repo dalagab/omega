@@ -37,7 +37,7 @@ require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "dalamud.internal_serv
 
 # Runtime-only report model.
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v2", "runtime observation schema version")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.4.0"', "producer version 0.4.0")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.4.1"', "producer version 0.4.1")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "boundary_profile", "boundary profile provenance")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "tmpfs_tmp_bytes", "tmpfs provenance")
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "RuntimeObservationKind", "neutral observation model")
@@ -269,7 +269,7 @@ require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"),
 require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '["local_player"] = "absent"', "game-object model declares no synthetic local player")
 require(Path("tests/fixtures/RiftNativeGameStateSemantics/Plugin.cs"), "GameObjectManager.Instance", "native-state fixture exercises game-object singleton")
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "FfxivClientStructs_GameObjectManager_IsSyntheticEmptyAndHasNoLocalPlayerState", "empty game-object manager regression test")
-require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '"bounded-empty-v2"', "expanded native-state model is versioned")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '"bounded-empty-v3"', "expanded native-state model is versioned")
 
 
 # Pass 3.4.0: deterministic bounded post-init exercise and registration coverage.
@@ -285,7 +285,7 @@ require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "Exercise"
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "phase", "runtime observations carry phase attribution")
 require(Path("InterdimensionalRift/Instrumentation/AccessTracker.cs"), 'Phase = phase.Value ?? "unknown"', "phase attribution never disappears on plugin-owned threads")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.exercise.v1", "exercise summary schema")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.4.0"', "post-init exercise producer version")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.4.1"', "post-init exercise producer version 0.4.1")
 require(Path("InterdimensionalRift/Program.cs"), "--exercise-profile", "CLI exposes exercise profile")
 require(Path("InterdimensionalRift/Program.cs"), "--framework-ticks", "CLI exposes bounded framework ticks")
 require(Path("tests/fixtures/RiftPostInitExerciseSemantics/Plugin.cs"), "RIFT_EXERCISE deferred framework callback", "post-init exercise fixture deferred callback")
@@ -315,6 +315,23 @@ require(Path("tools/run-rift-bwrap.sh"), '"wall_timeout_seconds": $wall_timeout'
 require(Path(".github/workflows/rift-scan-omega.yml"), "test-rift-evidence-tools.py", "Omega executes evidence tooling self-test")
 require(Path(".github/workflows/rift-scan-artisan.yml"), "test-rift-evidence-tools.py", "Artisan executes evidence tooling self-test")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "framework_ticks", "managed execution provenance records framework tick count")
+# Pass 3.4.1: trusted Dalamud main-thread identity + bounded-empty inventory manager.
+require(Path("InterdimensionalRift/Runtime/DalamudMainThreadRuntime.cs"), "Dalamud.Utility.ThreadSafety", "framework fidelity resolves trusted Dalamud ThreadSafety")
+require(Path("InterdimensionalRift/Runtime/DalamudMainThreadRuntime.cs"), "MarkMainThread", "framework fidelity uses Dalamud main-thread marker")
+require(Path("InterdimensionalRift/Runtime/DalamudMainThreadRuntime.cs"), "threadStaticIsMainThread", "framework fidelity restores Dalamud ThreadStatic state")
+require(Path("InterdimensionalRift/Runtime/DalamudMainThreadRuntime.cs"), '["real_game_thread"] = "false"', "framework fidelity never claims the real game thread")
+require(Path("InterdimensionalRift/Runtime/PostInitExerciseEngine.cs"), "DalamudMainThreadRuntime.Enter", "synthetic framework invocation enters trusted Dalamud main-thread scope")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), "InventoryManager.Instance", "native-state model patches inventory singleton resolver")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '["inventory_state"] = "empty"', "inventory model declares empty inventory")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '["inventory_containers"] = "absent"', "inventory model declares no containers")
+require(Path("tests/fixtures/RiftPostInitExerciseSemantics/Plugin.cs"), "ThreadSafety.AssertMainThread", "post-init fixture reproduces KamiToolKit main-thread requirement")
+require(Path("tests/fixtures/RiftPostInitExerciseSemantics/Plugin.cs"), "InventoryManager.Instance", "post-init fixture reaches inventory singleton during Framework.Update")
+require(Path("tests/fixtures/RiftPostInitExerciseSemantics/Plugin.cs"), "main_thread={ThreadSafety.IsMainThread}", "post-init fixture records thread identity before and after framework exercise")
+require(Path("tests/fixtures/RiftNativeGameStateSemantics/Plugin.cs"), "InventoryManager.Instance", "native-state fixture exercises inventory singleton")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), 'o.Component == "Dalamud.Utility.ThreadSafety"', "runtime regression verifies trusted Dalamud main-thread scope evidence")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), 'o.Operation == "InventoryManager.Instance"', "runtime regression verifies empty inventory manager evidence")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.4.1"', "framework and inventory fidelity producer version")
+
 for workflow in (
     ".github/workflows/rift-alpha.yml",
     ".github/workflows/rift-canary.yml",

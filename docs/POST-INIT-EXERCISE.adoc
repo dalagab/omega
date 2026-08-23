@@ -33,6 +33,8 @@ Framework work is driven by a small deterministic synthetic tick scheduler rathe
 * Non-zero `TimeSpan` delays are retained but not modeled by `post-init-safe-v1`; they remain `unexercised` with `timespan_delay_not_modeled` rather than being fired early.
 * A canceled scheduled callback remains unexercised with `scheduled_callback_cancelled`.
 * `IFramework.IsInFrameworkUpdateThread` is true only while Rift is synchronously invoking synthetic framework work on the invocation worker thread.
+* During that same bounded invocation, Rift also mirrors trusted Dalamud `Dalamud.Utility.ThreadSafety.IsMainThread` identity so libraries that call `ThreadSafety.AssertMainThread()` observe the same framework-thread contract. The underlying `[ThreadStatic]` value is restored on scope exit and the report marks this explicitly as `real_game_thread=false`.
+* The mirrored Dalamud main-thread identity applies only to the synchronous callback invocation. It is not propagated across arbitrary asynchronous continuations and must not be interpreted as a real game-thread scheduler.
 * A handler that unregisters itself is no longer called from an old registration snapshot on later synthetic ticks.
 * Registrations created during exercise are inventoried but not recursively exercised by the same scenario.
 

@@ -68,4 +68,25 @@ GameObjectManager.Instance()
 
 `GameObjectManager.Instance()` is a direct generated static address, so Rift points its in-memory `Address.Value` straight at the zeroed manager. No pointer cell or native stub is required. The model does not create a player, CID, object identity, inventory, target, or world object. Its purpose is only to make the absence of a game world explicit and safe.
 
-This expands the native-state model identifier to `bounded-empty-v2`. Reports describe the active manager as `world_state=empty`, `local_player=absent`, `real_game_memory=false`, `native_call=false`, and `artifact_mutated=false`.
+This introduced native-state model identifier `bounded-empty-v2`. Reports describe the active manager as `world_state=empty`, `local_player=absent`, `real_game_memory=false`, `native_call=false`, and `artifact_mutated=false`.
+
+== Pass 3.4.1: empty inventory manager
+
+The first qualified `post-init-safe-v1` run against published Artisan 4.0.5.18 exercised its real `IFramework.Update` path and proved a new native-state dependency. `Artisan.CraftingLists.CraftingListUI` initializes a static pointer with `InventoryManager.Instance()`. With the address unresolved, that type initializer threw and subsequently poisoned several exercised IPC queries.
+
+The qualified model therefore adds exactly one singleton:
+
+[source,text]
+----
+InventoryManager.Instance()
+  -> synthetic Rift-owned zeroed InventoryManager*
+     -> Inventories = null
+     -> NextContextId = 0
+     -> inventory containers = absent
+     -> items = none
+     -> local player = absent
+----
+
+`InventoryManager.Instance()` is a direct generated static address in the frozen contract, so Rift points its in-memory `Address.Value` directly at the zeroed manager. No inventory member functions are resolved and no slots, items, quantities, currency, gear, retainers, character ownership, or backing game memory are fabricated.
+
+This expands the native-state model identifier to `bounded-empty-v3`. The addition is justified by an exercised real-world blocker, not by static reference presence alone.

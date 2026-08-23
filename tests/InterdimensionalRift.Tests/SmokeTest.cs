@@ -440,8 +440,21 @@ public class NativeGameStateSemanticsTest
                  o.Parameters.TryGetValue("real_game_memory", out var gameMemory) && gameMemory == "false" &&
                  o.Parameters.TryGetValue("artifact_mutated", out var artifactMutated) && artifactMutated == "false");
         Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.NativeGameState &&
+                 o.Operation == "InventoryManager.Instance" &&
+                 o.Outcome == "synthetic_singleton" &&
+                 o.Parameters != null &&
+                 o.Parameters.TryGetValue("inventory_state", out var inventoryState) && inventoryState == "empty" &&
+                 o.Parameters.TryGetValue("inventory_containers", out var containers) && containers == "absent" &&
+                 o.Parameters.TryGetValue("items", out var items) && items == "none" &&
+                 o.Parameters.TryGetValue("real_game_memory", out var inventoryMemory) && inventoryMemory == "false" &&
+                 o.Parameters.TryGetValue("artifact_mutated", out var inventoryArtifactMutated) && inventoryArtifactMutated == "false");
+        Assert.Contains(report.Observations,
             o => o.Kind == RuntimeObservationKind.Log &&
                  (o.Message ?? string.Empty).Contains("RIFT_NATIVE_GAME_STATE synthetic empty object manager complete", StringComparison.Ordinal));
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 (o.Message ?? string.Empty).Contains("RIFT_NATIVE_GAME_STATE synthetic empty inventory manager complete", StringComparison.Ordinal));
     }
 
     private static void AssertNativeStateReport(InterdimensionalRift.Reporting.SandboxReport report)
@@ -536,7 +549,9 @@ public class PostInitExerciseSemanticsTest
             "RIFT_EXERCISE framework update",
             "RIFT_EXERCISE deferred framework callback",
             "RIFT_EXERCISE delayed framework tick2 async",
-            "RIFT_EXERCISE framework update in_thread=True",
+            "RIFT_EXERCISE framework update in_thread=True main_thread=True inventory=empty",
+            "RIFT_EXERCISE deferred framework callback main_thread=True",
+            "RIFT_EXERCISE command /riftexercise args='' main_thread=False",
             "RIFT_EXERCISE open config",
             "RIFT_EXERCISE open main",
             "RIFT_EXERCISE command /riftexercise",
@@ -575,6 +590,22 @@ public class PostInitExerciseSemanticsTest
         Assert.Contains(report.Observations,
             o => o.Kind == RuntimeObservationKind.Exercise &&
                  o.Phase != null && o.Phase.StartsWith("exercise.", StringComparison.Ordinal));
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Exercise &&
+                 o.Component == "Dalamud.Utility.ThreadSafety" &&
+                 o.Operation == "main_thread_scope" &&
+                 o.Outcome == "entered" &&
+                 o.Parameters != null &&
+                 o.Parameters.TryGetValue("current_main_thread", out var currentMainThread) && currentMainThread == "true" &&
+                 o.Parameters.TryGetValue("real_game_thread", out var realGameThread) && realGameThread == "false");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Exercise &&
+                 o.Component == "Dalamud.Utility.ThreadSafety" &&
+                 o.Operation == "main_thread_scope" &&
+                 o.Outcome == "restored" &&
+                 o.Parameters != null &&
+                 o.Parameters.TryGetValue("restored_main_thread", out var restored) && restored == "false" &&
+                 o.Parameters.TryGetValue("expected_main_thread", out var expected) && expected == "false");
         Assert.Contains(report.Observations,
             o => o.Kind == RuntimeObservationKind.Registration && o.Outcome == "registered");
     }

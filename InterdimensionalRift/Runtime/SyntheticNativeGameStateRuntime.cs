@@ -25,6 +25,7 @@ internal static unsafe class SyntheticNativeGameStateRuntime
     private static nint uiModuleVtable;
     private static nint agentModule;
     private static nint gameObjectManager;
+    private static nint inventoryManager;
     private static string? ffxivClientStructsVersion;
 
     public static void EnsureInstalled(AccessTracker accessTracker)
@@ -62,6 +63,7 @@ internal static unsafe class SyntheticNativeGameStateRuntime
                 var uiModuleType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.UI.UIModule");
                 var agentModuleType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentModule");
                 var gameObjectManagerType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.Game.Object.GameObjectManager");
+                var inventoryManagerType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.Game.InventoryManager");
 
                 framework = AllocateZeroed(SizeOfExplicit(frameworkType));
                 uiModule = AllocateZeroed(SizeOfExplicit(uiModuleType));
@@ -71,6 +73,10 @@ internal static unsafe class SyntheticNativeGameStateRuntime
                 // conclude that no local player/game objects are present without Rift
                 // inventing identities, entities, or backing game memory.
                 gameObjectManager = AllocateZeroed(SizeOfExplicit(gameObjectManagerType));
+                // InventoryManager is deliberately present but contains no invented
+                // containers, slots, items, currency, or character inventory. Its
+                // Inventories pointer and all other state remain zero.
+                inventoryManager = AllocateZeroed(SizeOfExplicit(inventoryManagerType));
 
                 // Framework.Instance has isPointer:true, so its generated wrapper
                 // expects Address.Value to point at a Framework* cell (Framework**).
@@ -96,6 +102,10 @@ internal static unsafe class SyntheticNativeGameStateRuntime
                 // isPointer:true), so Address.Value points straight at the zeroed
                 // Rift-owned manager rather than at a pointer cell.
                 PatchAddress(gameObjectManagerType, "Instance", gameObjectManager);
+                // InventoryManager.Instance is likewise a direct StaticAddress in the
+                // frozen generated contract, so its Address.Value points at the
+                // Rift-owned zeroed manager itself rather than a pointer cell.
+                PatchAddress(inventoryManagerType, "Instance", inventoryManager);
 
                 ffxivClientStructsVersion = ffxiv.GetName().Version?.ToString();
                 installed = true;
@@ -117,12 +127,13 @@ internal static unsafe class SyntheticNativeGameStateRuntime
     {
         Observe("native_state", reused ? "reuse" : "install", "synthetic_ready", new()
         {
-            ["ffxivclientstructs_model"] = "bounded-empty-v2",
+            ["ffxivclientstructs_model"] = "bounded-empty-v3",
             ["ffxivclientstructs_version"] = ffxivClientStructsVersion,
             ["framework_pointer"] = Hex(framework),
             ["ui_module_pointer"] = Hex(uiModule),
             ["agent_module_pointer"] = Hex(agentModule),
             ["game_object_manager_pointer"] = Hex(gameObjectManager),
+            ["inventory_manager_pointer"] = Hex(inventoryManager),
             ["reused"] = reused ? "true" : "false",
             ["real_game_memory"] = "false",
             ["native_call"] = "false",
@@ -164,6 +175,19 @@ internal static unsafe class SyntheticNativeGameStateRuntime
             ["patched_address"] = Hex(gameObjectManager),
             ["model_state"] = "active",
             ["world_state"] = "empty",
+            ["local_player"] = "absent",
+            ["reused"] = reused ? "true" : "false",
+            ["real_game_memory"] = "false",
+            ["native_call"] = "false",
+            ["artifact_mutated"] = "false",
+        });
+        Observe("FFXIVClientStructs.FFXIV.Client.Game.InventoryManager", "InventoryManager.Instance", "synthetic_singleton", new()
+        {
+            ["patched_address"] = Hex(inventoryManager),
+            ["model_state"] = "active",
+            ["inventory_state"] = "empty",
+            ["inventory_containers"] = "absent",
+            ["items"] = "none",
             ["local_player"] = "absent",
             ["reused"] = reused ? "true" : "false",
             ["real_game_memory"] = "false",

@@ -1,5 +1,6 @@
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -33,8 +34,15 @@ public sealed unsafe class Plugin : IDalamudPlugin
             gameObjectManager->Objects.EntityIdSortedCount != 0)
             throw new InvalidOperationException("Synthetic GameObjectManager unexpectedly exposed game objects.");
 
+        var inventoryManager = InventoryManager.Instance();
+        if (inventoryManager is null)
+            throw new InvalidOperationException("Synthetic InventoryManager.Instance returned null.");
+        if (inventoryManager->Inventories is not null || inventoryManager->NextContextId != 0)
+            throw new InvalidOperationException("Synthetic InventoryManager unexpectedly exposed inventory state.");
+
         log.Information("RIFT_NATIVE_GAME_STATE synthetic empty chain complete");
         log.Information("RIFT_NATIVE_GAME_STATE synthetic empty object manager complete");
+        log.Information("RIFT_NATIVE_GAME_STATE synthetic empty inventory manager complete");
     }
 
     public void Dispose() { }
