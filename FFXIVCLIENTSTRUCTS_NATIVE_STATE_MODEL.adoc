@@ -48,3 +48,24 @@ A new singleton, field, member function, or virtual slot is modeled only after a
 A later `SandboxHost` run may reuse an already-installed synthetic address table. Reuse must never make the new report depend on whichever earlier subject installed the model first. On every host run Rift therefore emits the canonical active-model observations again, with `reused=true` or `reused=false` and `model_state=active`.
 
 These active-model observations describe which synthetic resolver entries are in force for that run. They are not claims that the subject invoked every modeled entry. Actual calls through Rift-owned unmanaged stubs remain separate runtime observations such as `UIModule.GetAgentModule` and `AgentModule.GetAgentByInternalId`.
+
+
+== Pass 3.3.3.4: empty game-object world
+
+Published Artisan 4.0.5.18 advanced through the original framework/UI native-state chain and then reached `ECommons.GameHelpers.Player.Available` while saving its Raphael cache. The preserved exception stack identified the unresolved boundary as `GameObjectManager.Instance()`.
+
+The qualified model now also includes:
+
+[source,text]
+----
+GameObjectManager.Instance()
+  -> synthetic Rift-owned zeroed GameObjectManager*
+     -> object pointer tables = empty/null
+     -> GameObjectIdSortedCount = 0
+     -> EntityIdSortedCount = 0
+     -> local player = absent
+----
+
+`GameObjectManager.Instance()` is a direct generated static address, so Rift points its in-memory `Address.Value` straight at the zeroed manager. No pointer cell or native stub is required. The model does not create a player, CID, object identity, inventory, target, or world object. Its purpose is only to make the absence of a game world explicit and safe.
+
+This expands the native-state model identifier to `bounded-empty-v2`. Reports describe the active manager as `world_state=empty`, `local_player=absent`, `real_game_memory=false`, `native_call=false`, and `artifact_mutated=false`.

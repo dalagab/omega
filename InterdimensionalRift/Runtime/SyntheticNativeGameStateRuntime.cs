@@ -24,6 +24,7 @@ internal static unsafe class SyntheticNativeGameStateRuntime
     private static nint uiModule;
     private static nint uiModuleVtable;
     private static nint agentModule;
+    private static nint gameObjectManager;
     private static string? ffxivClientStructsVersion;
 
     public static void EnsureInstalled(AccessTracker accessTracker)
@@ -60,10 +61,16 @@ internal static unsafe class SyntheticNativeGameStateRuntime
                 var frameworkType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.System.Framework.Framework");
                 var uiModuleType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.UI.UIModule");
                 var agentModuleType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentModule");
+                var gameObjectManagerType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.Game.Object.GameObjectManager");
 
                 framework = AllocateZeroed(SizeOfExplicit(frameworkType));
                 uiModule = AllocateZeroed(SizeOfExplicit(uiModuleType));
                 agentModule = AllocateZeroed(SizeOfExplicit(agentModuleType));
+                // A zeroed GameObjectManager is an intentionally empty game-object world:
+                // all object pointers and sorted counts remain zero, so callers can
+                // conclude that no local player/game objects are present without Rift
+                // inventing identities, entities, or backing game memory.
+                gameObjectManager = AllocateZeroed(SizeOfExplicit(gameObjectManagerType));
 
                 // Framework.Instance has isPointer:true, so its generated wrapper
                 // expects Address.Value to point at a Framework* cell (Framework**).
@@ -85,6 +92,10 @@ internal static unsafe class SyntheticNativeGameStateRuntime
                 PatchAddress(frameworkType, "Instance", frameworkPointerCell);
                 PatchAddress(frameworkType, "GetUIModule", (nint)(delegate* unmanaged<nint, nint>)&GetUIModuleStub);
                 PatchAddress(agentModuleType, "GetAgentByInternalId", (nint)(delegate* unmanaged<nint, uint, nint>)&GetAgentByInternalIdStub);
+                // GameObjectManager.Instance is a direct StaticAddress (not
+                // isPointer:true), so Address.Value points straight at the zeroed
+                // Rift-owned manager rather than at a pointer cell.
+                PatchAddress(gameObjectManagerType, "Instance", gameObjectManager);
 
                 ffxivClientStructsVersion = ffxiv.GetName().Version?.ToString();
                 installed = true;
@@ -106,11 +117,12 @@ internal static unsafe class SyntheticNativeGameStateRuntime
     {
         Observe("native_state", reused ? "reuse" : "install", "synthetic_ready", new()
         {
-            ["ffxivclientstructs_model"] = "bounded-empty-v1",
+            ["ffxivclientstructs_model"] = "bounded-empty-v2",
             ["ffxivclientstructs_version"] = ffxivClientStructsVersion,
             ["framework_pointer"] = Hex(framework),
             ["ui_module_pointer"] = Hex(uiModule),
             ["agent_module_pointer"] = Hex(agentModule),
+            ["game_object_manager_pointer"] = Hex(gameObjectManager),
             ["reused"] = reused ? "true" : "false",
             ["real_game_memory"] = "false",
             ["native_call"] = "false",
@@ -142,6 +154,17 @@ internal static unsafe class SyntheticNativeGameStateRuntime
         Observe("FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentModule", "AgentModule.GetAgentByInternalId", "synthetic_native_stub", new()
         {
             ["model_state"] = "active",
+            ["reused"] = reused ? "true" : "false",
+            ["real_game_memory"] = "false",
+            ["native_call"] = "false",
+            ["artifact_mutated"] = "false",
+        });
+        Observe("FFXIVClientStructs.FFXIV.Client.Game.Object.GameObjectManager", "GameObjectManager.Instance", "synthetic_singleton", new()
+        {
+            ["patched_address"] = Hex(gameObjectManager),
+            ["model_state"] = "active",
+            ["world_state"] = "empty",
+            ["local_player"] = "absent",
             ["reused"] = reused ? "true" : "false",
             ["real_game_memory"] = "false",
             ["native_call"] = "false",

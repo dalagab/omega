@@ -37,7 +37,7 @@ require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "dalamud.internal_serv
 
 # Runtime-only report model.
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v1", "runtime observation schema version")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.8"', "producer version 0.3.8")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.9"', "producer version 0.3.9")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "boundary_profile", "boundary profile provenance")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "tmpfs_tmp_bytes", "tmpfs provenance")
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "RuntimeObservationKind", "neutral observation model")
@@ -257,5 +257,15 @@ require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "secondReport", "
 require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "ExceptionDispatchInfo.Capture(actual).Throw", "constructor exception preserves original plugin stack")
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "ConstructorException_PreservesOriginalPluginFrame", "exception stack preservation regression test")
 require(Path("tools/summarize-rift-coverage.py"), "observed_native_game_state_operations", "coverage projection preserves native-state observations")
+
+
+# Pass 3.3.3.4: empty GameObjectManager / explicit no-player native state.
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), "GameObjectManager.Instance", "native-state model patches game-object singleton resolver")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '["world_state"] = "empty"', "game-object model declares empty world")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '["local_player"] = "absent"', "game-object model declares no synthetic local player")
+require(Path("tests/fixtures/RiftNativeGameStateSemantics/Plugin.cs"), "GameObjectManager.Instance", "native-state fixture exercises game-object singleton")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "FfxivClientStructs_GameObjectManager_IsSyntheticEmptyAndHasNoLocalPlayerState", "empty game-object manager regression test")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '"bounded-empty-v2"', "expanded native-state model is versioned")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), '"0.3.9"', "runtime report producer bumped for no-player native-state semantics")
 
 print(f"Rift source-contract checks: {len(checks)}/{len(checks)} passed")

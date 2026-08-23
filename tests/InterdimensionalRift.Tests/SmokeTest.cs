@@ -409,6 +409,30 @@ public class NativeGameStateSemanticsTest
                  o.Outcome == "synthetic_ready");
     }
 
+    [Fact]
+    public void FfxivClientStructs_GameObjectManager_IsSyntheticEmptyAndHasNoLocalPlayerState()
+    {
+        var dll = LocateFixture();
+        Assert.True(File.Exists(dll), $"Native-game-state fixture missing: {dll}");
+
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+        var initException = report.Observations.FirstOrDefault(o => o.Kind == RuntimeObservationKind.Exception);
+        Assert.True(report.Plugin.LoadOutcome == "ok",
+            $"Expected empty GameObjectManager fixture path to initialize, got {report.Plugin.LoadOutcome}: {report.Plugin.LoadError}\n{initException?.ExceptionDetail}");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.NativeGameState &&
+                 o.Operation == "GameObjectManager.Instance" &&
+                 o.Outcome == "synthetic_singleton" &&
+                 o.Parameters != null &&
+                 o.Parameters.TryGetValue("world_state", out var worldState) && worldState == "empty" &&
+                 o.Parameters.TryGetValue("local_player", out var localPlayer) && localPlayer == "absent" &&
+                 o.Parameters.TryGetValue("real_game_memory", out var gameMemory) && gameMemory == "false" &&
+                 o.Parameters.TryGetValue("artifact_mutated", out var artifactMutated) && artifactMutated == "false");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 (o.Message ?? string.Empty).Contains("RIFT_NATIVE_GAME_STATE synthetic empty object manager complete", StringComparison.Ordinal));
+    }
+
     private static void AssertNativeStateReport(InterdimensionalRift.Reporting.SandboxReport report)
     {
         var initException = report.Observations.FirstOrDefault(o => o.Kind == RuntimeObservationKind.Exception);
