@@ -9,8 +9,11 @@ namespace InterdimensionalRift.Runtime;
 
 /// <summary>
 /// Creates inert concrete subclasses of Dalamud.Hooking.Hook&lt;T&gt; without
-/// installing or calling a native hook. Objects are allocated without invoking
-/// the real Hook constructor/backend. All lifecycle calls are observations only.
+/// installing or calling a native hook. The emitted type is an open generic
+/// RiftSyntheticHook&lt;T&gt; : Hook&lt;T&gt; where T : Delegate and is only closed over
+/// the plugin's delegate type at runtime. This matters for real plugins that use
+/// private nested delegate types: the dynamic assembly never bakes that private
+/// plugin type into its own base-type metadata.
 /// </summary>
 public static class SyntheticHookRuntime
 {
@@ -22,7 +25,7 @@ public static class SyntheticHookRuntime
     private static readonly AssemblyBuilder Assembly = AssemblyBuilder.DefineDynamicAssembly(
         new AssemblyName("InterdimensionalRift.SyntheticHooks"), AssemblyBuilderAccess.Run);
     private static readonly ModuleBuilder Module = Assembly.DefineDynamicModule("RiftSyntheticHooks");
-    private static readonly ConcurrentDictionary<Type, Type> HookTypes = new();
+    private static readonly ConcurrentDictionary<Type, Type> OpenHookTypes = new();
     private static readonly ConditionalWeakTable<object, State> States = new();
     private static int nextTypeId;
 
@@ -31,11 +34,17 @@ public static class SyntheticHookRuntime
         if (!closedHookType.IsGenericType || closedHookType.GetGenericTypeDefinition().FullName != "Dalamud.Hooking.Hook`1")
             throw new ArgumentException($"Expected closed Dalamud Hook<T>, got {closedHookType}.", nameof(closedHookType));
 
+        var hookDefinition = closedHookType.GetGenericTypeDefinition();
         var delegateType = closedHookType.GetGenericArguments()[0];
         if (!typeof(Delegate).IsAssignableFrom(delegateType))
             throw new ArgumentException($"Hook delegate type is not a Delegate: {delegateType}.", nameof(closedHookType));
 
-        var syntheticType = HookTypes.GetOrAdd(closedHookType, BuildSyntheticHookType);
+        // Build one open generic subclass per frozen Hook<> definition. Closing a
+        // public generic type over a private plugin delegate is legal; defining a
+        // foreign dynamic type whose metadata directly names that private delegate
+        // as Hook<PrivateDelegate> is not reliably loadable.
+        var openSyntheticType = OpenHookTypes.GetOrAdd(hookDefinition, BuildOpenSyntheticHookType);
+        var syntheticType = openSyntheticType.MakeGenericType(delegateType);
         var hook = RuntimeHelpers.GetUninitializedObject(syntheticType);
         var original = CreateNoOpDelegate(delegateType);
         States.Add(hook, new State(tracker, operation, descriptor, original));
@@ -44,6 +53,7 @@ public static class SyntheticHookRuntime
             parameters: new Dictionary<string, string?>
             {
                 ["delegate_type"] = delegateType.FullName,
+                ["delegate_visibility"] = delegateType.IsVisible ? "visible" : "nonpublic",
                 ["detour"] = detour.Method.DeclaringType?.FullName + "." + detour.Method.Name,
                 ["native_patch"] = "false",
             });
@@ -54,7 +64,8 @@ public static class SyntheticHookRuntime
     {
         var state = GetState(hook);
         state.Tracker.Record(RuntimeObservationKind.Hook, "synthetic_hook", "get_Original", "synthetic_noop",
-            message: state.Descriptor);
+            message: state.Descriptor,
+            parameters: new Dictionary<string, string?> { ["native_patch"] = "false" });
         return state.Original;
     }
 
@@ -95,20 +106,25 @@ public static class SyntheticHookRuntime
             ? state
             : throw new InvalidOperationException("Synthetic Rift hook state is unavailable.");
 
-    private static Type BuildSyntheticHookType(Type closedHookType)
+    private static Type BuildOpenSyntheticHookType(Type hookDefinition)
     {
-        var delegateType = closedHookType.GetGenericArguments()[0];
         var tb = Module.DefineType(
-            $"RiftSyntheticHook_{Sanitize(delegateType.FullName ?? delegateType.Name)}_{Interlocked.Increment(ref nextTypeId)}",
-            TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
-            closedHookType);
+            $"RiftSyntheticHook_{Interlocked.Increment(ref nextTypeId)}",
+            TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class);
+
+        var generic = tb.DefineGenericParameters("T")[0];
+        generic.SetBaseTypeConstraint(typeof(Delegate));
+        var baseType = hookDefinition.MakeGenericType(generic);
+        tb.SetParent(baseType);
 
         // The base constructor is internal to Dalamud. This constructor is never
         // invoked; RuntimeHelpers.GetUninitializedObject allocates the inert
-        // object directly. It exists only to make the emitted concrete type valid.
-        var baseCtor = closedHookType.GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)
+        // object directly. It exists only so the emitted derived type has a valid
+        // constructor shape. The call is therefore never JIT-executed.
+        var baseCtorDefinition = hookDefinition.GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)
             .FirstOrDefault(c => c.GetParameters().Length == 1 && c.GetParameters()[0].ParameterType == typeof(IntPtr))
-            ?? throw new MissingMethodException(closedHookType.FullName, ".ctor(IntPtr)");
+            ?? throw new MissingMethodException(hookDefinition.FullName, ".ctor(IntPtr)");
+        var baseCtor = TypeBuilder.GetConstructor(baseType, baseCtorDefinition);
         var ctor = tb.DefineConstructor(MethodAttributes.Private, CallingConventions.Standard, Type.EmptyTypes);
         var cil = ctor.GetILGenerator();
         cil.Emit(OpCodes.Ldarg_0);
@@ -117,19 +133,30 @@ public static class SyntheticHookRuntime
         cil.Emit(OpCodes.Call, baseCtor);
         cil.Emit(OpCodes.Ret);
 
-        OverrideGetter(tb, closedHookType, "get_Original", typeof(SyntheticHookRuntime).GetMethod(nameof(GetOriginal))!, delegateType);
-        OverrideGetter(tb, closedHookType, "get_IsEnabled", typeof(SyntheticHookRuntime).GetMethod(nameof(GetIsEnabled))!, typeof(bool));
-        OverrideGetter(tb, closedHookType, "get_BackendName", typeof(SyntheticHookRuntime).GetMethod(nameof(GetBackendName))!, typeof(string));
-        OverrideVoid(tb, closedHookType, "Enable", typeof(SyntheticHookRuntime).GetMethod(nameof(Enable))!);
-        OverrideVoid(tb, closedHookType, "Disable", typeof(SyntheticHookRuntime).GetMethod(nameof(Disable))!);
-        OverrideVoid(tb, closedHookType, "Dispose", typeof(SyntheticHookRuntime).GetMethod(nameof(Dispose))!);
+        OverrideGetter(tb, hookDefinition, baseType, "get_Original",
+            typeof(SyntheticHookRuntime).GetMethod(nameof(GetOriginal))!, generic);
+        OverrideGetter(tb, hookDefinition, baseType, "get_IsEnabled",
+            typeof(SyntheticHookRuntime).GetMethod(nameof(GetIsEnabled))!, typeof(bool));
+        OverrideGetter(tb, hookDefinition, baseType, "get_BackendName",
+            typeof(SyntheticHookRuntime).GetMethod(nameof(GetBackendName))!, typeof(string));
+        OverrideVoid(tb, hookDefinition, baseType, "Enable", typeof(SyntheticHookRuntime).GetMethod(nameof(Enable))!);
+        OverrideVoid(tb, hookDefinition, baseType, "Disable", typeof(SyntheticHookRuntime).GetMethod(nameof(Disable))!);
+        OverrideVoid(tb, hookDefinition, baseType, "Dispose", typeof(SyntheticHookRuntime).GetMethod(nameof(Dispose))!);
 
         return tb.CreateType()!;
     }
 
-    private static void OverrideGetter(TypeBuilder tb, Type baseType, string methodName, MethodInfo helper, Type returnType)
+    private static void OverrideGetter(
+        TypeBuilder tb,
+        Type hookDefinition,
+        Type baseType,
+        string methodName,
+        MethodInfo helper,
+        Type returnType)
     {
-        var baseMethod = baseType.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public)!;
+        var definitionMethod = hookDefinition.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public)
+            ?? throw new MissingMethodException(hookDefinition.FullName, methodName);
+        var baseMethod = TypeBuilder.GetMethod(baseType, definitionMethod);
         var mb = tb.DefineMethod(methodName,
             MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.SpecialName,
             returnType, Type.EmptyTypes);
@@ -142,9 +169,16 @@ public static class SyntheticHookRuntime
         tb.DefineMethodOverride(mb, baseMethod);
     }
 
-    private static void OverrideVoid(TypeBuilder tb, Type baseType, string methodName, MethodInfo helper)
+    private static void OverrideVoid(
+        TypeBuilder tb,
+        Type hookDefinition,
+        Type baseType,
+        string methodName,
+        MethodInfo helper)
     {
-        var baseMethod = baseType.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public)!;
+        var definitionMethod = hookDefinition.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public)
+            ?? throw new MissingMethodException(hookDefinition.FullName, methodName);
+        var baseMethod = TypeBuilder.GetMethod(baseType, definitionMethod);
         var mb = tb.DefineMethod(methodName,
             MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig,
             typeof(void), Type.EmptyTypes);

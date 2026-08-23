@@ -319,7 +319,9 @@ public class GameInteropSemanticsTest
 
         var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
 
-        Assert.Equal("ok", report.Plugin.LoadOutcome);
+        var initException = report.Observations.FirstOrDefault(o => o.Kind == RuntimeObservationKind.Exception);
+        Assert.True(report.Plugin.LoadOutcome == "ok",
+            $"Expected game-interop fixture to initialize, got {report.Plugin.LoadOutcome}: {report.Plugin.LoadError}\n{initException?.ExceptionDetail}");
         Assert.Contains(report.Observations,
             o => o.Kind == RuntimeObservationKind.SignatureScan && o.Operation == "GetStaticAddressFromSig");
         Assert.Contains(report.Observations,

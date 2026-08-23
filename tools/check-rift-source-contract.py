@@ -37,7 +37,7 @@ require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "dalamud.internal_serv
 
 # Runtime-only report model.
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v1", "runtime observation schema version")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.5"', "producer version 0.3.5")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.6"', "producer version 0.3.6")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "boundary_profile", "boundary profile provenance")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "tmpfs_tmp_bytes", "tmpfs provenance")
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "RuntimeObservationKind", "neutral observation model")
@@ -221,5 +221,8 @@ require(Path("tests/fixtures/RiftGameInteropSemantics/Plugin.cs"), "RIFT_GAME_IN
 require(Path("tests/fixtures/RiftGameInteropSemantics/Plugin.cs"), "GetOrCreateData", "shared-data runtime regression")
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "GenericHookConstraints_ArePreservedAndHooksRemainInert", "generic hook constraint regression test")
 require(Path("tools/summarize-rift-coverage.py"), "emulation_limits", "coverage report preserves synthetic interop limitations")
+require(Path("InterdimensionalRift/Runtime/SyntheticHookRuntime.cs"), 'DefineGenericParameters("T")', "synthetic Hook is emitted as an open generic type")
+require(Path("InterdimensionalRift/Runtime/SyntheticHookRuntime.cs"), "MakeGenericType(delegateType)", "synthetic Hook closes over plugin-private delegate only at runtime")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "initException?.ExceptionDetail", "game interop regression exposes captured init exception on failure")
 
 print(f"Rift source-contract checks: {len(checks)}/{len(checks)} passed")
