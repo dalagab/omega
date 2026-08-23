@@ -24,17 +24,14 @@ internal static unsafe class SyntheticNativeGameStateRuntime
     private static nint uiModule;
     private static nint uiModuleVtable;
     private static nint agentModule;
+    private static string? ffxivClientStructsVersion;
 
     public static void EnsureInstalled(AccessTracker accessTracker)
     {
         tracker = accessTracker;
         if (installed)
         {
-            Observe("native_state", "reuse", "synthetic_ready", new()
-            {
-                ["real_game_memory"] = "false",
-                ["native_call"] = "false",
-            });
+            ObserveActiveModel(reused: true);
             return;
         }
 
@@ -42,7 +39,10 @@ internal static unsafe class SyntheticNativeGameStateRuntime
         {
             tracker = accessTracker;
             if (installed)
+            {
+                ObserveActiveModel(reused: true);
                 return;
+            }
 
             try
             {
@@ -82,22 +82,13 @@ internal static unsafe class SyntheticNativeGameStateRuntime
                 ((nint*)uiModuleVtable)[getAgentModuleSlot] = (nint)(delegate* unmanaged<nint, nint>)&GetAgentModuleStub;
                 *(nint*)uiModule = uiModuleVtable;
 
-                PatchAddress(frameworkType, "Instance", frameworkPointerCell, "Framework.Instance", "synthetic_singleton");
-                PatchAddress(frameworkType, "GetUIModule", (nint)(delegate* unmanaged<nint, nint>)&GetUIModuleStub,
-                    "Framework.GetUIModule", "synthetic_native_stub");
-                PatchAddress(agentModuleType, "GetAgentByInternalId", (nint)(delegate* unmanaged<nint, uint, nint>)&GetAgentByInternalIdStub,
-                    "AgentModule.GetAgentByInternalId", "synthetic_native_stub");
+                PatchAddress(frameworkType, "Instance", frameworkPointerCell);
+                PatchAddress(frameworkType, "GetUIModule", (nint)(delegate* unmanaged<nint, nint>)&GetUIModuleStub);
+                PatchAddress(agentModuleType, "GetAgentByInternalId", (nint)(delegate* unmanaged<nint, uint, nint>)&GetAgentByInternalIdStub);
 
+                ffxivClientStructsVersion = ffxiv.GetName().Version?.ToString();
                 installed = true;
-                Observe("native_state", "install", "synthetic_ready", new()
-                {
-                    ["ffxivclientstructs_version"] = ffxiv.GetName().Version?.ToString(),
-                    ["framework_pointer"] = Hex(framework),
-                    ["ui_module_pointer"] = Hex(uiModule),
-                    ["agent_module_pointer"] = Hex(agentModule),
-                    ["real_game_memory"] = "false",
-                    ["native_call"] = "false",
-                });
+                ObserveActiveModel(reused: false);
             }
             catch (Exception ex)
             {
@@ -109,6 +100,53 @@ internal static unsafe class SyntheticNativeGameStateRuntime
                 });
             }
         }
+    }
+
+    private static void ObserveActiveModel(bool reused)
+    {
+        Observe("native_state", reused ? "reuse" : "install", "synthetic_ready", new()
+        {
+            ["ffxivclientstructs_model"] = "bounded-empty-v1",
+            ["ffxivclientstructs_version"] = ffxivClientStructsVersion,
+            ["framework_pointer"] = Hex(framework),
+            ["ui_module_pointer"] = Hex(uiModule),
+            ["agent_module_pointer"] = Hex(agentModule),
+            ["reused"] = reused ? "true" : "false",
+            ["real_game_memory"] = "false",
+            ["native_call"] = "false",
+        });
+
+        // Address.Value is process-global inside the loaded FFXIVClientStructs assembly.
+        // A later SandboxHost run therefore inherits the already-patched resolver table.
+        // Re-emit the active model into the *current* report so each exact-artifact run
+        // carries its own provenance instead of depending on which test/plugin installed
+        // the model first. These are model-state observations, not claims that the
+        // plugin invoked every listed function.
+        Observe("FFXIVClientStructs.FFXIV.Client.System.Framework.Framework", "Framework.Instance", "synthetic_singleton", new()
+        {
+            ["patched_address"] = Hex(frameworkPointerCell),
+            ["model_state"] = "active",
+            ["reused"] = reused ? "true" : "false",
+            ["real_game_memory"] = "false",
+            ["native_call"] = "false",
+            ["artifact_mutated"] = "false",
+        });
+        Observe("FFXIVClientStructs.FFXIV.Client.System.Framework.Framework", "Framework.GetUIModule", "synthetic_native_stub", new()
+        {
+            ["model_state"] = "active",
+            ["reused"] = reused ? "true" : "false",
+            ["real_game_memory"] = "false",
+            ["native_call"] = "false",
+            ["artifact_mutated"] = "false",
+        });
+        Observe("FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentModule", "AgentModule.GetAgentByInternalId", "synthetic_native_stub", new()
+        {
+            ["model_state"] = "active",
+            ["reused"] = reused ? "true" : "false",
+            ["real_game_memory"] = "false",
+            ["native_call"] = "false",
+            ["artifact_mutated"] = "false",
+        });
     }
 
     [UnmanagedCallersOnly]
@@ -151,7 +189,7 @@ internal static unsafe class SyntheticNativeGameStateRuntime
         return 0;
     }
 
-    private static void PatchAddress(Type owner, string fieldName, nint value, string operation, string outcome)
+    private static void PatchAddress(Type owner, string fieldName, nint value)
     {
         var addresses = owner.GetNestedType("Addresses", BindingFlags.Public | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException($"{owner.FullName}.Addresses was not found.");
@@ -162,14 +200,6 @@ internal static unsafe class SyntheticNativeGameStateRuntime
         var valueField = address.GetType().GetField("Value", BindingFlags.Public | BindingFlags.Instance)
             ?? throw new MissingFieldException(address.GetType().FullName, "Value");
         valueField.SetValue(address, value);
-
-        Observe(owner.FullName ?? owner.Name, operation, outcome, new()
-        {
-            ["patched_address"] = Hex(value),
-            ["real_game_memory"] = "false",
-            ["native_call"] = "false",
-            ["artifact_mutated"] = "false",
-        });
     }
 
     private static Type RequireType(Assembly assembly, string name) =>

@@ -40,3 +40,11 @@ Virtual functions are represented with Rift-owned synthetic vtables containing o
 == Expansion rule
 
 A new singleton, field, member function, or virtual slot is modeled only after a real plugin scan demonstrates it is required to advance meaningful execution. Each addition requires a regression fixture and must preserve the empty/synthetic semantics above.
+
+== Process-global reuse and per-report provenance
+
+`FFXIVClientStructs` is loaded as a trusted process-level contract assembly. Its generated `Address.Value` fields are therefore process-global even when successive plugin subjects use separate collectible load contexts.
+
+A later `SandboxHost` run may reuse an already-installed synthetic address table. Reuse must never make the new report depend on whichever earlier subject installed the model first. On every host run Rift therefore emits the canonical active-model observations again, with `reused=true` or `reused=false` and `model_state=active`.
+
+These active-model observations describe which synthetic resolver entries are in force for that run. They are not claims that the subject invoked every modeled entry. Actual calls through Rift-owned unmanaged stubs remain separate runtime observations such as `UIModule.GetAgentModule` and `AgentModule.GetAgentByInternalId`.
