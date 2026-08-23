@@ -1,5 +1,22 @@
 # Omega Security Services changelog
 
+## 2.15.0 unreleased — DeltaScope 4.6.3 / root launcher
+
+- Add root-level `deltascope.py`, `deltascope.cmd`, and `deltascope.sh` launchers so DeltaScope can be started from the SigmaScope checkout without remembering the internal tool path.
+- The Python launcher creates a repository-local `.deltascope-venv`, installs only the pinned `tools/requirements-security.txt` dependencies on first use or when the requirements digest changes, then reuses that isolated runtime.
+- Default root launch opens the published Evidence-v2 online workbench; normal DeltaScope commands and flags pass through unchanged.
+- Add `.deltascope-venv/` to `.gitignore` and regression coverage for launcher discovery, default command routing, and requirement-change invalidation.
+- No scanner, Stigma-1, Definitions, Evidence-v2, queue, Deep Scan, or publication semantics changed.
+
+## 2.15.0 unreleased — DeltaScope 4.6.2 / sharded workbench relationship transport
+
+- Replace the single `indexes/workbench-relationships.json` transport object with a small hash-pinned `indexes/workbench-relationships/index.json` manifest plus deterministic bounded JSONL+gzip datasets for endpoints, components and advisories.
+- Keep the global Evidence-v2 32 MiB per-file ceiling unchanged. Relationship shards target 8 MiB compressed files, so growth in DeltaScope navigation data no longer requires weakening publication safety limits.
+- Advance the relationship schema to `omega.security-evidence.workbench-relationships.v2`; DeltaScope remains backward-compatible with existing v1 monolithic snapshots.
+- Intrinsic Evidence-v2 validation now verifies every relationship shard SHA-256/size, record count, semantic record digest, edge counts and aggregate relationship revision while preserving `readOnly=true`, `mutationAuthority=none`, `policyInput=false`.
+- DeltaScope fetches the v2 manifest during relationship navigation and loads hash-pinned shards only when the relationship workbench is first used, rather than loading relationship data at application startup.
+- This fixes SigmaScope run `32603107402`, whose candidate reached validation after all 20 selected scans but was rejected because the old monolithic relationship index reached 34,013,367 bytes, exceeding the 33,554,432-byte Evidence-v2 ceiling.
+
 ## 2.15.0 unreleased — DeltaScope 4.6.1 / Stigma-1 analysis-request sidecar validation fix
 
 - Fix Evidence-v2 intrinsic validation for the new hash-pinned `rule-projections/analysis-requests.json` sidecar. The 4.6 materializer correctly indexed the file, but the snapshot validator still only recognized variant projections plus `reanalysis-requests.json`, so a valid deep-analysis request sidecar was incorrectly reported as an orphan.

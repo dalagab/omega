@@ -1,159 +1,430 @@
-# Omega security services · SigmaScope + DeltaScope
+<p align="center">
+  <img src="https://raw.githubusercontent.com/dalagab/omega/main/images/omega-banner.png" alt="Omega" width="900">
+</p>
 
-This package is the source intended for the **`sigmascope` branch** of `dalagab/omega`. It contains repository discovery/catalog generation, frozen Definitions, SigmaScope, DeltaScope, Security Evidence v2 publication, source submissions, and their Python regression tests.
+# Omega
 
-It deliberately contains **no Omega C# client source**.
+**Dalamud plugin marketplace · SigmaScope · Stigma-1 · DeltaScope · Rift**
 
-## Services
+Omega is a plugin marketplace for Dalamud backed by a broader discovery, catalog and security-evidence platform. The same repository contains the user-facing **Omega C# client** and the infrastructure used to discover public plugins, inspect installable artifacts, retain attributable source and runtime observations, evaluate deterministic security rules, and publish evidence that can be reviewed by users and researchers.
 
-### DeltaScope 4.6.1 · analysis-request sidecar validation hotfix
+The project is organized across long-lived branches because the client, security services, runtime sandbox and generated data have different lifecycles. That branch split is an **ownership and deployment boundary inside one Omega repository**, not a separation into unrelated projects. `main` carries the Omega client and its regression tests; `sigmascope` carries SigmaScope, Stigma-1, DeltaScope and security-service tooling; `rift` carries the Interdimensional Rift and Alpha; generated catalog and security evidence live on their publication branches.
 
-The adaptive Deep Scan contract is unchanged. This patch makes Evidence-v2 and SRL projection-set validation recognize and cryptographically verify the new `rule-projections/analysis-requests.json` sidecar instead of falsely classifying it as an orphan. Older projection sets without this optional sidecar remain valid.
+> [!IMPORTANT]
+> Omega is not just the scanner, and SigmaScope is not a separate product from Omega. The C# marketplace client, the security services, the rule system, the research workbench and the runtime-observation environment are different parts of the same repository and security model.
 
-### DeltaScope 4.6 · adaptive Stigma-1 Deep Scan
+---
 
-Stigma-1 deep-analysis outcomes now carry a bounded **scan depth** (`standard`, `extended`, or `exhaustive`). The Deep Scan queue and GitHub Actions workflow pick up that depth automatically: same-target requests coalesce to the deepest requested level, and the workflow uses code-owned 20/40/65-minute ceilings rather than allowing rules to set runner timeouts. Extended/exhaustive artifact differential scans add bounded member-content and literal comparison while still never executing plugin code. The source rule library now contains **6 Definition Packs, 55 rules and 15 fixtures** (16 reviewed production-tier + 39 experimental).
+## What this repository is trying to solve
 
-### DeltaScope 4.5 · expanded Stigma-1 definition library
+Dalamud plugins run inside the Final Fantasy XIV process and can have meaningful access to the user's computer, game state, files, network, native libraries, processes and external services. A plugin marketplace therefore needs more than a simple *known / unknown* label.
 
-The source rule library now contains **6 Definition Packs, 54 Stigma-1 rules and 14 fixtures**. The reviewed production-tier migration set grows from seven to **16 rules**: all **14 literal-backed legacy static primitives** plus the two existing compound correlations. Their scanner-observation migration path is fail-closed and parity-tested over **147 primitive cases** plus all **32 compound fact combinations**. Production SRL finding writeback remains separately gated; expanding the library does not silently activate findings.
+Omega's security model is built around **evidence and explainability**:
 
-The other **38 rules are deliberately experimental** and visible in DeltaScope for inspection, forking, replay and authoring. They cover managed-call/game automation capabilities, network endpoint classifications, source-provenance signals, research correlations, and a sample `experimental.deep-scan.divergent-artifact` rule that demonstrates the Stigma-1 `analysisRequest` outcome. Experimental rules are frozen for reproducibility but are not production-active. The divergent-artifact example remains a research rule until cross-source divergence is exposed as an eligible first-class Stigma-1 input/fact; the Deep Scan queue/worker mechanism itself is implemented.
+- inspect the **exact installable artifact**, not just a project page;
+- analyze attributed source code when it is available, without pretending source automatically proves the artifact;
+- record **what was observed**, separately from the conclusions drawn from it;
+- keep scanner findings, rule revisions, external intelligence and provenance reproducible;
+- distinguish **severity** from **review coverage**;
+- allow new intelligence or new rules to be projected over retained observations without automatically rescanning unchanged plugins when the retained evidence is sufficient;
+- escalate interesting cases into deeper, bounded analysis without letting rules execute arbitrary code;
+- expose the resulting evidence to researchers through DeltaScope and, ultimately, to users through Omega.
 
-### Stigma-1 deep-analysis queue (introduced in DeltaScope 4.4)
+The goal is not to declare that third-party software is magically "safe." The goal is to make its observable behavior, provenance and risk signals **visible, inspectable and harder to hide**.
 
-Stigma-1 rules can now produce a typed `analysisRequest` outcome. For exact frozen reviewed rules, SigmaScope projects matching requests into a durable `deep-scan-state` queue and wakes a separate **Omega Deep Scan worker** workflow. Rules can select only an Omega-owned profile, comparison target and human-readable reason; they cannot supply commands, timeouts, paths, network policy or runner controls. DeltaScope local rules only preview the request.
+---
 
-The first executable profile is `artifact-differential-v1`: it verifies the exact divergent candidate and stable-publisher baseline SHA-256 values, inventories both packages and runs the same non-executing SigmaScope static inspection on each side so package/static-behavior differences are comparable. `sandbox-differential-v1` is reserved but fail-closed until a genuine isolated plugin-execution environment exists; untrusted plugins are never executed on an ordinary Actions runner. The scheduled recovery launcher is `docs/workflow-callers/deep-scan-main.yml` and must be installed on the default branch alongside the other thin callers.
+## The security architecture
 
-The Rules visual editor exposes the deep-analysis outcome on the Emit node, and Explain/Test shows the request a matched local rule **would** enqueue. See `docs/DEEP-SCAN-WORKFLOW.md` and `docs/STIGMA-1.md`.
+```mermaid
+flowchart LR
+    A[Public plugin repositories] --> C[Catalog + source discovery]
+    B[Installable plugin artifacts] --> S[SigmaScope]
+    C --> S
 
-### DeltaScope 4.3 · operational visibility + documentation
+    D[Attributed source code] --> S
+    DEF[Frozen Security Definitions] --> S
 
-DeltaScope now starts Incidents with the newest current security findings, shows read-only GitHub Actions/component status on Dashboard, and combines GitHub workflow activity with Evidence-v2 events on Events. The GitHub reader is intentionally observational only: it cannot start/cancel/retry workflows and fails softly if GitHub is unavailable. A new Documentation page exposes the exact shipped Stigma-1/SRL authoring guides, examples, Definition Pack documentation and security-system architecture through an allow-listed local-doc endpoint.
+    S --> OBS[Typed observations]
+    S --> SEC[Secondary security evidence\nYARA · ClamAV · OSV · native checks]
+    OBS --> ST[Stigma-1 / SRL Core]
+    SEC --> EV[Security Evidence v2]
+    ST --> EV
 
-For rule authors, start in DeltaScope **Documentation → Stigma-1 — SRL Core**, then **Start writing rules**, or read `docs/STIGMA-1.md` and `docs/rule-authors/README.md` directly. System Rules can be inspected/forked from the Rules tree; My Rules are versioned locally and never activate production state.
+    ST -->|approved analysisRequest| Q[Deep Scan queue]
+    Q --> DS[Bounded Deep Scan worker]
+    DS --> DR[Deep-scan results]
 
-### Security services 2.15.0 · SigmaScope scanner engine 2.15.0
+    EV --> DELTA[DeltaScope\nread-only investigator workbench]
+    EV --> OMEGA[Omega client / user-facing security view]
 
-The unreleased 2.15 development line now implements behavior-transparency architecture Phases 1–10 plus Phase-11 DeltaScope workbench slices 1–7. A source-controlled shared capability registry (`omega.sigmascope.capability-registry.v1`) now gives SigmaScope, DeltaScope, developer profiles and future SRL rules one stable vocabulary. Attributed public source may contain bounded `.omega/plugin.yaml` (`omega.plugin-profile.v1`) metadata so developers can enrich their Omega profile and explain expected/not-expected capabilities, external services, native components and IPC usage. These declarations are untrusted context only: they never suppress findings, lower severity, override YARA/ClamAV/OSV, or claim source-to-artifact verification.
+    DELTA -->|local replay / authoring| ST
 
-The developer profile is hashed/validated fail-soft, retained in source analysis and compact Evidence-v2, projected for future marketplace UI, and shown separately in DeltaScope. Phase 3 derives `omega.sigmascope.behavior-consistency.v1`, comparing canonical observed capabilities and concrete endpoint destinations with developer declarations without changing native findings/severity. Phase 4 separates retained observation inputs from deterministic projection identity via `omega.sigmascope.observation-contract.v1` / `omega.sigmascope.projection-contract.v1`, including a replay audit that tells SRL/DeltaScope whether a rule can reuse retained evidence exactly or needs targeted re-analysis. Phase 7b adds the rule-neutral complete `staticPatternMatches` observation required by the first migrated primitive rules, so the current development identities intentionally advance to `artifact-analysis-v1-83c69af9c649cc52` and `source-analysis-v1-6dbf8f81962644ba`. This is targeted re-analysis semantics for variants missing that observation, not a version-only mass-rescan trigger. Frozen Definitions still bind secondary-security identity into their artifact-analysis contract as before; engine release identity remains excluded from narrow analysis semantics and legacy freshness scheduling.
-
-2.14.1 improved production source-discovery operations: source-needed issues are plugin-scoped across mirrors, duplicate legacy issues consolidate automatically, and validated source replies can populate all affected feed-specific source mappings.
-
-2.14.0 turns the reviewed-YARA infrastructure into a real production evidence layer. The initial **Omega Core** seed contains 14 first-party compound rules across credential/token theft + exfiltration, process injection, encoded download/execute, security tampering, embedded PE loading, persistence, and contextual anti-analysis clusters. Rules remain supplemental evidence: a YARA match does not silently modify SigmaScope's native severity or source-review coverage.
-
-YARA now scans both the exact downloaded plugin package container and a **bounded generated view of ZIP members**. Code/config/payload-like members are read through strict byte/count/compression limits and written only under generated temporary filenames; original archive paths are never used for extraction. Evidence-v2 records the original member path, member SHA-256/byte count, scan scope, truncation/skip counts, rule provenance, review hash, reviewer, rule class, confidence, license and false-positive expectation.
-
-The YARA review contract advances to v2. Enabled rules must pin the SHA-256 of the exact reviewed rule bytes, declare every rule name exactly, carry reviewer/class/confidence metadata, and pass a real YARA compile check at the Definitions boundary. Regression CI now triggers on `security-definitions/**` and installs YARA before running tests so rule-only changes cannot bypass validation. Third-party packs are not enabled wholesale; candidate upstreams are kept in a review queue for rule-by-rule provenance/license/false-positive assessment.
-
-ClamAV remains operational through the 2.11 immutable database/executable identity path. The 2.13 native/endpoint/component contracts, 2.12 lifecycle/event-driven queue contracts, and 2.10 artifact/source-attribution model remain compatible. Plugin artifacts and source remain untrusted data and are never executed or dynamically loaded.
-
-### DeltaScope
-Developer/operator-only investigation and rule-development tooling over published or local SigmaScope evidence. **DeltaScope 4.6** keeps all published Evidence-v2, frozen Definitions, scanner state and production activation strictly read-only, while adding one intentional local-only write surface for versioned **My Rules**. Rules is now a unified **Stigma-1 (SRL Core)** workspace: the left tree shows repository **System Rules** beside locally stored **My Rules**; either opens in the same YAML / Visual / Explain-Test area. System rules are read-only and can be explicitly forked. Local rules default to `~/.omega/deltascope/rules/v1` (override `OMEGA_DELTASCOPE_RULE_HOME`) and every save creates an immutable validated revision. The visual composer is an SRL-specific Node-RED-style authoring view for selectors, ALL/ANY/NOT/COUNT logic and emit nodes; it is not executable. Existing YAML is parsed into a graph and every graph change must compile back through Stigma-1 before it can be saved or evaluated. Exact published active-rule provenance remains a separate read-only snapshot view, so repository/local availability is never confused with production activation. The rest of the permanent workbench remains Dashboard, Incidents, Events, Intelligence, Assets, Rules, Reports and System, with deep retained-evidence inspection, secondary-security evidence, relationship pivots, reprojection readiness, Rule Lab replay/fixtures/export and the URL-only GitHub proposal handoff.
-
-Online mode remains lazy: plugin lists use the compact published indexes and large forensic shards are fetched only when opened. Historical/pre-summary Evidence-v2 and the legacy read-only SQLite developer mode remain supported. Run it with:
-
-```bash
-python tools/security/deltascope.py serve-online
-python tools/security/deltascope.py audit --evidence-v2 path/to/security-evidence-v2 --json
-python tools/security/deltascope.py capabilities
-python tools/security/deltascope.py observation-schema
-python tools/security/deltascope.py rule-schema
-python tools/security/deltascope.py definition-packs --definitions-root path/to/definitions
-python tools/security/deltascope.py rule-parity
-python tools/security/deltascope.py rule-replay --evidence-v2 path/to/security-evidence-v2
+    R[Rift branch\nexperimental execution environment] -. separate research boundary .-> ALPHA[Alpha\nreference/helper subject inside Rift]
 ```
 
-The authoring commands expose the shared capability vocabulary, the Phase-4 legal observation/replay boundary, the machine-readable SRL v1 contract, and exact frozen Definition Pack provenance when a Definitions snapshot is supplied. SRL candidate YAML can be compiled and fixture-tested locally with DeltaScope, and reviewed Definition Packs can now be validated/frozen by Daily Definitions. The first compound migration path now includes 14 reviewed literal-backed `staticPatternMatches` observation-to-fact rules, 147 primitive-pattern parity cases, all 32 compound combinations, and retained Evidence-v2 replay through `rule-replay`. Production SRL projection remains disabled. The post-Phase-11 cutover-readiness gate is now implemented in `tools/security/srl_cutover_readiness.py`: it audits the complete published current-variant corpus against the exact frozen Daily Definitions and can report `ready-for-human-review`, but it cannot authorize activation, remove the hard-coded baseline, mutate the queue, or write production evidence. The companion read-only Actions workflow is `.github/workflows/srl-cutover-readiness.yml`. Actual cutover still requires a clean real corpus report and explicit human review:
-
-Production SRL projection remains disabled: live 2.14 evidence does not contain this new observation collection, so old variants are reported as requiring targeted 2.15 re-analysis rather than being reconstructed from current findings.
-
-DeltaScope is not part of the production scanner decision path, never scans plugins, and has no publication/write-back step. Its permanent workbench navigation is **Dashboard, Incidents, Events, Intelligence, Assets, Rules, Reports, System**. The second Phase-11 slice moves the first incident/event/intelligence views out of browser-only derivation into deterministic `omega.deltascope.security-workbench.v1` backend projections with stable object IDs/revision, `readOnly=true`, `mutationAuthority=none`, and an explicit GitHub authoritative-change boundary. Assets retain the deep plugin investigation view; incidents/events/intelligence are derived read-only pivots into that evidence; Rules combines read-only active/source provenance with the unified Stigma-1 / SRL Core workspace; only versioned My Rules are writable locally. DeltaScope does not assign/close incidents, activate rules, edit authoritative findings, rewrite evidence, mutate queues, or save Definitions. Authoritative changes go through the Phase-9 GitHub permission/CI/review/PR path.
-
-Phase 10 adds deterministic **rule-only reprojection** from retained immutable observations. Compatible variants can be re-evaluated against a new frozen SRL ruleset without artifact download/reparse and without consuming legacy findings as rule inputs. Missing required collections produce precise `srl_observation_missing` re-analysis requirements. Evidence-v2 may publish a hash-pinned `rule-projections/` sidecar for inspection, but it is intrinsically validated as non-authoritative (`productionRuleEvaluationEnabled=false`, `productionWriteBack=false`, `queueMutationAuthorized=false`) and cannot replace production findings.
-
-## Architecture documents
-
-The behavior-transparency architecture is documented separately. Phases 1–10 and all eight Phase-11 DeltaScope workbench slices are implemented locally on the unreleased migration line. The Phase-7 migration path is complete through the retained-observation replay gate: `compound.network-execute` / `compound.credential-network`, the 14 reviewed literal-backed primitive fact producers (including the five consumed by those compounds), fail-closed parity, and Evidence-v2 replay are implemented. Production 2.14 remains untouched while scans continue. Actual cutover still waits for compatible 2.15 observations to be collected/re-analysed. Phase 8 introduced the local Rule Lab; DeltaScope 4.2 turns it into the unified versioned SRL Core workspace; Phase 9 adds the separate authorization-gated GitHub issue/PR path; Phase 10 provides retained-observation rule-only reprojection; Phase 11 completes the read-only SIEM-style investigator workbench and URL-only `Propose on GitHub` handoff. Candidate issue YAML remains inert data, validation has no contents-write permission, promotion re-checks the triggering GitHub actor's repository permission and revalidates from scratch, and the resulting Definition Pack enters a normal non-auto-merged PR. Production SRL projection remains disabled:
-
-
-SRL v1 local authoring commands:
+The important architectural boundary is:
 
 ```text
-python tools/security/deltascope.py rule-compile --rule candidate.yaml
-python tools/security/deltascope.py rule-test --rule candidate.yaml --fixture positive.fixture.yaml
-python tools/security/deltascope.py rule-eval --rule candidate.yaml --observations observations.json
-python tools/security/deltascope.py rule-parity
+SigmaScope  ->  Stigma-1  <-  DeltaScope
 ```
 
-These commands use the same deterministic compiler/evaluator intended for future production Definition Packs. They cannot publish or modify production evidence.
-- `docs/ARCHITECTURE-SECURITY-MODEL.md` — security hygiene vs capabilities vs behavior consistency vs provenance, and the developer-claim trust boundary.
-- `docs/OMEGA-PLUGIN-PROFILE.md` — optional `.omega/plugin.yaml` developer profile, capability reasons, service/native/IPC explanations, validation and sanitisation.
-- `docs/BEHAVIOR-CONSISTENCY.md` — deterministic observed-vs-declared capability/service comparison, transport, replay and SRL recursion boundary.
-- `docs/OBSERVATION-PROJECTION-CONTRACT.md` — Phase-4 logical observation collections, completeness/replay auditing, projection identity, and 2.14→2.15 targeted migration rules.
-- `docs/SIGMASCOPE-RULE-LANGUAGE.md` — Sigma-inspired typed YAML rule DSL; explicitly complementary to YARA/ClamAV/OSV rather than a replacement.
-- `docs/DEFINITION-PACKS.md` — implemented Definition Pack v1 trust/provenance/fixture/freezing contract.
-- `docs/DELTASCOPE-RULE-WORKBENCH.md` — local rule dry-run, explainability, fixtures and candidate export from DeltaScope.
-- `docs/GITHUB-RULE-CANDIDATE-WORKFLOW.md` — Phase-9 inert issue validation, GitHub authorization gate, reviewed-pack materialization, and normal PR lifecycle.
-- `docs/IMPLEMENTATION-PLAN-RULES-PROFILES.md` — phased implementation, GitHub candidate-rule promotion workflow and rule-only replay plan.
-- `docs/plugin-developers/README.md` — public `.omega/plugin.yaml` authoring/validation guide and exact v1 schema.
-- `docs/rule-authors/README.md` — starting point for designing future SigmaScope rules against DeltaScope/SigmaScope data.
-- `docs/rule-authors/DATA-REFERENCE.md` — exact current authoring collections/field semantics.
-- `docs/rule-authors/RULE-DESIGN.md` — evidence/confidence/same-record/fixture guidance.
-- `docs/rule-authors/DELTASCOPE-WORKFLOW.md` — current inspection/Rule Lab workflow and planned GitHub promotion lifecycle.
+SigmaScope and DeltaScope do **not** call each other as peer services. They share the same deterministic rule language and data contracts while keeping production authority separate from research tooling.
 
-## Branch model
+---
 
-- `sigmascope` — this source.
-- `catalog-data` — generated canonical catalog + frozen Definitions + immutable worker bundle.
-- `security-evidence-v2` — generated validated detailed evidence.
-- `main` — Omega client plus small default-branch launcher workflows.
+## Components
 
-GitHub schedules/events run from the default branch, so `main` keeps thin callers that invoke these reusable workflows using `@sigmascope`. Phase 9 also needs the thin issue/comment caller shown in `docs/workflow-callers/rule-candidates-main.yml`. The full implementation remains here.
+| Component | Role |
+| --- | --- |
+| **Omega** | The wider plugin-discovery and marketplace ecosystem. It consumes security information but is not the scanner itself. |
+| **SigmaScope** | The production security scanner and Evidence-v2 pipeline. It inspects plugin artifacts, source and retained observations under bounded policies. |
+| **Stigma-1** | The shared deterministic rule system. Its technical core is **SRL — SigmaScope Rule Language**. |
+| **DeltaScope** | A developer/research workbench for browsing evidence, investigating incidents, replaying rules and authoring candidate rules. It is intentionally not a production control plane. |
+| **Security Definitions** | Frozen, reviewable scanner data: capability vocabulary, Definition Packs, YARA policy/rules and other security inputs. |
+| **Security Evidence v2** | The publication format that preserves scanner output, observations, provenance, revisions and read-only workbench indexes. |
+| **Deep Scan** | A separate evidence-acquisition workflow for cases that justify more analysis than the normal scan budget. |
+| **Rift** | A separate experimental/developer execution environment on the `rift` branch. It is not part of the normal SigmaScope production scan path. |
+| **Alpha** | A reference/helper subject **inside Rift**, used by that research environment. |
 
-## Workflows owned here
+---
 
-- `catalog-builder.yml` — daily/manual catalog + Definitions snapshot and client marketplace DB compiler.
-- `sigmascope.yml` — bounded continuous SigmaScope worker.
-- `source-submissions.yml` — validates and persists public source metadata onto `sigmascope`.
-- `catalog-compaction.yml` — manual legacy compatibility self-test.
-- `regression-tests.yml` — Python/service regression suite for the `sigmascope` branch.
-- `deltascope.yml` — manual read-only developer audit.
+## SigmaScope
 
-The scheduled/event launchers with matching names live on `main`; do not move scanner implementation back there.
+SigmaScope is the artifact-first security scanner.
 
-## Discord publication notifications
+For each plugin variant it can retain and publish evidence such as:
 
-Public publication notices are built from already-sanitised catalog/SigmaScope outputs. The notice builder has no webhook credential; delivery happens in a separate `discord-public` environment job.
+- exact artifact identity and SHA-256;
+- ZIP/package safety information;
+- managed and native binary classification;
+- .NET metadata, references, P/Invoke maps and selected call relationships;
+- filesystem, process, registry, network, listener, clipboard, credential and execution-related static behavior signals;
+- endpoint and URL observations;
+- native imports and binary characteristics;
+- dependencies/components and advisory relationships;
+- source availability, source provenance and source-review coverage;
+- developer-supplied `.omega/plugin.yaml` declarations as **untrusted explanatory context**;
+- YARA results from reviewed first-party rules;
+- ClamAV and OSV-derived evidence where available;
+- rule-neutral observation collections suitable for later deterministic reprojection.
 
-- `tools/notifications/discord_notice.py` — deterministic, sanitised notice builder.
-- `tools/notifications/post_discord_notice.py` — isolated webhook sender with a Discord-compliant API User-Agent.
-- `tools/tests/test_discord_notifications.py` — notification routing, sanitisation, and voice regression tests.
+A developer declaration can explain expected behavior, but it cannot suppress scanner findings, lower severity, override secondary scanners or prove that source code matches the shipped binary.
 
-Message wording is selected deterministically from a small compositional phrase grammar rather than a giant pile of canned messages. Each notice family combines six openings, six observations and six closers (**216 combinations per family / 864 base TONI voices total**), then adds event-aware wording for catalog deltas, finding counts, evidence work type and Definitions state. The same publication identity always gets the same wording, so retries remain reproducible. No AI, randomness or generated network copy is used at runtime. Security notices sound mildly irritated, catalog growth sounds wealthy/data-hungry, Definitions updates sound pleased, and ordinary evidence reviews are deliberately a little smug.
+### Artifact first, source second
 
-The embed panels themselves are operational summaries, not personality filler. Catalog publications show current plugin/variant/source size, exact added/updated/removed counts and up to two deterministic representative plugin names. Definitions publications show active pack/rule vocabulary, capability categories, frozen OSV coverage and source-observation health. Evidence publications show current finding totals and added/cleared deltas. New high/critical security incidents also resolve reviewed SRL rule IDs through the exact frozen Definition Pack index and link straight to the corresponding GitHub YAML source pinned to that Definitions snapshot's `builtFromDevCommit`; legacy findings without a reviewed YAML source are labelled as legacy rather than linked inaccurately.
+A recurring principle in this repository is that these are different questions:
 
-## DeltaScope antivirus/YARA visibility hotfix
+```text
+What is inside the plugin users can install?
+What does the attributed public source show?
+Can we prove that source produced this artifact?
+```
 
-DeltaScope now exposes a permanent top-level **Antivirus & YARA** panel and moves per-plugin ClamAV/YARA results directly below the selected plugin overview. Clean/no-match results are shown explicitly; scans without secondary-security evidence are labelled as unrecorded rather than implied clean. This is developer-view-only and does not alter SigmaScope analysis or publication semantics.
+Omega keeps those answers separate instead of collapsing them into a single trust flag.
 
-## DeltaScope TONI and metric drill-downs
+---
 
-DeltaScope includes **TONI** as a deterministic evidence guide in the browser. TONI explains the currently loaded Evidence-v2 counts, queue state, selected plugin, source-attribution confidence and ClamAV/YARA state using fixed data-driven wording. It has no model call and no scanner/publication authority.
+## Stigma-1 — SRL Core
 
-Headline metric cards are direct navigation controls: immutable-analysis counts open the exact flattened analysis records; artifact/lifecycle/global-index counts open their matching records; queue cards filter to the exact queue state; finding totals open per-variant contribution rows so the displayed total can be reproduced and each variant can be opened for its raw immutable findings. Immutable analysis rows can open their hash-verified manifest in the read-only row inspector.
+**Stigma-1** is the shared rule layer used by SigmaScope and DeltaScope. Its implementation is intentionally constrained and non-executable.
 
-The refreshed visual system is Tailwind-inspired but compiled into the existing self-contained HTML/CSS so local/offline DeltaScope does not depend on a CDN.
+Rules operate on registered, typed observations and facts. They do not receive arbitrary access to the filesystem, shell, environment, network, SQL, templates or executable code.
 
+The current source library in this snapshot contains:
 
-## DeltaScope security researcher workbench
+- **6 Definition Packs**;
+- **55 rules**;
+- **15 fixtures**;
+- **16 reviewed production-tier migration rules**;
+- **39 experimental research/authoring rules**.
 
-The default DeltaScope interaction is now case-oriented. Select a variant from the research queue, review deterministic TONI triage signals, check ClamAV/YARA and static findings, inspect endpoints and code/native behavior, then validate supply-chain/source correspondence and immutable evidence. Headline cards remain exact drill-downs; the raw table browser is intentionally secondary. No AI/LLM participates in these signals or in SigmaScope decisions.
+Experimental rules are visible and testable in DeltaScope, but simply existing in the repository does **not** make them production-active.
 
+Production SRL finding write-back remains separately gated. The repository deliberately distinguishes *"we can compile and replay this rule"* from *"this rule is authorized to change production findings."*
 
-### Coverage-first queue / DeltaScope coverage visibility
+Read more:
 
-SigmaScope prioritizes never-scanned active variants before revisiting variants that already have published evidence. DeltaScope surfaces this as `Never scanned` coverage and makes `SOURCE CODE` versus `ARTIFACT ONLY` explicit; source availability is not the same thing as source→artifact verification. Online Evidence-v2 cache filenames are short content-derived keys to remain safe on long Windows cache prefixes.
+- [`docs/STIGMA-1.md`](docs/STIGMA-1.md)
+- [`docs/SIGMASCOPE-RULE-LANGUAGE.md`](docs/SIGMASCOPE-RULE-LANGUAGE.md)
+- [`docs/DEFINITION-PACKS.md`](docs/DEFINITION-PACKS.md)
+- [`docs/DELTASCOPE-RULE-WORKBENCH.md`](docs/DELTASCOPE-RULE-WORKBENCH.md)
+
+---
+
+## Adaptive Deep Scan
+
+A normal security scan has intentionally bounded runtime and data limits. Some findings deserve a closer look without turning every catalog run into an unlimited analysis job.
+
+Stigma-1 therefore supports a typed `analysisRequest` outcome. An approved frozen rule can request one of Omega's code-owned analysis profiles and a bounded depth:
+
+- `standard`
+- `extended`
+- `exhaustive`
+
+The rule may describe **why** more evidence is useful, but it cannot provide arbitrary commands, runner paths, network policy, timeouts or executable payloads.
+
+The currently executable profile is `artifact-differential-v1`, which compares an exact candidate artifact with an approved stable-publisher baseline using the same **non-executing** static inspection model.
+
+> [!NOTE]
+> `sandbox-differential-v1` is reserved but intentionally unavailable until a genuinely isolated plugin-execution environment exists. Untrusted plugins are not executed on an ordinary GitHub Actions runner.
+
+Deep Scan results currently remain durable analysis results; feeding those results back into a second authoritative production Stigma-1 evaluation is a later architecture step.
+
+See [`docs/DEEP-SCAN-WORKFLOW.md`](docs/DEEP-SCAN-WORKFLOW.md).
+
+---
+
+## DeltaScope
+
+DeltaScope is the human-facing security workbench for developers and researchers.
+
+It can:
+
+- inspect the newest findings and investigation cases;
+- browse plugins, variants, artifacts, source, binaries, dependencies and endpoints;
+- pivot through endpoint/component/advisory relationships;
+- inspect the exact frozen rule provenance behind published evidence;
+- view Evidence-v2 revision and coverage health;
+- replay Stigma-1 rules against retained observations;
+- create and test local candidate rules and fixtures;
+- preview Deep Scan requests produced by local rules;
+- prepare a normal GitHub rule-candidate proposal for review.
+
+It cannot:
+
+- rewrite Security Evidence;
+- change finding severity;
+- activate or disable production rules;
+- mutate scan queues;
+- change catalog state;
+- bypass GitHub review;
+- turn a local rule into production policy.
+
+That is deliberate. **DeltaScope is an investigator and authoring environment, not an administrative control plane.**
+
+### Run DeltaScope locally
+
+Prerequisite: **Python 3.10+** with `venv` and `pip` support.
+
+Windows:
+
+```bat
+deltascope.cmd
+```
+
+Linux / macOS:
+
+```bash
+./deltascope.sh
+```
+
+Cross-platform:
+
+```bash
+python deltascope.py
+```
+
+The root launcher creates a private `.deltascope-venv`, installs the pinned dependencies from `tools/requirements-security.txt`, and launches the workbench.
+
+Useful examples:
+
+```bash
+python deltascope.py --no-browser
+python deltascope.py audit --evidence-v2 ./security-evidence-v2 --json
+python deltascope.py rule-parity
+```
+
+---
+
+## Security Evidence v2
+
+Security Evidence v2 is the reproducible publication boundary between scanning and investigation.
+
+The format is designed around:
+
+- content-addressed identity;
+- explicit schema/revision lineage;
+- deterministic projection identities;
+- independently verifiable hashes and byte counts;
+- retained observations separate from derived conclusions;
+- bounded transport sizes;
+- read-only indexes for DeltaScope navigation;
+- exact frozen Definitions provenance;
+- compatibility checks that fail closed when evidence is insufficient for exact replay.
+
+This separation matters. If a future Definitions update newly classifies a previously observed endpoint as malicious, SigmaScope can reason from the retained endpoint observation without pretending the plugin itself changed. If the necessary observation was not retained completely, the system asks for targeted re-analysis instead of inventing certainty from an old finding.
+
+See [`docs/OBSERVATION-PROJECTION-CONTRACT.md`](docs/OBSERVATION-PROJECTION-CONTRACT.md).
+
+---
+
+## Security philosophy
+
+### Evidence over reputation
+
+A popular repository can still ship risky behavior. An obscure repository can still ship clean code. Source reputation is useful context, not a substitute for inspecting what is actually distributed.
+
+### Observation over assumption
+
+The scanner records what it can support with evidence. A URL literal is not described as a confirmed network connection; a source repository is not described as a verified build unless that relationship has actually been established.
+
+### Coverage is not severity
+
+`ARTIFACT ONLY`, `SOURCE CODE`, `never scanned`, `reviewed`, `high severity` and `low severity` describe different dimensions. They should not be compressed into a single green/red trust score.
+
+### Deterministic automation
+
+Production security decisions are made by code, frozen Definitions and deterministic rule evaluation. The Stigma-1 evaluator is not an LLM, and the repository does not rely on runtime AI to decide whether a plugin is malicious or safe.
+
+### Fail closed at authority boundaries
+
+Invalid Definitions, broken provenance, incomplete evidence, unsupported replay inputs or unauthorized candidate promotion should stop the authoritative path rather than silently weakening it.
+
+### Research without silent promotion
+
+DeltaScope can make experimentation easy while keeping promotion intentionally boring: validate, submit, review, merge, freeze, publish.
+
+---
+
+## Rule contribution flow
+
+A candidate Stigma-1 rule follows a reviewable path:
+
+```text
+Local DeltaScope rule
+        ↓
+Candidate + positive/negative fixtures
+        ↓
+Local validation / replay
+        ↓
+GitHub rule-candidate Issue Form
+        ↓
+Permission gate + CI revalidation
+        ↓
+Normal pull request
+        ↓
+Human review / merge
+        ↓
+Daily Definitions freeze
+        ↓
+Authoritative frozen rule provenance
+```
+
+There is no auto-merge path and DeltaScope has no production write-back endpoint.
+
+---
+
+## Repository and branch layout
+
+Omega is one repository with branch-owned subsystems:
+
+| Branch | Role | Important locations |
+| --- | --- | --- |
+| **`main`** | Omega Dalamud client and client-facing release source | `Omega/`, `Omega.sln`, `Omega.RegressionTests/`, `repository/`, `sources/` |
+| **`sigmascope`** | SigmaScope, Stigma-1 / SRL, DeltaScope, Deep Scan orchestration, Evidence-v2 tooling and security Definitions | `tools/security/`, `tools/catalog/`, `security-definitions/`, `docs/` |
+| **`rift`** | Interdimensional Rift runtime-observation and containment environment; contains **Alpha** | `InterdimensionalRift/`, `InterdimensionalRift.DalamudShim/`, `tools/`, `docs/` |
+| **`catalog-data`** | Generated catalog, Definitions and scan-queue state | generated publication data |
+| **`security-evidence-v2`** | Published Security Evidence v2, history and projections | generated evidence data |
+| **`website`** | Public Omega website | website source and assets |
+
+The security-service side of the repository is primarily organized like this:
+
+```text
+.github/
+  workflows/                 Reusable scanning, catalog, regression and rule workflows
+  ISSUE_TEMPLATE/            Source and rule-candidate intake
+
+docs/                        Architecture, contracts, Stigma-1 and workbench documentation
+security-definitions/         Capabilities, Definition Packs, YARA and secondary-engine policy
+sources/                      Curated/community repository discovery data
+
+tools/security/               SigmaScope, Stigma-1, DeltaScope, Evidence-v2 and Deep Scan tooling
+tools/catalog/                Catalog/source discovery and publication tooling
+
+deltascope.py                 Cross-platform DeltaScope launcher
+deltascope.cmd                Windows launcher
+deltascope.sh                 Linux/macOS launcher
+SECURITY-SERVICES.md          Detailed implementation/status notes
+VALIDATION.md                 Validation and regression information
+CHANGELOG.md                  Development history
+```
+
+---
+
+## Security-service snapshot
+
+The security-service sources represented by this snapshot include:
+
+| Area | Snapshot state |
+| --- | --- |
+| SigmaScope | `2.15.0` |
+| DeltaScope | `4.6.3` |
+| Stigma-1 / SRL | Compiler/evaluator, replay, Definition Packs and authoring implemented |
+| Definition Packs | 6 packs / 55 rules / 15 fixtures |
+| Production SRL write-back | **Disabled / separately gated** |
+| Deep Scan | Artifact differential profile implemented; adaptive depth implemented |
+| Plugin execution in ordinary Actions | **No** |
+| Rift / Alpha | Separate `rift` branch research environment |
+| Focused packaged validation | 64 / 64 passing |
+| Full packaged test inventory | 494 tests across 49 modules |
+
+For detailed development and deployment notes, read [`HANDOVER.md`](HANDOVER.md), [`SECURITY-SERVICES.md`](SECURITY-SERVICES.md) and [`VALIDATION.md`](VALIDATION.md).
+
+---
+
+## Start here if you are…
+
+### A plugin user
+
+Omega's long-term purpose is to make security information understandable where you discover and install plugins. SigmaScope is the machinery that creates that evidence; DeltaScope is not something normal users need to operate.
+
+### A plugin developer
+
+Start with:
+
+- [`docs/OMEGA-PLUGIN-PROFILE.md`](docs/OMEGA-PLUGIN-PROFILE.md)
+- [`docs/BEHAVIOR-CONSISTENCY.md`](docs/BEHAVIOR-CONSISTENCY.md)
+- [`docs/plugin-developers/`](docs/plugin-developers/)
+
+The optional `.omega/plugin.yaml` profile lets you explain expected capabilities and services, but the scanner remains independent of that declaration.
+
+### A security researcher or rule author
+
+Start with:
+
+- [`docs/STIGMA-1.md`](docs/STIGMA-1.md)
+- [`docs/SIGMASCOPE-RULE-LANGUAGE.md`](docs/SIGMASCOPE-RULE-LANGUAGE.md)
+- [`docs/rule-authors/`](docs/rule-authors/)
+- DeltaScope's **Rules**, **Incidents**, **Intelligence** and **Documentation** workspaces.
+
+### A contributor working on the architecture
+
+Read:
+
+- [`docs/ARCHITECTURE-SECURITY-MODEL.md`](docs/ARCHITECTURE-SECURITY-MODEL.md)
+- [`docs/OBSERVATION-PROJECTION-CONTRACT.md`](docs/OBSERVATION-PROJECTION-CONTRACT.md)
+- [`docs/DEEP-SCAN-WORKFLOW.md`](docs/DEEP-SCAN-WORKFLOW.md)
+- [`BRANCH_HANDOVER.md`](BRANCH_HANDOVER.md)
+
+---
+
+## Why the names?
+
+Omega's naming follows the Final Fantasy XIV-inspired language used throughout the wider project: separate systems have separate responsibilities, with the security stack deliberately framed as instruments that **observe, compare, classify and explain** rather than a single opaque verdict engine.
+
+The names also help keep architectural boundaries explicit:
+
+- **SigmaScope** observes and produces security evidence;
+- **Stigma-1** evaluates deterministic security logic;
+- **DeltaScope** lets humans investigate and experiment;
+- **Rift** is where intentionally separate execution research belongs;
+- **Alpha** is a component inside Rift, not a replacement for it.
+
+---
+
+## Project principle
+
+> **Do not ask users to trust Omega. Give them enough evidence to understand what Omega saw.**
+
+That is the direction of this repository: better coverage, better provenance, better explanations, safer rule evolution, and a plugin ecosystem where security findings can be inspected instead of merely asserted.

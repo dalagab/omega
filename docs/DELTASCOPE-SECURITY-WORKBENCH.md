@@ -1,6 +1,10 @@
 # DeltaScope security-information workbench
 
-Status: **Phase 11 complete plus DeltaScope 4.6.2 Stigma-1 deep-analysis orchestration and sharded relationship transport** on the unreleased SigmaScope 2.15 development line. Slices 1–8 are implemented: the permanent navigation/workspace shell, deterministic backend incident/event/intelligence projections, lazy selected-case composition with normalized retained-evidence timelines, cross-plugin intelligence/Asset relationship navigation, exact active-rule/Definition provenance, read-only Reports/System health projections, and the final URL-only GitHub candidate proposal handoff.
+Status: **Phase 11 complete plus DeltaScope 4.6.3 root-launch ergonomics, Stigma-1 deep-analysis orchestration and sharded relationship transport** on the unreleased SigmaScope 2.15 development line. Slices 1–8 are implemented: the permanent navigation/workspace shell, deterministic backend incident/event/intelligence projections, lazy selected-case composition with normalized retained-evidence timelines, cross-plugin intelligence/Asset relationship navigation, exact active-rule/Definition provenance, read-only Reports/System health projections, and the final URL-only GitHub candidate proposal handoff.
+
+## Easy root launch
+
+From the SigmaScope repository root, Windows users can double-click `deltascope.cmd`; Linux/macOS users can run `./deltascope.sh`; all platforms can run `python deltascope.py`. The root launcher creates/reuses `.deltascope-venv`, installs the pinned security-tool requirements only when needed, then opens the online DeltaScope workbench. Python 3.10+ with `venv`/`pip` support is the only prerequisite. CLI arguments are forwarded to the canonical `tools/security/deltascope.py` entry point.
 
 ## Purpose
 
