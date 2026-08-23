@@ -1,0 +1,42 @@
+= Interdimensional Rift: FFXIVClientStructs Native-State Model
+
+== Purpose
+
+Rift must distinguish between observing a plugin's native-game assumptions and pretending that an FFXIV client exists.
+The native-state model therefore exposes only explicitly qualified, empty synthetic state.
+
+== Invariants
+
+* The installable plugin artifact is never modified.
+* Frozen contract files remain read-only on disk.
+* The real FFXIVClientStructs resolver is not initialized against a game module.
+* No FFXIV process memory is scanned, mapped, read, patched, or called.
+* Synthetic pointers refer only to Rift-owned allocations.
+* Synthetic native stubs never forward into a game-native address.
+* Every observation declares `real_game_memory=false` and `native_call=false`.
+* Missing modeled state is represented as absent/null/default rather than invented player/game data.
+
+== Current qualified surface
+
+[source,text]
+----
+Framework.Instance()
+  -> synthetic Framework*
+     -> Framework.UIModule = synthetic UIModule*
+        -> UIModule.GetAgentModule()
+           -> synthetic AgentModule*
+              -> AgentModule.GetAgentByInternalId(...)
+                 -> null
+----
+
+This surface was selected because published Artisan 4.0.5.18 reached it naturally during `ConsumableChecker.Init()`.
+
+== Resolver seam
+
+FFXIVClientStructs source generation creates `InteropGenerator.Runtime.Address` objects whose mutable `Value` field backs generated static/member wrappers. Rift changes selected in-memory `Value` fields after loading the trusted contract assembly. This is runtime instrumentation, not artifact rewriting.
+
+Virtual functions are represented with Rift-owned synthetic vtables containing only explicitly modeled slots.
+
+== Expansion rule
+
+A new singleton, field, member function, or virtual slot is modeled only after a real plugin scan demonstrates it is required to advance meaningful execution. Each addition requires a regression fixture and must preserve the empty/synthetic semantics above.

@@ -14,6 +14,7 @@ public enum RuntimeObservationKind
     Log,
     AssemblyLoad,
     NativeLibrary,
+    NativeGameState,
     SignatureScan,
     Hook,
     Exception,

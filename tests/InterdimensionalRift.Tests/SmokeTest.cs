@@ -386,3 +386,75 @@ public class GameDataSemanticsTest
         return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
     }
 }
+
+public class NativeGameStateSemanticsTest
+{
+    [Fact]
+    public void FfxivClientStructs_FrameworkAgentChain_IsSyntheticAndNeverCallsGameMemory()
+    {
+        var dll = LocateFixture();
+        Assert.True(File.Exists(dll), $"Native-game-state fixture missing: {dll}");
+
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+
+        var initException = report.Observations.FirstOrDefault(o => o.Kind == RuntimeObservationKind.Exception);
+        Assert.True(report.Plugin.LoadOutcome == "ok",
+            $"Expected native-state fixture to initialize, got {report.Plugin.LoadOutcome}: {report.Plugin.LoadError}\n{initException?.ExceptionDetail}");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.NativeGameState &&
+                 o.Operation == "Framework.Instance" &&
+                 o.Outcome == "synthetic_singleton");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.NativeGameState &&
+                 o.Component == "UIModule" &&
+                 o.Operation == "GetAgentModule" &&
+                 o.Outcome == "synthetic_pointer");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.NativeGameState &&
+                 o.Component == "AgentModule" &&
+                 o.Operation == "GetAgentByInternalId" &&
+                 o.Outcome == "synthetic_absent" &&
+                 o.Parameters != null &&
+                 o.Parameters.TryGetValue("real_game_memory", out var gameMemory) && gameMemory == "false" &&
+                 o.Parameters.TryGetValue("native_call", out var nativeCall) && nativeCall == "false");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 (o.Message ?? string.Empty).Contains("RIFT_NATIVE_GAME_STATE synthetic empty chain complete", StringComparison.Ordinal));
+    }
+
+    private static string LocateFixture()
+    {
+        var testBin = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(testBin, "RiftNativeGameStateSemantics.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftNativeGameStateSemantics", "bin", "Debug", "net10.0", "RiftNativeGameStateSemantics.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftNativeGameStateSemantics", "bin", "Release", "net10.0", "RiftNativeGameStateSemantics.dll"),
+        };
+        return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
+    }
+}
+
+public class ExceptionStackSemanticsTest
+{
+    [Fact]
+    public void ConstructorException_PreservesOriginalPluginFrame()
+    {
+        var tracker = new InterdimensionalRift.Instrumentation.AccessTracker();
+        var registry = new InterdimensionalRift.Runtime.RuntimeServiceRegistry(
+            tracker,
+            "RiftExceptionStackSemantics",
+            typeof(ExceptionStackSemanticsTest).Assembly.Location);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => registry.CreatePluginInstance(typeof(ThrowingConstructor)));
+        Assert.Contains(nameof(ThrowingConstructor.ThrowFromPluginHelper), ex.StackTrace ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    public sealed class ThrowingConstructor
+    {
+        public ThrowingConstructor() => ThrowFromPluginHelper();
+
+        public static void ThrowFromPluginHelper() =>
+            throw new InvalidOperationException("RIFT_STACK original plugin frame");
+    }
+}

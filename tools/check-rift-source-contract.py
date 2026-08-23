@@ -37,7 +37,7 @@ require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "dalamud.internal_serv
 
 # Runtime-only report model.
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v1", "runtime observation schema version")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.7"', "producer version 0.3.7")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.8"', "producer version 0.3.8")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "boundary_profile", "boundary profile provenance")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "tmpfs_tmp_bytes", "tmpfs provenance")
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "RuntimeObservationKind", "neutral observation model")
@@ -236,5 +236,23 @@ require(Path("tests/fixtures/RiftGameDataSemantics/Plugin.cs"), "Lumina.Excel.Ra
 forbid(Path("tests/fixtures/RiftGameDataSemantics/Plugin.cs"), "Lumina.Excel.Sheets", "game-data fixture must not require generated sheet assembly")
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "ConstrainedExcelSheet_IsEmptyEnumerableAndDoesNotLoadGameFiles", "constrained game-data regression test")
 require(Path("tools/summarize-rift-coverage.py"), '("idatamanager","game-data")', "coverage report recognizes game-data access")
+
+
+
+# Pass 3.3.3.3: bounded FFXIVClientStructs native-state model + preserved exception stacks.
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), "Framework.Instance", "native-state model patches Framework singleton resolver")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), "GetAgentModuleStub", "native-state model supplies inert UI agent-module virtual call")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), "GetAgentByInternalIdStub", "native-state model returns absent synthetic agent")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '"real_game_memory"] = "false"', "native-state evidence never claims real game memory")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '"native_call"] = "false"', "native-state stubs state no game-native call")
+require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '"artifact_mutated"] = "false"', "native-state resolver patch does not mutate plugin artifact")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "SyntheticNativeGameStateRuntime.EnsureInstalled", "native-state model is installed before plugin constructor")
+require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "NativeGameState", "native game-state observation kind")
+require(Path("tests/fixtures/RiftNativeGameStateSemantics/Plugin.cs"), "Framework.Instance", "native-state fixture exercises generated FFXIVClientStructs singleton")
+require(Path("tests/fixtures/RiftNativeGameStateSemantics/Plugin.cs"), "GetAgentByInternalId", "native-state fixture exercises generated member function")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "FfxivClientStructs_FrameworkAgentChain_IsSyntheticAndNeverCallsGameMemory", "native-state runtime regression test")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "ExceptionDispatchInfo.Capture(actual).Throw", "constructor exception preserves original plugin stack")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "ConstructorException_PreservesOriginalPluginFrame", "exception stack preservation regression test")
+require(Path("tools/summarize-rift-coverage.py"), "observed_native_game_state_operations", "coverage projection preserves native-state observations")
 
 print(f"Rift source-contract checks: {len(checks)}/{len(checks)} passed")

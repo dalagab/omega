@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using InterdimensionalRift.Instrumentation;
 using InterdimensionalRift.Reporting;
 
@@ -30,6 +31,7 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
         configDirectory = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "rift-config"));
         configFile = new FileInfo(Path.Combine(configDirectory.FullName, $"{internalName}.json"));
         assemblyVersion = AssemblyName.GetAssemblyName(pluginPath).Version ?? new Version(0, 0, 0, 0);
+        SyntheticNativeGameStateRuntime.EnsureInstalled(tracker);
     }
 
     public object? GetService(Type serviceType)
@@ -134,8 +136,10 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
             }
             catch (TargetInvocationException ex)
             {
-                tracker.Lifecycle("constructor", "threw", pluginType.FullName, ex.InnerException ?? ex);
-                throw ex.InnerException ?? ex;
+                var actual = ex.InnerException ?? ex;
+                tracker.Lifecycle("constructor", "threw", pluginType.FullName, actual);
+                ExceptionDispatchInfo.Capture(actual).Throw();
+                throw; // unreachable
             }
         }
 

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using InterdimensionalRift.Instrumentation;
 using InterdimensionalRift.Reporting;
 using InterdimensionalRift.Runtime;
@@ -146,7 +147,9 @@ public sealed class SandboxHost
         }
         catch (TargetInvocationException ex)
         {
-            throw ex.InnerException ?? ex;
+            var actual = ex.InnerException ?? ex;
+            ExceptionDispatchInfo.Capture(actual).Throw();
+            throw; // unreachable
         }
 
         try

@@ -17,7 +17,7 @@ def uniq_append(lst, item):
     key=json.dumps(item, sort_keys=True)
     if key not in {json.dumps(x, sort_keys=True) for x in lst}: lst.append(item)
 
-inj=[]; access=[]; gaps=[]; blockers=[]; hooks=[]; signatures=[]; emulation=[]
+inj=[]; access=[]; gaps=[]; blockers=[]; hooks=[]; signatures=[]; native_state=[]; emulation=[]
 for o in obs:
     kind=str(o.get("kind") or "").lower()
     item={k:o.get(k) for k in ("component","operation","outcome","message","exception_type","exception_message","exception_detail","context","parameters")}
@@ -33,6 +33,9 @@ for o in obs:
         uniq_append(signatures, item)
         if "synthetic" in str(o.get("outcome") or "").lower():
             uniq_append(emulation, {"type":"synthetic-signature", **item})
+    elif kind=="native_game_state":
+        uniq_append(native_state, item)
+        uniq_append(emulation, {"type":"synthetic-native-game-state", **item})
     elif kind=="exception":
         uniq_append(blockers, {"type":"exception", **item})
     elif kind=="timeout":
@@ -45,7 +48,7 @@ if load and load!="ok":
 blob=json.dumps(obs, sort_keys=True).lower()
 cats=[]
 for needle,cat in (
-    ("ipc","plugin-ipc"),("ffxivclientstructs","game-native-structs"),("idatamanager","game-data"),("excelsheet","game-data"),
+    ("ipc","plugin-ipc"),("ffxivclientstructs","game-native-structs"),("native_game_state","game-native-structs"),("idatamanager","game-data"),("excelsheet","game-data"),
     ("gamedata","game-data"),("texture","textures"),("framework","framework-events"),
     ("condition","condition-state"),("clientstate","client-state"),
     ("command","command-manager"),("uibuilder","ui-builder"),("window","windowing"),
@@ -65,6 +68,7 @@ payload={
  "runtime_gaps":gaps,
  "observed_hook_operations":hooks,
  "observed_signature_operations":signatures,
+ "observed_native_game_state_operations":native_state,
  "emulation_limits":emulation,
  "blockers":blockers,
  "coverage_categories_touched":cats,
@@ -76,6 +80,6 @@ payload={
 }
 a.out.parent.mkdir(parents=True,exist_ok=True)
 a.out.write_text(json.dumps(payload,indent=2)+"\n",encoding="utf-8")
-print(f"Coverage-gap report: startup={load} injections={len(inj)} accesses={len(access)} hooks={len(hooks)} signatures={len(signatures)} emulation={len(emulation)} gaps={len(gaps)} blockers={len(blockers)}")
+print(f"Coverage-gap report: startup={load} injections={len(inj)} accesses={len(access)} hooks={len(hooks)} signatures={len(signatures)} native_state={len(native_state)} emulation={len(emulation)} gaps={len(gaps)} blockers={len(blockers)}")
 for b in blockers[:8]:
     print("blocker:", b.get("exception_type") or b.get("outcome") or b.get("type"), b.get("exception_message") or b.get("detail") or "")
