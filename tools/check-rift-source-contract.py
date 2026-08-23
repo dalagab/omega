@@ -232,6 +232,8 @@ require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), 'service
 require(Path("InterdimensionalRift/Runtime/SyntheticGameDataRuntime.cs"), "Lumina.Excel.ExcelSheet`1", "empty typed Lumina sheet support")
 require(Path("InterdimensionalRift/Runtime/SyntheticGameDataRuntime.cs"), '"real_game_data"] = "false"', "game-data evidence states no real data")
 require(Path("tests/fixtures/RiftGameDataSemantics/Plugin.cs"), "RIFT_GAME_DATA empty sheet semantics complete", "constrained game-data fixture")
+require(Path("tests/fixtures/RiftGameDataSemantics/Plugin.cs"), "Lumina.Excel.RawRow", "self-contained core Lumina constrained row fixture")
+forbid(Path("tests/fixtures/RiftGameDataSemantics/Plugin.cs"), "Lumina.Excel.Sheets", "game-data fixture must not require generated sheet assembly")
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "ConstrainedExcelSheet_IsEmptyEnumerableAndDoesNotLoadGameFiles", "constrained game-data regression test")
 require(Path("tools/summarize-rift-coverage.py"), '("idatamanager","game-data")', "coverage report recognizes game-data access")
 

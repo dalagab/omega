@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Reflection;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 
@@ -9,14 +8,18 @@ public sealed class Plugin : IDalamudPlugin
 {
     public Plugin(IDataManager data, IPluginLog log)
     {
-        var rowAssembly = Assembly.Load("Lumina.Excel.Sheets");
-        var recipeType = rowAssembly.GetType("Lumina.Excel.Sheets.Recipe", throwOnError: true)!;
-
         var definition = typeof(IDataManager).GetMethods()
             .Single(m => m.Name == "GetExcelSheet" && m.IsGenericMethodDefinition);
-        var closed = definition.MakeGenericMethod(recipeType);
 
-        var sheet = closed.Invoke(data, new object?[] { null, null })
+        // Use Lumina's core RawRow rather than a separately generated sheet assembly.
+        // RawRow lives in the same trusted Lumina
+        // assembly as ExcelSheet<T> and satisfies IExcelRow<RawRow>, making this
+        // fixture self-contained while still testing the real CLR constraints.
+        var luminaAssembly = definition.ReturnType.GetGenericTypeDefinition().Assembly;
+        var rawRowType = luminaAssembly.GetType("Lumina.Excel.RawRow", throwOnError: true)!;
+        var closed = definition.MakeGenericMethod(rawRowType);
+
+        var sheet = closed.Invoke(data, new object?[] { null, "RiftSynthetic" })
             ?? throw new InvalidOperationException("Rift returned null for constrained GetExcelSheet<T>.");
 
         var count = (int)(sheet.GetType().GetProperty("Count")?.GetValue(sheet)
