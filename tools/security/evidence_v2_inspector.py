@@ -10,6 +10,7 @@ import gzip
 import hashlib
 import json
 import os
+import re
 from pathlib import Path, PurePosixPath
 import time
 from typing import Any, Callable
@@ -107,6 +108,13 @@ class RemoteEvidenceSource:
         if not base.endswith("/"):
             base += "/"
         self.base_url = base
+        # ``tracking_base_url`` follows the mutable publication branch.  The normal
+        # snapshot reader starts there too, but can be pinned to an immutable Git commit
+        # when raw.githubusercontent.com briefly serves a mixed branch revision.
+        self.tracking_base_url = base
+        self.snapshot_base_url = base
+        self.snapshot_commit = ""
+        self._github_raw_locator = self._parse_github_raw_base(base)
         self.display = base
         self.cache_dir = cache_dir.resolve()
         # Keep the on-disk cache deliberately flat/hashed. Windows Store Python users can
@@ -120,27 +128,78 @@ class RemoteEvidenceSource:
         self.revision = "bootstrap"
         self.cache_root.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _parse_github_raw_base(base: str) -> dict[str, str] | None:
+        parsed = urllib.parse.urlparse(base)
+        if parsed.scheme != "https" or parsed.netloc.casefold() != "raw.githubusercontent.com":
+            return None
+        parts = [part for part in parsed.path.split("/") if part]
+        if len(parts) < 3:
+            return None
+        owner, repo, ref = parts[:3]
+        return {"owner": owner, "repo": repo, "ref": ref, "prefix": "/".join(parts[3:])}
+
     def set_revision(self, revision: str) -> None:
         value = str(revision or "").strip()
         self.revision = value if value else "unversioned"
 
-    def _url(self, relative: str) -> str:
+    def clear_snapshot_pin(self) -> None:
+        self.snapshot_base_url = self.tracking_base_url
+        self.snapshot_commit = ""
+
+    def pin_current_github_commit(self) -> str:
+        """Pin raw GitHub reads to the current immutable commit for the tracked branch.
+
+        Evidence-v2 is published atomically, but raw.githubusercontent.com edges can briefly
+        expose an old shard beside a new root/index.  Resolving the branch once through the
+        GitHub API and reading the retry from that commit gives DeltaScope one coherent
+        snapshot without weakening any SHA-256 verification.
+        """
+        locator = self._github_raw_locator
+        if not locator:
+            return ""
+        ref = str(locator["ref"] or "")
+        if re.fullmatch(r"[0-9a-fA-F]{40}", ref):
+            self.snapshot_commit = ref.lower()
+            return self.snapshot_commit
+        api_url = (
+            "https://api.github.com/repos/"
+            + urllib.parse.quote(locator["owner"], safe="") + "/"
+            + urllib.parse.quote(locator["repo"], safe="") + "/commits/"
+            + urllib.parse.quote(ref, safe="")
+        )
+        request = urllib.request.Request(
+            api_url, headers={"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json", "Cache-Control": "no-cache"}
+        )
+        with self._urlopen(request, timeout=self.timeout) as response:
+            data = response.read(2 * 1024 * 1024)
+        payload = json.loads(data.decode("utf-8"))
+        commit = str(payload.get("sha") or "").strip().lower() if isinstance(payload, dict) else ""
+        if not re.fullmatch(r"[0-9a-f]{40}", commit):
+            raise ValueError("GitHub did not return a valid commit SHA for the Evidence-v2 branch")
+        prefix = str(locator.get("prefix") or "").strip("/")
+        suffix = f"/{prefix}/" if prefix else "/"
+        self.snapshot_base_url = f"https://raw.githubusercontent.com/{locator['owner']}/{locator['repo']}/{commit}{suffix}"
+        self.snapshot_commit = commit
+        return commit
+
+    def _url(self, relative: str, *, tracking: bool = False) -> str:
         relative = _safe_relative(relative)
         quoted = "/".join(urllib.parse.quote(part, safe="._-") for part in PurePosixPath(relative).parts)
-        return urllib.parse.urljoin(self.base_url, quoted)
+        return urllib.parse.urljoin(self.tracking_base_url if tracking else self.snapshot_base_url, quoted)
 
     def _cache_path(self, relative: str, *, root: bool = False) -> Path:
         relative = _safe_relative(relative)
-        namespace_source = "root" if root else str(self.revision or "unversioned")
+        namespace_source = "root" if root else f"{self.revision or 'unversioned'}:{self.snapshot_commit or 'tracking'}"
         namespace = hashlib.sha256(namespace_source.encode("utf-8")).hexdigest()[:12]
         path_key = hashlib.sha256(relative.encode("utf-8")).hexdigest()[:48]
         # At most: <configured cache>/h/<12>/<48>.bin. The remote relative path never
         # becomes a local filename, avoiding WinError 206 on deeply nested analyses.
         return self.cache_root / namespace / f"{path_key}.bin"
 
-    def _download(self, relative: str) -> bytes:
+    def _download(self, relative: str, *, tracking: bool = False) -> bytes:
         req = urllib.request.Request(
-            self._url(relative),
+            self._url(relative, tracking=tracking),
             headers={"User-Agent": USER_AGENT, "Accept": "application/octet-stream", "Cache-Control": "no-cache"},
         )
         with self._urlopen(req, timeout=self.timeout) as response:
@@ -192,6 +251,10 @@ class RemoteEvidenceSource:
 
     def read_json(self, relative: str, *, expected_sha256: str = "", refresh: bool = False) -> Any:
         return json.loads(self.read_bytes(relative, expected_sha256=expected_sha256, refresh=refresh).decode("utf-8"))
+
+    def read_tracking_json(self, relative: str) -> Any:
+        """Read directly from the mutable tracking branch, bypassing snapshot caches."""
+        return json.loads(self._download(relative, tracking=True).decode("utf-8"))
 
     def _prune_cache(self, protected: Path | None = None) -> None:
         files = [path for path in self.cache_root.rglob("*") if path.is_file()]
@@ -553,7 +616,7 @@ class V2SigmascopeInspector:
         error = ""
         if self.remote and check_remote:
             try:
-                remote_root = self.source.read_json("index.json", refresh=True)
+                remote_root = self.source.read_tracking_json("index.json") if isinstance(self.source, RemoteEvidenceSource) else self.source.read_json("index.json", refresh=True)
                 remote_revision = self._revision(remote_root)
                 remote_token = self._snapshot_token(remote_root)
                 generated = str(remote_root.get("generatedAtUtc") or generated)
@@ -575,8 +638,10 @@ class V2SigmascopeInspector:
     def refresh_online(self) -> dict[str, Any]:
         if not self.remote:
             return self.source_status()
-        remote_root = self.source.read_json("index.json", refresh=True)
+        remote_root = self.source.read_tracking_json("index.json") if isinstance(self.source, RemoteEvidenceSource) else self.source.read_json("index.json", refresh=True)
         if self._snapshot_token(remote_root) != self._snapshot_token(self.root):
+            if isinstance(self.source, RemoteEvidenceSource):
+                self.source.clear_snapshot_pin()
             self._load_snapshot(root=remote_root)
         return self.source_status()
 
@@ -603,11 +668,26 @@ class V2SigmascopeInspector:
     def _refresh_after_snapshot_race(self, exc: Exception) -> bool:
         if not self.remote or not self._is_snapshot_race_error(exc):
             return False
+        # Prefer an immutable Git commit for the recovery attempt.  This handles the
+        # particularly nasty case where the root token itself is unchanged but a GitHub raw
+        # edge temporarily serves a shard from the adjacent publication commit.
+        if isinstance(self.source, RemoteEvidenceSource):
+            try:
+                if self.source.pin_current_github_commit():
+                    self._load_snapshot(refresh_root=True)
+                    return True
+            except Exception:
+                # Custom/mocked transports and GitHub API outages still get the historical
+                # branch-refresh fallback below. SHA verification remains mandatory.
+                self.source.clear_snapshot_pin()
         before = self._snapshot_token(self.root)
-        remote_root = self.source.read_json("index.json", refresh=True)
+        remote_root = self.source.read_tracking_json("index.json") if isinstance(self.source, RemoteEvidenceSource) else self.source.read_json("index.json", refresh=True)
         after = self._snapshot_token(remote_root)
-        if after != before:
-            self._load_snapshot(root=remote_root)
+        if isinstance(self.source, RemoteEvidenceSource):
+            self.source.clear_snapshot_pin()
+        # Reload even when the token is unchanged: that refreshes the lightweight index
+        # graph and prevents a stale cached index from being reused after a branch race.
+        self._load_snapshot(root=remote_root)
         return True
 
     def list_plugins(self, q: str = "", severity: str = "", status: str = "", known_risk: bool = False, limit: int = 300, offset: int = 0) -> list[dict[str, Any]]:
@@ -632,7 +712,7 @@ class V2SigmascopeInspector:
             })
             rows.append(identity)
         rows.sort(key=lambda item: (-SEVERITY_RANK.get(str(item.get("highest_severity") or "none").casefold(), -1), str(item.get("canonical_name") or "").casefold()))
-        return rows[max(0, offset):max(0, offset) + min(max(1, limit), 1000)]
+        return rows[max(0, offset):max(0, offset) + min(max(1, limit), 2000)]
 
     def latest_findings(self, limit: int = 20) -> list[dict[str, Any]]:
         """Load a bounded newest-finding preview from current immutable variant descriptors."""
@@ -837,6 +917,8 @@ class V2SigmascopeInspector:
                 "sourceAnalysisReused": bool(report.get("sourceAnalysisReused")),
             },
             "lifecycleHistory": self._snapshot_entries_for_variant(variant_id) if variant_id else [],
+            "versionHistory": self.version_history(variant_id) if variant_id else [],
+            "currentTotalsOnly": True,
         }
         severities = [str(row.get("severity") or "none") for row in base["advisories"] if isinstance(row, dict)]
         if severities:
@@ -852,6 +934,35 @@ class V2SigmascopeInspector:
             "findings": self._dataset(payload, "findings"), "dependencies": self._dataset(payload, "dependencies"),
             "ipc": self._dataset(payload, "ipc"), "permissions": self._dataset(payload, "permissions"), "automation": self._dataset(payload, "automation"),
         }
+
+    def version_history(self, variant_id: int) -> list[dict[str, Any]]:
+        """Return current + retained superseded/retired versions for one catalog variant.
+
+        Archive rows are investigation-only.  Headline security counts elsewhere in
+        DeltaScope are deliberately derived from ``currentVariants`` only.
+        """
+        rows: list[dict[str, Any]] = []
+        for entry in self._snapshot_entries_for_variant(variant_id):
+            summary = dict(entry.get("summary") or {})
+            kind = str(entry.get("snapshotKind") or "snapshot")
+            rows.append({
+                "snapshotKind": kind,
+                "isCurrent": kind == "current",
+                "variantId": int(entry.get("variantId") or variant_id),
+                "scanId": int(entry.get("scanId") or summary.get("scan_id") or 0),
+                "version": str(summary.get("assembly_version") or ""),
+                "scannedAtUtc": str(summary.get("scanned_at_utc") or ""),
+                "highestSeverity": str(summary.get("highest_severity") or "none").casefold(),
+                "findingCount": sum(int(summary.get(key) or 0) for key in ("informational_count", "caution_count", "high_count", "critical_count")),
+                "criticalCount": int(summary.get("critical_count") or 0),
+                "highCount": int(summary.get("high_count") or 0),
+                "artifactSha256": str(entry.get("artifactSha256") or summary.get("artifact_sha256") or ""),
+                "variantPath": str(entry.get("variantPath") or ""),
+                "lifecycle": dict(entry.get("lifecycle") or {}),
+                "includedInCurrentTotals": kind == "current",
+            })
+        rows.sort(key=lambda row: (not bool(row["isCurrent"]), -int(row.get("scanId") or 0)))
+        return rows
 
     def plugin_detail(self, variant_id: int) -> dict[str, Any]:
         try:

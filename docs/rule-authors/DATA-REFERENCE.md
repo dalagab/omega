@@ -7,7 +7,7 @@ python tools/security/deltascope.py observation-schema
 python tools/security/deltascope.py rule-schema
 ```
 
-`omega.deltascope.observation-reference.v1` is the **production-input authority**: it names the logical collections that future SRL may consume and their replay/completeness semantics. `omega.deltascope.rule-author-reference.v1` documents concrete current DeltaScope/Evidence fields that authors can inspect. It remains `author-reference-pre-srl` until the compiler/evaluator is implemented.
+`omega.deltascope.observation-reference.v1` is the **production-input authority**: it names the logical collections SRL may consume and their replay/completeness semantics. `omega.deltascope.rule-author-reference.v1` documents concrete DeltaScope/Evidence fields that authors can inspect.
 
 Rules should address logical collection names, not Evidence-v2 file paths. Physical backings are documented only to help researchers trace evidence. See `../OBSERVATION-PROJECTION-CONTRACT.md`.
 
@@ -16,7 +16,7 @@ Rules should address logical collection names, not Evidence-v2 file paths. Physi
 Not every collection has the same authority. Keep these classes separate when designing rules:
 
 - **Immutable normalized observations**: concrete static facts extracted from artifact/source material, such as call sites, reachability rows, imports, dependencies and IPC endpoints.
-- **Derived capability candidates**: current SigmaScope interpretations such as permission candidates and automation capabilities. These are useful during migration but should not become a recursive "finding matches finding" rule graph.
+- **Derived capability candidates**: current SigmaScope interpretations such as permission candidates and automation capabilities. These are useful for presentation and parity checks but should not become a recursive "finding matches finding" rule graph.
 - **Provenance evidence**: source attribution and source-to-artifact confidence/verification state.
 - **Developer declarations**: `.omega/plugin.yaml` context. Untrusted, separately labelled, consistency-only.
 - **Secondary security evidence**: YARA/ClamAV results. Supplemental hygiene evidence, not a replacement for native observations.
@@ -63,7 +63,7 @@ Reachability means SigmaScope found a bounded static call path from a known life
 
 ## `nativeImports`
 
-Logical Phase-4 collection: `nativeImports`. New 2.15 evidence retains `dependencyIntelligence.nativeImports` as a first-class immutable `nativeImports` analysis dataset; managed P/Invoke call targets remain a second concrete source visible through managed call evidence. Historical 2.14 evidence can only replay this collection exactly when equivalent retained data is present.
+Registered collection: `nativeImports`. Evidence-v2 retains normalized native imports as a first-class immutable analysis dataset; managed P/Invoke call targets remain a second concrete source visible through managed call evidence. Historical evidence can replay this collection exactly only when equivalent retained data is present.
 
 Fields:
 
@@ -77,7 +77,7 @@ Use concrete library/entry-point pairs when possible. Import presence is static 
 
 ## `permissionCandidates`
 
-Persisted compatibility projection: `permissions` / `plugin_security_permission_candidates`. **Not a legal future raw SRL observation input.**
+Persisted compatibility projection: `permissions` / `plugin_security_permission_candidates`. **Not a legal raw SRL observation input.**
 
 Fields:
 
@@ -88,11 +88,11 @@ Fields:
 - `reason`
 - `evidence[]`
 
-This is already derived data. It is useful for comparing today's hard-coded scanner behavior while migrating rules, but Phase 4 marks the backing dataset `semanticClass: projection` and `srlEligible: false`. Production SRL must use the lower-level observation collection(s) that justify the capability.
+This is already derived data. The observation contract marks the backing dataset `semanticClass: projection` and `srlEligible: false`. Production SRL must use the lower-level observation collection(s) that justify the capability.
 
 ## `automationCapabilities`
 
-Persisted compatibility projection: `automation` / `plugin_security_automation_capabilities`. **Not a legal future raw SRL observation input.**
+Persisted compatibility projection: `automation` / `plugin_security_automation_capabilities`. **Not a legal raw SRL observation input.**
 
 Fields:
 
@@ -105,7 +105,7 @@ Fields:
 - `reason`
 - `evidence[]`
 
-Again, this is derived capability data. Phase 4 classifies it as projection-only. Use it to prove migration parity, not as a production selector source; future automation rules must query the underlying call/IPC/other registered observations.
+Again, this is derived capability data and is classified as projection-only. Use it for presentation/research, not as a production selector source; automation rules must query the underlying call/IPC/other registered observations.
 
 ## `dependencies`
 
@@ -148,9 +148,9 @@ Use this for explicit producer/consumer relationships and, later, deterministic 
 
 ## `networkEndpoints`
 
-Logical Phase-4 collection: `networkEndpoints`. New 2.15 analyses retain the full normalized `dependencyIntelligence.networkEndpoints` rows as a first-class `networkEndpoints` dataset before public report compaction.
+Registered collection: `networkEndpoints`. Evidence-v2 retains normalized endpoint rows as a first-class dataset before public report compaction.
 
-Historical 2.14 compact Evidence may expose endpoint rows only through a bounded transport summary. Phase 4 marks that compatibility view `completeness: bounded-transport`; it is useful for research/UI but cannot support an exact rule that depends on the full endpoint universe. Such a rule receives a targeted re-analysis requirement instead of treating omitted rows as absent.
+Older compact evidence may expose endpoint rows only through a bounded transport summary. That compatibility view is marked `completeness: bounded-transport`; it is useful for research/UI but cannot support an exact rule that depends on the full endpoint universe. Such a rule receives a targeted re-analysis requirement instead of treating omitted rows as absent.
 
 Fields:
 
@@ -197,7 +197,7 @@ A source repository being found is not the same thing as reproducible source-to-
 
 ## `developerProfile`
 
-Logical Phase-4 collection: `developerProfile`. Source: `source.developerProfile.profile`, contract `omega.plugin-profile.v1` inside an `omega.plugin-profile-observation.v1` wrapper. New 2.15 analyses retain the bounded profile observation as its own dataset; historical compact transport may provide an exact retained summary when available.
+Registered collection: `developerProfile`. Source: `source.developerProfile.profile`, contract `omega.plugin-profile.v1` inside an `omega.plugin-profile-observation.v1` wrapper. Evidence-v2 retains the bounded profile observation as its own dataset; older compact transport may provide an exact retained summary when available.
 
 Relevant fields include:
 
@@ -218,7 +218,7 @@ This is **untrusted developer declaration data**. It may support rules such as "
 
 ## `secondarySecurity`
 
-Logical Phase-4 collection: `secondarySecurity`, with `semanticClass: hygiene-evidence` and `authority: supplemental-only`. New 2.15 analyses retain the bounded secondary-engine result object as an observation dataset. It contains fields such as:
+Registered collection: `secondarySecurity`, with `semanticClass: hygiene-evidence` and `authority: supplemental-only`. Evidence-v2 retains the bounded secondary-engine result object as an observation dataset. It contains fields such as:
 
 - `engines[].engine`
 - `engines[].status`
@@ -241,7 +241,7 @@ Useful fields for inspection include `profileAvailable`, `summary.*`, `capabilit
 
 ## Registered observation collections without a dedicated author-facing field section yet
 
-`deltascope.py observation-schema` already reserves stable logical Phase-4 identities for several retained inputs that do not yet have a polished SRL field schema in `rule-schema`, including:
+`deltascope.py observation-schema` reserves stable logical identities for several retained inputs that do not yet have a polished SRL field schema in `rule-schema`, including:
 
 - `namespaceImports`;
 - `managedAssemblies`;
@@ -251,6 +251,6 @@ Useful fields for inspection include `profileAvailable`, `summary.*`, `capabilit
 - `artifactIdentity`;
 - `manifestObservation`.
 
-Do not guess field syntax from the raw JSON files. Until the Phase-5 compiler publishes a typed field registry for a collection, use the raw rows for research/fixture design only and propose the required typed fields as part of the SRL/observation-contract work.
+Do not guess field syntax from the raw JSON files. Until the typed rule schema exposes a collection, use the raw rows for research/fixture design only and add the required typed fields through the SRL/observation-contract review path.
 
-Additional future observations such as package-member facts, raw bounded indicators, Dalamud service observations, filesystem path observations and richer component relationships must first be added as bounded registered collections. A rule must never gain arbitrary filesystem/network/code access just because its desired input is missing.
+Additional observations such as package-member facts, raw bounded indicators, Dalamud service observations, filesystem path observations and richer component relationships must first be added as bounded registered collections. A rule must never gain arbitrary filesystem/network/code access just because its desired input is missing.

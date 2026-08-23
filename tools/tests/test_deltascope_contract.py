@@ -7,7 +7,7 @@ class DeltaScopeContractTests(unittest.TestCase):
         wrapper = (common.ROOT / "tools" / "security" / "deltascope.py").read_text(encoding="utf-8")
         view = (common.ROOT / "tools" / "security" / "developer_view.py").read_text(encoding="utf-8")
         workflow = (common.ROOT / ".github" / "workflows" / "deltascope.yml").read_text(encoding="utf-8")
-        self.assertIn("developer-only SigmaScope evidence and Stigma-1 / SRL Core workbench", wrapper)
+        self.assertIn("read-only Omega security evidence and Stigma-1 / SRL Core workbench", wrapper)
         self.assertIn("DeltaScope", view)
         self.assertIn("definition-packs", view)
         self.assertIn("--definitions-root", view)
@@ -15,10 +15,12 @@ class DeltaScopeContractTests(unittest.TestCase):
         self.assertIn('aria-label="Omega">O</span>', view)
         self.assertIn("TONI", view)
         self.assertIn("deterministic evidence guide", view)
-        for token in ("SECURITY RESEARCH WORKBENCH", "Research queue", "Triage", "Malware", "ClamAV & YARA", "ClamAV antivirus", "YARA rules", "Endpoint intelligence", "Code & native", "Supply chain", "Immutable evidence", "Metrics & coverage · exact drill-down counts", "SOURCE CODE", "ARTIFACT ONLY", "Advanced · raw Evidence-v2 / database browser", "v2_unscanned_queue", "v2_review_variants", "v2_queue_items", "v2_historical_snapshots", "v2_analyses", "v2_finding_breakdown", 'parsed.path == "/api/snapshot"', 'parsed.path == "/api/analysis-manifest"'):
+        for token in ("Search plugins, hashes, endpoints, authors, rules, CVEs", "Plugin Developer", "Investigator", "Security Researcher", "Operations", "Plugins", "Journey", "Findings", "Network", "Compare", "Malware", "ClamAV & YARA", "ClamAV antivirus", "YARA rules", "Endpoint intelligence", "Code & native", "Supply chain", "Immutable evidence", "Metrics & coverage · exact drill-down counts", "SOURCE CODE", "ARTIFACT ONLY", "Advanced · raw Evidence-v2 / database browser", "Relationship graph", "Version-to-version security comparison", "Why this severity?", "What evidence is missing?", "v2_unscanned_queue", "v2_review_variants", "v2_queue_items", "v2_historical_snapshots", "v2_analyses", "v2_finding_breakdown", 'parsed.path == "/api/snapshot"', 'parsed.path == "/api/analysis-manifest"', 'parsed.path == "/api/workbench/search"', 'parsed.path == "/api/workbench/compare"', 'id="perspectiveSelect"', 'Build .omega/plugin.yaml from what Omega actually observed', 'path == "/api/developer-profile/render"', 'Explain this step'):
             self.assertIn(token, view)
-        for token in ("Dashboard", "Incidents", "Events", "Intelligence", "Assets", "Rules", "Reports", "Documentation", "System", "data-workbench-nav", "data-workbench-view", "DERIVED · READ ONLY", "NO DIRECT ACTIVATION", "Authoritative changes still go through GitHub review/CI", "DeltaScope does not assign, close or mutate incidents", "One Stigma-1 workspace"):
+        for token in ("Dashboard", "Cases", "Events", "Intelligence", "Plugins", "Rules", "Reports", "Documentation", "System health", "data-perspective-route", "data-workbench-view", "DERIVED · READ ONLY", "NO DIRECT ACTIVATION", "My Rules stay local until normal GitHub review/CI", "DeltaScope does not assign, close or mutate incidents", "One Stigma-1 workspace"):
             self.assertIn(token, view)
+        self.assertIn("const definitionsPill=$('definitionsPill');if(definitionsPill)", view)
+        self.assertNotIn("$('definitionsPill').innerHTML=", view)
         self.assertIn("rule-reproject", view)
         self.assertIn("--projection-output", view)
         self.assertIn('/api/workbench', view)
@@ -50,7 +52,7 @@ class DeltaScopeContractTests(unittest.TestCase):
         self.assertIn('/api/workbench/relationships', view)
         self.assertIn('/api/workbench/pivot', view)
         self.assertIn('/api/workbench/asset-relations', view)
-        self.assertIn('Ecosystem relationships', view)
+        self.assertIn('Relationship graph', view)
         self.assertIn('Shared components', view)
         self.assertIn('Known advisories', view)
         self.assertIn('deltascope_workbench.project_workbench', view)

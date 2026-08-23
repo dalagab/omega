@@ -15,13 +15,15 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
 SCHEMA = "omega.deltascope.operations.v1"
 DEFAULT_REPOSITORY = "dalagab/omega"
 DEFAULT_TTL_SECONDS = 60
 MAX_RUNS = 50
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+MAX_JOB_LOG_BYTES = 2 * 1024 * 1024
+MAX_WORKFLOW_HISTORY = 8
 RUNNING_STATES = {"queued", "in_progress", "requested", "waiting", "pending"}
 FAIL_CONCLUSIONS = {"failure", "timed_out", "action_required", "startup_failure"}
 WARN_CONCLUSIONS = {"cancelled", "neutral", "stale"}
@@ -183,28 +185,193 @@ class GitHubOperationsClient:
         self._lock = threading.RLock()
         self._cached_at = 0.0
         self._cache: dict[str, Any] | None = None
+        self._workflow_cache: dict[tuple[Any, ...], tuple[float, dict[str, Any]]] = {}
 
-    def _request_runs(self) -> list[Mapping[str, Any]]:
-        url = f"https://api.github.com/repos/{urllib.parse.quote(self.repository, safe='/')}/actions/runs?per_page={MAX_RUNS}"
+    def _headers(self, *, accept: str = "application/vnd.github+json") -> dict[str, str]:
         headers = {
-            "User-Agent": "Omega-DeltaScope/4.7.0",
-            "Accept": "application/vnd.github+json",
+            "User-Agent": "Omega-DeltaScope/Collectors",
+            "Accept": accept,
             "X-GitHub-Api-Version": "2022-11-28",
         }
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        request = urllib.request.Request(url, headers=headers)
-        with self._opener(request, timeout=6) as response:
-            raw = response.read(MAX_RESPONSE_BYTES + 1)
-        if len(raw) > MAX_RESPONSE_BYTES:
+        return headers
+
+    def _request_json(self, url: str, *, timeout: float = 6.0, maximum: int = MAX_RESPONSE_BYTES) -> Mapping[str, Any]:
+        request = urllib.request.Request(url, headers=self._headers())
+        with self._opener(request, timeout=timeout) as response:
+            raw = response.read(maximum + 1)
+        if len(raw) > maximum:
             raise RuntimeError("GitHub Actions response exceeded the DeltaScope safety bound")
         payload = json.loads(raw.decode("utf-8"))
         if not isinstance(payload, Mapping):
             raise RuntimeError("GitHub Actions response was not an object")
+        return payload
+
+    def _request_runs(self) -> list[Mapping[str, Any]]:
+        url = f"https://api.github.com/repos/{urllib.parse.quote(self.repository, safe='/')}/actions/runs?per_page={MAX_RUNS}"
+        payload = self._request_json(url)
         runs = payload.get("workflow_runs")
         if not isinstance(runs, list):
             raise RuntimeError("GitHub Actions response has no workflow_runs list")
         return [run for run in runs if isinstance(run, Mapping)]
+
+    def _request_workflow_runs(self, workflow_file: str, limit: int) -> list[Mapping[str, Any]]:
+        workflow = urllib.parse.quote(str(workflow_file or "").strip(), safe="")
+        url = (
+            f"https://api.github.com/repos/{urllib.parse.quote(self.repository, safe='/')}"
+            f"/actions/workflows/{workflow}/runs?per_page={max(1, min(limit, MAX_WORKFLOW_HISTORY))}"
+        )
+        payload = self._request_json(url)
+        runs = payload.get("workflow_runs")
+        if not isinstance(runs, list):
+            raise RuntimeError("GitHub workflow response has no workflow_runs list")
+        return [run for run in runs if isinstance(run, Mapping)]
+
+    def _request_jobs(self, run_id: int) -> list[Mapping[str, Any]]:
+        url = (
+            f"https://api.github.com/repos/{urllib.parse.quote(self.repository, safe='/')}"
+            f"/actions/runs/{int(run_id)}/jobs?per_page=100"
+        )
+        payload = self._request_json(url)
+        jobs = payload.get("jobs")
+        if not isinstance(jobs, list):
+            raise RuntimeError("GitHub workflow run has no jobs list")
+        return [job for job in jobs if isinstance(job, Mapping)]
+
+    def _request_artifacts(self, run_id: int) -> list[Mapping[str, Any]]:
+        url = (
+            f"https://api.github.com/repos/{urllib.parse.quote(self.repository, safe='/')}"
+            f"/actions/runs/{int(run_id)}/artifacts?per_page=100"
+        )
+        payload = self._request_json(url)
+        artifacts = payload.get("artifacts")
+        if not isinstance(artifacts, list):
+            return []
+        return [artifact for artifact in artifacts if isinstance(artifact, Mapping)]
+
+    def _request_job_log(self, job_id: int) -> str:
+        url = (
+            f"https://api.github.com/repos/{urllib.parse.quote(self.repository, safe='/')}"
+            f"/actions/jobs/{int(job_id)}/logs"
+        )
+        request = urllib.request.Request(url, headers=self._headers(accept="text/plain"))
+        with self._opener(request, timeout=10) as response:
+            raw = response.read(MAX_JOB_LOG_BYTES + 1)
+        if len(raw) > MAX_JOB_LOG_BYTES:
+            return raw[:MAX_JOB_LOG_BYTES].decode("utf-8", "replace") + "\n[DeltaScope: log preview truncated]"
+        return raw.decode("utf-8", "replace")
+
+    @staticmethod
+    def _safe_github_url(value: object) -> str:
+        text = str(value or "")
+        return text if text.startswith("https://github.com/") else ""
+
+    def workflow_history(
+        self,
+        workflow_file: str,
+        *,
+        limit: int = 5,
+        include_logs: bool = True,
+        log_job_names: Iterable[str] | None = None,
+        refresh: bool = False,
+    ) -> dict[str, Any]:
+        """Return a bounded, read-only recent workflow/job/step history.
+
+        This powers DeltaScope collector review.  It deliberately fetches only a few
+        recent runs and bounded job logs, and it is cached so opening the Operations
+        workspace does not turn DeltaScope into a GitHub polling agent.
+        """
+        workflow_file = str(workflow_file or "").strip()
+        if not workflow_file or "/" in workflow_file or "\\" in workflow_file or not workflow_file.endswith((".yml", ".yaml")):
+            raise ValueError("workflow_file must be a workflow filename")
+        limit = max(1, min(int(limit or 5), MAX_WORKFLOW_HISTORY))
+        normalized_log_jobs = tuple(sorted({str(name).strip() for name in (log_job_names or []) if str(name).strip()}))
+        key = (workflow_file, limit, bool(include_logs), normalized_log_jobs)
+        now = time.monotonic()
+        with self._lock:
+            cached = self._workflow_cache.get(key)
+            if not refresh and cached and now - cached[0] < max(self.ttl_seconds, 180):
+                return dict(cached[1])
+
+        runs_out: list[dict[str, Any]] = []
+        try:
+            runs = self._request_workflow_runs(workflow_file, limit)
+            for run_index, raw_run in enumerate(runs[:limit]):
+                run = normalize_run(raw_run)
+                try:
+                    raw_artifacts = self._request_artifacts(int(run["runId"])) if run_index == 0 else []
+                except Exception:
+                    raw_artifacts = []
+                run["artifacts"] = [{
+                    "artifactId": int(artifact.get("id") or 0),
+                    "name": str(artifact.get("name") or ""),
+                    "bytes": int(artifact.get("size_in_bytes") or 0),
+                    "expired": bool(artifact.get("expired", False)),
+                    "createdAtUtc": str(artifact.get("created_at") or ""),
+                    "updatedAtUtc": str(artifact.get("updated_at") or ""),
+                } for artifact in raw_artifacts]
+                jobs_out: list[dict[str, Any]] = []
+                for raw_job in self._request_jobs(int(run["runId"])):
+                    steps = []
+                    for raw_step in raw_job.get("steps") or []:
+                        if not isinstance(raw_step, Mapping):
+                            continue
+                        steps.append({
+                            "number": int(raw_step.get("number") or 0),
+                            "name": str(raw_step.get("name") or ""),
+                            "status": str(raw_step.get("status") or ""),
+                            "conclusion": str(raw_step.get("conclusion") or ""),
+                            "startedAtUtc": str(raw_step.get("started_at") or ""),
+                            "completedAtUtc": str(raw_step.get("completed_at") or ""),
+                        })
+                    job = {
+                        "jobId": int(raw_job.get("id") or 0),
+                        "name": str(raw_job.get("name") or ""),
+                        "status": str(raw_job.get("status") or ""),
+                        "conclusion": str(raw_job.get("conclusion") or ""),
+                        "startedAtUtc": str(raw_job.get("started_at") or ""),
+                        "completedAtUtc": str(raw_job.get("completed_at") or ""),
+                        "url": self._safe_github_url(raw_job.get("html_url")),
+                        "steps": steps,
+                        "logPreview": "",
+                    }
+                    # Log content is needed only for the latest run's throughput/result parser.
+                    # Older runs retain job/step outcomes without spending API/rate-limit budget on logs.
+                    wants_log = run_index == 0 and include_logs and (not normalized_log_jobs or job["name"] in normalized_log_jobs)
+                    if wants_log and job["jobId"]:
+                        try:
+                            job["logPreview"] = self._request_job_log(job["jobId"])
+                        except Exception:
+                            job["logPreview"] = ""
+                    jobs_out.append(job)
+                run["jobs"] = jobs_out
+                runs_out.append(run)
+            payload = {
+                "schema": "omega.deltascope.workflow-history.v1",
+                "available": True,
+                "readOnly": True,
+                "mutationAuthority": "none",
+                "repository": self.repository,
+                "workflowFile": workflow_file,
+                "fetchedAtUtc": _utc_now(),
+                "runs": runs_out,
+            }
+        except (OSError, ValueError, RuntimeError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
+            payload = {
+                "schema": "omega.deltascope.workflow-history.v1",
+                "available": False,
+                "readOnly": True,
+                "mutationAuthority": "none",
+                "repository": self.repository,
+                "workflowFile": workflow_file,
+                "fetchedAtUtc": _utc_now(),
+                "runs": [],
+                "error": str(exc),
+            }
+        with self._lock:
+            self._workflow_cache[key] = (time.monotonic(), dict(payload))
+        return payload
 
     def status(self, *, refresh: bool = False) -> dict[str, Any]:
         now = time.monotonic()

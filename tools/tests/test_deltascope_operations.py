@@ -100,6 +100,50 @@ class DeltaScopeOperationsTests(unittest.TestCase):
         projected = deltascope_operations.project_runs("dalagab/omega", [unsafe])
         self.assertEqual("", projected["events"][0]["url"])
 
+    def test_workflow_history_reads_bounded_recent_job_step_and_log_data(self) -> None:
+        calls = []
+
+        def opener(request, timeout=0):
+            url = request.full_url
+            calls.append((url, request.get_method()))
+            if "/actions/workflows/catalog-builder.yml/runs" in url:
+                payload = {"workflow_runs": [{
+                    "id": 10, "run_number": 44, "run_attempt": 1, "name": "Omega catalog builder",
+                    "path": ".github/workflows/catalog-builder.yml", "display_title": "catalog refresh", "event": "schedule",
+                    "head_branch": "sigmascope", "head_sha": "e" * 40, "status": "completed", "conclusion": "success",
+                    "created_at": "2026-08-23T18:00:00Z", "updated_at": "2026-08-23T18:05:00Z",
+                    "html_url": "https://github.com/dalagab/omega/actions/runs/10",
+                }]}
+                return _Response(json.dumps(payload).encode("utf-8"))
+            if "/actions/runs/10/artifacts" in url:
+                payload = {"artifacts": [{"id": 30, "name": "raw-sources", "size_in_bytes": 1234, "expired": False, "created_at": "2026-08-23T18:01:00Z", "updated_at": "2026-08-23T18:01:00Z"}]}
+                return _Response(json.dumps(payload).encode("utf-8"))
+            if "/actions/runs/10/jobs" in url:
+                payload = {"jobs": [{
+                    "id": 20, "name": "Discover source feeds", "status": "completed", "conclusion": "success",
+                    "started_at": "2026-08-23T18:00:30Z", "completed_at": "2026-08-23T18:01:00Z",
+                    "html_url": "https://github.com/dalagab/omega/actions/runs/10/job/20",
+                    "steps": [{"number": 1, "name": "Discover curated, Puni.sh and GitHub PluginMaster sources", "status": "completed", "conclusion": "success", "started_at": "", "completed_at": ""}],
+                }]}
+                return _Response(json.dumps(payload).encode("utf-8"))
+            if "/actions/jobs/20/logs" in url:
+                return _Response(b"Wrote build/raw-sources.json: 44 source(s) - 7 curated, 8 community, 12 puni.sh, 17 github-search\n")
+            raise AssertionError(url)
+
+        client = deltascope_operations.GitHubOperationsClient("dalagab/omega", opener=opener, ttl_seconds=60)
+        first = client.workflow_history("catalog-builder.yml", limit=1, include_logs=True)
+        second = client.workflow_history("catalog-builder.yml", limit=1, include_logs=True)
+        self.assertTrue(first["available"])
+        self.assertTrue(first["readOnly"])
+        self.assertEqual("none", first["mutationAuthority"])
+        self.assertEqual(1, len(first["runs"]))
+        self.assertEqual("Discover source feeds", first["runs"][0]["jobs"][0]["name"])
+        self.assertIn("44 source(s)", first["runs"][0]["jobs"][0]["logPreview"])
+        self.assertEqual("raw-sources", first["runs"][0]["artifacts"][0]["name"])
+        self.assertEqual(first, second)
+        self.assertTrue(all(method == "GET" for _, method in calls))
+        self.assertEqual(4, len(calls))
+
     def test_documentation_catalog_is_allowlisted_and_stigma_first(self) -> None:
         catalog = deltascope_docs.catalog()
         ids = [row["id"] for row in catalog["documents"]]
@@ -141,8 +185,8 @@ class DeltaScopeOperationsTests(unittest.TestCase):
         for token in (
             "Latest security findings", "Components & Actions", "Operations / Actions",
             'parsed.path == "/api/operations"', 'parsed.path == "/api/workbench/findings"',
-            'data-workbench-nav="docs"', "Documentation library", 'parsed.path == "/api/docs"',
-            'parsed.path == "/api/doc"', "#workbench-docs>.docs-shell", "#docTree,#docContent",
+            'data-perspective-route', "Developer Guide", "Platform manual", 'parsed.path == "/api/docs"',
+            'parsed.path == "/api/doc"', 'parsed.path == "/api/workbench/collectors"', "Collectors", "#workbench-docs>.docs-shell", "#docTree,#docContent",
         ):
             self.assertIn(token, view)
         self.assertIn("html,body{height:100%;min-height:0;overflow:hidden", view)

@@ -1,46 +1,26 @@
-# `.omega` developer profile architecture
+# Omega plugin profile (`.omega/plugin.yaml`)
 
-Status: **v1 implemented in the unreleased 2.15 development line**. Deterministic observed-vs-declared comparison is also implemented locally as `omega.sigmascope.behavior-consistency.v1`; future Omega client UI and SRL-based correlation remain planned.
+The Omega plugin profile is optional developer-authored metadata that explains a plugin’s purpose, expected security-relevant capabilities and project links.
 
-## Purpose
+Schema: `omega.plugin-profile.v1`
 
-`.omega/plugin.yaml` lets plugin developers enrich their Omega profile and explain expected capabilities, external services, native components and IPC relationships from source-controlled metadata. It is deliberately separated from SigmaScope's independent evidence.
+## Trust model
 
-The invariant is:
+The profile is **untrusted explanatory context**. SigmaScope parses it with strict size/type/feature bounds, but the author’s declarations are not treated as proof.
 
-> `.omega` is developer claim/context. SigmaScope is independent observation. Omega shows both. The user decides what they are comfortable with.
+A profile cannot suppress independent findings, lower severity, override secondary security engines or establish source-to-binary correspondence.
 
-Developer metadata cannot suppress findings, lower severity, declare trust/safety, override YARA/ClamAV/OSV, claim artifact hashes, or claim source-to-artifact verification.
+## Location
 
-## Implemented discovery
-
-The canonical file is:
+Place the file at:
 
 ```text
 .omega/plugin.yaml
 ```
 
-For monorepositories SigmaScope first checks the `.omega/plugin.yaml` adjacent to the selected primary project file, then repository root. The profile is only parsed from source already obtained through the existing attributed public-source path. The source evidence retains repository/ref/provenance; the profile observation adds exact path, SHA-256, byte count, validation status and normalized profile content.
+in the attributable source repository.
 
-Invalid metadata is fail-soft and never makes the plugin/source scan disappear.
-
-## Implemented schemas
-
-Developer document:
-
-```text
-omega.plugin-profile.v1
-```
-
-Scanner observation wrapper:
-
-```text
-omega.plugin-profile-observation.v1
-```
-
-The exact public schema, limits, examples and validator commands live in `docs/plugin-developers/README.md`.
-
-The implemented root shape is:
+## Top-level fields
 
 ```yaml
 schema: omega.plugin-profile.v1
@@ -52,67 +32,62 @@ ipc: []
 media: {}
 ```
 
-A representative capability declaration is:
+Only supported fields are accepted; unknown/unsafe YAML features fail validation.
+
+## Profile metadata
+
+`profile` may include descriptive fields such as:
+
+- `tagline`
+- `description`
+- `categories`
+- `tags`
+- `homepage`
+- `documentation`
+- `support`
+- `source`
+- `license`
+- `securityPolicy`
+- `vulnerabilityReporting`
+
+These fields help Omega explain and index the plugin.
+
+## Capability declarations
+
+A capability declaration uses a canonical capability ID from the Omega capability registry.
 
 ```yaml
 capabilities:
   - id: network.http
     expected: true
-    required: false
-    reason: Retrieves optional data from the documented service.
+    required: true
+    reason: Retrieves user-selected metadata from the service.
     destinations:
-      - api.example.com
-
-  - id: process.execute
-    expected: false
-    required: false
-    reason: This plugin does not intentionally start external processes.
+      - api.example.org
 ```
 
-`expected: false` is an explicit negative expectation. It does not make absence/provenance claims; it gives future behavior-consistency logic useful developer context if independent evidence observes the capability.
+Important fields:
 
-## Shared capability registry
+- `id` — canonical capability ID;
+- `expected` — whether the developer expects the capability to be observed;
+- `required` — whether it is necessary for the plugin’s intended function;
+- `reason` — human-readable justification;
+- `destinations` — expected hostnames for network capabilities where useful.
 
-The v1 source of truth is:
+## Observed versus declared behavior
 
-```text
-security-definitions/capabilities/registry.json
-```
+SigmaScope can compare retained observations with the profile and report states such as:
 
-Contract:
+- observed and explained;
+- observed but undeclared;
+- observed even though declared not expected;
+- declared expected but not observed;
+- observed destination not covered by the developer declaration.
 
-```text
-omega.sigmascope.capability-registry.v1
-```
+These consistency results are context for users/reviewers. They do not replace the underlying scanner evidence.
 
-SigmaScope, profile validation, DeltaScope and future SRL/Omega UI normalize against the same IDs. The registry currently carries stable ID, category, label, description, aliases, optional semantic attributes, and deprecation/replacement metadata. Its content is canonicalized into a `capabilities-v1-...` revision.
+## Building a profile in DeltaScope
 
-The implementation deliberately treats the capability vocabulary as descriptive, not verdict-bearing.
+Open Plugin Developer → Omega Profile. DeltaScope pre-populates what it can from the retained profile and observed capability set. You can add explanations, expected destinations and project metadata, then validate and copy/download the YAML.
 
-## Parser/security boundary
-
-The implementation uses pinned PyYAML SafeLoader plus stricter deterministic checks. Profiles are bounded to 64 KiB, UTF-8, nesting depth 8, 1,024 nodes and 4,096 YAML tokens. Anchors, aliases, explicit tags, merge keys and duplicate mapping keys are rejected. URLs must be public HTTPS where URL fields are permitted. YAML never gets filesystem/network/process/environment authority.
-
-Authority-like fields are rejected recursively, including safety/trust/risk/verdict/severity/suppression/allowlist/AV override/source-verification/artifact-hash/review-coverage concepts.
-
-## Evidence and marketplace projection
-
-The normalized profile is stored with source analysis and carried through compact Evidence-v2 source transport. Marketplace projection exposes bounded profile status/SHA/JSON for future Omega UI use. DeltaScope already renders the developer profile separately and labels explanations as developer-provided.
-
-Phase 3 declared-vs-observed comparison is now implemented locally without altering native findings.
-
-## Implemented behavior-consistency layer
-
-`omega.sigmascope.behavior-consistency.v1` currently compares:
-
-- declared expected + observed;
-- observed + undeclared when a valid profile exists;
-- declared expected + not observed;
-- explicitly not expected + observed;
-- explicitly not expected + not observed;
-- observed capability with no valid profile (`observed-no-profile`);
-- concrete observed endpoint hosts vs declared capability destinations/services.
-
-Native-component and IPC explanations remain retained developer context. Phase 4 now provides stable typed observation collections for these families; direct native/IPC declaration comparison is still a later behavior-consistency enhancement and must use those registered observations rather than ad-hoc derived data.
-
-The comparison preserves analysis coverage/provenance and does not overinterpret absence as proof. `.omega/plugin.yaml` is excluded from normal source-code evidence scanning so developer declarations cannot create their own observed endpoints/capabilities. See `docs/BEHAVIOR-CONSISTENCY.md`.
+The browser does not write the profile to your repository. Commit the generated file through your normal source-control workflow.

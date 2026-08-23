@@ -164,6 +164,11 @@ class DeltaScopeWorkbenchTests(unittest.TestCase):
         self.assertEqual("complete", stages["stigma-rules"]["status"])
         self.assertEqual("requested", stages["deep-analysis"]["status"])
         self.assertIn("artifact-differential-v1", stages["deep-analysis"]["details"][0])
+        self.assertIn("purpose", stages["sigmascope-static"])
+        self.assertIn("whyStatus", stages["sigmascope-static"])
+        self.assertIn("produced", stages["sigmascope-static"])
+        self.assertTrue(stages["sigmascope-static"]["actions"])
+        self.assertIn("bounded", stages["deep-analysis"]["purpose"].casefold())
         self.assertEqual("current", stages["deltascope-view"]["status"])
 
     def test_asset_journey_does_not_invent_missing_source_or_deep_scan(self):
@@ -380,6 +385,51 @@ class DeltaScopeWorkbenchTests(unittest.TestCase):
             }],
         }
 
+    def test_global_search_finds_plugins_relationships_and_rules_without_storage_knowledge(self):
+        provenance = {
+            "activeRules": [{
+                "ruleId": "network.external-endpoint", "packId": "network",
+                "title": "External endpoint", "kind": "finding", "status": "active",
+            }]
+        }
+        assets = [self.row(variant_id=10, artifact_sha256="a" * 64)]
+        plugin = workbench.project_global_search(assets, self.relationship_index(), provenance, "Example Plugin")
+        self.assertEqual(workbench.GLOBAL_SEARCH_SCHEMA, plugin["schema"])
+        self.assertTrue(plugin["readOnly"])
+        self.assertEqual("none", plugin["mutationAuthority"])
+        self.assertEqual("plugin", plugin["results"][0]["kind"])
+        endpoint = workbench.project_global_search(assets, self.relationship_index(), provenance, "endpoint:api.example.test")
+        self.assertEqual("endpoint", endpoint["results"][0]["kind"])
+        rule = workbench.project_global_search(assets, self.relationship_index(), provenance, "rule:external-endpoint")
+        self.assertEqual("network.external-endpoint", rule["results"][0]["ruleId"])
+        hashed = workbench.project_global_search(assets, self.relationship_index(), provenance, "sha256:" + "a" * 12)
+        self.assertEqual(10, hashed["results"][0]["variantId"])
+
+    def test_version_compare_reports_security_semantic_changes(self):
+        before = self.detail()
+        before["identity"].update({"assembly_version": "1.2.2", "highest_severity": "caution", "artifact_sha256": "a" * 64})
+        before["researcher"]["findings"] = [{"findingId": "old.finding", "severity": "caution", "title": "Old finding"}]
+        before["researcher"]["capabilities"] = [{"capabilityId": "filesystem.read"}]
+        before["networkEndpoints"] = [{"host": "old.example.test"}]
+        before["sourceCoverage"] = {"sourceCodeAvailable": False}
+        after = copy.deepcopy(before)
+        after["identity"].update({"assembly_version": "1.2.3", "highest_severity": "high", "artifact_sha256": "b" * 64})
+        after["researcher"]["findings"] = [{"findingId": "new.finding", "severity": "high", "title": "New finding"}]
+        after["researcher"]["capabilities"] = [{"capabilityId": "filesystem.read"}, {"capabilityId": "process.launch"}]
+        after["networkEndpoints"] = [{"host": "api.example.test"}]
+        after["sourceCoverage"] = {"sourceCodeAvailable": True}
+        result = workbench.project_version_compare(before, after)
+        self.assertEqual(workbench.VERSION_COMPARE_SCHEMA, result["schema"])
+        self.assertTrue(result["readOnly"])
+        self.assertEqual("none", result["mutationAuthority"])
+        labels = [item["label"] for item in result["changes"]]
+        self.assertIn("Highest static severity caution → high", labels)
+        self.assertIn("New finding · new.finding", labels)
+        self.assertIn("New endpoint · api.example.test", labels)
+        self.assertIn("New capability · process.launch", labels)
+        self.assertIn("Installable artifact changed", labels)
+        self.assertIn("Attributed source coverage changed", labels)
+
     def test_intelligence_catalog_projects_endpoint_component_and_advisory_pivots_read_only(self):
         result = workbench.project_intelligence_catalog(self.relationship_index())
         self.assertEqual(workbench.INTELLIGENCE_CATALOG_SCHEMA, result["schema"])
@@ -423,6 +473,67 @@ class DeltaScopeWorkbenchTests(unittest.TestCase):
             workbench.relationship_variant_ids(self.relationship_index(), "other", "x")
         with self.assertRaises(ValueError):
             workbench.relationship_variant_ids(self.relationship_index(), "endpoint", "host:missing.test")
+
+    def test_http_global_search_and_version_compare_are_read_only(self):
+        relationship_index = self.relationship_index()
+        row = self.row(variant_id=10, artifact_sha256="b" * 64)
+        before = self.detail()
+        before["snapshotKind"] = "history"
+        before["identity"].update({"assembly_version": "1.2.2", "highest_severity": "caution", "artifact_sha256": "a" * 64})
+        after = self.detail()
+        after["identity"].update({"assembly_version": "1.2.3", "highest_severity": "high", "artifact_sha256": "b" * 64})
+
+        class FakeInspector:
+            def list_plugins(self, **kwargs):
+                del kwargs
+                return [row]
+
+            def workbench_relationship_index(self):
+                return relationship_index
+
+            def definition_provenance(self):
+                return {"activeRules": [{"ruleId": "network.external-endpoint", "packId": "network"}]}
+
+            def variant_snapshots(self, variant_id):
+                self.assert_variant(variant_id)
+                return [{"snapshotKind": "history", "variantPath": "history/10-old.json", "scanId": 19}]
+
+            def snapshot_detail(self, path):
+                if path != "history/10-old.json":
+                    raise AssertionError(path)
+                return before
+
+            def plugin_detail(self, variant_id):
+                self.assert_variant(variant_id)
+                return after
+
+            @staticmethod
+            def assert_variant(variant_id):
+                if int(variant_id) != 10:
+                    raise AssertionError(variant_id)
+
+        handler = type("TestWorkbenchSearchCompareHandler", (developer_view.AppHandler,), {"inspector": FakeInspector()})
+        server = developer_view.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            base = f"http://127.0.0.1:{server.server_address[1]}"
+            with urllib.request.urlopen(base + "/api/workbench/search?q=endpoint%3Aapi.example.test", timeout=5) as response:
+                search = json.load(response)
+            self.assertEqual(workbench.GLOBAL_SEARCH_SCHEMA, search["schema"])
+            self.assertEqual("endpoint", search["results"][0]["kind"])
+            self.assertEqual("none", search["mutationAuthority"])
+            with urllib.request.urlopen(base + "/api/workbench/compare?variant_id=10", timeout=5) as response:
+                compare = json.load(response)
+            self.assertEqual(workbench.VERSION_COMPARE_SCHEMA, compare["schema"])
+            self.assertTrue(compare["available"])
+            self.assertEqual("history/10-old.json", compare["selectedPath"])
+            self.assertEqual("none", compare["mutationAuthority"])
+            self.assertTrue(any(item["kind"] == "artifact" for item in compare["changes"]))
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
 
     def test_http_relationship_catalog_pivot_and_asset_graph_are_read_only(self):
         relationship_index = self.relationship_index()

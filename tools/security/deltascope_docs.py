@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Allow-listed local documentation catalog for the DeltaScope documentation page."""
+"""Allow-listed platform documentation catalog for DeltaScope."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,25 +8,45 @@ from typing import Any
 SCHEMA = "omega.deltascope.documentation-catalog.v1"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+# The order is intentional: start with purpose/audience material, then extension guides,
+# then low-level references.  Development plans/handover notes are deliberately excluded.
 DOCS: tuple[dict[str, str], ...] = (
-    {"id": "stigma1", "group": "Rules / Stigma-1", "title": "Stigma-1 overview", "path": "docs/STIGMA-1.md", "summary": "What Stigma-1 owns and how SigmaScope and DeltaScope use it."},
-    {"id": "deep-scan", "group": "Rules / Stigma-1", "title": "Deep Scan workflow", "path": "docs/DEEP-SCAN-WORKFLOW.md", "summary": "Typed analysisRequest outcomes, durable queue semantics, executable deep-static profile and sandbox boundary."},
-    {"id": "rule-author-start", "group": "Rules / Stigma-1", "title": "Start writing rules", "path": "docs/rule-authors/README.md", "summary": "Rule-author quick start and the recommended reading order."},
-    {"id": "srl-language", "group": "Rules / Stigma-1", "title": "SRL v1 language reference", "path": "docs/SIGMASCOPE-RULE-LANGUAGE.md", "summary": "Schemas, selectors, conditions, operators, replay safety and examples."},
-    {"id": "rule-design", "group": "Rules / Stigma-1", "title": "Rule design guidance", "path": "docs/rule-authors/RULE-DESIGN.md", "summary": "How to create useful static-security rules without overclaiming."},
-    {"id": "rule-data", "group": "Rules / Stigma-1", "title": "Rule data reference", "path": "docs/rule-authors/DATA-REFERENCE.md", "summary": "Registered retained observation collections and field meanings."},
-    {"id": "rule-workflow", "group": "Rules / Stigma-1", "title": "DeltaScope rule workflow", "path": "docs/rule-authors/DELTASCOPE-WORKFLOW.md", "summary": "Compile, test, replay, fork, visual authoring and candidate export."},
-    {"id": "definition-packs", "group": "Rules / Stigma-1", "title": "Definition Packs", "path": "docs/DEFINITION-PACKS.md", "summary": "Pack manifests, fixtures, trust tiers, review and freezing."},
-    {"id": "rule-workbench", "group": "Rules / Stigma-1", "title": "Rule workbench architecture", "path": "docs/DELTASCOPE-RULE-WORKBENCH.md", "summary": "Local-rule boundaries, graph authoring and production separation."},
-    {"id": "rule-example", "group": "Rules / Stigma-1", "title": "Example SRL rules", "path": "docs/rule-authors/examples/process-network-rules.yaml", "summary": "A compileable observation + correlation ruleset."},
-    {"id": "rule-example-positive", "group": "Rules / Stigma-1", "title": "Example positive fixture", "path": "docs/rule-authors/examples/process-network-positive.fixture.yaml", "summary": "Positive fixture for the shipped example ruleset."},
-    {"id": "rule-example-negative", "group": "Rules / Stigma-1", "title": "Example negative fixture", "path": "docs/rule-authors/examples/process-network-negative.fixture.yaml", "summary": "Near-miss fixture showing expected non-match behavior."},
-    {"id": "architecture", "group": "Security system", "title": "Security architecture and authority model", "path": "docs/ARCHITECTURE-SECURITY-MODEL.md", "summary": "Component boundaries, evidence authority and publication model."},
-    {"id": "deltascope", "group": "Security system", "title": "DeltaScope workbench", "path": "docs/DELTASCOPE-SECURITY-WORKBENCH.md", "summary": "Investigation UI, read-only evidence model and workbench projections."},
-    {"id": "observations", "group": "Security system", "title": "Observation projection contract", "path": "docs/OBSERVATION-PROJECTION-CONTRACT.md", "summary": "What retained evidence is replayable and when re-analysis is required."},
-    {"id": "behavior", "group": "Security system", "title": "Behavior consistency", "path": "docs/BEHAVIOR-CONSISTENCY.md", "summary": "Developer declarations versus observed static behavior."},
-    {"id": "plugin-profile", "group": "Plugin developers", "title": "Omega plugin profile", "path": "docs/OMEGA-PLUGIN-PROFILE.md", "summary": "Optional developer declarations and their non-authoritative role."},
-    {"id": "plugin-developers", "group": "Plugin developers", "title": "Plugin developer documentation", "path": "docs/plugin-developers/README.md", "summary": "Developer-facing security metadata and transparency guidance."},
+    {"id": "platform", "group": "Start here", "title": "Omega security platform", "path": "docs/platform/README.md", "summary": "What the whole platform does, how data flows, and where each component's authority stops."},
+    {"id": "perspectives", "group": "Start here", "title": "Choose a DeltaScope perspective", "path": "docs/DELTASCOPE-PERSPECTIVES.md", "summary": "Plugin Developer, Investigator, Security Researcher and Operations workflows over the same evidence."},
+    {"id": "architecture", "group": "Start here", "title": "Security architecture", "path": "docs/platform/ARCHITECTURE.md", "summary": "Collectors, Catalog, SigmaScope, Definitions, Stigma-1, Deep Scan, Evidence-v2, DeltaScope, Rift and Alpha."},
+    {"id": "evidence-lifecycle", "group": "Start here", "title": "Evidence lifecycle & authority", "path": "docs/platform/EVIDENCE-LIFECYCLE.md", "summary": "Current versus archive versions, immutable analyses, source provenance, coverage, integrity and replay."},
+
+    {"id": "plugin-developers", "group": "Plugin developers", "title": "Plugin Developer guide", "path": "docs/plugin-developers/README.md", "summary": "Understand findings, Journey, version changes, source/build provenance and what Omega needs from your plugin."},
+    {"id": "plugin-profile", "group": "Plugin developers", "title": "Omega plugin profile", "path": "docs/OMEGA-PLUGIN-PROFILE.md", "summary": "How to write .omega/plugin.yaml and what developer declarations can and cannot influence."},
+    {"id": "behavior", "group": "Plugin developers", "title": "Observed versus declared behavior", "path": "docs/BEHAVIOR-CONSISTENCY.md", "summary": "How Omega compares independent observations with developer-authored explanations."},
+
+    {"id": "investigators", "group": "Investigators", "title": "Investigator guide", "path": "docs/investigators/README.md", "summary": "Follow a plugin from case to Journey, findings, endpoints, relationships, events and exact evidence."},
+
+    {"id": "researchers", "group": "Security researchers", "title": "Security Researcher guide", "path": "docs/security-researchers/README.md", "summary": "Corpus-wide intelligence, comparisons, raw evidence, replay and rule research."},
+    {"id": "detection-systems", "group": "Security researchers", "title": "Detection systems", "path": "docs/platform/DETECTION-SYSTEMS.md", "summary": "Choose between scanner observations, Stigma-1, YARA, ClamAV, OSV and Deep Scan; add detections safely."},
+    {"id": "tagging", "group": "Security researchers", "title": "Tagging & classification", "path": "docs/platform/TAGGING-AND-CLASSIFICATION.md", "summary": "Marketplace tags, profile tags, capability vocabulary, source permissions and presentation classifications."},
+
+    {"id": "operations", "group": "Operations", "title": "Operations guide", "path": "docs/operations/README.md", "summary": "Dashboard, pipelines, collectors, queues, evidence, Definitions and production authority gates."},
+    {"id": "collectors", "group": "Operations", "title": "Collectors & data acquisition", "path": "docs/platform/COLLECTORS.md", "summary": "What every collector consumes/produces, how DeltaScope reviews recent runner history, and how to add one."},
+    {"id": "platform-operations", "group": "Operations", "title": "Operational model", "path": "docs/platform/OPERATIONS.md", "summary": "How to interpret pipeline/collector failures, queues, last-known-good evidence and gates."},
+
+    {"id": "extending", "group": "Extending Omega", "title": "Extending Omega security logic", "path": "docs/platform/EXTENDING-OMEGA.md", "summary": "Decision guide for adding collectors, observations, capabilities, tags, rules, YARA and Deep Scan logic."},
+    {"id": "stigma1", "group": "Extending Omega", "title": "Stigma-1 overview", "path": "docs/STIGMA-1.md", "summary": "What Stigma-1 owns, its safety model and the fastest rule-authoring workflow."},
+    {"id": "rule-author-start", "group": "Extending Omega", "title": "Start writing rules", "path": "docs/rule-authors/README.md", "summary": "When to use SRL, how to design a rule, and the quality checklist."},
+    {"id": "rule-workflow", "group": "Extending Omega", "title": "DeltaScope rule workflow", "path": "docs/rule-authors/DELTASCOPE-WORKFLOW.md", "summary": "Edit, validate, dry-run, replay, fixture-test and propose a local Stigma-1 rule."},
+    {"id": "rule-design", "group": "Extending Omega", "title": "Rule design guidance", "path": "docs/rule-authors/RULE-DESIGN.md", "summary": "Evidence-chain design, severity, negative fixtures, static-language discipline and Deep Scan requests."},
+    {"id": "definition-packs", "group": "Extending Omega", "title": "Definition Packs", "path": "docs/DEFINITION-PACKS.md", "summary": "How reviewed rules/fixtures are grouped, compiled, frozen and separated from local/experimental rules."},
+    {"id": "deep-scan", "group": "Extending Omega", "title": "Deep Scan workflow", "path": "docs/DEEP-SCAN-WORKFLOW.md", "summary": "Typed analysisRequest outcomes, durable queue semantics and code-owned bounded analysis profiles."},
+
+    {"id": "srl-language", "group": "Reference", "title": "SRL language reference", "path": "docs/SIGMASCOPE-RULE-LANGUAGE.md", "summary": "SRL safety model, inputs, selectors, conditions, outputs and replay completeness."},
+    {"id": "rule-data", "group": "Reference", "title": "Rule data reference", "path": "docs/rule-authors/DATA-REFERENCE.md", "summary": "Registered observation collections, fields, authority classes and completeness semantics."},
+    {"id": "observations", "group": "Reference", "title": "Observation / projection contract", "path": "docs/OBSERVATION-PROJECTION-CONTRACT.md", "summary": "How retained primitive evidence differs from derived projections and when re-analysis is required."},
+    {"id": "rule-workbench", "group": "Reference", "title": "Rule workbench architecture", "path": "docs/DELTASCOPE-RULE-WORKBENCH.md", "summary": "System Rules, My Rules, YAML/visual/test surfaces and the local/production authority boundary."},
+    {"id": "deltascope", "group": "Reference", "title": "DeltaScope workbench", "path": "docs/DELTASCOPE-SECURITY-WORKBENCH.md", "summary": "Object-centric workbench, perspectives, read-only boundaries and documentation model."},
+    {"id": "architecture-contract", "group": "Reference", "title": "Architecture authority contract", "path": "docs/ARCHITECTURE-SECURITY-MODEL.md", "summary": "Concise component/authority and re-analysis contract."},
+    {"id": "rule-example", "group": "Reference", "title": "Example SRL rules", "path": "docs/rule-authors/examples/process-network-rules.yaml", "summary": "Compileable observation and correlation ruleset."},
+    {"id": "rule-example-positive", "group": "Reference", "title": "Example positive fixture", "path": "docs/rule-authors/examples/process-network-positive.fixture.yaml", "summary": "Positive fixture for the shipped example ruleset."},
+    {"id": "rule-example-negative", "group": "Reference", "title": "Example negative fixture", "path": "docs/rule-authors/examples/process-network-negative.fixture.yaml", "summary": "Near-miss fixture showing expected non-match behavior."},
 )
 
 

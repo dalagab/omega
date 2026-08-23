@@ -17,6 +17,8 @@ INTELLIGENCE_SCHEMA = "omega.deltascope.intelligence-projection.v1"
 CASE_SCHEMA = "omega.deltascope.incident-case-projection.v1"
 TIMELINE_SCHEMA = "omega.deltascope.security-timeline.v1"
 JOURNEY_SCHEMA = "omega.deltascope.asset-journey.v1"
+GLOBAL_SEARCH_SCHEMA = "omega.deltascope.global-search.v1"
+VERSION_COMPARE_SCHEMA = "omega.deltascope.security-version-compare.v1"
 
 SEVERITY_RANK = {
     "none": 0,
@@ -794,6 +796,93 @@ def project_asset_journey(
         ["No production mutation authority", "Stages are reconstructed from retained evidence only"], evidence="DeltaScope",
     ))
 
+    # Explanatory metadata is deliberately part of the read-only projection rather than
+    # frontend folklore.  Journey clicks can therefore explain *this plugin's* stage and
+    # then offer a narrow pivot to the exact evidence surface without dropping the user
+    # into a generic technical dump.
+    produced_by_stage: dict[str, list[str]] = {
+        "catalog-discovery": ["normalized plugin + variant identity"],
+        "artifact-acquisition": ["pinned installable artifact identity"] if artifact_sha else [],
+        "package-inspection": ["package / manifest observations"] if package_seen else [],
+        "source-attribution": (["attributed source evidence", "source ↔ artifact relationship state"] if source_available else []),
+        "sigmascope-static": [
+            f"{len(findings)} retained finding(s)",
+            f"{len(capabilities)} observed capability row(s)",
+        ],
+        "secondary-engines": [f"{len(engines)} secondary-engine result(s)", f"{engine_matches} retained match(es)"] if engines else [],
+        "evidence-normalization": [f"{intelligence_total} typed observation / intelligence row(s)"] if intelligence_total else [],
+        "stigma-rules": [f"{len(matched_rules)} matched SRL rule(s)", f"{len(projected_findings)} projected finding(s)"] if projection else [],
+        "deep-analysis": (["bounded deep-analysis request"] if deep_request else ["targeted reanalysis request"] if reanalysis else []),
+        "evidence-publication": ["Security Evidence v2 publication reference"] if (scan_id or analysis) else [],
+        "deltascope-view": ["read-only investigation context"],
+    }
+    purpose_by_stage = {
+        "catalog-discovery": "Establish which public plugin, repository entry, version and variant Omega is talking about before any security conclusion is made.",
+        "artifact-acquisition": "Acquire the exact installable package users can receive and pin it by SHA-256 so later evidence refers to one immutable artifact.",
+        "package-inspection": "Inspect package structure and manifest metadata before deeper code analysis, including enough identity to understand what was shipped.",
+        "source-attribution": "Retrieve public source when it can be attributed to the plugin, while keeping source evidence separate from the shipped artifact and its trust boundary.",
+        "sigmascope-static": "Run SigmaScope's deterministic static analysis over the retained artifact/source evidence to collect capabilities, findings, imports, calls and other security observations.",
+        "secondary-engines": "Run bounded secondary malware/signature checks such as ClamAV and YARA alongside SigmaScope rather than treating either engine as the sole verdict.",
+        "evidence-normalization": "Convert scanner observations into typed, rule-neutral Evidence-v2 collections that can be investigated and replayed without rescanning when sufficient evidence was retained.",
+        "stigma-rules": "Evaluate deterministic Stigma-1 / SRL rules over normalized observations and retain exactly which rules matched and what they projected.",
+        "deep-analysis": "Request additional bounded evidence only when a reviewed rule or replay says the normal evidence budget is insufficient for the question being asked.",
+        "evidence-publication": "Publish immutable/derived Security Evidence v2 so Omega, DeltaScope and later analysis can reproduce what was known at this revision.",
+        "deltascope-view": "Present the retained evidence to a human without granting DeltaScope authority to rewrite production findings, queues or Definitions.",
+    }
+    next_by_stage = {
+        "catalog-discovery": "Acquire the installable artifact selected by the catalog entry.",
+        "artifact-acquisition": "Inspect the downloaded package and manifest before code-level analysis.",
+        "package-inspection": "Attempt source attribution separately, then continue with static artifact analysis.",
+        "source-attribution": "Feed artifact evidence and any separately attributed source evidence into SigmaScope analysis.",
+        "sigmascope-static": "Run secondary checks and normalize the retained observations for investigation and rules.",
+        "secondary-engines": "Keep the secondary-engine results alongside SigmaScope observations during normalization.",
+        "evidence-normalization": "Evaluate Stigma-1 rules against the typed retained observations.",
+        "stigma-rules": "If a reviewed rule asks for more evidence, queue only an approved bounded analysis profile; otherwise continue to publication.",
+        "deep-analysis": "Retain any additional analysis result separately and publish the evidence state without inventing an authoritative conclusion.",
+        "evidence-publication": "Expose the exact published state to Omega/DeltaScope consumers.",
+        "deltascope-view": "Follow a finding, rule, endpoint, source or artifact relationship without leaving the selected plugin context.",
+    }
+    action_by_stage = {
+        "catalog-discovery": [{"label": "Plugin overview", "target": "overview"}],
+        "artifact-acquisition": [{"label": "Code & artifact", "target": "code"}, {"label": "Immutable evidence", "target": "evidence"}],
+        "package-inspection": [{"label": "Supply chain", "target": "supply"}, {"label": "Immutable evidence", "target": "evidence"}],
+        "source-attribution": [{"label": "Source & build", "target": "supply"}, {"label": "Omega profile", "target": "profile"}],
+        "sigmascope-static": [{"label": "Security findings", "target": "findings"}, {"label": "Code evidence", "target": "code"}],
+        "secondary-engines": [{"label": "ClamAV / YARA", "target": "malware"}],
+        "evidence-normalization": [{"label": "Immutable observations", "target": "evidence"}, {"label": "Network evidence", "target": "network"}],
+        "stigma-rules": [{"label": "Matched rules", "target": "rules"}, {"label": "Findings", "target": "findings"}],
+        "deep-analysis": [{"label": "Rule / request context", "target": "rules"}, {"label": "Immutable evidence", "target": "evidence"}],
+        "evidence-publication": [{"label": "Published evidence", "target": "evidence"}],
+        "deltascope-view": [{"label": "Plugin overview", "target": "overview"}],
+    }
+    for item in stages:
+        stage_id = str(item.get("stageId") or "")
+        status = str(item.get("status") or "unknown")
+        evidence_label = str(item.get("evidence") or "retained evidence")
+        if status == "complete":
+            why_status = f"Marked complete because {evidence_label} is retained for this plugin variant."
+        elif status == "current":
+            why_status = "Marked current because this is the DeltaScope view you are using now; it is not a production pipeline mutation step."
+        elif status == "requested":
+            why_status = f"Marked requested because {evidence_label} contains an explicit bounded analysis request for this variant."
+        elif status == "needs-evidence":
+            why_status = "Marked needs evidence because deterministic replay could not be completed from the currently retained observation set."
+        elif status == "failed":
+            why_status = f"Marked failed because the retained scan state records a failed/error outcome at this stage."
+        elif status == "partial":
+            why_status = f"Marked partial because some {evidence_label} exists, but the retained state does not support a complete result."
+        elif status in {"skipped", "not-requested", "not-recorded", "not-run"}:
+            why_status = f"Marked {status.replace('-', ' ')} because the retained evidence does not support claiming that this optional stage happened."
+        else:
+            why_status = "The retained evidence does not provide a stronger state for this stage."
+        item.update({
+            "purpose": purpose_by_stage.get(stage_id, "Explain how this stage contributes to the plugin's security evidence path."),
+            "whyStatus": why_status,
+            "produced": produced_by_stage.get(stage_id, []),
+            "nextStep": next_by_stage.get(stage_id, "Continue following the retained evidence path."),
+            "actions": action_by_stage.get(stage_id, []),
+        })
+
     core = {
         "variantId": variant_id, "scanId": scan_id,
         "stages": [{k: v for k, v in item.items() if k != "evidence"} for item in stages],
@@ -873,6 +962,216 @@ def project_asset_relationships(
         "graph": {"nodes": nodes, "edges": edges},
     }
 
+
+
+def _search_text(*values: Any) -> str:
+    return " ".join(str(value or "") for value in values).casefold()
+
+
+def project_global_search(
+    asset_rows: Iterable[Mapping[str, Any]],
+    relationship_index: Mapping[str, Any] | None,
+    provenance: Mapping[str, Any] | None,
+    query: str,
+    *,
+    limit: int = 40,
+) -> dict[str, Any]:
+    """Search DeltaScope's major read-only object types without exposing storage layout.
+
+    This is intentionally a projection over already-published data.  It does not perform
+    policy evaluation, network discovery, or mutation and therefore remains safe to use as
+    the workbench's global navigation layer.
+    """
+    raw = str(query or "").strip()
+    limit = min(max(1, int(limit or 40)), 100)
+    prefix = ""
+    needle = raw
+    if ":" in raw:
+        candidate, rest = raw.split(":", 1)
+        candidate = candidate.strip().casefold()
+        if candidate in {"plugin", "author", "repo", "source", "endpoint", "component", "rule", "cve", "advisory", "sha256", "hash"}:
+            prefix, needle = candidate, rest.strip()
+    q = needle.casefold()
+    relations = relationship_index if isinstance(relationship_index, Mapping) else {}
+    provenance = provenance if isinstance(provenance, Mapping) else {}
+    results: list[dict[str, Any]] = []
+
+    def add(item: dict[str, Any]) -> None:
+        if len(results) < limit:
+            results.append(item)
+
+    if prefix in {"", "plugin", "author", "repo", "source", "sha256", "hash"}:
+        for raw_row in asset_rows:
+            row = dict(raw_row)
+            if _int(row.get("variant_id")) <= 0:
+                continue
+            hay = _search_text(
+                row.get("canonical_name"), row.get("name"), row.get("internal_name"), row.get("author"),
+                row.get("source_name"), row.get("source_url"), row.get("source_repository"), row.get("artifact_sha256"),
+            )
+            if q and q not in hay:
+                continue
+            if prefix == "author" and q not in str(row.get("author") or "").casefold():
+                continue
+            if prefix in {"repo", "source"} and q not in _search_text(row.get("source_name"), row.get("source_url"), row.get("source_repository")):
+                continue
+            if prefix in {"sha256", "hash"} and q not in str(row.get("artifact_sha256") or "").casefold():
+                continue
+            a = _asset(row)
+            add({
+                "kind": "plugin", "group": "Plugins", "label": a["name"] or a["internalName"],
+                "subtitle": " · ".join(x for x in (a.get("version"), a.get("author"), str(row.get("highest_severity") or "none")) if x),
+                "variantId": a["variantId"], "internalName": a["internalName"],
+                "severity": _severity(row.get("highest_severity")),
+            })
+            if len(results) >= limit:
+                break
+
+    def relation_results(kind: str, source_name: str, group: str) -> None:
+        if len(results) >= limit:
+            return
+        for item in relations.get(source_name) or []:
+            if not isinstance(item, Mapping):
+                continue
+            cat = _catalog_item(kind, item)
+            hay = _search_text(cat.get("key"), cat.get("label"), cat.get("advisoryId"), cat.get("componentKey"), cat.get("severity"))
+            if q and q not in hay:
+                continue
+            add({
+                "kind": kind, "group": group, "label": str(cat.get("label") or cat.get("advisoryId") or cat.get("key") or ""),
+                "subtitle": f"{_int(cat.get('assetCount'))} affected plugin(s)" + (f" · {cat.get('severity')}" if cat.get("severity") else ""),
+                "key": str(cat.get("key") or ""), "pivotKind": kind,
+            })
+            if len(results) >= limit:
+                return
+
+    if prefix in {"", "endpoint"}:
+        relation_results("endpoint", "endpoints", "Endpoints")
+    if prefix in {"", "component"}:
+        relation_results("component", "components", "Components")
+    if prefix in {"", "cve", "advisory"}:
+        relation_results("advisory", "advisories", "Advisories")
+
+    if prefix in {"", "rule"} and len(results) < limit:
+        rule_rows = provenance.get("activeRules") or provenance.get("rules") or []
+        for item in rule_rows:
+            if not isinstance(item, Mapping):
+                continue
+            hay = _search_text(item.get("ruleId"), item.get("title"), item.get("kind"), item.get("packId"), item.get("findingId"))
+            if q and q not in hay:
+                continue
+            add({
+                "kind": "rule", "group": "Rules", "label": str(item.get("ruleId") or item.get("title") or "Rule"),
+                "subtitle": " · ".join(x for x in (str(item.get("packId") or ""), str(item.get("kind") or ""), str(item.get("status") or "")) if x),
+                "ruleId": str(item.get("ruleId") or ""), "packId": str(item.get("packId") or ""),
+            })
+            if len(results) >= limit:
+                break
+
+    core = {"query": raw, "prefix": prefix, "results": results}
+    return {
+        "schema": GLOBAL_SEARCH_SCHEMA,
+        "searchProjectionId": _stable_id("search", core),
+        "readOnly": True, "mutationAuthority": "none", "policyInput": False,
+        "query": raw, "prefix": prefix, "resultCount": len(results), "results": results,
+    }
+
+
+def _item_key(value: Any, fields: tuple[str, ...]) -> str:
+    if isinstance(value, Mapping):
+        for field in fields:
+            text = str(value.get(field) or "").strip()
+            if text:
+                return text.casefold()
+        return hashlib.sha256(_canonical(dict(value))).hexdigest()[:20]
+    return str(value or "").strip().casefold()
+
+
+def _item_label(value: Any, fields: tuple[str, ...]) -> str:
+    if isinstance(value, Mapping):
+        for field in fields:
+            text = str(value.get(field) or "").strip()
+            if text:
+                return text
+        return json.dumps(dict(value), sort_keys=True, ensure_ascii=False)[:160]
+    return str(value or "")
+
+
+def _set_diff(before: Iterable[Any], after: Iterable[Any], fields: tuple[str, ...]) -> dict[str, list[str]]:
+    old = {_item_key(v, fields): _item_label(v, fields) for v in before}
+    new = {_item_key(v, fields): _item_label(v, fields) for v in after}
+    return {
+        "added": [new[k] for k in sorted(new.keys() - old.keys())],
+        "removed": [old[k] for k in sorted(old.keys() - new.keys())],
+        "unchanged": [new[k] for k in sorted(new.keys() & old.keys())],
+    }
+
+
+def project_version_compare(before: Mapping[str, Any], after: Mapping[str, Any]) -> dict[str, Any]:
+    """Produce a human-oriented security-semantic diff between two retained plugin snapshots."""
+    before = before if isinstance(before, Mapping) else {}
+    after = after if isinstance(after, Mapping) else {}
+    bi = before.get("identity") if isinstance(before.get("identity"), Mapping) else {}
+    ai = after.get("identity") if isinstance(after.get("identity"), Mapping) else {}
+    br = before.get("researcher") if isinstance(before.get("researcher"), Mapping) else {}
+    ar = after.get("researcher") if isinstance(after.get("researcher"), Mapping) else {}
+    endpoint_fields = ("url", "host", "endpoint", "value")
+    finding_fields = ("findingId", "finding_id", "ruleId", "rule_id", "title")
+    capability_fields = ("capabilityId", "capability_id", "id", "name", "capability")
+    advisory_fields = ("id", "advisoryId", "advisory_id", "url")
+    endpoints = _set_diff(before.get("networkEndpoints") or [], after.get("networkEndpoints") or [], endpoint_fields)
+    findings = _set_diff(br.get("findings") or [], ar.get("findings") or [], finding_fields)
+    capabilities = _set_diff(br.get("capabilities") or [], ar.get("capabilities") or [], capability_fields)
+    advisories = _set_diff(before.get("advisories") or [], after.get("advisories") or [], advisory_fields)
+    before_sev = _severity(bi.get("highest_severity"))
+    after_sev = _severity(ai.get("highest_severity"))
+    changes: list[dict[str, Any]] = []
+
+    def change(kind: str, direction: str, label: str, detail: str = "") -> None:
+        changes.append({"kind": kind, "direction": direction, "label": label, "detail": detail})
+
+    if before_sev != after_sev:
+        direction = "increased" if SEVERITY_RANK[after_sev] > SEVERITY_RANK[before_sev] else "decreased"
+        change("severity", direction, f"Highest static severity {before_sev} → {after_sev}")
+    for value in findings["added"]:
+        change("finding", "added", f"New finding · {value}")
+    for value in findings["removed"]:
+        change("finding", "removed", f"Finding removed · {value}")
+    for value in endpoints["added"]:
+        change("endpoint", "added", f"New endpoint · {value}")
+    for value in endpoints["removed"]:
+        change("endpoint", "removed", f"Endpoint removed · {value}")
+    for value in capabilities["added"]:
+        change("capability", "added", f"New capability · {value}")
+    for value in capabilities["removed"]:
+        change("capability", "removed", f"Capability removed · {value}")
+    for value in advisories["added"]:
+        change("advisory", "added", f"New advisory relationship · {value}")
+    for value in advisories["removed"]:
+        change("advisory", "removed", f"Advisory relationship removed · {value}")
+    before_artifact = str(bi.get("artifact_sha256") or "")
+    after_artifact = str(ai.get("artifact_sha256") or "")
+    if before_artifact and after_artifact and before_artifact != after_artifact:
+        change("artifact", "changed", "Installable artifact changed", f"{before_artifact[:12]}… → {after_artifact[:12]}…")
+    before_source = before.get("sourceCoverage") if isinstance(before.get("sourceCoverage"), Mapping) else {}
+    after_source = after.get("sourceCoverage") if isinstance(after.get("sourceCoverage"), Mapping) else {}
+    if bool(before_source.get("sourceCodeAvailable")) != bool(after_source.get("sourceCodeAvailable")):
+        change("source", "added" if after_source.get("sourceCodeAvailable") else "removed", "Attributed source coverage changed")
+
+    core = {
+        "variantId": _int(ai.get("variant_id") or bi.get("variant_id")),
+        "before": {"version": str(bi.get("assembly_version") or ""), "scanId": _int(bi.get("scan_id")), "snapshotKind": str(before.get("snapshotKind") or "")},
+        "after": {"version": str(ai.get("assembly_version") or ""), "scanId": _int(ai.get("scan_id")), "snapshotKind": str(after.get("snapshotKind") or "")},
+        "changes": changes,
+    }
+    return {
+        "schema": VERSION_COMPARE_SCHEMA,
+        "compareProjectionId": _stable_id("compare", core),
+        "readOnly": True, "mutationAuthority": "none", "policyInput": False,
+        "variantId": core["variantId"], "before": core["before"], "after": core["after"],
+        "changeCount": len(changes), "changes": changes,
+        "diffs": {"findings": findings, "capabilities": capabilities, "endpoints": endpoints, "advisories": advisories},
+    }
 
 def relationship_variant_ids(relationship_index: Mapping[str, Any], kind: str, key: str) -> list[int]:
     """Return current variant IDs behind one relationship key for a lazy read-only pivot."""

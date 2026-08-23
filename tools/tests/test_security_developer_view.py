@@ -408,6 +408,42 @@ class SecurityDeveloperViewTests(unittest.TestCase):
                 inspector.close()
 
 
+    def test_headline_finding_totals_exclude_archived_scans_and_version_history_marks_current(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            evidence = Path(td) / "evidence.sqlite"
+            make_evidence(evidence)
+            with closing(sqlite3.connect(evidence)) as db:
+                db.execute(
+                    """INSERT INTO plugin_security_scans(
+                           scan_id,plugin_id,variant_id,source_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,
+                           scanner_version,status,scanned_at_utc,highest_severity,critical_count,report_json
+                       ) VALUES(2,1,1,1,'0.9.0','stable','https://example.invalid/old.zip',?,?,'complete',?,'critical',1,'{}')""",
+                    ("b" * 64, sigmascope.SCANNER_VERSION, "2026-08-16T07:00:00Z"),
+                )
+                db.execute(
+                    """INSERT INTO plugin_security_findings(scan_id,rule_id,severity,category,title,description,evidence_json)
+                       VALUES(2,'old.critical','critical','archive','Old critical','Archived behavior','[]')"""
+                )
+                db.commit()
+            inspector = view.SecurityInspector(evidence)
+            try:
+                summary = inspector.summary()
+                self.assertEqual(1, summary["counts"]["findings"], "archive finding must not inflate current total")
+                self.assertEqual(0, summary["counts"]["criticalFindings"], "retired critical must not remain in headline totals")
+                self.assertEqual(1, summary["counts"]["highFindings"])
+                detail = inspector.plugin_detail(1)
+                versions = detail["versionHistory"]
+                self.assertEqual(2, len(versions))
+                self.assertTrue(versions[0]["isCurrent"], "current version should be the first row in the dossier")
+                current = next(row for row in versions if row["isCurrent"])
+                archived = next(row for row in versions if not row["isCurrent"])
+                self.assertEqual("1.0.0", current["version"])
+                self.assertTrue(current["includedInCurrentTotals"])
+                self.assertEqual("0.9.0", archived["version"])
+                self.assertFalse(archived["includedInCurrentTotals"])
+            finally:
+                inspector.close()
+
     def test_global_audit_fails_when_osv_queries_zero_observed_packages(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             evidence = Path(td) / "evidence.sqlite"
@@ -857,6 +893,75 @@ class SecurityDeveloperViewTests(unittest.TestCase):
             finally:
                 inspector.close()
 
+    def test_online_sha_mismatch_recovers_from_same_root_token_by_pinning_branch_commit(self) -> None:
+        class Response:
+            def __init__(self, data: bytes):
+                self.data = io.BytesIO(data)
+                self.headers = {"Content-Length": str(len(data))}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, n: int = -1) -> bytes: return self.data.read(n)
+
+        def packed(value) -> bytes:
+            return (json.dumps(value, sort_keys=True) + "\n").encode()
+
+        base = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
+        commit = "1" * 40
+        pinned = f"https://raw.githubusercontent.com/dalagab/omega/{commit}/"
+        api = "https://api.github.com/repos/dalagab/omega/commits/security-evidence-v2"
+        manifest = {"datasets": {}}
+        old_variant = {
+            "schema": "omega.security-evidence.variant.v2", "formatVersion": 2, "variantId": 1,
+            "plugin": {"plugin_id": 1, "internal_name": "PinFixture", "canonical_name": "Pin Fixture"},
+            "variant": {"variant_id": 1, "name": "Pin Fixture", "assembly_version": "1.0"},
+            "source": {},
+            "current": {"variant_id": 1, "scan_id": 1, "status": "complete", "highest_severity": "critical", "critical_count": 1, "report_json": {}},
+            "analysis": {"analysisId": "a" * 64, "path": "artifacts/aa/analysis", "artifactSha256": "b" * 64},
+            "derived": {},
+        }
+        new_variant = {**old_variant, "variant": {**old_variant["variant"], "assembly_version": "1.1"}, "current": {**old_variant["current"], "scan_id": 2, "highest_severity": "none", "critical_count": 0}}
+        old_bytes, new_bytes = packed(old_variant), packed(new_variant)
+        plugins = {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": [{
+            "variantId": 1, "scanId": 2, "variantPath": "variants/0000/1.json",
+            "variantSha256": hashlib.sha256(new_bytes).hexdigest(),
+            "summary": {"plugin_id": 1, "internal_name": "PinFixture", "canonical_name": "Pin Fixture", "assembly_version": "1.1", "scan_id": 2, "scan_status": "complete", "highest_severity": "none"},
+        }]}
+        plugin_bytes = packed(plugins)
+        root = {"schema": "omega.security-evidence.v2", "formatVersion": 2, "revisions": {"evidenceRevision": "ev-v2-same-token"}, "indexes": {"plugins": {"path": "indexes/plugins.json", "sha256": hashlib.sha256(plugin_bytes).hexdigest()}}}
+        root_bytes = packed(root)
+        requests = []
+
+        def fake_urlopen(request, timeout=0):
+            del timeout
+            url = request.full_url
+            requests.append(url)
+            if url == api:
+                return Response(packed({"sha": commit}))
+            if url in {base + "index.json", pinned + "index.json"}:
+                return Response(root_bytes)
+            if url in {base + "indexes/plugins.json", pinned + "indexes/plugins.json"}:
+                return Response(plugin_bytes)
+            if url == base + "variants/0000/1.json":
+                return Response(old_bytes)  # branch edge is stale despite the same root token
+            if url == pinned + "variants/0000/1.json":
+                return Response(new_bytes)
+            if url in {base + "artifacts/aa/analysis/manifest.json", pinned + "artifacts/aa/analysis/manifest.json"}:
+                return Response(packed(manifest))
+            raise AssertionError(url)
+
+        with tempfile.TemporaryDirectory() as td:
+            inspector = V2SigmascopeInspector.online(base_url=base, cache_dir=Path(td), urlopen=fake_urlopen)
+            try:
+                detail = inspector.plugin_detail(1)
+                self.assertTrue(detail["onlineSnapshotRefreshed"])
+                self.assertEqual("1.1", detail["identity"]["assembly_version"])
+                self.assertEqual(2, detail["identity"]["scan_id"])
+                self.assertIn(api, requests)
+                self.assertIn(pinned + "variants/0000/1.json", requests)
+                self.assertEqual(commit, inspector.source.snapshot_commit)
+            finally:
+                inspector.close()
+
     def test_online_v2_remains_compatible_with_pre_summary_published_index(self) -> None:
         class Response:
             def __init__(self, data: bytes): self.data = io.BytesIO(data); self.headers = {"Content-Length": str(len(data))}
@@ -888,6 +993,137 @@ class SecurityDeveloperViewTests(unittest.TestCase):
             finally:
                 inspector.close()
 
+    def test_developer_profile_builder_uses_real_profile_validator_and_never_claims_authority(self) -> None:
+        result = view.developer_profile_render({
+            "profile": {"tagline": "Fixture plugin"},
+            "capabilities": [{
+                "id": "network.http", "expected": True, "required": False,
+                "reason": "Downloads documented metadata.", "destinations": ["example.com"],
+            }],
+        })
+        self.assertTrue(result["ok"])
+        self.assertEqual("omega.deltascope.developer-profile-preview.v1", result["schema"])
+        self.assertEqual("browser-copy-download-only", result["mutationAuthority"])
+        self.assertIn("schema: omega.plugin-profile.v1", result["yaml"])
+        self.assertIn("network.http", result["yaml"])
+        checked = view.developer_profile_validate_text(result["yaml"])
+        self.assertTrue(checked["ok"])
+        self.assertEqual("none", checked["mutationAuthority"])
+
+    def test_carbon_shell_moves_platform_metadata_off_header_and_adds_notifications(self) -> None:
+        html = view.HTML
+        header = html.split("</header>", 1)[0]
+        self.assertIn('class="workbench-nav"', html)
+        self.assertIn('background:#161616!important', html)
+        self.assertIn('background:#f4f4f4!important', html)
+        self.assertIn('id="navToggle"', header)
+        self.assertIn('body{grid-template-rows:48px minmax(0,1fr)!important}', html)
+        self.assertIn('class="brand-copy"', header)
+        self.assertIn('class="brand-omega">OMEGA</span>', header)
+        self.assertIn('class="brand-deltascope">DELTASCOPE</span>', header)
+        self.assertIn('id="headerPluginSelect"', header)
+        self.assertIn('id="notificationButton"', header)
+        self.assertNotIn('id="perspectiveSelect"', header)
+        self.assertIn('class="perspective-switch rail-perspective-switch"', html)
+        self.assertIn('id="perspectiveSelect"', html)
+        self.assertIn('nav-collapsed', html)
+        self.assertNotIn('id="sourceBadge"', header)
+        self.assertNotIn('id="scannerBadge"', header)
+        self.assertNotIn('id="revisionBadge"', header)
+        self.assertNotIn('id="latestBadge"', header)
+        self.assertIn('id="dashboardPlatformCards"', html)
+        self.assertIn('id="dashboardNotificationPreview"', html)
+        self.assertIn('Security Definitions updated', html)
+        self.assertIn('Critical finding', html)
+        self.assertIn('New security evidence is available', html)
+
+    def test_plugin_developer_routes_do_not_show_corpus_plugin_queue(self) -> None:
+        html = view.HTML
+        self.assertIn('body.perspective-developer #workbench-assets .triage-panel{display:none!important}', html)
+        self.assertIn('body.perspective-developer #workbench-assets>.research-layout{grid-template-columns:minmax(0,1fr)!important}', html)
+        self.assertIn("{label:'Source & Build',mark:'B',view:'assets',tab:'supply'}", html)
+        self.assertIn("{label:'Omega Profile',mark:'Ω',view:'assets',tab:'profile'}", html)
+        self.assertIn("{label:'Journey',mark:'J',view:'assets',tab:'journey'}", html)
+        self.assertIn("{label:'Security Review',mark:'S',view:'assets',tab:'findings'}", html)
+
+    def test_plugin_dossier_exposes_version_archive_and_marks_current_only_totals(self) -> None:
+        html = view.HTML
+        self.assertIn('function versionHistoryHtml(d)', html)
+        self.assertIn('Archive evidence only · excluded from current totals', html)
+        self.assertIn('Included in dashboard/security totals', html)
+        self.assertIn('Current security results come only from the active version', html)
+
+    def test_openshift_refinement_moves_toni_to_rail_and_uses_icon_navigation(self) -> None:
+        html = view.HTML
+        self.assertIn('id="toniRail"', html)
+        self.assertEqual(1, html.count('id="toniMessage"'))
+        self.assertNotIn('id="perspectiveNavNote"', html)
+        self.assertIn('function navIconSvg(label)', html)
+        self.assertIn('class=nav-icon', html)
+        self.assertIn('class=nav-section-toggle', html)
+        self.assertIn('.nav-section.collapsed .nav-section-items{display:none}', html)
+
+    def test_plugin_selection_is_a_searchable_header_popover(self) -> None:
+        html = view.HTML
+        header = html.split("</header>", 1)[0]
+        self.assertIn('id="pluginPickerButton"', header)
+        self.assertIn('id="headerPluginSelect" class="sr-only"', header)
+        self.assertIn('id="pluginPickerDrawer"', html)
+        self.assertIn('id="pluginPickerSearch"', html)
+        self.assertIn('placeholder="Type a plugin name…"', html)
+        self.assertIn('header .plugin-picker-button{margin-left:auto!important}', html)
+        self.assertIn('function renderPluginPicker()', html)
+
+    def test_rule_workspace_can_collapse_library_and_keeps_editor_dark(self) -> None:
+        html = view.HTML
+        self.assertIn('id="ruleBrowserShell"', html)
+        self.assertIn('id="ruleLibraryToggle"', html)
+        self.assertIn("omega.deltascope.rule-library-collapsed.v1", html)
+        self.assertIn('#ruleBrowserShell.rule-library-collapsed{grid-template-columns:42px minmax(0,1fr)!important}', html)
+        self.assertIn('grid-template-areas:"intel toolbar" "intel editor" "intel status" "intel diagnostics" "intel actions"', html)
+        self.assertIn('#workbench-rules .rule-smart-editor{background:#080c10!important', html)
+        self.assertIn('#workbench-rules .rule-code-wrap pre{background:#080c10!important', html)
+        self.assertIn('#workbench-rules>#ruleCatalogCards{display:none!important}', html)
+        self.assertIn('#workbench-rules #ruleWorkspaceKicker,#workbench-rules #ruleWorkspaceMeta{display:none!important}', html)
+
+    def test_documentation_renders_markdown_instead_of_raw_source(self) -> None:
+        html = view.HTML
+        self.assertIn('id="docContent" class="markdown-body"', html)
+        self.assertIn('function renderMarkdown(source)', html)
+        self.assertIn('function wireMarkdownLinks(root)', html)
+        self.assertIn("$('docContent').innerHTML=renderMarkdown", html)
+        self.assertNotIn("<pre id=\"docContent\">", html)
+        self.assertIn('.markdown-body pre{', html)
+        self.assertIn('.markdown-body table{', html)
+
+    def test_hamburger_keeps_a_dark_collapsed_icon_rail(self) -> None:
+        html = view.HTML
+        self.assertIn('.nav-collapsed .app-shell{grid-template-columns:52px minmax(0,1fr)!important}', html)
+        self.assertIn('.nav-collapsed .workbench-nav{display:flex!important;width:52px!important', html)
+        self.assertIn('.nav-collapsed .workbench-nav button[data-perspective-route]>span:not(.nav-icon){display:none!important}', html)
+
+    def test_omega_mark_is_unboxed(self) -> None:
+        html = view.HTML
+        self.assertIn('.omega-mark{border:0!important;background:transparent!important;box-shadow:none!important', html)
+
+    def test_editable_rule_editor_has_explicit_undo_redo_history(self) -> None:
+        html = view.HTML
+        self.assertIn('function ruleEditorUndo()', html)
+        self.assertIn('function ruleEditorRedo()', html)
+        self.assertIn("if(mod&&key==='z')", html)
+        self.assertIn("if(mod&&key==='y')", html)
+        self.assertIn('Ctrl/Cmd+Z undo', html)
+        self.assertIn("el.addEventListener('beforeinput',()=>captureRuleEditorHistory())", html)
+
+    def test_visual_rule_workspace_prioritizes_canvas_size(self) -> None:
+        html = view.HTML
+        self.assertIn('#workbench-rules .visual-main{grid-template-columns:minmax(0,1fr) 320px!important', html)
+        self.assertIn('#workbench-rules .visual-canvas{grid-column:1;grid-row:2;height:100%!important;min-height:620px!important}', html)
+        self.assertIn('#workbench-rules .visual-properties{grid-column:2;grid-row:2;', html)
+        self.assertIn('id="ruleVisualFocus"', html)
+        self.assertIn('function toggleVisualFocus()', html)
+        self.assertIn('#ruleBrowserShell.visual-focus .visual-palette,#ruleBrowserShell.visual-focus .visual-properties{display:none!important}', html)
+
     def test_default_developer_view_mode_is_online_v2_without_full_release_download(self) -> None:
         fake = mock.Mock()
         fake.evidence_path = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
@@ -897,13 +1133,27 @@ class SecurityDeveloperViewTests(unittest.TestCase):
         serve_mock.assert_called_once()
         fetch_mock.assert_not_called()
 
-    def test_developer_view_uses_research_workbench_with_advanced_raw_evidence(self) -> None:
-        self.assertIn("SECURITY RESEARCH WORKBENCH", view.HTML)
-        self.assertIn("Research queue", view.HTML)
+    def test_developer_view_uses_object_centric_workbench_with_contextual_navigation(self) -> None:
+        self.assertIn("Search plugins, hashes, endpoints, authors, rules, CVEs", view.HTML)
+        self.assertIn("Plugin Developer", view.HTML)
+        self.assertIn("Investigator", view.HTML)
+        self.assertIn("Security Researcher", view.HTML)
+        self.assertIn("Operations", view.HTML)
+        self.assertIn('id="perspectiveSelect"', view.HTML)
+        self.assertIn('data-subject-tab="journey"', view.HTML)
+        self.assertIn("Why this severity?", view.HTML)
+        self.assertIn("What evidence is missing?", view.HTML)
         self.assertIn("Journey", view.HTML)
         self.assertIn("Plugin journey", view.HTML)
         self.assertIn("/api/workbench/journey", view.HTML)
-        self.assertIn("Triage", view.HTML)
+        self.assertIn("Explain this step", view.HTML)
+        self.assertIn("Build .omega/plugin.yaml from what Omega actually observed", view.HTML)
+        self.assertIn("/api/developer-profile/render", view.HTML)
+        self.assertIn("/api/developer-profile/validate", MODULE_PATH.read_text(encoding="utf-8"))
+        self.assertIn("/api/workbench/search", view.HTML)
+        self.assertIn("/api/workbench/compare", view.HTML)
+        self.assertIn("Version-to-version security comparison", view.HTML)
+        self.assertIn("Relationship graph", view.HTML)
         self.assertIn("Malware", view.HTML)
         self.assertIn("Code & native", view.HTML)
         self.assertIn("Supply chain", view.HTML)

@@ -177,7 +177,18 @@ See [`docs/DEEP-SCAN-WORKFLOW.md`](docs/DEEP-SCAN-WORKFLOW.md).
 
 ## DeltaScope
 
-DeltaScope is the human-facing security workbench for developers and researchers.
+DeltaScope is the human-facing security workbench for plugin developers, investigators, security researchers and operators. Its OpenShift-style perspective switch changes the workbench navigation and primary workflows while every perspective continues to consume the same read-only Security Evidence v2 state.
+
+The four perspectives are:
+
+- **Plugin Developer** — understand what Omega found on your plugin, review changes, improve source/build context, and build a validated `.omega/plugin.yaml` explanation from current observations;
+- **Investigator** — follow one plugin or case through its evidence-backed Journey, findings, rules and relationships;
+- **Security Researcher** — study ecosystem-wide patterns, relationships, Stigma-1 rules, comparisons and raw retained evidence;
+- **Operations** — inspect pipeline health, coverage/queues, GitHub Actions and intentional production authority gates without turning DeltaScope into a control plane.
+
+Journey nodes explain the exact selected plugin stage inline before offering raw technical details. The Plugin Developer profile builder uses the same bounded profile validator as SigmaScope and only produces browser-copy/download output; developer declarations never suppress findings or alter severity.
+
+See [`docs/DELTASCOPE-PERSPECTIVES.md`](docs/DELTASCOPE-PERSPECTIVES.md).
 
 It can:
 
@@ -405,6 +416,7 @@ Read:
 - [`docs/ARCHITECTURE-SECURITY-MODEL.md`](docs/ARCHITECTURE-SECURITY-MODEL.md)
 - [`docs/OBSERVATION-PROJECTION-CONTRACT.md`](docs/OBSERVATION-PROJECTION-CONTRACT.md)
 - [`docs/DEEP-SCAN-WORKFLOW.md`](docs/DEEP-SCAN-WORKFLOW.md)
+- [`BRANCH_HANDOVER.md`](BRANCH_HANDOVER.md)
 
 ---
 
