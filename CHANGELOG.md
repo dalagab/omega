@@ -1,3 +1,42 @@
+## 2.15.0 — DeltaScope 4.13.2 / inspectable SRL collections
+
+- Make Stigma-1 `requires` collections first-class inspectable objects instead of dead identifiers.
+- Clicking a collection such as `staticPatternMatches` from rule context/flow/compiled semantics opens its producer, backing dataset, scope, observation schema, typed fields, completeness, and notes.
+- When a plugin is selected, the collection inspector shows a bounded preview of the retained rows from the current plugin version only. Archive versions remain available elsewhere but do not become current rule inputs.
+- System Rules allow direct single-click inspection of collection tokens in the read-only YAML editor; editable My Rules use double-click so ordinary cursor/edit behavior is preserved.
+- Add a read-only `/api/rule-lab/collection` projection with `mutationAuthority=none` and `policyInput=false`.
+
+## 2.15.0 — DeltaScope 4.12.0 / coherent online snapshots and current-version security totals
+
+- Recover from raw GitHub Evidence-v2 branch races by pinning the retry to the branch's immutable Git commit when a variant/index SHA-256 mismatch is observed; SHA verification remains mandatory and the mutable branch is still used for update discovery.
+- Reload the lightweight Evidence-v2 index graph on race recovery even when the published root token is unchanged, covering CDN/edge propagation where adjacent files briefly disagree.
+- Add a **Plugin versions** block to the selected plugin dossier: the current version is explicit, older retained scans are shown as archive evidence, and archive rows are clearly excluded from current security totals.
+- Make SQLite headline finding/high/critical totals join through `plugin_security_current`, so old risky versions remain investigable without keeping historical HIGH/CRITICAL counts alive on Dashboard/Reports. Online Evidence-v2 totals already derive from `currentVariants` and now expose the same current-only contract explicitly.
+- Preserve old scans/superseded snapshots for comparison and investigation; this changes DeltaScope projection semantics only and does not delete archive evidence or modify SigmaScope findings.
+
+## 2.15.0 — DeltaScope 4.11.5 / startup null-safety
+
+- Fix DeltaScope startup after the OpenShift shell cleanup: the removed Definitions header pill is now an optional presentation target instead of an unconditional DOM write.
+- Add a regression guard so removing optional shell widgets cannot reintroduce this `Cannot set properties of null` failure.
+
+## 2.15.0 — DeltaScope 4.11.5 / OpenShift rail and rule-authoring workspace refinement
+
+- Move **TONI** into the lower-left navigation rail, replacing the repetitive production read-only note. TONI remains a deterministic/read-only guide and retains Coverage, Queue, and Selected shortcuts.
+- Replace letter badges in perspective navigation with inline SVG icons and render navigation groups as OpenShift-style collapsible sections.
+- Replace the permanently wide header plugin dropdown with a compact **plugin picker icon** at the right side of the global header. The picker opens a temporary searchable plugin list and preserves selected-plugin context.
+- Keep the notification bell and nine-dot Omega application switcher at the far right of the global header.
+- Simplify Rules chrome by removing the large rule-summary/authority boxes and compacting the selected-rule header.
+- Add a collapsible Rule Library. When collapsed, Context intelligence, Outline/symbols, and Rule flow move into a vertical companion pane to the left of the editor instead of remaining below it.
+- Restore the Stigma-1 YAML authoring surface to a dark editor inside the otherwise light Carbon/OpenShift workbench.
+- Presentation/local-authoring ergonomics only: no scanner, Evidence-v2, Definitions, finding severity, queue, Stigma-1 production activation, or Rift behavior changes.
+
+## 2.15.0 — DeltaScope 4.11.3 / Omega application switcher
+
+- Add an OpenShift-style nine-dot **Omega applications** switcher to the global header beside notifications.
+- Add launch tiles for **Support & feedback** (GitHub Issues), the **dalagab/omega GitHub repository**, and **Add rule**.
+- Add rule switches into the Security Researcher perspective, opens the Stigma-1 Rules workspace, and creates a new local rule draft; production promotion remains GitHub-reviewed and has no direct activation authority.
+- Keep the application switcher mutually exclusive with the notification drawer and close it when clicking outside the panel.
+
 ## 2.15.0 — DeltaScope 4.11.2 / shell alignment
 
 - Remove the unused 16px strip between the 48px global header and the application shell by aligning the fixed viewport grid to the actual 48px header height.
@@ -526,3 +565,11 @@
 ## DeltaScope antivirus/YARA visibility hotfix
 
 DeltaScope now exposes a permanent top-level **Antivirus & YARA** panel and moves per-plugin ClamAV/YARA results directly below the selected plugin overview. Clean/no-match results are shown explicitly; scans without secondary-security evidence are labelled as unrecorded rather than implied clean. This is developer-view-only and does not alter SigmaScope analysis or publication semantics.
+
+## DeltaScope UI documentation/editor maintenance
+
+- Render the platform manual as Markdown in the Documentation workspace.
+- Keep a dark icon rail when global navigation is collapsed.
+- Remove the tile border/background from the Omega masthead mark.
+- Add explicit undo/redo history for editable local rule YAML.
+- Expand Visual rule authoring with side properties and a Focus canvas mode.

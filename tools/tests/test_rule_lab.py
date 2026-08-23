@@ -292,6 +292,8 @@ selectors:
         self.assertTrue(ref["editor"]["liveLint"])
         self.assertTrue(ref["editor"]["contextAwareCompletion"])
         self.assertIn("staticPatternMatches", ref["editor"]["typedCollections"])
+        self.assertEqual("dependencyIntelligence.staticPatternMatches", ref["collectionDetails"]["staticPatternMatches"]["source"])
+        self.assertIn("pattern", ref["collectionDetails"]["staticPatternMatches"]["fields"])
         self.assertEqual("none", ref["editor"]["mutationAuthority"])
 
     def test_http_rule_lab_endpoints_are_local_data_only(self) -> None:
@@ -305,6 +307,14 @@ selectors:
                 ref = json.load(response)
             self.assertFalse(ref["productionWriteBack"])
             self.assertTrue(ref["editor"]["liveLint"])
+
+            with urllib.request.urlopen(base + "/api/rule-lab/collection?name=staticPatternMatches&variant_id=1&limit=10", timeout=5) as response:
+                collection = json.load(response)
+            self.assertEqual("omega.deltascope.rule-collection-detail.v1", collection["schema"])
+            self.assertEqual("dependencyIntelligence.staticPatternMatches", collection["source"])
+            self.assertEqual("https://", collection["rows"][0]["pattern"])
+            self.assertTrue(collection["currentVersionOnly"])
+            self.assertFalse(collection["policyInput"])
 
             intelligence_request = urllib.request.Request(
                 base + "/api/rule-lab/intelligence",

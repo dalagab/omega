@@ -370,7 +370,7 @@ The security-service sources represented by this snapshot include:
 | Area | Snapshot state |
 | --- | --- |
 | SigmaScope | `2.15.0` |
-| DeltaScope | `4.7.0` |
+| DeltaScope | `4.12.0` |
 | Stigma-1 / SRL | Compiler/evaluator, replay, Definition Packs and authoring implemented |
 | Definition Packs | 6 packs / 55 rules / 15 fixtures |
 | Production SRL write-back | **Disabled / separately gated** |

@@ -248,6 +248,29 @@ class SecurityDeveloperViewTests(unittest.TestCase):
             finally:
                 inspector.close()
 
+    def test_sqlite_rule_collection_preview_uses_current_compact_observations(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            evidence = Path(td) / "evidence.sqlite"
+            make_evidence(evidence)
+            report = {
+                "dependencyIntelligence": {
+                    "staticPatternMatchContractVersion": 1,
+                    "staticPatternMatches": [
+                        {"origin": "artifact", "pattern": "HttpClient", "evidenceLabel": "metadata:FixturePlugin.dll", "evidence": ["FixturePlugin.dll"]}
+                    ],
+                }
+            }
+            with closing(sqlite3.connect(evidence)) as db:
+                db.execute("UPDATE plugin_security_current SET report_json=? WHERE variant_id=1", (json.dumps(report),))
+                db.commit()
+            inspector = view.SecurityInspector(evidence)
+            try:
+                rows = inspector.workbench_observation_rows(1, per_collection_limit=10)
+                self.assertEqual("HttpClient", rows["staticPatternMatches"][0]["pattern"])
+                self.assertEqual("Newtonsoft.Json", rows["dependencies"][0]["name"])
+            finally:
+                inspector.close()
+
     def test_current_projection_can_include_derived_findings_without_mutating_scan_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             evidence = Path(td) / "evidence.sqlite"

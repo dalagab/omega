@@ -21,11 +21,12 @@ import zipfile
 import yaml
 
 try:
-    from . import observation_projection, stigma1 as srl, rule_candidate
+    from . import observation_projection, stigma1 as srl, rule_candidate, rule_author_reference
 except ImportError:  # direct script/import from tools/security
     import observation_projection  # type: ignore
     import stigma1 as srl  # type: ignore
     import rule_candidate  # type: ignore
+    import rule_author_reference  # type: ignore
 
 RULE_LAB_SCHEMA = "omega.deltascope.rule-lab.v1"
 COMPILE_SCHEMA = "omega.deltascope.rule-lab.compile.v1"
@@ -34,6 +35,7 @@ REPLAY_SCHEMA = "omega.deltascope.rule-lab.replay.v1"
 DIFF_SCHEMA = "omega.deltascope.rule-lab.finding-diff.v1"
 EDITOR_INTELLIGENCE_SCHEMA = "omega.deltascope.rule-editor-intelligence.v1"
 FORMAT_SCHEMA = "omega.deltascope.rule-editor-format.v1"
+COLLECTION_DETAIL_SCHEMA = "omega.deltascope.rule-collection-detail.v1"
 EXPORT_SCHEMA = "omega.sigmascope.rule-candidate-bundle.v1"
 MAX_REPLAY_VARIANTS = 1000
 MAX_FIXTURE_BYTES = 1024 * 1024
@@ -1002,6 +1004,66 @@ def new_rule_yaml(rule_id: str = "local.new-rule", *, kind: str = "observation")
     return yaml.safe_dump(raw, sort_keys=False, allow_unicode=True, default_flow_style=False, width=120).strip() + "\n"
 
 
+def collection_detail(inspector: Any, name: str, *, variant_id: int = 0, limit: int = 100) -> dict[str, Any]:
+    """Describe one SRL collection and optionally preview retained rows for a plugin.
+
+    This is a read-only authoring aid. It never changes retained evidence, rule state,
+    or production policy. Rows are bounded and always come from the currently selected
+    plugin version when a variant is supplied.
+    """
+    collection = str(name or "").strip()
+    typed = srl.FIELD_REGISTRY
+    if collection not in typed:
+        raise ValueError(f"unknown SRL collection {collection!r}")
+    max_rows = max(1, min(int(limit or 100), 250))
+    author_spec = rule_author_reference.COLLECTIONS.get(collection) or {}
+    projection_spec = observation_projection.COLLECTIONS.get(collection) or {}
+    rows: list[dict[str, Any]] = []
+    identity: dict[str, Any] = {}
+    completeness = "not-selected"
+    if int(variant_id or 0) > 0:
+        detail = inspector.plugin_detail(int(variant_id))
+        identity = dict(detail.get("identity") or {}) if isinstance(detail, Mapping) else {}
+        contract = detail.get("observations") if isinstance(detail, Mapping) and isinstance(detail.get("observations"), Mapping) else {}
+        descriptors = contract.get("collections") if isinstance(contract.get("collections"), Mapping) else {}
+        descriptor = descriptors.get(collection) if isinstance(descriptors.get(collection), Mapping) else {}
+        completeness = str(descriptor.get("completeness") or "")
+        if hasattr(inspector, "workbench_observation_rows"):
+            preview = inspector.workbench_observation_rows(int(variant_id), per_collection_limit=max_rows)
+            rows = [dict(row) for row in preview.get(collection) or [] if isinstance(row, Mapping)]
+        elif hasattr(inspector, "plugin_dataset"):
+            dataset = str(projection_spec.get("backingDataset") or collection)
+            try:
+                raw_rows = inspector.plugin_dataset(int(variant_id), dataset)
+            except (KeyError, ValueError):
+                raw_rows = []
+            rows = [dict(row) for row in raw_rows[:max_rows] if isinstance(row, Mapping)]
+        if not completeness:
+            completeness = "retained" if rows else "unknown"
+    return {
+        "schema": COLLECTION_DETAIL_SCHEMA,
+        "readOnly": True,
+        "mutationAuthority": "none",
+        "policyInput": False,
+        "collection": collection,
+        "dataset": str(author_spec.get("dataset") or projection_spec.get("backingDataset") or collection),
+        "source": str(author_spec.get("source") or ""),
+        "scope": str(author_spec.get("scope") or ""),
+        "notes": str(author_spec.get("notes") or ""),
+        "observationSchema": str(projection_spec.get("schema") or ""),
+        "srlEligible": bool(projection_spec.get("srlEligible")),
+        "fields": dict(typed.get(collection) or {}),
+        "variantId": int(variant_id or 0),
+        "identity": identity,
+        "completeness": completeness,
+        "rows": rows,
+        "previewCount": len(rows),
+        "previewLimit": max_rows,
+        "boundedPreview": True,
+        "currentVersionOnly": True,
+    }
+
+
 def reference() -> dict[str, Any]:
     return {
         "schema": RULE_LAB_SCHEMA,
@@ -1013,6 +1075,7 @@ def reference() -> dict[str, Any]:
         "srlCore": {"component": srl.STIGMA_NAME, "technicalName": srl.STIGMA_TECHNICAL_NAME, "compatibilityAlias": True, "graphSchema": srl.GRAPH_SCHEMA, "visualRoundTrip": True},
         "observationContractRevision": observation_projection.contract_revision(),
         "collections": observation_projection.build_schema_reference().get("collections") or [],
+        "collectionDetails": {name: dict(spec) for name, spec in rule_author_reference.COLLECTIONS.items() if name in srl.FIELD_REGISTRY},
         "exampleYaml": DEFAULT_EXAMPLE,
         "editor": {
             "schema": EDITOR_INTELLIGENCE_SCHEMA,

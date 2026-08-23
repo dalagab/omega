@@ -14,7 +14,9 @@ Validation checks schema, allowed collections/operators, output shape and other 
 
 ## 4. Explain and inspect
 
-Use the editor’s context intelligence, symbol outline and flow view to understand which collections/facts the rule consumes and what it emits.
+Use the editor’s context intelligence, symbol outline and flow view to understand which collections/facts the rule consumes and what it emits. Collection names such as `staticPatternMatches`, `networkEndpoints`, or `managedCallSites` are inspectable objects: open them to see the producer/backing dataset, typed fields, collection semantics and, when a plugin is selected, a bounded preview of the actual retained rows available to the rule.
+
+A collection row is an observation input, not a finding. The rule decides whether those rows satisfy a selector and whether a fact, finding, or analysis request should be emitted.
 
 ## 5. Dry-run a plugin
 
