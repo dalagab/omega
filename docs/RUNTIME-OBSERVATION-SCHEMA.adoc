@@ -3,43 +3,67 @@
 
 == Purpose
 
-Rift records what an exact plugin artifact *attempted or did while exercised* inside the
-sandbox. The schema is neutral evidence. It does not assign security severity, infer
-malware intent, or duplicate SigmaScope static capability analysis.
+Rift records what an exact plugin artifact *attempted or did while exercised* inside the sandbox. The schema is neutral evidence. It does not assign security severity, infer malware intent, or duplicate SigmaScope static capability analysis.
 
 A missing observation means only "not observed in this scenario".
 
-== Contract
+== Active contracts
 
-Current schema identifier:
+Managed runtime report:
 
-`rift.runtime-observation.v1`
+`rift.runtime-observation.v2`
 
-Top-level fields:
+Post-init exercise sub-contract:
 
-* `schema_version` — observation contract identifier.
-* `producer` / `producer_version` — Rift producer identity.
-* `ran_at` — UTC report time.
-* `execution` — supervisor-stamped provenance and containment state.
-* `plugin` — exact entry and lifecycle outcome.
-* `observations` — ordered runtime facts.
+`rift.exercise.v1`
+
+Trusted successful-run supervisor attestation:
+
+`rift.supervisor-attestation.v1`
+
+Early-termination/failure supervisor report:
+
+`rift.supervisor.v3`
+
+Machine-readable schemas live under `schemas/`.
+
+== Runtime report
+
+Top-level fields include:
+
+* `schema_version` — observation contract identifier;
+* `producer` / `producer_version` — Rift producer identity;
+* `ran_at` — UTC report time;
+* `execution` — frozen supervisor-stamped provenance as seen by the managed host;
+* `plugin` — exact entry and lifecycle outcome;
+* `exercise` — deterministic post-init profile, registration inventory, coverage and outcomes (`rift.exercise.v1`);
+* `observations` — ordered runtime facts; every observation carries a phase;
 * `summary` — count by observation kind only.
 
 There is deliberately no `severity` field.
 
-== Execution provenance
+== Provenance trust model
 
-For production Bubblewrap runs the trusted supervisor stamps:
+For production Bubblewrap runs, trusted values are placed in the allowlisted Rift environment by the outer supervisor. `SandboxHost` captures them before loading or invoking hostile plugin code and reuses that immutable snapshot when finalizing the managed report.
 
-* exact staged artifact-tree SHA-256;
+The managed `execution` block includes, where available:
+
+* exact staged artifact-tree SHA-256 and canonical hash algorithm;
 * entry DLL SHA-256;
 * executor (`bubblewrap-v2`);
 * network mode (`isolated`);
 * seccomp state (`enforced`);
-* cgroup memory/task/CPU limits.
+* boundary profile and cgroup limits;
+* exact trusted Dalamud contract track/hash/tree identity;
+* exercise profile and requested framework ticks.
 
-This provenance travels with the runtime report so SRL can correlate evidence to the exact
-artifact bytes and execution boundary.
+This freeze prevents ordinary plugin code from changing `RIFT_*` environment variables and thereby rewriting provenance later in the same run.
+
+However, the hostile plugin and managed instrumentation still execute in one CLR process. The managed report is therefore best-effort in-process evidence, not a cryptographic integrity boundary.
+
+For a successful managed run, the outer supervisor emits `rift.supervisor-attestation.v1` *after* hostile execution from outside the hostile cgroup/process. It independently records the trusted artifact/contract/boundary/exercise provenance and SHA-256 of the exact managed runtime-report bytes. `tools/validate-rift-attestation.py` requires the two sources to correlate.
+
+If the hostile process is terminated before a runtime report exists, `rift.supervisor.v3` remains the authoritative failure result.
 
 == Observation kinds
 
@@ -47,13 +71,69 @@ artifact bytes and execution boundary.
 `service_access`:: Plugin code invoked an instrumented Dalamud-facing member.
 `lifecycle`:: Constructor, async load, deterministic scenario, or disposal progress.
 `log`:: Plugin output through `IPluginLog`.
-`assembly_load`:: Runtime managed/native dependency resolution or load attempt.
+`assembly_load`:: Runtime managed dependency resolution or load attempt.
+`native_library`:: Runtime unmanaged-library resolution or load attempt.
+`native_game_state`:: Explicit synthetic FFXIVClientStructs/native-state model activity.
+`registration`:: Event, command, deferred framework, or IPC behavior registration/unregistration.
+`exercise`:: Bounded synthetic trigger start/completion/throw/timeout evidence.
+`signature_scan`:: Inert signature/address request observation.
+`hook`:: Synthetic inert hook creation/state lifecycle; never a real native patch.
 `exception`:: Plugin initialization/disposal threw.
 `timeout`:: A managed lifecycle phase exceeded its bounded timeout.
-`boundary`:: Rift recorded an execution-boundary mode/invariant such as internal-service fail-fast.
+`boundary`:: Rift recorded an execution-boundary mode/invariant or an evidence-collection boundary such as observation truncation.
+
+== Per-observation attribution
+
+V2 requires a non-empty `phase` on every observation. Typical values are `bootstrap`, `startup`, `exercise.*`, `dispose`, `reporting`, or `unknown` when plugin-owned execution does not inherit Rift context.
+
+Exercise-time observations may additionally carry:
+
+* `activity_id` — stable per-run activity identity;
+* `parent_activity_id` — causal parent when nested activity exists;
+* `registration_id` — registration being deliberately exercised;
+* `invocation` — invocation ordinal for that registration/activity.
+
+The causal fields are intentionally additive to `phase`: phase describes the broad lifecycle stage, while activity/registration identity is the primary input for a DeltaScope callback flow graph.
+
+== Exercise summary
+
+The top-level `exercise` object records:
+
+* profile and status;
+* requested synthetic framework ticks;
+* registrations discovered/exercised/unexercised;
+* counts by kind;
+* every retained registration with stable id, kind, target, status, reason and invocation count;
+* `due_tick` where a framework-scheduled callback has a synthetic due tick.
+
+The validator requires discovered registration counts to match the registration list and requires `exercised + unexercised == discovered`. When execution provenance carries profile/tick settings, they must equal the exercise summary.
+
+== Lifecycle outcomes
+
+Lifecycle outcomes are independent. In particular:
+
+* `load_outcome=ok` means startup completed;
+* exercise may separately be `completed`, `partial`, or disabled;
+* `dispose_outcome=ok` is set only after disposal actually completes;
+* when disposal was never attempted, the report uses `dispose_outcome=not_attempted` rather than a false success;
+* if a post-init callback timed out and may still be executing, Rift deliberately does not race plugin disposal against it and uses `dispose_outcome=not_attempted_exercise_timeout`.
+
+A callback throw/timeout is dynamic evidence. It does not retroactively change successful startup into failed startup.
+
+== Bounded evidence collection
+
+Rift retains at most 25,000 managed observations in one run. Oversized message/context/parameter values are truncated. If additional observations are dropped, the finalized snapshot adds a neutral reporting-phase `boundary` observation with `operation=observation_budget` and `outcome=truncated`.
+
+The bounded queue improves report survivability under noisy/adversarial logging. It does not replace cgroup memory limits.
+
+== Coverage projection
+
+`tools/summarize-rift-coverage.py` classifies plugin behavior from structured observation kind/component/operation fields. It deliberately does not scan the complete report text for keywords.
+
+This matters because trusted metadata such as `network_boundary=isolated` must not falsely claim that the plugin touched networking. A networking coverage category is emitted only when behavior-bearing observations contain concrete network operations/components.
 
 == Ownership boundary
 
-SigmaScope owns static capabilities and code-derived facts. YARA/AV/OSV and similar tools
-own specialist signals. Rift owns dynamic observations. SRL/downstream rules correlate
-those independent evidence sources and Omega explains the result to users.
+SigmaScope owns static capabilities and code-derived facts. YARA/AV/OSV and similar tools own specialist signals. Rift owns dynamic observations. SRL/downstream rules correlate those independent evidence sources and Omega explains the result to users.
+
+DeltaScope is developer-only visualization/workbench functionality and is not part of the production scan decision pipeline.

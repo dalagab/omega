@@ -36,8 +36,8 @@ require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "PluginS
 require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "dalamud.internal_service_locator", "fail-fast compatibility state recorded")
 
 # Runtime-only report model.
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v1", "runtime observation schema version")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.9"', "producer version 0.3.9")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v2", "runtime observation schema version")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.4.0"', "producer version 0.4.0")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "boundary_profile", "boundary profile provenance")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "tmpfs_tmp_bytes", "tmpfs provenance")
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "RuntimeObservationKind", "neutral observation model")
@@ -133,9 +133,13 @@ require(Path("schemas/omega-player-environment-support-v1.schema.json"), "omega.
 require(Path(".github/workflows/rift-scan-omega.yml"), "Build player-environment compatibility evidence", "published Omega compatibility evidence step")
 
 # Machine-readable contracts.
-require(Path("schemas/rift-runtime-observation-v1.schema.json"), "rift.runtime-observation.v1", "runtime JSON schema")
+require(Path("schemas/rift-runtime-observation-v2.schema.json"), "rift.runtime-observation.v2", "runtime JSON schema")
+require(Path("schemas/rift-runtime-observation-v2.schema.json"), '"exercise"', "runtime v2 schema requires exercise payload")
+require(Path("schemas/rift-runtime-observation-v2.schema.json"), '"phase"', "runtime v2 schema carries phase attribution")
 require(Path("schemas/rift-supervisor-v3.schema.json"), "rift.supervisor.v3", "supervisor JSON schema")
-require(Path("docs/RUNTIME-OBSERVATION-SCHEMA.adoc"), "rift.runtime-observation.v1", "runtime schema documentation")
+require(Path("schemas/rift-supervisor-attestation-v1.schema.json"), "rift.supervisor-attestation.v1", "trusted supervisor success attestation JSON schema")
+require(Path("tools/validate-rift-attestation.py"), "runtime_report_sha256", "trusted supervisor success attestation validator")
+require(Path("docs/RUNTIME-OBSERVATION-SCHEMA.adoc"), "rift.runtime-observation.v2", "runtime schema documentation")
 
 
 require(Path("tools/hash-artifact-tree.py"), 'sha256(path-nul-file-sha-lf-v1)', "canonical artifact tree hash tool")
@@ -235,7 +239,7 @@ require(Path("tests/fixtures/RiftGameDataSemantics/Plugin.cs"), "RIFT_GAME_DATA 
 require(Path("tests/fixtures/RiftGameDataSemantics/Plugin.cs"), "Lumina.Excel.RawRow", "self-contained core Lumina constrained row fixture")
 forbid(Path("tests/fixtures/RiftGameDataSemantics/Plugin.cs"), "Lumina.Excel.Sheets", "game-data fixture must not require generated sheet assembly")
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "ConstrainedExcelSheet_IsEmptyEnumerableAndDoesNotLoadGameFiles", "constrained game-data regression test")
-require(Path("tools/summarize-rift-coverage.py"), '("idatamanager","game-data")', "coverage report recognizes game-data access")
+require(Path("tools/summarize-rift-coverage.py"), '(("idatamanager","excelsheet","gamedata"),"game-data")', "coverage report recognizes game-data access structurally")
 
 
 
@@ -266,6 +270,59 @@ require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"),
 require(Path("tests/fixtures/RiftNativeGameStateSemantics/Plugin.cs"), "GameObjectManager.Instance", "native-state fixture exercises game-object singleton")
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "FfxivClientStructs_GameObjectManager_IsSyntheticEmptyAndHasNoLocalPlayerState", "empty game-object manager regression test")
 require(Path("InterdimensionalRift/Runtime/SyntheticNativeGameStateRuntime.cs"), '"bounded-empty-v2"', "expanded native-state model is versioned")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), '"0.3.9"', "runtime report producer bumped for no-player native-state semantics")
+
+
+# Pass 3.4.0: deterministic bounded post-init exercise and registration coverage.
+require(Path("InterdimensionalRift/Runtime/PostInitExerciseEngine.cs"), 'SafeProfile = "post-init-safe-v1"', "post-init safe exercise profile")
+require(Path("InterdimensionalRift/Runtime/PostInitExerciseEngine.cs"), "MaxTotalInvocations", "post-init exercise has a strict callback budget")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "ui_render_callback_requires_rendering_profile", "render callbacks remain unexercised in safe profile")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "deferred_to_synthetic_framework_tick", "framework callbacks are retained for synthetic tick exercise")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "InvokeCommandManager", "command registrations are captured")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "GetOrCreateIpcEndpoint", "IPC endpoints retain channel identity")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "SnapshotExerciseCandidates", "active registrations can be inventoried for exercise")
+require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "Registration", "registration observation kind")
+require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "Exercise", "exercise observation kind")
+require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "phase", "runtime observations carry phase attribution")
+require(Path("InterdimensionalRift/Instrumentation/AccessTracker.cs"), 'Phase = phase.Value ?? "unknown"', "phase attribution never disappears on plugin-owned threads")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.exercise.v1", "exercise summary schema")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.4.0"', "post-init exercise producer version")
+require(Path("InterdimensionalRift/Program.cs"), "--exercise-profile", "CLI exposes exercise profile")
+require(Path("InterdimensionalRift/Program.cs"), "--framework-ticks", "CLI exposes bounded framework ticks")
+require(Path("tests/fixtures/RiftPostInitExerciseSemantics/Plugin.cs"), "RIFT_EXERCISE deferred framework callback", "post-init exercise fixture deferred callback")
+require(Path("tests/fixtures/RiftPostInitExerciseSemantics/Plugin.cs"), "DRAW SHOULD NOT RUN IN SAFE PROFILE", "safe profile render exclusion fixture")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "PostInitSafeProfile_ExercisesBoundedCallbacksAndInventoriesRenderOnlyWork", "post-init exercise runtime regression")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "DisabledExerciseProfile_PreservesStartupOnlyBehavior", "exercise-disable regression")
+require(Path("tools/summarize-rift-coverage.py"), "observed_exercise_operations", "coverage projection includes exercised callbacks")
+require(Path("tools/summarize-rift-coverage.py"), "observed_registrations", "coverage projection includes registrations")
+require(Path("tools/run-rift-bwrap.sh"), "--exercise-profile", "supervisor exposes exercise profile")
+require(Path("tools/run-rift-bwrap.sh"), "RIFT_EXERCISE_PROFILE", "supervisor stamps exercise profile provenance")
+require(Path("tools/run-rift-bwrap.sh"), "RIFT_FRAMEWORK_TICKS", "supervisor stamps framework tick provenance")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "exercise_profile", "managed execution provenance records exercise profile")
+require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "activity_id", "exercise observations carry causal activity identity")
+require(Path("InterdimensionalRift/Instrumentation/AccessTracker.cs"), "MaxObservations", "runtime observation collection is bounded")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "DueTick", "framework callbacks preserve synthetic due tick")
+require(Path("tests/fixtures/RiftPostInitExerciseSemantics/Plugin.cs"), "DELAYED TICK10 SHOULD NOT RUN", "delayed framework callback horizon regression fixture")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "PluginCannotRewriteFrozenSupervisorProvenance", "managed provenance freeze regression")
+require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "not_attempted_exercise_timeout", "timed-out callback cannot race plugin disposal")
+require(Path("tools/validate-rift-report.py"), "exercise registration count mismatch", "runtime validator enforces exercise count consistency")
+require(Path(".github/workflows/rift-scan-omega.yml"), "validate-rift-attestation.py", "Omega validates trusted supervisor attestation")
+require(Path(".github/workflows/rift-scan-artisan.yml"), "validate-rift-attestation.py", "Artisan validates trusted supervisor attestation")
+require(Path("tools/test-rift-evidence-tools.py"), "network_boundary", "evidence tooling regression excludes boundary network metadata")
+require(Path("tools/test-rift-evidence-tools.py"), "runtime report hash does not match", "evidence tooling regression detects report tampering")
+require(Path("tools/validate-rift-attestation.py"), "artifact_tree_hash_algorithm", "trusted attestation correlates canonical artifact hash algorithm")
+require(Path("tools/validate-rift-attestation.py"), "tmpfs_tmp_bytes", "trusted attestation correlates bounded tmpfs provenance")
+require(Path("tools/run-rift-bwrap.sh"), '"wall_timeout_seconds": $wall_timeout', "trusted success attestation records wall timeout")
+require(Path(".github/workflows/rift-scan-omega.yml"), "test-rift-evidence-tools.py", "Omega executes evidence tooling self-test")
+require(Path(".github/workflows/rift-scan-artisan.yml"), "test-rift-evidence-tools.py", "Artisan executes evidence tooling self-test")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "framework_ticks", "managed execution provenance records framework tick count")
+for workflow in (
+    ".github/workflows/rift-alpha.yml",
+    ".github/workflows/rift-canary.yml",
+    ".github/workflows/rift-containment-stress.yml",
+    ".github/workflows/rift-scan-artisan.yml",
+    ".github/workflows/rift-scan-omega.yml",
+):
+    require(Path(workflow), "--exercise-profile post-init-safe-v1", f"{workflow} opts into post-init safe exercise")
+    require(Path(workflow), "--framework-ticks 3", f"{workflow} pins deterministic framework tick count")
 
 print(f"Rift source-contract checks: {len(checks)}/{len(checks)} passed")

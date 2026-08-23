@@ -142,6 +142,7 @@ jobs:
         run: |
           python3 ./tools/check-rift-source-contract.py
           python3 ./tools/test-rift-artifact-tools.py
+          python3 ./tools/test-rift-evidence-tools.py
           dotnet test ./tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
             --configuration Release -p:HooksDir="$RIFT_HOOKS"
           dotnet publish ./InterdimensionalRift/InterdimensionalRift.csproj \
@@ -199,6 +200,8 @@ jobs:
             --runtime-dir "$RUNNER_TEMP/rift-runtime" \
             --contract-dir "$RIFT_HOOKS" \
             --contract-track release \
+            --exercise-profile post-init-safe-v1 \
+            --framework-ticks 3 \
             --plugin '${{ steps.stage.outputs.plugin }}' \
             --artifact-dir '${{ steps.stage.outputs.artifact }}' \
             --seccomp-policy "$RIFT_SECCOMP" \
@@ -226,7 +229,7 @@ jobs:
           import json,sys
           try:
               d=json.load(open(sys.argv[1]))
-              raise SystemExit(0 if d.get('schema_version')=='rift.runtime-observation.v1' else 1)
+              raise SystemExit(0 if d.get('schema_version')=='rift.runtime-observation.v2' else 1)
           except Exception:
               raise SystemExit(1)
           PY
@@ -259,13 +262,13 @@ jobs:
       - name: Validate scan evidence
         if: always() && steps.rift.outcome != 'skipped'
         run: |
-          python3 - "$RUNNER_TEMP/rift-artisan-results/rift-artisan.json" <<'PY'
-          import json,sys
-          d=json.load(open(sys.argv[1]))
-          if d.get('schema_version') not in {'rift.runtime-observation.v1','rift.supervisor.v3'}:
-              raise SystemExit(f"unexpected Rift schema: {d.get('schema_version')!r}")
-          print("Artisan Rift evidence: PASS", d.get('schema_version'))
-          PY
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-artisan-results"
+          report="$results/rift-artisan.json"
+          attestation="$results/rift-artisan.supervisor-attestation.json"
+          python3 ./tools/validate-rift-report.py "$report" --mode runtime-ok
+          test -s "$attestation"
+          python3 ./tools/validate-rift-attestation.py "$report" "$attestation"
 
       - name: Upload Artisan Rift evidence
         if: always()

@@ -16,6 +16,8 @@ Usage:
     --seccomp-policy <rift-policy.bpf> \
     --out <report.json> \
     [--init-timeout 10] \
+    [--exercise-profile post-init-safe-v1] \
+    [--framework-ticks 3] \
     [--wall-timeout 20] \
     [--memory-max 768M] \
     [--tasks-max 64] \
@@ -40,6 +42,8 @@ tmpfs_work_bytes=67108864
 boundary_profile=rift-linux-bwrap-v3
 contract_mode=real-dalamud-contract-failfast
 contract_track=unknown
+exercise_profile=post-init-safe-v1
+framework_ticks=3
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -51,6 +55,8 @@ while [[ $# -gt 0 ]]; do
     --seccomp-policy) seccomp_policy=${2:-}; shift 2 ;;
     --out) out=${2:-}; shift 2 ;;
     --init-timeout) init_timeout=${2:-}; shift 2 ;;
+    --exercise-profile) exercise_profile=${2:-}; shift 2 ;;
+    --framework-ticks) framework_ticks=${2:-}; shift 2 ;;
     --wall-timeout) wall_timeout=${2:-}; shift 2 ;;
     --memory-max) memory_max=${2:-}; shift 2 ;;
     --tasks-max) tasks_max=${2:-}; shift 2 ;;
@@ -67,6 +73,8 @@ done
 [[ -n "$seccomp_policy" && -s "$seccomp_policy" ]] || { echo "error: --seccomp-policy is required" >&2; exit 2; }
 [[ -n "$out" ]] || { echo "error: --out is required" >&2; exit 2; }
 [[ "$init_timeout" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "error: invalid --init-timeout" >&2; exit 2; }
+[[ "$exercise_profile" == "post-init-safe-v1" || "$exercise_profile" == "none" ]] || { echo "error: invalid --exercise-profile" >&2; exit 2; }
+[[ "$framework_ticks" =~ ^[0-9]+$ && "$framework_ticks" -le 32 ]] || { echo "error: invalid --framework-ticks" >&2; exit 2; }
 [[ "$wall_timeout" =~ ^[0-9]+$ && "$wall_timeout" -gt 0 ]] || { echo "error: invalid --wall-timeout" >&2; exit 2; }
 [[ "$memory_max" =~ ^[0-9]+([KMGTP])?$ ]] || { echo "error: invalid --memory-max" >&2; exit 2; }
 [[ "$tasks_max" =~ ^[0-9]+$ && "$tasks_max" -gt 0 ]] || { echo "error: invalid --tasks-max" >&2; exit 2; }
@@ -182,6 +190,8 @@ bwrap_args=(
   --setenv RIFT_TMPFS_WORK_BYTES "$tmpfs_work_bytes"
   --setenv RIFT_BOUNDARY_PROFILE "$boundary_profile"
   --setenv RIFT_CONTRACT_MODE "$contract_mode"
+  --setenv RIFT_EXERCISE_PROFILE "$exercise_profile"
+  --setenv RIFT_FRAMEWORK_TICKS "$framework_ticks"
   --chdir /work
 )
 
@@ -202,7 +212,7 @@ sudo systemd-run \
   --property=OOMPolicy=kill \
   /bin/bash "$scope_runner" "$timeout_marker" "$scope_status" "$wall_timeout" \
   /bin/bash "$launcher" "$seccomp_policy" "$(command -v bwrap)" "${bwrap_args[@]}" -- \
-  "$host_bin" "/input/$plugin_rel" --timeout "$init_timeout" --no-color \
+  "$host_bin" "/input/$plugin_rel" --timeout "$init_timeout" --exercise-profile "$exercise_profile" --framework-ticks "$framework_ticks" --no-color \
   >"$tmp_report" 2>"$tmp_stderr"
 rc=$?
 set -e
@@ -244,6 +254,8 @@ if [[ -e "$timeout_marker" ]]; then
     "exit_code": $rc,
     "signal": null,
     "wall_timeout_seconds": $wall_timeout,
+    "exercise_profile": "$exercise_profile",
+    "framework_ticks": $framework_ticks,
     "network": "isolated",
     "seccomp": "enforced",
     "systemd_result": "$systemd_result",
@@ -297,6 +309,8 @@ if [[ ! -s "$tmp_report" ]]; then
     "exit_code": $rc,
     "signal": $signal_json,
     "wall_timeout_seconds": $wall_timeout,
+    "exercise_profile": "$exercise_profile",
+    "framework_ticks": $framework_ticks,
     "network": "isolated",
     "seccomp": "enforced",
     "systemd_result": "$systemd_result",
@@ -328,8 +342,54 @@ JSON
 fi
 
 mv "$tmp_report" "$out"
+
+# A successful managed report is still plugin-process-originated evidence. Emit a
+# small trusted-supervisor sidecar outside the hostile cgroup so downstream tools
+# can correlate immutable input identity, boundary controls, and the exact report.
+report_sha=$(sha256sum "$out" | awk '{print $1}')
+if [[ "$out" == *.json ]]; then
+  attestation_out="${out%.json}.supervisor-attestation.json"
+else
+  attestation_out="${out}.supervisor-attestation.json"
+fi
+cat > "$attestation_out" <<JSON
+{
+  "schema_version": "rift.supervisor-attestation.v1",
+  "producer": "interdimensional-rift-supervisor",
+  "outcome": "runtime_report_emitted",
+  "runtime_report_sha256": "$report_sha",
+  "artifact_tree_sha256": "$artifact_sha",
+  "artifact_tree_hash_algorithm": "$artifact_hash_algorithm",
+  "entry_sha256": "$plugin_sha",
+  "exercise_profile": "$exercise_profile",
+  "framework_ticks": $framework_ticks,
+  "network": "isolated",
+  "seccomp": "enforced",
+  "boundary_profile": "$boundary_profile",
+  "contract_mode": "$contract_mode",
+  "wall_timeout_seconds": $wall_timeout,
+  "tmpfs": {"tmp_bytes": $tmpfs_tmp_bytes, "home_bytes": $tmpfs_home_bytes, "work_bytes": $tmpfs_work_bytes},
+  "dalamud_contract": {
+    "track": "$contract_track",
+    "dalamud_sha256": "$contract_dalamud_sha",
+    "tree_sha256": "$contract_tree_sha",
+    "hash_algorithm": "$contract_hash_algorithm"
+  },
+  "cgroup": {
+    "memory_max": "$memory_max",
+    "memory_swap_max": "0",
+    "tasks_max": $tasks_max,
+    "cpu_quota": "$cpu_quota",
+    "memory_oom_kill_delta": $scope_oom_kill_delta,
+    "pids_max_delta": $scope_pids_max_delta
+  },
+  "process_exit_code": $rc
+}
+JSON
+
 trap - EXIT
 sudo systemctl stop "$unit.service" >/dev/null 2>&1 || true
 sudo systemctl reset-failed "$unit.service" >/dev/null 2>&1 || true
 rm -f "$tmp_stderr" "$timeout_marker" "$scope_status"
+echo "Rift supervisor attestation written to $attestation_out" >&2
 exit "$rc"

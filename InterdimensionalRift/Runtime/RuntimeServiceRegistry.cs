@@ -15,8 +15,15 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
 {
     private readonly AccessTracker tracker;
     private readonly ConcurrentDictionary<Type, object> services = new();
-    private readonly ConcurrentDictionary<(Type ServiceType, string EventName), List<Delegate>> eventHandlers = new();
+    private readonly ConcurrentDictionary<(Type ServiceType, string EventName), List<RegisteredDelegate>> eventHandlers = new();
+    private readonly ConcurrentDictionary<string, CommandRegistration> commandHandlers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, IpcEndpointState> ipcEndpoints = new(StringComparer.Ordinal);
+    private readonly List<ScheduledCallbackRegistration> scheduledCallbacks = new();
+    private readonly object scheduledCallbacksLock = new();
+    private readonly AsyncLocal<int?> frameworkInvocationThreadId = new();
+    private int syntheticTick;
     private readonly ConcurrentDictionary<string, object> sharedData = new(StringComparer.Ordinal);
+    private long registrationSequence;
     private readonly string internalName;
     private readonly FileInfo assemblyLocation;
     private readonly DirectoryInfo configDirectory;
@@ -146,7 +153,7 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
         throw new InvalidOperationException($"No constructible constructor was found for {pluginType.FullName}.");
     }
 
-    internal object? Invoke(Type serviceType, MethodInfo method, object?[]? args)
+    internal object? Invoke(Type serviceType, MethodInfo method, object?[]? args, string? instanceTag = null)
     {
         args ??= Array.Empty<object?>();
         var serviceName = serviceType.Name;
@@ -159,6 +166,13 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                 ChangeEventHandler(serviceType, eventName, handler, add);
             tracker.ServiceTouch(serviceName, method.Name);
             return null;
+        }
+
+        if (serviceType.FullName?.StartsWith("Dalamud.Plugin.Ipc.ICallGate", StringComparison.Ordinal) == true && instanceTag is not null)
+        {
+            var special = InvokeIpcEndpoint(serviceType, method, args, instanceTag);
+            if (special.Handled)
+                return special.Value;
         }
 
         if (serviceType.FullName == "Dalamud.Plugin.IDalamudPluginInterface")
@@ -200,6 +214,20 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                 return special.Value;
         }
 
+        if (serviceName == "ICommandManager")
+        {
+            var special = InvokeCommandManager(method, args);
+            if (special.Handled)
+                return special.Value;
+        }
+
+        if (serviceName == "IFramework")
+        {
+            var special = InvokeFramework(method, args);
+            if (special.Handled)
+                return special.Value;
+        }
+
         if (serviceName == "IPluginLog")
         {
             tracker.Log(method.Name, ExtractLogMessage(args));
@@ -208,16 +236,6 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
 
         tracker.ServiceTouch(serviceName, method.Name, parameters: SnapshotParameters(method, args));
         return DefaultValueFactory.Create(method.ReturnType, this);
-    }
-
-    public void FireFrameworkTick()
-    {
-        var frameworkType = DalamudContract.Assembly.GetType("Dalamud.Plugin.Services.IFramework");
-        if (frameworkType is null)
-            return;
-
-        var framework = GetService(frameworkType);
-        FireEvent(frameworkType, "Update", framework);
     }
 
     private object CreateProxy(Type interfaceType)
@@ -299,6 +317,14 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                 return (true, new DirectoryInfo(AppContext.BaseDirectory));
             case "get_InstalledPlugins":
                 return (true, DefaultValueFactory.Create(method.ReturnType, this));
+            case "GetIpcSubscriber" when method.IsGenericMethod && args.Length >= 1 && args[0] is string subscriberChannel:
+                tracker.ServiceTouch("IDalamudPluginInterface", method.Name,
+                    parameters: new Dictionary<string, string?> { ["channel"] = subscriberChannel });
+                return (true, GetOrCreateIpcEndpoint(method.ReturnType, subscriberChannel, "subscriber"));
+            case "GetIpcProvider" when method.IsGenericMethod && args.Length >= 1 && args[0] is string providerChannel:
+                tracker.ServiceTouch("IDalamudPluginInterface", method.Name,
+                    parameters: new Dictionary<string, string?> { ["channel"] = providerChannel });
+                return (true, GetOrCreateIpcEndpoint(method.ReturnType, providerChannel, "provider"));
             case "get_Manifest":
             {
                 var manifestType = method.ReturnType;
@@ -475,6 +501,432 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
         return (true, DefaultValueFactory.Create(method.ReturnType, this));
     }
 
+    private (bool Handled, object? Value) InvokeCommandManager(MethodInfo method, object?[] args)
+    {
+        tracker.ServiceTouch("ICommandManager", method.Name, parameters: SnapshotParameters(method, args));
+
+        if (method.Name == "AddHandler" && args.Length >= 2 && args[0] is string command && args[1] is not null)
+        {
+            var info = args[1];
+            var handler = info.GetType().GetProperty("Handler", BindingFlags.Public | BindingFlags.Instance)?.GetValue(info) as Delegate;
+            if (handler is null)
+                return (true, false);
+
+            var registration = new CommandRegistration
+            {
+                Id = NextRegistrationId("command"),
+                Command = command,
+                Handler = handler,
+            };
+            commandHandlers[command] = registration;
+            tracker.Registration("command", "ICommandManager", command, "registered", HandlerTarget(handler),
+                new Dictionary<string, string?> { ["registration_id"] = registration.Id, ["synthetic_arguments"] = "empty" });
+            return (true, true);
+        }
+
+        if (method.Name == "RemoveHandler" && args.Length >= 1 && args[0] is string removeCommand)
+        {
+            var removed = commandHandlers.TryRemove(removeCommand, out var registration);
+            tracker.Registration("command", "ICommandManager", removeCommand, removed ? "unregistered" : "not_found",
+                registration is null ? null : HandlerTarget(registration.Handler),
+                new Dictionary<string, string?> { ["registration_id"] = registration?.Id });
+            return (true, removed);
+        }
+
+        if (method.Name == "ProcessCommand")
+            return (true, false);
+
+        return (false, null);
+    }
+
+    private (bool Handled, object? Value) InvokeFramework(MethodInfo method, object?[] args)
+    {
+        tracker.ServiceTouch("IFramework", method.Name, parameters: SnapshotParameters(method, args));
+
+        if (method.Name == "GetTaskFactory")
+            return (true, Task.Factory);
+
+        // Startup DelayTicks remains a completed neutral task so constructor timing is
+        // not silently changed. Calls are still observed; explicit synthetic tick
+        // fidelity is provided for retained Run/RunOnFrameworkThread/RunOnTick work.
+        if (method.Name == "DelayTicks")
+            return (true, Task.CompletedTask);
+
+        if (method.Name is "Run" or "RunOnFrameworkThread" or "RunOnTick")
+        {
+            var callback = args.OfType<Delegate>().FirstOrDefault();
+            if (callback is not null)
+            {
+                var parameters = SnapshotParameters(method, args);
+                var delayTicks = ParseDelayTicks(parameters);
+                var wallDelay = args.OfType<TimeSpan>().FirstOrDefault(x => x > TimeSpan.Zero);
+                var cancelled = args.OfType<CancellationToken>().Any(x => x.IsCancellationRequested);
+                var reason = cancelled
+                    ? "scheduled_callback_cancelled"
+                    : wallDelay > TimeSpan.Zero
+                        ? "timespan_delay_not_modeled"
+                        : null;
+                var dueTick = reason is null
+                    ? Math.Max(1, Volatile.Read(ref syntheticTick) + Math.Max(1, delayTicks))
+                    : int.MaxValue;
+                var registration = new ScheduledCallbackRegistration
+                {
+                    Id = NextRegistrationId("framework-callback"),
+                    Operation = method.Name,
+                    Callback = callback,
+                    Parameters = parameters,
+                    DueTick = dueTick,
+                    UnexercisedReason = reason,
+                };
+                lock (scheduledCallbacksLock) scheduledCallbacks.Add(registration);
+                tracker.Registration("framework_callback", "IFramework", method.Name, "registered", HandlerTarget(callback),
+                    new Dictionary<string, string?>(parameters, StringComparer.Ordinal)
+                    {
+                        ["registration_id"] = registration.Id,
+                        ["execution_semantics"] = "deferred_to_synthetic_framework_tick",
+                        ["due_tick"] = dueTick.ToString(),
+                    });
+            }
+
+            return (true, DefaultValueFactory.Create(method.ReturnType, this));
+        }
+
+        if (method.Name == "get_IsInFrameworkUpdateThread")
+            return (true, frameworkInvocationThreadId.Value == Environment.CurrentManagedThreadId);
+        if (method.Name == "get_IsFrameworkUnloading")
+            return (true, false);
+        if (method.Name is "get_LastUpdate" or "get_LastUpdateUTC")
+            return (true, DateTime.UtcNow);
+        if (method.Name == "get_UpdateDelta")
+            return (true, TimeSpan.Zero);
+
+        return (false, null);
+    }
+
+    private static int ParseDelayTicks(IReadOnlyDictionary<string, string?> parameters)
+    {
+        foreach (var (key, value) in parameters)
+        {
+            if (!key.Contains("tick", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (int.TryParse(value, out var parsed) && parsed >= 0)
+                return parsed;
+        }
+        return 0;
+    }
+
+    internal IDisposable EnterSyntheticFrameworkTick(int tick)
+    {
+        Volatile.Write(ref syntheticTick, tick);
+        return new RegistryScope(() => { });
+    }
+
+    internal IDisposable EnterFrameworkInvocation()
+    {
+        var previous = frameworkInvocationThreadId.Value;
+        frameworkInvocationThreadId.Value = Environment.CurrentManagedThreadId;
+        return new RegistryScope(() => frameworkInvocationThreadId.Value = previous);
+    }
+
+    private object GetOrCreateIpcEndpoint(Type interfaceType, string channel, string direction)
+    {
+        var key = $"{direction}|{channel}|{interfaceType.AssemblyQualifiedName}";
+        return ipcEndpoints.GetOrAdd(key, _ =>
+        {
+            var proxy = DispatchProxy.Create(interfaceType, typeof(InstrumentedServiceProxy));
+            ((InstrumentedServiceProxy)proxy).Initialize(interfaceType, this, key);
+            var endpointId = NextRegistrationId("ipc-endpoint");
+            tracker.Registration("ipc_endpoint", "IDalamudPluginInterface", channel, "created", interfaceType.FullName,
+                new Dictionary<string, string?>
+                {
+                    ["registration_id"] = endpointId,
+                    ["direction"] = direction,
+                    ["endpoint_type"] = interfaceType.FullName,
+                });
+            return new IpcEndpointState
+            {
+                Id = endpointId,
+                Key = key,
+                Channel = channel,
+                Direction = direction,
+                InterfaceType = interfaceType,
+                Proxy = proxy,
+            };
+        }).Proxy;
+    }
+
+    private (bool Handled, object? Value) InvokeIpcEndpoint(Type serviceType, MethodInfo method, object?[] args, string key)
+    {
+        if (!ipcEndpoints.TryGetValue(key, out var endpoint))
+            return (false, null);
+
+        tracker.ServiceTouch(serviceType.Name, method.Name,
+            new Dictionary<string, string?>(SnapshotParameters(method, args), StringComparer.Ordinal)
+            {
+                ["channel"] = endpoint.Channel,
+                ["direction"] = endpoint.Direction,
+            });
+
+        if (method.Name == "Subscribe" && args.FirstOrDefault() is Delegate subscriber)
+        {
+            lock (endpoint.Subscribers)
+            {
+                var registration = new RegisteredDelegate { Id = NextRegistrationId("ipc-subscription"), Handler = subscriber };
+                endpoint.Subscribers.Add(registration);
+                tracker.Registration("ipc_subscription", serviceType.Name, endpoint.Channel, "registered", HandlerTarget(subscriber),
+                    new Dictionary<string, string?> { ["registration_id"] = registration.Id, ["endpoint_id"] = endpoint.Id, ["direction"] = endpoint.Direction });
+            }
+            return (true, null);
+        }
+
+        if (method.Name == "Unsubscribe" && args.FirstOrDefault() is Delegate unsubscribe)
+        {
+            RegisteredDelegate? removed = null;
+            lock (endpoint.Subscribers)
+            {
+                removed = endpoint.Subscribers.FirstOrDefault(x => x.Handler.Equals(unsubscribe));
+                if (removed is not null) endpoint.Subscribers.Remove(removed);
+            }
+            tracker.Registration("ipc_subscription", serviceType.Name, endpoint.Channel,
+                removed is null ? "not_found" : "unregistered", HandlerTarget(unsubscribe),
+                new Dictionary<string, string?> { ["registration_id"] = removed?.Id, ["endpoint_id"] = endpoint.Id, ["direction"] = endpoint.Direction });
+            return (true, null);
+        }
+
+        if ((method.Name == "RegisterAction" || method.Name == "RegisterFunc") && args.FirstOrDefault() is Delegate provider)
+        {
+            var registration = new RegisteredDelegate { Id = NextRegistrationId("ipc-provider"), Handler = provider };
+            if (method.Name == "RegisterAction") endpoint.ProviderAction = registration;
+            else endpoint.ProviderFunc = registration;
+            tracker.Registration("ipc_provider", serviceType.Name, endpoint.Channel, "registered", HandlerTarget(provider),
+                new Dictionary<string, string?>
+                {
+                    ["registration_id"] = registration.Id,
+                    ["endpoint_id"] = endpoint.Id,
+                    ["provider_kind"] = method.Name == "RegisterAction" ? "action" : "func",
+                });
+            return (true, null);
+        }
+
+        if (method.Name == "UnregisterAction")
+        {
+            var old = endpoint.ProviderAction;
+            endpoint.ProviderAction = null;
+            tracker.Registration("ipc_provider", serviceType.Name, endpoint.Channel, old is null ? "not_found" : "unregistered",
+                old is null ? null : HandlerTarget(old.Handler), new Dictionary<string, string?> { ["registration_id"] = old?.Id, ["endpoint_id"] = endpoint.Id });
+            return (true, null);
+        }
+        if (method.Name == "UnregisterFunc")
+        {
+            var old = endpoint.ProviderFunc;
+            endpoint.ProviderFunc = null;
+            tracker.Registration("ipc_provider", serviceType.Name, endpoint.Channel, old is null ? "not_found" : "unregistered",
+                old is null ? null : HandlerTarget(old.Handler), new Dictionary<string, string?> { ["registration_id"] = old?.Id, ["endpoint_id"] = endpoint.Id });
+            return (true, null);
+        }
+
+        if (method.Name == "get_HasAction")
+            return (true, ipcEndpoints.Values.Any(x => x.Channel == endpoint.Channel && x.ProviderAction is not null));
+        if (method.Name == "get_HasFunction")
+            return (true, ipcEndpoints.Values.Any(x => x.Channel == endpoint.Channel && x.ProviderFunc is not null));
+        if (method.Name == "get_SubscriptionCount")
+        {
+            var count = ipcEndpoints.Values.Where(x => x.Channel == endpoint.Channel).Sum(x =>
+            {
+                lock (x.Subscribers) return x.Subscribers.Count;
+            });
+            return (true, count);
+        }
+
+        // Plugin-initiated IPC calls have no external broker in Rift. They are
+        // observed but return neutral defaults. Post-init exercise separately
+        // invokes zero-argument registrations as synthetic inbound activity.
+        if (method.Name.StartsWith("Invoke", StringComparison.Ordinal) || method.Name == "SendMessage")
+            return (true, DefaultValueFactory.Create(method.ReturnType, this));
+
+        return (true, DefaultValueFactory.Create(method.ReturnType, this));
+    }
+
+    internal IReadOnlyList<ExerciseCandidate> SnapshotExerciseCandidates(int frameworkTicks)
+    {
+        var result = new List<ExerciseCandidate>();
+
+        foreach (var ((serviceType, eventName), registrations) in eventHandlers.OrderBy(k => k.Key.ServiceType.FullName).ThenBy(k => k.Key.EventName))
+        {
+            RegisteredDelegate[] snapshot;
+            lock (registrations) snapshot = registrations.ToArray();
+            foreach (var registration in snapshot)
+            {
+                var serviceName = serviceType.Name;
+                var target = HandlerTarget(registration.Handler);
+                var enabled = false;
+                var reason = "event_not_modeled_by_post_init_safe_v1";
+                var repeat = 1;
+                object?[] arguments = Array.Empty<object?>();
+
+                if (serviceName == "IFramework" && eventName == "Update")
+                {
+                    enabled = frameworkTicks > 0;
+                    reason = enabled ? null : "framework_ticks_disabled";
+                    repeat = Math.Max(0, frameworkTicks);
+                    arguments = new[] { GetService(serviceType) };
+                }
+                else if (serviceType.FullName == "Dalamud.Interface.IUiBuilder" && eventName is "OpenConfigUi" or "OpenMainUi" or "ShowUi" or "HideUi")
+                {
+                    enabled = true;
+                    reason = null;
+                }
+                else if (serviceType.FullName == "Dalamud.Interface.IUiBuilder" && eventName == "Draw")
+                {
+                    reason = "ui_render_callback_requires_rendering_profile";
+                }
+
+                result.Add(new ExerciseCandidate
+                {
+                    Id = registration.Id,
+                    Kind = "event",
+                    Component = serviceName,
+                    Operation = eventName,
+                    Target = target,
+                    Handler = registration.Handler,
+                    Arguments = arguments,
+                    EnabledByProfile = enabled,
+                    UnexercisedReason = reason,
+                    Repeat = repeat,
+                });
+            }
+        }
+
+        foreach (var registration in commandHandlers.Values.OrderBy(x => x.Command, StringComparer.OrdinalIgnoreCase))
+        {
+            result.Add(new ExerciseCandidate
+            {
+                Id = registration.Id,
+                Kind = "command",
+                Component = "ICommandManager",
+                Operation = registration.Command,
+                Target = HandlerTarget(registration.Handler),
+                Handler = registration.Handler,
+                Arguments = new object?[] { registration.Command, string.Empty },
+                EnabledByProfile = true,
+                Repeat = 1,
+            });
+        }
+
+        foreach (var endpoint in ipcEndpoints.Values.OrderBy(x => x.Channel, StringComparer.Ordinal).ThenBy(x => x.Direction, StringComparer.Ordinal))
+        {
+            RegisteredDelegate[] subscribers;
+            lock (endpoint.Subscribers) subscribers = endpoint.Subscribers.ToArray();
+            foreach (var registration in subscribers)
+                result.Add(IpcCandidate(endpoint, registration, "subscriber"));
+            if (endpoint.ProviderAction is not null)
+                result.Add(IpcCandidate(endpoint, endpoint.ProviderAction, "provider_action"));
+            if (endpoint.ProviderFunc is not null)
+                result.Add(IpcCandidate(endpoint, endpoint.ProviderFunc, "provider_func"));
+        }
+
+        return result;
+    }
+
+    internal IReadOnlyList<ExerciseCandidate> SnapshotScheduledCallbacks()
+    {
+        ScheduledCallbackRegistration[] snapshot;
+        lock (scheduledCallbacksLock) snapshot = scheduledCallbacks.ToArray();
+        return snapshot.OrderBy(x => x.DueTick).ThenBy(x => x.Id, StringComparer.Ordinal).Select(ToScheduledCandidate).ToArray();
+    }
+
+    internal IReadOnlyList<ExerciseCandidate> DequeueScheduledCallbacksDue(int tick, int maxCount)
+    {
+        var selected = new List<ScheduledCallbackRegistration>();
+        lock (scheduledCallbacksLock)
+        {
+            foreach (var registration in scheduledCallbacks
+                         .Where(x => x.DueTick <= tick)
+                         .OrderBy(x => x.DueTick)
+                         .ThenBy(x => x.Id, StringComparer.Ordinal)
+                         .Take(Math.Max(0, maxCount))
+                         .ToArray())
+            {
+                scheduledCallbacks.Remove(registration);
+                selected.Add(registration);
+            }
+        }
+        return selected.Select(ToScheduledCandidate).ToArray();
+    }
+
+    private static ExerciseCandidate ToScheduledCandidate(ScheduledCallbackRegistration registration) => new()
+    {
+        Id = registration.Id,
+        Kind = "framework_callback",
+        Component = "IFramework",
+        Operation = registration.Operation,
+        Target = HandlerTarget(registration.Callback),
+        Handler = registration.Callback,
+        Arguments = Array.Empty<object?>(),
+        EnabledByProfile = registration.UnexercisedReason is null,
+        UnexercisedReason = registration.UnexercisedReason,
+        Repeat = 1,
+        DueTick = registration.DueTick,
+        RequiresActiveRegistration = false,
+    };
+
+    internal bool IsRegistrationActive(ExerciseCandidate candidate)
+    {
+        if (!candidate.RequiresActiveRegistration)
+            return true;
+
+        if (candidate.Kind == "event")
+        {
+            foreach (var list in eventHandlers.Values)
+            {
+                lock (list)
+                {
+                    if (list.Any(x => x.Id == candidate.Id)) return true;
+                }
+            }
+            return false;
+        }
+        if (candidate.Kind == "command")
+            return commandHandlers.Values.Any(x => x.Id == candidate.Id);
+        if (candidate.Kind == "ipc")
+        {
+            foreach (var endpoint in ipcEndpoints.Values)
+            {
+                lock (endpoint.Subscribers)
+                {
+                    if (endpoint.Subscribers.Any(x => x.Id == candidate.Id)) return true;
+                }
+                if (endpoint.ProviderAction?.Id == candidate.Id || endpoint.ProviderFunc?.Id == candidate.Id) return true;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private static ExerciseCandidate IpcCandidate(IpcEndpointState endpoint, RegisteredDelegate registration, string operation)
+    {
+        var parameters = registration.Handler.Method.GetParameters();
+        var zeroArgument = parameters.Length == 0;
+        return new ExerciseCandidate
+        {
+            Id = registration.Id,
+            Kind = "ipc",
+            Component = endpoint.InterfaceType.Name,
+            Operation = $"{endpoint.Channel}:{operation}",
+            Target = HandlerTarget(registration.Handler),
+            Handler = registration.Handler,
+            Arguments = Array.Empty<object?>(),
+            EnabledByProfile = zeroArgument,
+            UnexercisedReason = zeroArgument ? null : "ipc_callback_requires_external_arguments",
+            Repeat = 1,
+        };
+    }
+
+    private string NextRegistrationId(string prefix) => $"{prefix}-{Interlocked.Increment(ref registrationSequence):D4}";
+
+    private static string HandlerTarget(Delegate handler) =>
+        handler.Method.DeclaringType?.FullName + "." + handler.Method.Name;
+
     private object CreateInjectedObject(Type objectType, object?[] scopedObjects)
     {
         // Dalamud Create<T> is an IoC creation operation. Static [PluginService]
@@ -586,33 +1038,24 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
 
     private void ChangeEventHandler(Type serviceType, string eventName, Delegate handler, bool add)
     {
-        var list = eventHandlers.GetOrAdd((serviceType, eventName), _ => new List<Delegate>());
+        var list = eventHandlers.GetOrAdd((serviceType, eventName), _ => new List<RegisteredDelegate>());
+        if (add)
+        {
+            var registration = new RegisteredDelegate { Id = NextRegistrationId("event"), Handler = handler };
+            lock (list) list.Add(registration);
+            tracker.Registration("event", serviceType.Name, eventName, "registered", HandlerTarget(handler),
+                new Dictionary<string, string?> { ["registration_id"] = registration.Id });
+            return;
+        }
+
+        RegisteredDelegate? removed = null;
         lock (list)
         {
-            if (add) list.Add(handler);
-            else list.Remove(handler);
+            removed = list.FirstOrDefault(x => x.Handler.Equals(handler));
+            if (removed is not null) list.Remove(removed);
         }
-    }
-
-    private void FireEvent(Type serviceType, string eventName, params object?[] args)
-    {
-        if (!eventHandlers.TryGetValue((serviceType, eventName), out var list))
-            return;
-
-        Delegate[] snapshot;
-        lock (list) snapshot = list.ToArray();
-        foreach (var handler in snapshot)
-        {
-            try
-            {
-                handler.DynamicInvoke(args);
-                tracker.Lifecycle($"event:{serviceType.Name}.{eventName}", "completed");
-            }
-            catch (TargetInvocationException ex)
-            {
-                tracker.Lifecycle($"event:{serviceType.Name}.{eventName}", "threw", exception: ex.InnerException ?? ex);
-            }
-        }
+        tracker.Registration("event", serviceType.Name, eventName, removed is null ? "not_found" : "unregistered", HandlerTarget(handler),
+            new Dictionary<string, string?> { ["registration_id"] = removed?.Id });
     }
 
     private static string ExtractLogMessage(object?[] args)
@@ -638,10 +1081,19 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                 string s => s.Length <= 512 ? s : s[..512],
                 Type t => t.FullName,
                 Delegate d => d.Method.DeclaringType?.FullName + "." + d.Method.Name,
+                TimeSpan ts => ts.ToString("c"),
+                CancellationToken ct => ct.IsCancellationRequested ? "cancelled" : "active",
                 _ when value.GetType().IsPrimitive || value is Enum => value.ToString(),
                 _ => value.GetType().FullName,
             };
         }
         return result;
     }
+    private sealed class RegistryScope : IDisposable
+    {
+        private Action? onDispose;
+        public RegistryScope(Action onDispose) => this.onDispose = onDispose;
+        public void Dispose() => Interlocked.Exchange(ref onDispose, null)?.Invoke();
+    }
+
 }

@@ -145,9 +145,9 @@ not repeat SigmaScope's static capability analysis.
 
 ```json
 {
-  "schema_version": "rift.runtime-observation.v1",
+  "schema_version": "rift.runtime-observation.v2",
   "producer": "interdimensional-rift",
-  "producer_version": "0.3.1",
+  "producer_version": "0.4.0",
   "ran_at": "2026-08-22T08:00:00Z",
   "execution": {
     "executor": "bubblewrap-v2",
@@ -164,7 +164,9 @@ not repeat SigmaScope's static capability analysis.
     "tmpfs_home_bytes": "16777216",
     "tmpfs_work_bytes": "67108864",
     "boundary_profile": "rift-linux-bwrap-v3",
-    "contract_mode": "real-dalamud-contract-failfast"
+    "contract_mode": "real-dalamud-contract-failfast",
+    "exercise_profile": "post-init-safe-v1",
+    "framework_ticks": "3"
   },
   "plugin": {
     "path": "/input/SamplePlugin.dll",
@@ -174,11 +176,23 @@ not repeat SigmaScope's static capability analysis.
     "init_duration_ms": 101,
     "dispose_outcome": "ok"
   },
+  "exercise": {
+    "schema_version": "rift.exercise.v1",
+    "profile": "post-init-safe-v1",
+    "status": "completed",
+    "framework_ticks_requested": 3,
+    "registrations_discovered": 2,
+    "registrations_exercised": 1,
+    "registrations_unexercised": 1,
+    "by_kind": { "event": 2 },
+    "registrations": []
+  },
   "observations": [
     {
       "id": "0000000000000001",
       "kind": "service_access",
       "ts_offset_ms": 42,
+      "phase": "startup",
       "component": "IClientState",
       "operation": "get_IsLoggedIn",
       "outcome": "observed"
@@ -205,7 +219,13 @@ not repeat SigmaScope's static capability analysis.
 | `service_access` | the plugin invoked a method/property/event on an instrumented service |
 | `lifecycle` | constructor, `LoadAsync`, framework scenario, or disposal progress |
 | `log` | plugin output through `IPluginLog` |
-| `assembly_load` | runtime managed/native assembly resolution or load attempt |
+| `assembly_load` | runtime managed assembly resolution or load attempt |
+| `native_library` | unmanaged library resolution/load attempt |
+| `native_game_state` | explicitly synthetic FFXIVClientStructs state model activity |
+| `registration` | event/command/framework/IPC behavior registration or unregistration |
+| `exercise` | bounded synthetic post-init trigger and callback outcome |
+| `signature_scan` | inert signature/address request observation |
+| `hook` | inert synthetic hook lifecycle observation |
 | `exception` | plugin initialization/disposal threw |
 | `timeout` | a managed lifecycle phase exceeded its bounded timeout |
 | `boundary` | Rift recorded an execution-boundary compatibility mode or invariant |
@@ -262,9 +282,17 @@ seccomp policy is unavailable.
 
 ## Runtime observation contract
 
-Current reports use `schema_version: rift.runtime-observation.v1`. They contain neutral `observations` and a `by_kind` summary only. Rift does not emit a security severity, static capability inventory, or malware verdict.
+Current reports use `schema_version: rift.runtime-observation.v2`. They contain neutral `observations`, per-observation phase attribution, the `rift.exercise.v1` post-init inventory, and a `by_kind` summary. Rift does not emit a security severity, static capability inventory, or malware verdict.
 
 
 ## Platform compatibility evidence
 
 Rift reports the analysis host OS/architecture/RID and native-library resolution attempts. `tools/platform/PlatformEvidenceTool` combines those observations with package RID/native assets and managed metadata into `omega.player-environment-support.v1`. See `docs/PLATFORM-COMPATIBILITY.adoc`.
+
+## Pass 3.4.0 — deterministic post-init exercise
+
+Rift now inventories callback registrations and, after successful initialization, runs the bounded `post-init-safe-v1` exercise profile. It can trigger pinned framework updates, deferred framework callbacks, non-rendering UI open/show/hide callbacks, registered slash commands with empty synthetic arguments, and zero-argument IPC callbacks. `IUiBuilder.Draw` and stateful events remain explicitly unexercised until a matching model exists.
+
+Reports include `phase` on every observation plus a top-level `rift.exercise.v1` inventory with exercised/unexercised registrations and reasons. The default world remains empty, no local player is fabricated, real game memory is absent, native hooks remain inert, and the outer cgroup/Bubblewrap/seccomp boundary is unchanged.
+
+See `docs/POST-INIT-EXERCISE.adoc`.

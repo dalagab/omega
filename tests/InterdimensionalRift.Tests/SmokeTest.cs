@@ -43,7 +43,7 @@ public class SmokeTest
         Assert.True(File.Exists(sampleDll), $"Async sample DLL not found at {sampleDll}");
 
         var host = new InterdimensionalRift.Host.SandboxHost();
-        var report = host.Run(sampleDll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+        var report = host.Run(sampleDll, TimeSpan.FromSeconds(10), frameworkTicks: 0, exerciseProfile: "none");
 
         Assert.Equal("ok", report.Plugin.LoadOutcome);
         Assert.Equal("ok", report.Plugin.DisposeOutcome);
@@ -53,6 +53,17 @@ public class SmokeTest
             f => f.Kind == RuntimeObservationKind.Log && (f.Message ?? "").Contains("async load completed", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(report.Observations,
             f => f.Kind == RuntimeObservationKind.Log && (f.Message ?? "").Contains("async dispose completed", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void MissingPlugin_DoesNotClaimSuccessfulDisposal()
+    {
+        var missing = Path.Combine(Path.GetTempPath(), $"rift-missing-{Guid.NewGuid():N}.dll");
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(
+            missing, TimeSpan.FromSeconds(2), frameworkTicks: 0, exerciseProfile: "none");
+
+        Assert.Equal("load_failed", report.Plugin.LoadOutcome);
+        Assert.Equal("not_attempted", report.Plugin.DisposeOutcome);
     }
 
     [Fact]
@@ -74,7 +85,7 @@ public class SmokeTest
         omega = Path.GetFullPath(omega);
         Assert.True(File.Exists(omega), $"RIFT_OMEGA_FIXTURE does not exist: {omega}");
 
-        var report = new InterdimensionalRift.Host.SandboxHost().Run(omega, TimeSpan.FromSeconds(15), frameworkTicks: 0);
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(omega, TimeSpan.FromSeconds(15), frameworkTicks: 0, exerciseProfile: "none");
         Assert.DoesNotContain(report.Plugin.LoadOutcome, new[] { "not_a_plugin", "load_failed", "init_timeout" });
 
         var injected = report.Observations
@@ -129,7 +140,7 @@ public class AlphaTest
         {
             Environment.SetEnvironmentVariable("RIFT_EXECUTOR", null);
             var alphaDll = LocateAlpha();
-            var report = new InterdimensionalRift.Host.SandboxHost().Run(alphaDll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(alphaDll, TimeSpan.FromSeconds(10), frameworkTicks: 0, exerciseProfile: "none");
 
             Assert.Equal("ok", report.Plugin.LoadOutcome);
             Assert.Contains(report.Observations,
@@ -204,7 +215,7 @@ public class CanaryTest
         {
             Environment.SetEnvironmentVariable("RIFT_EXECUTOR", null);
             var dll = LocateCanary();
-            var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0, exerciseProfile: "none");
 
             Assert.Equal("ok", report.Plugin.LoadOutcome);
             Assert.Contains(report.Observations,
@@ -247,7 +258,7 @@ public class StressFixtureSafetyTest
         {
             Environment.SetEnvironmentVariable("RIFT_EXECUTOR", null);
             var dll = LocateFixture(assemblyName);
-            var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(5), frameworkTicks: 0);
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(5), frameworkTicks: 0, exerciseProfile: "none");
 
             Assert.Equal("ok", report.Plugin.LoadOutcome);
             Assert.Contains(report.Observations,
@@ -279,7 +290,7 @@ public class CreateSemanticsTest
     public void PluginInterface_CreateAndCreateAsync_InjectServicesAndScopedObjects()
     {
         var dll = LocateFixture("RiftCreateSemantics");
-        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0, exerciseProfile: "none");
 
         Assert.Equal("ok", report.Plugin.LoadOutcome);
         Assert.Contains(report.Observations, o =>
@@ -317,7 +328,7 @@ public class GameInteropSemanticsTest
         var dll = LocateFixture();
         Assert.True(File.Exists(dll), $"Game interop fixture missing: {dll}");
 
-        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0, exerciseProfile: "none");
 
         var initException = report.Observations.FirstOrDefault(o => o.Kind == RuntimeObservationKind.Exception);
         Assert.True(report.Plugin.LoadOutcome == "ok",
@@ -356,7 +367,7 @@ public class GameDataSemanticsTest
         var dll = LocateFixture();
         Assert.True(File.Exists(dll), $"Game-data fixture missing: {dll}");
 
-        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0, exerciseProfile: "none");
 
         var initException = report.Observations.FirstOrDefault(o => o.Kind == RuntimeObservationKind.Exception);
         Assert.True(report.Plugin.LoadOutcome == "ok",
@@ -397,8 +408,8 @@ public class NativeGameStateSemanticsTest
 
         // Run twice in one process. FFXIVClientStructs Address.Value is process-global,
         // so the second report exercises SyntheticNativeGameStateRuntime's reuse path.
-        var firstReport = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
-        var secondReport = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+        var firstReport = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0, exerciseProfile: "none");
+        var secondReport = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0, exerciseProfile: "none");
 
         AssertNativeStateReport(firstReport);
         AssertNativeStateReport(secondReport);
@@ -415,7 +426,7 @@ public class NativeGameStateSemanticsTest
         var dll = LocateFixture();
         Assert.True(File.Exists(dll), $"Native-game-state fixture missing: {dll}");
 
-        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0, exerciseProfile: "none");
         var initException = report.Observations.FirstOrDefault(o => o.Kind == RuntimeObservationKind.Exception);
         Assert.True(report.Plugin.LoadOutcome == "ok",
             $"Expected empty GameObjectManager fixture path to initialize, got {report.Plugin.LoadOutcome}: {report.Plugin.LoadError}\n{initException?.ExceptionDetail}");
@@ -497,5 +508,241 @@ public class ExceptionStackSemanticsTest
 
         public static void ThrowFromPluginHelper() =>
             throw new InvalidOperationException("RIFT_STACK original plugin frame");
+    }
+}
+
+public class PostInitExerciseSemanticsTest
+{
+    [Fact]
+    public void PostInitSafeProfile_ExercisesBoundedCallbacksAndInventoriesRenderOnlyWork()
+    {
+        var dll = LocateFixture();
+        Assert.True(File.Exists(dll), $"Post-init exercise fixture missing: {dll}");
+
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(
+            dll,
+            TimeSpan.FromSeconds(10),
+            frameworkTicks: 2,
+            exerciseProfile: "post-init-safe-v1");
+
+        Assert.Equal("ok", report.Plugin.LoadOutcome);
+        Assert.Equal("post-init-safe-v1", report.Exercise.Profile);
+        Assert.Equal("completed", report.Exercise.Status);
+        Assert.True(report.Exercise.RegistrationsDiscovered >= 7, $"Expected at least seven exercise registrations, got {report.Exercise.RegistrationsDiscovered}");
+        Assert.True(report.Exercise.RegistrationsExercised >= 6, $"Expected bounded callbacks to be exercised, got {report.Exercise.RegistrationsExercised}");
+
+        foreach (var marker in new[]
+        {
+            "RIFT_EXERCISE framework update",
+            "RIFT_EXERCISE deferred framework callback",
+            "RIFT_EXERCISE delayed framework tick2 async",
+            "RIFT_EXERCISE framework update in_thread=True",
+            "RIFT_EXERCISE open config",
+            "RIFT_EXERCISE open main",
+            "RIFT_EXERCISE command /riftexercise",
+            "RIFT_EXERCISE ipc subscriber",
+            "RIFT_EXERCISE ipc provider",
+        })
+        {
+            Assert.Contains(report.Observations,
+                o => o.Kind == RuntimeObservationKind.Log &&
+                     (o.Message ?? string.Empty).Contains(marker, StringComparison.Ordinal));
+        }
+
+        Assert.DoesNotContain(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 (o.Message ?? string.Empty).Contains("DRAW SHOULD NOT RUN", StringComparison.Ordinal));
+        Assert.DoesNotContain(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 ((o.Message ?? string.Empty).Contains("DELAYED TICK10 SHOULD NOT RUN", StringComparison.Ordinal) ||
+                  (o.Message ?? string.Empty).Contains("TIMESPAN DELAY SHOULD NOT RUN", StringComparison.Ordinal)));
+        Assert.Equal(1, report.Observations.Count(o =>
+            o.Kind == RuntimeObservationKind.Log &&
+            (o.Message ?? string.Empty).Contains("self removing framework update", StringComparison.Ordinal)));
+        Assert.Contains(report.Exercise.Registrations,
+            r => r.Kind == "framework_callback" && r.DueTick == 10 && r.Status == "unexercised" &&
+                 r.Reason == "synthetic_tick_horizon_not_reached");
+        Assert.Contains(report.Exercise.Registrations,
+            r => r.Kind == "framework_callback" && r.Status == "unexercised" &&
+                 r.Reason == "timespan_delay_not_modeled");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 (o.Message ?? string.Empty).Contains("delayed framework tick2 async", StringComparison.Ordinal) &&
+                 o.ActivityId != null && o.RegistrationId != null && o.Invocation == 1);
+        Assert.Contains(report.Exercise.Registrations,
+            r => r.Kind == "event" && r.Operation == "Draw" && r.Status == "unexercised" &&
+                 r.Reason == "ui_render_callback_requires_rendering_profile");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Exercise &&
+                 o.Phase != null && o.Phase.StartsWith("exercise.", StringComparison.Ordinal));
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Registration && o.Outcome == "registered");
+    }
+
+    [Fact]
+    public void CallbackThrow_IsRecordedAndDoesNotHaltLaterSafeCallbacks()
+    {
+        var previous = Environment.GetEnvironmentVariable("RIFT_EXERCISE_FIXTURE_MODE");
+        try
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXERCISE_FIXTURE_MODE", "throw-command");
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(
+                LocateFixture(), TimeSpan.FromSeconds(10), frameworkTicks: 1, exerciseProfile: "post-init-safe-v1");
+
+            Assert.Equal("completed", report.Exercise.Status);
+            Assert.Contains(report.Exercise.Registrations,
+                r => r.Kind == "command" && r.Reason == "callback_threw" && r.Status == "exercised");
+            Assert.Contains(report.Observations,
+                o => o.Kind == RuntimeObservationKind.Exercise && o.Outcome == "threw" &&
+                     o.ActivityId != null && o.RegistrationId != null);
+            Assert.Contains(report.Observations,
+                o => o.Kind == RuntimeObservationKind.Log &&
+                     (o.Message ?? string.Empty).Contains("RIFT_EXERCISE ipc subscriber", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXERCISE_FIXTURE_MODE", previous);
+        }
+    }
+
+    [Fact]
+    public void CallbackTimeout_HaltsFurtherExerciseAndKeepsPartialEvidence()
+    {
+        var previous = Environment.GetEnvironmentVariable("RIFT_EXERCISE_FIXTURE_MODE");
+        try
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXERCISE_FIXTURE_MODE", "timeout-command");
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(
+                LocateFixture(), TimeSpan.FromSeconds(10), frameworkTicks: 1, exerciseProfile: "post-init-safe-v1");
+
+            Assert.Equal("partial", report.Exercise.Status);
+            Assert.Equal("not_attempted_exercise_timeout", report.Plugin.DisposeOutcome);
+            Assert.Contains(report.Observations,
+                o => o.Kind == RuntimeObservationKind.Lifecycle &&
+                     o.Operation == "Dispose" && o.Outcome == "skipped");
+            Assert.DoesNotContain(report.Observations,
+                o => o.Kind == RuntimeObservationKind.Log &&
+                     (o.Message ?? string.Empty).Contains("RIFT_EXERCISE disposed", StringComparison.Ordinal));
+            Assert.Contains(report.Exercise.Registrations,
+                r => r.Kind == "command" && r.Reason == "callback_timeout" && r.Status == "exercised");
+            Assert.Contains(report.Exercise.Registrations,
+                r => r.Kind == "ipc" && r.Status == "unexercised" && r.Reason == "exercise_halted_after_timeout");
+            Assert.DoesNotContain(report.Observations,
+                o => o.Kind == RuntimeObservationKind.Log &&
+                     (o.Message ?? string.Empty).Contains("RIFT_EXERCISE ipc subscriber", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXERCISE_FIXTURE_MODE", previous);
+        }
+    }
+
+    [Fact]
+    public void SafeProfileWithZeroTicks_StillExercisesNonFrameworkCallbacks()
+    {
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(
+            LocateFixture(), TimeSpan.FromSeconds(10), frameworkTicks: 0);
+
+        Assert.Equal("post-init-safe-v1", report.Exercise.Profile);
+        Assert.Equal("completed", report.Exercise.Status);
+        Assert.DoesNotContain(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 (o.Message ?? string.Empty).Contains("RIFT_EXERCISE framework update", StringComparison.Ordinal));
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 (o.Message ?? string.Empty).Contains("RIFT_EXERCISE command /riftexercise", StringComparison.Ordinal));
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 (o.Message ?? string.Empty).Contains("RIFT_EXERCISE ipc subscriber", StringComparison.Ordinal));
+        Assert.Contains(report.Exercise.Registrations,
+            r => r.Kind == "framework_callback" && r.Status == "unexercised" &&
+                 r.Reason == "synthetic_tick_horizon_not_reached");
+    }
+
+    [Fact]
+    public void DisabledExerciseProfile_PreservesStartupOnlyBehavior()
+    {
+        var dll = LocateFixture();
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(
+            dll,
+            TimeSpan.FromSeconds(10),
+            frameworkTicks: 0,
+            exerciseProfile: "none");
+
+        Assert.Equal("ok", report.Plugin.LoadOutcome);
+        Assert.Equal("none", report.Exercise.Profile);
+        Assert.Equal("not_run", report.Exercise.Status);
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 (o.Message ?? string.Empty).Contains("RIFT_EXERCISE startup complete", StringComparison.Ordinal));
+        Assert.DoesNotContain(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 ((o.Message ?? string.Empty).Contains("RIFT_EXERCISE framework update", StringComparison.Ordinal) ||
+                  (o.Message ?? string.Empty).Contains("RIFT_EXERCISE open config", StringComparison.Ordinal) ||
+                  (o.Message ?? string.Empty).Contains("RIFT_EXERCISE ipc subscriber", StringComparison.Ordinal)));
+    }
+
+    private static string LocateFixture()
+    {
+        var testBin = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(testBin, "RiftPostInitExerciseSemantics.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftPostInitExerciseSemantics", "bin", "Debug", "net10.0", "RiftPostInitExerciseSemantics.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftPostInitExerciseSemantics", "bin", "Release", "net10.0", "RiftPostInitExerciseSemantics.dll"),
+        };
+        return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
+    }
+}
+
+public class ProvenanceFreezeTest
+{
+    [Fact]
+    public void PluginCannotRewriteFrozenSupervisorProvenance()
+    {
+        var dll = LocateFixture();
+        var keys = new[]
+        {
+            "RIFT_EXECUTOR", "RIFT_ARTIFACT_TREE_SHA256", "RIFT_ENTRY_SHA256",
+            "RIFT_NETWORK_MODE", "RIFT_EXERCISE_PROFILE", "RIFT_FRAMEWORK_TICKS",
+        };
+        var previous = keys.ToDictionary(k => k, k => Environment.GetEnvironmentVariable(k));
+        try
+        {
+            Environment.SetEnvironmentVariable("RIFT_EXECUTOR", "bubblewrap-v2");
+            Environment.SetEnvironmentVariable("RIFT_ARTIFACT_TREE_SHA256", new string('1', 64));
+            Environment.SetEnvironmentVariable("RIFT_ENTRY_SHA256", new string('2', 64));
+            Environment.SetEnvironmentVariable("RIFT_NETWORK_MODE", "isolated");
+            Environment.SetEnvironmentVariable("RIFT_EXERCISE_PROFILE", "none");
+            Environment.SetEnvironmentVariable("RIFT_FRAMEWORK_TICKS", "0");
+
+            var report = new InterdimensionalRift.Host.SandboxHost().Run(
+                dll, TimeSpan.FromSeconds(10), frameworkTicks: 0, exerciseProfile: "none");
+
+            Assert.Equal("ok", report.Plugin.LoadOutcome);
+            Assert.Equal("bubblewrap-v2", report.Execution.Executor);
+            Assert.Equal(new string('1', 64), report.Execution.ArtifactTreeSha256);
+            Assert.Equal(new string('2', 64), report.Execution.EntrySha256);
+            Assert.Equal("isolated", report.Execution.Network);
+            Assert.Equal("none", report.Execution.ExerciseProfile);
+            Assert.Equal("0", report.Execution.FrameworkTicks);
+        }
+        finally
+        {
+            foreach (var (key, value) in previous)
+                Environment.SetEnvironmentVariable(key, value);
+        }
+    }
+
+    private static string LocateFixture()
+    {
+        var testBin = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(testBin, "RiftProvenanceMutation.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftProvenanceMutation", "bin", "Debug", "net10.0", "RiftProvenanceMutation.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftProvenanceMutation", "bin", "Release", "net10.0", "RiftProvenanceMutation.dll"),
+        };
+        return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
     }
 }

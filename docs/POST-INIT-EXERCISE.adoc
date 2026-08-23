@@ -1,0 +1,165 @@
+= Interdimensional Rift Post-Init Exercise Model
+:toc:
+
+== Purpose
+
+Startup coverage answers whether an exact plugin artifact can initialize inside Rift and what it touches while doing so. Pass 3.4.0 adds a second, explicitly bounded phase that answers a different question:
+
+"What registered plugin behavior is attempted when Rift deliberately triggers safe synthetic activity after initialization?"
+
+The exercise phase is not a game simulation. The default profile keeps the same empty-world/no-player/native-safety model already proven by Artisan.
+
+== Default profile
+
+`post-init-safe-v1`
+
+The profile is deterministic and budgeted. It can exercise:
+
+* `IFramework.Update` handlers for a pinned number of synthetic ticks;
+* callbacks registered through `IFramework.Run`, `RunOnFrameworkThread`, and tick-delayed `RunOnTick` callbacks when their synthetic due tick is reached;
+* non-rendering `IUiBuilder` callbacks: `ShowUi`, `OpenMainUi`, `OpenConfigUi`, and `HideUi`;
+* registered slash-command handlers with the exact command and an empty synthetic argument string;
+* zero-argument IPC subscriber/provider callbacks using their retained channel identity.
+
+The profile deliberately does not invoke `IUiBuilder.Draw`. Rendering callbacks can enter ImGui/graphics-native paths and require a separate rendering-aware profile. Other stateful Dalamud events remain inventoried but unexercised until their synthetic state model is explicit.
+
+== Synthetic framework scheduler
+
+Framework work is driven by a small deterministic synthetic tick scheduler rather than a one-shot callback drain.
+
+* Active workflows currently request three ticks.
+* `Run`, `RunOnFrameworkThread`, and `RunOnTick` registrations retain a `due_tick`.
+* A `RunOnTick(..., delayTicks: 10)` callback is not invoked in a three-tick scenario; it is reported as `unexercised` with `synthetic_tick_horizon_not_reached`.
+* Non-zero `TimeSpan` delays are retained but not modeled by `post-init-safe-v1`; they remain `unexercised` with `timespan_delay_not_modeled` rather than being fired early.
+* A canceled scheduled callback remains unexercised with `scheduled_callback_cancelled`.
+* `IFramework.IsInFrameworkUpdateThread` is true only while Rift is synchronously invoking synthetic framework work on the invocation worker thread.
+* A handler that unregisters itself is no longer called from an old registration snapshot on later synthetic ticks.
+* Registrations created during exercise are inventoried but not recursively exercised by the same scenario.
+
+Startup compatibility remains intentionally conservative: APIs such as `DelayTicks` still return neutral completed tasks during initialization rather than changing constructor timing. `GetTaskFactory()` also remains a neutral compatibility surface rather than a full synthetic framework task scheduler. Those limitations must not be interpreted as real Dalamud timing fidelity.
+
+== Deterministic stimulus order
+
+Within the safe profile, synthetic stimuli use an explicit order rather than alphabetical callback names:
+
+. due framework work and `IFramework.Update` for each requested tick;
+. `IUiBuilder.ShowUi`;
+. `IUiBuilder.OpenMainUi`;
+. `IUiBuilder.OpenConfigUi`;
+. `IUiBuilder.HideUi`;
+. other explicitly safe events;
+. commands;
+. zero-argument IPC callbacks.
+
+The ordering is a Rift scenario contract, not a claim that Dalamud always emits those events in that sequence.
+
+== Safety invariants
+
+Post-init exercise does not weaken the outer security boundary:
+
+* cgroup-v2 resource limits remain authoritative;
+* Bubblewrap namespaces/mount policy remains unchanged;
+* seccomp remains enforced;
+* network remains isolated;
+* real game memory is absent;
+* no real native hooks are enabled;
+* the synthetic world remains empty and local player remains absent;
+* callback execution is bounded by per-callback and total invocation budgets.
+
+Current safe-v1 budgets:
+
+* one callback deadline: 750 ms total, including an asynchronously returned `Task`/`ValueTask`;
+* commands: maximum 4;
+* zero-argument IPC callbacks: maximum 8;
+* deferred framework callbacks: maximum 16;
+* total post-init callback invocations: maximum 48.
+
+After the first callback timeout, Rift stops deliberately invoking additional callbacks. Because the timed-out worker may still be running, Rift also skips plugin disposal for that run and reports `dispose_outcome=not_attempted_exercise_timeout` rather than racing `Dispose()` against live plugin code. The outer process/cgroup teardown remains authoritative. Callback throws remain evidence and do not by themselves stop later safe callbacks.
+
+== Registration inventory
+
+Rift records registrations as first-class observations and carries a top-level `rift.exercise.v1` summary. Active registrations include event handlers, commands, deferred framework work, and IPC callbacks.
+
+Each summary entry records:
+
+* registration id;
+* kind;
+* component and operation/channel;
+* plugin callback target;
+* synthetic `due_tick` where relevant;
+* `exercised` or `unexercised` status;
+* invocation count;
+* explicit reason when not exercised.
+
+Examples of deliberate non-exercise reasons include:
+
+* `ui_render_callback_requires_rendering_profile`;
+* `event_not_modeled_by_post_init_safe_v1`;
+* `ipc_callback_requires_external_arguments`;
+* `synthetic_tick_horizon_not_reached`;
+* `timespan_delay_not_modeled`;
+* callback/command/IPC budget exhaustion;
+* `registered_during_exercise`.
+
+== Phase and causal attribution
+
+Every runtime observation carries a `phase` field. Typical phases are:
+
+* `bootstrap`;
+* `startup`;
+* `exercise.inventory`;
+* `exercise.event`;
+* `exercise.framework_callback`;
+* `exercise.command`;
+* `exercise.ipc`;
+* `exercise.summary`;
+* `dispose`;
+* `reporting` for report-generated truncation markers.
+
+Phase alone is not used as callback causality. Exercise invocations also establish an `AsyncLocal` activity context. Observations emitted inside that context can carry:
+
+* `activity_id`;
+* `parent_activity_id`;
+* `registration_id`;
+* `invocation`.
+
+This lets DeltaScope connect a selected registration to the service accesses, native-state observations, logs, and child activity it caused rather than relying on timestamps or a coarse shared phase.
+
+Plugin-created execution that does not inherit the activity/phase context remains observable where instrumented, but Rift uses `phase: unknown` instead of inventing causality.
+
+== Observation budget
+
+Managed observation collection is itself bounded. Rift retains at most 25,000 in-process observations and truncates individual message/context and parameter values.
+
+If the observation budget is exceeded, the final snapshot includes a neutral `boundary` observation with:
+
+* `operation=observation_budget`;
+* `outcome=truncated`;
+* the configured maximum;
+* the number of dropped observations.
+
+The outer cgroup remains authoritative for memory containment; this budget exists so a noisy plugin is less able to crowd useful evidence out of the report.
+
+== CLI and supervisor
+
+The managed host accepts:
+
+[source,bash]
+----
+--exercise-profile post-init-safe-v1|none
+--framework-ticks 0..32
+----
+
+`none` is the explicit startup-only profile. `post-init-safe-v1` with zero framework ticks still exercises its non-framework safe callbacks.
+
+The trusted Bubblewrap supervisor exposes the same controls and stamps them into execution provenance as `RIFT_EXERCISE_PROFILE` and `RIFT_FRAMEWORK_TICKS`.
+
+Supervisor provenance is captured by the managed host before plugin-controlled code receives execution. On successful managed runs the trusted outer supervisor additionally emits `rift.supervisor-attestation.v1`, which hashes the exact runtime-report bytes and independently records artifact, contract, boundary, and exercise provenance.
+
+== Interpretation
+
+A successful exercise means only that the selected synthetic trigger reached the callback under the stated model. It does not prove full plugin functionality.
+
+An unexercised registration means exactly that: Rift saw the behavior registration but the current profile did not trigger it. It must not be interpreted as evidence that the plugin cannot perform that behavior.
+
+The managed observer and hostile plugin share one CLR process. Managed observations are therefore best-effort in-process evidence, not a cryptographic trust boundary. Host containment and trusted success/failure attestation belong to the outer supervisor.

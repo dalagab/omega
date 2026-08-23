@@ -151,7 +151,7 @@ The expected success condition is not always process exit code zero. These tests
 
 == Report contracts
 
-Successful managed observations use `rift.runtime-observation.v1`.
+Successful managed observations use `rift.runtime-observation.v2`.
 
 Runs terminated before a managed report exists use `rift.supervisor.v3`.
 
@@ -268,3 +268,19 @@ surface:
 
 This is startup/behavior-driving emulation only. It does not claim that recipe,
 item, quest, or other game-data-dependent functionality was validated.
+
+== Pass 3.4.0 post-init exercise
+
+The production supervisor now pins `--exercise-profile post-init-safe-v1` and `--framework-ticks 3` for active Rift workflows. These values are passed through the same trusted supervisor and stamped into execution provenance.
+
+The profile does not change containment. It only changes which already-registered managed callbacks Rift deliberately invokes after a successful startup. Rendering callbacks, real native/game memory, outbound network, and real hook patching remain outside this profile.
+
+== Pass 3.4.0 evidence-integrity hardening
+
+The managed host captures supervisor-stamped execution provenance before hostile plugin code is loaded. A plugin that later changes `RIFT_*` environment variables cannot rewrite the frozen `execution` block used to finalize that run.
+
+A successful managed run also receives a trusted sibling `rift.supervisor-attestation.v1` report from the outer launcher. The attestation is generated outside the hostile cgroup/process, binds the exact managed report bytes by SHA-256, and independently records artifact identity, contract identity, boundary settings, and exercise settings. Published Omega and Artisan workflows validate the managed report against this sidecar.
+
+This distinction is intentional: the plugin and managed observation tracker occupy the same CLR process, so managed observations are best-effort dynamic evidence. The systemd/cgroup/Bubblewrap/seccomp supervisor is the hard containment boundary and the independent source for run-level attestation.
+
+Managed observation collection is additionally capped at 25,000 facts. This does not expand the security boundary; it preserves useful report evidence when a plugin is excessively noisy while cgroup memory and wall limits remain authoritative.

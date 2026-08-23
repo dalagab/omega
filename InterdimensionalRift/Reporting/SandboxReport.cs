@@ -11,7 +11,7 @@ public sealed class PluginInfo
     [JsonPropertyName("load_outcome")] public string LoadOutcome { get; set; } = "ok";
     [JsonPropertyName("load_error")] public string? LoadError { get; set; }
     [JsonPropertyName("init_duration_ms")] public long InitDurationMs { get; set; }
-    [JsonPropertyName("dispose_outcome")] public string DisposeOutcome { get; set; } = "ok";
+    [JsonPropertyName("dispose_outcome")] public string DisposeOutcome { get; set; } = "not_attempted";
     [JsonPropertyName("dispose_error")] public string? DisposeError { get; set; }
 }
 
@@ -40,6 +40,8 @@ public sealed class ExecutionProvenance
     [JsonPropertyName("tmpfs_work_bytes")] public string? TmpfsWorkBytes { get; set; }
     [JsonPropertyName("boundary_profile")] public string? BoundaryProfile { get; set; }
     [JsonPropertyName("contract_mode")] public string? ContractMode { get; set; }
+    [JsonPropertyName("exercise_profile")] public string? ExerciseProfile { get; set; }
+    [JsonPropertyName("framework_ticks")] public string? FrameworkTicks { get; set; }
     [JsonPropertyName("dalamud_contract_track")] public string? DalamudContractTrack { get; set; }
     [JsonPropertyName("dalamud_contract_sha256")] public string? DalamudContractSha256 { get; set; }
     [JsonPropertyName("dalamud_contract_tree_sha256")] public string? DalamudContractTreeSha256 { get; set; }
@@ -66,6 +68,8 @@ public sealed class ExecutionProvenance
         TmpfsWorkBytes = Environment.GetEnvironmentVariable("RIFT_TMPFS_WORK_BYTES"),
         BoundaryProfile = Environment.GetEnvironmentVariable("RIFT_BOUNDARY_PROFILE"),
         ContractMode = Environment.GetEnvironmentVariable("RIFT_CONTRACT_MODE"),
+        ExerciseProfile = Environment.GetEnvironmentVariable("RIFT_EXERCISE_PROFILE"),
+        FrameworkTicks = Environment.GetEnvironmentVariable("RIFT_FRAMEWORK_TICKS"),
         DalamudContractTrack = Environment.GetEnvironmentVariable("RIFT_DALAMUD_CONTRACT_TRACK"),
         DalamudContractSha256 = Environment.GetEnvironmentVariable("RIFT_DALAMUD_CONTRACT_SHA256"),
         DalamudContractTreeSha256 = Environment.GetEnvironmentVariable("RIFT_DALAMUD_CONTRACT_TREE_SHA256"),
@@ -76,16 +80,52 @@ public sealed class ExecutionProvenance
     };
 }
 
+public sealed class ExerciseRegistrationSummary
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = string.Empty;
+    [JsonPropertyName("kind")] public string Kind { get; set; } = string.Empty;
+    [JsonPropertyName("component")] public string Component { get; set; } = string.Empty;
+    [JsonPropertyName("operation")] public string Operation { get; set; } = string.Empty;
+    [JsonPropertyName("target")] public string? Target { get; set; }
+    [JsonPropertyName("status")] public string Status { get; set; } = "unexercised";
+    [JsonPropertyName("reason")] public string? Reason { get; set; }
+    [JsonPropertyName("planned_invocations")] public int PlannedInvocations { get; set; } = 1;
+    [JsonPropertyName("invocations")] public int Invocations { get; set; }
+    [JsonPropertyName("due_tick")] public int? DueTick { get; set; }
+}
+
+public sealed class ExerciseSummary
+{
+    [JsonPropertyName("schema_version")] public string SchemaVersion { get; set; } = "rift.exercise.v1";
+    [JsonPropertyName("profile")] public string Profile { get; set; } = "none";
+    [JsonPropertyName("status")] public string Status { get; set; } = "not_run";
+    [JsonPropertyName("reason")] public string? Reason { get; set; }
+    [JsonPropertyName("framework_ticks_requested")] public int FrameworkTicksRequested { get; set; }
+    [JsonPropertyName("registrations_discovered")] public int RegistrationsDiscovered { get; set; }
+    [JsonPropertyName("registrations_exercised")] public int RegistrationsExercised { get; set; }
+    [JsonPropertyName("registrations_unexercised")] public int RegistrationsUnexercised { get; set; }
+    [JsonPropertyName("by_kind")] public Dictionary<string, int> ByKind { get; set; } = new(StringComparer.Ordinal);
+    [JsonPropertyName("registrations")] public List<ExerciseRegistrationSummary> Registrations { get; set; } = new();
+
+    public static ExerciseSummary NotRun(string profile, string reason, int frameworkTicks = 0) => new()
+    {
+        Profile = profile,
+        Status = "not_run",
+        Reason = reason,
+        FrameworkTicksRequested = frameworkTicks,
+    };
+}
+
 public sealed class SandboxReport
 {
     [JsonPropertyName("schema_version")]
-    public string SchemaVersion { get; set; } = "rift.runtime-observation.v1";
+    public string SchemaVersion { get; set; } = "rift.runtime-observation.v2";
 
     [JsonPropertyName("producer")]
     public string Producer { get; set; } = "interdimensional-rift";
 
     [JsonPropertyName("producer_version")]
-    public string ProducerVersion { get; set; } = "0.3.9";
+    public string ProducerVersion { get; set; } = "0.4.0";
 
     [JsonPropertyName("ran_at")]
     public string RanAt { get; set; } = DateTime.UtcNow.ToString("O");
@@ -95,6 +135,9 @@ public sealed class SandboxReport
 
     [JsonPropertyName("plugin")]
     public PluginInfo Plugin { get; set; } = new();
+
+    [JsonPropertyName("exercise")]
+    public ExerciseSummary Exercise { get; set; } = ExerciseSummary.NotRun("none", "not requested");
 
     [JsonPropertyName("observations")]
     public List<RuntimeObservation> Observations { get; set; } = new();

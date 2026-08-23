@@ -14,9 +14,13 @@ namespace InterdimensionalRift.Host;
 /// </summary>
 public sealed class SandboxHost
 {
-    public SandboxReport Run(string pluginPath, TimeSpan initTimeout, int frameworkTicks = 3)
+    public SandboxReport Run(string pluginPath, TimeSpan initTimeout, int frameworkTicks = 3, string? exerciseProfile = null)
     {
+        // Freeze trusted supervisor provenance before any plugin-controlled code can run.
+        var execution = ExecutionProvenance.Capture();
         var tracker = new AccessTracker();
+        var profile = exerciseProfile ?? PostInitExerciseEngine.SafeProfile;
+        var exercise = ExerciseSummary.NotRun(profile, "startup not completed", frameworkTicks);
 
         DalamudContract.EnsureLoaded();
         DalamudContract.EnterSandboxFailFastHostMode();
@@ -24,6 +28,8 @@ public sealed class SandboxHost
             "dalamud.internal_service_locator",
             "fail_fast",
             "real Dalamud host services intentionally unavailable in Rift");
+
+        using var startupPhase = tracker.PushPhase("startup");
 
         if (!File.Exists(pluginPath))
         {
@@ -35,6 +41,8 @@ public sealed class SandboxHost
                     LoadOutcome = "load_failed",
                     LoadError = "plugin file not found",
                 },
+                Execution = execution,
+                Exercise = exercise,
             };
         }
 
@@ -60,7 +68,7 @@ public sealed class SandboxHost
             info.LoadOutcome = "load_failed";
             info.LoadError = $"{ex.GetType().Name}: {ex.Message}";
             tracker.Lifecycle("assembly_load", "threw", exception: ex);
-            return Finalize(tracker, info);
+            return Finalize(tracker, info, exercise, execution);
         }
 
         var pluginType = loader.FindPluginType(assembly, out var notFoundReason);
@@ -68,7 +76,7 @@ public sealed class SandboxHost
         {
             info.LoadOutcome = "not_a_plugin";
             info.LoadError = notFoundReason;
-            return Finalize(tracker, info);
+            return Finalize(tracker, info, exercise, execution);
         }
 
         info.LoadOutcome = "loaded";
@@ -84,7 +92,7 @@ public sealed class SandboxHost
             {
                 tracker.Timeout("constructor");
                 info.LoadOutcome = "init_timeout";
-                return FinalizeWithDuration(tracker, info, initSw);
+                return FinalizeWithDuration(tracker, info, initSw, exercise, execution);
             }
 
             plugin = createTask.GetAwaiter().GetResult();
@@ -117,19 +125,28 @@ public sealed class SandboxHost
             info.LoadOutcome = tracker.Snapshot().Any(f => f.Kind == RuntimeObservationKind.Timeout) ? "init_timeout" : "init_threw";
 
         if (initOk)
+            exercise = PostInitExerciseEngine.Run(registry, tracker, profile, frameworkTicks);
+        else
+            exercise = ExerciseSummary.NotRun(profile, "plugin initialization did not complete", frameworkTicks);
+
+        if (plugin is not null)
         {
-            for (var i = 0; i < frameworkTicks; i++)
+            using var disposePhase = tracker.PushPhase("dispose");
+            var callbackStillMayBeRunning = exercise.Registrations.Any(r =>
+                r.Reason is "callback_timeout" or "returned_async_timeout");
+            if (callbackStillMayBeRunning)
             {
-                tracker.Lifecycle("scenario.framework_tick", "begin", $"tick={i + 1}");
-                registry.FireFrameworkTick();
+                info.DisposeOutcome = "not_attempted_exercise_timeout";
+                tracker.Lifecycle("Dispose", "skipped", plugin.GetType().FullName);
+            }
+            else
+            {
+                DisposePlugin(plugin, TimeSpan.FromSeconds(5), tracker, info);
             }
         }
 
-        if (plugin is not null)
-            DisposePlugin(plugin, TimeSpan.FromSeconds(5), tracker, info);
-
         loader.Unload();
-        return Finalize(tracker, info);
+        return Finalize(tracker, info, exercise, execution);
     }
 
     private static bool InvokeAsyncLoad(object plugin, Type asyncContract, TimeSpan timeout, AccessTracker tracker)
@@ -223,12 +240,12 @@ public sealed class SandboxHost
         return ex;
     }
 
-    private static SandboxReport FinalizeWithDuration(AccessTracker tracker, PluginInfo info, Stopwatch sw)
+    private static SandboxReport FinalizeWithDuration(AccessTracker tracker, PluginInfo info, Stopwatch sw, ExerciseSummary exercise, ExecutionProvenance execution)
     {
         info.InitDurationMs = sw.ElapsedMilliseconds;
-        return Finalize(tracker, info);
+        return Finalize(tracker, info, exercise, execution);
     }
 
-    private static SandboxReport Finalize(AccessTracker tracker, PluginInfo info) =>
-        RuntimeObservationReporter.Finalize(tracker.Snapshot(), info);
+    private static SandboxReport Finalize(AccessTracker tracker, PluginInfo info, ExerciseSummary exercise, ExecutionProvenance execution) =>
+        RuntimeObservationReporter.Finalize(tracker.Snapshot(), info, exercise, execution);
 }

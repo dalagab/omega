@@ -12,12 +12,13 @@ a=p.parse_args()
 d=json.loads(a.report.read_text(encoding="utf-8"))
 plugin=d.get("plugin") or {}
 obs=d.get("observations") or []
+exercise=d.get("exercise") or {}
 
 def uniq_append(lst, item):
     key=json.dumps(item, sort_keys=True)
     if key not in {json.dumps(x, sort_keys=True) for x in lst}: lst.append(item)
 
-inj=[]; access=[]; gaps=[]; blockers=[]; hooks=[]; signatures=[]; native_state=[]; emulation=[]
+inj=[]; access=[]; gaps=[]; blockers=[]; hooks=[]; signatures=[]; native_state=[]; registrations=[]; exercised=[]; emulation=[]
 for o in obs:
     kind=str(o.get("kind") or "").lower()
     item={k:o.get(k) for k in ("component","operation","outcome","message","exception_type","exception_message","exception_detail","context","parameters")}
@@ -36,6 +37,12 @@ for o in obs:
     elif kind=="native_game_state":
         uniq_append(native_state, item)
         uniq_append(emulation, {"type":"synthetic-native-game-state", **item})
+    elif kind=="registration":
+        uniq_append(registrations, item)
+    elif kind=="exercise":
+        uniq_append(exercised, item)
+        if str(o.get("outcome") or "").lower() in {"threw","timeout"}:
+            uniq_append(blockers, {"type":"exercise-callback", **item})
     elif kind=="exception":
         uniq_append(blockers, {"type":"exception", **item})
     elif kind=="timeout":
@@ -45,17 +52,38 @@ load=plugin.get("load_outcome")
 if load and load!="ok":
     blockers.insert(0, {"type":"plugin-load","outcome":load,"detail":plugin.get("load_error")})
 
-blob=json.dumps(obs, sort_keys=True).lower()
+# Classify only plugin-behavior-bearing fields. Do not scan the entire report blob:
+# exercise/boundary metadata such as network_boundary=isolated must never create a
+# false claim that the plugin touched networking.
+def behavior_text(o):
+    kind=str(o.get("kind") or "").lower()
+    if kind in {"boundary"}:
+        return ""
+    component=str(o.get("component") or "").lower()
+    operation=str(o.get("operation") or "").lower()
+    params=o.get("parameters") or {}
+    registration_kind=str(params.get("registration_kind") or "").lower()
+    return " ".join((kind, component, operation, registration_kind))
+
+behavior_blob="\n".join(filter(None, (behavior_text(o) for o in obs)))
 cats=[]
-for needle,cat in (
-    ("ipc","plugin-ipc"),("ffxivclientstructs","game-native-structs"),("native_game_state","game-native-structs"),("idatamanager","game-data"),("excelsheet","game-data"),
-    ("gamedata","game-data"),("texture","textures"),("framework","framework-events"),
-    ("condition","condition-state"),("clientstate","client-state"),
-    ("command","command-manager"),("uibuilder","ui-builder"),("window","windowing"),
-    ("hook","game-hooks"),("signature","signature-scanning"),("addressresolver","signature-scanning"),
-    ("network","network"),
+for needles,cat in (
+    (("ipc",),"plugin-ipc"),
+    (("ffxivclientstructs","native_game_state"),"game-native-structs"),
+    (("idatamanager","excelsheet","gamedata"),"game-data"),
+    (("texture",),"textures"),
+    (("framework",),"framework-events"),
+    (("condition",),"condition-state"),
+    (("clientstate",),"client-state"),
+    (("command",),"command-manager"),
+    (("uibuilder",),"ui-builder"),
+    (("window",),"windowing"),
+    (("hook",),"game-hooks"),
+    (("signature","addressresolver"),"signature-scanning"),
+    (("http","socket","connect","dns","networkstream","webrequest","httpclient"),"network"),
 ):
-    if needle in blob and cat not in cats: cats.append(cat)
+    if any(needle in behavior_blob for needle in needles) and cat not in cats:
+        cats.append(cat)
 
 payload={
  "schema_version":"rift.coverage-gap.v1",
@@ -69,17 +97,20 @@ payload={
  "observed_hook_operations":hooks,
  "observed_signature_operations":signatures,
  "observed_native_game_state_operations":native_state,
+ "observed_registrations":registrations,
+ "observed_exercise_operations":exercised,
+ "exercise":exercise,
  "emulation_limits":emulation,
  "blockers":blockers,
  "coverage_categories_touched":cats,
  "interpretation":{
    "startup_ok":load=="ok",
    "full_plugin_functionality_proven":False,
-   "note":"Startup exercise is bounded. Missing observations mean not observed, not impossible."
+   "note":"Startup and post-init exercise are bounded. Missing observations mean not observed, not impossible."
  }
 }
 a.out.parent.mkdir(parents=True,exist_ok=True)
 a.out.write_text(json.dumps(payload,indent=2)+"\n",encoding="utf-8")
-print(f"Coverage-gap report: startup={load} injections={len(inj)} accesses={len(access)} hooks={len(hooks)} signatures={len(signatures)} native_state={len(native_state)} emulation={len(emulation)} gaps={len(gaps)} blockers={len(blockers)}")
+print(f"Coverage-gap report: startup={load} exercise={exercise.get('status')} registrations={len(registrations)} exercised={len(exercised)} injections={len(inj)} accesses={len(access)} hooks={len(hooks)} signatures={len(signatures)} native_state={len(native_state)} emulation={len(emulation)} gaps={len(gaps)} blockers={len(blockers)}")
 for b in blockers[:8]:
     print("blocker:", b.get("exception_type") or b.get("outcome") or b.get("type"), b.get("exception_message") or b.get("detail") or "")

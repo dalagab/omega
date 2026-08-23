@@ -15,6 +15,8 @@ public enum RuntimeObservationKind
     AssemblyLoad,
     NativeLibrary,
     NativeGameState,
+    Registration,
+    Exercise,
     SignatureScan,
     Hook,
     Exception,
@@ -32,6 +34,21 @@ public sealed class RuntimeObservation
 
     [JsonPropertyName("ts_offset_ms")]
     public long TimestampOffsetMs { get; set; }
+
+    [JsonPropertyName("phase")]
+    public string? Phase { get; set; }
+
+    [JsonPropertyName("activity_id")]
+    public string? ActivityId { get; set; }
+
+    [JsonPropertyName("parent_activity_id")]
+    public string? ParentActivityId { get; set; }
+
+    [JsonPropertyName("registration_id")]
+    public string? RegistrationId { get; set; }
+
+    [JsonPropertyName("invocation")]
+    public int? Invocation { get; set; }
 
     [JsonPropertyName("component")]
     public string? Component { get; set; }

@@ -12,7 +12,7 @@ public static class RuntimeObservationReporter
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
     };
 
-    public static SandboxReport Finalize(IEnumerable<RuntimeObservation> observations, PluginInfo plugin)
+    public static SandboxReport Finalize(IEnumerable<RuntimeObservation> observations, PluginInfo plugin, ExerciseSummary? exercise = null, ExecutionProvenance? execution = null)
     {
         var ordered = observations
             .OrderBy(o => o.TimestampOffsetMs)
@@ -21,7 +21,9 @@ public static class RuntimeObservationReporter
 
         return new SandboxReport
         {
+            Execution = execution ?? ExecutionProvenance.Capture(),
             Plugin = plugin,
+            Exercise = exercise ?? ExerciseSummary.NotRun("none", "not supplied"),
             Observations = ordered,
             Summary = new ReportSummary
             {
