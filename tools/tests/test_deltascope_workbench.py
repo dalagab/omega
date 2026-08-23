@@ -116,6 +116,71 @@ class DeltaScopeWorkbenchTests(unittest.TestCase):
             "advisorySummary": {"count": 1, "highestSeverity": "high", "points": 0},
         }
 
+    def test_asset_journey_reconstructs_evidence_backed_vertical_stages(self):
+        detail = self.detail()
+        detail.update({
+            "sourceCoverage": {
+                "artifactAvailable": True, "sourceCodeAvailable": True,
+                "repository": "https://github.com/example/plugin", "commit": "abc123",
+                "attributionConfidence": 92, "sourceToBinaryVerified": False,
+            },
+            "artifactIdentity": {"sha256": "aa" * 32},
+            "manifestObservation": {"internalName": "Example.Plugin"},
+            "package": {"files": 4},
+            "secondarySecurity": {"engines": [
+                {"engine": "yara", "status": "complete", "matches": []},
+                {"engine": "clamav", "status": "complete", "matches": []},
+            ]},
+            "analysis": {"path": "artifacts/aa/analysis"},
+            "networkEndpoints": [{"host": "api.example.test"}],
+            "dependencies": [{"name": "Example.Dependency"}],
+        })
+        detail["identity"]["artifact_sha256"] = "aa" * 32
+        detail["identity"]["artifact_url"] = "https://example.invalid/plugin.zip"
+        detail["identity"]["scanner_version"] = "2.15.0"
+        projection_state = {
+            "available": True, "ruleSetRevision": "rules-1", "productionWriteBack": False,
+            "projection": {
+                "projectionRevision": "proj-1", "matchedRuleIds": ["compound.network-execute"],
+                "findings": [{"findingId": "compound.network-execute"}],
+            },
+            "analysisRequest": {
+                "variantId": 10, "profile": "artifact-differential-v1", "depth": "extended",
+                "compareWith": "stable-artifact-baseline", "ruleId": "provenance.deep",
+                "reason": "artifact diverges from stable baseline",
+            },
+        }
+        result = workbench.project_asset_journey(detail, {
+            "staticPatternMatches": [{"pattern": "HttpWebRequest"}],
+            "networkEndpoints": [{"host": "api.example.test"}],
+        }, projection_state)
+        self.assertEqual(workbench.JOURNEY_SCHEMA, result["schema"])
+        self.assertTrue(result["readOnly"])
+        self.assertEqual("none", result["mutationAuthority"])
+        stages = {item["stageId"]: item for item in result["stages"]}
+        self.assertEqual("complete", stages["artifact-acquisition"]["status"])
+        self.assertEqual("complete", stages["source-attribution"]["status"])
+        self.assertEqual("complete", stages["sigmascope-static"]["status"])
+        self.assertEqual("complete", stages["stigma-rules"]["status"])
+        self.assertEqual("requested", stages["deep-analysis"]["status"])
+        self.assertIn("artifact-differential-v1", stages["deep-analysis"]["details"][0])
+        self.assertEqual("current", stages["deltascope-view"]["status"])
+
+    def test_asset_journey_does_not_invent_missing_source_or_deep_scan(self):
+        detail = self.detail()
+        detail["sourceCoverage"] = {"artifactAvailable": False, "sourceCodeAvailable": False}
+        result = workbench.project_asset_journey(detail, {}, {"available": False})
+        stages = {item["stageId"]: item for item in result["stages"]}
+        self.assertEqual("skipped", stages["source-attribution"]["status"])
+        self.assertEqual("not-requested", stages["deep-analysis"]["status"])
+        self.assertNotIn("retrieved", stages["source-attribution"]["summary"].casefold())
+
+    def test_asset_journey_projection_is_deterministic_for_observation_order(self):
+        detail = self.detail()
+        a = workbench.project_asset_journey(detail, {"networkEndpoints": [{"host": "a"}, {"host": "b"}]})
+        b = workbench.project_asset_journey(detail, {"networkEndpoints": [{"host": "b"}, {"host": "a"}]})
+        self.assertEqual(a["journeyProjectionId"], b["journeyProjectionId"])
+
     def test_incident_case_composes_findings_observations_intelligence_and_reprojection(self):
         projection_state = {
             "available": True,
@@ -184,6 +249,42 @@ class DeltaScopeWorkbenchTests(unittest.TestCase):
         self.assertEqual(1, len(events))
         self.assertEqual("requires-observation-refresh", events[0]["relationship"])
         self.assertFalse(result["ruleProjection"]["queueMutationAuthorized"])
+
+    def test_http_asset_journey_endpoint_reconstructs_selected_variant_read_only(self):
+        detail = self.detail()
+        detail["sourceCoverage"] = {"artifactAvailable": True, "sourceCodeAvailable": False}
+        detail["identity"]["artifact_sha256"] = "bb" * 32
+
+        class FakeInspector:
+            def plugin_detail(self, variant_id):
+                self.last_detail = variant_id
+                return detail
+
+            def workbench_observation_rows(self, variant_id):
+                self.last_observation = variant_id
+                return {"networkEndpoints": [{"host": "api.example.test"}]}
+
+            def srl_projection_state(self, variant_id):
+                self.last_projection = variant_id
+                return {"available": False, "productionWriteBack": False}
+
+        inspector = FakeInspector()
+        handler = type("TestAssetJourneyHandler", (developer_view.AppHandler,), {"inspector": inspector})
+        server = developer_view.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{server.server_address[1]}/api/workbench/journey?variant_id=10", timeout=5) as response:
+                payload = json.load(response)
+            self.assertEqual(workbench.JOURNEY_SCHEMA, payload["schema"])
+            self.assertEqual("none", payload["mutationAuthority"])
+            self.assertEqual(10, inspector.last_detail)
+            self.assertEqual(10, inspector.last_observation)
+            self.assertEqual(10, inspector.last_projection)
+            self.assertEqual("current", payload["stages"][-1]["status"])
+        finally:
+            server.shutdown()
+            server.server_close()
 
     def test_http_workbench_case_endpoint_is_read_only_and_composed_lazily(self):
         detail = self.detail()

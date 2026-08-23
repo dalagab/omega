@@ -295,6 +295,7 @@ class V2SigmascopeInspector:
         self._queue_payload_cache: dict[str, Any] = {}
         self._srl_projection_index_cache: dict[str, Any] | None = None
         self._srl_reanalysis_cache: dict[int, dict[str, Any]] | None = None
+        self._srl_analysis_request_cache: dict[int, dict[str, Any]] | None = None
         self._workbench_relationship_cache: dict[str, Any] | None = None
         self._summary_index_available = bool(self.entries) and all(isinstance(row.get("summary"), dict) for row in self.entries.values())
 
@@ -1180,6 +1181,19 @@ class V2SigmascopeInspector:
             self._srl_reanalysis_cache = requests
         if int(variant_id) in self._srl_reanalysis_cache:
             result["reanalysisRequest"] = dict(self._srl_reanalysis_cache[int(variant_id)])
+        if self._srl_analysis_request_cache is None:
+            request = index.get("analysisRequests") if isinstance(index.get("analysisRequests"), dict) else {}
+            path = str(request.get("path") or "")
+            requests: dict[int, dict[str, Any]] = {}
+            if path:
+                rel = (root_path / _safe_relative(path)).as_posix()
+                payload = self.source.read_json(rel, expected_sha256=str(request.get("sha256") or ""))
+                for item in payload.get("requests") or [] if isinstance(payload, dict) else []:
+                    if isinstance(item, dict) and int(item.get("variantId") or 0) > 0:
+                        requests[int(item["variantId"])] = dict(item)
+            self._srl_analysis_request_cache = requests
+        if int(variant_id) in self._srl_analysis_request_cache:
+            result["analysisRequest"] = dict(self._srl_analysis_request_cache[int(variant_id)])
         return result
 
     def managed_calls(self, variant_id: int, query: str = "", limit: int = 250) -> list[dict[str, Any]]:

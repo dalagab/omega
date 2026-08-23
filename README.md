@@ -359,7 +359,7 @@ The security-service sources represented by this snapshot include:
 | Area | Snapshot state |
 | --- | --- |
 | SigmaScope | `2.15.0` |
-| DeltaScope | `4.6.3` |
+| DeltaScope | `4.7.0` |
 | Stigma-1 / SRL | Compiler/evaluator, replay, Definition Packs and authoring implemented |
 | Definition Packs | 6 packs / 55 rules / 15 fixtures |
 | Production SRL write-back | **Disabled / separately gated** |
@@ -405,7 +405,6 @@ Read:
 - [`docs/ARCHITECTURE-SECURITY-MODEL.md`](docs/ARCHITECTURE-SECURITY-MODEL.md)
 - [`docs/OBSERVATION-PROJECTION-CONTRACT.md`](docs/OBSERVATION-PROJECTION-CONTRACT.md)
 - [`docs/DEEP-SCAN-WORKFLOW.md`](docs/DEEP-SCAN-WORKFLOW.md)
-- [`BRANCH_HANDOVER.md`](BRANCH_HANDOVER.md)
 
 ---
 

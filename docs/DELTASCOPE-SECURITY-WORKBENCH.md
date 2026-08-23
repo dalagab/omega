@@ -20,11 +20,17 @@ The workbench uses these stable operator concepts:
 - **Incidents** — newest current security findings first, followed by correlated/elevated investigation cases. Incident state is derived/read-only; DeltaScope does not assign, close or mutate incidents.
 - **Events** — read-only GitHub workflow operations alongside time-oriented Evidence-v2 security observations/scans.
 - **Intelligence** — advisory, endpoint, reputation, component and other enrichment that can be pivoted across plugins.
-- **Assets** — plugins first, with drill-down into variants, artifacts, source repositories, binaries, dependencies and endpoints.
+- **Assets** — plugins first. Selecting a variant opens its evidence-backed **Journey** by default, then allows drill-down into triage, malware engines, findings, network, binaries/native code, supply chain, relationships and immutable evidence.
 - **Rules** — unified Stigma-1 / SRL Core workspace: read-only repository System Rules and active frozen provenance plus versioned local My Rules. Local saves never mutate Definitions or production state.
 - **Reports** — coverage/revision/replay summaries and exportable read-only reports.
 - **Documentation** — allow-listed local Stigma-1/SRL authoring, examples, Definition Pack and security-architecture references.
 - **System** — evidence/Definitions revisions, pipeline health, audit status and the advanced raw Evidence-v2 browser.
+
+## DeltaScope 4.7 Asset Journey
+
+The selected Asset view begins with a top-to-bottom Journey graph reconstructed from retained evidence. It is intentionally not a generic architecture diagram: each node describes what is actually recorded for the selected variant. Catalog discovery, artifact acquisition, package/manifest inspection, source retrieval/attribution, SigmaScope static analysis, secondary engines, normalized observations/intelligence, Stigma-1/SRL projection, optional Deep Scan/reanalysis, Evidence-v2 publication and the current DeltaScope view are shown in execution order. Optional or unavailable stages remain visible as `skipped`, `not recorded`, `not requested`, `needs evidence`, or `requested` rather than being silently omitted or falsely shown as completed.
+
+`/api/workbench/journey` emits `omega.deltascope.asset-journey.v1` with `readOnly=true` and `mutationAuthority=none`. It consumes the same selected-plugin detail, retained observation preview and hash-verified SRL sidecars already used by the investigator workbench. The Journey therefore adds explanation, not a second security state store.
 
 ## DeltaScope 4.6.2 Stigma-1 rule library + deep-analysis orchestration
 
@@ -90,6 +96,7 @@ The UI should favor dense, comprehensible operator workflows over decorative lan
 6. **Implemented:** exact active-rule browser backed by the published frozen Definitions provenance sidecar, including Definition Pack/rule revisions, review/provenance metadata, source hashes, fixtures and migration-parity state. It never reads development-tree packs to decide what is active.
 7. **Implemented:** deterministic Reports/System projections for coverage, SRL reprojection/reanalysis readiness, queue state, Evidence/Definitions/scanner/SRL revision lineage and explicit production/read-only safety gates. These are derived views only.
 8. **Implemented:** GitHub proposal handoff from Rule Lab. DeltaScope validates the candidate plus positive/negative fixtures locally, then opens GitHub's normal `sigmascope-rule-candidate.yml` Issue Form with URL-query prefills. The operator must review and submit the issue in GitHub. No GitHub API write/token/repository credential is used by the proposal path. A conservative URL-size guard falls back to metadata/identity-only prefills and explicit copy buttons for omitted YAML. GitHub then re-fetches/revalidates the submitted issue through the Phase-9 permission/CI/review/normal-PR workflow. `/api/rule-lab/promote` remains absent.
+9. **Implemented:** selected-Asset Journey reconstruction through `/api/workbench/journey`, including explicit artifact/source/static/secondary/rules/deep-analysis/publication stages and fail-closed status labels derived from retained evidence.
 
 ## Relationship-index boundary
 

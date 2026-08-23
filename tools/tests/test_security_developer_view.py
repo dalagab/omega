@@ -192,11 +192,22 @@ class SecurityDeveloperViewTests(unittest.TestCase):
             (root / "rule-projections" / "reanalysis-requests.json").write_text(json.dumps({
                 "schema": "omega.sigmascope.srl-reanalysis-requests.v1", "requests": [], "queueMutationAuthorized": False,
             }), encoding="utf-8")
+            (root / "rule-projections" / "analysis-requests.json").write_text(json.dumps({
+                "schema": "omega.stigma-1.analysis-requests.v1",
+                "requests": [{
+                    "variantId": 1, "profile": "artifact-differential-v1", "depth": "extended",
+                    "compareWith": "stable-artifact-baseline", "ruleId": "provenance.deep",
+                    "reason": "fixture divergence",
+                }],
+                "queueMutationScope": "deep-scan-evidence-acquisition-only",
+                "productionFindingsWriteBack": False,
+            }), encoding="utf-8")
             (root / "rule-projections" / "index.json").write_text(json.dumps({
                 "schema": "omega.sigmascope.srl-rule-projection-set.v1", "projectionSetRevision": "set-1", "ruleSetRevision": "rules-1",
                 "productionRuleEvaluationEnabled": False, "productionWriteBack": False, "queueMutationAuthorized": False,
                 "variants": [{"variantId": 1, "path": "variants/1.json"}],
                 "reanalysisRequests": {"path": "reanalysis-requests.json"},
+                "analysisRequests": {"path": "analysis-requests.json"},
             }), encoding="utf-8")
             (root / "index.json").write_text(json.dumps({
                 "schema": "omega.security-evidence.v2", "formatVersion": 2, "counts": {},
@@ -214,6 +225,8 @@ class SecurityDeveloperViewTests(unittest.TestCase):
                 self.assertEqual("projection-1", state["projection"]["projectionRevision"])
                 self.assertFalse(state["productionWriteBack"])
                 self.assertFalse(state["queueMutationAuthorized"])
+                self.assertEqual("artifact-differential-v1", state["analysisRequest"]["profile"])
+                self.assertEqual("extended", state["analysisRequest"]["depth"])
             finally:
                 inspector.close()
 
@@ -887,6 +900,9 @@ class SecurityDeveloperViewTests(unittest.TestCase):
     def test_developer_view_uses_research_workbench_with_advanced_raw_evidence(self) -> None:
         self.assertIn("SECURITY RESEARCH WORKBENCH", view.HTML)
         self.assertIn("Research queue", view.HTML)
+        self.assertIn("Journey", view.HTML)
+        self.assertIn("Plugin journey", view.HTML)
+        self.assertIn("/api/workbench/journey", view.HTML)
         self.assertIn("Triage", view.HTML)
         self.assertIn("Malware", view.HTML)
         self.assertIn("Code & native", view.HTML)

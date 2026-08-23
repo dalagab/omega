@@ -1,5 +1,13 @@
 # Omega Security Services changelog
 
+## 2.15.0 — DeltaScope 4.7.0 / per-plugin Asset Journey
+
+- Add a **Journey** tab as the default selected-asset view in DeltaScope. It renders the plugin's recorded path vertically from catalog discovery through artifact acquisition, package/manifest inspection, source attribution, SigmaScope, secondary engines, normalized observations, Stigma-1/SRL projection, optional deep analysis, Evidence-v2 publication and the current DeltaScope view.
+- Build the graph from a new deterministic read-only `omega.deltascope.asset-journey.v1` backend projection (`/api/workbench/journey`) rather than a fixed decorative pipeline. Stages are explicitly marked complete, partial, failed, skipped, not recorded, not requested, needs evidence, requested or current according to retained evidence.
+- Keep absent source and optional Deep Scan stages visible without pretending they ran. Artifact-only plugins therefore show source attribution as skipped; variants with a frozen Stigma-1 analysis request show the approved profile/depth/reason as requested.
+- Extend the existing hash-verified SRL projection-sidecar reader to expose the selected variant's `analysisRequest` from `analysis-requests.json` alongside reanalysis requests. This does not grant production finding write-back or arbitrary queue authority.
+- Add regression coverage for deterministic Journey reconstruction, missing-source/deep-scan honesty, the read-only Journey HTTP endpoint, and retrieval of typed Stigma-1 analysis requests.
+
 ## 2.15.0 unreleased — DeltaScope 4.6.3 / root launcher
 
 - Add root-level `deltascope.py`, `deltascope.cmd`, and `deltascope.sh` launchers so DeltaScope can be started from the SigmaScope checkout without remembering the internal tool path.

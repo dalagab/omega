@@ -16,6 +16,7 @@ EVENT_SCHEMA = "omega.deltascope.event-projection.v1"
 INTELLIGENCE_SCHEMA = "omega.deltascope.intelligence-projection.v1"
 CASE_SCHEMA = "omega.deltascope.incident-case-projection.v1"
 TIMELINE_SCHEMA = "omega.deltascope.security-timeline.v1"
+JOURNEY_SCHEMA = "omega.deltascope.asset-journey.v1"
 
 SEVERITY_RANK = {
     "none": 0,
@@ -594,6 +595,216 @@ def project_intelligence_pivot(
         "assets": assets,
     }
 
+
+
+def project_asset_journey(
+    detail: Mapping[str, Any], observations: Mapping[str, Any] | None = None,
+    projection_state: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Reconstruct the evidence-backed path one plugin variant took through Omega security services.
+
+    This is a read-only explanatory projection. A stage is marked complete only when retained
+    evidence supports that claim; absent/optional stages remain explicit instead of being invented.
+    """
+    observations = observations or {}
+    projection_state = projection_state or {}
+    identity = detail.get("identity") if isinstance(detail.get("identity"), Mapping) else {}
+    researcher = detail.get("researcher") if isinstance(detail.get("researcher"), Mapping) else {}
+    coverage = detail.get("sourceCoverage") if isinstance(detail.get("sourceCoverage"), Mapping) else {}
+    artifact_identity = detail.get("artifactIdentity") if isinstance(detail.get("artifactIdentity"), Mapping) else {}
+    manifest = detail.get("manifestObservation") if isinstance(detail.get("manifestObservation"), Mapping) else {}
+    package = detail.get("package") if isinstance(detail.get("package"), Mapping) else {}
+    source_attr = detail.get("sourceAttribution") if isinstance(detail.get("sourceAttribution"), Mapping) else {}
+    source_prov = detail.get("sourceProvenance") if isinstance(detail.get("sourceProvenance"), Mapping) else {}
+    secondary = detail.get("secondarySecurity") if isinstance(detail.get("secondarySecurity"), Mapping) else {}
+    analysis = detail.get("analysis") if isinstance(detail.get("analysis"), Mapping) else {}
+    projection = projection_state.get("projection") if isinstance(projection_state.get("projection"), Mapping) else {}
+
+    variant_id = _int(identity.get("variant_id") or identity.get("variantId"))
+    scan_id = _int(identity.get("scan_id") or identity.get("scanId"))
+    scan_status = str(identity.get("scan_status") or identity.get("status") or "unscanned").strip().casefold() or "unscanned"
+    artifact_sha = str(identity.get("artifact_sha256") or artifact_identity.get("sha256") or artifact_identity.get("artifactSha256") or "").strip().lower()
+    artifact_url = str(identity.get("artifact_url") or artifact_identity.get("url") or artifact_identity.get("artifactUrl") or "").strip()
+    source_repo = str(coverage.get("repository") or source_prov.get("repository") or identity.get("source_repository") or "").strip()
+    source_commit = str(coverage.get("commit") or source_prov.get("commit") or identity.get("source_commit") or "").strip()
+    source_available = bool(coverage.get("sourceCodeAvailable")) or bool(source_repo)
+    source_verified = bool(coverage.get("sourceToBinaryVerified") or source_prov.get("sourceToBinaryVerified"))
+    findings = researcher.get("findings") if isinstance(researcher.get("findings"), list) else detail.get("findings") if isinstance(detail.get("findings"), list) else []
+    capabilities = researcher.get("capabilities") if isinstance(researcher.get("capabilities"), list) else []
+    endpoints = detail.get("networkEndpoints") if isinstance(detail.get("networkEndpoints"), list) else []
+    components = detail.get("componentSummary") if isinstance(detail.get("componentSummary"), Mapping) else {}
+    dependencies = detail.get("dependencies") if isinstance(detail.get("dependencies"), list) else []
+    engines = secondary.get("engines") if isinstance(secondary.get("engines"), list) else []
+    engine_matches = sum(len(item.get("matches") or []) for item in engines if isinstance(item, Mapping))
+
+    obs_counts = {
+        str(name): len(rows) for name, rows in observations.items()
+        if isinstance(rows, list) and rows
+    }
+
+    def stage(key: str, title: str, status: str, summary: str, details: list[str] | None = None, *, evidence: str = "") -> dict[str, Any]:
+        values = [str(item) for item in (details or []) if str(item).strip()]
+        return {
+            "stageId": key, "title": title, "status": status, "summary": summary,
+            "details": values[:8], "evidence": evidence,
+        }
+
+    stages: list[dict[str, Any]] = []
+    source_name = str(identity.get("source_name") or "").strip()
+    source_url = str(identity.get("source_url") or "").strip()
+    stages.append(stage(
+        "catalog-discovery", "Catalog discovery", "complete" if variant_id else "unknown",
+        "Plugin variant was discovered and normalized into the Omega catalog." if variant_id else "No catalog identity is retained.",
+        [
+            f"variant {variant_id}" if variant_id else "",
+            f"source: {source_name}" if source_name else "",
+            source_url,
+            f"version: {identity.get('assembly_version')}" if identity.get("assembly_version") else "",
+        ], evidence="variant identity",
+    ))
+    stages.append(stage(
+        "artifact-acquisition", "Acquire installable plugin", "complete" if artifact_sha else ("failed" if scan_status == "failed" else "not-recorded"),
+        "Installable artifact was acquired and pinned by SHA-256." if artifact_sha else "No retained artifact identity is available for this variant.",
+        [artifact_url, f"sha256: {artifact_sha}" if artifact_sha else "", str(identity.get("artifact_channel") or "")],
+        evidence="artifactIdentity",
+    ))
+    package_seen = bool(manifest) or bool(package)
+    stages.append(stage(
+        "package-inspection", "Inspect package & manifest", "complete" if package_seen else ("not-recorded" if artifact_sha else "not-run"),
+        "Package structure and manifest metadata were retained for static inspection." if package_seen else "No explicit package/manifest observation is retained.",
+        [
+            f"manifest fields: {len(manifest)}" if manifest else "",
+            f"package fields: {len(package)}" if package else "",
+        ], evidence="manifestObservation · package",
+    ))
+    source_details = [source_repo, f"commit: {source_commit}" if source_commit else ""]
+    if coverage.get("selectedRef"):
+        source_details.append(f"selected ref: {coverage.get('selectedRef')}")
+    if source_attr.get("confidence") is not None or coverage.get("attributionConfidence") is not None:
+        source_details.append(f"attribution: {source_attr.get('confidence', coverage.get('attributionConfidence', 0))}/100")
+    if source_available:
+        source_details.append("source ↔ artifact: verified" if source_verified else "source ↔ artifact: not cryptographically verified")
+    stages.append(stage(
+        "source-attribution", "Retrieve & attribute source", "complete" if source_available else "skipped",
+        "Attributed source was retrieved and retained as a separate evidence stream." if source_available else "No attributable source code was found; analysis remained artifact-only.",
+        source_details, evidence="sourceAttribution · sourceProvenance",
+    ))
+    if scan_status == "complete":
+        static_status = "complete"
+        static_summary = "SigmaScope completed deterministic static analysis of the retained evidence."
+    elif scan_status in {"failed", "error"}:
+        static_status = "failed"
+        static_summary = "SigmaScope analysis did not complete successfully."
+    elif scan_id:
+        static_status = "partial"
+        static_summary = f"SigmaScope analysis is recorded with status {scan_status}."
+    else:
+        static_status = "not-run"
+        static_summary = "No SigmaScope analysis is currently recorded."
+    stages.append(stage(
+        "sigmascope-static", "SigmaScope static analysis", static_status, static_summary,
+        [
+            f"scan {scan_id}" if scan_id else "",
+            f"scanner: {identity.get('scanner_version')}" if identity.get("scanner_version") else "",
+            f"analyzed: {identity.get('scanned_at_utc')}" if identity.get("scanned_at_utc") else "",
+            f"findings: {len(findings)}",
+            f"capabilities: {len(capabilities)}" if capabilities else "",
+        ], evidence="scan report · retained observations",
+    ))
+    if engines:
+        incomplete = [str(item.get("engine") or item.get("name") or "engine") for item in engines if isinstance(item, Mapping) and (item.get("available") is False or str(item.get("status") or "").casefold() not in {"complete", "ready"})]
+        sec_status = "partial" if incomplete else "complete"
+        sec_summary = f"{len(engines)} secondary engine(s) evaluated the artifact; {engine_matches} match(es) were retained."
+        sec_details = [f"{item.get('engine') or item.get('name')}: {item.get('status') or 'unknown'} · {len(item.get('matches') or [])} matches" for item in engines if isinstance(item, Mapping)]
+    else:
+        sec_status, sec_summary, sec_details = "skipped", "No retained ClamAV/YARA secondary-engine result is present.", []
+    stages.append(stage("secondary-engines", "Secondary security engines", sec_status, sec_summary, sec_details, evidence="secondarySecurity"))
+
+    intelligence_total = len(endpoints) + len(dependencies) + sum(obs_counts.values())
+    component_count = _int(components.get("count") or components.get("componentCount") or components.get("total")) if components else 0
+    intelligence_total += component_count
+    intel_details = [f"{name}: {count}" for name, count in sorted(obs_counts.items())[:6]]
+    if endpoints:
+        intel_details.append(f"network endpoints: {len(endpoints)}")
+    if dependencies:
+        intel_details.append(f"dependencies: {len(dependencies)}")
+    if component_count:
+        intel_details.append(f"components: {component_count}")
+    stages.append(stage(
+        "evidence-normalization", "Normalize observations & intelligence", "complete" if intelligence_total or scan_status == "complete" else "not-recorded",
+        "Typed observations were retained for later investigation and rule evaluation." if intelligence_total else "No additional typed-observation preview is retained in this view.",
+        intel_details, evidence="Evidence-v2 observation collections",
+    ))
+
+    matched_rules = projection.get("matchedRuleIds") if isinstance(projection.get("matchedRuleIds"), list) else []
+    projected_findings = projection.get("findings") if isinstance(projection.get("findings"), list) else []
+    if projection:
+        rule_status = "complete"
+        rule_summary = f"Stigma-1/SRL replay projected {len(matched_rules)} matched rule(s) and {len(projected_findings)} finding(s)."
+        rule_details = [
+            f"rule set: {projection_state.get('ruleSetRevision') or projection.get('ruleSetRevision') or 'unknown'}",
+            f"projection: {projection.get('projectionRevision') or projection_state.get('projectionSetRevision') or 'unknown'}",
+            "production write-back: enabled" if projection_state.get("productionWriteBack") else "production write-back: disabled",
+        ]
+    elif projection_state.get("available"):
+        rule_status = "skipped"
+        rule_summary = "A Stigma-1 projection set is available, but this variant has no retained projection entry."
+        rule_details = [f"rule set: {projection_state.get('ruleSetRevision') or 'unknown'}"]
+    else:
+        rule_status = "not-recorded"
+        rule_summary = "No retained Stigma-1/SRL projection sidecar is available for this evidence snapshot."
+        rule_details = []
+    stages.append(stage("stigma-rules", "Stigma-1 / SRL rules", rule_status, rule_summary, rule_details, evidence="rule-projections"))
+
+    deep_request = projection_state.get("analysisRequest") if isinstance(projection_state.get("analysisRequest"), Mapping) else {}
+    reanalysis = projection_state.get("reanalysisRequest") if isinstance(projection_state.get("reanalysisRequest"), Mapping) else {}
+    if deep_request:
+        deep_status = "requested"
+        deep_summary = "A frozen rule requested deeper evidence acquisition for this variant."
+        deep_details = [
+            f"profile: {deep_request.get('profile') or 'unknown'}",
+            f"depth: {deep_request.get('depth') or 'standard'}",
+            f"compare with: {deep_request.get('compareWith') or '—'}",
+            f"rule: {deep_request.get('ruleId') or '—'}",
+            str(deep_request.get("reason") or ""),
+        ]
+    elif reanalysis:
+        deep_status = "needs-evidence"
+        deep_summary = "Rule replay requires additional retained observations before exact evaluation is possible."
+        deep_details = [str(reanalysis.get("reason") or ""), f"rule set: {reanalysis.get('ruleSetRevision') or 'unknown'}"]
+    else:
+        deep_status, deep_summary, deep_details = "not-requested", "No deep-scan or targeted reanalysis request is retained for this variant.", []
+    stages.append(stage("deep-analysis", "Deep / targeted analysis", deep_status, deep_summary, deep_details, evidence="analysisRequests · reanalysisRequests"))
+
+    publication_details = []
+    if analysis.get("path"):
+        publication_details.append(f"analysis: {analysis.get('path')}")
+    if detail.get("snapshotKind"):
+        publication_details.append(f"snapshot: {detail.get('snapshotKind')}")
+    if detail.get("lifecycle") and isinstance(detail.get("lifecycle"), Mapping):
+        publication_details.append(f"lifecycle: {detail.get('lifecycle', {}).get('state') or 'active'}")
+    stages.append(stage(
+        "evidence-publication", "Publish Security Evidence v2", "complete" if (scan_id or analysis) else "not-recorded",
+        "Immutable/derived evidence was published for downstream consumers and investigation." if (scan_id or analysis) else "No published Evidence-v2 analysis reference is retained.",
+        publication_details, evidence="Security Evidence v2",
+    ))
+    stages.append(stage(
+        "deltascope-view", "DeltaScope investigation", "current",
+        "You are viewing the read-only reconstruction of this plugin's path through the security system.",
+        ["No production mutation authority", "Stages are reconstructed from retained evidence only"], evidence="DeltaScope",
+    ))
+
+    core = {
+        "variantId": variant_id, "scanId": scan_id,
+        "stages": [{k: v for k, v in item.items() if k != "evidence"} for item in stages],
+    }
+    return {
+        "schema": JOURNEY_SCHEMA, "journeyProjectionId": _stable_id("journey", core),
+        "readOnly": True, "mutationAuthority": "none",
+        "authoritativeChangeBoundary": "github-permission-ci-review-normal-pr",
+        "variantId": variant_id, "scanId": scan_id, "asset": _asset(dict(identity)),
+        "stageCount": len(stages), "stages": stages,
+    }
 
 def project_asset_relationships(
     relationship_index: Mapping[str, Any], variant_id: int, asset_row: Mapping[str, Any],

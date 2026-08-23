@@ -187,7 +187,7 @@ class GitHubOperationsClient:
     def _request_runs(self) -> list[Mapping[str, Any]]:
         url = f"https://api.github.com/repos/{urllib.parse.quote(self.repository, safe='/')}/actions/runs?per_page={MAX_RUNS}"
         headers = {
-            "User-Agent": "Omega-DeltaScope/4.6.2",
+            "User-Agent": "Omega-DeltaScope/4.7.0",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
