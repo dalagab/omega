@@ -33,7 +33,7 @@ It can show things such as:
 - available versions;
 - dependencies;
 - changelogs and project links;
-- security information collected by Sigmascope.
+- security information collected by SigmaScope.
 
 Omega does **not** replace Dalamud's plugin installer.
 
@@ -43,46 +43,253 @@ No.
 
 Omega tries to give you **more information**, not make the decision for you.
 
-A plugin appearing in Omega does not mean it is approved, recommended, or guaranteed to be safe. Omega can show public information and static security evidence, but you still choose what you install.
+A plugin appearing in Omega does not mean it is approved, recommended, or guaranteed to be safe. Omega can show public information and security evidence, but you still choose what you install.
 
-## What is Sigmascope?
+## What is SigmaScope?
 
-Sigmascope is Omega's security scanner.
+**SigmaScope** is Omega's deterministic production security-analysis service.
 
-It examines plugin packages and available source code as **data**. It does not load or run the plugins it scans.
+Its primary job is static evidence gathering: it examines plugin packages and, where available and attributable, source material as **data**. It does not load the plugin into the game and does not need to execute the plugin to perform its static analysis.
 
-Its job is to collect useful evidence — things like dependencies, capabilities, endpoints, hashes, and other indicators — so Omega can show you more context before you make a choice.
+SigmaScope collects and publishes evidence such as:
+
+- package and artifact identity;
+- hashes and provenance;
+- managed and native components;
+- dependencies;
+- capabilities and permissions;
+- endpoint evidence;
+- source-to-artifact attribution;
+- YARA and ClamAV secondary evidence;
+- normalized observations used by the rules system;
+- scan coverage and lifecycle information.
+
+SigmaScope reports evidence. It is not intended to be an unquestionable malware verdict system.
+
+The production SigmaScope implementation does **not** live on `main`. It lives on the [`sigmascope`](https://github.com/dalagab/omega/tree/sigmascope) branch.
+
+## What is the Rift?
+
+The **Interdimensional Rift** is Omega's isolated runtime-observation environment.
+
+Where SigmaScope asks _"what does this artifact contain and what capabilities can we establish statically?"_, Rift is designed to collect bounded runtime observations outside FFXIV.
+
+Rift uses an instrumented Dalamud-compatible host and, for untrusted execution, a fail-closed Linux sandbox boundary. Its observations are deliberately neutral: Rift does not assign security severity and does not replace SigmaScope's static analysis.
+
+Rift lives on the [`rift`](https://github.com/dalagab/omega/tree/rift) branch.
+
+### Alpha
+
+**Alpha is a component inside the Rift**, not a separate top-level Omega branch.
+
+Alpha is used as a controlled/calibration subject for the Rift runtime-observation and containment contracts. Its documentation is in:
+
+- `rift: docs/ALPHA.adoc`
+- `rift: tools/package-alpha.sh`
+
+The Rift implementation itself is under:
+
+- `rift: InterdimensionalRift/`
+- `rift: InterdimensionalRift.DalamudShim/`
+- `rift: tools/`
+- `rift: docs/`
+
+## What is SRL / Stigma-1?
+
+Omega's rule system is developed alongside SigmaScope on the `sigmascope` branch.
+
+The core implementation and migration/audit tooling currently lives under `tools/security/`, including:
+
+- `tools/security/srl.py` — the rule-language/evaluation implementation;
+- `tools/security/stigma1.py` — Stigma-1 entry point/compatibility surface;
+- `tools/security/srl_evidence_replay.py` — replay of rules over retained evidence;
+- `tools/security/srl_migration_parity.py` — parity checks during migration;
+- `tools/security/srl_cutover_readiness.py` — read-only cutover-readiness audit;
+- `tools/security/rule_reprojection.py` — deterministic rule-only reprojection;
+- `tools/security/rule_lab.py` — developer rule-authoring and test support.
+
+SRL/Stigma-1 consumes normalized evidence and observations. It does not give developer tooling permission to rewrite published evidence or silently promote a rule into production.
+
+## What is DeltaScope?
+
+**DeltaScope** is the developer/researcher-facing security workbench.
+
+It is intentionally **read-only with respect to production security state**. It consumes already-generated SigmaScope/Security Evidence data so developers and analysts can inspect incidents, events, assets, rules, provenance, relationships, coverage, and rule projections.
+
+DeltaScope lives with the security-service implementation on the [`sigmascope`](https://github.com/dalagab/omega/tree/sigmascope) branch, primarily under:
+
+- `tools/security/deltascope.py`
+- `tools/security/deltascope_workbench.py`
+- `tools/security/deltascope_operations.py`
+- `tools/security/deltascope_provenance.py`
+- `tools/security/deltascope_rule_store.py`
+- `tools/security/developer_view.py`
+
+DeltaScope is **not part of the production scanning pipeline** and does not get authority to alter SigmaScope findings, scan queues, Definitions, severity, or published Security Evidence.
+
+## Repository and branch layout
+
+Omega is one GitHub repository, but the project is intentionally split across branches because the client, scanners, sandbox, generated data, and website have very different lifecycles.
+
+| Branch | Role | Important locations |
+| --- | --- | --- |
+| [`main`](https://github.com/dalagab/omega/tree/main) | **Omega Dalamud client** and client-facing release source | `Omega/`, `Omega.RegressionTests/`, `sources/`, `catalog/`, `repository/`, `tools/release/` |
+| [`sigmascope`](https://github.com/dalagab/omega/tree/sigmascope) | **Security services**: SigmaScope, DeltaScope, SRL/Stigma-1, deep-scan orchestration, Security Evidence tooling and security definitions | `tools/security/`, `tools/catalog/`, `security-definitions/`, `docs/`, `SECURITY-SERVICES.md` |
+| [`rift`](https://github.com/dalagab/omega/tree/rift) | **Interdimensional Rift** runtime observation and hostile-code sandbox work; includes **Alpha** | `InterdimensionalRift/`, `InterdimensionalRift.DalamudShim/`, `tools/`, `docs/ALPHA.adoc`, `docs/RIFT-SANDBOX-PROFILE.adoc` |
+| [`catalog-data`](https://github.com/dalagab/omega/tree/catalog-data) | **Published/generated catalog state** consumed by services and clients | `catalog/`, `definitions/`, `scan-queue.json`, `source-inventory.json`, `index.json` |
+| [`security-evidence-v2`](https://github.com/dalagab/omega/tree/security-evidence-v2) | **Published Security Evidence v2 data** rather than application source | `variants/`, `artifacts/`, `derived/`, `history/`, `terminal/`, `indexes/`, `rule-projections/`, `scanner-queue.json` |
+| [`website`](https://github.com/dalagab/omega/tree/website) | **Public Omega website** | `site/`, `images/`, website build tooling |
+
+Dependabot branches are normal automated dependency-maintenance branches and are not part of Omega's architecture.
+
+### Important consequence
+
+Checking only `main` does **not** show the complete Omega security platform.
+
+`main` is primarily the **client/consumer side**. The active security-service implementation is developed on `sigmascope`; runtime observation and containment live on `rift`; generated operational/catalog state is published to `catalog-data`; immutable/derived security evidence is published to `security-evidence-v2`; and the public site is maintained on `website`.
+
+## High-level security data flow
+
+At a deliberately simplified level:
+
+```text
+Public plugin repositories + release artifacts
+                    |
+                    v
+          Catalog/source collection
+                    |
+                    v
+               SigmaScope
+        static security evidence
+                    |
+          +---------+---------+
+          |                   |
+          v                   v
+   catalog-data       security-evidence-v2
+          |                   |
+          +---------+---------+
+                    |
+        +-----------+-----------+
+        |                       |
+        v                       v
+   Omega client             DeltaScope
+ user-facing view      developer investigation
+
+
+Additional / escalated runtime investigation:
+
+SigmaScope / rule outcomes
+          |
+          v
+   deep-scan request
+          |
+          v
+ Interdimensional Rift
+  sandboxed observation
+          |
+          v
+ retained observations/evidence
+          |
+          v
+ SRL / Stigma-1 correlation and reprojection
+```
+
+This diagram is intentionally conceptual. Individual workflows remain fail-closed and preserve the separation between static evidence, runtime observations, rules, published data, and user-facing presentation.
+
+## Security-service ownership at a glance
+
+### SigmaScope owns
+
+- deterministic production static analysis;
+- artifact/source evidence gathering;
+- security definitions and scanner contracts;
+- dependency, native, endpoint and capability evidence;
+- secondary YARA/ClamAV evidence;
+- scan/evidence lifecycle;
+- deep-scan request contracts and queue tooling;
+- publication of Security Evidence.
+
+### Rift owns
+
+- isolated execution of opted-in/deep-scan artifacts;
+- runtime instrumentation;
+- neutral runtime observations;
+- containment and sandbox boundary testing;
+- Alpha and Canary calibration/containment fixtures.
+
+Rift does **not** duplicate SigmaScope static scanning.
+
+### SRL / Stigma-1 owns
+
+- deterministic rules over normalized observations/evidence;
+- rule compilation/evaluation;
+- replay/reprojection;
+- migration parity and cutover-readiness checks.
+
+### DeltaScope owns
+
+- read-only developer/research presentation;
+- investigation and comparison views;
+- Rule Lab development workflows;
+- evidence, provenance and relationship browsing.
+
+DeltaScope does **not** publish production evidence or mutate production scanner decisions.
+
+### Omega client owns
+
+- user-facing marketplace and library;
+- repository/source presentation;
+- installation coordination through Dalamud;
+- presentation of published security findings and evidence;
+- user acknowledgement and permission/risk surfaces.
+
+The client consumes security information; it is not the production scanner.
 
 ## Where is the website?
 
 **https://dalagab.github.io/omega/**
 
+The website source lives on the [`website`](https://github.com/dalagab/omega/tree/website) branch.
+
 ## Support
 
 For installation help, questions, feedback, or corrections, join the [Omega Discord](https://discord.gg/rMBHbJTjp).
 
-
 ## I am a developer
 
-You are in the right repository.
+You are in the right repository, but **make sure you are on the branch that owns the thing you want to change**.
 
-The production source, tests, catalog tooling, Sigmascope tooling, source definitions, and release automation live here.
+For client work:
 
-A few useful places to start:
+- `main: Omega/` — the Dalamud plugin.
+- `main: Omega.RegressionTests/` — C# regression tests.
+- `main: sources/` — source/repository information used by the client-side project.
+- `main: tools/release/` — client release tooling.
+- `main: SECURITY.md` — client-facing security/reporting boundary.
+- `main: CHANGELOG.md` — client development and release changes.
 
-- `Omega/` — the Dalamud plugin.
-- `Omega.RegressionTests/` — C# regression tests.
-- `tools/catalog/` — catalog collection and database generation.
-- `tools/security/` — Sigmascope and Security Evidence tooling.
-- `sources/` — known plugin repository sources.
-- `SECURITY.md` — security architecture and reporting information.
-- `CHANGELOG.md` — development and release changes.
+For security-service work:
 
-The public website is maintained separately on the `website` branch.
+- `sigmascope: tools/security/` — SigmaScope, DeltaScope, SRL/Stigma-1, Evidence-v2 and deep-scan tooling.
+- `sigmascope: tools/catalog/` — catalog/security-service collection and generation tooling.
+- `sigmascope: security-definitions/` — reviewed security definitions and capability/rule data.
+- `sigmascope: docs/` — security architecture, rule language, developer profile and workbench documentation.
+- `sigmascope: SECURITY-SERVICES.md` — current service boundaries and invariants.
+
+For runtime sandbox work:
+
+- `rift: InterdimensionalRift/` — host, runtime, instrumentation and reporting.
+- `rift: tools/` — Bubblewrap/seccomp runners, contract checks and packaging.
+- `rift: docs/` — Rift hardening, sandbox profile, Alpha and runtime-observation contracts.
+
+For generated data, do not mistake publication branches for normal application-source branches:
+
+- `catalog-data` — generated catalog/Definitions/queue state.
+- `security-evidence-v2` — generated published evidence and history.
 
 ## Is Omega wrong about your plugin?
 
-If you maintain a plugin and believe Omega or Sigmascope has described it incorrectly, **please tell us**.
+If you maintain a plugin and believe Omega or SigmaScope has described it incorrectly, **please tell us**.
 
 Scanner results are evidence and classifications, not unquestionable verdicts. If a security finding, capability, automation classification, dependency, endpoint, source association, or other result is wrong, we want to know **what was reported and where the scanner went wrong**.
 
@@ -97,9 +304,3 @@ The goal is not to give individual plugins special treatment. If the scanner log
 ## One last thing
 
 Omega is an independent community project. It is not affiliated with Square Enix, Dalamud, XIVLauncher, or FINAL FANTASY XIV.
-
-## Current client interaction notes
-
-- Required resolved plugin dependencies can be opened in the normal Omega install chooser; optional and inferred relationships remain reviewable rather than silently installed.
-- Repository-move updates stay in Updates as explicit review items.
-- The changelog icon beside an available update opens an **Update changes** panel with the version transition, source repository, and published change text.
