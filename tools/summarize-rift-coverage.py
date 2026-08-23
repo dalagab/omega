@@ -17,7 +17,7 @@ def uniq_append(lst, item):
     key=json.dumps(item, sort_keys=True)
     if key not in {json.dumps(x, sort_keys=True) for x in lst}: lst.append(item)
 
-inj=[]; access=[]; gaps=[]; blockers=[]
+inj=[]; access=[]; gaps=[]; blockers=[]; hooks=[]; signatures=[]; emulation=[]
 for o in obs:
     kind=str(o.get("kind") or "").lower()
     item={k:o.get(k) for k in ("component","operation","outcome","message","exception_type","exception_message","exception_detail","context","parameters")}
@@ -25,6 +25,14 @@ for o in obs:
     elif kind=="service_access": uniq_append(access,item)
     elif kind in {"assembly_load","native_library"} and str(o.get("outcome")).lower() not in {"ok","loaded","resolved","success"}:
         uniq_append(gaps, {"type":kind.replace("_","-"), **item})
+    elif kind=="hook":
+        uniq_append(hooks, item)
+        if "synthetic" in str(o.get("outcome") or "").lower() or "inert" in str(o.get("outcome") or "").lower():
+            uniq_append(emulation, {"type":"synthetic-hook", **item})
+    elif kind=="signature_scan":
+        uniq_append(signatures, item)
+        if "synthetic" in str(o.get("outcome") or "").lower():
+            uniq_append(emulation, {"type":"synthetic-signature", **item})
     elif kind=="exception":
         uniq_append(blockers, {"type":"exception", **item})
     elif kind=="timeout":
@@ -55,6 +63,9 @@ payload={
  "observed_service_injections":inj,
  "observed_service_accesses":access,
  "runtime_gaps":gaps,
+ "observed_hook_operations":hooks,
+ "observed_signature_operations":signatures,
+ "emulation_limits":emulation,
  "blockers":blockers,
  "coverage_categories_touched":cats,
  "interpretation":{
@@ -65,6 +76,6 @@ payload={
 }
 a.out.parent.mkdir(parents=True,exist_ok=True)
 a.out.write_text(json.dumps(payload,indent=2)+"\n",encoding="utf-8")
-print(f"Coverage-gap report: startup={load} injections={len(inj)} accesses={len(access)} gaps={len(gaps)} blockers={len(blockers)}")
+print(f"Coverage-gap report: startup={load} injections={len(inj)} accesses={len(access)} hooks={len(hooks)} signatures={len(signatures)} emulation={len(emulation)} gaps={len(gaps)} blockers={len(blockers)}")
 for b in blockers[:8]:
     print("blocker:", b.get("exception_type") or b.get("outcome") or b.get("type"), b.get("exception_message") or b.get("detail") or "")

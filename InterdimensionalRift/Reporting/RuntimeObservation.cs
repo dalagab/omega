@@ -14,6 +14,8 @@ public enum RuntimeObservationKind
     Log,
     AssemblyLoad,
     NativeLibrary,
+    SignatureScan,
+    Hook,
     Exception,
     Timeout,
     Boundary,

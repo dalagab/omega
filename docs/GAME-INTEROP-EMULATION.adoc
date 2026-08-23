@@ -1,0 +1,138 @@
+= Rift Game Interop Emulation
+:toc:
+
+== Purpose
+
+Rift must observe plugins that use Dalamud's signature-scanning and hook APIs without
+scanning, patching, or invoking a real FFXIV process.
+
+This layer exists to answer:
+
+* which signatures did the plugin request;
+* which hook API did it call;
+* which delegate type and detour did it supply;
+* did the plugin enable, disable, inspect, or dispose the hook;
+* what code paths can be reached when those requests are represented safely.
+
+It is *not* a hooking backend.
+
+== Why this is required
+
+Published Artisan 4.0.5.18 progressed through ECommons and KamiToolKit after Rift
+implemented real `IDalamudPluginInterface.Create<T>` semantics. It then reached
+`ISigScanner` and `IGameInteropProvider` and failed with:
+
+[source,text]
+----
+TypeLoadException:
+GenericArguments[0], 'T', on 'Dalamud.Hooking.Hook`1[T]'
+violates the constraint of type parameter 'T'.
+----
+
+The same failure occurred with the stable Dalamud release contract, so it is not a
+staging/release mismatch. The cause is Rift's use of `DispatchProxy` for an interface
+whose generic methods have `where T : Delegate` constraints and return `Hook<T>`.
+
+== Constraint-preserving service proxy
+
+`ConstraintPreservingProxyFactory` uses `Reflection.Emit` for
+`IGameInteropProvider`.
+
+The emitted generic methods copy:
+
+* generic parameter names;
+* `GenericParameterAttributes`;
+* base-type constraints;
+* interface constraints;
+* concrete return/parameter types after generic substitution.
+
+This preserves the real CLR contract such as:
+
+[source,csharp]
+----
+Hook<T> HookFromSignature<T>(string signature, T detour, ...)
+    where T : Delegate;
+----
+
+The generated method forwards to Rift's `RuntimeServiceRegistry`; it never calls the
+real Dalamud implementation.
+
+== Synthetic Hook<T>
+
+When a plugin requests a hook, Rift returns a concrete synthetic subclass of the real
+frozen `Dalamud.Hooking.Hook<T>` type.
+
+The object is allocated without invoking Dalamud's native hook constructor or backend.
+It provides bounded semantics for:
+
+* `Enable()`;
+* `Disable()`;
+* `Dispose()`;
+* `IsEnabled`;
+* `BackendName`;
+* `Original`.
+
+`Original` is a generated no-op delegate of the exact requested delegate type. It
+returns the CLR default value and never invokes game/native code.
+
+Every synthetic hook observation carries `native_patch=false`.
+
+== Signature scanning
+
+Rift records signature requests as `signature_scan` observations. Current native-Linux
+analysis returns an inert zero address. It never searches the memory of a real FFXIV
+process.
+
+A later controlled game-memory fixture may provide synthetic address ranges, but those
+must remain allocated fixture memory owned by Rift.
+
+== Runtime observation kinds
+
+Pass 3.3.3 adds neutral kinds:
+
+* `signature_scan`;
+* `hook`.
+
+Examples include:
+
+[source,text]
+----
+kind=signature_scan
+component=ISigScanner
+operation=GetStaticAddressFromSig
+outcome=synthetic_zero
+
+kind=hook
+component=IGameInteropProvider
+operation=HookFromSignature
+outcome=synthetic_created
+native_patch=false
+
+kind=hook
+component=synthetic_hook
+operation=Enable
+outcome=observed_inert
+native_patch=false
+----
+
+These are observations, not risk scores.
+
+== Coverage interpretation
+
+`rift.coverage-gap.v1` now separately records synthetic hook/signature operations under
+`emulation_limits`.
+
+Therefore an eventual `load_outcome=ok` for Artisan means only that its startup path can
+execute under Rift's controlled semantics. It does not mean real FFXIV hooks, original
+native functions, or game memory were exercised.
+
+== Additional PluginInterface semantics
+
+The Artisan probes also demonstrated real use of:
+
+* `GetOrCreateData<T>`;
+* plugin manifest `InternalName`;
+* plugin manifest `AssemblyVersion`.
+
+Rift now supplies in-run shared-data identity and exact assembly-derived manifest
+identity for these operations.

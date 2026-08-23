@@ -37,7 +37,7 @@ require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "dalamud.internal_serv
 
 # Runtime-only report model.
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v1", "runtime observation schema version")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.4"', "producer version 0.3.4")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.5"', "producer version 0.3.5")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "boundary_profile", "boundary profile provenance")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "tmpfs_tmp_bytes", "tmpfs provenance")
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "RuntimeObservationKind", "neutral observation model")
@@ -204,5 +204,22 @@ require(Path("tools/run-rift-bwrap.sh"), "RIFT_DALAMUD_CONTRACT_TREE_SHA256", "c
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "dalamud_contract_track", "managed report records contract track")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "dalamud_contract_sha256", "managed report records Dalamud.dll SHA")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "dalamud_contract_tree_sha256", "managed report records contract tree SHA")
+
+
+# Pass 3.3.3: constrained generic proxy + inert game interop.
+require(Path("InterdimensionalRift/Runtime/ConstraintPreservingProxyFactory.cs"), "GenericParameterAttributes", "generic proxy preserves CLR constraints")
+require(Path("InterdimensionalRift/Runtime/ConstraintPreservingProxyFactory.cs"), "DefineMethodOverride", "generic proxy implements real Dalamud interface methods")
+require(Path("InterdimensionalRift/Runtime/SyntheticHookRuntime.cs"), "GetUninitializedObject", "synthetic Hook<T> avoids real Dalamud hook constructor/backend")
+require(Path("InterdimensionalRift/Runtime/SyntheticHookRuntime.cs"), '"native_patch"] = "false"', "synthetic hook records no native patch")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), '"Dalamud.Plugin.Services.IGameInteropProvider"', "game interop uses constraint-preserving proxy")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "InvokeGameInterop", "game interop has inert runtime semantics")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "GetOrCreateData", "PluginInterface shared-data semantics implemented")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "get_AssemblyVersion", "plugin manifest version semantics implemented")
+require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "SignatureScan", "signature scan observation kind")
+require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "Hook", "hook observation kind")
+require(Path("tests/fixtures/RiftGameInteropSemantics/Plugin.cs"), "RIFT_GAME_INTEROP semantics complete", "game interop runtime regression fixture")
+require(Path("tests/fixtures/RiftGameInteropSemantics/Plugin.cs"), "GetOrCreateData", "shared-data runtime regression")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "GenericHookConstraints_ArePreservedAndHooksRemainInert", "generic hook constraint regression test")
+require(Path("tools/summarize-rift-coverage.py"), "emulation_limits", "coverage report preserves synthetic interop limitations")
 
 print(f"Rift source-contract checks: {len(checks)}/{len(checks)} passed")

@@ -15,10 +15,12 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
     private readonly AccessTracker tracker;
     private readonly ConcurrentDictionary<Type, object> services = new();
     private readonly ConcurrentDictionary<(Type ServiceType, string EventName), List<Delegate>> eventHandlers = new();
+    private readonly ConcurrentDictionary<string, object> sharedData = new(StringComparer.Ordinal);
     private readonly string internalName;
     private readonly FileInfo assemblyLocation;
     private readonly DirectoryInfo configDirectory;
     private readonly FileInfo configFile;
+    private readonly Version assemblyVersion;
 
     public RuntimeServiceRegistry(AccessTracker tracker, string internalName, string pluginPath)
     {
@@ -27,6 +29,7 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
         assemblyLocation = new FileInfo(pluginPath);
         configDirectory = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "rift-config"));
         configFile = new FileInfo(Path.Combine(configDirectory.FullName, $"{internalName}.json"));
+        assemblyVersion = AssemblyName.GetAssemblyName(pluginPath).Version ?? new Version(0, 0, 0, 0);
     }
 
     public object? GetService(Type serviceType)
@@ -161,6 +164,31 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                 return special.Value;
         }
 
+        if (serviceType.FullName == "Dalamud.Plugin.Internal.Types.Manifest.IPluginManifest")
+        {
+            tracker.ServiceTouch("IPluginManifest", method.Name, parameters: SnapshotParameters(method, args));
+            return method.Name switch
+            {
+                "get_InternalName" => internalName,
+                "get_AssemblyVersion" => assemblyVersion,
+                _ => DefaultValueFactory.Create(method.ReturnType, this),
+            };
+        }
+
+        if (serviceName == "ISigScanner")
+        {
+            var special = InvokeSigScanner(method, args);
+            if (special.Handled)
+                return special.Value;
+        }
+
+        if (serviceName == "IGameInteropProvider")
+        {
+            var special = InvokeGameInterop(method, args);
+            if (special.Handled)
+                return special.Value;
+        }
+
         if (serviceName == "IPluginLog")
         {
             tracker.Log(method.Name, ExtractLogMessage(args));
@@ -183,6 +211,9 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
 
     private object CreateProxy(Type interfaceType)
     {
+        if (interfaceType.FullName == "Dalamud.Plugin.Services.IGameInteropProvider")
+            return ConstraintPreservingProxyFactory.Create(interfaceType, this);
+
         var proxy = DispatchProxy.Create(interfaceType, typeof(InstrumentedServiceProxy));
         ((InstrumentedServiceProxy)proxy).Initialize(interfaceType, this);
         return proxy;
@@ -218,6 +249,36 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                 return (true, new DirectoryInfo(AppContext.BaseDirectory));
             case "get_InstalledPlugins":
                 return (true, DefaultValueFactory.Create(method.ReturnType, this));
+            case "get_Manifest":
+            {
+                var manifestType = method.ReturnType;
+                tracker.ServiceTouch("IDalamudPluginInterface", method.Name);
+                return (true, GetService(manifestType));
+            }
+            case "get_LoadTime":
+            case "get_LoadTimeUTC":
+                tracker.ServiceTouch("IDalamudPluginInterface", method.Name);
+                return (true, DateTime.UtcNow);
+            case "get_LoadTimeDelta":
+                tracker.ServiceTouch("IDalamudPluginInterface", method.Name);
+                return (true, TimeSpan.Zero);
+            case "GetOrCreateData" when method.IsGenericMethod && args.Length >= 2 && args[0] is string tag && args[1] is Delegate generator:
+            {
+                tracker.ServiceTouch("IDalamudPluginInterface", method.Name,
+                    parameters: new Dictionary<string, string?> { ["tag"] = tag, ["dataGenerator"] = generator.Method.DeclaringType?.FullName + "." + generator.Method.Name });
+                var value = sharedData.GetOrAdd(tag, _ => generator.DynamicInvoke()
+                    ?? throw new InvalidOperationException($"Data generator for {tag} returned null."));
+                return (true, value);
+            }
+            case "GetData" when method.IsGenericMethod && args.Length >= 1 && args[0] is string getTag:
+                tracker.ServiceTouch("IDalamudPluginInterface", method.Name,
+                    parameters: new Dictionary<string, string?> { ["tag"] = getTag });
+                return (true, sharedData.TryGetValue(getTag, out var getValue) ? getValue : null);
+            case "RelinquishData" when args.Length >= 1 && args[0] is string relinquishTag:
+                tracker.ServiceTouch("IDalamudPluginInterface", method.Name,
+                    parameters: new Dictionary<string, string?> { ["tag"] = relinquishTag });
+                sharedData.TryRemove(relinquishTag, out _);
+                return (true, null);
             case "Create" when method.IsGenericMethod:
             {
                 var requested = method.GetGenericArguments()[0];
@@ -282,6 +343,65 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                     parameters: SnapshotParameters(method, args));
                 return (true, DefaultValueFactory.Create(method.ReturnType, this));
         }
+    }
+
+    private (bool Handled, object? Value) InvokeSigScanner(MethodInfo method, object?[] args)
+    {
+        if (method.Name is "ScanText" or "GetStaticAddressFromSig" or "ScanModule" or "TryScanText" or "TryGetStaticAddressFromSig")
+        {
+            var signature = args.OfType<string>().FirstOrDefault() ?? string.Empty;
+            tracker.Signature(method.Name, signature, "synthetic_zero", 0);
+            tracker.ServiceTouch("ISigScanner", method.Name, parameters: SnapshotParameters(method, args));
+
+            // Keep all signature results inert. Out-parameter APIs are not used by
+            // the constraint-preserving interop path yet and remain on the normal
+            // DispatchProxy implementation.
+            if (method.ReturnType == typeof(IntPtr))
+                return (true, IntPtr.Zero);
+            if (method.ReturnType == typeof(UIntPtr))
+                return (true, UIntPtr.Zero);
+        }
+        return (false, null);
+    }
+
+    private (bool Handled, object? Value) InvokeGameInterop(MethodInfo method, object?[] args)
+    {
+        tracker.ServiceTouch("IGameInteropProvider", method.Name, parameters: SnapshotParameters(method, args));
+
+        if (method.Name == "InitializeFromAttributes")
+        {
+            var self = args.FirstOrDefault();
+            tracker.Record(RuntimeObservationKind.Hook, "IGameInteropProvider", method.Name, "observed_inert",
+                message: self?.GetType().FullName,
+                parameters: new Dictionary<string, string?>
+                {
+                    ["native_patch"] = "false",
+                    ["attribute_initialization"] = "not_applied",
+                });
+            return (true, null);
+        }
+
+        if (method.IsGenericMethod && method.ReturnType.IsGenericType &&
+            method.ReturnType.GetGenericTypeDefinition().FullName == "Dalamud.Hooking.Hook`1")
+        {
+            var detour = args.OfType<Delegate>().FirstOrDefault();
+            if (detour is null)
+                return (true, null);
+
+            var descriptor = method.Name;
+            var signature = args.OfType<string>().FirstOrDefault();
+            if (!string.IsNullOrEmpty(signature))
+                descriptor += $" signature={signature}";
+            else
+            {
+                var address = args.FirstOrDefault(x => x is IntPtr || x is UIntPtr);
+                if (address is not null) descriptor += $" address={address}";
+            }
+
+            return (true, SyntheticHookRuntime.Create(method.ReturnType, detour, tracker, method.Name, descriptor));
+        }
+
+        return (true, DefaultValueFactory.Create(method.ReturnType, this));
     }
 
     private object CreateInjectedObject(Type objectType, object?[] scopedObjects)

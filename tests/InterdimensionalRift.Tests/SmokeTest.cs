@@ -308,3 +308,39 @@ public class CreateSemanticsTest
         return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
     }
 }
+
+public class GameInteropSemanticsTest
+{
+    [Fact]
+    public void GenericHookConstraints_ArePreservedAndHooksRemainInert()
+    {
+        var dll = LocateFixture();
+        Assert.True(File.Exists(dll), $"Game interop fixture missing: {dll}");
+
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+
+        Assert.Equal("ok", report.Plugin.LoadOutcome);
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.SignatureScan && o.Operation == "GetStaticAddressFromSig");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Hook && o.Operation == "HookFromSignature" && o.Outcome == "synthetic_created");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Hook && o.Operation == "Enable" && o.Outcome == "observed_inert");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Hook && o.Operation == "get_Original" && o.Outcome == "synthetic_noop");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log && (o.Message ?? string.Empty).Contains("RIFT_GAME_INTEROP semantics complete"));
+    }
+
+    private static string LocateFixture()
+    {
+        var testBin = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(testBin, "RiftGameInteropSemantics.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftGameInteropSemantics", "bin", "Debug", "net10.0", "RiftGameInteropSemantics.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftGameInteropSemantics", "bin", "Release", "net10.0", "RiftGameInteropSemantics.dll"),
+        };
+        return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
+    }
+}

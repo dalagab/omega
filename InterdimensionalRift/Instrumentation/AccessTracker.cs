@@ -81,6 +81,21 @@ public sealed class AccessTracker
                 ["resolved_path"] = resolvedPath,
             });
 
+
+    public void Signature(string operation, string signature, string outcome, long? syntheticAddress = null)
+        => Record(
+            RuntimeObservationKind.SignatureScan,
+            "ISigScanner",
+            operation,
+            outcome,
+            message: signature,
+            parameters: new Dictionary<string, string?>
+            {
+                ["signature"] = signature,
+                ["synthetic_address"] = syntheticAddress?.ToString("X"),
+                ["real_game_memory"] = "false",
+            });
+
     public void InitException(Exception exception)
         => Record(RuntimeObservationKind.Exception, "plugin", "Initialize", "threw", exception: exception, context: "plugin init threw");
 

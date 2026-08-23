@@ -85,7 +85,7 @@ public sealed class SandboxReport
     public string Producer { get; set; } = "interdimensional-rift";
 
     [JsonPropertyName("producer_version")]
-    public string ProducerVersion { get; set; } = "0.3.4";
+    public string ProducerVersion { get; set; } = "0.3.5";
 
     [JsonPropertyName("ran_at")]
     public string RanAt { get; set; } = DateTime.UtcNow.ToString("O");
