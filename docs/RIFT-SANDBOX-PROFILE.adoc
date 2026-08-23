@@ -245,3 +245,26 @@ declare `release` or `stg`.
 
 This prevents a prerelease Dalamud contract from being silently mistaken for the
 contract a published player-facing plugin was intended to run against.
+
+
+== Pass 3.3.3.2: constrained game-data generics and empty Lumina sheets
+
+Artisan proved that constrained-generic CLR fidelity is not unique to hooks.
+`IDataManager.GetExcelSheet<T>` returns `Lumina.Excel.ExcelSheet<T>` with
+`T : struct, IExcelRow<T>`. A normal DispatchProxy can construct an invalid
+generic return signature and fail before Rift can observe the call.
+
+Rift now selects the constraint-preserving proxy structurally for interfaces whose
+generic return types embed constrained method parameters, provided the interface does
+not require unsupported ref/out copy-back semantics.
+
+`IDataManager.GetExcelSheet<T>` and `GetSubrowExcelSheet<T>` return a real closed
+Lumina sheet type backed by an intentionally empty synthetic raw sheet. The empty
+surface:
+- preserves the plugin's real Lumina row type and generic constraints;
+- enumerates zero rows;
+- does not open FFXIV SqPack/game-data files;
+- records `outcome=synthetic_empty` and `real_game_data=false`.
+
+This is startup/behavior-driving emulation only. It does not claim that recipe,
+item, quest, or other game-data-dependent functionality was validated.

@@ -45,7 +45,7 @@ if load and load!="ok":
 blob=json.dumps(obs, sort_keys=True).lower()
 cats=[]
 for needle,cat in (
-    ("ipc","plugin-ipc"),("ffxivclientstructs","game-native-structs"),
+    ("ipc","plugin-ipc"),("ffxivclientstructs","game-native-structs"),("idatamanager","game-data"),("excelsheet","game-data"),
     ("gamedata","game-data"),("texture","textures"),("framework","framework-events"),
     ("condition","condition-state"),("clientstate","client-state"),
     ("command","command-manager"),("uibuilder","ui-builder"),("window","windowing"),

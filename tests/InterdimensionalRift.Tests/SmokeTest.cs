@@ -346,3 +346,43 @@ public class GameInteropSemanticsTest
         return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
     }
 }
+
+
+public class GameDataSemanticsTest
+{
+    [Fact]
+    public void ConstrainedExcelSheet_IsEmptyEnumerableAndDoesNotLoadGameFiles()
+    {
+        var dll = LocateFixture();
+        Assert.True(File.Exists(dll), $"Game-data fixture missing: {dll}");
+
+        var report = new InterdimensionalRift.Host.SandboxHost().Run(dll, TimeSpan.FromSeconds(10), frameworkTicks: 0);
+
+        var initException = report.Observations.FirstOrDefault(o => o.Kind == RuntimeObservationKind.Exception);
+        Assert.True(report.Plugin.LoadOutcome == "ok",
+            $"Expected game-data fixture to initialize, got {report.Plugin.LoadOutcome}: {report.Plugin.LoadError}\n{initException?.ExceptionDetail}");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.ServiceAccess &&
+                 o.Component == "IDataManager" &&
+                 o.Operation == "GetExcelSheet" &&
+                 o.Outcome == "synthetic_empty" &&
+                 o.Parameters != null &&
+                 o.Parameters.TryGetValue("real_game_data", out var value) &&
+                 value == "false");
+        Assert.Contains(report.Observations,
+            o => o.Kind == RuntimeObservationKind.Log &&
+                 (o.Message ?? string.Empty).Contains("RIFT_GAME_DATA empty sheet semantics complete"));
+    }
+
+    private static string LocateFixture()
+    {
+        var testBin = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.Combine(testBin, "RiftGameDataSemantics.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftGameDataSemantics", "bin", "Debug", "net10.0", "RiftGameDataSemantics.dll"),
+            Path.Combine(testBin, "..", "..", "..", "..", "fixtures", "RiftGameDataSemantics", "bin", "Release", "net10.0", "RiftGameDataSemantics.dll"),
+        };
+        return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists) ?? Path.GetFullPath(candidates[0]);
+    }
+}

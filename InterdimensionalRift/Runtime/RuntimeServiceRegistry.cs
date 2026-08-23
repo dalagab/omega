@@ -182,6 +182,13 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                 return special.Value;
         }
 
+        if (serviceName == "IDataManager")
+        {
+            var special = InvokeDataManager(method, args);
+            if (special.Handled)
+                return special.Value;
+        }
+
         if (serviceName == "IGameInteropProvider")
         {
             var special = InvokeGameInterop(method, args);
@@ -211,12 +218,51 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
 
     private object CreateProxy(Type interfaceType)
     {
-        if (interfaceType.FullName == "Dalamud.Plugin.Services.IGameInteropProvider")
+        if (RequiresConstraintPreservingProxy(interfaceType))
             return ConstraintPreservingProxyFactory.Create(interfaceType, this);
 
         var proxy = DispatchProxy.Create(interfaceType, typeof(InstrumentedServiceProxy));
         ((InstrumentedServiceProxy)proxy).Initialize(interfaceType, this);
         return proxy;
+    }
+
+    private static bool RequiresConstraintPreservingProxy(Type interfaceType)
+    {
+        // DispatchProxy is fine for most Dalamud interfaces, but it can generate
+        // invalid CLR signatures when a generic return type embeds a constrained
+        // method parameter (Hook<T>, ExcelSheet<T>, SubrowExcelSheet<T>, etc.).
+        // Keep interfaces with by-ref parameters on DispatchProxy until the Rift
+        // emitter supports copy-back semantics for ref/out parameters.
+        var methods = interfaceType.GetMethods();
+        if (methods.Any(m => m.GetParameters().Any(p => p.ParameterType.IsByRef)))
+            return interfaceType.FullName == "Dalamud.Plugin.Services.IGameInteropProvider";
+
+        return methods.Any(MethodRequiresConstraintPreservation);
+    }
+
+    private static bool MethodRequiresConstraintPreservation(MethodInfo method)
+    {
+        if (!method.IsGenericMethodDefinition)
+            return false;
+
+        foreach (var parameter in method.GetGenericArguments())
+        {
+            var hasSpecialConstraint = parameter.GenericParameterAttributes != GenericParameterAttributes.None;
+            var hasTypeConstraint = parameter.GetGenericParameterConstraints().Length > 0;
+            if ((hasSpecialConstraint || hasTypeConstraint) && TypeContains(method.ReturnType, parameter))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool TypeContains(Type type, Type genericParameter)
+    {
+        if (type == genericParameter)
+            return true;
+        if (type.IsArray || type.IsByRef || type.IsPointer)
+            return TypeContains(type.GetElementType()!, genericParameter);
+        return type.IsGenericType && type.GetGenericArguments().Any(t => TypeContains(t, genericParameter));
     }
 
     private (bool Handled, object? Value) InvokePluginInterface(MethodInfo method, object?[] args)
@@ -362,6 +408,27 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                 return (true, UIntPtr.Zero);
         }
         return (false, null);
+    }
+
+    private (bool Handled, object? Value) InvokeDataManager(MethodInfo method, object?[] args)
+    {
+        tracker.ServiceTouch("IDataManager", method.Name, parameters: SnapshotParameters(method, args));
+
+        if (method.IsGenericMethod &&
+            method.Name is "GetExcelSheet" or "GetSubrowExcelSheet" &&
+            method.ReturnType.IsGenericType)
+        {
+            var definitionName = method.ReturnType.GetGenericTypeDefinition().FullName;
+            if (definitionName is "Lumina.Excel.ExcelSheet`1" or "Lumina.Excel.SubrowExcelSheet`1")
+                return (true, SyntheticGameDataRuntime.CreateEmptySheet(method.ReturnType, tracker, method.Name));
+        }
+
+        if (method.Name == "FileExists")
+            return (true, false);
+
+        // GetFile/GetFileAsync and direct GameData/Excel access remain unavailable
+        // until a later, explicitly modeled game-data fixture is introduced.
+        return (true, DefaultValueFactory.Create(method.ReturnType, this));
     }
 
     private (bool Handled, object? Value) InvokeGameInterop(MethodInfo method, object?[] args)

@@ -37,7 +37,7 @@ require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "dalamud.internal_serv
 
 # Runtime-only report model.
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "rift.runtime-observation.v1", "runtime observation schema version")
-require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.6"', "producer version 0.3.6")
+require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.3.7"', "producer version 0.3.7")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "boundary_profile", "boundary profile provenance")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "tmpfs_tmp_bytes", "tmpfs provenance")
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "RuntimeObservationKind", "neutral observation model")
@@ -224,5 +224,15 @@ require(Path("tools/summarize-rift-coverage.py"), "emulation_limits", "coverage 
 require(Path("InterdimensionalRift/Runtime/SyntheticHookRuntime.cs"), 'DefineGenericParameters("T")', "synthetic Hook is emitted as an open generic type")
 require(Path("InterdimensionalRift/Runtime/SyntheticHookRuntime.cs"), "MakeGenericType(delegateType)", "synthetic Hook closes over plugin-private delegate only at runtime")
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "initException?.ExceptionDetail", "game interop regression exposes captured init exception on failure")
+
+
+# Pass 3.3.3.2: constrained generic service routing + empty Lumina data surface.
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), "RequiresConstraintPreservingProxy", "constrained generic services selected structurally")
+require(Path("InterdimensionalRift/Runtime/RuntimeServiceRegistry.cs"), 'serviceName == "IDataManager"', "IDataManager has explicit synthetic semantics")
+require(Path("InterdimensionalRift/Runtime/SyntheticGameDataRuntime.cs"), "Lumina.Excel.ExcelSheet`1", "empty typed Lumina sheet support")
+require(Path("InterdimensionalRift/Runtime/SyntheticGameDataRuntime.cs"), '"real_game_data"] = "false"', "game-data evidence states no real data")
+require(Path("tests/fixtures/RiftGameDataSemantics/Plugin.cs"), "RIFT_GAME_DATA empty sheet semantics complete", "constrained game-data fixture")
+require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "ConstrainedExcelSheet_IsEmptyEnumerableAndDoesNotLoadGameFiles", "constrained game-data regression test")
+require(Path("tools/summarize-rift-coverage.py"), '("idatamanager","game-data")', "coverage report recognizes game-data access")
 
 print(f"Rift source-contract checks: {len(checks)}/{len(checks)} passed")
