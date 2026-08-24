@@ -108,6 +108,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
+        ThreadSafety.AssertMainThread("RIFT_EXERCISE synchronous dispose was not marked as Dalamud main thread");
         Framework.Update -= OnFrameworkUpdate;
         Framework.Update -= OnSelfRemovingUpdate;
         PluginInterface.UiBuilder.OpenConfigUi -= OnOpenConfig;

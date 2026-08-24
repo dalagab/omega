@@ -27,6 +27,17 @@ public sealed class Plugin : IDalamudPlugin
         if (count != 0)
             throw new InvalidOperationException($"Synthetic sheet must be empty, got Count={count}.");
 
+        var hasRow = (bool)(sheet.GetType().GetMethod("HasRow")?.Invoke(sheet, new object[] { 116u })
+            ?? throw new InvalidOperationException("Synthetic sheet does not expose HasRow."));
+        if (hasRow)
+            throw new InvalidOperationException("Synthetic sheet reported an unavailable row as present.");
+
+        var tryGetRow = sheet.GetType().GetMethod("TryGetRow")
+            ?? throw new InvalidOperationException("Synthetic sheet does not expose TryGetRow.");
+        var tryGetArguments = new object?[] { 116u, null };
+        if ((bool)tryGetRow.Invoke(sheet, tryGetArguments)!)
+            throw new InvalidOperationException("Synthetic sheet returned an unavailable row.");
+
         var enumerable = sheet as IEnumerable
             ?? throw new InvalidOperationException("Synthetic sheet is not enumerable.");
         if (enumerable.GetEnumerator().MoveNext())

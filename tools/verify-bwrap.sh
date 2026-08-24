@@ -34,7 +34,6 @@ common=(
   --unshare-net
   --unshare-uts
   --unshare-cgroup-try
-  --disable-userns
   --new-session
   --die-with-parent
   --cap-drop ALL
@@ -50,6 +49,12 @@ common=(
   --setenv HOME /tmp
   --setenv PATH /usr/bin:/bin
 )
+
+supports_disable_userns=false
+if "$BWRAP" --help 2>&1 | grep -q -- '--disable-userns'; then
+  common+=(--disable-userns)
+  supports_disable_userns=true
+fi
 
 # 1. Basic namespace/mount construction must succeed.
 "$BWRAP" "${common[@]}" -- /usr/bin/test -r /fixture/allowed
@@ -68,10 +73,13 @@ if awk 'NR > 1 && $2 == "00000000" { found=1 } END { exit found ? 0 : 1 }' <<<"$
   exit 5
 fi
 
-# 4. --disable-userns must prevent the prisoner from creating a nested userns.
-if "$BWRAP" "${common[@]}" -- /usr/bin/unshare -Ur /usr/bin/true >/dev/null 2>&1; then
-  echo "error: nested user namespace creation succeeded inside the Rift sandbox" >&2
-  exit 6
+if [[ "$supports_disable_userns" == true ]]; then
+  if "$BWRAP" "${common[@]}" -- /usr/bin/unshare -Ur /usr/bin/true >/dev/null 2>&1; then
+    echo "error: nested user namespace creation succeeded inside the Rift sandbox" >&2
+    exit 6
+  fi
+else
+  echo 'Bubblewrap has no --disable-userns; qualified runs require Rift seccomp clone/unshare denial.'
 fi
 
 printf 'Bubblewrap boundary OK: %s\n' "$($BWRAP --version)"

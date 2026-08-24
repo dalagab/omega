@@ -37,6 +37,7 @@ public sealed class ReflectionHook : IDisposable
         _pluginContext = pluginContext;
         _pluginContext.Resolving += OnResolving;
         _defaultContext.Resolving += OnResolving;
+        AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoad;
     }
 
     private Assembly? OnResolving(AssemblyLoadContext ctx, AssemblyName name)
@@ -45,7 +46,16 @@ public sealed class ReflectionHook : IDisposable
         return null; // let the ALC's default resolver run
     }
 
-    private void Emit(string? fullName, string? path)
+    private void OnAssemblyLoad(object? sender, AssemblyLoadEventArgs args)
+    {
+        var assembly = args.LoadedAssembly;
+        string? location;
+        try { location = string.IsNullOrWhiteSpace(assembly.Location) ? null : assembly.Location; }
+        catch { location = null; }
+        Emit(assembly.FullName, location, resolved: true);
+    }
+
+    private void Emit(string? fullName, string? path, bool resolved = false)
     {
         if (string.IsNullOrEmpty(fullName))
         {
@@ -53,17 +63,19 @@ public sealed class ReflectionHook : IDisposable
         }
         lock (_gate)
         {
-            if (!_seen.Add(fullName))
+            var key = $"{fullName}|{path}|{resolved}";
+            if (!_seen.Add(key))
             {
                 return;
             }
         }
-        _tracker.AssemblyLoad(fullName, path);
+        _tracker.AssemblyLoad(fullName, path, resolved);
     }
 
     public void Dispose()
     {
         _pluginContext.Resolving -= OnResolving;
         _defaultContext.Resolving -= OnResolving;
+        AppDomain.CurrentDomain.AssemblyLoad -= OnAssemblyLoad;
     }
 }

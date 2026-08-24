@@ -16,6 +16,7 @@ public class SmokeTest
         var report = host.Run(sampleDll, TimeSpan.FromSeconds(10));
 
         Assert.Equal("ok", report.Plugin.LoadOutcome);
+        Assert.Equal("ok", report.Plugin.DisposeOutcome);
         Assert.DoesNotContain(report.Observations, f => f.Kind == RuntimeObservationKind.Timeout);
 
         Assert.Contains(report.Observations,
@@ -540,6 +541,7 @@ public class PostInitExerciseSemanticsTest
 
         Assert.Equal("ok", report.Plugin.LoadOutcome);
         Assert.Equal("post-init-safe-v1", report.Exercise.Profile);
+        Assert.Equal("ok", report.Plugin.DisposeOutcome);
         Assert.Equal("completed", report.Exercise.Status);
         Assert.True(report.Exercise.RegistrationsDiscovered >= 7, $"Expected at least seven exercise registrations, got {report.Exercise.RegistrationsDiscovered}");
         Assert.True(report.Exercise.RegistrationsExercised >= 6, $"Expected bounded callbacks to be exercised, got {report.Exercise.RegistrationsExercised}");
@@ -557,6 +559,7 @@ public class PostInitExerciseSemanticsTest
             "RIFT_EXERCISE command /riftexercise",
             "RIFT_EXERCISE ipc subscriber",
             "RIFT_EXERCISE ipc provider",
+            "RIFT_EXERCISE disposed",
         })
         {
             Assert.Contains(report.Observations,

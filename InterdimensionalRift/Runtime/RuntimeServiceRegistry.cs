@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using InterdimensionalRift.Host;
 using InterdimensionalRift.Instrumentation;
 using InterdimensionalRift.Reporting;
 
@@ -29,6 +30,8 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
     private readonly DirectoryInfo configDirectory;
     private readonly FileInfo configFile;
     private readonly Version assemblyVersion;
+    private readonly SyntheticGameDataFixtureStore gameDataFixtures;
+    private object? sandboxPluginConfiguration;
 
     public RuntimeServiceRegistry(AccessTracker tracker, string internalName, string pluginPath)
     {
@@ -37,6 +40,8 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
         assemblyLocation = new FileInfo(pluginPath);
         configDirectory = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "rift-config"));
         configFile = new FileInfo(Path.Combine(configDirectory.FullName, $"{internalName}.json"));
+        SeedConfigurationDirectory();
+        gameDataFixtures = new SyntheticGameDataFixtureStore(tracker);
         assemblyVersion = AssemblyName.GetAssemblyName(pluginPath).Version ?? new Version(0, 0, 0, 0);
         SyntheticNativeGameStateRuntime.EnsureInstalled(tracker);
     }
@@ -59,6 +64,47 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
     {
         service = GetService(serviceType);
         return service is not null;
+    }
+
+    private void SeedConfigurationDirectory()
+    {
+        var source = Environment.GetEnvironmentVariable("RIFT_SEED_CONFIG_DIR");
+        if (string.IsNullOrWhiteSpace(source))
+            return;
+
+        var sourceDirectory = new DirectoryInfo(Path.GetFullPath(source));
+        if (!sourceDirectory.Exists || sourceDirectory.LinkTarget is not null)
+            throw new InvalidOperationException("Rift seed configuration directory is unavailable or resolves through a link.");
+
+        var filesCopied = 0;
+        long bytesCopied = 0;
+        foreach (var sourceFile in sourceDirectory.EnumerateFiles("*", SearchOption.AllDirectories))
+        {
+            if (sourceFile.LinkTarget is not null)
+                throw new InvalidOperationException($"Rift seed configuration file resolves through a link: {sourceFile.FullName}");
+
+            var relative = Path.GetRelativePath(sourceDirectory.FullName, sourceFile.FullName);
+            if (Path.IsPathRooted(relative) || relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(part => part == ".."))
+                throw new InvalidOperationException($"Rift seed configuration file escapes its root: {sourceFile.FullName}");
+
+            if (sourceFile.Length > 64 * 1024 * 1024 || bytesCopied + sourceFile.Length > 128 * 1024 * 1024)
+                throw new InvalidOperationException("Rift seed configuration exceeds the 128 MiB bounded input limit.");
+
+            var destination = Path.Combine(configDirectory.FullName, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(sourceFile.FullName, destination, overwrite: false);
+            filesCopied++;
+            bytesCopied += sourceFile.Length;
+        }
+
+        tracker.ServiceTouch("RiftSeededConfiguration", "copy", parameters: new Dictionary<string, string?>
+        {
+            ["files_copied"] = filesCopied.ToString(),
+            ["bytes_copied"] = bytesCopied.ToString(),
+            ["source_tree_sha256"] = Environment.GetEnvironmentVariable("RIFT_SEED_CONFIG_TREE_SHA256"),
+            ["source_writable"] = "false",
+            ["plugin_config_writable"] = "true",
+        });
     }
 
     public bool InjectPluginServices(Type pluginType)
@@ -157,6 +203,7 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
     {
         args ??= Array.Empty<object?>();
         var serviceName = serviceType.Name;
+        BootstrapTrace.Record($"service.invoke service={serviceName} method={method.Name}");
 
         if (method.IsSpecialName && (method.Name.StartsWith("add_", StringComparison.Ordinal) || method.Name.StartsWith("remove_", StringComparison.Ordinal)))
         {
@@ -230,7 +277,12 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
 
         if (serviceName == "IPluginLog")
         {
-            tracker.Log(method.Name, ExtractLogMessage(args));
+            var message = ExtractLogMessage(args);
+            var exception = args.OfType<Exception>().FirstOrDefault();
+            BootstrapTrace.Record($"plugin.log level={method.Name} message={message} exception={exception?.GetType().Name}:{exception?.Message}");
+            if (exception?.StackTrace is { Length: > 0 } stackTrace)
+                BootstrapTrace.Record($"plugin.log_stack {stackTrace.Replace(Environment.NewLine, " | ", StringComparison.Ordinal)}");
+            tracker.Log(method.Name, message);
             return DefaultValueFactory.Create(method.ReturnType, this);
         }
 
@@ -297,7 +349,8 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                 return (true, GetService(requested));
             case "GetPluginConfig":
                 tracker.ServiceTouch("IDalamudPluginInterface", method.Name);
-                return (true, null);
+                sandboxPluginConfiguration ??= SandboxConfigurationFactory.CreateForCallingPlugin();
+                return (true, sandboxPluginConfiguration);
             case "SavePluginConfig":
                 tracker.ServiceTouch("IDalamudPluginInterface", method.Name);
                 return (true, null);
@@ -453,11 +506,35 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
                 return (true, SyntheticGameDataRuntime.CreateEmptySheet(method.ReturnType, tracker, method.Name));
         }
 
+        var requestedPath = args.OfType<string>().FirstOrDefault();
         if (method.Name == "FileExists")
-            return (true, false);
+            return (true, gameDataFixtures.Contains(requestedPath));
+
+        if (method.Name == "GetFile" && !method.IsGenericMethod &&
+            gameDataFixtures.TryCreateFileResource(requestedPath, out var fixture) &&
+            fixture is not null && method.ReturnType.IsInstanceOfType(fixture))
+            return (true, fixture);
+
+        if (method.Name == "GetFileAsync" && method.ReturnType.IsGenericType &&
+            method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>) &&
+            gameDataFixtures.TryCreateFileResource(requestedPath, out fixture) &&
+            fixture is not null && method.ReturnType.GetGenericArguments()[0].IsInstanceOfType(fixture))
+        {
+            var complete = typeof(Task).GetMethod(nameof(Task.FromResult))!
+                .MakeGenericMethod(method.ReturnType.GetGenericArguments()[0])
+                .Invoke(null, new object?[] { fixture });
+            return (true, complete);
+        }
 
         // GetFile/GetFileAsync and direct GameData/Excel access remain unavailable
-        // until a later, explicitly modeled game-data fixture is introduced.
+        // unless an exact staged synthetic fixture was supplied. Record this
+        // separately from a plugin exception so coverage gaps remain obvious.
+        if (method.Name is "GetFile" or "GetFileAsync" or "get_GameData" or "get_Excel")
+        {
+            tracker.Record(RuntimeObservationKind.ServiceAccess, "IDataManager", method.Name, "synthetic_unavailable",
+                message: "Rift does not mount game data in this profile",
+                parameters: SnapshotParameters(method, args));
+        }
         return (true, DefaultValueFactory.Create(method.ReturnType, this));
     }
 
@@ -633,8 +710,7 @@ public sealed class RuntimeServiceRegistry : IServiceProvider
         var key = $"{direction}|{channel}|{interfaceType.AssemblyQualifiedName}";
         return ipcEndpoints.GetOrAdd(key, _ =>
         {
-            var proxy = DispatchProxy.Create(interfaceType, typeof(InstrumentedServiceProxy));
-            ((InstrumentedServiceProxy)proxy).Initialize(interfaceType, this, key);
+            var proxy = ConstraintPreservingProxyFactory.Create(interfaceType, this, key);
             var endpointId = NextRegistrationId("ipc-endpoint");
             tracker.Registration("ipc_endpoint", "IDalamudPluginInterface", channel, "created", interfaceType.FullName,
                 new Dictionary<string, string?>

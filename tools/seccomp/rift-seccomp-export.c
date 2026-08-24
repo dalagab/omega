@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/net.h>
+#include <sched.h>
 #include <seccomp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,6 +38,7 @@ int main(int argc, char **argv) {
         "ptrace",
         "mount", "umount2", "pivot_root",
         "setns", "unshare",
+        "clone3",
         "reboot", "kexec_load", "kexec_file_load",
         "swapon", "swapoff",
         "keyctl", "add_key", "request_key",
@@ -51,6 +53,16 @@ int main(int argc, char **argv) {
 
     for (const char **p = deny; *p; ++p) {
         if (deny_name(ctx, *p) < 0) {
+            seccomp_release(ctx);
+            return 1;
+        }
+    }
+
+    int clone_nr = seccomp_syscall_resolve_name("clone");
+    if (clone_nr != __NR_SCMP_ERROR) {
+        if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), clone_nr, 1,
+                             SCMP_A0(SCMP_CMP_MASKED_EQ, CLONE_NEWUSER, CLONE_NEWUSER)) < 0) {
+            fprintf(stderr, "failed adding CLONE_NEWUSER seccomp rule\n");
             seccomp_release(ctx);
             return 1;
         }

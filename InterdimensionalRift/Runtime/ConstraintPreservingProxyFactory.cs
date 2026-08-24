@@ -12,22 +12,19 @@ namespace InterdimensionalRift.Runtime;
 /// </summary>
 public static class ConstraintPreservingProxyFactory
 {
-    private static readonly AssemblyBuilder Assembly = AssemblyBuilder.DefineDynamicAssembly(
-        new AssemblyName("InterdimensionalRift.DynamicProxies"), AssemblyBuilderAccess.Run);
-    private static readonly ModuleBuilder Module = Assembly.DefineDynamicModule("RiftDynamicProxies");
-    private static readonly ConcurrentDictionary<Type, Func<RuntimeServiceRegistry, object>> Factories = new();
+    private static readonly ConcurrentDictionary<Type, Func<RuntimeServiceRegistry, string?, object>> Factories = new();
     private static readonly ConcurrentDictionary<int, MethodInfo> Methods = new();
     private static int nextMethodId;
     private static int nextTypeId;
 
-    public static object Create(Type interfaceType, RuntimeServiceRegistry registry)
+    public static object Create(Type interfaceType, RuntimeServiceRegistry registry, string? instanceTag = null)
     {
         if (!interfaceType.IsInterface)
             throw new ArgumentException("Constraint-preserving proxy target must be an interface.", nameof(interfaceType));
-        return Factories.GetOrAdd(interfaceType, BuildFactory)(registry);
+        return Factories.GetOrAdd(interfaceType, BuildFactory)(registry, instanceTag);
     }
 
-    public static object? Invoke(RuntimeServiceRegistry registry, int methodId, Type[] genericArguments, object?[] arguments)
+    public static object? Invoke(RuntimeServiceRegistry registry, int methodId, string? instanceTag, Type[] genericArguments, object?[] arguments)
     {
         if (!Methods.TryGetValue(methodId, out var definition))
             throw new MissingMethodException($"Rift dynamic proxy method {methodId} is not registered.");
@@ -36,35 +33,107 @@ public static class ConstraintPreservingProxyFactory
         if (definition.IsGenericMethodDefinition)
             method = definition.MakeGenericMethod(genericArguments);
 
-        return registry.Invoke(definition.DeclaringType!, method, arguments);
+        return registry.Invoke(definition.DeclaringType!, method, arguments, instanceTag);
     }
 
-    private static Func<RuntimeServiceRegistry, object> BuildFactory(Type interfaceType)
+    private static Func<RuntimeServiceRegistry, string?, object> BuildFactory(Type interfaceType)
     {
         var typeName = $"RiftProxy_{Sanitize(interfaceType.FullName ?? interfaceType.Name)}_{Interlocked.Increment(ref nextTypeId)}";
-        var tb = Module.DefineType(typeName,
+        var assembly = AssemblyBuilder.DefineDynamicAssembly(
+            new AssemblyName($"InterdimensionalRift.DynamicProxies.{nextTypeId}"),
+            AssemblyBuilderAccess.RunAndCollect);
+        var module = assembly.DefineDynamicModule("RiftDynamicProxies");
+        ConfigureAccessChecks(assembly, module, interfaceType);
+        var tb = module.DefineType(typeName,
             TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class);
         tb.AddInterfaceImplementation(interfaceType);
 
         var registryField = tb.DefineField("_registry", typeof(RuntimeServiceRegistry), FieldAttributes.Private | FieldAttributes.InitOnly);
-        var ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, new[] { typeof(RuntimeServiceRegistry) });
+        var instanceTagField = tb.DefineField("_instanceTag", typeof(string), FieldAttributes.Private | FieldAttributes.InitOnly);
+        var ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, new[] { typeof(RuntimeServiceRegistry), typeof(string) });
         var cil = ctor.GetILGenerator();
         cil.Emit(OpCodes.Ldarg_0);
         cil.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes)!);
         cil.Emit(OpCodes.Ldarg_0);
         cil.Emit(OpCodes.Ldarg_1);
         cil.Emit(OpCodes.Stfld, registryField);
+        cil.Emit(OpCodes.Ldarg_0);
+        cil.Emit(OpCodes.Ldarg_2);
+        cil.Emit(OpCodes.Stfld, instanceTagField);
         cil.Emit(OpCodes.Ret);
 
-        foreach (var method in interfaceType.GetMethods())
-            ImplementMethod(tb, registryField, method);
+        foreach (var method in GetInterfaceMethods(interfaceType))
+            ImplementMethod(tb, registryField, instanceTagField, method);
 
         var proxyType = tb.CreateType()!;
-        var proxyCtor = proxyType.GetConstructor(new[] { typeof(RuntimeServiceRegistry) })!;
-        return registry => proxyCtor.Invoke(new object[] { registry });
+        var proxyCtor = proxyType.GetConstructor(new[] { typeof(RuntimeServiceRegistry), typeof(string) })!;
+        return (registry, instanceTag) => proxyCtor.Invoke(new object?[] { registry, instanceTag });
     }
 
-    private static void ImplementMethod(TypeBuilder tb, FieldBuilder registryField, MethodInfo interfaceMethod)
+    private static void ConfigureAccessChecks(AssemblyBuilder assembly, ModuleBuilder module, Type interfaceType)
+    {
+        var targetAssemblies = EnumerateTypes(interfaceType)
+            .Where(type => !type.IsVisible)
+            .Select(type => type.Assembly.GetName().Name)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.Ordinal)
+            .Cast<string>()
+            .ToArray();
+        if (targetAssemblies.Length == 0)
+            return;
+
+        var attribute = module.DefineType(
+            "System.Runtime.CompilerServices.IgnoresAccessChecksToAttribute",
+            TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
+            typeof(Attribute));
+        var field = attribute.DefineField("_assemblyName", typeof(string), FieldAttributes.Private | FieldAttributes.InitOnly);
+        var constructor = attribute.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, new[] { typeof(string) });
+        var constructorIl = constructor.GetILGenerator();
+        constructorIl.Emit(OpCodes.Ldarg_0);
+        constructorIl.Emit(OpCodes.Call, typeof(Attribute).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, Type.EmptyTypes, null)!);
+        constructorIl.Emit(OpCodes.Ldarg_0);
+        constructorIl.Emit(OpCodes.Ldarg_1);
+        constructorIl.Emit(OpCodes.Stfld, field);
+        constructorIl.Emit(OpCodes.Ret);
+
+        var getter = attribute.DefineMethod("get_AssemblyName", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig, typeof(string), Type.EmptyTypes);
+        var getterIl = getter.GetILGenerator();
+        getterIl.Emit(OpCodes.Ldarg_0);
+        getterIl.Emit(OpCodes.Ldfld, field);
+        getterIl.Emit(OpCodes.Ret);
+        var property = attribute.DefineProperty("AssemblyName", PropertyAttributes.None, typeof(string), Type.EmptyTypes);
+        property.SetGetMethod(getter);
+
+        var attributeType = attribute.CreateType()!;
+        var attributeConstructor = attributeType.GetConstructor(new[] { typeof(string) })!;
+        foreach (var target in targetAssemblies)
+            assembly.SetCustomAttribute(new CustomAttributeBuilder(attributeConstructor, new object[] { target }));
+    }
+
+    private static IEnumerable<Type> EnumerateTypes(Type type)
+    {
+        yield return type;
+        if (type.HasElementType)
+        {
+            foreach (var element in EnumerateTypes(type.GetElementType()!))
+                yield return element;
+        }
+        foreach (var argument in type.GetGenericArguments())
+        {
+            foreach (var nested in EnumerateTypes(argument))
+                yield return nested;
+        }
+    }
+
+    private static IEnumerable<MethodInfo> GetInterfaceMethods(Type interfaceType) =>
+        interfaceType
+            .GetInterfaces()
+            .Append(interfaceType)
+            .SelectMany(type => type.GetMethods())
+            .GroupBy(method => (method.Module, method.MetadataToken))
+            .Select(group => group.First());
+
+    private static void ImplementMethod(TypeBuilder tb, FieldBuilder registryField, FieldBuilder instanceTagField, MethodInfo interfaceMethod)
     {
         var attributes = MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final |
                          MethodAttributes.HideBySig | MethodAttributes.NewSlot;
@@ -113,6 +182,8 @@ public static class ConstraintPreservingProxyFactory
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Ldfld, registryField);
         il.Emit(OpCodes.Ldc_I4, methodId);
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Ldfld, instanceTagField);
 
         EmitGenericTypeArray(il, genericBuilders);
         EmitArgumentArray(il, parameterTypes);

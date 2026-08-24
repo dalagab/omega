@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using InterdimensionalRift.Artifacts;
 using InterdimensionalRift.Instrumentation;
 using InterdimensionalRift.Reporting;
 using InterdimensionalRift.Runtime;
@@ -19,10 +20,17 @@ public sealed class SandboxHost
         // Freeze trusted supervisor provenance before any plugin-controlled code can run.
         var execution = ExecutionProvenance.Capture();
         var tracker = new AccessTracker();
+        var uiProfile = Environment.GetEnvironmentVariable("RIFT_UI_PROFILE") ?? "none";
+        if (uiProfile == "headless-ui-v1")
+            tracker.Boundary("ui", "headless", "headless cimgui symbol shim is mounted; no rendering, frames, or draw callbacks are performed");
+        ArtifactInventory? artifactInventory = null;
         var profile = exerciseProfile ?? PostInitExerciseEngine.SafeProfile;
         var exercise = ExerciseSummary.NotRun(profile, "startup not completed", frameworkTicks);
 
+        BootstrapTrace.Record("contract.loading");
         DalamudContract.EnsureLoaded();
+        BootstrapTrace.Record("contract.loaded");
+        SyntheticDalamudHostRuntime.EnsureInstalled(tracker);
         DalamudContract.EnterSandboxFailFastHostMode();
         tracker.Boundary(
             "dalamud.internal_service_locator",
@@ -46,6 +54,9 @@ public sealed class SandboxHost
             };
         }
 
+        artifactInventory = ArtifactInventory.Build(Path.GetDirectoryName(Path.GetFullPath(pluginPath))!);
+        tracker.AttachArtifactInventory(artifactInventory);
+
         var internalName = Path.GetFileNameWithoutExtension(pluginPath);
         var info = new PluginInfo
         {
@@ -60,7 +71,9 @@ public sealed class SandboxHost
         Assembly assembly;
         try
         {
+            BootstrapTrace.Record("plugin.loading");
             assembly = loader.Load(pluginPath);
+            BootstrapTrace.Record("plugin.loaded");
             info.AssemblyName = loader.AssemblyName;
         }
         catch (Exception ex)
@@ -68,31 +81,35 @@ public sealed class SandboxHost
             info.LoadOutcome = "load_failed";
             info.LoadError = $"{ex.GetType().Name}: {ex.Message}";
             tracker.Lifecycle("assembly_load", "threw", exception: ex);
-            return Finalize(tracker, info, exercise, execution);
+            return Finalize(tracker, info, exercise, execution, artifactInventory);
         }
 
+        BootstrapTrace.Record("plugin_type.resolving");
         var pluginType = loader.FindPluginType(assembly, out var notFoundReason);
         if (pluginType is null)
         {
             info.LoadOutcome = "not_a_plugin";
             info.LoadError = notFoundReason;
-            return Finalize(tracker, info, exercise, execution);
+            return Finalize(tracker, info, exercise, execution, artifactInventory);
         }
 
         info.LoadOutcome = "loaded";
+        BootstrapTrace.Record("registry.creating");
         var registry = new RuntimeServiceRegistry(tracker, internalName, pluginPath);
+        BootstrapTrace.Record("registry.created");
         object? plugin = null;
         var initSw = Stopwatch.StartNew();
         var initOk = false;
 
         try
         {
+            BootstrapTrace.Record("plugin_constructor.queued");
             var createTask = Task.Run(() => registry.CreatePluginInstance(pluginType));
             if (!createTask.Wait(initTimeout))
             {
                 tracker.Timeout("constructor");
                 info.LoadOutcome = "init_timeout";
-                return FinalizeWithDuration(tracker, info, initSw, exercise, execution);
+                return FinalizeWithDuration(tracker, info, initSw, exercise, execution, artifactInventory);
             }
 
             plugin = createTask.GetAwaiter().GetResult();
@@ -146,7 +163,7 @@ public sealed class SandboxHost
         }
 
         loader.Unload();
-        return Finalize(tracker, info, exercise, execution);
+        return Finalize(tracker, info, exercise, execution, artifactInventory);
     }
 
     private static bool InvokeAsyncLoad(object plugin, Type asyncContract, TimeSpan timeout, AccessTracker tracker)
@@ -203,7 +220,11 @@ public sealed class SandboxHost
             else if (plugin is IDisposable disposable)
             {
                 tracker.Lifecycle("Dispose", "begin", plugin.GetType().FullName);
-                task = Task.Run(disposable.Dispose);
+                task = Task.Run(() =>
+                {
+                    using var dalamudMainThread = DalamudMainThreadRuntime.Enter(tracker);
+                    disposable.Dispose();
+                });
             }
             else
             {
@@ -240,12 +261,12 @@ public sealed class SandboxHost
         return ex;
     }
 
-    private static SandboxReport FinalizeWithDuration(AccessTracker tracker, PluginInfo info, Stopwatch sw, ExerciseSummary exercise, ExecutionProvenance execution)
+    private static SandboxReport FinalizeWithDuration(AccessTracker tracker, PluginInfo info, Stopwatch sw, ExerciseSummary exercise, ExecutionProvenance execution, ArtifactInventory? artifactInventory)
     {
         info.InitDurationMs = sw.ElapsedMilliseconds;
-        return Finalize(tracker, info, exercise, execution);
+        return Finalize(tracker, info, exercise, execution, artifactInventory);
     }
 
-    private static SandboxReport Finalize(AccessTracker tracker, PluginInfo info, ExerciseSummary exercise, ExecutionProvenance execution) =>
-        RuntimeObservationReporter.Finalize(tracker.Snapshot(), info, exercise, execution);
+    private static SandboxReport Finalize(AccessTracker tracker, PluginInfo info, ExerciseSummary exercise, ExecutionProvenance execution, ArtifactInventory? artifactInventory) =>
+        RuntimeObservationReporter.Finalize(tracker.Snapshot(), info, exercise, execution, artifactInventory);
 }

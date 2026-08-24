@@ -99,15 +99,14 @@ plugin input plus the trusted Dalamud contract directory read-only, uses bounded
 process tree with an external wall timeout. There is intentionally no
 unsandboxed fallback.
 
-The boundary itself is regression-tested by
-`.github/workflows/rift-bubblewrap-boundary.yml`.
-
-
-The boundary is also self-tested by:
+The available fixture reviews are:
 
 * `.github/workflows/rift-canary.yml` — environmental Canary;
-* `.github/workflows/rift-containment-stress.yml` — memory/task/tmpfs/hang-tree containment;
 * `.github/workflows/rift-alpha.yml` — observation calibration subject.
+
+Only `.github/workflows/rift.yml` runs automatically on direct pushes to `rift`.
+It builds Rift and scans the published Omega artifact. Alpha and Canary are
+explicit regression runs.
 
 See `docs/RIFT-SANDBOX-PROFILE.adoc` for the current boundary profile.
 
@@ -302,4 +301,3 @@ See `docs/POST-INIT-EXERCISE.adoc`.
 Published Artisan qualification exposed two exercised post-init fidelity gaps: KamiToolKit calls `Dalamud.Utility.ThreadSafety.AssertMainThread()` from deferred framework work, while Artisan's real Framework.Update path initializes `CraftingListUI` through `InventoryManager.Instance()`. Rift now mirrors Dalamud's trusted `[ThreadStatic]` main-thread identity only for the duration of a synthetic framework invocation and restores the previous per-thread value before the worker can be reused. This does not claim to run on the real game thread.
 
 The FFXIVClientStructs model advances to `bounded-empty-v3` by adding a Rift-owned zeroed `InventoryManager`. `Inventories` remains null and no slots, items, currencies, character inventory, or inventory member functions are fabricated. The post-init regression executes both `ThreadSafety.AssertMainThread()` and `InventoryManager.Instance()` from Framework.Update/deferred framework work and verifies that command exercise sees the non-framework thread identity afterward.
-

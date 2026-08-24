@@ -1,0 +1,62 @@
+= Rift outer observer
+
+Rift separates the plugin artifact from the execution evidence gathered about it.
+The staged ZIP contents are immutable input. Rift inventories every file in that
+artifact and records its relative path, SHA-256, byte count, and coarse type.
+Managed and native loader observations are linked back to that inventory when a
+component is resolved.
+
+The qualified Linux runner adds a second observer outside the plugin process
+and its Bubblewrap namespace. It runs `strace` around the isolated process tree and produces
+`rift.outer-observer.v1`. The observer records deduplicated, counted attempts
+at filesystem operations, process execution, and network syscalls. A failed or
+blocked call is evidence of an attempted operation, not evidence that it worked.
+
+The artifact ledger is a merge-ready `rift.artifact-ledger.v1` document. It
+contains the immutable artifact identity, every artifact component, and which
+managed/native components Rift saw load. A production evidence publisher can
+merge this document by `artifact_tree_sha256` and component SHA-256 without
+trusting package names or mutable source paths.
+
+`tools/scan-rift-components.py` emits `rift.component-security.v1` for every
+regular staged file. It records deterministic managed/native/script signals and
+can attach YARA and ClamAV outcomes when those engines and their definitions
+are supplied. A clean engine result means that engine reported no finding; it
+does not make the component or plugin safe.
+
+== Dynamic loopback exercise
+
+Every qualified Linux run builds a tiny, reviewed native helper from
+`tools/sandbox-probes/rift-loopback-probe.c` and mounts that helper read-only
+inside the same private network namespace as the plugin. The helper discovers
+TCP listeners from the namespace's `/proc/net/tcp` and `/proc/net/tcp6` files,
+then makes one bounded connection to each discovered port using only
+`127.0.0.1` or `::1`. It transmits no application bytes, credentials, or
+plugin-derived data and never exposes a listener to the host or Internet.
+
+The outer observer identifies the helper as `trusted-loopback-probe` rather
+than attributing its connections to the plugin. Its report therefore records
+plugin `bind`, `listen`, and `accept` activity separately from safe probe
+connection attempts under `dynamic_loopback_probe`. This is dynamic discovery,
+not a per-plugin port list. `tcp_listener_bind_events` excludes Unix-domain
+diagnostic sockets, while `listener_events` retains all observed bind/listen/
+accept evidence. UDP listeners and application protocol requests are observed
+but not exercised: sending arbitrary protocol data would alter plugin behaviour
+and would not be a neutral security test.
+
+For a host crash without a managed report, the observer includes a bounded,
+sanitised final syscall tail for every traced plugin and trusted-probe process.
+It records operation, coarse subject, and outcome only; it does not publish raw
+strace arguments. This allows failed startup to be diagnosed without retaining
+or trusting a plugin-controlled report.
+
+Rift never lets a scanned plugin fetch and execute a new component in the same
+run. A future brokered-download phase must acquire, hash, statically inspect,
+and run any new artifact as a fresh isolated scan. Missing runtime coverage is
+reported as missing evidence; it is never treated as safe behavior.
+
+Qualified Linux runs require a Bubblewrap build with `--size` support so the
+three writable tmpfs mounts stay individually bounded. `BWRAP=/path/to/bwrap`
+selects an explicitly verified runner binary; the server qualification used
+upstream Bubblewrap `v0.11.2` rather than weakening those limits for RHEL 9's
+older packaged build.

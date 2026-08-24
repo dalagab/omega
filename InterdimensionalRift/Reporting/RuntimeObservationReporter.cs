@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using InterdimensionalRift.Artifacts;
 
 namespace InterdimensionalRift.Reporting;
 
@@ -12,7 +13,7 @@ public static class RuntimeObservationReporter
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
     };
 
-    public static SandboxReport Finalize(IEnumerable<RuntimeObservation> observations, PluginInfo plugin, ExerciseSummary? exercise = null, ExecutionProvenance? execution = null)
+    public static SandboxReport Finalize(IEnumerable<RuntimeObservation> observations, PluginInfo plugin, ExerciseSummary? exercise = null, ExecutionProvenance? execution = null, ArtifactInventory? artifactInventory = null)
     {
         var ordered = observations
             .OrderBy(o => o.TimestampOffsetMs)
@@ -24,6 +25,7 @@ public static class RuntimeObservationReporter
             Execution = execution ?? ExecutionProvenance.Capture(),
             Plugin = plugin,
             Exercise = exercise ?? ExerciseSummary.NotRun("none", "not supplied"),
+            ArtifactInventory = artifactInventory,
             Observations = ordered,
             Summary = new ReportSummary
             {

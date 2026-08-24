@@ -74,6 +74,15 @@ public sealed class RuntimeObservation
     [JsonPropertyName("context")]
     public string? Context { get; set; }
 
+    [JsonPropertyName("origin_assembly")]
+    public string? OriginAssembly { get; set; }
+
+    [JsonPropertyName("origin_artifact_path")]
+    public string? OriginArtifactPath { get; set; }
+
+    [JsonPropertyName("origin_artifact_sha256")]
+    public string? OriginArtifactSha256 { get; set; }
+
     [JsonPropertyName("parameters")]
     public Dictionary<string, string?>? Parameters { get; set; }
 }

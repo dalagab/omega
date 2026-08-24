@@ -26,12 +26,7 @@ public static class SyntheticGameDataRuntime
             ?? throw new MissingMethodException(closedSheetType.FullName, ".ctor(rawSheet)");
 
         var rawSheetType = ctor.GetParameters()[0].ParameterType;
-
-        // The current Lumina typed-sheet constructor stores only its RawSheet.
-        // An uninitialized RawExcelSheet has Count == 0 by CLR default. Because
-        // the typed enumerator first checks Count, no row/page backing fields are
-        // touched for an empty sheet.
-        var rawSheet = RuntimeHelpers.GetUninitializedObject(rawSheetType);
+        var rawSheet = CreateEmptyRawSheet(rawSheetType);
         var sheet = ctor.Invoke(new[] { rawSheet });
 
         var rowType = closedSheetType.GetGenericArguments()[0];
@@ -50,5 +45,45 @@ public static class SyntheticGameDataRuntime
             });
 
         return sheet;
+    }
+
+    private static object CreateEmptyRawSheet(Type rawSheetType)
+    {
+        var rawSheet = RuntimeHelpers.GetUninitializedObject(rawSheetType);
+        SetField(rawSheetType, rawSheet, "_pages", CreateEmptyArrayFieldValue(rawSheetType, "_pages"));
+        SetField(rawSheetType, rawSheet, "_rowOffsetLookupTable", CreateEmptyArrayFieldValue(rawSheetType, "_rowOffsetLookupTable"));
+        SetField(rawSheetType, rawSheet, "_rowIndexLookupArray", Array.Empty<int>());
+        SetField(rawSheetType, rawSheet, "_rowIndexLookupDict", CreateFrozenEmptyDictionary(rawSheetType));
+        return rawSheet;
+    }
+
+    private static object CreateEmptyArrayFieldValue(Type rawSheetType, string name)
+    {
+        var field = FindField(rawSheetType, name);
+        var elementType = field.FieldType.GetElementType()
+            ?? throw new InvalidOperationException($"{field.DeclaringType?.FullName}.{name} is not an array field.");
+        return Array.CreateInstance(elementType, 0);
+    }
+
+    private static object CreateFrozenEmptyDictionary(Type rawSheetType)
+    {
+        var fieldType = FindField(rawSheetType, "_rowIndexLookupDict").FieldType;
+        var empty = fieldType.GetProperty("Empty", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+        return empty ?? throw new MissingMemberException(fieldType.FullName, "Empty");
+    }
+
+    private static void SetField(Type type, object instance, string name, object value) =>
+        FindField(type, name).SetValue(instance, value);
+
+    private static FieldInfo FindField(Type type, string name)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            var field = current.GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+            if (field is not null)
+                return field;
+        }
+
+        throw new MissingFieldException(type.FullName, name);
     }
 }

@@ -23,6 +23,7 @@ internal static unsafe class SyntheticNativeGameStateRuntime
     private static nint frameworkPointerCell;
     private static nint uiModule;
     private static nint uiModuleVtable;
+    private static nint raptureAtkModule;
     private static nint agentModule;
     private static nint gameObjectManager;
     private static nint inventoryManager;
@@ -61,12 +62,15 @@ internal static unsafe class SyntheticNativeGameStateRuntime
 
                 var frameworkType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.System.Framework.Framework");
                 var uiModuleType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.UI.UIModule");
+                var raptureAtkModuleType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.UI.RaptureAtkModule");
+                var atkUnitManagerType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitManager");
                 var agentModuleType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentModule");
                 var gameObjectManagerType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.Game.Object.GameObjectManager");
                 var inventoryManagerType = RequireType(ffxiv, "FFXIVClientStructs.FFXIV.Client.Game.InventoryManager");
 
                 framework = AllocateZeroed(SizeOfExplicit(frameworkType));
                 uiModule = AllocateZeroed(SizeOfExplicit(uiModuleType));
+                raptureAtkModule = AllocateZeroed(SizeOfExplicit(raptureAtkModuleType));
                 agentModule = AllocateZeroed(SizeOfExplicit(agentModuleType));
                 // A zeroed GameObjectManager is an intentionally empty game-object world:
                 // all object pointers and sorted counts remain zero, so callers can
@@ -90,14 +94,17 @@ internal static unsafe class SyntheticNativeGameStateRuntime
                 // The inherited UIModuleInterface lives at offset 0, so install only
                 // the vtable slot needed by the currently qualified empty-state model.
                 const int getAgentModuleSlot = 37;
+                const int getRaptureAtkModuleSlot = 7;
                 const int vtableSlots = 249;
                 uiModuleVtable = AllocateZeroed((nuint)(vtableSlots * IntPtr.Size));
+                ((nint*)uiModuleVtable)[getRaptureAtkModuleSlot] = (nint)(delegate* unmanaged<nint, nint>)&GetRaptureAtkModuleStub;
                 ((nint*)uiModuleVtable)[getAgentModuleSlot] = (nint)(delegate* unmanaged<nint, nint>)&GetAgentModuleStub;
                 *(nint*)uiModule = uiModuleVtable;
 
                 PatchAddress(frameworkType, "Instance", frameworkPointerCell);
                 PatchAddress(frameworkType, "GetUIModule", (nint)(delegate* unmanaged<nint, nint>)&GetUIModuleStub);
                 PatchAddress(agentModuleType, "GetAgentByInternalId", (nint)(delegate* unmanaged<nint, uint, nint>)&GetAgentByInternalIdStub);
+                PatchAddress(atkUnitManagerType, "GetAddonByName", (nint)(delegate* unmanaged<nint, nint, int, nint>)&GetAddonByNameStub);
                 // GameObjectManager.Instance is a direct StaticAddress (not
                 // isPointer:true), so Address.Value points straight at the zeroed
                 // Rift-owned manager rather than at a pointer cell.
@@ -131,6 +138,7 @@ internal static unsafe class SyntheticNativeGameStateRuntime
             ["ffxivclientstructs_version"] = ffxivClientStructsVersion,
             ["framework_pointer"] = Hex(framework),
             ["ui_module_pointer"] = Hex(uiModule),
+            ["rapture_atk_module_pointer"] = Hex(raptureAtkModule),
             ["agent_module_pointer"] = Hex(agentModule),
             ["game_object_manager_pointer"] = Hex(gameObjectManager),
             ["inventory_manager_pointer"] = Hex(inventoryManager),
@@ -166,6 +174,22 @@ internal static unsafe class SyntheticNativeGameStateRuntime
         {
             ["model_state"] = "active",
             ["reused"] = reused ? "true" : "false",
+            ["real_game_memory"] = "false",
+            ["native_call"] = "false",
+            ["artifact_mutated"] = "false",
+        });
+        Observe("FFXIVClientStructs.FFXIV.Client.UI.UIModule", "UIModule.GetRaptureAtkModule", "synthetic_native_stub", new()
+        {
+            ["model_state"] = "active",
+            ["returned_pointer"] = Hex(raptureAtkModule),
+            ["real_game_memory"] = "false",
+            ["native_call"] = "false",
+            ["artifact_mutated"] = "false",
+        });
+        Observe("FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitManager", "AtkUnitManager.GetAddonByName", "synthetic_native_stub", new()
+        {
+            ["model_state"] = "active",
+            ["returned_pointer"] = "0x0",
             ["real_game_memory"] = "false",
             ["native_call"] = "false",
             ["artifact_mutated"] = "false",
@@ -210,6 +234,19 @@ internal static unsafe class SyntheticNativeGameStateRuntime
     }
 
     [UnmanagedCallersOnly]
+    private static nint GetRaptureAtkModuleStub(nint self)
+    {
+        ObserveNoThrow("UIModule", "GetRaptureAtkModule", "synthetic_pointer", new()
+        {
+            ["self"] = Hex(self),
+            ["returned_pointer"] = Hex(raptureAtkModule),
+            ["real_game_memory"] = "false",
+            ["native_call"] = "false",
+        });
+        return raptureAtkModule;
+    }
+
+    [UnmanagedCallersOnly]
     private static nint GetAgentModuleStub(nint self)
     {
         ObserveNoThrow("UIModule", "GetAgentModule", "synthetic_pointer", new()
@@ -220,6 +257,20 @@ internal static unsafe class SyntheticNativeGameStateRuntime
             ["native_call"] = "false",
         });
         return agentModule;
+    }
+
+    [UnmanagedCallersOnly]
+    private static nint GetAddonByNameStub(nint self, nint name, int index)
+    {
+        ObserveNoThrow("AtkUnitManager", "GetAddonByName", "synthetic_absent", new()
+        {
+            ["self"] = Hex(self),
+            ["index"] = index.ToString(),
+            ["returned_pointer"] = "0x0",
+            ["real_game_memory"] = "false",
+            ["native_call"] = "false",
+        });
+        return 0;
     }
 
     [UnmanagedCallersOnly]

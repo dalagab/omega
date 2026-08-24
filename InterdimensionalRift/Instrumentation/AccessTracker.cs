@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using InterdimensionalRift.Artifacts;
 using InterdimensionalRift.Reporting;
 
 namespace InterdimensionalRift.Instrumentation;
@@ -22,6 +23,7 @@ public sealed class AccessTracker
     private long activitySequence;
     private long acceptedObservations;
     private long droppedObservations;
+    private ArtifactInventory? artifactInventory;
 
     public AccessTracker()
     {
@@ -54,6 +56,8 @@ public sealed class AccessTracker
         return snapshot;
     }
 
+    public void AttachArtifactInventory(ArtifactInventory inventory) => artifactInventory = inventory;
+
     public void Record(
         RuntimeObservationKind kind,
         string? component,
@@ -72,6 +76,7 @@ public sealed class AccessTracker
         }
 
         var currentActivity = activity.Value;
+        var origin = RuntimeCallerAttributionCapture.Capture(artifactInventory);
         observations.Enqueue(new RuntimeObservation
         {
             Id = Interlocked.Increment(ref sequence).ToString("x16"),
@@ -90,6 +95,9 @@ public sealed class AccessTracker
             ExceptionMessage = Truncate(exception?.Message, MaxMessageChars),
             ExceptionDetail = ExceptionDetail(exception),
             Context = Truncate(context, MaxMessageChars),
+            OriginAssembly = origin?.AssemblyName,
+            OriginArtifactPath = origin?.ArtifactPath,
+            OriginArtifactSha256 = origin?.ArtifactSha256,
             Parameters = SanitizeParameters(parameters),
         });
     }
@@ -147,27 +155,32 @@ public sealed class AccessTracker
         => Record(RuntimeObservationKind.Log, "IPluginLog", level, outcome: "emitted", message: message);
 
     public void AssemblyLoad(string assemblyName, string? path = null, bool resolved = false)
-        => Record(
+    {
+        var parameters = ArtifactParameters(path);
+        Record(
             RuntimeObservationKind.AssemblyLoad,
             "assembly_loader",
             resolved ? "load_resolved" : "load_attempted",
             resolved ? "resolved" : "attempted",
             message: assemblyName,
-            context: path);
+            context: path,
+            parameters: parameters);
+    }
 
     public void NativeLibrary(string requestedName, string? resolvedPath, string outcome)
-        => Record(
+    {
+        var parameters = ArtifactParameters(resolvedPath) ?? new Dictionary<string, string?>(StringComparer.Ordinal);
+        parameters["requested_library"] = requestedName;
+        parameters["resolved_path"] = resolvedPath;
+        Record(
             RuntimeObservationKind.NativeLibrary,
             "native_loader",
             "load",
             outcome,
             message: requestedName,
             context: resolvedPath,
-            parameters: new Dictionary<string, string?>
-            {
-                ["requested_library"] = requestedName,
-                ["resolved_path"] = resolvedPath,
-            });
+            parameters: parameters);
+    }
 
     public void Signature(string operation, string signature, string outcome, long? syntheticAddress = null)
         => Record(
@@ -200,6 +213,19 @@ public sealed class AccessTracker
             kv => kv.Key,
             kv => Truncate(kv.Value, MaxParameterChars),
             StringComparer.Ordinal);
+    }
+
+    private Dictionary<string, string?>? ArtifactParameters(string? path)
+    {
+        if (artifactInventory is null || !artifactInventory.TryGet(path, out var file) || file is null)
+            return null;
+        return new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["artifact_path"] = file.Path,
+            ["artifact_sha256"] = file.Sha256,
+            ["artifact_bytes"] = file.Bytes.ToString(),
+            ["artifact_kind"] = file.Kind,
+        };
     }
 
     private static string? Truncate(string? value, int limit)

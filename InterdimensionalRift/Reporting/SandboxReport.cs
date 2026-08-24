@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
+using InterdimensionalRift.Artifacts;
 
 namespace InterdimensionalRift.Reporting;
 
@@ -29,6 +30,7 @@ public sealed class ExecutionProvenance
     [JsonPropertyName("artifact_tree_hash_algorithm")] public string? ArtifactTreeHashAlgorithm { get; set; }
     [JsonPropertyName("entry_sha256")] public string? EntrySha256 { get; set; }
     [JsonPropertyName("network")] public string? Network { get; set; }
+    [JsonPropertyName("network_profile")] public string? NetworkProfile { get; set; }
     [JsonPropertyName("seccomp")] public string? Seccomp { get; set; }
     [JsonPropertyName("memory_max")] public string? MemoryMax { get; set; }
     [JsonPropertyName("tasks_max")] public string? TasksMax { get; set; }
@@ -41,6 +43,8 @@ public sealed class ExecutionProvenance
     [JsonPropertyName("boundary_profile")] public string? BoundaryProfile { get; set; }
     [JsonPropertyName("contract_mode")] public string? ContractMode { get; set; }
     [JsonPropertyName("exercise_profile")] public string? ExerciseProfile { get; set; }
+    [JsonPropertyName("ui_profile")] public string? UiProfile { get; set; }
+    [JsonPropertyName("game_data_fixture_tree_sha256")] public string? GameDataFixtureTreeSha256 { get; set; }
     [JsonPropertyName("framework_ticks")] public string? FrameworkTicks { get; set; }
     [JsonPropertyName("dalamud_contract_track")] public string? DalamudContractTrack { get; set; }
     [JsonPropertyName("dalamud_contract_sha256")] public string? DalamudContractSha256 { get; set; }
@@ -57,6 +61,7 @@ public sealed class ExecutionProvenance
         ArtifactTreeHashAlgorithm = Environment.GetEnvironmentVariable("RIFT_ARTIFACT_TREE_HASH_ALGORITHM"),
         EntrySha256 = Environment.GetEnvironmentVariable("RIFT_ENTRY_SHA256"),
         Network = Environment.GetEnvironmentVariable("RIFT_NETWORK_MODE"),
+        NetworkProfile = Environment.GetEnvironmentVariable("RIFT_NETWORK_PROFILE"),
         Seccomp = Environment.GetEnvironmentVariable("RIFT_SECCOMP_MODE"),
         MemoryMax = Environment.GetEnvironmentVariable("RIFT_MEMORY_MAX"),
         TasksMax = Environment.GetEnvironmentVariable("RIFT_TASKS_MAX"),
@@ -69,6 +74,8 @@ public sealed class ExecutionProvenance
         BoundaryProfile = Environment.GetEnvironmentVariable("RIFT_BOUNDARY_PROFILE"),
         ContractMode = Environment.GetEnvironmentVariable("RIFT_CONTRACT_MODE"),
         ExerciseProfile = Environment.GetEnvironmentVariable("RIFT_EXERCISE_PROFILE"),
+        UiProfile = Environment.GetEnvironmentVariable("RIFT_UI_PROFILE"),
+        GameDataFixtureTreeSha256 = Environment.GetEnvironmentVariable("RIFT_GAME_DATA_FIXTURE_TREE_SHA256"),
         FrameworkTicks = Environment.GetEnvironmentVariable("RIFT_FRAMEWORK_TICKS"),
         DalamudContractTrack = Environment.GetEnvironmentVariable("RIFT_DALAMUD_CONTRACT_TRACK"),
         DalamudContractSha256 = Environment.GetEnvironmentVariable("RIFT_DALAMUD_CONTRACT_SHA256"),
@@ -138,6 +145,9 @@ public sealed class SandboxReport
 
     [JsonPropertyName("exercise")]
     public ExerciseSummary Exercise { get; set; } = ExerciseSummary.NotRun("none", "not requested");
+
+    [JsonPropertyName("artifact_inventory")]
+    public ArtifactInventory? ArtifactInventory { get; set; }
 
     [JsonPropertyName("observations")]
     public List<RuntimeObservation> Observations { get; set; } = new();

@@ -71,7 +71,7 @@ require(Path("tests/fixtures/RiftAlpha/Plugin.cs"), "RIFT_ALPHA armed inside Rif
 require(Path("tests/fixtures/RiftAlpha/Plugin.cs"), "ClientState.IsLoggedIn", "Alpha tracks current API-15 IClientState")
 require(Path("tools/check-alpha-contract.py"), "Alpha contract: PASS", "Alpha source safety checker")
 require(Path("tools/package-alpha.sh"), "RiftAlpha.dll", "Alpha DLL-only packager")
-require(Path(".github/workflows/rift-alpha.yml"), "Rift Alpha reference subject", "Alpha dedicated workflow")
+require(Path(".github/workflows/rift-alpha.yml"), "Rift fixture regression", "Alpha dedicated workflow")
 
 # Canary = environmental sentinel.
 require(Path("tests/fixtures/RiftCanary/RiftCanary.csproj"), "Rift.Dalamud.Contract.props", "Canary compiles against frozen contract")
@@ -94,7 +94,7 @@ for marker in (
     require(Path("tests/fixtures/RiftCanary/Plugin.cs"), marker, f"Canary probe {marker}")
 require(Path("tools/check-canary-contract.py"), "Canary contract: PASS", "Canary source safety checker")
 require(Path("tools/package-canary.sh"), "RiftCanary.dll", "Canary DLL-only packager")
-require(Path(".github/workflows/rift-canary.yml"), "Rift environmental Canary", "Canary dedicated workflow")
+require(Path(".github/workflows/rift-canary.yml"), "Rift fixture regression", "Canary dedicated workflow")
 
 # Containment stress qualification.
 for name in ("RiftMemoryPressure", "RiftTaskPressure", "RiftTmpfsPressure", "RiftHangTree"):
@@ -104,8 +104,6 @@ require(Path("tests/fixtures/RiftHangTree/rift-hang-child.c"), "SIG_IGN", "hang-
 require(Path("tools/check-sandbox-fixtures.py"), "Rift containment stress fixture contract: PASS", "stress fixture safety checker")
 require(Path("tools/package-sandbox-fixture.sh"), "RiftHangTree", "stress fixture packager")
 require(Path("tools/validate-rift-report.py"), '--mode', "central result validator")
-require(Path(".github/workflows/rift-containment-stress.yml"), "Rift containment stress qualification", "containment stress workflow")
-require(Path(".github/workflows/rift-containment-stress.yml"), "Rift process-tree cleanup: PASS", "stubborn descendant cleanup assertion")
 
 # Unit regressions.
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "Alpha_IsInertOutsideRiftBoundary", "Alpha inert regression")
@@ -130,7 +128,7 @@ require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "analysis-only-n
 require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "linux-wine-proton", "Linux player environment is Wine/Proton")
 require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "macos-crossover-wine", "macOS player environment is CrossOver/Wine")
 require(Path("schemas/omega-player-environment-support-v1.schema.json"), "omega.player-environment-support.v1", "player-environment support JSON schema")
-require(Path(".github/workflows/rift-scan-omega.yml"), "Build player-environment compatibility evidence", "published Omega compatibility evidence step")
+require(Path(".github/workflows/rift.yml"), "Build player-environment compatibility evidence", "published Omega compatibility evidence step")
 
 # Machine-readable contracts.
 require(Path("schemas/rift-runtime-observation-v2.schema.json"), "rift.runtime-observation.v2", "runtime JSON schema")
@@ -148,15 +146,9 @@ require(Path("tools/run-rift-bwrap.sh"), 'systemd_result', "systemd result captu
 require(Path("tools/run-rift-bwrap.sh"), '"oom-kill"', "systemd oom-kill maps to memory_limit")
 require(Path("tools/run-rift-bwrap.sh"), 'RIFT_ARTIFACT_TREE_HASH_ALGORITHM', "tree hash algorithm stamped into runtime")
 require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'sha256(path-nul-file-sha-lf-v1)', "platform evidence uses canonical tree hash")
-require(Path(".github/workflows/rift-scan-omega.yml"), 'Artifact-tree correlation: PASS', "Omega CI enforces cross-report artifact identity")
+require(Path(".github/workflows/rift.yml"), 'Artifact-tree correlation: PASS', "Omega CI enforces cross-report artifact identity")
 
 
-# Real-world complex plugin regression scan.
-require(Path(".github/workflows/rift-scan-artisan.yml"), "Rift scan published Artisan", "Artisan exact-artifact scan workflow")
-require(Path(".github/workflows/rift-scan-artisan.yml"), "https://love.puni.sh/ment.json", "Artisan canonical Puni feed acquisition")
-require(Path(".github/workflows/rift-scan-artisan.yml"), "expected exactly one stable Artisan entry", "Artisan stable entry uniqueness gate")
-require(Path(".github/workflows/rift-scan-artisan.yml"), "versions/{version}/install/latest.zip", "Artisan version-pinned Puni artifact gate")
-require(Path(".github/workflows/rift-scan-artisan.yml"), "summarize-rift-coverage.py", "Artisan engineering coverage-gap projection")
 require(Path("tools/summarize-rift-coverage.py"), "rift.coverage-gap.v1", "coverage-gap report schema producer")
 require(Path("tools/summarize-rift-coverage.py"), "full_plugin_functionality_proven", "coverage report avoids overstating startup")
 require(Path("schemas/rift-coverage-gap-v1.schema.json"), "rift.coverage-gap.v1", "coverage-gap JSON schema")
@@ -171,15 +163,12 @@ require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "PluginInterface_
 require(Path("InterdimensionalRift/Reporting/RuntimeObservation.cs"), "exception_detail", "bounded exception stack/detail evidence")
 require(Path("tools/extract-rift-artifact.py"), "duplicate normalized ZIP path", "canonical safe ZIP extractor")
 require(Path("tools/extract-rift-artifact.py"), "raw.replace('\\\\','/')", "Windows ZIP separators normalized")
-require(Path(".github/workflows/rift-scan-artisan.yml"), "extract-rift-artifact.py", "Artisan uses shared canonical extractor")
-require(Path(".github/workflows/rift-scan-omega.yml"), "extract-rift-artifact.py", "Omega uses shared canonical extractor")
+require(Path(".github/workflows/rift.yml"), "extract-rift-artifact.py", "Omega uses shared canonical extractor")
 require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), "ArtifactTreeSha256", "platform evidence accepts canonical tree identity")
-require(Path(".github/workflows/rift-scan-artisan.yml"), "Artisan artifact-tree correlation: PASS", "Artisan cross-report artifact correlation enforced")
 
 
 require(Path("tools/test-rift-artifact-tools.py"), "Rift artifact tool self-test: PASS", "canonical artifact extractor/hash regression test")
-require(Path(".github/workflows/rift-scan-artisan.yml"), "test-rift-artifact-tools.py", "Artisan scan executes artifact tool regression")
-require(Path(".github/workflows/rift-scan-omega.yml"), "test-rift-artifact-tools.py", "Omega scan executes artifact tool regression")
+require(Path(".github/workflows/rift.yml"), "test-rift-artifact-tools.py", "Omega scan executes artifact tool regression")
 
 
 require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'return "media-audio"', "Artisan audio/media Windows dependencies classified")
@@ -191,9 +180,7 @@ require(Path("tools/platform/PlatformEvidenceTool/Program.cs"), 'return "windows
 for workflow in (
     ".github/workflows/rift-alpha.yml",
     ".github/workflows/rift-canary.yml",
-    ".github/workflows/rift-containment-stress.yml",
-    ".github/workflows/rift-scan-artisan.yml",
-    ".github/workflows/rift-scan-omega.yml",
+    ".github/workflows/rift.yml",
 ):
     require(Path(workflow), "https://goatcorp.github.io/dalamud-distrib/latest.zip",
             f"{workflow} uses stable Dalamud release contract")
@@ -305,15 +292,13 @@ require(Path("tests/fixtures/RiftPostInitExerciseSemantics/Plugin.cs"), "DELAYED
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "PluginCannotRewriteFrozenSupervisorProvenance", "managed provenance freeze regression")
 require(Path("InterdimensionalRift/Host/SandboxHost.cs"), "not_attempted_exercise_timeout", "timed-out callback cannot race plugin disposal")
 require(Path("tools/validate-rift-report.py"), "exercise registration count mismatch", "runtime validator enforces exercise count consistency")
-require(Path(".github/workflows/rift-scan-omega.yml"), "validate-rift-attestation.py", "Omega validates trusted supervisor attestation")
-require(Path(".github/workflows/rift-scan-artisan.yml"), "validate-rift-attestation.py", "Artisan validates trusted supervisor attestation")
+require(Path(".github/workflows/rift.yml"), "validate-rift-attestation.py", "Omega validates trusted supervisor attestation")
 require(Path("tools/test-rift-evidence-tools.py"), "network_boundary", "evidence tooling regression excludes boundary network metadata")
 require(Path("tools/test-rift-evidence-tools.py"), "runtime report hash does not match", "evidence tooling regression detects report tampering")
 require(Path("tools/validate-rift-attestation.py"), "artifact_tree_hash_algorithm", "trusted attestation correlates canonical artifact hash algorithm")
 require(Path("tools/validate-rift-attestation.py"), "tmpfs_tmp_bytes", "trusted attestation correlates bounded tmpfs provenance")
 require(Path("tools/run-rift-bwrap.sh"), '"wall_timeout_seconds": $wall_timeout', "trusted success attestation records wall timeout")
-require(Path(".github/workflows/rift-scan-omega.yml"), "test-rift-evidence-tools.py", "Omega executes evidence tooling self-test")
-require(Path(".github/workflows/rift-scan-artisan.yml"), "test-rift-evidence-tools.py", "Artisan executes evidence tooling self-test")
+require(Path(".github/workflows/rift.yml"), "test-rift-evidence-tools.py", "Omega executes evidence tooling self-test")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), "framework_ticks", "managed execution provenance records framework tick count")
 # Pass 3.4.1: trusted Dalamud main-thread identity + bounded-empty inventory manager.
 require(Path("InterdimensionalRift/Runtime/DalamudMainThreadRuntime.cs"), "Dalamud.Utility.ThreadSafety", "framework fidelity resolves trusted Dalamud ThreadSafety")
@@ -332,12 +317,31 @@ require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), 'o.Component == "
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), 'o.Operation == "InventoryManager.Instance"', "runtime regression verifies empty inventory manager evidence")
 require(Path("InterdimensionalRift/Reporting/SandboxReport.cs"), 'ProducerVersion { get; set; } = "0.4.1"', "framework and inventory fidelity producer version")
 
+# Pass 3.5.0: dynamic listener discovery stays inside the private network namespace.
+require(Path("tools/sandbox-probes/rift-loopback-probe.c"), '"/proc/net/tcp"', "trusted probe discovers IPv4 TCP listeners dynamically")
+require(Path("tools/sandbox-probes/rift-loopback-probe.c"), '"/proc/net/tcp6"', "trusted probe discovers IPv6 TCP listeners dynamically")
+require(Path("tools/sandbox-probes/rift-loopback-probe.c"), "INADDR_LOOPBACK", "trusted probe only connects through IPv4 loopback")
+require(Path("tools/sandbox-probes/rift-loopback-probe.c"), "IN6ADDR_LOOPBACK_INIT", "trusted probe only connects through IPv6 loopback")
+require(Path("tools/sandbox-probes/rift-loopback-probe.c"), "shutdown(socket_fd, SHUT_RDWR)", "trusted probe closes connections without payload transmission")
+require(Path("tools/run-rift-bwrap.sh"), "rift-loopback-probe.c", "supervisor builds the trusted dynamic probe")
+require(Path("tools/run-rift-bwrap.sh"), "/rift-tools/rift-loopback-probe", "supervisor mounts probe read-only into sandbox")
+require(Path("tools/run-rift-bwrap.sh"), "RIFT_DYNAMIC_LOOPBACK_PROBE", "supervisor stamps dynamic probe provenance")
+require(Path("tools/collect-rift-observer.py"), '"trusted-loopback-probe"', "outer observer separates trusted probe evidence")
+require(Path("tools/collect-rift-observer.py"), '"dynamic_loopback_probe"', "outer observer projects dynamic listener evidence")
+require(Path("tools/collect-rift-observer.py"), '"bind", "connect"', "outer observer records listener and connection syscalls")
+require(Path("tools/test-rift-observer-tools.py"), "43123", "observer self-test exercises dynamic discovered listener")
+require(Path("tools/test-rift-loopback-probe.sh"), "Rift dynamic loopback probe self-test: PASS", "Linux probe self-test verifies dynamic connection behaviour")
+require(Path("InterdimensionalRift/Host/BootstrapTrace.cs"), "RIFT_BOOTSTRAP_TRACE", "host bootstrap trace is explicit and opt-in")
+require(Path("tools/run-rift-bwrap.sh"), "RIFT_BOOTSTRAP_TRACE", "qualified runner enables bounded bootstrap diagnostics")
+require(Path("InterdimensionalRift/Runtime/SandboxConfigurationFactory.cs"), "IPluginConfiguration", "sandbox configuration factory discovers plugin-owned config type")
+require(Path("InterdimensionalRift/Runtime/SandboxConfigurationFactory.cs"), "SeedRequiredCollections", "sandbox configuration seed avoids empty required collections")
+require(Path("tools/collect-rift-runtime.py"), "omega.collector.rift.runtime", "Rift projects runtime evidence into Omega collector contract")
+require(Path("schemas/omega-collector-rift-runtime-v1.schema.json"), "omega.collector.rift.runtime.v1", "Omega Rift runtime collector schema")
+
 for workflow in (
     ".github/workflows/rift-alpha.yml",
     ".github/workflows/rift-canary.yml",
-    ".github/workflows/rift-containment-stress.yml",
-    ".github/workflows/rift-scan-artisan.yml",
-    ".github/workflows/rift-scan-omega.yml",
+    ".github/workflows/rift.yml",
 ):
     require(Path(workflow), "--exercise-profile post-init-safe-v1", f"{workflow} opts into post-init safe exercise")
     require(Path(workflow), "--framework-ticks 3", f"{workflow} pins deterministic framework tick count")
