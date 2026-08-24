@@ -1,6 +1,7 @@
 // Build a conservative seccomp BPF deny-list for the plugin process.
 // Bubblewrap applies this filter only after it has created the namespaces and
 // filesystem, so denying mount/unshare/setns here does not stop bwrap itself.
+#define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/net.h>
