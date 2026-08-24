@@ -126,7 +126,7 @@ class DeltaScopeRuleProvenanceTests(unittest.TestCase):
         self.assertFalse(library["policyInput"])
         self.assertEqual("repository-source-only", library["sourceAuthority"])
         self.assertEqual(6, library["packCount"])
-        self.assertEqual(55, library["ruleCount"])
+        self.assertEqual(60, library["ruleCount"])
         self.assertEqual(15, library["fixtureCount"])
         rule = next(
             item
@@ -140,6 +140,14 @@ class DeltaScopeRuleProvenanceTests(unittest.TestCase):
         self.assertIn("condition:", rule["candidateYaml"])
         self.assertTrue(rule["ruleRevision"].startswith("srl-rule-v1-"))
         self.assertTrue(rule["sourcePath"].startswith("security-definitions/packs/"))
+        threat_rules = {
+            item["ruleId"]
+            for pack in library["packs"]
+            for item in pack["rules"]
+            if "threat-intel" in item["ruleId"]
+        }
+        self.assertIn("endpoint.active-threat-intel", threat_rules)
+        self.assertIn("experimental.compound.credential-threat-intel", threat_rules)
         experimental = next(
             item
             for pack in library["packs"]

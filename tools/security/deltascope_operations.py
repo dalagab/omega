@@ -274,6 +274,7 @@ class GitHubOperationsClient:
         limit: int = 5,
         include_logs: bool = True,
         log_job_names: Iterable[str] | None = None,
+        log_run_limit: int = 1,
         refresh: bool = False,
     ) -> dict[str, Any]:
         """Return a bounded, read-only recent workflow/job/step history.
@@ -287,7 +288,8 @@ class GitHubOperationsClient:
             raise ValueError("workflow_file must be a workflow filename")
         limit = max(1, min(int(limit or 5), MAX_WORKFLOW_HISTORY))
         normalized_log_jobs = tuple(sorted({str(name).strip() for name in (log_job_names or []) if str(name).strip()}))
-        key = (workflow_file, limit, bool(include_logs), normalized_log_jobs)
+        log_run_limit = max(0, min(int(log_run_limit or 0), limit, 4))
+        key = (workflow_file, limit, bool(include_logs), normalized_log_jobs, log_run_limit)
         now = time.monotonic()
         with self._lock:
             cached = self._workflow_cache.get(key)
@@ -336,9 +338,10 @@ class GitHubOperationsClient:
                         "steps": steps,
                         "logPreview": "",
                     }
-                    # Log content is needed only for the latest run's throughput/result parser.
-                    # Older runs retain job/step outcomes without spending API/rate-limit budget on logs.
-                    wants_log = run_index == 0 and include_logs and (not normalized_log_jobs or job["name"] in normalized_log_jobs)
+                    # Collector trend analysis needs a short history of throughput/result metrics.
+                    # Keep it bounded to the newest four workflow runs and only collector-relevant jobs;
+                    # older runs still retain job/step outcomes without downloading logs.
+                    wants_log = run_index < log_run_limit and include_logs and (not normalized_log_jobs or job["name"] in normalized_log_jobs)
                     if wants_log and job["jobId"]:
                         try:
                             job["logPreview"] = self._request_job_log(job["jobId"])

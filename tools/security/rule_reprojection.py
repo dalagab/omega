@@ -22,10 +22,11 @@ import tempfile
 from typing import Any, Iterable, Mapping
 
 try:
-    from . import definition_packs, observation_projection, security_evidence_v2, srl
+    from . import definition_packs, observation_projection, reputation_intelligence, security_evidence_v2, srl
 except ImportError:  # direct script/import from tools/security
     import definition_packs  # type: ignore
     import observation_projection  # type: ignore
+    import reputation_intelligence  # type: ignore
     import security_evidence_v2  # type: ignore
     import srl  # type: ignore
 
@@ -130,6 +131,7 @@ def projection_revision(
     compiled_ruleset: Mapping[str, Any],
     observation_contract: Mapping[str, Any],
     required_collections: Iterable[str],
+    reputation_revision: str = "",
 ) -> str:
     semantic = {
         "schema": PROJECTION_SCHEMA,
@@ -138,6 +140,7 @@ def projection_revision(
         "observationContractRevision": str(observation_contract.get("contractRevision") or ""),
         "observationDigest": str(observation_contract.get("observationDigest") or ""),
         "requiredCollections": sorted({str(item) for item in required_collections if str(item)}),
+        "reputationRevision": str(reputation_revision or ""),
     }
     return f"srl-projection-v1-{_sha(semantic)[:24]}"
 
@@ -185,6 +188,7 @@ def reproject_variant(
     entry: Mapping[str, Any],
     payload: Mapping[str, Any],
     compiled_ruleset: Mapping[str, Any],
+    reputation: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     variant_id = int(payload.get("variantId") or entry.get("variantId") or 0)
     analysis = payload.get("analysis") if isinstance(payload.get("analysis"), Mapping) else {}
@@ -233,6 +237,10 @@ def reproject_variant(
                 "reanalysisRequest": request,
             }
         observations = _load_required_observations(evidence_root, analysis_path, payload, contract, required)
+        if "networkEndpoints" in observations:
+            observations["networkEndpoints"] = reputation_intelligence.enrich_network_endpoints(
+                observations["networkEndpoints"], reputation
+            )
         evaluation = srl.evaluate_ruleset(compiled_ruleset, observations, observation_contract=contract)
     except Exception as exc:
         return {
@@ -255,7 +263,8 @@ def reproject_variant(
             "reanalysisRequest": request,
         }
 
-    revision = projection_revision(compiled_ruleset, contract, required)
+    reputation_rev = reputation_intelligence.reputation_revision(reputation)
+    revision = projection_revision(compiled_ruleset, contract, required, reputation_rev)
     findings = [dict(item) for item in evaluation.get("findings") or [] if isinstance(item, Mapping)]
     analysis_requests = [dict(item) for item in evaluation.get("analysisRequests") or [] if isinstance(item, Mapping)]
     for request in analysis_requests:
@@ -282,6 +291,7 @@ def reproject_variant(
         "observationContractRevision": str(contract.get("contractRevision") or ""),
         "observationDigest": str(contract.get("observationDigest") or ""),
         "requiredCollections": required,
+        "reputationRevision": reputation_rev,
         "projectionRevision": revision,
         "projectionDigest": f"srl-output-{_sha(semantic_outputs)}",
         "facts": facts,
@@ -303,6 +313,7 @@ def plan_reprojection(
     evidence_root: Path,
     compiled_ruleset: Mapping[str, Any],
     *,
+    reputation: Mapping[str, Any] | None = None,
     variant_ids: Iterable[int] | None = None,
     limit: int = 0,
 ) -> dict[str, Any]:
@@ -322,7 +333,7 @@ def plan_reprojection(
         variant_id = int(payload.get("variantId") or entry.get("variantId") or 0)
         if selected and variant_id not in selected:
             continue
-        result = reproject_variant(evidence_root, entry, payload, compiled_ruleset)
+        result = reproject_variant(evidence_root, entry, payload, compiled_ruleset, reputation)
         results.append(result)
         if isinstance(result.get("projection"), Mapping):
             projections.append(dict(result["projection"]))
@@ -340,6 +351,7 @@ def plan_reprojection(
         "schema": PROJECTION_SET_SCHEMA,
         "engineRevision": ENGINE_REVISION,
         "ruleSetRevision": str(compiled_ruleset.get("ruleSetRevision") or ""),
+        "reputationRevision": reputation_intelligence.reputation_revision(reputation),
         "observationContractRevision": observation_projection.contract_revision(),
         "sourceEvidenceIndexSha256": _sha_file(index_path),
         "requiredCollections": required,
@@ -352,6 +364,7 @@ def plan_reprojection(
         "schema": PLAN_SCHEMA,
         "engineRevision": ENGINE_REVISION,
         "ruleSetRevision": str(compiled_ruleset.get("ruleSetRevision") or ""),
+        "reputationRevision": reputation_intelligence.reputation_revision(reputation),
         "observationContractRevision": observation_projection.contract_revision(),
         "sourceEvidenceIndexSha256": _sha_file(index_path),
         "sourceEvidenceRevision": str(revisions.get("evidenceRevision") or ""),
@@ -435,6 +448,7 @@ def materialize_projection_set(output: Path, plan: Mapping[str, Any]) -> dict[st
             "engineRevision": ENGINE_REVISION,
             "projectionSetRevision": str(plan.get("projectionSetRevision") or ""),
             "ruleSetRevision": str(plan.get("ruleSetRevision") or ""),
+            "reputationRevision": str(plan.get("reputationRevision") or ""),
             "observationContractRevision": str(plan.get("observationContractRevision") or ""),
             "sourceEvidenceIndexSha256": str(plan.get("sourceEvidenceIndexSha256") or ""),
             "sourceEvidenceRevision": str(plan.get("sourceEvidenceRevision") or ""),

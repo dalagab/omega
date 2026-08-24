@@ -854,6 +854,130 @@ class SecurityDeveloperViewTests(unittest.TestCase):
 
 
 
+    def test_online_v2_definitions_only_change_is_refreshable_publication_state(self) -> None:
+        class Response:
+            def __init__(self, data: bytes): self.data = io.BytesIO(data); self.headers = {"Content-Length": str(len(data))}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, n: int = -1) -> bytes: return self.data.read(n)
+        def packed(value) -> bytes: return (json.dumps(value, sort_keys=True) + "\n").encode()
+        base = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
+        plugins = {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": []}
+        plugin_bytes = packed(plugins)
+        state = {"definitions": "defs-v1-old"}
+        def provenance_bytes():
+            return packed({"schema": "omega.security-evidence.definition-provenance.v1", "definitionsRevision": state["definitions"], "readOnly": True})
+        def root_bytes():
+            return packed({
+                "schema": "omega.security-evidence.v2", "formatVersion": 2,
+                "revisions": {"evidenceRevision": "ev-v2-stable", "definitionsRevision": state["definitions"], "ruleSetRevision": "rules-v1-stable"},
+                "indexes": {
+                    "plugins": {"path": "indexes/plugins.json", "sha256": hashlib.sha256(plugin_bytes).hexdigest()},
+                    "definitionProvenance": {"path": "indexes/definition-provenance.json", "sha256": hashlib.sha256(provenance_bytes()).hexdigest()},
+                },
+            })
+        def fake_urlopen(request, timeout=0):
+            del timeout
+            if request.full_url == base + "index.json": return Response(root_bytes())
+            if request.full_url == base + "indexes/plugins.json": return Response(plugin_bytes)
+            if request.full_url == base + "indexes/definition-provenance.json": return Response(provenance_bytes())
+            raise AssertionError(request.full_url)
+        with tempfile.TemporaryDirectory() as td:
+            inspector = V2SigmascopeInspector.online(base_url=base, cache_dir=Path(td), urlopen=fake_urlopen)
+            try:
+                state["definitions"] = "defs-v1-new"
+                status = inspector.source_status(check_remote=True)
+                self.assertTrue(status["updateAvailable"])
+                self.assertTrue(status["definitionsUpdateAvailable"])
+                self.assertFalse(status["evidenceUpdateAvailable"])
+                self.assertEqual("defs-v1-old", status["currentDefinitionsRevision"])
+                self.assertEqual("defs-v1-new", status["remoteDefinitionsRevision"])
+                refreshed = inspector.refresh_online()
+                self.assertTrue(refreshed["refreshed"])
+                self.assertTrue(refreshed["definitionsChanged"])
+                self.assertFalse(refreshed["evidenceChanged"])
+                self.assertEqual("defs-v1-new", refreshed["currentDefinitionsRevision"])
+                self.assertFalse(refreshed["updateAvailable"])
+            finally:
+                inspector.close()
+
+    def test_online_refresh_failure_keeps_last_known_good_snapshot_loaded(self) -> None:
+        class Response:
+            def __init__(self, data: bytes): self.data = io.BytesIO(data); self.headers = {"Content-Length": str(len(data))}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, n: int = -1) -> bytes: return self.data.read(n)
+        def packed(value) -> bytes: return (json.dumps(value, sort_keys=True) + "\n").encode()
+        base = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
+        old_plugins = {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": []}
+        old_bytes = packed(old_plugins)
+        state = {"new": False}
+        def root_bytes():
+            if not state["new"]:
+                return packed({"schema":"omega.security-evidence.v2","formatVersion":2,"revisions":{"evidenceRevision":"ev-old","definitionsRevision":"defs-old"},"indexes":{"plugins":{"path":"indexes/plugins.json","sha256":hashlib.sha256(old_bytes).hexdigest()}}})
+            # The new root advertises a plugin index that the moving branch does not yet serve.
+            return packed({"schema":"omega.security-evidence.v2","formatVersion":2,"revisions":{"evidenceRevision":"ev-new","definitionsRevision":"defs-new"},"indexes":{"plugins":{"path":"indexes/plugins.json","sha256":"f"*64}}})
+        def fake_urlopen(request, timeout=0):
+            del timeout
+            url = request.full_url
+            if url == base + "index.json": return Response(root_bytes())
+            if url == base + "indexes/plugins.json": return Response(old_bytes)
+            if url.startswith("https://api.github.com/repos/dalagab/omega/commits/"):
+                raise OSError("GitHub commit resolver unavailable")
+            raise AssertionError(url)
+        with tempfile.TemporaryDirectory() as td:
+            inspector = V2SigmascopeInspector.online(base_url=base, cache_dir=Path(td), urlopen=fake_urlopen)
+            try:
+                state["new"] = True
+                with self.assertRaises(Exception):
+                    inspector.refresh_online()
+                status = inspector.source_status()
+                self.assertEqual("ev-old", status["currentRevision"])
+                self.assertEqual("defs-old", status["currentDefinitionsRevision"])
+                self.assertEqual("ev-old", inspector._revision(inspector.root))
+            finally:
+                inspector.close()
+
+    def test_online_refresh_pins_commit_when_publication_branch_is_temporarily_mixed(self) -> None:
+        class Response:
+            def __init__(self, data: bytes): self.data = io.BytesIO(data); self.headers = {"Content-Length": str(len(data))}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, n: int = -1) -> bytes: return self.data.read(n)
+        def packed(value) -> bytes: return (json.dumps(value, sort_keys=True) + "\n").encode()
+        base = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
+        commit = "2" * 40
+        pinned = f"https://raw.githubusercontent.com/dalagab/omega/{commit}/"
+        api_url = "https://api.github.com/repos/dalagab/omega/commits/security-evidence-v2"
+        old_plugins = {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": []}
+        new_plugins = {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": [{"variantId": 7, "summary": {"plugin_id": 7, "canonical_name": "Pinned Refresh", "scan_status": "unscanned", "highest_severity": "none"}}]}
+        old_bytes, new_bytes = packed(old_plugins), packed(new_plugins)
+        old_root = {"schema":"omega.security-evidence.v2","formatVersion":2,"revisions":{"evidenceRevision":"ev-old","definitionsRevision":"defs-a"},"indexes":{"plugins":{"path":"indexes/plugins.json","sha256":hashlib.sha256(old_bytes).hexdigest()}}}
+        new_root = {"schema":"omega.security-evidence.v2","formatVersion":2,"revisions":{"evidenceRevision":"ev-new","definitionsRevision":"defs-a"},"indexes":{"plugins":{"path":"indexes/plugins.json","sha256":hashlib.sha256(new_bytes).hexdigest()}}}
+        state = {"new": False}
+        def fake_urlopen(request, timeout=0):
+            del timeout
+            url = request.full_url
+            if url == base + "index.json": return Response(packed(new_root if state["new"] else old_root))
+            if url == base + "indexes/plugins.json": return Response(old_bytes)  # mixed branch edge
+            if url == api_url: return Response(packed({"sha": commit}))
+            if url == pinned + "index.json": return Response(packed(new_root))
+            if url == pinned + "indexes/plugins.json": return Response(new_bytes)
+            raise AssertionError(url)
+        with tempfile.TemporaryDirectory() as td:
+            inspector = V2SigmascopeInspector.online(base_url=base, cache_dir=Path(td), urlopen=fake_urlopen)
+            try:
+                state["new"] = True
+                self.assertTrue(inspector.source_status(check_remote=True)["updateAvailable"])
+                refreshed = inspector.refresh_online()
+                self.assertTrue(refreshed["refreshed"])
+                self.assertTrue(refreshed["evidenceChanged"])
+                self.assertEqual("ev-new", refreshed["currentRevision"])
+                self.assertEqual(commit, inspector.source.snapshot_commit)
+                self.assertIn(7, inspector.current_entries)
+            finally:
+                inspector.close()
+
     def test_online_plugin_open_recovers_when_branch_publishes_between_index_and_variant_fetch(self) -> None:
         class Response:
             def __init__(self, data: bytes):
@@ -1056,9 +1180,9 @@ class SecurityDeveloperViewTests(unittest.TestCase):
         self.assertNotIn('id="latestBadge"', header)
         self.assertIn('id="dashboardPlatformCards"', html)
         self.assertIn('id="dashboardNotificationPreview"', html)
-        self.assertIn('Security Definitions updated', html)
+        self.assertIn('Published security state updated', html)
         self.assertIn('Critical finding', html)
-        self.assertIn('New security evidence is available', html)
+        self.assertIn('Automatic published-state refresh failed', html)
 
     def test_plugin_developer_routes_do_not_show_corpus_plugin_queue(self) -> None:
         html = view.HTML
@@ -1205,6 +1329,59 @@ class SecurityDeveloperViewTests(unittest.TestCase):
         self.assertIn('path == "/api/rule-lab/format"', source)
         self.assertIn('serve-online', source)
         self.assertIn('setInterval(checkEvidenceRevision,60000)', source)
+        self.assertIn('if(s.updateAvailable)await refreshPublishedState({automatic:true,detected:s})', source)
+        self.assertIn("id:'published-state-updated'", source)
+        self.assertIn("markNotificationSeen('published-state-updated')", source)
+        self.assertIn("id:'published-refresh-failed'", source)
+        self.assertIn('capturePublishedRefreshContext()', source)
+        self.assertNotIn('id:`definitions:${revision}`', source)
+
+    def test_researcher_detection_coverage_matrix_is_first_class(self) -> None:
+        html = view.HTML
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        self.assertIn("Detection Coverage", html)
+        self.assertIn('data-workbench-view="coverage"', html)
+        self.assertIn('id="coverageRows"', html)
+        self.assertIn('id="coverageDetail"', html)
+        self.assertIn('function loadDetectionCoverage', html)
+        self.assertIn('function renderCoverageDetail', html)
+        self.assertIn('current-version coverage only', html)
+        self.assertIn('parsed.path == "/api/workbench/detection-coverage"', source)
+        self.assertIn('deltascope_detection_coverage.project_detection_coverage', source)
+
+
+
+    def test_threat_intelligence_is_full_endpoint_inventory_not_match_only_view(self) -> None:
+        html = view.HTML
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        self.assertIn("Current endpoint inventory", html)
+        self.assertIn('id="threatIntelSearch"', html)
+        self.assertIn('id="threatIntelStateFilter"', html)
+        self.assertIn("UNLISTED", html)
+        self.assertIn("not a safe verdict", html)
+        self.assertIn("function renderThreatIntelEndpointRows", html)
+        self.assertIn('parsed.path == "/api/workbench/threat-intelligence"', source)
+
+    def test_compare_explains_input_boundary_and_required_recalculation(self) -> None:
+        html = view.HTML
+        self.assertIn("Why did this change?", html)
+        self.assertIn("What has to run?", html)
+        self.assertIn("Artifact reanalysis", html)
+        self.assertIn("Source follow-up", html)
+        self.assertIn("Retained-evidence reprojection", html)
+        self.assertIn("Evaluation path", html)
+
+    def test_current_findings_offer_clickable_read_only_lineage(self) -> None:
+        html = view.HTML
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        self.assertIn("Trace lineage", html)
+        self.assertIn("function openFindingLineage", html)
+        self.assertIn("lineage-drawer", html)
+        self.assertIn("collector → observation → rule → finding lineage", html)
+        self.assertIn('parsed.path == "/api/workbench/finding-lineage"', source)
+        self.assertIn("deltascope_finding_lineage.project_finding_lineage", source)
+
+
 
 if __name__ == "__main__":
     unittest.main()

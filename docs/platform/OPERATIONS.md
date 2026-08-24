@@ -16,6 +16,15 @@ DeltaScope’s Operations perspective is a read-only view of the platform’s he
 
 The Operations dashboard summarizes current evidence, Definitions, SigmaScope, current findings, queue state and important notifications. It should emphasize actionable state; exact revision IDs remain available in System Health for reproducibility.
 
+
+## Automatic published-state refresh
+
+Online DeltaScope follows verified published security state automatically. It performs an immediate revision check when the workbench opens and then checks at a bounded interval. A newer Evidence, Definitions, rule-set or Definitions-provenance publication is loaded automatically after integrity verification.
+
+A normal successful update is informational history, not an item that requires operator acknowledgement. DeltaScope coalesces it into one `Published security state updated` event. If refresh verification fails, the previous verified snapshot remains active and **Needs attention** shows one retryable failure instead of silently moving to partially published data.
+
+The manual **Refresh now** control is therefore a recovery/explicit-check action. It is normally hidden because healthy publication changes are followed automatically.
+
 ## Pipelines
 
 Pipelines shows recent GitHub Actions runs. This data is fetched through the public GitHub API and is read-only. A workflow failure in Pipelines does not itself alter evidence; evidence publication remains subject to its own validation and last-known-good behavior.

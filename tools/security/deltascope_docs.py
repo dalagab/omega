@@ -21,9 +21,13 @@ DOCS: tuple[dict[str, str], ...] = (
     {"id": "behavior", "group": "Plugin developers", "title": "Observed versus declared behavior", "path": "docs/BEHAVIOR-CONSISTENCY.md", "summary": "How Omega compares independent observations with developer-authored explanations."},
 
     {"id": "investigators", "group": "Investigators", "title": "Investigator guide", "path": "docs/investigators/README.md", "summary": "Follow a plugin from case to Journey, findings, endpoints, relationships, events and exact evidence."},
+    {"id": "finding-lineage", "group": "Investigators", "title": "Finding lineage", "path": "docs/platform/FINDING-LINEAGE.md", "summary": "Trace a current finding from collector and retained observations through Stigma-1/static evaluation into published evidence."},
 
     {"id": "researchers", "group": "Security researchers", "title": "Security Researcher guide", "path": "docs/security-researchers/README.md", "summary": "Corpus-wide intelligence, comparisons, raw evidence, replay and rule research."},
     {"id": "detection-systems", "group": "Security researchers", "title": "Detection systems", "path": "docs/platform/DETECTION-SYSTEMS.md", "summary": "Choose between scanner observations, Stigma-1, YARA, ClamAV, OSV and Deep Scan; add detections safely."},
+    {"id": "detection-coverage", "group": "Security researchers", "title": "Detection coverage & blind spots", "path": "docs/platform/DETECTION-COVERAGE.md", "summary": "How DeltaScope measures observation-producer coverage, stale analyses, rule dependencies and rescan requirements."},
+    {"id": "threat-intelligence", "group": "Security researchers", "title": "URL/domain/IP threat intelligence", "path": "docs/platform/THREAT-INTELLIGENCE.md", "summary": "Daily frozen malicious/C2 intelligence, DNS resolution, risk semantics and deterministic SRL endpoint correlation."},
+    {"id": "change-attribution", "group": "Investigators", "title": "Why did a security result change?", "path": "docs/platform/CHANGE-ATTRIBUTION.md", "summary": "Distinguish plugin changes from scanner, Definitions, advisory and reputation-intelligence changes."},
     {"id": "tagging", "group": "Security researchers", "title": "Tagging & classification", "path": "docs/platform/TAGGING-AND-CLASSIFICATION.md", "summary": "Marketplace tags, profile tags, capability vocabulary, source permissions and presentation classifications."},
 
     {"id": "operations", "group": "Operations", "title": "Operations guide", "path": "docs/operations/README.md", "summary": "Dashboard, pipelines, collectors, queues, evidence, Definitions and production authority gates."},

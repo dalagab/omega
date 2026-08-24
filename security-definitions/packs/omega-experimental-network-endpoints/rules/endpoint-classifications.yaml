@@ -161,3 +161,61 @@ rules:
       title: Unrecognised public endpoint observed
       description: A normalized public endpoint is not currently in Omega's recognised platform list.
       category: network-endpoint
+
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.active-threat-intel
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          threatIntelMatched: {equals: true}
+          threatIntelActive: {equals: true}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.threat-intel-active
+      confidence: high
+      title: Active threat-intelligence endpoint observed
+      description: A retained plugin endpoint matches an active indicator in Omega's frozen daily threat-intelligence snapshot. This is static endpoint evidence, not proof of a runtime connection.
+      category: network-endpoint
+
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.critical-threat-intel
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          threatIntelMatched: {equals: true}
+          threatIntelActive: {equals: true}
+          threatIntelRisk: {equals-ci: critical}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.threat-intel-critical
+      confidence: high
+      title: Critical active threat-intelligence endpoint observed
+      description: A retained plugin endpoint matches a currently active critical indicator in the frozen reputation snapshot.
+      category: network-endpoint
+
+  - schema: omega.sigmascope.rule.v1
+    id: endpoint.botnet-c2-threat-intel
+    kind: observation
+    status: experimental
+    requires: [networkEndpoints]
+    selectors:
+      endpoint:
+        collection: networkEndpoints
+        where:
+          threatIntelActive: {equals: true}
+          threatIntelCategories: {contains-ci: botnet-c2}
+    condition: endpoint
+    emit:
+      fact: network.endpoint.botnet-c2
+      confidence: high
+      title: Active botnet C2 endpoint observed
+      description: A retained plugin endpoint resolves to an IP listed as active botnet command-and-control infrastructure in Omega's frozen threat-intelligence Definitions.
+      category: network-endpoint

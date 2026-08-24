@@ -46,3 +46,7 @@ The UI should show which claim is actually supported.
 ## When evidence is incomplete
 
 Treat missing/incomplete evidence as a coverage question, not a negative result. DeltaScope can show missing source, unavailable secondary engines, bounded observation transport or a rule requiring re-analysis.
+
+## Trace why a finding exists
+
+Use **Trace lineage** on a current finding to follow its producer, retained observation collection, selector/fact chain, rule evaluation and publication state. See [Finding lineage](../platform/FINDING-LINEAGE.md).

@@ -19,6 +19,7 @@ import urllib.parse
 import urllib.request
 
 import observation_projection
+import reputation_intelligence
 
 
 SEVERITY_RANK = {"none": 0, "informational": 1, "low": 1, "caution": 2, "medium": 2, "high": 3, "critical": 4}
@@ -327,6 +328,7 @@ class V2SigmascopeInspector:
         self._payload_cache.clear()
         self._manifest_cache.clear()
         self._workbench_relationship_cache = None
+        self._threat_intelligence_cache = None
 
     @staticmethod
     def _revision(root: dict[str, Any]) -> str:
@@ -337,18 +339,61 @@ class V2SigmascopeInspector:
         plugins_sha = str((((root.get("indexes") or {}).get("plugins") or {}).get("sha256") or "")).strip().lower()
         return f"{cls._revision(root)}:{plugins_sha}"
 
-    def _load_snapshot(self, *, refresh_root: bool = False, root: dict[str, Any] | None = None) -> None:
+    @staticmethod
+    def _definitions_revision(root: dict[str, Any]) -> str:
+        revisions = root.get("revisions") if isinstance(root.get("revisions"), dict) else {}
+        return str(revisions.get("definitionsRevision") or "").strip()
+
+    @classmethod
+    def _publication_token(cls, root: dict[str, Any]) -> str:
+        """Track the complete published security view, not only plugin rows.
+
+        Definitions and rule provenance can advance without changing the plugin index.
+        DeltaScope must therefore refresh when those published inputs change as well.
+        """
+        revisions = root.get("revisions") if isinstance(root.get("revisions"), dict) else {}
+        provenance = (root.get("indexes") or {}).get("definitionProvenance") or {}
+        return "|".join((
+            cls._snapshot_token(root),
+            cls._definitions_revision(root),
+            str(revisions.get("ruleSetRevision") or "").strip(),
+            str(provenance.get("sha256") or "").strip().lower(),
+        ))
+
+    def _load_snapshot(self, *, refresh_root: bool = False, root: dict[str, Any] | None = None, verify_definitions: bool = False) -> None:
         root = root or self.source.read_json("index.json", refresh=refresh_root)
         if root.get("schema") != "omega.security-evidence.v2" or root.get("formatVersion") != 2:
             raise ValueError(f"{self.evidence_path} is not an Omega Security Evidence v2 tree")
+        # Stage the root and its authoritative plugin index before swapping the live
+        # inspector state. This keeps the last-known-good snapshot intact when a moving
+        # publication branch briefly exposes a mixed root/index pair.
+        previous_source_revision = str(getattr(self.source, "revision", "") or "")
+        next_revision = self._revision(root)
+        self.source.set_revision(next_revision)
+        try:
+            plugins_meta = (root.get("indexes") or {}).get("plugins") or {}
+            plugins = self.source.read_json(str(plugins_meta.get("path") or ""), expected_sha256=str(plugins_meta.get("sha256") or ""))
+            plugins_index = plugins if isinstance(plugins, dict) else {}
+            current_entries = {int(row["variantId"]): row for row in plugins_index.get("currentVariants") or [] if isinstance(row, dict)}
+            terminal_entries = [row for row in plugins_index.get("terminalVariants") or [] if isinstance(row, dict)]
+            historical_entries = [row for row in plugins_index.get("historicalSnapshots") or [] if isinstance(row, dict)]
+            if verify_definitions:
+                definitions_meta = (root.get("indexes") or {}).get("definitionProvenance") or {}
+                definitions_path = str(definitions_meta.get("path") or "")
+                definitions_sha = str(definitions_meta.get("sha256") or "")
+                if definitions_path:
+                    # A refresh is not committed until the published Definitions provenance
+                    # object also passes its descriptor hash. This makes automatic refresh a
+                    # coherent Evidence + Definitions swap rather than a root-only update.
+                    self.source.read_json(definitions_path, expected_sha256=definitions_sha)
+        except Exception:
+            self.source.set_revision(previous_source_revision)
+            raise
         self.root = root
-        self.source.set_revision(self._revision(root))
-        plugins_meta = (root.get("indexes") or {}).get("plugins") or {}
-        plugins = self.source.read_json(str(plugins_meta.get("path") or ""), expected_sha256=str(plugins_meta.get("sha256") or ""))
-        self.plugins_index = plugins if isinstance(plugins, dict) else {}
-        self.current_entries = {int(row["variantId"]): row for row in self.plugins_index.get("currentVariants") or [] if isinstance(row, dict)}
-        self.terminal_entries = [row for row in self.plugins_index.get("terminalVariants") or [] if isinstance(row, dict)]
-        self.historical_entries = [row for row in self.plugins_index.get("historicalSnapshots") or [] if isinstance(row, dict)]
+        self.plugins_index = plugins_index
+        self.current_entries = current_entries
+        self.terminal_entries = terminal_entries
+        self.historical_entries = historical_entries
         # Compatibility alias retained for callers that treat entries as the active/current set.
         self.entries = self.current_entries
         self._payload_cache.clear()
@@ -360,6 +405,7 @@ class V2SigmascopeInspector:
         self._srl_reanalysis_cache: dict[int, dict[str, Any]] | None = None
         self._srl_analysis_request_cache: dict[int, dict[str, Any]] | None = None
         self._workbench_relationship_cache: dict[str, Any] | None = None
+        self._threat_intelligence_cache: dict[str, Any] | None = None
         self._summary_index_available = bool(self.entries) and all(isinstance(row.get("summary"), dict) for row in self.entries.values())
 
     def _index_path(self, name: str) -> str:
@@ -609,16 +655,22 @@ class V2SigmascopeInspector:
 
     def source_status(self, *, check_remote: bool = False) -> dict[str, Any]:
         current_revision = self._revision(self.root)
+        current_definitions = self._definitions_revision(self.root)
         current_token = self._snapshot_token(self.root)
+        current_publication_token = self._publication_token(self.root)
         remote_revision = current_revision
+        remote_definitions = current_definitions
         remote_token = current_token
+        remote_publication_token = current_publication_token
         generated = str(self.root.get("generatedAtUtc") or "")
         error = ""
         if self.remote and check_remote:
             try:
                 remote_root = self.source.read_tracking_json("index.json") if isinstance(self.source, RemoteEvidenceSource) else self.source.read_json("index.json", refresh=True)
                 remote_revision = self._revision(remote_root)
+                remote_definitions = self._definitions_revision(remote_root)
                 remote_token = self._snapshot_token(remote_root)
+                remote_publication_token = self._publication_token(remote_root)
                 generated = str(remote_root.get("generatedAtUtc") or generated)
             except Exception as exc:
                 error = str(exc)
@@ -627,23 +679,66 @@ class V2SigmascopeInspector:
             "baseUrl": self.source.display if self.remote else "",
             "currentRevision": current_revision,
             "remoteRevision": remote_revision,
+            "currentEvidenceRevision": current_revision,
+            "remoteEvidenceRevision": remote_revision,
+            "currentDefinitionsRevision": current_definitions,
+            "remoteDefinitionsRevision": remote_definitions,
             "currentSnapshotToken": current_token,
             "remoteSnapshotToken": remote_token,
+            "currentPublicationToken": current_publication_token,
+            "remotePublicationToken": remote_publication_token,
             "generatedAtUtc": generated,
-            "updateAvailable": bool(self.remote and remote_token != current_token),
+            "definitionsUpdateAvailable": bool(self.remote and remote_definitions != current_definitions),
+            "evidenceUpdateAvailable": bool(self.remote and remote_token != current_token),
+            "updateAvailable": bool(self.remote and remote_publication_token != current_publication_token),
             "error": error,
             **self.source.cache_status(),
         }
 
     def refresh_online(self) -> dict[str, Any]:
         if not self.remote:
-            return self.source_status()
+            return {**self.source_status(), "refreshed": False, "evidenceChanged": False, "definitionsChanged": False}
+        before_revision = self._revision(self.root)
+        before_definitions = self._definitions_revision(self.root)
+        before_snapshot_token = self._snapshot_token(self.root)
+        before_publication_token = self._publication_token(self.root)
+        previous_snapshot_base = self.source.snapshot_base_url if isinstance(self.source, RemoteEvidenceSource) else ""
+        previous_snapshot_commit = self.source.snapshot_commit if isinstance(self.source, RemoteEvidenceSource) else ""
         remote_root = self.source.read_tracking_json("index.json") if isinstance(self.source, RemoteEvidenceSource) else self.source.read_json("index.json", refresh=True)
-        if self._snapshot_token(remote_root) != self._snapshot_token(self.root):
-            if isinstance(self.source, RemoteEvidenceSource):
-                self.source.clear_snapshot_pin()
-            self._load_snapshot(root=remote_root)
-        return self.source_status()
+        changed = self._publication_token(remote_root) != before_publication_token
+        if changed:
+            try:
+                if isinstance(self.source, RemoteEvidenceSource):
+                    self.source.clear_snapshot_pin()
+                try:
+                    self._load_snapshot(root=remote_root, verify_definitions=True)
+                except Exception as exc:
+                    # Automatic/manual refresh can race the same moving raw-GitHub branch as a
+                    # lazy plugin open. Retry the complete root/index graph from one immutable
+                    # commit, keeping all SHA-256 checks fail-closed.
+                    if not isinstance(self.source, RemoteEvidenceSource) or not self._is_snapshot_race_error(exc):
+                        raise
+                    self.source.pin_current_github_commit()
+                    pinned_root = self.source.read_json("index.json", refresh=True)
+                    self._load_snapshot(root=pinned_root, verify_definitions=True)
+            except Exception:
+                # Keep both the logical root and the transport location on the previous
+                # last-known-good snapshot when a refresh candidate cannot be verified.
+                if isinstance(self.source, RemoteEvidenceSource):
+                    self.source.snapshot_base_url = previous_snapshot_base
+                    self.source.snapshot_commit = previous_snapshot_commit
+                    self.source.set_revision(before_revision)
+                raise
+        status = self.source_status()
+        status.update({
+            "refreshed": changed,
+            "previousRevision": before_revision,
+            "previousDefinitionsRevision": before_definitions,
+            "previousSnapshotToken": before_snapshot_token,
+            "evidenceChanged": self._snapshot_token(self.root) != before_snapshot_token,
+            "definitionsChanged": self._definitions_revision(self.root) != before_definitions,
+        })
+        return status
 
     @staticmethod
     def _is_snapshot_race_error(exc: Exception) -> bool:
@@ -895,7 +990,10 @@ class V2SigmascopeInspector:
             "secondarySecurity": secondary,
             "package": report.get("package") if isinstance(report.get("package"), dict) else {},
             "endpointSummary": intelligence.get("endpointSummary") if isinstance(intelligence.get("endpointSummary"), dict) else {},
-            "networkEndpoints": intelligence.get("networkEndpoints") if isinstance(intelligence.get("networkEndpoints"), list) else [],
+            "networkEndpoints": reputation_intelligence.enrich_network_endpoints(
+                intelligence.get("networkEndpoints") if isinstance(intelligence.get("networkEndpoints"), list) else [],
+                self.threat_intelligence(),
+            ),
             "componentSummary": intelligence.get("componentSummary") if isinstance(intelligence.get("componentSummary"), dict) else {},
             "intelligenceCoverage": intelligence.get("coverage") if isinstance(intelligence.get("coverage"), dict) else {},
             "intelligenceLimits": intelligence.get("limits") if isinstance(intelligence.get("limits"), dict) else {},
@@ -1081,11 +1179,14 @@ class V2SigmascopeInspector:
             },
             "engine": dict(self.root.get("engine") or {}),
             "source": {
-                key: source.get(key) for key in (
-                    "engineName", "engineVersion", "scannerVersion", "catalogDataRevision",
-                    "catalogIdentityEpoch", "definitionsRevision", "artifactAnalysisRevision",
-                    "sourceAnalysisRevision", "advisoryRevision",
-                ) if source.get(key) is not None
+                **{
+                    key: source.get(key) for key in (
+                        "engineName", "engineVersion", "scannerVersion", "catalogDataRevision",
+                        "catalogIdentityEpoch", "definitionsRevision", "artifactAnalysisRevision",
+                        "sourceAnalysisRevision", "advisoryRevision",
+                    ) if source.get(key) is not None
+                },
+                **({"osv": dict(source.get("osv") or {})} if isinstance(source.get("osv"), dict) else {}),
             },
             "queue": {
                 "available": bool(queue),
@@ -1144,6 +1245,27 @@ class V2SigmascopeInspector:
         if str(descriptor.get("recordDigest") or "") != _record_digest(rows):
             raise ValueError(f"{label} semantic record digest mismatch")
         return rows
+
+    def threat_intelligence(self) -> dict[str, Any]:
+        """Return the verified frozen URL/domain/IP threat-intelligence snapshot published with Evidence v2."""
+        if self._threat_intelligence_cache is not None:
+            return self._threat_intelligence_cache
+        value = self._index_payload("threatIntelligence")
+        if not value:
+            self._threat_intelligence_cache = {
+                "schema": "omega.reputation-definitions.v2", "reputationRevision": "",
+                "feeds": [], "indicators": [], "observedEndpointResolutions": [], "observedEndpointMatches": [],
+                "indexes": {"byIp": {}, "byHost": {}, "byUrl": {}}, "counts": {},
+            }
+            return self._threat_intelligence_cache
+        if not isinstance(value, dict) or str(value.get("schema") or "") != "omega.reputation-definitions.v2":
+            raise ValueError("unsupported frozen threat-intelligence payload")
+        descriptor = (self.root.get("indexes") or {}).get("threatIntelligence") or {}
+        revision = str(value.get("reputationRevision") or "")
+        if revision != str(descriptor.get("reputationRevision") or ""):
+            raise ValueError("threat-intelligence reputation revision mismatch")
+        self._threat_intelligence_cache = value
+        return value
 
     def workbench_relationship_index(self) -> dict[str, Any]:
         """Return the optional read-only ecosystem relationship index used by DeltaScope.
@@ -1245,6 +1367,10 @@ class V2SigmascopeInspector:
                     pass
             rows = compact.get(collection) or []
             result[collection] = [dict(item) for item in rows[:max(0, int(per_collection_limit))] if isinstance(item, dict)]
+        if "networkEndpoints" in result:
+            result["networkEndpoints"] = reputation_intelligence.enrich_network_endpoints(
+                result["networkEndpoints"], self.threat_intelligence()
+            )
         return result
 
     def _srl_projection_index(self) -> dict[str, Any]:

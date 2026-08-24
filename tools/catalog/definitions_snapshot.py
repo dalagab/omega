@@ -8,7 +8,7 @@ snapshot therefore captures:
 * semantic hashes of scanner/rule-bearing source files;
 * a self-contained immutable worker bundle with the exact catalog/security Python code;
 * a frozen OSV advisory response for the exact NuGet pairs known at refresh time;
-* an explicit versioned reputation-feed document (empty until such a feed exists).
+* a frozen daily URL/domain/IP threat-intelligence document with exact provenance.
 
 The Git branch that launches Actions is development/transport only. Scheduled workers execute
 the frozen bundle carried by ``catalog-data`` and never checkout a historical development
@@ -617,7 +617,7 @@ def definitions_revision(
         "ruleSetRevision": scanner_rule_revision,
         "ruleFiles": fingerprints,
         "osv": _semantic_osv(osv_document),
-        "reputation": reputation,
+        "reputation": _semantic_reputation(reputation),
         "secondarySecurity": _secondary_security_semantic(secondary_security),
         "srlDefinitionPacks": {
             "schema": str(srl_definition_packs.get("schema") or ""),
@@ -650,6 +650,32 @@ def _semantic_osv(document: dict[str, Any]) -> dict[str, Any]:
             key=lambda item: (item["name"].casefold(), item["version"]),
         ),
         "advisories": document.get("advisories") or [],
+    }
+
+
+
+def _semantic_reputation(document: dict[str, Any]) -> dict[str, Any]:
+    """Return the reproducible threat-intelligence semantics, excluding transport timestamps."""
+    return {
+        "schema": str(document.get("schema") or ""),
+        "reputationRevision": str(document.get("reputationRevision") or ""),
+        "policy": str(document.get("policy") or ""),
+        "feeds": [
+            {
+                key: feed.get(key)
+                for key in ("id", "name", "source", "license", "required", "status", "records", "categories")
+            }
+            for feed in document.get("feeds") or [] if isinstance(feed, dict)
+        ],
+        "indicators": document.get("indicators") or [],
+        "observedEndpointResolutions": [
+            {
+                key: row.get(key)
+                for key in ("host", "resolvedIps", "urlSamples", "variantIds", "pluginIds")
+            }
+            for row in document.get("observedEndpointResolutions") or [] if isinstance(row, dict)
+        ],
+        "observedEndpointMatches": document.get("observedEndpointMatches") or [],
     }
 
 
@@ -688,6 +714,7 @@ def build_snapshot(
     secondary_security_input: Path | None = None,
     secondary_security_asset_manifest: Path | None = None,
     definition_packs_input: Path | None = None,
+    reputation_input: Path | None = None,
     timeout: float = 20.0,
     max_packages: int = 2000,
 ) -> dict[str, Any]:
@@ -822,12 +849,23 @@ def build_snapshot(
         json.dumps(source_observations_document, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8"
     )
 
-    reputation = {
-        "schema": "omega.reputation-definitions.v1",
-        "feeds": [],
-        "policy": "No third-party URL/IP reputation feed is enabled. Findings remain static and deterministic.",
-    }
     reputation_path = output / "reputation.json"
+    if reputation_input is not None and reputation_input.is_file():
+        reputation = json.loads(reputation_input.read_text(encoding="utf-8"))
+        if not isinstance(reputation, dict) or str(reputation.get("schema") or "") != "omega.reputation-definitions.v2":
+            raise RuntimeError("reputation input uses an unsupported schema")
+        if not str(reputation.get("reputationRevision") or "").startswith("reputation-v2-"):
+            raise RuntimeError("reputation input has no valid frozen reputation revision")
+    else:
+        reputation = {
+            "schema": "omega.reputation-definitions.v2",
+            "generatedAtUtc": utc_now(),
+            "reputationRevision": "reputation-v2-empty",
+            "policy": "No threat-intelligence collector output was supplied; no endpoint reputation matches are active.",
+            "feeds": [], "indicators": [], "observedEndpointResolutions": [], "observedEndpointMatches": [],
+            "indexes": {"byIp": {}, "byHost": {}, "byUrl": {}},
+            "counts": {"feeds": 0, "activeFeeds": 0, "indicators": 0, "ips": 0, "domains": 0, "urls": 0, "observedEndpointHosts": 0, "matchedEndpointHosts": 0, "matchedCurrentVariants": 0},
+        }
     reputation_path.write_text(json.dumps(reputation, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
 
     # Freeze the shared capability vocabulary as an explicit Definitions payload as
@@ -894,7 +932,12 @@ def build_snapshot(
         "reputation": {
             "path": "reputation.json",
             "sha256": sha256_file(reputation_path),
-            "feeds": 0,
+            "semanticSha256": sha256_bytes(canonical(_semantic_reputation(reputation))),
+            "reputationRevision": str(reputation.get("reputationRevision") or ""),
+            "feeds": len(reputation.get("feeds") or []),
+            "activeFeeds": int((reputation.get("counts") or {}).get("activeFeeds") or 0),
+            "indicators": int((reputation.get("counts") or {}).get("indicators") or 0),
+            "matchedEndpointHosts": int((reputation.get("counts") or {}).get("matchedEndpointHosts") or 0),
         },
         "capabilityRegistry": capability_registry_descriptor,
         "secondarySecurity": secondary_security_descriptor,
@@ -1028,6 +1071,12 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
         expected_advisory_revision = f"osv-v1-{sha256_bytes(canonical(_semantic_osv(payloads["osv"])))[:16]}"
         if expected_advisory_revision != str(index.get("advisoryRevision") or ""):
             errors.append("advisory revision does not match frozen OSV payload")
+    if "reputation" in payloads:
+        reputation_descriptor = index.get("reputation") if isinstance(index.get("reputation"), dict) else {}
+        if str(payloads["reputation"].get("reputationRevision") or "") != str(reputation_descriptor.get("reputationRevision") or ""):
+            errors.append("reputation revision does not match frozen reputation payload")
+        if sha256_bytes(canonical(_semantic_reputation(payloads["reputation"]))) != str(reputation_descriptor.get("semanticSha256") or ""):
+            errors.append("reputation semantic SHA-256 does not match frozen reputation payload")
     if "osv" in payloads and "reputation" in payloads and expected_rule_set:
         expected_definitions = definitions_revision(
             scanner_version=scanner_version,
@@ -1055,6 +1104,7 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
         "sourceObservationRevision": str(index.get("sourceObservationRevision") or ""),
         "scannerBundleSha256": str((index.get("scannerBundle") or {}).get("sha256") or ""),
         "advisoryRevision": str(index.get("advisoryRevision") or ""),
+        "reputationRevision": str((index.get("reputation") or {}).get("reputationRevision") or ""),
         "secondarySecurityRevision": str(secondary_descriptor.get("revision") or ""),
         "capabilityRegistryRevision": str(capability_descriptor.get("revision") or ""),
         "srlDefinitionPackRevision": str(srl_descriptor.get("definitionPackRevision") or ""),
@@ -1077,6 +1127,7 @@ def main() -> int:
     build.add_argument("--secondary-security-input", type=Path)
     build.add_argument("--secondary-security-asset-manifest", type=Path)
     build.add_argument("--definition-packs-input", type=Path, help="Optional Definition Pack root override for local validation/tests; Daily builds default to security-definitions/packs.")
+    build.add_argument("--reputation-input", type=Path, help="Optional frozen daily URL/domain/IP threat-intelligence document.")
     build.add_argument("--timeout", type=float, default=20.0)
     build.add_argument("--max-packages", type=int, default=2000)
     verify = sub.add_parser("verify")
@@ -1093,6 +1144,7 @@ def main() -> int:
             secondary_security_input=args.secondary_security_input,
             secondary_security_asset_manifest=args.secondary_security_asset_manifest,
             definition_packs_input=args.definition_packs_input,
+            reputation_input=args.reputation_input,
             timeout=args.timeout,
             max_packages=args.max_packages,
         )

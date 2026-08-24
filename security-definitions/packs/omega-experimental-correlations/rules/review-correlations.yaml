@@ -96,6 +96,38 @@ rules:
       severity: high
       category: compound
 
+
+  - schema: omega.sigmascope.rule.v1
+    id: experimental.compound.active-threat-intel-endpoint
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      threat_endpoint: {facts: {any: [network.endpoint.threat-intel-active]}}
+    condition: threat_endpoint
+    emit:
+      findingId: experimental.compound.active-threat-intel-endpoint
+      title: Plugin references an active threat-intelligence endpoint
+      description: Static endpoint evidence matches a currently active indicator in the frozen daily threat-intelligence snapshot. This is not proof that the plugin connected to the endpoint at runtime.
+      severity: high
+      category: threat-intelligence
+
+  - schema: omega.sigmascope.rule.v1
+    id: experimental.compound.credential-threat-intel
+    kind: correlation
+    status: experimental
+    requires: []
+    selectors:
+      credential: {facts: {any: [credential.api]}}
+      threat_endpoint: {facts: {any: [network.endpoint.threat-intel-active, network.endpoint.botnet-c2]}}
+    condition: {all: [credential, threat_endpoint]}
+    emit:
+      findingId: experimental.compound.credential-threat-intel
+      title: Potential sensitive-data exfiltration path to active threat infrastructure
+      description: Static evidence combines credential/protected-data capability with an endpoint currently matched by frozen threat intelligence. This warrants urgent review but is not proof that data was transmitted.
+      severity: critical
+      category: threat-intelligence
+
   - schema: omega.sigmascope.rule.v1
     id: experimental.compound.unverified-source-execution
     kind: correlation

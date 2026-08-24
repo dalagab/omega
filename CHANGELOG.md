@@ -1,3 +1,44 @@
+# DeltaScope finding lineage
+
+- Add clickable **Trace lineage** actions to current plugin findings, latest findings, and Investigator case findings.
+- Add read-only `omega.deltascope.finding-lineage.v1` projections that connect producer/collector → retained collection/observation → Stigma-1 selector/fact/rule (when published provenance permits exact replay) → current finding → published Security Evidence.
+- Exact Stigma-1 replay is claimed only when all required collection rows are loaded under complete `retained` observation-contract semantics. Bounded or missing observation transport keeps the lineage structural and explicitly non-exact.
+- Findings that do not resolve to a rule in the published Definitions provenance receive a bounded SigmaScope static lineage instead of substituting current repository/My Rules as false historical authority.
+- Collection nodes open the collection inspector; Stigma-1 rule nodes open the System Rule. Historical plugin versions remain archive-only and never enter current finding lineage.
+- Document the endpoint-reputation boundary: endpoint classifications are deterministic static context and the frozen reputation set currently has no third-party URL/IP reputation feed.
+- Document DLL coverage: bundled `.dll`, `.exe`, `.so`, and `.dylib` members are hashed/classified and statically analysed; YARA scans bounded safe member targets. Runtime-only external DLL bytes are not scanned unless separately acquired as evidence.
+- Finding lineage remains explanation only (`mutationAuthority=none`, `policyInput=false`) and cannot alter findings, queues, Definitions, scans or published Evidence.
+
+# DeltaScope collector health and trends
+
+- Operations → Collectors now separates the newest runner outcome from a bounded operational trend state.
+- Collector trend projections include recent success/failure rate, step duration and recent median baseline, parsed throughput/output-volume history, learned freshness/cadence, and collector-specific quality ratios where the runner emits both numerator and denominator.
+- Stable-universe collectors can flag sharp throughput drops and successful zero-result anomalies. Workload-driven SigmaScope batches are not penalized for naturally smaller batches; selected-versus-completed work is evaluated instead.
+- Recent GitHub Actions history is expanded to eight runs while log downloads stay bounded to collector-relevant jobs in the newest four runs. Older runs contribute outcome/timing history without log downloads.
+- Collectors now show mini trend plots, current-vs-baseline values, explicit anomaly explanations, duration and throughput in recent-run history, and top-level degrading/warning/stale summaries.
+- Collector trend state remains read-only diagnostic context and has no security-policy or production mutation authority.
+
+## 2.15.0 — DeltaScope 4.15.0 / Detection Coverage and blind-spot matrix
+
+- Add **Security Researcher → Detection Coverage**, a current-version matrix that audits whether SigmaScope has complete/current observation producer coverage across the active plugin corpus.
+- Keep coverage semantically distinct from positive detections: a complete empty observation collection is valid negative evidence, not a blind spot.
+- Use narrow artifact/source analysis revisions and scan completeness to classify current variants as covered, stale, incomplete, or outside the applicable source scope. Historical plugin versions remain archive evidence and never inflate current coverage denominators.
+- Connect every observation family to its producer, backing dataset, typed contract, current producer revision, active Stigma-1 rules that require it, bounded gap preview, and remediation guidance.
+- Add OSV/NuGet coverage using the frozen package-version query universe rather than plugin count; advisory coverage gaps call for Definitions/advisory refresh rather than plugin rescans.
+- Keep exact retained collection rows lazy: the matrix is an index/revision contract audit, while **Inspect selected plugin data** opens the existing collection inspector for exact current-plugin observations.
+- Coverage remains read-only (`mutationAuthority=none`, `policyInput=false`) and cannot rescan plugins, mutate queues, change findings, or publish Definitions/Evidence.
+
+## 2.15.0 — DeltaScope 4.14.0 / automatic verified published-state refresh
+
+- Follow online published Security Evidence and frozen Definitions automatically: check immediately when the workbench opens and every 60 seconds while it remains open.
+- Treat Evidence revision/plugin-index changes, Definitions revision changes, active rule-set changes, and Definitions-provenance changes as refreshable publication state.
+- Verify the candidate root, current plugin index, and Definitions provenance before swapping the live workbench snapshot. Raw-GitHub publication races retry from one immutable Git commit without weakening SHA-256 validation.
+- Make snapshot replacement transactional: a failed refresh retains both the previous logical root and its transport pin as last-known-good state.
+- Preserve perspective, workspace, selected plugin/tab, and rule-authoring context across refresh. If a plugin advances to a new current variant, follow it automatically while keeping the older version as archive evidence.
+- Preserve unsaved My Rules and revalidate them after Definitions refresh; System Rules are reopened against the refreshed frozen library and disappearing rules become an actionable warning.
+- Coalesce successful publication updates into one informational, already-read event instead of stacking unread Definitions/Evidence notifications. Refresh failures remain one retryable attention item.
+- No scanner, queue, finding, Definitions, Evidence-v2, GitHub, or production mutation authority is added to DeltaScope.
+
 ## 2.15.0 — DeltaScope 4.13.2 / inspectable SRL collections
 
 - Make Stigma-1 `requires` collections first-class inspectable objects instead of dead identifiers.

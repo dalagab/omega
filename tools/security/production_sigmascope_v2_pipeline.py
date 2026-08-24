@@ -1332,6 +1332,53 @@ def materialize_definition_provenance_index(candidate: Path, frozen_definitions:
     return descriptor
 
 
+def load_frozen_reputation(definitions_root: Path, definitions_index: dict[str, Any]) -> dict[str, Any]:
+    descriptor = definitions_index.get("reputation") if isinstance(definitions_index.get("reputation"), dict) else {}
+    rel = str(descriptor.get("path") or "")
+    if not rel:
+        return {}
+    path = definitions_root / rel
+    if not path.is_file():
+        raise RuntimeError("frozen reputation payload is missing")
+    expected = str(descriptor.get("sha256") or "")
+    if expected and sha256_file(path) != expected:
+        raise RuntimeError("frozen reputation payload SHA-256 mismatch")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise RuntimeError("frozen reputation payload is not an object")
+    if str(value.get("reputationRevision") or "") != str(descriptor.get("reputationRevision") or ""):
+        raise RuntimeError("frozen reputation revision mismatch")
+    return value
+
+
+def materialize_threat_intelligence_index(candidate: Path, frozen_definitions: Path | None) -> dict[str, Any]:
+    """Publish the verified frozen threat-intelligence snapshot for read-only DeltaScope inspection."""
+    path = candidate / "indexes" / "threat-intelligence.json"
+    if frozen_definitions is None:
+        path.unlink(missing_ok=True)
+        return {}
+    definitions_root = frozen_definitions.resolve()
+    definitions_index = json.loads((definitions_root / "index.json").read_text(encoding="utf-8"))
+    reputation = load_frozen_reputation(definitions_root, definitions_index)
+    if not reputation:
+        path.unlink(missing_ok=True)
+        return {}
+    write_json(path, reputation)
+    counts = reputation.get("counts") if isinstance(reputation.get("counts"), dict) else {}
+    return {
+        "schema": str(reputation.get("schema") or ""),
+        "path": "indexes/threat-intelligence.json",
+        "bytes": path.stat().st_size,
+        "sha256": sha256_file(path),
+        "reputationRevision": str(reputation.get("reputationRevision") or ""),
+        "records": int(counts.get("indicators") or 0),
+        "matchedEndpointHosts": int(counts.get("matchedEndpointHosts") or 0),
+        "readOnly": True,
+        "mutationAuthority": "none",
+        "policyInput": False,
+    }
+
+
 def materialize_srl_reprojection_sidecar(candidate: Path, frozen_definitions: Path | None) -> dict[str, Any]:
     """Materialize non-authoritative Phase-10 SRL projections from retained evidence.
 
@@ -1353,7 +1400,8 @@ def materialize_srl_reprojection_sidecar(candidate: Path, frozen_definitions: Pa
     if not validation.get("ok"):
         raise RuntimeError("frozen SRL Definition Packs failed verification: " + "; ".join(validation.get("errors") or []))
     compiled = definition_packs.load_frozen_ruleset(frozen_definitions, descriptor)
-    plan = rule_reprojection.plan_reprojection(candidate, compiled)
+    reputation = load_frozen_reputation(frozen_definitions, definitions_index)
+    plan = rule_reprojection.plan_reprojection(candidate, compiled, reputation=reputation)
     if not plan.get("auditOk"):
         raise RuntimeError(
             f"SRL rule-only reprojection failed closed with {int(plan.get('auditErrorVariants') or 0)} evidence audit error(s)"
@@ -1371,6 +1419,7 @@ def materialize_srl_reprojection_sidecar(candidate: Path, frozen_definitions: Pa
         "sha256": sha256_file(output / "index.json"),
         "projectionSetRevision": str(index.get("projectionSetRevision") or ""),
         "ruleSetRevision": str(index.get("ruleSetRevision") or ""),
+        "reputationRevision": str(index.get("reputationRevision") or ""),
         "sourceEvidenceRevision": str(index.get("sourceEvidenceRevision") or ""),
         "sourceEvidenceIndexSha256": str(index.get("sourceEvidenceIndexSha256") or ""),
         "checkedVariants": int(plan.get("checkedVariants") or 0),
@@ -1759,9 +1808,15 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     frozen_definitions_arg = getattr(args, "frozen_definitions", None)
     frozen_definitions = frozen_definitions_arg.resolve() if frozen_definitions_arg else None
     definition_provenance = materialize_definition_provenance_index(candidate, frozen_definitions)
+    threat_intelligence = materialize_threat_intelligence_index(candidate, frozen_definitions)
     root_index = rebuild_candidate_indexes(
         candidate, work_database, previous_index, scan_context, osv_coverage, definition_provenance or None
     )
+    if threat_intelligence:
+        root_index.setdefault("indexes", {})["threatIntelligence"] = threat_intelligence
+        root_index.setdefault("revisions", {})["reputationRevision"] = str(threat_intelligence.get("reputationRevision") or "")
+        root_index.setdefault("source", {})["reputationRevision"] = str(threat_intelligence.get("reputationRevision") or "")
+        write_json(candidate / "index.json", root_index)
     queue_state_changed = False
     if queue_enabled and queue_state is not None:
         queue_path = candidate / "scanner-queue.json"

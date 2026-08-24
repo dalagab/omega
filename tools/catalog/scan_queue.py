@@ -655,6 +655,26 @@ def _apply_srl_reanalysis(item: dict[str, Any], request: dict[str, Any], srl_rul
     item["targetFingerprint"] = f"{prefix}-{digest(semantic)[:20]}"
 
 
+def _frozen_reputation(definitions_root: Path, definitions_index: dict[str, Any]) -> dict[str, Any]:
+    descriptor = definitions_index.get("reputation") if isinstance(definitions_index.get("reputation"), dict) else {}
+    rel = str(descriptor.get("path") or "")
+    if not rel:
+        return {}
+    path = definitions_root / rel
+    if not path.is_file():
+        raise RuntimeError("frozen reputation payload is missing")
+    expected = str(descriptor.get("sha256") or "")
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    if expected and actual != expected:
+        raise RuntimeError("frozen reputation payload SHA-256 mismatch")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise RuntimeError("frozen reputation payload is not an object")
+    if str(value.get("reputationRevision") or "") != str(descriptor.get("reputationRevision") or ""):
+        raise RuntimeError("frozen reputation revision mismatch")
+    return value
+
+
 def _srl_reprojection_plan(definitions_root: Path, evidence_root: Path, definitions_index: dict[str, Any]) -> dict[str, Any]:
     descriptor = definitions_index.get("srlDefinitionPacks") if isinstance(definitions_index.get("srlDefinitionPacks"), dict) else {}
     if not descriptor or not (evidence_root / "index.json").is_file():
@@ -680,7 +700,8 @@ def _srl_reprojection_plan(definitions_root: Path, evidence_root: Path, definiti
             "auditErrorVariants": 0,
             "reanalysisRequests": [],
         }
-    plan = rule_reprojection.plan_reprojection(evidence_root, compiled)
+    reputation = _frozen_reputation(definitions_root, definitions_index)
+    plan = rule_reprojection.plan_reprojection(evidence_root, compiled, reputation=reputation)
     if not plan.get("auditOk"):
         raise RuntimeError(
             f"SRL reprojection planning failed closed with {int(plan.get('auditErrorVariants') or 0)} evidence audit error(s)"

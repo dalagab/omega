@@ -398,6 +398,21 @@ jobs:
             retain_previous_clamav
           fi
           rm -f "$pending_manifest"
+      - name: Collect daily endpoint threat intelligence
+        shell: bash
+        env:
+          ABUSECH_AUTH_KEY: ${{ secrets.ABUSECH_AUTH_KEY }}
+        run: |
+          set -euo pipefail
+          args=(
+            --evidence-root catalog/security-v2-current
+            --output catalog/reputation-intelligence.json
+            --timeout "${{ inputs.timeout || '20' }}"
+          )
+          if [ -f catalog/previous-state/definitions/reputation.json ]; then
+            args+=(--previous catalog/previous-state/definitions/reputation.json)
+          fi
+          python tools/catalog/collect_reputation_intelligence.py "${args[@]}"
       - name: Freeze daily Definitions and OSV data
         shell: bash
         run: |
@@ -408,6 +423,7 @@ jobs:
             --output catalog/state-definitions
             --built-from-dev-commit "${{ steps.security_source.outputs.sha }}"
             --source-observations catalog/source-revision-observations.json
+            --reputation-input catalog/reputation-intelligence.json
             --timeout "${{ inputs.timeout || '20' }}"
           )
           if [ -f catalog/secondary-security-asset-manifest.json ]; then

@@ -72,7 +72,15 @@ COLLECTIONS: dict[str, dict[str, Any]] = {
         "dataset": "compact scan report / endpoint summary",
         "source": "dependencyIntelligence.networkEndpoints",
         "scope": "normalized endpoint observation",
-        "fields": {"url": "string", "host": "string", "origin": "string", "originType": "string", "classification": "string", "purpose": "string", "confidence": "string", "concreteDestinationEvidence": "boolean", "evidence": "string[]"},
+        "fields": {
+            "url": "string", "host": "string", "origin": "string", "originType": "string",
+            "classification": "string", "purpose": "string", "confidence": "string",
+            "concreteDestinationEvidence": "boolean", "evidence": "string[]",
+            "resolvedIps": "string[]", "threatIntelMatched": "boolean", "threatIntelActive": "boolean",
+            "threatIntelRisk": "string", "threatIntelCategories": "string[]", "threatIntelSources": "string[]",
+            "threatIntelIndicatorIds": "string[]", "threatIntelRevision": "string",
+        },
+        "notes": "The endpoint observation is immutable plugin evidence. threatIntel* and resolvedIps are deterministic frozen-Definitions enrichment over that retained endpoint. A daily threat-intelligence change can therefore be SRL-reprojected without reopening the plugin artifact.",
     },
     "staticPatternMatches": {
         "dataset": "staticPatternMatches",

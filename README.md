@@ -183,7 +183,7 @@ The four perspectives are:
 
 - **Plugin Developer** — understand what Omega found on your plugin, review changes, improve source/build context, and build a validated `.omega/plugin.yaml` explanation from current observations;
 - **Investigator** — follow one plugin or case through its evidence-backed Journey, findings, rules and relationships;
-- **Security Researcher** — study ecosystem-wide patterns, relationships, Stigma-1 rules, comparisons and raw retained evidence;
+- **Security Researcher** — study ecosystem-wide patterns, audit detection coverage/blind spots, inspect relationships, Stigma-1 rules, comparisons and raw retained evidence;
 - **Operations** — inspect pipeline health, coverage/queues, GitHub Actions and intentional production authority gates without turning DeltaScope into a control plane.
 
 Journey nodes explain the exact selected plugin stage inline before offering raw technical details. The Plugin Developer profile builder uses the same bounded profile validator as SigmaScope and only produces browser-copy/download output; developer declarations never suppress findings or alter severity.
@@ -197,6 +197,7 @@ It can:
 - pivot through endpoint/component/advisory relationships;
 - inspect the exact frozen rule provenance behind published evidence;
 - view Evidence-v2 revision and coverage health;
+- audit current-version detection/observation coverage and blind spots;
 - replay Stigma-1 rules against retained observations;
 - create and test local candidate rules and fixtures;
 - preview Deep Scan requests produced by local rules;
@@ -370,14 +371,14 @@ The security-service sources represented by this snapshot include:
 | Area | Snapshot state |
 | --- | --- |
 | SigmaScope | `2.15.0` |
-| DeltaScope | `4.12.0` |
+| DeltaScope | `4.15.0` |
 | Stigma-1 / SRL | Compiler/evaluator, replay, Definition Packs and authoring implemented |
 | Definition Packs | 6 packs / 55 rules / 15 fixtures |
 | Production SRL write-back | **Disabled / separately gated** |
 | Deep Scan | Artifact differential profile implemented; adaptive depth implemented |
 | Plugin execution in ordinary Actions | **No** |
 | Rift / Alpha | Separate `rift` branch research environment |
-| Focused packaged validation | 64 / 64 passing |
+| Focused packaged validation | 136 / 136 passing |
 | Full packaged test inventory | 494 tests across 49 modules |
 
 For detailed development and deployment notes, read [`HANDOVER.md`](HANDOVER.md), [`SECURITY-SERVICES.md`](SECURITY-SERVICES.md) and [`VALIDATION.md`](VALIDATION.md).

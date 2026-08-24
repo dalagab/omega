@@ -2,15 +2,67 @@
 
 Collectors are the parts of Omega that obtain or refresh external facts before those facts are normalized into catalog or security evidence. They are reviewable operational components, not invisible background plumbing.
 
-DeltaScope exposes collector health in the **Operations → Collectors** workspace. The collector view combines recent GitHub Actions history with current published evidence metrics so an operator can answer:
+DeltaScope exposes collector health in the **Operations → Collectors** workspace. The collector view combines bounded recent GitHub Actions history with current published evidence metrics so an operator can answer:
 
 - Did this collector run recently?
 - Did the collector-specific workflow step succeed?
-- How often has it failed in the recent window?
-- What input does it consume?
-- What output/artifact does it create?
-- What current evidence metric demonstrates coverage?
-- Which GitHub Actions run produced the most recent result?
+- Is its success rate getting worse?
+- Is it taking materially longer than its recent baseline?
+- Is its parsed output/throughput unexpectedly shrinking or falling to zero?
+- Is it late relative to its own recent cadence?
+- Where the runner emits both sides of a ratio, are source failures or batch non-completions increasing?
+- What input does it consume and what output/artifact does it create?
+- What current published-evidence metric demonstrates the resulting coverage?
+- Which GitHub Actions runs produced the recent results?
+
+
+## Health versus trend
+
+DeltaScope deliberately shows two independent states for each collector:
+
+- **Latest state** is the outcome of the newest matching collector step/job: healthy, running, warning, failed, skipped or unknown.
+- **Trend state** asks whether recent operational quality is degrading even when the newest run technically succeeded.
+
+A successful green workflow can therefore still receive a trend warning. Examples include a collector that normally discovers about 45 sources suddenly returning 10, a source observer whose failure ratio rises, or a step whose runtime becomes several times slower than its recent successful baseline.
+
+Trend state is diagnostic only. It has `mutationAuthority = none` and is not a Stigma-1 policy input. A collector anomaly cannot create or change a plugin security finding.
+
+## Trend window and API budget
+
+The workbench reads at most eight recent runs per registered workflow. Job/step outcomes and timestamps are retained for that bounded window. To derive throughput history without turning DeltaScope into a GitHub log scraper, job logs are downloaded only for the newest four runs and only for jobs registered as collector producers. Results are cached in memory.
+
+This provides enough recent history for a baseline while keeping GitHub Actions traffic bounded. A manual **Refresh runner history** bypasses the cache once; ordinary navigation reuses the cached projection.
+
+## Signals DeltaScope can derive
+
+### Outcome reliability
+
+DeltaScope calculates recent observed runs, successes, failures and success rate. Multiple recent failures can raise a trend warning even if the latest retry succeeded.
+
+### Duration
+
+Collector-step start/completion timestamps produce a runtime series. The latest runtime is compared with the median of recent successful runs. Material regressions are highlighted; small changes are not treated as faults.
+
+### Throughput and output volume
+
+Only machine-readable values actually emitted by the runner are trended. Examples include:
+
+- deduplicated discovered sources;
+- normalized plugin count;
+- website records considered;
+- source revisions observed;
+- OSV package/version pairs queried;
+- completed SigmaScope analyses.
+
+For relatively stable universe collectors, a sharp drop or a successful zero result is suspicious. Workload-driven collectors such as SigmaScope are treated differently: a smaller batch is not itself degradation because there may simply be less work due. For SigmaScope, DeltaScope instead checks whether selected work actually completes.
+
+### Freshness
+
+Rather than hard-coding one schedule for every workflow, DeltaScope learns the recent interval between observed runs. A scheduled/continuous collector that drifts materially beyond that recent cadence can become late or stale. Event-driven collectors such as Deep Scan do not receive a stale warning merely because no request was queued.
+
+### Failure/drop ratios where measurable
+
+DeltaScope derives ratios only where the runner exposes both numerator and denominator. Current examples include successful versus attempted manifest sources, failed source-revision observations, and completed versus selected SigmaScope analyses. If a collector does not emit enough information to calculate a duplicate/drop ratio, DeltaScope reports it as unavailable rather than guessing.
 
 ## Collector inventory
 

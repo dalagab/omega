@@ -128,3 +128,15 @@ Source-controlled detector changes should be reviewed before entering frozen Def
 ## Avoiding overclaiming
 
 Static analysis can show capability and code relationships. Unless the platform has runtime evidence, avoid language such as “the plugin sent”, “the plugin executed” or “the plugin stole”. Prefer “the artifact contains”, “a call is present”, “the code can”, or “the retained observations match”.
+
+## Endpoint reputation boundary
+
+Endpoint classification remains static and deterministic. Separately, Omega freezes daily URL/domain/IP threat intelligence and DNS resolutions for hosts already observed in current plugin evidence. SigmaScope does not perform live reputation queries during a plugin scan; Stigma-1 reprojects retained `networkEndpoints` against the frozen `reputationRevision`. Known-platform, webhook/collection, telemetry, insecure-HTTP, private/special-use, public-IP and unrecognised-host classifications remain context signals rather than proof of malicious communication.
+
+A future reputation source should be acquired by a collector and frozen with Definitions/provenance so the same evidence can be reproduced; the artifact scanner should not depend on arbitrary live reputation queries.
+
+## DLL and external library boundary
+
+Binary members bundled in a plugin package (`.dll`, `.exe`, `.so`, `.dylib`) are scanned as artifact members. SigmaScope hashes the complete member and performs bounded managed/native static analysis; YARA also considers bounded safe binary members. Calls such as `DllImport`, `LoadLibrary`, `NativeLibrary.Load`, and `Assembly.Load*` are detection targets.
+
+A runtime DLL that exists only on the user's machine or is downloaded/loaded later is not automatically available to the static scanner. Omega can report the loading behavior/reference but must acquire that external binary through a separate evidence/deep-analysis path before making content-based claims about it.

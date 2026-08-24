@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as dt
 import re
 import sys
 import unittest
@@ -104,6 +105,82 @@ class DeltaScopeCollectorTests(unittest.TestCase):
         self.assertEqual(18, sigma_metrics["Successful analyses"])
         self.assertEqual(20, sigma_metrics["Queue selected"])
         self.assertEqual(3181, sigma_metrics["Queue pending"])
+
+
+    def test_collector_trends_flag_duration_and_stable_volume_regression(self) -> None:
+        runs = []
+        values = [10, 44, 45, 43, 44]
+        durations = [300, 60, 62, 58, 61]
+        for index, (value, duration) in enumerate(zip(values, durations)):
+            day = 24 - index
+            started = f"2026-08-{day:02d}T10:00:00Z"
+            completed_dt = dt.datetime(2026, 8, day, 10, 0, tzinfo=dt.timezone.utc) + dt.timedelta(seconds=duration)
+            completed = completed_dt.isoformat().replace("+00:00", "Z")
+            runs.append({
+                "runId": 500 + index, "runNumber": 1000 - index,
+                "createdAtUtc": started, "updatedAtUtc": completed,
+                "url": f"https://github.com/dalagab/omega/actions/runs/{500+index}",
+                "jobs": [{
+                    "name": "Discover source feeds", "status": "completed", "conclusion": "success",
+                    "startedAtUtc": started, "completedAtUtc": completed,
+                    "url": f"https://github.com/dalagab/omega/actions/runs/{500+index}/job/1",
+                    "steps": [{
+                        "name": "Discover curated, Puni.sh and GitHub PluginMaster sources",
+                        "status": "completed", "conclusion": "success",
+                        "startedAtUtc": started, "completedAtUtc": completed,
+                    }],
+                    "logPreview": f"Wrote build/raw-sources.json: {value} source(s) — 7 curated, 8 community, 12 puni.sh, 17 github-search\n",
+                }],
+            })
+        histories = {
+            "catalog-builder.yml": {"available": True, "runs": runs},
+            "sigmascope.yml": {"available": True, "runs": []},
+            "deep-scan.yml": {"available": True, "runs": []},
+        }
+        result = deltascope_collectors.project_collectors(
+            histories, {"counts": {}}, {"ruleProjections": {"available": True}},
+            now_utc=dt.datetime(2026, 8, 24, 11, 0, tzinfo=dt.timezone.utc),
+        )
+        source = {row["id"]: row for row in result["collectors"]}["source-discovery"]
+        self.assertEqual("degraded", source["trendState"])
+        self.assertEqual(10.0, source["trend"]["throughput"]["latest"])
+        self.assertEqual(44.0, source["trend"]["throughput"]["baselineMedian"])
+        self.assertEqual(300.0, source["trend"]["duration"]["latestSeconds"])
+        self.assertEqual("fresh", source["trend"]["freshness"]["state"])
+        codes = {row["code"] for row in source["trend"]["signals"]}
+        self.assertIn("throughput-drop", codes)
+        self.assertIn("duration-regression", codes)
+        self.assertGreaterEqual(result["degradingCount"], 1)
+
+    def test_workload_collector_does_not_treat_normal_volume_change_as_stable_input_loss(self) -> None:
+        def sigma_run(run_number: int, completed: int, selected: int, created: str) -> dict:
+            return {
+                "runId": run_number, "runNumber": run_number, "createdAtUtc": created, "updatedAtUtc": created,
+                "jobs": [{
+                    "name": "Process bounded Sigmascope batch against frozen daily inputs",
+                    "status": "completed", "conclusion": "success",
+                    "steps": [{"name": "Examine bounded due-variant batch and build Evidence v2 candidate", "status": "completed", "conclusion": "success"}],
+                    "logPreview": '{"successful": %d, "failedRetained": 0, "batch": {"queueSelected": %d, "scanSelected": %d, "completed": %d, "failed": 0}}' % (completed, selected, selected, completed),
+                }],
+            }
+        histories = {
+            "catalog-builder.yml": {"available": True, "runs": []},
+            "sigmascope.yml": {"available": True, "runs": [
+                sigma_run(5, 2, 2, "2026-08-24T10:00:00Z"),
+                sigma_run(4, 18, 20, "2026-08-24T09:00:00Z"),
+                sigma_run(3, 20, 20, "2026-08-24T08:00:00Z"),
+                sigma_run(2, 17, 20, "2026-08-24T07:00:00Z"),
+            ]},
+            "deep-scan.yml": {"available": True, "runs": []},
+        }
+        result = deltascope_collectors.project_collectors(
+            histories, {"counts": {}}, {"ruleProjections": {"available": True}},
+            now_utc=dt.datetime(2026, 8, 24, 10, 30, tzinfo=dt.timezone.utc),
+        )
+        sigma = {row["id"]: row for row in result["collectors"]}["sigmascope-batch"]
+        codes = {row["code"] for row in sigma["trend"]["signals"]}
+        self.assertNotIn("throughput-drop", codes)
+        self.assertEqual(2.0, sigma["trend"]["throughput"]["latest"])
 
     def test_documentation_catalog_is_role_and_task_oriented_without_delivery_history(self) -> None:
         catalog = deltascope_docs.catalog()

@@ -1107,6 +1107,163 @@ def _set_diff(before: Iterable[Any], after: Iterable[Any], fields: tuple[str, ..
     }
 
 
+def _compare_revisions(detail: Mapping[str, Any]) -> dict[str, str]:
+    identity = detail.get("identity") if isinstance(detail.get("identity"), Mapping) else {}
+    provenance = detail.get("scanProvenance") if isinstance(detail.get("scanProvenance"), Mapping) else {}
+    projection = detail.get("projection") if isinstance(detail.get("projection"), Mapping) else {}
+    return {
+        "definitionsRevision": str(provenance.get("definitionsRevision") or identity.get("definitions_revision") or ""),
+        "artifactAnalysisRevision": str(provenance.get("artifactAnalysisRevision") or detail.get("artifactAnalysisRevision") or ""),
+        "sourceAnalysisRevision": str(provenance.get("sourceAnalysisRevision") or detail.get("sourceAnalysisRevision") or ""),
+        "scannerRevision": str(provenance.get("scannerRevision") or provenance.get("scannerBundleRevision") or ""),
+        "ruleSetRevision": str(projection.get("ruleSetRevision") or provenance.get("ruleSetRevision") or ""),
+        "advisoryRevision": str(provenance.get("advisoryRevision") or detail.get("advisoryRevision") or ""),
+        "reputationRevision": str(projection.get("reputationRevision") or provenance.get("reputationRevision") or detail.get("reputationRevision") or ""),
+    }
+
+
+def _change_attribution(before: Mapping[str, Any], after: Mapping[str, Any], *, security_changed: bool) -> dict[str, Any]:
+    """Explain which immutable input boundary can account for a security-semantic change.
+
+    Narrow revisions take precedence over umbrella revisions: a daily reputation-only
+    update also changes Definitions, but should be explained as reputation intelligence
+    rather than as two independent causes.  Likewise a worker bundle change is not called
+    a scanner-semantic change unless the narrow artifact/source analysis revision moved.
+    """
+    bi = before.get("identity") if isinstance(before.get("identity"), Mapping) else {}
+    ai = after.get("identity") if isinstance(after.get("identity"), Mapping) else {}
+    old_sha = str(bi.get("artifact_sha256") or "").lower()
+    new_sha = str(ai.get("artifact_sha256") or "").lower()
+    old_version = str(bi.get("assembly_version") or bi.get("version") or "")
+    new_version = str(ai.get("assembly_version") or ai.get("version") or "")
+    br, ar = _compare_revisions(before), _compare_revisions(after)
+
+    def changed(key: str) -> bool:
+        return bool(br.get(key) and ar.get(key) and br[key] != ar[key])
+
+    same_artifact = bool(old_sha and new_sha and old_sha == new_sha)
+    artifact_changed = bool(old_sha and new_sha and old_sha != new_sha)
+    artifact_analysis_changed = changed("artifactAnalysisRevision")
+    source_analysis_changed = changed("sourceAnalysisRevision")
+    worker_changed = changed("scannerRevision")
+    rule_set_changed = changed("ruleSetRevision")
+    definitions_changed = changed("definitionsRevision")
+    advisory_changed = changed("advisoryRevision")
+    reputation_changed = changed("reputationRevision")
+
+    causes: list[dict[str, Any]] = []
+    if artifact_changed:
+        causes.append({
+            "cause": "plugin-change", "label": "Plugin / artifact changed",
+            "detail": f"Artifact SHA-256 changed {old_sha[:12]}… → {new_sha[:12]}…",
+            "confidence": "high", "boundary": "plugin-bytes",
+        })
+    if artifact_analysis_changed or source_analysis_changed:
+        changed_analysis = [key for key in ("artifactAnalysisRevision", "sourceAnalysisRevision") if changed(key)]
+        causes.append({
+            "cause": "scanner-change", "label": "SigmaScope observation semantics changed",
+            "detail": "Changed: " + ", ".join(changed_analysis),
+            "confidence": "high" if same_artifact else "medium", "boundary": "scanner-observation",
+        })
+    if reputation_changed:
+        causes.append({
+            "cause": "reputation-intelligence", "label": "Endpoint threat intelligence changed",
+            "detail": f"Reputation revision {br['reputationRevision']} → {ar['reputationRevision']}",
+            "confidence": "high" if same_artifact and not artifact_analysis_changed else "medium",
+            "boundary": "frozen-reputation",
+        })
+    if advisory_changed:
+        causes.append({
+            "cause": "advisory-intelligence", "label": "Advisory intelligence changed",
+            "detail": f"OSV/advisory revision {br['advisoryRevision']} → {ar['advisoryRevision']}",
+            "confidence": "high" if same_artifact and not artifact_analysis_changed else "medium",
+            "boundary": "frozen-advisories",
+        })
+    # definitionsRevision is an umbrella. If only reputation/advisory content moved, the
+    # narrower cause above is the useful explanation. A rule-set change is always a
+    # Definitions/Stigma-1 interpretation change.
+    unexplained_definitions_change = definitions_changed and not (reputation_changed or advisory_changed)
+    if rule_set_changed or unexplained_definitions_change:
+        changed_rules = [key for key in ("definitionsRevision", "ruleSetRevision") if changed(key)]
+        causes.append({
+            "cause": "definitions-change", "label": "Definitions / Stigma-1 interpretation changed",
+            "detail": "Changed: " + ", ".join(changed_rules),
+            "confidence": "high" if same_artifact and not artifact_analysis_changed and not source_analysis_changed else "medium",
+            "boundary": "definitions-rules",
+        })
+    # scannerRevision is deliberately not normally causal: the frozen worker may change
+    # without invalidating artifact/source analysis semantics. Keep it as bounded context
+    # only when the result changed and no narrower boundary can explain that change.
+    if worker_changed and not (artifact_analysis_changed or source_analysis_changed) and security_changed and not causes:
+        causes.append({
+            "cause": "scanner-environment-change", "label": "Frozen worker changed; narrow cause is unavailable",
+            "detail": f"Scanner worker revision {br['scannerRevision']} → {ar['scannerRevision']} while narrow analysis revisions were unchanged or unavailable.",
+            "confidence": "bounded", "boundary": "worker-environment",
+        })
+    if not causes and security_changed and old_version and new_version and old_version != new_version:
+        causes.append({
+            "cause": "plugin-metadata-change", "label": "Plugin version metadata changed",
+            "detail": f"Version {old_version} → {new_version}; retained provenance does not show a distinct artifact hash or narrower semantic revision that explains the result.",
+            "confidence": "bounded", "boundary": "plugin-metadata",
+        })
+    if not causes and security_changed:
+        causes.append({
+            "cause": "insufficient-history", "label": "Cause cannot be isolated from retained provenance",
+            "detail": "The security-semantic result changed, but the retained snapshots do not carry enough distinct revision provenance to identify one input boundary safely.",
+            "confidence": "bounded", "boundary": "unknown",
+        })
+
+    semantic_causes = {str(row.get("cause") or "") for row in causes}
+    artifact_reanalysis = artifact_changed or artifact_analysis_changed
+    source_followup = source_analysis_changed
+    retained_evidence_only = bool(security_changed and not artifact_reanalysis and not source_followup and semantic_causes & {"definitions-change", "reputation-intelligence", "advisory-intelligence"})
+    rule_reprojection_only = bool(retained_evidence_only and semantic_causes & {"definitions-change", "reputation-intelligence"})
+    advisory_refresh_only = bool(retained_evidence_only and semantic_causes == {"advisory-intelligence"})
+    if not security_changed:
+        primary = "no-security-change"
+        explanation = "No security-semantic change is visible in the retained comparison."
+        evaluation_mode = "none"
+        evaluation_explanation = "No security-semantic recalculation is indicated by this comparison."
+    elif len(causes) == 1:
+        primary = causes[0]["cause"]
+        explanation = causes[0]["label"] + "."
+        if retained_evidence_only:
+            evaluation_mode = "advisory-reprojection" if advisory_refresh_only else "rule-reprojection"
+            evaluation_explanation = "The artifact bytes are unchanged; retained observations/dependency evidence can be re-evaluated against the new frozen intelligence/Definitions without reopening the plugin ZIP."
+        elif artifact_reanalysis:
+            evaluation_mode = "artifact-analysis"
+            evaluation_explanation = "Plugin bytes or artifact-analysis semantics changed, so artifact analysis is the relevant boundary."
+        elif source_followup:
+            evaluation_mode = "source-followup"
+            evaluation_explanation = "Source-analysis semantics changed; source follow-up is the relevant boundary and the plugin artifact does not need reopening solely for this cause."
+        else:
+            evaluation_mode = "bounded"
+            evaluation_explanation = "The retained provenance identifies a boundary but not a narrower deterministic recalculation path."
+    else:
+        primary = "mixed"
+        explanation = "Multiple independent inputs changed between these snapshots; DeltaScope will not attribute the security difference to only one cause."
+        evaluation_mode = "mixed"
+        evaluation_explanation = "More than one input boundary changed. Review each cause before deciding whether artifact analysis, source follow-up, or rule-only reprojection is sufficient."
+
+    revision_diff = {
+        key: {"before": br.get(key, ""), "after": ar.get(key, ""), "changed": changed(key)}
+        for key in sorted(set(br) | set(ar))
+    }
+    return {
+        "primaryCause": primary, "explanation": explanation, "causes": causes, "revisions": revision_diff,
+        "artifact": {
+            "before": old_sha, "after": new_sha, "changed": artifact_changed, "same": same_artifact,
+            "beforeVersion": old_version, "afterVersion": new_version, "versionChanged": bool(old_version and new_version and old_version != new_version),
+        },
+        "evaluation": {
+            "mode": evaluation_mode, "explanation": evaluation_explanation,
+            "artifactReanalysis": artifact_reanalysis, "sourceFollowup": source_followup,
+            "retainedEvidenceOnly": retained_evidence_only, "ruleReprojectionOnly": rule_reprojection_only,
+            "advisoryRefreshOnly": advisory_refresh_only,
+        },
+    }
+
+
 def project_version_compare(before: Mapping[str, Any], after: Mapping[str, Any]) -> dict[str, Any]:
     """Produce a human-oriented security-semantic diff between two retained plugin snapshots."""
     before = before if isinstance(before, Mapping) else {}
@@ -1158,6 +1315,7 @@ def project_version_compare(before: Mapping[str, Any], after: Mapping[str, Any])
     if bool(before_source.get("sourceCodeAvailable")) != bool(after_source.get("sourceCodeAvailable")):
         change("source", "added" if after_source.get("sourceCodeAvailable") else "removed", "Attributed source coverage changed")
 
+    attribution = _change_attribution(before, after, security_changed=bool(changes))
     core = {
         "variantId": _int(ai.get("variant_id") or bi.get("variant_id")),
         "before": {"version": str(bi.get("assembly_version") or ""), "scanId": _int(bi.get("scan_id")), "snapshotKind": str(before.get("snapshotKind") or "")},
@@ -1170,6 +1328,7 @@ def project_version_compare(before: Mapping[str, Any], after: Mapping[str, Any])
         "readOnly": True, "mutationAuthority": "none", "policyInput": False,
         "variantId": core["variantId"], "before": core["before"], "after": core["after"],
         "changeCount": len(changes), "changes": changes,
+        "changeAttribution": attribution,
         "diffs": {"findings": findings, "capabilities": capabilities, "endpoints": endpoints, "advisories": advisories},
     }
 
