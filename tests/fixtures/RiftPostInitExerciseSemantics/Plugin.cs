@@ -8,7 +8,7 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace RiftPostInitExerciseSemantics;
 
-public sealed unsafe class Plugin : IDalamudPlugin
+public sealed class Plugin : IDalamudPlugin
 {
     [PluginService] private static IPluginLog Log { get; set; } = null!;
     [PluginService] private static IFramework Framework { get; set; } = null!;
@@ -56,7 +56,7 @@ public sealed unsafe class Plugin : IDalamudPlugin
         Log.Info("RIFT_EXERCISE startup complete");
     }
 
-    private static void OnFrameworkUpdate(IFramework framework)
+    private static unsafe void OnFrameworkUpdate(IFramework framework)
     {
         ThreadSafety.AssertMainThread("RIFT_EXERCISE Framework.Update was not marked as Dalamud main thread");
         var inventoryManager = InventoryManager.Instance();
