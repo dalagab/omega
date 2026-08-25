@@ -1,3 +1,11 @@
+## 2026-08-25 — Stigma deep-scan publication authentication hotfix
+
+- Fix the Sigmascope launcher Stigma-1 deep-scan-state publisher to authenticate temporary-repository pushes with the workflow `GITHUB_TOKEN` via `gh auth setup-git`.
+- Apply the same authenticated push contract to the standalone Deep Scan worker; its temporary publication repository has the same credential boundary.
+- Keep launcher deep-scan publication best-effort (`continue-on-error`) so validated Security Evidence v2 publication is not rolled back by queue-transport failure.
+- Add workflow-contract regressions requiring authenticated deep-scan publication in both workflows.
+- No DeltaScope version bump and no SigmaScope artifact/source analysis semantic change.
+
 ## 2026-08-25 — DeltaScope relationship-capacity hotfix
 
 - Fixed production Sigmascope launcher failure `32782612429`: the existing Evidence-v2 relationship projection was already at 198,846 / 200,000 component edges before the batch, so normal scan growth crossed the obsolete fixed ceiling.

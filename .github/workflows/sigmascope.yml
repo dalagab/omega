@@ -217,12 +217,17 @@ jobs:
       - name: Publish durable Stigma-1 deep-scan queue
         if: steps.v2.outcome == 'success' && steps.v2.outputs.deep_scan_changed == 'true' && hashFiles('catalog/security-v2-work/deep-scan-state/index.json') != ''
         continue-on-error: true
-        run: >-
-          python "$OMEGA_FROZEN_WORKER/tools/security/publish_deep_scan_state.py"
-          --input catalog/security-v2-work/deep-scan-state
-          --repo .
-          --branch deep-scan-state
-          --push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          python "$OMEGA_FROZEN_WORKER/tools/security/publish_deep_scan_state.py" \
+            --input catalog/security-v2-work/deep-scan-state \
+            --repo . \
+            --branch deep-scan-state \
+            --push
       - name: Dispatch Deep Scan worker when executable requests are pending
         if: steps.v2.outputs.deep_scan_pending == 'true'
         continue-on-error: true

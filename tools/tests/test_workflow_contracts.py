@@ -244,7 +244,13 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("deep_scan_pending", sigmascope)
         self.assertIn("Frozen worker predates Stigma-1 deep-scan queue support", sigmascope)
         self.assertIn("gh workflow run deep-scan.yml --ref sigmascope", sigmascope)
-        self.assertIn("continue-on-error: true", sigmascope[sigmascope.index("Publish durable Stigma-1 deep-scan queue"):sigmascope.index("Project public-source coverage follow-ups")])
+        sigmascope_publish = sigmascope[sigmascope.index("Publish durable Stigma-1 deep-scan queue"):sigmascope.index("Dispatch Deep Scan worker")]
+        self.assertIn("continue-on-error: true", sigmascope_publish)
+        self.assertIn("GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}", sigmascope_publish)
+        self.assertIn("gh auth setup-git", sigmascope_publish)
+        deep_publish = deep[deep.index("Publish updated deep-scan state atomically"):deep.index("Upload deep-scan diagnostics")]
+        self.assertIn("GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}", deep_publish)
+        self.assertIn("gh auth setup-git", deep_publish)
         self.assertIn("workflow_call:", deep)
         self.assertIn("workflow_dispatch:", deep)
         self.assertNotIn("schedule:", deep)
