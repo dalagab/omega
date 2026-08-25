@@ -59,6 +59,7 @@ SOURCE_SUPPORT_FILES = (
     "tools/catalog/source_resolution.py",
     "tools/catalog/public_git_source.py",
     "tools/catalog/source_stability.py",
+    "tools/catalog/source_build_intelligence.py",
     "tools/catalog/artifact_source_model.py",
     "tools/catalog/security_endpoint_inventory.py",
     "tools/catalog/security_path_access.py",

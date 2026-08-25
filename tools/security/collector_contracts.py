@@ -149,10 +149,49 @@ OBSERVATION_TYPES: dict[str, dict[str, Any]] = {
         "ruleEligible": True,
         "authority": "signature-validation-observation-only",
         "fields": {
-            "artifactSha256": "string", "path": "string", "format": "string",
+            "artifactSha256": "string", "path": "string", "fileSha256": "string", "format": "string",
             "signaturePresent": "boolean", "digestValid": "boolean", "chainValid": "boolean",
-            "timestampPresent": "boolean", "timestampValid": "boolean", "publisher": "string",
-            "issuer": "string", "thumbprint": "string", "validationStatus": "string",
+            "timestampPresent": "boolean", "timestampValid": "boolean",
+            "publisher": "string", "issuer": "string", "thumbprint": "string",
+            "signerSerialNumber": "string", "signerNotBeforeUtc": "string", "signerNotAfterUtc": "string",
+            "signerSignatureAlgorithm": "string", "signerPublicKeyAlgorithm": "string",
+            "timestampSubject": "string", "timestampIssuer": "string", "timestampThumbprint": "string",
+            "timestampSerialNumber": "string", "timestampNotBeforeUtc": "string", "timestampNotAfterUtc": "string",
+            "timestampSignatureAlgorithm": "string", "timestampPublicKeyAlgorithm": "string",
+            "platformStatus": "string", "platformStatusMessage": "string", "validationStatus": "string",
+            "validationPlatform": "string", "validationMethod": "string", "validationEngineVersion": "string",
+            "validatedAtUtc": "string", "validationTrustContext": "string", "validationNetworkPolicy": "string",
+        },
+    },
+    "elfBinaryStructure": {
+        "schema": "omega.observation.elf-binary-structure.v1",
+        "semanticClass": "static-binary-structure-observation",
+        "ruleEligible": True,
+        "authority": "structural-observation-only",
+        "fields": {
+            "artifactSha256": "string", "path": "string", "fileSha256": "string",
+            "architecture": "string", "bitness": "integer", "endianness": "string", "role": "string",
+            "entryPoint": "integer", "interpreter": "string", "neededLibraries": "string[]",
+            "rpaths": "string[]", "runpaths": "string[]", "pie": "boolean", "relro": "boolean",
+            "bindNow": "boolean", "executableStack": "boolean", "writableExecutableSegmentCount": "integer",
+            "stripped": "boolean", "dynamicSymbolCount": "integer", "importedSymbols": "string[]",
+            "exportedSymbols": "string[]", "programHeaderCount": "integer", "sectionHeaderCount": "integer",
+            "truncated": "boolean",
+        },
+    },
+    "machOBinaryStructure": {
+        "schema": "omega.observation.mach-o-binary-structure.v1",
+        "semanticClass": "static-binary-structure-observation",
+        "ruleEligible": True,
+        "authority": "structural-observation-only",
+        "fields": {
+            "artifactSha256": "string", "path": "string", "fileSha256": "string", "format": "string",
+            "architecture": "string", "bitness": "integer", "role": "string", "slice": "string",
+            "dylibs": "string[]", "rpaths": "string[]", "codeSignaturePresent": "boolean",
+            "codeSignatureSize": "integer", "uuid": "string", "entryOffset": "integer",
+            "minOs": "string", "sdkVersion": "string", "encrypted": "boolean",
+            "writableExecutableSegmentCount": "integer", "loadCommandCount": "integer",
+            "flags": "string", "truncated": "boolean",
         },
     },
     "sourceArtifactBuildProof": {
@@ -206,7 +245,9 @@ FRESHNESS_POLICIES: dict[str, dict[str, Any]] = {
     "riftRuntimeExercise": {"model": "immutable-with-subject-and-profile"},
     "riftRuntimeBoundary": {"model": "immutable-with-subject-and-profile"},
     "riftComponentSecurity": {"model": "immutable-with-subject-and-profile"},
-    "binarySignatureTrust": {"model": "immutable-with-artifact"},
+    "binarySignatureTrust": {"model": "ttl", "ttlSeconds": 604800},
+    "elfBinaryStructure": {"model": "immutable-with-subject"},
+    "machOBinaryStructure": {"model": "immutable-with-subject"},
     "sourceArtifactBuildProof": {"model": "immutable-with-source-and-artifact"},
     "endpointDns": {"model": "ttl", "ttlSeconds": 3600},
     "endpointReputation": {"model": "ttl", "ttlSeconds": 86400},
@@ -303,7 +344,12 @@ COLLECTORS: tuple[dict[str, Any], ...] = (
         "id": "omega.collector.sigmascope.source-analysis", "version": 1,
         "componentId": "omega.sigmascope", "title": "SigmaScope source analysis",
         "purpose": "Provide retained source/dependency/provenance observations.",
-        "provides": ["dependencies", "ipcIntegrations", "namespaceImports", "sourceFiles", "manifestObservation", "sourceAttribution", "sourceProvenance", "developerProfile"],
+        "provides": [
+            "dependencies", "ipcIntegrations", "namespaceImports", "sourceFiles",
+            "sourceBuildProjects", "sourceBuildEdges", "sourceBuildInputs", "sourceBuildEnvironment",
+            "sourceDependencyDeclarations", "sourceReleaseWorkflows",
+            "manifestObservation", "sourceAttribution", "sourceProvenance", "developerProfile",
+        ],
         "cadence": "event-driven", "authority": "observation-only", "network": True,
     },
     {
@@ -318,7 +364,14 @@ COLLECTORS: tuple[dict[str, Any], ...] = (
         "componentId": "omega.sigmascope", "title": "SigmaScope Authenticode validation",
         "purpose": "Validate PE Authenticode digest, signer chain and timestamp semantics without executing the binary.",
         "provides": ["binarySignatureTrust"], "cadence": "event-driven",
-        "authority": "observation-only", "network": False, "status": "planned",
+        "authority": "observation-only", "network": True, "status": "active",
+    },
+    {
+        "id": "omega.collector.sigmascope.native-structure", "version": 1,
+        "componentId": "omega.sigmascope", "title": "SigmaScope native binary structure",
+        "purpose": "Parse bounded ELF and Mach-O loader, dependency, symbol and hardening structure without executing native code.",
+        "provides": ["elfBinaryStructure", "machOBinaryStructure"], "cadence": "event-driven",
+        "authority": "observation-only", "network": True, "status": "active",
     },
     {
         "id": "omega.collector.threat-intelligence.endpoints", "version": 1,
@@ -394,6 +447,25 @@ def srl_field_registry() -> dict[str, dict[str, str]]:
     }
 
 
+
+
+def observation_contract_revision(collection: str) -> str:
+    name = str(collection or "")
+    spec = OBSERVATION_TYPES.get(name)
+    if not isinstance(spec, dict):
+        raise ValueError(f"unknown observation type: {name!r}")
+    semantic = {"schema": OBSERVATION_TYPE_SCHEMA, "name": name, "spec": spec, "freshness": freshness_policy(name)}
+    return f"collector-observation-v1-{_sha(semantic)[:20]}"
+
+
+def collector_contract_revision(collector_id: str) -> str:
+    name = str(collector_id or "")
+    row = collector_map().get(name)
+    if not isinstance(row, dict):
+        raise ValueError(f"unknown collector: {name!r}")
+    semantic = {"schema": COLLECTOR_SCHEMA, "collector": row}
+    return f"collector-contract-v1-{_sha(semantic)[:20]}"
+
 def registry_revision() -> str:
     semantic = {"schema": REGISTRY_SCHEMA, "componentRegistryRevision": component_registry.component_revision(), "observationTypes": OBSERVATION_TYPES, "freshness": FRESHNESS_POLICIES, "collectors": COLLECTORS}
     return f"collector-registry-v1-{_sha(semantic)[:20]}"
@@ -414,7 +486,7 @@ def build_registry() -> dict[str, Any]:
         for component_id, row in sorted(components.items())
     }
     observation_types = {
-        name: {**dict(spec), "freshness": freshness_policy(name)}
+        name: {**dict(spec), "freshness": freshness_policy(name), "contractRevision": observation_contract_revision(name)}
         for name, spec in sorted(OBSERVATION_TYPES.items())
     }
     return {
@@ -426,7 +498,7 @@ def build_registry() -> dict[str, Any]:
         },
         "components": component_summaries,
         "observationTypes": observation_types,
-        "collectors": [dict(item) for item in COLLECTORS],
+        "collectors": [{**dict(item), "contractRevision": collector_contract_revision(str(item.get("id") or ""))} for item in COLLECTORS],
         "providers": {name: providers_for(name, include_planned=True) for name in sorted(OBSERVATION_TYPES)},
         "ruleBinding": "logical-observation-type",
         "implementationBindingForbidden": True,

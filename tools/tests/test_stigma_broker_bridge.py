@@ -99,8 +99,8 @@ class StigmaBrokerBridgeTests(unittest.TestCase):
             self.assertEqual(1, report["candidateRequests"])
             item = updated["items"][0]
             self.assertEqual("binarySignatureTrust", item["observation"])
-            # Authenticode is registered but still planned; visibility is preserved without fake execution.
-            self.assertEqual("requested", item["state"])
+            self.assertEqual("omega.sigmascope", item["componentId"])
+            self.assertEqual("queued", item["state"])
             first_request = item["requestId"]
             updated_again, _ = stigma_broker_bridge.reconcile(
                 updated, projection_root=projection, evidence_root=evidence, inventory=inventory,

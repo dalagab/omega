@@ -61,6 +61,7 @@ from security_component_summary import build_component_summary
 from source_resolution import github_repository_url, public_repository_url, source_candidate_records, source_candidates, source_override_key
 from public_git_source import MAX_GIT_TREE_ENTRIES, PublicGitSource
 from plugin_profile import observe_profile
+import source_build_intelligence
 from capability_registry import legacy_capability_ids, load_registry
 from behavior_consistency import refresh_behavior_consistency
 from artifact_source_model import (
@@ -2434,6 +2435,9 @@ def _inspect_source_tree(
     # beside the primary project. Invalid enrichment is retained as diagnostics and
     # never prevents ordinary source analysis.
     developer_profile = observe_profile(set(source_entries), read_file, primary_project=str(scope.get("primaryProject") or ""))
+    intel["sourceBuildIntelligence"] = source_build_intelligence.collect(
+        source_entries, descriptor_text, scope, read_file, internal_name=internal_name, plugin_name=plugin_name,
+    )
     files_scanned = 0
     total_text = 0
     if analyze:

@@ -1,3 +1,41 @@
+## 2026-08-25 — Source build and dependency observation expansion
+
+- Add source-only `omega.sigmascope.source-build-intelligence.v1` collection during the existing SigmaScope source-analysis pass; source retrieval still happens once and no build commands or plugin code are executed.
+- Retain first-class project/build graph, project-reference edges, build-input identities, SDK/package-policy context, managed dependency declarations/locks and bounded CI/release construction metadata.
+- Promote `sourceBuildProjects`, `sourceBuildEdges`, `sourceBuildInputs`, `sourceBuildEnvironment`, `sourceDependencyDeclarations` and `sourceReleaseWorkflows` into replayable Evidence-v2/SRL observation collections, including exact empty collections only when the new source-build contract was actually collected.
+- Keep release-workflow metadata as developer-authored source context only: it does not prove that a workflow or observed source revision produced the distributed plugin artifact; exact build proof remains the future Rebuilder boundary.
+- Avoid retaining arbitrary CI `run:` command bodies or NuGet credential material; package-source URLs are stripped of user-info, query and fragment data before they enter retained evidence.
+- Keep the artifact-analysis revision unchanged. Only the source-analysis revision changes, so this pass schedules source follow-up work rather than restarting artifact coverage.
+- Keep SigmaScope 2.15.0 and finding/severity semantics unchanged.
+
+## 2026-08-25 — First-class ELF and Mach-O structural collectors
+
+- Activate `omega.collector.sigmascope.native-structure` as a broker-dispatchable, non-executing specialist collector for `elfBinaryStructure` and `machOBinaryStructure`.
+- Retain bounded ELF loader/dependency/hardening structure including interpreter, `DT_NEEDED`, RPATH/RUNPATH, PIE, RELRO, bind-now, executable-stack state, writable+executable segments and bounded dynamic symbol inventories.
+- Retain bounded Mach-O load-command structure including dylib dependencies, rpaths, architecture/slice identity, entry offset, build/minimum OS metadata, encryption flag, code-signature **presence** and concrete initial writable+executable segment state; code-signature presence is not trust validation.
+- Route native-structure observation requests through a dedicated Ubuntu collector lane using the existing content-addressed collector-result, collector-only Evidence-v2 adapter and independent publication audit.
+- Extend neutral collector coverage policy so retained native ELF/Mach-O classifications request their matching structural observations automatically.
+- Bound generic collector string-array fields to 4,096 values in addition to the existing per-string and row ceilings.
+- Keep SigmaScope 2.15.0 and existing artifact/source analysis revisions; this pass adds replayable specialist observations rather than changing static finding semantics.
+
+## 2026-08-25 — First-class Authenticode collector and generic collector results
+
+- Activate `omega.collector.sigmascope.authenticode` as the first specialist SigmaScope collector lane.
+- Add a Windows-native, non-executing Authenticode probe over exact broker-bound artifacts; retain PE signer, digest, chain, timestamp and platform-validation observations without assigning a security verdict; Windows trust reuse is TTL-bound for seven days rather than treated as permanently immutable.
+- Add content-addressed `omega.collector-result.v1` envelopes with per-collector and per-observation contract revisions, bounded rows/errors, exact subject binding and tamper detection.
+- Add a generic collector-to-Evidence-v2 adapter plus an independent collector-only publication audit; collector updates may change Evidence-v2 evidence revision but must not change catalog/security revision or static scan evidence.
+- Extend Evidence-v2 observation contracts, observation inventory and SRL replay to consume registered external collector observations while keeping core SigmaScope observations exactly reproducible.
+- Add neutral collector coverage reconciliation: retained native-PE classifications request `binarySignatureTrust` automatically, while managed-only PE artifacts are not queued.
+- Route Authenticode requests to a dedicated `windows-latest` lane and add a Windows regression smoke job for the native trust probe.
+- Keep SigmaScope 2.15.0 and the existing artifact/source analysis revisions; this pass adds a separate observation collector rather than changing static scanner semantics.
+
+## 2026-08-25 — Post-split SigmaScope regression ownership fix
+
+- Remove stale SigmaScope tests that required the physically separated DeltaScope workflow/CLI to remain present on the `sigmascope` branch.
+- Keep equivalent producer-side coverage for SRL compilation, fixture evaluation, typed collector bundles, retained Evidence-v2 replay, and published author-reference contracts.
+- Strengthen the branch-split regression to require DeltaScope runtime/workflow files to be absent from the SigmaScope tree.
+- No scanner, SRL language, Evidence-v2, or publication semantics change.
+
 ## 2.15.0 — DeltaScope source-tree extraction boundary
 
 - Physically separate the DeltaScope application/consumer SDK from the SigmaScope security-services source package.

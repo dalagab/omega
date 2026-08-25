@@ -40,7 +40,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  route:
+    name: Route SigmaScope observation request
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    outputs:
+      lane: ${{ steps.route.outputs.lane }}
+    steps:
+      - name: Select collector lane
+        id: route
+        env:
+          ANALYSIS_REQUEST_JSON: ${{ inputs.analysis_request_json || '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          lane="scan"
+          if [ -n "$ANALYSIS_REQUEST_JSON" ]; then
+            observation="$(python -c 'import json,os; print(json.loads(os.environ["ANALYSIS_REQUEST_JSON"]).get("observation", ""))')"
+            if [ "$observation" = "binarySignatureTrust" ]; then lane="authenticode"; fi
+            if [ "$observation" = "elfBinaryStructure" ] || [ "$observation" = "machOBinaryStructure" ]; then lane="native-structure"; fi
+          fi
+          printf 'lane=%s\n' "$lane" >> "$GITHUB_OUTPUT"
+
   scan:
+    needs: route
+    if: needs.route.outputs.lane == 'scan'
     name: Process bounded Sigmascope batch against frozen daily inputs
     runs-on: ubuntu-latest
     timeout-minutes: 75
@@ -318,6 +343,230 @@ jobs:
             catalog/security-v2-work/*.json
             catalog/security-v2-candidate/index.json
             catalog/security-v2-candidate/scanner-queue.json
+            catalog/security-v2-candidate/validation-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  native-structure:
+    name: Collect exact ELF and Mach-O structural observations
+    needs: route
+    if: needs.route.outputs.lane == 'native-structure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout security-services branch for publication transport
+        uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Checkout frozen catalog and Definitions state
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/active-state
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Checkout current Security Evidence v2 snapshot
+        uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install frozen Python security dependencies
+        run: python -m pip install --disable-pip-version-check -r "$OMEGA_FROZEN_WORKER/tools/requirements-security.txt"
+      - name: Verify frozen worker bundle for native structure lane
+        run: |
+          set -euo pipefail
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/definitions_snapshot.py" verify-worker --definitions-root catalog/active-state/definitions
+          test -f "$OMEGA_FROZEN_WORKER/tools/security/native_structure_collector.py"
+          test -f "$OMEGA_FROZEN_WORKER/tools/security/collector_results.py"
+          test -f "$OMEGA_FROZEN_WORKER/tools/security/collector_evidence_adapter.py"
+          test -f "$OMEGA_FROZEN_WORKER/tools/security/collector_evidence_audit.py"
+      - name: Resolve exact broker-bound native artifact
+        env:
+          ANALYSIS_REQUEST_JSON: ${{ inputs.analysis_request_json || '' }}
+          ANALYSIS_WORK_ITEM_ID: ${{ inputs.analysis_work_item_id || '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/native-structure-work
+          printf '%s' "$ANALYSIS_REQUEST_JSON" > catalog/native-structure-work/request.json
+          python -m json.tool catalog/native-structure-work/request.json >/dev/null
+          python "$OMEGA_FROZEN_WORKER/tools/security/native_structure_collector.py" resolve \
+            --evidence-root catalog/security-v2-current \
+            --request catalog/native-structure-work/request.json \
+            --work-item-id "$ANALYSIS_WORK_ITEM_ID" \
+            --output catalog/native-structure-work/target.json
+      - name: Collect bounded native structure observations
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python "$OMEGA_FROZEN_WORKER/tools/security/native_structure_collector.py" collect \
+            --target catalog/native-structure-work/target.json \
+            --output catalog/native-structure-work/result.json
+      - name: Retain native collector result in Security Evidence v2
+        run: |
+          set -euo pipefail
+          python "$OMEGA_FROZEN_WORKER/tools/security/collector_evidence_adapter.py" \
+            --current-evidence catalog/security-v2-current \
+            --candidate-evidence catalog/security-v2-candidate \
+            --result catalog/native-structure-work/result.json \
+            --output catalog/native-structure-work/ingestion.json \
+            --validation-output catalog/security-v2-candidate/validation-report.json
+      - name: Independently audit native collector-only Evidence mutation
+        run: |
+          set -euo pipefail
+          python "$OMEGA_FROZEN_WORKER/tools/security/collector_evidence_audit.py" \
+            --current-evidence catalog/security-v2-current \
+            --candidate-evidence catalog/security-v2-candidate \
+            --result catalog/native-structure-work/result.json \
+            --output catalog/native-structure-work/collector-evidence-audit.json
+      - name: Publish validated native collector evidence atomically
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          python "$OMEGA_FROZEN_WORKER/tools/security/publish_security_evidence_v2.py" \
+            --input catalog/security-v2-candidate \
+            --repo . \
+            --branch security-evidence-v2 \
+            --snapshot-validation-report catalog/security-v2-candidate/validation-report.json \
+            --audit-report catalog/native-structure-work/collector-evidence-audit.json \
+            --push
+      - name: Upload native structure collector diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-native-structure-collector-diagnostics
+          path: |
+            catalog/native-structure-work/*.json
+            catalog/security-v2-candidate/index.json
+            catalog/security-v2-candidate/validation-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  authenticode:
+    name: Collect exact Windows Authenticode observations
+    needs: route
+    if: needs.route.outputs.lane == 'authenticode'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout security-services branch for publication transport
+        uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Checkout frozen catalog and Definitions state
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/active-state
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Checkout current Security Evidence v2 snapshot
+        uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install frozen Python security dependencies
+        shell: bash
+        run: python -m pip install --disable-pip-version-check -r "$OMEGA_FROZEN_WORKER/tools/requirements-security.txt"
+      - name: Verify frozen worker bundle for Authenticode lane
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/definitions_snapshot.py" verify-worker --definitions-root catalog/active-state/definitions
+          test -f "$OMEGA_FROZEN_WORKER/tools/security/authenticode_collector.py"
+          test -f "$OMEGA_FROZEN_WORKER/tools/security/authenticode_probe.ps1"
+          test -f "$OMEGA_FROZEN_WORKER/tools/security/collector_results.py"
+          test -f "$OMEGA_FROZEN_WORKER/tools/security/collector_evidence_adapter.py"
+          test -f "$OMEGA_FROZEN_WORKER/tools/security/collector_evidence_audit.py"
+      - name: Resolve exact broker-bound artifact
+        env:
+          ANALYSIS_REQUEST_JSON: ${{ inputs.analysis_request_json || '' }}
+          ANALYSIS_WORK_ITEM_ID: ${{ inputs.analysis_work_item_id || '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/authenticode-work
+          printf '%s' "$ANALYSIS_REQUEST_JSON" > catalog/authenticode-work/request.json
+          python -m json.tool catalog/authenticode-work/request.json >/dev/null
+          python "$OMEGA_FROZEN_WORKER/tools/security/authenticode_collector.py" resolve \
+            --evidence-root catalog/security-v2-current \
+            --request catalog/authenticode-work/request.json \
+            --work-item-id "$ANALYSIS_WORK_ITEM_ID" \
+            --output catalog/authenticode-work/target.json
+      - name: Collect Authenticode observations with Windows trust APIs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$OMEGA_FROZEN_WORKER/tools/security/authenticode_collector.py" collect \
+            --target catalog/authenticode-work/target.json \
+            --output catalog/authenticode-work/result.json
+      - name: Retain collector result in Security Evidence v2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$OMEGA_FROZEN_WORKER/tools/security/collector_evidence_adapter.py" \
+            --current-evidence catalog/security-v2-current \
+            --candidate-evidence catalog/security-v2-candidate \
+            --result catalog/authenticode-work/result.json \
+            --output catalog/authenticode-work/ingestion.json \
+            --validation-output catalog/security-v2-candidate/validation-report.json
+      - name: Independently audit collector-only Evidence mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$OMEGA_FROZEN_WORKER/tools/security/collector_evidence_audit.py" \
+            --current-evidence catalog/security-v2-current \
+            --candidate-evidence catalog/security-v2-candidate \
+            --result catalog/authenticode-work/result.json \
+            --output catalog/authenticode-work/collector-evidence-audit.json
+      - name: Publish validated collector evidence atomically
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          python "$OMEGA_FROZEN_WORKER/tools/security/publish_security_evidence_v2.py" \
+            --input catalog/security-v2-candidate \
+            --repo . \
+            --branch security-evidence-v2 \
+            --snapshot-validation-report catalog/security-v2-candidate/validation-report.json \
+            --audit-report catalog/authenticode-work/collector-evidence-audit.json \
+            --push
+      - name: Upload Authenticode collector diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-authenticode-collector-diagnostics
+          path: |
+            catalog/authenticode-work/*.json
+            catalog/security-v2-candidate/index.json
             catalog/security-v2-candidate/validation-report.json
           if-no-files-found: warn
           retention-days: 30

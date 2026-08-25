@@ -16,6 +16,8 @@ import hashlib
 import json
 from typing import Any, Iterable
 
+import collector_contracts
+
 OBSERVATION_CONTRACT_SCHEMA = "omega.sigmascope.observation-contract.v1"
 OBSERVATION_COLLECTION_SCHEMA = "omega.sigmascope.observation-collection.v1"
 PROJECTION_CONTRACT_SCHEMA = "omega.sigmascope.projection-contract.v1"
@@ -70,6 +72,32 @@ COLLECTIONS: dict[str, dict[str, Any]] = {
     "sourceFiles": {
         "schema": "omega.sigmascope.observation.source-files.v1", "backingDataset": "sourceFiles",
         "semanticClass": "observation", "srlEligible": True, "origin": "source",
+    },
+    "sourceBuildProjects": {
+        "schema": "omega.sigmascope.observation.source-build-project.v1", "backingDataset": "sourceBuildProjects",
+        "semanticClass": "source-build-observation", "srlEligible": True, "origin": "source",
+    },
+    "sourceBuildEdges": {
+        "schema": "omega.sigmascope.observation.source-build-edge.v1", "backingDataset": "sourceBuildEdges",
+        "semanticClass": "source-build-observation", "srlEligible": True, "origin": "source",
+    },
+    "sourceBuildInputs": {
+        "schema": "omega.sigmascope.observation.source-build-input.v1", "backingDataset": "sourceBuildInputs",
+        "semanticClass": "source-build-provenance", "srlEligible": True, "origin": "source",
+    },
+    "sourceBuildEnvironment": {
+        "schema": "omega.sigmascope.observation.source-build-environment.v1", "backingDataset": "sourceBuildEnvironment",
+        "semanticClass": "source-build-context", "srlEligible": True, "origin": "source",
+        "authority": "developer-source-context-only",
+    },
+    "sourceDependencyDeclarations": {
+        "schema": "omega.sigmascope.observation.source-dependency-declaration.v1", "backingDataset": "sourceDependencyDeclarations",
+        "semanticClass": "source-dependency-observation", "srlEligible": True, "origin": "source",
+    },
+    "sourceReleaseWorkflows": {
+        "schema": "omega.sigmascope.observation.source-release-workflow.v1", "backingDataset": "sourceReleaseWorkflows",
+        "semanticClass": "source-build-context", "srlEligible": True, "origin": "source",
+        "authority": "developer-source-context-only",
     },
     "binaryClassifications": {
         "schema": "omega.sigmascope.observation.binary-classifications.v1", "backingDataset": "binaryClassifications",
@@ -222,6 +250,7 @@ def report_observation_rows(report_or_row: dict[str, Any]) -> dict[str, list[dic
     intelligence = report.get("dependencyIntelligence") if isinstance(report.get("dependencyIntelligence"), dict) else {}
     source = report.get("source") if isinstance(report.get("source"), dict) else {}
     source_intel = source.get("dependencyIntelligence") if isinstance(source.get("dependencyIntelligence"), dict) else {}
+    source_build = source_intel.get("sourceBuildIntelligence") if isinstance(source_intel.get("sourceBuildIntelligence"), dict) else {}
     package = report.get("package") if isinstance(report.get("package"), dict) else {}
 
     profile = source.get("developerProfile") if isinstance(source.get("developerProfile"), dict) else {}
@@ -236,6 +265,12 @@ def report_observation_rows(report_or_row: dict[str, Any]) -> dict[str, list[dic
         "networkEndpoints": [dict(item) for item in intelligence.get("networkEndpoints") or [] if isinstance(item, dict)],
         "staticPatternMatches": [dict(item) for item in intelligence.get("staticPatternMatches") or [] if isinstance(item, dict)],
         "sourceFiles": [dict(item) for item in source_intel.get("sourceFiles") or intelligence.get("sourceFiles") or [] if isinstance(item, dict)],
+        "sourceBuildProjects": [dict(item) for item in source_build.get("projects") or [] if isinstance(item, dict)],
+        "sourceBuildEdges": [dict(item) for item in source_build.get("edges") or [] if isinstance(item, dict)],
+        "sourceBuildInputs": [dict(item) for item in source_build.get("inputs") or [] if isinstance(item, dict)],
+        "sourceBuildEnvironment": [dict(item) for item in source_build.get("environment") or [] if isinstance(item, dict)],
+        "sourceDependencyDeclarations": [dict(item) for item in source_build.get("dependencies") or [] if isinstance(item, dict)],
+        "sourceReleaseWorkflows": [dict(item) for item in source_build.get("releaseWorkflows") or [] if isinstance(item, dict)],
         "binaryClassifications": [dict(item) for item in package.get("binaryClassifications") or [] if isinstance(item, dict)],
         "developerProfile": [dict(profile)] if profile else [],
         "sourceAttribution": [dict(attribution)] if attribution else [],
@@ -259,6 +294,14 @@ def report_collection_complete(report_or_row: dict[str, Any], collection_name: s
     intelligence = report.get("dependencyIntelligence") if isinstance(report.get("dependencyIntelligence"), dict) else {}
     if collection_name == "staticPatternMatches":
         return int(intelligence.get("staticPatternMatchContractVersion") or 0) == 1
+    if collection_name in {
+        "sourceBuildProjects", "sourceBuildEdges", "sourceBuildInputs", "sourceBuildEnvironment",
+        "sourceDependencyDeclarations", "sourceReleaseWorkflows",
+    }:
+        source = report.get("source") if isinstance(report.get("source"), dict) else {}
+        source_intel = source.get("dependencyIntelligence") if isinstance(source.get("dependencyIntelligence"), dict) else {}
+        source_build = source_intel.get("sourceBuildIntelligence") if isinstance(source_intel.get("sourceBuildIntelligence"), dict) else {}
+        return int(source_build.get("contractVersion") or 0) == 1
     return False
 
 
@@ -447,21 +490,70 @@ def validation_errors(variant_payload: dict[str, Any], analysis_manifest: dict[s
         if str(observations.get("contractRevision") or "") != contract_revision():
             errors.append("observation contract revision is invalid")
         expected = build_variant_observation_contract(analysis_manifest or {}, report)
-        if str(observations.get("observationDigest") or "") != str(expected.get("observationDigest") or ""):
-            errors.append("observation contract digest is not reproducible")
+        expected_collections = expected.get("collections") if isinstance(expected.get("collections"), dict) else {}
         declared = observations.get("collections") if isinstance(observations.get("collections"), dict) else {}
-        for name, item in declared.items():
-            spec = COLLECTIONS.get(str(name))
-            if spec is None:
-                errors.append(f"observation contract contains unknown collection {name}")
+
+        # Core SigmaScope observations remain reproducible from the retained immutable
+        # analysis/report data.  External collector observations may extend the contract,
+        # but can never replace or mutate one of these core descriptors.
+        for name, expected_item in expected_collections.items():
+            item = declared.get(name)
+            if not isinstance(item, dict):
+                errors.append(f"observation contract is missing core collection {name}")
                 continue
+            for field in ("schema", "collectionSchema", "backingDataset", "records", "recordDigest", "semanticClass", "srlEligible", "completeness"):
+                if item.get(field) != expected_item.get(field):
+                    errors.append(f"observation core collection {name} {field} mismatch")
+
+        for name, item in declared.items():
             if not isinstance(item, dict):
                 errors.append(f"observation collection {name} is malformed")
                 continue
-            if str(item.get("collectionSchema") or "") != str(spec.get("schema") or ""):
-                errors.append(f"observation collection {name} schema mismatch")
-            if bool(item.get("srlEligible")) != bool(spec.get("srlEligible")):
-                errors.append(f"observation collection {name} SRL eligibility mismatch")
+            spec = COLLECTIONS.get(str(name))
+            if spec is not None:
+                if str(item.get("collectionSchema") or "") != str(spec.get("schema") or ""):
+                    errors.append(f"observation collection {name} schema mismatch")
+                if bool(item.get("srlEligible")) != bool(spec.get("srlEligible")):
+                    errors.append(f"observation collection {name} SRL eligibility mismatch")
+                continue
+
+            external_spec = collector_contracts.OBSERVATION_TYPES.get(str(name))
+            if external_spec is None:
+                errors.append(f"observation contract contains unknown collection {name}")
+                continue
+            if str(item.get("schema") or "") != OBSERVATION_COLLECTION_SCHEMA:
+                errors.append(f"external observation collection {name} descriptor schema mismatch")
+            if str(item.get("collectionSchema") or "") != str(external_spec.get("schema") or ""):
+                errors.append(f"external observation collection {name} schema mismatch")
+            if bool(item.get("srlEligible")) != bool(external_spec.get("ruleEligible")):
+                errors.append(f"external observation collection {name} SRL eligibility mismatch")
+            if str(item.get("semanticClass") or "") != str(external_spec.get("semanticClass") or ""):
+                errors.append(f"external observation collection {name} semantic class mismatch")
+            if str(item.get("backingDataset") or "") != "collector-result":
+                errors.append(f"external observation collection {name} must use collector-result backing")
+            if str(item.get("completeness") or "") not in {"retained-snapshot", "partial"}:
+                errors.append(f"external observation collection {name} completeness is invalid")
+            if int(item.get("records") or 0) < 0 or not str(item.get("recordDigest") or ""):
+                errors.append(f"external observation collection {name} record identity is invalid")
+            if not str(item.get("collectorId") or "") or not str(item.get("resultRevision") or "") or not str(item.get("resultPath") or ""):
+                errors.append(f"external observation collection {name} collector-result linkage is incomplete")
+            else:
+                provider = collector_contracts.collector_map().get(str(item.get("collectorId") or ""))
+                if not provider or str(name) not in [str(value) for value in provider.get("provides") or []]:
+                    errors.append(f"external observation collection {name} collector is not a registered provider")
+
+        digest_payload = [
+            {
+                "collection": name,
+                "records": int(item.get("records") or 0),
+                "recordDigest": str(item.get("recordDigest") or ""),
+                "schema": str(item.get("collectionSchema") or ""),
+                "completeness": str(item.get("completeness") or ""),
+            }
+            for name, item in sorted(declared.items()) if isinstance(item, dict)
+        ]
+        if str(observations.get("observationDigest") or "") != f"obs-{_sha(digest_payload)}":
+            errors.append("observation contract digest is not reproducible")
     if projection is not None:
         if str(projection.get("schema") or "") != PROJECTION_CONTRACT_SCHEMA:
             errors.append("projection contract schema is invalid")

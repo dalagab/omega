@@ -324,6 +324,15 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
                     "provenance": {"repository": "https://github.com/example/fixture", "selectedRef": "1.0.0"},
                     "dependencyIntelligence": {
                         "sourceFiles": [{"path": "FixturePlugin/Plugin.cs", "sha256": "b" * 64}],
+                        "sourceBuildIntelligence": {
+                            "schema": "omega.sigmascope.source-build-intelligence.v1", "contractVersion": 1,
+                            "projects": [{"origin": "source", "path": "FixturePlugin/FixturePlugin.csproj", "role": "primary", "sdk": "Dalamud.NET.Sdk/13.0.0", "targetFrameworks": ["net10.0-windows"], "runtimeIdentifiers": [], "packageReferenceCount": 1, "projectReferenceCount": 0, "importCount": 0, "conditionalItemCount": 0}],
+                            "edges": [],
+                            "inputs": [{"origin": "source", "path": "FixturePlugin/FixturePlugin.csproj", "kind": "project", "role": "primary", "sha256": "c" * 64, "bytes": 123}],
+                            "environment": [{"origin": "source", "path": "global.json", "kind": "dotnet-sdk", "sdkVersion": "10.0.100", "rollForward": "latestPatch", "packageSources": []}],
+                            "dependencies": [{"origin": "source", "sourceKind": "msbuild", "path": "FixturePlugin/FixturePlugin.csproj", "projectPath": "FixturePlugin/FixturePlugin.csproj", "kind": "nuget", "name": "DalamudPackager", "versionExpression": "13.0.0", "condition": "", "privateAssets": "all", "includeAssets": "", "excludeAssets": "", "aliases": "", "direct": True, "transitive": False}],
+                            "releaseWorkflows": [{"origin": "source", "path": ".github/workflows/release.yml", "name": "Release", "triggers": ["push"], "jobs": ["build"], "runners": ["ubuntu-latest"], "actions": ["actions/upload-artifact@v4"], "dotnetVerbs": ["publish"], "dotnetTargets": ["FixturePlugin/FixturePlugin.csproj"], "uploadsArtifacts": True, "downloadsArtifacts": False, "publishesRelease": False, "truncated": False, "sha256": "d" * 64, "bytes": 100, "identityMatched": True}],
+                        },
                     },
                 },
                 "secondarySecurity": {"schema": "omega.sigmascope.secondary-security.v3", "engines": []},
@@ -343,7 +352,9 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             manifest = json.loads((output / variant["analysis"]["path"] / "manifest.json").read_text(encoding="utf-8"))
             datasets = manifest["datasets"]
             for name in (
-                "nativeImports", "networkEndpoints", "staticPatternMatches", "sourceFiles", "binaryClassifications",
+                "nativeImports", "networkEndpoints", "staticPatternMatches", "sourceFiles",
+                "sourceBuildProjects", "sourceBuildEdges", "sourceBuildInputs", "sourceBuildEnvironment",
+                "sourceDependencyDeclarations", "sourceReleaseWorkflows", "binaryClassifications",
                 "developerProfile", "sourceAttribution", "sourceProvenance", "secondarySecurity",
                 "artifactIdentity", "manifestObservation",
             ):

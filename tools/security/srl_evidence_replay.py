@@ -14,8 +14,9 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 try:
-    from . import definition_packs, observation_projection, security_evidence_v2, srl, srl_migration_parity
+    from . import collector_results, definition_packs, observation_projection, security_evidence_v2, srl, srl_migration_parity
 except ImportError:  # direct script/import from tools/security
+    import collector_results  # type: ignore
     import definition_packs  # type: ignore
     import observation_projection  # type: ignore
     import security_evidence_v2  # type: ignore
@@ -66,17 +67,27 @@ def _load_observations(
     evidence_root: Path,
     analysis_path: str,
     required: Iterable[str],
+    *,
+    variant_payload: Mapping[str, Any] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     manifest = security_evidence_v2.read_json_file(evidence_root, f"{security_evidence_v2.safe_relpath(analysis_path)}/manifest.json")
     datasets = manifest.get("datasets") if isinstance(manifest.get("datasets"), dict) else {}
     observations: dict[str, list[dict[str, Any]]] = {}
+    variant_contract = (variant_payload or {}).get("observations") if isinstance((variant_payload or {}).get("observations"), Mapping) else {}
+    variant_collections = variant_contract.get("collections") if isinstance(variant_contract.get("collections"), Mapping) else {}
     for collection in required:
         spec = observation_projection.COLLECTIONS.get(collection) or {}
-        dataset = str(spec.get("backingDataset") or collection)
-        descriptor = datasets.get(dataset) if isinstance(datasets.get(dataset), dict) else None
-        if descriptor is None:
-            continue
-        observations[collection] = security_evidence_v2.read_dataset_rows(evidence_root, analysis_path, dataset)
+        if spec:
+            dataset = str(spec.get("backingDataset") or collection)
+            descriptor = datasets.get(dataset) if isinstance(datasets.get(dataset), dict) else None
+            if descriptor is not None:
+                observations[collection] = security_evidence_v2.read_dataset_rows(evidence_root, analysis_path, dataset)
+                continue
+        external = variant_collections.get(collection) if isinstance(variant_collections.get(collection), Mapping) else None
+        result_path = str((external or {}).get("resultPath") or "")
+        if result_path:
+            result = security_evidence_v2.read_json_file(evidence_root, security_evidence_v2.safe_relpath(result_path))
+            observations[collection] = collector_results.rows_from_result(result, collection)  # type: ignore[assignment]
     return observations
 
 
@@ -105,7 +116,7 @@ def replay_variant(
 
     required = _required_collections(compiled_ruleset)
     try:
-        observations = _load_observations(evidence_root, analysis_path, required)
+        observations = _load_observations(evidence_root, analysis_path, required, variant_payload=payload)
         contract = payload.get("observations") if isinstance(payload.get("observations"), Mapping) else {}
         evaluation = srl.evaluate_ruleset(compiled_ruleset, observations, observation_contract=contract)
     except Exception as exc:

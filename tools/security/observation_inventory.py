@@ -22,6 +22,7 @@ from typing import Any, Iterable, Mapping
 
 import analysis_broker
 import collector_contracts
+import collector_results
 import security_evidence_v2
 
 SCHEMA = analysis_broker.INVENTORY_SCHEMA
@@ -124,6 +125,11 @@ def _static_evidence_records(evidence_root: Path) -> list[dict[str, Any]]:
         for observation, descriptor in sorted(collections.items()):
             if not isinstance(descriptor, Mapping):
                 continue
+            # Generic collector results have their own exact-subject inventory path below.
+            # Treating them as core static collections here would incorrectly manufacture
+            # variant-only/artifact aliases for observations that are artifact-bound.
+            if str(descriptor.get("backingDataset") or "") == "collector-result":
+                continue
             if str(descriptor.get("completeness") or "") not in {"retained", "retained-snapshot"}:
                 continue
             collector_id = _active_provider(str(observation), component_id="omega.sigmascope")
@@ -184,6 +190,52 @@ def _retained_bundle_records(evidence_root: Path) -> list[dict[str, Any]]:
     return records
 
 
+
+
+def _generic_collector_result_records(evidence_root: Path) -> list[dict[str, Any]]:
+    """Index latest generic collector results retained in Evidence-v2 variants."""
+    records: list[dict[str, Any]] = []
+    cmap = collector_contracts.collector_map()
+    for entry, payload in security_evidence_v2.iter_variant_entries(evidence_root):
+        latest = payload.get("collectorResults") if isinstance(payload.get("collectorResults"), Mapping) else {}
+        if not latest:
+            continue
+        variant_id = int(payload.get("variantId") or 0)
+        current = payload.get("current") if isinstance(payload.get("current"), Mapping) else {}
+        analysis = payload.get("analysis") if isinstance(payload.get("analysis"), Mapping) else {}
+        artifact_sha = str(analysis.get("artifactSha256") or current.get("artifact_sha256") or "").strip().lower()
+        if variant_id <= 0 or len(artifact_sha) != 64:
+            continue
+        subject = {"type": "variant", "variantId": variant_id, "artifactSha256": artifact_sha}
+        for observation, metadata in sorted(latest.items()):
+            if not isinstance(metadata, Mapping):
+                continue
+            result_rel = str(metadata.get("resultPath") or "")
+            if not result_rel:
+                continue
+            try:
+                result = collector_results.validate_result(security_evidence_v2.read_json_file(evidence_root, result_rel))
+            except Exception:
+                continue
+            descriptor = (result.get("collections") or {}).get(observation) if isinstance(result.get("collections"), Mapping) else {}
+            if not isinstance(descriptor, Mapping):
+                continue
+            collector_id = str((result.get("collector") or {}).get("id") or "") if isinstance(result.get("collector"), Mapping) else ""
+            component_id = str((cmap.get(collector_id) or {}).get("componentId") or "")
+            if not collector_id or not component_id:
+                continue
+            records.append(_record(
+                observation=str(observation),
+                subject=subject,
+                observed_at=str(result.get("generatedAtUtc") or ""),
+                collector_id=collector_id,
+                component_id=component_id,
+                reference=result_rel + f"#collections/{observation}",
+                record_digest=str(descriptor.get("recordDigest") or "") or _sha(descriptor.get("rows") or []),
+            ))
+    return records
+
+
 def _discovery_records(discovery_root: Path | None) -> list[dict[str, Any]]:
     if discovery_root is None:
         return []
@@ -226,6 +278,7 @@ def build_inventory(evidence_root: Path | None, *, discovery_root: Path | None =
         root = evidence_root.resolve()
         records.extend(_static_evidence_records(root))
         records.extend(_retained_bundle_records(root))
+        records.extend(_generic_collector_result_records(root))
     records.extend(_discovery_records(discovery_root))
     # Stable dedupe lets multiple aliases/providers coexist while repeated builders remain byte-stable.
     unique: dict[tuple[str, str, str, str, str], dict[str, Any]] = {}

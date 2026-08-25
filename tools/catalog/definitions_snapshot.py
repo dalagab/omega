@@ -53,7 +53,12 @@ FORMAT_VERSION = 1
 WORKER_BUNDLE_SCHEMA = "omega.sigmascope.worker-bundle.v1"
 WORKER_BUNDLE_PATH = "worker"
 WORKER_BUNDLE_DIRS = ("tools/catalog", "tools/security")
-WORKER_BUNDLE_EXTRA_FILES = ("sources/source-overrides.json", "security-definitions/capabilities/registry.json", "tools/requirements-security.txt")
+WORKER_BUNDLE_EXTRA_FILES = (
+    "sources/source-overrides.json",
+    "security-definitions/capabilities/registry.json",
+    "tools/requirements-security.txt",
+    "tools/security/authenticode_probe.ps1",
+)
 
 SECONDARY_SECURITY_SCHEMA = "omega.secondary-security-definitions.v2"
 SECONDARY_SECURITY_PATH = "secondary-security"
@@ -83,6 +88,7 @@ RULE_SET_FILES = (
     "tools/catalog/source_resolution.py",
     "tools/catalog/public_git_source.py",
     "tools/catalog/source_stability.py",
+    "tools/catalog/source_build_intelligence.py",
     "tools/catalog/plugin_profile.py",
     "tools/catalog/capability_registry.py",
     "security-definitions/capabilities/registry.json",
@@ -1213,6 +1219,8 @@ def main() -> int:
     build.add_argument("--max-packages", type=int, default=2000)
     verify = sub.add_parser("verify")
     verify.add_argument("--definitions-root", type=Path, required=True)
+    verify_worker = sub.add_parser("verify-worker")
+    verify_worker.add_argument("--definitions-root", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "build":
         result = build_snapshot(
@@ -1229,9 +1237,24 @@ def main() -> int:
             timeout=args.timeout,
             max_packages=args.max_packages,
         )
-    else:
+    elif args.command == "verify":
         result = verify_snapshot(definitions_root=args.definitions_root)
         if not result.get("ok"):
+            print(json.dumps(result, indent=2))
+            return 1
+    else:
+        definitions_root = args.definitions_root.resolve()
+        index = json.loads((definitions_root / "index.json").read_text(encoding="utf-8"))
+        descriptor = index.get("scannerBundle") if isinstance(index.get("scannerBundle"), dict) else {}
+        errors = verify_worker_bundle(definitions_root, descriptor)
+        result = {
+            "schema": "omega.sigmascope.worker-bundle-validation.v1",
+            "ok": not errors,
+            "scannerRevision": str(descriptor.get("scannerRevision") or ""),
+            "scannerBundleSha256": str(descriptor.get("sha256") or ""),
+            "errors": errors,
+        }
+        if errors:
             print(json.dumps(result, indent=2))
             return 1
     print(json.dumps(result, indent=2, ensure_ascii=False))

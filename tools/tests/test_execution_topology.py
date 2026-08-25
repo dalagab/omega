@@ -30,6 +30,11 @@ class ExecutionTopologyTests(unittest.TestCase):
         self.assertEqual("catalog-discovery.yml", nodes["source-discovery"]["workflow"])
         self.assertEqual("omega.sigmascope", nodes["sigmascope-batch"]["componentId"])
         self.assertEqual("sigmascope.yml", nodes["sigmascope-batch"]["workflow"])
+        self.assertEqual("omega.sigmascope", nodes["sigmascope-authenticode"]["componentId"])
+        self.assertEqual(["binarySignatureTrust"], nodes["sigmascope-authenticode"]["provides"])
+        self.assertIn("Windows", nodes["sigmascope-authenticode"]["title"])
+        self.assertEqual(["elfBinaryStructure", "machOBinaryStructure"], nodes["sigmascope-native-structure"]["provides"])
+        self.assertIn("ELF", nodes["sigmascope-native-structure"]["title"])
 
 
 if __name__ == "__main__":

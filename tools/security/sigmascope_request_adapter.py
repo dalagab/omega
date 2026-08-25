@@ -37,9 +37,12 @@ MAX_REQUEST_LINKS_PER_QUEUE_ITEM = 16
 _ARTIFACT_COLLECTORS = {
     "omega.collector.sigmascope.artifact-static",
     "omega.collector.sigmascope.secondary-security",
-    "omega.collector.sigmascope.authenticode",
 }
 _SOURCE_COLLECTORS = {"omega.collector.sigmascope.source-analysis"}
+_SPECIAL_COLLECTORS = {
+    "omega.collector.sigmascope.authenticode": "authenticode",
+    "omega.collector.sigmascope.native-structure": "native-structure",
+}
 
 
 def _json(path: Path) -> dict[str, Any]:
@@ -68,6 +71,8 @@ def _provider_contract(observation: str) -> tuple[str, list[str]]:
             work_types.add("artifact")
         elif collector_id in _SOURCE_COLLECTORS:
             work_types.add("source")
+        elif collector_id in _SPECIAL_COLLECTORS:
+            work_types.add(_SPECIAL_COLLECTORS[collector_id])
         else:
             raise ValueError(f"SigmaScope provider has no request-adapter work mapping: {collector_id}")
     if len(work_types) != 1:
@@ -188,6 +193,8 @@ def enqueue_request(
 ) -> dict[str, Any]:
     request = compile_sigmascope_request(request_value)
     work_type = str(request["sigmascopeWorkType"])
+    if work_type not in {"artifact", "source"}:
+        raise ValueError(f"SigmaScope work type {work_type!r} is handled by a dedicated collector lane, not the canonical scan queue")
     variant, current = _resolve_variant(db, request)
     generated_at = scan_queue.utc_now()
     if work_type == "source":

@@ -124,7 +124,7 @@ COMPONENTS: tuple[dict[str, Any], ...] = (
         },
         "authority": {"observations": True, "securityFindings": False, "catalogIdentity": False, "dispatch": False},
         "boundary": {"network": "bounded-artifact-source-acquisition", "hostileCodeExecution": False, "writesEvidence": True},
-        "purpose": "Perform bounded non-executing artifact/source/security analysis and publish retained evidence candidates. Generic broker requests are merged into the canonical scan queue; Evidence-v2 publication remains serialized.",
+        "purpose": "Perform bounded non-executing artifact/source/security analysis and registered specialist collection. Core requests use the canonical scan queue while typed specialist observations may route to bounded sibling lanes; Evidence-v2 publication remains serialized.",
     },
     {
         "id": "omega.rift",

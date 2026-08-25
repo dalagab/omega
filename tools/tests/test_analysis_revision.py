@@ -43,6 +43,19 @@ class AnalysisRevisionTests(unittest.TestCase):
             self.assertEqual(first["artifactAnalysisRevision"], second["artifactAnalysisRevision"])
             self.assertNotEqual(first["sourceAnalysisRevision"], second["sourceAnalysisRevision"])
 
+    def test_source_build_intelligence_change_changes_only_source_revision(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-analysis-revision-source-build-") as td:
+            repo = self.copy_analysis_tree(Path(td))
+            first = analysis_revision.compute(repo)
+            helper = repo / "tools/catalog/source_build_intelligence.py"
+            helper.write_text(
+                helper.read_text(encoding="utf-8") + "\nOMEGA_SOURCE_BUILD_REVISION_TEST_FIXTURE = 1\n",
+                encoding="utf-8",
+            )
+            second = analysis_revision.compute(repo)
+            self.assertEqual(first["artifactAnalysisRevision"], second["artifactAnalysisRevision"])
+            self.assertNotEqual(first["sourceAnalysisRevision"], second["sourceAnalysisRevision"])
+
     def test_artifact_support_change_changes_artifact_revision(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-analysis-revision-artifact-") as td:
             repo = self.copy_analysis_tree(Path(td))

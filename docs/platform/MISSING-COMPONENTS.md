@@ -71,35 +71,46 @@ Remaining implementation/launch work is owned by the separate Rift workstream. S
 
 ### 4. Authenticode trust validation
 
-**Status:** planned collector. Current PE analysis records certificate-table presence only and does not verify Authenticode trust.
+**Status:** implemented first-class collector lane.
 
 **Collector:** `omega.collector.sigmascope.authenticode`.
 
-**Must provide:** `binarySignatureTrust`.
+**Provides:** `binarySignatureTrust`.
 
-Required work:
+Implemented:
 
-- verify the PE signed digest against file contents;
-- parse signer/countersigner/timestamp information;
-- validate the certificate path under a frozen/explicit trust policy;
-- separate deterministic offline signature/chain evidence from live CRL/OCSP state;
-- retain signer identity, chain, algorithms, timestamp and verification outcome in Evidence-v2;
-- add Stigma-1 rules only after the primitive observation is retained and replayable.
+- exact variant + artifact-SHA broker binding;
+- bounded/safe artifact ZIP inspection without plugin execution;
+- Windows-native `Get-AuthenticodeSignature` / WinVerifyTrust status collection;
+- signer and timestamp certificate identity/algorithm fields;
+- content-addressed generic collector results;
+- generic Evidence-v2 retention plus independent collector-only mutation audit;
+- exact-subject, seven-day TTL observation-inventory reuse and SRL replay;
+- neutral native-PE coverage policy that requests signature observations without making a finding;
+- dedicated Windows workflow lane and Windows regression smoke coverage.
 
-Live revocation lookups belong to Threat Intelligence rather than changing a static SigmaScope scan according to network state.
+Remaining refinement:
+
+- if deterministic frozen-root chain replay is required in addition to Windows platform trust, add it as a separate validation profile rather than overwriting the retained platform observation;
+- live CRL/OCSP/revocation intelligence belongs to the standalone Threat Intelligence component.
 
 ### 5. ELF and Mach-O analysis parity
 
-**Status:** partial. SigmaScope recognizes ELF/Mach-O containers but PE currently has substantially deeper loader/import/security metadata.
+**Status:** first specialist parity pass implemented. The shallow artifact classifier still identifies ELF/Mach-O cheaply; brokered `elfBinaryStructure` and `machOBinaryStructure` collectors now retain deeper structure through the generic collector-result/Evidence-v2 path.
 
-**Owner:** existing SigmaScope static binary collector.
+**Owner:** SigmaScope native-structure collector.
 
-Required work includes bounded extraction/normalization of:
+Implemented:
 
-- ELF `DT_NEEDED`, dynamic symbols, relocations where useful, RPATH/RUNPATH, interpreter, sections/segments and NX/PIE/RELRO-style security properties;
-- Mach-O dylib/load commands, symbols, rpaths, segments/sections, hardened-runtime/code-signing metadata where statically available;
-- normalized `nativeImports`/binary-security observations so Stigma-1 rules do not need format-specific implementations unless the semantic difference matters;
-- pathological-input and record-count bounds equivalent to PE parsing.
+- ELF `DT_NEEDED`, bounded dynamic symbols, RPATH/RUNPATH, interpreter, program/section counts and PIE/RELRO/bind-now/executable-stack/writable+executable segment state;
+- Mach-O dylib/load commands, rpaths, architecture/fat slices, entry/build metadata, encryption flag, code-signature presence and initial segment protections;
+- exact artifact binding, bounded ZIP/native-member parsing, generic Evidence-v2 retention and automatic native-format coverage requests.
+
+Remaining refinement:
+
+- ELF relocations/versioned-symbol details where they improve evidence quality;
+- Mach-O symbol/export trie, entitlements and hardened-runtime/code-signing metadata beyond signature presence;
+- normalized cross-format native dependency/security observations where SRL benefits from one semantic vocabulary rather than format-specific collections.
 
 Do **not** split PE, ELF, Mach-O, YARA or ClamAV into separate platform components merely because they are separate analysis engines; they share SigmaScope's non-executing static-analysis trust boundary.
 
@@ -171,7 +182,11 @@ Required work:
 
 ### 11. Generic component result/settlement evidence
 
-**Status:** component-specific verification exists; common result envelope is incomplete.
+**Status:** first generic collector result envelope implemented; dispatcher/component-wide settlement unification remains incomplete.
+
+`omega.collector-result.v1` now provides exact request/work/subject binding, collector + observation contract revisions, bounded typed collection digests, terminal collector outcome/errors, and content-addressed result identity. Authenticode is the first production consumer and Evidence-v2 adapter path.
+
+Remaining component-wide work:
 
 Each component ultimately needs a standard result summary for the broker/dispatcher, such as:
 
@@ -231,21 +246,6 @@ Rules:
 
 For the closed-loop broker specifically, freeze the updated worker into Definitions before enabling the v4 main dispatcher route. The v4 runner performs `reconcile -> reserve -> asynchronous launch`.
 
-## DeltaScope observability work
-
-### 15. Full component/request/execution graph
-
-**Status:** collector/rule/broker operational views exist, but the complete graph is not yet rendered as one navigable execution trace.
-
-Remaining work:
-
-- component inventory/status view driven by the Component Registry;
-- per-component health/version/last-run/pending-work view;
-- request → broker resolution → lease → component workflow → observation → Stigma-1 rule → finding lineage graph;
-- blocked/prerequisite/retry/expired states;
-- exact selected plugin/variant execution graph;
-- strict read-only behavior: DeltaScope remains a workbench, never production dispatch authority.
-
 ## What is *not* missing as a separate component
 
 The following should remain collectors/engines inside SigmaScope unless their trust/execution boundary changes materially:
@@ -264,15 +264,14 @@ A new component is justified by a distinct execution/trust/lifecycle boundary, n
 
 ## Recommended implementation order from the SigmaScope workstream
 
-The observation-inventory and production Stigma→Broker bridge are now complete. The remaining recommended order is:
+The observation inventory, Stigma→Broker bridge, Authenticode lane, first ELF/Mach-O structural parity pass, and first richer source/build/dependency observation pass are now complete. The remaining recommended order is:
 
-1. **Parallel SigmaScope execution / serialized Evidence-v2 merge.** Unlock useful worker-pool parallelism safely.
-2. **Authenticode `binarySignatureTrust`.** Complete an already registered SigmaScope observation contract.
-3. **ELF/Mach-O parity.** Bring native analysis to a consistent static-analysis level.
-4. **Prerequisite chaining and unresolved-request reconciliation.** Make compound SRL dependencies self-driving and wake planned-provider work when registries change.
-5. **Generic component result/settlement envelope.** Standardize postcondition evidence without flattening component reports.
-6. **Deep Scan migration to the generic broker.** Remove the remaining special orchestration island.
+1. **Standalone Threat Intelligence.** Move changing DNS/reputation/connectivity facts out of the daily builder into TTL-backed collector observations so intelligence refresh never forces artifact rescans.
+2. **Parallel SigmaScope execution / serialized Evidence-v2 merge.** Unlock useful worker-pool parallelism without concurrent evidence writers.
+3. **Prerequisite chaining and unresolved-request reconciliation.** Make compound SRL dependencies self-driving and wake planned-provider work when registries change.
+4. **Finish generic component settlement.** Extend the collector-result pattern through dispatcher settlement and non-SigmaScope providers without flattening domain evidence.
+5. **Deep Scan migration to the generic broker.** Remove the remaining special orchestration island.
+6. **Build Provenance/Rebuilder.** Add exact source-to-distributed-artifact build proof once prerequisite and settlement semantics are mature.
 7. **Evidence-v2 compaction**, only after reviewing real storage-audit results.
-8. **DeltaScope full component/request/execution graph.** Render the closed loop and blocked/reused work as an explainable graph.
 
-Separate workstreams can independently implement Rift, Build Provenance/Rebuilder and the standalone Threat Intelligence component against these contracts.
+Rift remains a separate implementation workstream and consumes/publishes only through the shared contracts. DeltaScope is not part of this producer roadmap; it only consumes published data.

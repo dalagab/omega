@@ -30,7 +30,7 @@ class AnalysisBrokerTests(unittest.TestCase):
         self.assertEqual("main-control-plane-only", resolved["executionAuthority"])
         self.assertFalse(resolved["brokerExecutesComponents"])
 
-    def test_planned_authenticode_contract_is_visible_but_not_dispatchable(self) -> None:
+    def test_authenticode_contract_is_active_and_dispatchable(self) -> None:
         request = {
             "observation": "binarySignatureTrust",
             "subject": {"type": "artifact", "artifactSha256": "a" * 64},
@@ -38,11 +38,13 @@ class AnalysisBrokerTests(unittest.TestCase):
             "requestedAtUtc": "2026-08-24T20:00:00Z",
         }
         resolved = analysis_broker.resolve_request(request)
-        self.assertFalse(resolved["satisfiable"])
-        self.assertFalse(resolved["dispatchable"])
+        self.assertTrue(resolved["satisfiable"])
+        self.assertTrue(resolved["dispatchable"])
         self.assertEqual("omega.collector.sigmascope.authenticode", resolved["providerCandidates"][0]["collectorId"])
-        self.assertEqual("planned", resolved["providerCandidates"][0]["collectorStatus"])
-        self.assertEqual("immutable-with-artifact", resolved["request"]["freshness"]["model"])
+        self.assertEqual("active", resolved["providerCandidates"][0]["collectorStatus"])
+        self.assertEqual("omega.sigmascope", resolved["dispatchPlan"][0]["componentId"])
+        self.assertEqual("ttl", resolved["request"]["freshness"]["model"])
+        self.assertEqual(604800, resolved["request"]["freshness"]["ttlSeconds"])
 
     def test_external_rift_provider_can_be_satisfiable_without_being_dispatchable_here(self) -> None:
         request = {

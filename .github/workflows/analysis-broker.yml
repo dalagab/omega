@@ -129,6 +129,18 @@ jobs:
               > catalog/stigma-broker-bridge-report.json
           fi
 
+      - name: Reconcile neutral collector coverage goals
+        if: inputs.reconcile_stigma == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/collector_coverage.py \
+            --state catalog/analysis-broker-next/index.json \
+            --evidence-root catalog/security-v2-current \
+            --inventory catalog/observation-inventory.json \
+            --report catalog/collector-coverage-report.json
+          cat catalog/collector-coverage-report.json
+
       - name: Summarize broker state and detect mutation
         id: state
         shell: bash
@@ -160,6 +172,7 @@ jobs:
             catalog/observation-inventory.json
             catalog/analysis-broker-resolution.json
             catalog/stigma-broker-bridge-report.json
+            catalog/collector-coverage-report.json
             catalog/analysis-broker-summary.json
             catalog/analysis-broker-next/index.json
           if-no-files-found: warn

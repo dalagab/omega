@@ -158,13 +158,36 @@ class SigmaScopeRequestAdapterTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "does not match"):
                     adapter.enqueue_request(self.state(), db, bad, work_item_id="work-bad")
 
-    def test_planned_authenticode_provider_is_not_dispatchable_through_adapter_yet(self) -> None:
-        with self.assertRaisesRegex(ValueError, "no active SigmaScope provider"):
-            adapter.compile_sigmascope_request({
-                "observation": "binarySignatureTrust",
-                "subject": {"type": "variant", "variantId": 1},
-                "reason": "Need signature trust",
-            })
+    def test_authenticode_provider_routes_to_dedicated_lane_not_scan_queue(self) -> None:
+        request = adapter.compile_sigmascope_request({
+            "observation": "binarySignatureTrust",
+            "subject": {"type": "variant", "variantId": 1, "artifactSha256": "a" * 64},
+            "reason": "Need signature trust",
+        })
+        self.assertEqual("authenticode", request["sigmascopeWorkType"])
+        self.assertEqual(["omega.collector.sigmascope.authenticode"], request["sigmascopeProviders"])
+        with tempfile.TemporaryDirectory(prefix="omega-sigma-auth-lane-") as td:
+            root = Path(td)
+            database, _variant_id, _plugin_id, _artifact = self.make_database(root)
+            with closing(sqlite3.connect(database)) as db:
+                db.row_factory = sqlite3.Row
+                with self.assertRaisesRegex(ValueError, "dedicated collector lane"):
+                    adapter.enqueue_request(self.state(), db, {
+                        "observation": "binarySignatureTrust",
+                        "subject": {"type": "variant", "variantId": 1, "artifactSha256": "a" * 64},
+                        "reason": "Need signature trust",
+                    }, work_item_id="work-auth")
+
+    def test_native_structure_provider_routes_to_dedicated_lane_not_scan_queue(self) -> None:
+        for observation in ("elfBinaryStructure", "machOBinaryStructure"):
+            with self.subTest(observation=observation):
+                request = adapter.compile_sigmascope_request({
+                    "observation": observation,
+                    "subject": {"type": "variant", "variantId": 1, "artifactSha256": "a" * 64},
+                    "reason": "Need native structure",
+                })
+                self.assertEqual("native-structure", request["sigmascopeWorkType"])
+                self.assertEqual(["omega.collector.sigmascope.native-structure"], request["sigmascopeProviders"])
 
     def test_verification_requires_requested_collection_in_candidate_evidence(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-sigma-verify-") as td:
