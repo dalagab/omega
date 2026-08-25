@@ -161,9 +161,17 @@ def build(
     bundle, bundle_sha = project_marketplace_catalog.write_marketplace_bundle(marketplace_db, output)
     with closing(sqlite3.connect(marketplace_db)) as db:
         db.row_factory = sqlite3.Row
-        logical_plugins = int(db.execute("SELECT COUNT(*) FROM plugins WHERE active=1").fetchone()[0])
+        # The downloadable marketplace database intentionally keeps `plugins` minimal and does not
+        # duplicate server-only lifecycle state such as plugins.active. `runtime_plugin_variants` is
+        # the canonical physical projection of currently installable variants, already filtered by
+        # active plugin + active variant before the client allow-list is materialized. Derive public
+        # descriptor counts from that runtime surface rather than assuming a denormalized column that
+        # is deliberately absent from the client schema.
+        logical_plugins = int(db.execute(
+            "SELECT COUNT(DISTINCT plugin_id) FROM runtime_plugin_variants"
+        ).fetchone()[0])
         active_variants = int(db.execute(
-            "SELECT COUNT(*) FROM plugin_variants v JOIN plugins p ON p.plugin_id=v.plugin_id WHERE v.active=1 AND p.active=1"
+            "SELECT COUNT(*) FROM runtime_plugin_variants"
         ).fetchone()[0])
         sources = int(db.execute("SELECT COUNT(*) FROM sources").fetchone()[0])
         meta_rows = {str(row[0]): str(row[1]) for row in db.execute("SELECT key,value FROM catalog_meta")}

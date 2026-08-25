@@ -491,6 +491,13 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             descriptor = json.loads((output / "catalog.json").read_text(encoding="utf-8"))
             self.assertEqual(2, descriptor["schemaVersion"])
             self.assertEqual("omega.catalog.marketplace.v2", descriptor["schema"])
+            with closing(sqlite3.connect(output / "omega-marketplace.sqlite")) as count_db:
+                plugin_columns = {str(row[1]) for row in count_db.execute("PRAGMA table_info(plugins)")}
+                self.assertNotIn("active", plugin_columns, "client plugins table must stay reduced; counts cannot depend on plugins.active")
+                expected_plugins = int(count_db.execute("SELECT COUNT(DISTINCT plugin_id) FROM runtime_plugin_variants").fetchone()[0])
+                expected_variants = int(count_db.execute("SELECT COUNT(*) FROM runtime_plugin_variants").fetchone()[0])
+            self.assertEqual(expected_plugins, descriptor["pluginCount"])
+            self.assertEqual(expected_variants, descriptor["variantCount"])
             self.assertTrue(descriptor["catalogRevision"].startswith("cat-v2-"))
             self.assertTrue(descriptor["catalogJsonRevision"].startswith("cat-json-v1-"))
             self.assertEqual(descriptor["catalogRevision"].removeprefix("cat-v2-"),
@@ -544,10 +551,17 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             descriptor = json.loads((output / "catalog.json").read_text(encoding="utf-8"))
             self.assertFalse(descriptor["evidenceCompatible"])
             self.assertEqual("", descriptor["evidenceRevision"])
+            with closing(sqlite3.connect(output / "omega-marketplace.sqlite")) as count_db:
+                expected_plugins = int(count_db.execute("SELECT COUNT(DISTINCT plugin_id) FROM runtime_plugin_variants").fetchone()[0])
+                expected_variants = int(count_db.execute("SELECT COUNT(*) FROM runtime_plugin_variants").fetchone()[0])
+            self.assertEqual(expected_plugins, descriptor["pluginCount"])
+            self.assertEqual(expected_variants, descriptor["variantCount"])
             self.assertEqual(0, result["materializedEvidence"]["currentVariantsMaterialized"])
             self.assertFalse(result["materializedEvidence"]["evidenceInherited"])
             with closing(sqlite3.connect(output / "omega-marketplace.sqlite")) as db:
-                self.assertEqual(0, db.execute("SELECT COUNT(*) FROM marketplace_security_current").fetchone()[0])
+                client_tables = {str(row[0]) for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                self.assertNotIn("marketplace_security_current", client_tables, "server-only security working tables must not leak into the fresh client projection")
+                self.assertGreater(int(db.execute("SELECT COUNT(*) FROM runtime_plugin_variants").fetchone()[0]), 0)
                 meta = {str(k): str(v) for k, v in db.execute("SELECT key,value FROM catalog_meta")}
             self.assertEqual(catalog_json_store.IDENTITY_EPOCH, meta["catalog_identity_epoch"])
             self.assertEqual("0", meta["evidence_compatible"])
