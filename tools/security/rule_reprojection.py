@@ -191,6 +191,11 @@ def reproject_variant(
     reputation: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     variant_id = int(payload.get("variantId") or entry.get("variantId") or 0)
+    current = payload.get("current") if isinstance(payload.get("current"), Mapping) else {}
+    plugin_id = int(payload.get("pluginId") or current.get("plugin_id") or 0)
+    artifact_sha256 = str(current.get("artifact_sha256") or "").strip().lower()
+    assembly_version = str(current.get("assembly_version") or "")
+    artifact_channel = str(current.get("artifact_channel") or "")
     analysis = payload.get("analysis") if isinstance(payload.get("analysis"), Mapping) else {}
     analysis_id = str(analysis.get("analysisId") or entry.get("analysisId") or "")
     analysis_path = str(analysis.get("path") or "")
@@ -273,6 +278,17 @@ def reproject_variant(
         request["ruleSetRevision"] = rule_set_revision
         request["queueMutationScope"] = "deep-scan-evidence-acquisition"
     analysis_requests.sort(key=lambda item: (str(item.get("ruleId") or ""), str(item.get("profile") or "")))
+    observation_requests = [dict(item) for item in evaluation.get("observationRequests") or [] if isinstance(item, Mapping)]
+    for request in observation_requests:
+        request["variantId"] = variant_id
+        request["pluginId"] = plugin_id
+        request["artifactSha256"] = artifact_sha256
+        request["assemblyVersion"] = assembly_version
+        request["artifactChannel"] = artifact_channel
+        request["analysisId"] = analysis_id
+        request["ruleSetRevision"] = rule_set_revision
+        request["queueMutationScope"] = "analysis-broker-observation-acquisition"
+    observation_requests.sort(key=lambda item: (str(item.get("ruleId") or ""), str(item.get("collection") or ""), int(item.get("variantId") or 0)))
     findings.sort(key=lambda item: (str(item.get("ruleId") or ""), str(item.get("findingId") or "")))
     facts = sorted({str(item) for item in evaluation.get("facts") or [] if str(item)})
     matched_rules = sorted({
@@ -280,7 +296,7 @@ def reproject_variant(
         for item in evaluation.get("rules") or []
         if isinstance(item, Mapping) and bool(item.get("matched")) and str(item.get("ruleId") or "")
     })
-    semantic_outputs = {"facts": facts, "findings": findings, "matchedRuleIds": matched_rules, "analysisRequests": analysis_requests}
+    semantic_outputs = {"facts": facts, "findings": findings, "matchedRuleIds": matched_rules, "analysisRequests": analysis_requests, "observationRequests": observation_requests}
     projection = {
         "schema": PROJECTION_SCHEMA,
         "engineRevision": ENGINE_REVISION,
@@ -297,6 +313,7 @@ def reproject_variant(
         "facts": facts,
         "findings": findings,
         "analysisRequests": analysis_requests,
+        "observationRequests": observation_requests,
         "matchedRuleIds": matched_rules,
         "productionWriteBack": False,
     }
@@ -328,6 +345,7 @@ def plan_reprojection(
     projections: list[dict[str, Any]] = []
     requests: list[dict[str, Any]] = []
     deep_requests: list[dict[str, Any]] = []
+    observation_requests: list[dict[str, Any]] = []
     max_count = min(MAX_VARIANTS, max(0, int(limit))) if limit else MAX_VARIANTS
     for entry, payload in security_evidence_v2.iter_variant_entries(evidence_root):
         variant_id = int(payload.get("variantId") or entry.get("variantId") or 0)
@@ -341,6 +359,7 @@ def plan_reprojection(
             requests.append(dict(result["reanalysisRequest"]))
         projection = result.get("projection") if isinstance(result.get("projection"), Mapping) else {}
         deep_requests.extend(dict(item) for item in projection.get("analysisRequests") or [] if isinstance(item, Mapping))
+        observation_requests.extend(dict(item) for item in projection.get("observationRequests") or [] if isinstance(item, Mapping))
         if len(results) >= max_count:
             break
     projected = len(projections)
@@ -358,6 +377,7 @@ def plan_reprojection(
         "projectionRevisions": sorted(str(item.get("projectionRevision") or "") for item in projections),
         "reanalysisRequests": requests,
         "analysisRequests": deep_requests,
+        "observationRequests": observation_requests,
     }
     set_revision = f"srl-projection-set-v1-{_sha(semantic)[:24]}"
     return {
@@ -374,6 +394,7 @@ def plan_reprojection(
         "productionWriteBack": False,
         "queueMutationAuthorized": False,
         "deepScanQueueMutationAuthorized": True,
+        "observationRequestBrokerMutationAuthorized": True,
         "checkedVariants": len(results),
         "reprojectedVariants": projected,
         "reanalysisRequiredVariants": reanalysis,
@@ -384,6 +405,7 @@ def plan_reprojection(
         "projections": projections,
         "reanalysisRequests": requests,
         "analysisRequests": deep_requests,
+        "observationRequests": observation_requests,
     }
 
 
@@ -443,6 +465,20 @@ def materialize_projection_set(output: Path, plan: Mapping[str, Any]) -> dict[st
             "sha256": _sha_file(staging / "analysis-requests.json"),
             "records": len(deep_requests),
         }
+        observation_requests = [dict(item) for item in plan.get("observationRequests") or [] if isinstance(item, Mapping)]
+        _write_json(staging / "observation-requests.json", {
+            "schema": "omega.stigma-1.observation-requests.v1",
+            "ruleSetRevision": str(plan.get("ruleSetRevision") or ""),
+            "requests": observation_requests,
+            "queueMutationScope": "analysis-broker-only",
+            "productionFindingsWriteBack": False,
+        })
+        observation_request_entry = {
+            "path": "observation-requests.json",
+            "bytes": (staging / "observation-requests.json").stat().st_size,
+            "sha256": _sha_file(staging / "observation-requests.json"),
+            "records": len(observation_requests),
+        }
         index = {
             "schema": PROJECTION_SET_SCHEMA,
             "engineRevision": ENGINE_REVISION,
@@ -457,6 +493,7 @@ def materialize_projection_set(output: Path, plan: Mapping[str, Any]) -> dict[st
             "productionWriteBack": False,
             "queueMutationAuthorized": False,
             "deepScanQueueMutationAuthorized": True,
+            "observationRequestBrokerMutationAuthorized": True,
             "counts": {
                 "checkedVariants": int(plan.get("checkedVariants") or 0),
                 "reprojectedVariants": int(plan.get("reprojectedVariants") or 0),
@@ -466,6 +503,7 @@ def materialize_projection_set(output: Path, plan: Mapping[str, Any]) -> dict[st
             "variants": variant_entries,
             "reanalysisRequests": request_entry,
             "analysisRequests": deep_request_entry,
+            "observationRequests": observation_request_entry,
         }
         _write_json(staging / "index.json", index)
         if output.exists():
@@ -560,6 +598,35 @@ def verify_projection_set(root: Path) -> dict[str, Any]:
                     errors.append(f"analysis request count mismatch: index={expected}, actual={actual}")
             except Exception as exc:
                 errors.append(f"analysis request set could not be verified: {type(exc).__name__}: {exc}")
+    raw_observation_request = index.get("observationRequests")
+    if raw_observation_request is not None:
+        if not isinstance(raw_observation_request, Mapping):
+            errors.append("observation request set descriptor is malformed")
+        else:
+            observation_request = dict(raw_observation_request)
+            try:
+                rel = security_evidence_v2.safe_relpath(str(observation_request.get("path") or ""))
+                path = root / rel
+                if not path.is_file():
+                    raise FileNotFoundError(rel)
+                if path.stat().st_size != int(observation_request.get("bytes") or -1):
+                    errors.append(f"size mismatch for {rel}")
+                if _sha_file(path) != str(observation_request.get("sha256") or ""):
+                    errors.append(f"sha256 mismatch for {rel}")
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                if str(payload.get("schema") or "") != "omega.stigma-1.observation-requests.v1":
+                    errors.append("observation request set schema is invalid")
+                if str(payload.get("queueMutationScope") or "") != "analysis-broker-only":
+                    errors.append("observation request set has an invalid queue mutation scope")
+                if bool(payload.get("productionFindingsWriteBack")):
+                    errors.append("observation request set enables production findings write-back")
+                expected = int(observation_request.get("records") or 0)
+                actual = len(payload.get("requests") or []) if isinstance(payload.get("requests"), list) else -1
+                if expected != actual:
+                    errors.append(f"observation request count mismatch: index={expected}, actual={actual}")
+            except Exception as exc:
+                errors.append(f"observation request set could not be verified: {type(exc).__name__}: {exc}")
+
     return {
         "schema": "omega.sigmascope.srl-rule-projection-validation.v1",
         "ok": not errors,

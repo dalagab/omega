@@ -10,6 +10,7 @@ DeltaScope’s Operations perspective is a read-only view of the platform’s he
 - How much scan work is pending or retrying?
 - Are collectors succeeding and producing expected coverage?
 - Is Deep Scan accumulating requests?
+- Are generic Analysis Broker requests unresolved, queued, running, failed or satisfied by fresh retained observations?
 - What Definitions and scanner identities produced the current evidence?
 
 ## Dashboard
@@ -32,6 +33,12 @@ Pipelines shows recent GitHub Actions runs. This data is fetched through the pub
 ## Collectors
 
 Collectors is the component-level data-acquisition view. It maps stable workflow jobs/steps to named collectors and combines recent run history with current evidence metrics. Use it to distinguish “the workflow ran” from “the specific collection stage ran successfully”.
+
+## Analysis Broker
+
+The Analysis Broker is durable **request-resolution state**, not a scanner and not a workflow dispatcher. It records implementation-neutral `omega.analysis-request.v1` work, resolves registered providers, applies observation freshness/reuse policy and retains lifecycle state. `main` remains the workflow-launch authority. An unresolved or non-dispatchable request should remain visible rather than being silently dropped.
+
+SigmaScope now accepts subject-bound generic broker requests through `sigmascope_request_adapter.py`. The adapter merges requested work into the existing canonical SigmaScope scan queue and verifies the requested Evidence-v2 observation before settlement; it does not create a second scanner queue. SigmaScope remains capped at one broker-managed concurrent execution until scan execution is separated from serialized Evidence-v2 merge/publication.
 
 ## Scan queue
 

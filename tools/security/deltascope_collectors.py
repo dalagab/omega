@@ -18,14 +18,22 @@ SCHEMA = "omega.deltascope.collectors.v2"
 COLLECTORS: tuple[dict[str, Any], ...] = (
     {
         "id": "source-discovery",
-        "title": "Source discovery",
-        "workflow": "catalog-builder.yml",
-        "job": "Discover source feeds",
-        "step": "Discover curated, Puni.sh and GitHub PluginMaster sources",
-        "purpose": "Discover public PluginMaster/source feeds from curated, community, Puni.sh and GitHub discovery inputs.",
-        "inputs": ["sources/curated-sources.json", "sources/community-sources.json", "Puni.sh publisher index", "GitHub code search"],
-        "outputs": ["catalog/raw-sources.json", "raw-sources workflow artifact"],
-        "implementation": "tools/catalog/collect_sources.py",
+        "title": "Omega Discovery / source intelligence",
+        "workflow": "catalog-discovery.yml",
+        "job": "Discover new PluginMaster and plugin facts",
+        "step": "Run typed discovery collectors and validate only novel source facts",
+        "purpose": "Run the first-class Omega Discovery component: source search, project-page links, issue hints, optional web search, rotating repository-tree inspection and PluginMaster validation.",
+        "inputs": ["canonical catalog-data", "curated/community registries", "Puni.sh", "GitHub code search", "canonical project-page enrichment", "Omega source issues", "optional configured web-search API"],
+        "outputs": ["catalog-discovery snapshot", "typed collector observations", "normalized reusable novel-source shards"],
+        "implementation": "tools/catalog/catalog_discovery.py + tools/catalog/discovery_collectors.py",
+        "componentId": "omega.discovery",
+        "contract": "omega.collector-registry.v1",
+        "provides": ["catalogSourceCandidates", "catalogPluginFacts", "catalogProjectLinks", "catalogRepositoryCandidates", "catalogManifestCandidates", "catalogIssueHints"],
+        "legacyContracts": [{
+            "workflow": "catalog-builder.yml",
+            "job": "Discover source feeds",
+            "step": "Discover curated, Puni.sh and GitHub PluginMaster sources",
+        }],
         "logParser": "source-discovery",
         "trendMetric": "Deduplicated sources",
         "trendPolicy": "stable-volume",
@@ -210,6 +218,10 @@ def _log_metrics(kind: str, text: str) -> list[dict[str, Any]]:
         metrics.append({"label": label, "value": value, "unit": unit, "source": "runner log"})
 
     if kind == "source-discovery":
+        # Transitional compatibility: older runs logged collect_sources.py's aggregate
+        # sentence, while the first-class Omega Discovery component logs the typed
+        # snapshot counts as JSON.  Keep the stable metric label so historical trend
+        # charts remain continuous across the workflow cutover.
         m = re.search(r"Wrote\s+\S*raw-sources\.json:\s+(\d+)\s+source\(s\).*?(\d+)\s+curated,\s+(\d+)\s+community,\s+(\d+)\s+puni\.sh,\s+(\d+)\s+github-search", text, re.I | re.S)
         if m:
             add("Deduplicated sources", int(m.group(1)))
@@ -217,6 +229,22 @@ def _log_metrics(kind: str, text: str) -> list[dict[str, Any]]:
             add("Community", int(m.group(3)))
             add("Puni.sh", int(m.group(4)))
             add("GitHub discovery", int(m.group(5)))
+        else:
+            fields = (
+                ("candidateSourceCount", "Deduplicated sources"),
+                ("knownSourcesSkipped", "Known sources skipped"),
+                ("validatedNovelSources", "Validated novel sources"),
+                ("newPluginFacts", "New plugin facts"),
+                ("newVariantFacts", "New variant facts"),
+                ("projectLinksObserved", "Project links observed"),
+                ("repositoryCandidates", "Repository candidates"),
+                ("repositoryTreesInspected", "Repository trees inspected"),
+                ("webSearchResults", "Web-search results"),
+            )
+            for field, label in fields:
+                matches = re.findall(rf'"{re.escape(field)}"\s*:\s*(\d+)', text, re.I)
+                if matches:
+                    add(label, int(matches[-1]))
     elif kind == "manifest-normalization":
         m = re.search(r"Wrote\s+\S*enriched-sources\.json:\s+(\d+)\s+plugins\s+\((\d+)\s+metadata-complete\)\s+from\s+(\d+)/(\d+)\s+source\(s\)\s+OK", text, re.I)
         if m:
@@ -577,7 +605,17 @@ def project_collectors(
     for definition in COLLECTORS:
         workflow = str(definition["workflow"])
         payload = workflow_histories.get(workflow) or {}
-        history = _history_for_collector(definition, payload)
+        active_definition: Mapping[str, Any] = definition
+        if not payload:
+            for legacy in definition.get("legacyContracts") or []:
+                if not isinstance(legacy, Mapping):
+                    continue
+                legacy_payload = workflow_histories.get(str(legacy.get("workflow") or "")) or {}
+                if legacy_payload:
+                    active_definition = {**definition, **dict(legacy)}
+                    payload = legacy_payload
+                    break
+        history = _history_for_collector(active_definition, payload)
         latest = history[0] if history else None
         observed = [row for row in history if row.get("state") not in {"unknown", "skipped"}]
         success = sum(1 for row in observed if row.get("state") == "healthy")
@@ -588,9 +626,10 @@ def project_collectors(
             label = str(metric.get("label") or "")
             if label and label not in dedup:
                 dedup[label] = metric
-        trend = _trend_projection(definition, history, now_utc=now_utc)
+        trend = _trend_projection(active_definition, history, now_utc=now_utc)
         collectors.append({
             **{key: definition[key] for key in ("id", "title", "workflow", "job", "step", "purpose", "inputs", "outputs", "implementation", "docs")},
+            **{key: definition[key] for key in ("componentId", "contract", "provides") if key in definition},
             "available": bool(payload.get("available", False)),
             "state": str((latest or {}).get("state") or ("unavailable" if payload.get("error") else "unknown")),
             "trendState": trend["state"],

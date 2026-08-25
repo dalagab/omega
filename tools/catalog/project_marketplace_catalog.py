@@ -23,7 +23,7 @@ from typing import Any
 from source_stability import stable_source_priority
 from behavior_consistency import compact_behavior_consistency, compute_behavior_consistency
 
-PROJECTOR_VERSION = "1.6.0"
+PROJECTOR_VERSION = "1.7.0"
 MARKETPLACE_DB_FILENAME = "omega-marketplace.sqlite"
 MARKETPLACE_BUNDLE_FILENAME = "omega-marketplace.sqlite.zip"
 CLIENT_INTERNAL_DB_FILENAME = "omega-catalog.sqlite"
@@ -961,13 +961,163 @@ def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
     )
 
 
+CLIENT_HISTORY_SCHEMA = """
+CREATE TABLE catalog_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+CREATE TABLE sources (
+    source_id INTEGER PRIMARY KEY,
+    curated_id TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    url TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    is_official INTEGER NOT NULL DEFAULT 0,
+    enabled_by_default INTEGER NOT NULL DEFAULT 1,
+    integrate_with_dalamud INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE plugins (
+    plugin_id INTEGER PRIMARY KEY,
+    internal_name TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE plugin_variants (
+    variant_id INTEGER PRIMARY KEY,
+    plugin_id INTEGER NOT NULL,
+    source_id INTEGER NOT NULL,
+    assembly_version TEXT NOT NULL DEFAULT '',
+    last_update INTEGER NOT NULL DEFAULT 0,
+    changelog TEXT NOT NULL DEFAULT '',
+    active INTEGER NOT NULL DEFAULT 0,
+    last_seen_utc TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX ix_client_variants_plugin ON plugin_variants(plugin_id);
+CREATE INDEX ix_client_variants_source ON plugin_variants(source_id);
+"""
+
+# The downloadable Omega database is an explicit client allow-list.  The rich normalized catalog
+# and Security Evidence v2 remain authoritative elsewhere; new server-side tables therefore cannot
+# silently leak into every user's local database just because the projector started from a richer
+# working SQLite file.
+CLIENT_ALLOWED_BASE_TABLES = {
+    "catalog_meta",
+    "sources",
+    "plugins",
+    "plugin_variants",
+    "runtime_plugin_variants",
+    "catalog_changelog",
+}
+
+
+def _table_exists(db: sqlite3.Connection, name: str, schema: str = "main") -> bool:
+    row = db.execute(
+        f"SELECT 1 FROM {schema}.sqlite_master WHERE type='table' AND name=?",
+        (name,),
+    ).fetchone()
+    return row is not None
+
+
+def _copy_table_schema_and_rows(source: sqlite3.Connection, target: sqlite3.Connection, table: str) -> None:
+    """Copy one explicitly allowed table without copying unrelated source schema."""
+    row = source.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+        (table,),
+    ).fetchone()
+    if row is None or not str(row[0] or "").strip():
+        return
+    target.execute(str(row[0]))
+    columns = [str(item[1]) for item in source.execute(f'PRAGMA table_info("{table}")')]
+    if not columns:
+        return
+    placeholders = ",".join("?" for _ in columns)
+    quoted = ",".join(f'"{name}"' for name in columns)
+    cursor = source.execute(f'SELECT {quoted} FROM "{table}"')
+    target.executemany(
+        f'INSERT INTO "{table}"({quoted}) VALUES({placeholders})',
+        cursor,
+    )
+
+
+def _write_fresh_client_database(working: sqlite3.Connection, output_database: Path) -> dict[str, Any]:
+    """Materialize a fresh, allow-listed Omega client database from the prepared working snapshot."""
+    output_database.unlink(missing_ok=True)
+    with tempfile.TemporaryDirectory(prefix="omega-marketplace-client-") as td:
+        scratch = Path(td) / "client-working.sqlite"
+        client = sqlite3.connect(scratch)
+        try:
+            client.executescript("PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL;" + CLIENT_HISTORY_SCHEMA)
+            # Explicit transfers through ATTACH form the server -> client allow-list.  New
+            # server-side tables cannot appear in the downloadable database by accident.
+            client.execute("ATTACH DATABASE ? AS server", (str(Path(working.execute("PRAGMA database_list").fetchone()[2])),))
+            client.execute("INSERT INTO catalog_meta(key,value) SELECT key,value FROM server.catalog_meta")
+            client.execute("""
+                INSERT INTO sources(source_id,curated_id,name,url,description,is_official,enabled_by_default,integrate_with_dalamud)
+                SELECT source_id,COALESCE(curated_id,''),COALESCE(name,''),COALESCE(url,''),COALESCE(description,''),
+                       COALESCE(is_official,0),COALESCE(enabled_by_default,1),COALESCE(integrate_with_dalamud,0)
+                  FROM server.sources
+            """)
+            client.execute("INSERT INTO plugins(plugin_id,internal_name) SELECT plugin_id,internal_name FROM server.plugins")
+            # Keep enough historical version/changelog metadata for Omega's existing changelog UI,
+            # but never carry raw manifests, scraper state, aliases, source observations or security
+            # analysis tables into the client database.
+            client.execute("""
+                INSERT INTO plugin_variants(variant_id,plugin_id,source_id,assembly_version,last_update,changelog,active,last_seen_utc)
+                SELECT variant_id,plugin_id,source_id,COALESCE(assembly_version,''),COALESCE(last_update,0),
+                       COALESCE(changelog,''),COALESCE(active,0),COALESCE(last_seen_utc,'')
+                  FROM server.plugin_variants
+            """)
+            # runtime_plugin_variants is the complete current UI projection.  CTAS intentionally
+            # freezes the view into a small physical table so none of its server-side backing tables
+            # need to be shipped.
+            client.execute("CREATE TABLE runtime_plugin_variants AS SELECT * FROM server.runtime_plugin_variants WHERE 0")
+            client.execute("INSERT INTO runtime_plugin_variants SELECT * FROM server.runtime_plugin_variants")
+            client.execute("CREATE INDEX ix_client_runtime_internal_name ON runtime_plugin_variants(internal_name COLLATE NOCASE)")
+            client.execute("CREATE INDEX ix_client_runtime_plugin_id ON runtime_plugin_variants(plugin_id)")
+            client.execute("CREATE INDEX ix_client_runtime_source_url ON runtime_plugin_variants(source_url COLLATE NOCASE)")
+
+            if _table_exists(working, "catalog_changelog"):
+                # The changelog table is small semantic history already consumed by Omega.  Copy its
+                # current schema verbatim rather than coupling this projector to every changelog field.
+                server_sql = working.execute(
+                    "SELECT sql FROM sqlite_master WHERE type='table' AND name='catalog_changelog'"
+                ).fetchone()
+                if server_sql and str(server_sql[0] or "").strip():
+                    client.execute(str(server_sql[0]))
+                    cols = [str(row[1]) for row in working.execute("PRAGMA table_info(catalog_changelog)")]
+                    quoted = ",".join(f'"{col}"' for col in cols)
+                    client.execute(f"INSERT INTO catalog_changelog({quoted}) SELECT {quoted} FROM server.catalog_changelog")
+
+            client.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('database_role','marketplace')")
+            client.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('marketplace_projector_version',?)", (PROJECTOR_VERSION,))
+            client.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('detailed_security_evidence_included','0')")
+            client.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('client_projection_mode','fresh-allowlist-v1')")
+            client.execute("ANALYZE")
+            client.commit()
+            escaped = str(output_database).replace("'", "''")
+            client.execute(f"VACUUM INTO '{escaped}'")
+        finally:
+            client.close()
+
+    with closing(sqlite3.connect(output_database)) as check:
+        table_names = {
+            str(row[0]) for row in check.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+        }
+        unexpected = sorted(table_names - CLIENT_ALLOWED_BASE_TABLES)
+        if unexpected:
+            raise RuntimeError(f"unexpected server-side tables leaked into Omega client database: {unexpected}")
+        return {
+            "tables": sorted(table_names),
+            "bytes": output_database.stat().st_size,
+            "mode": "fresh-allowlist-v1",
+        }
+
+
 def project_database(evidence_database: Path, output_database: Path) -> dict[str, Any]:
     output_database.parent.mkdir(parents=True, exist_ok=True)
     output_database.unlink(missing_ok=True)
     with tempfile.TemporaryDirectory(prefix="omega-marketplace-project-") as tmp:
-        working = Path(tmp) / "working.sqlite"
-        shutil.copy2(evidence_database, working)
-        db = sqlite3.connect(working)
+        working_path = Path(tmp) / "working.sqlite"
+        shutil.copy2(evidence_database, working_path)
+        db = sqlite3.connect(working_path)
         db.row_factory = sqlite3.Row
         try:
             before_integrity = db.execute("PRAGMA integrity_check").fetchone()
@@ -983,20 +1133,8 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
             db.execute("BEGIN IMMEDIATE")
             create_marketplace_security_current(db)
             db.execute("DROP VIEW IF EXISTS runtime_plugin_variants")
-            for table in DETAILED_SECURITY_TABLES:
-                db.execute(f'DROP TABLE IF EXISTS "{table}"')
-            # Raw scraper metadata may contain arbitrary discovered URLs. The client only needs
-            # bounded classified links from websites.links_json, so keep raw URL context server-side.
-            if db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='websites'").fetchone()[0]:
-                # The client marketplace is a current projection, not a historical scrape archive.
-                # Keep old/failed presentation snapshots only in server-side evidence.
-                db.execute("UPDATE websites SET metadata_json='{}'")
-                website_columns = {str(row[1]).casefold() for row in db.execute("PRAGMA table_info(websites)")}
-                if "omega_index_json" in website_columns:
-                    # Preserve the extensible .omega document server-side; the client receives only
-                    # explicitly projected fields such as omega_banner_url until Omega defines them.
-                    db.execute("UPDATE websites SET omega_index_json='{}'")
-                db.execute("UPDATE websites SET title='',description='',homepage='',readme_excerpt='',image_urls_json='[]',links_json='[]' WHERE ok<>1")
+            # Do not strip the working snapshot destructively.  It is temporary and server-rich by
+            # design; _write_fresh_client_database copies only the explicit client allow-list.
             create_marketplace_runtime_view(db)
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('database_role','marketplace')")
             db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('marketplace_projector_version',?)", (PROJECTOR_VERSION,))
@@ -1013,10 +1151,7 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
                 raise RuntimeError("marketplace projection lost current security rows")
             if projected_rows > active_variants:
                 raise RuntimeError("marketplace projection created security rows for nonexistent active variants")
-            escaped = str(output_database).replace("'", "''")
-            db.execute("ANALYZE")
-            db.commit()
-            db.execute(f"VACUUM INTO '{escaped}'")
+            fresh = _write_fresh_client_database(db, output_database)
         finally:
             db.close()
 
@@ -1024,27 +1159,38 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
         integrity = check.execute("PRAGMA integrity_check").fetchone()
         if integrity is None or str(integrity[0]).lower() != "ok":
             raise RuntimeError(f"marketplace database integrity check failed: {integrity}")
-        remaining = [
+        leaked = [
             row[0] for row in check.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%' ORDER BY name"
+                "SELECT name FROM sqlite_master WHERE type='table' AND (name LIKE 'plugin_security_%' OR name IN ('manifest_observations','manifest_source_candidates','source_repositories','source_repository_aliases','plugin_identity_aliases','plugin_tags','plugin_images','plugin_search','websites','presentation')) ORDER BY name"
             )
         ]
-        if remaining:
-            raise RuntimeError(f"detailed security tables leaked into marketplace database: {remaining}")
+        if leaked:
+            raise RuntimeError(f"server/catalog working tables leaked into marketplace database: {leaked}")
         if int(check.execute("SELECT COUNT(*) FROM runtime_plugin_variants").fetchone()[0]) <= 0:
             raise RuntimeError("marketplace database contains no runtime plugin variants")
         evidence_revision = read_meta(check, "evidence_revision")
+        dependency_rows = int(check.execute(
+            "SELECT COUNT(*) FROM runtime_plugin_variants WHERE security_dependency_total_count>0"
+        ).fetchone()[0])
+        dependency_entries = int(check.execute(
+            "SELECT COALESCE(SUM(MIN(security_dependency_total_count, ?)),0) FROM runtime_plugin_variants",
+            (DEPENDENCY_SUMMARY_LIMIT,),
+        ).fetchone()[0])
+        known_risk_rows = int(check.execute(
+            "SELECT COUNT(*) FROM runtime_plugin_variants WHERE security_known_advisory_count>0"
+        ).fetchone()[0])
         return {
             "integrity": "ok",
             "runtimeProjectionSha256": runtime_projection_digest(check, ARTIFACT_CANONICAL_RUNTIME_COLUMNS),
             "runtimeProjectionWithDependenciesSha256": runtime_projection_digest(check),
-            "securityRows": int(check.execute("SELECT COUNT(*) FROM marketplace_security_current").fetchone()[0]),
-            "dependencySummaryRows": int(check.execute("SELECT COUNT(*) FROM marketplace_security_current WHERE dependency_total_count>0").fetchone()[0]),
-            "dependencySummaryEntries": int(check.execute("SELECT COALESCE(SUM(MIN(dependency_total_count, ?)),0) FROM marketplace_security_current", (DEPENDENCY_SUMMARY_LIMIT,)).fetchone()[0]),
-            "knownRiskRows": int(check.execute("SELECT COUNT(*) FROM marketplace_security_current WHERE known_advisory_count>0").fetchone()[0]),
+            "securityRows": projected_rows,
+            "dependencySummaryRows": dependency_rows,
+            "dependencySummaryEntries": dependency_entries,
+            "knownRiskRows": known_risk_rows,
             "evidenceRevision": evidence_revision,
             "catalogRevision": read_meta(check, "catalog_revision"),
             "securityRevision": read_meta(check, "security_revision"),
+            "clientProjection": fresh,
         }
 
 

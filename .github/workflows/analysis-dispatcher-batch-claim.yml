@@ -1,0 +1,158 @@
+name: Omega Analysis Dispatcher batch claim
+
+on:
+  workflow_call:
+    inputs:
+      dispatcher_id:
+        type: string
+        required: false
+        default: main-analysis-dispatcher
+      lease_seconds:
+        type: number
+        required: false
+        default: 3600
+      max_attempts:
+        type: number
+        required: false
+        default: 3
+      max_claims:
+        description: Maximum new jobs this runner may reserve in one pass
+        type: number
+        required: false
+        default: 4
+      max_in_flight:
+        description: Global dispatcher pool ceiling across all active leases
+        type: number
+        required: false
+        default: 4
+      allowed_components:
+        description: Comma-separated component IDs this installed main dispatcher knows how to launch
+        type: string
+        required: false
+        default: omega.discovery
+    outputs:
+      has_work:
+        value: ${{ jobs.claim.outputs.has_work }}
+      claimed_count:
+        value: ${{ jobs.claim.outputs.claimed_count }}
+      active_before:
+        value: ${{ jobs.claim.outputs.active_before }}
+      active_after:
+        value: ${{ jobs.claim.outputs.active_after }}
+      claims_json:
+        value: ${{ jobs.claim.outputs.claims_json }}
+  workflow_dispatch:
+    inputs:
+      dispatcher_id:
+        type: string
+        required: false
+        default: main-analysis-dispatcher
+      lease_seconds:
+        type: number
+        required: false
+        default: 3600
+      max_attempts:
+        type: number
+        required: false
+        default: 3
+      max_claims:
+        type: number
+        required: false
+        default: 4
+      max_in_flight:
+        type: number
+        required: false
+        default: 4
+      allowed_components:
+        description: Comma-separated component IDs this manual dispatcher knows how to launch
+        type: string
+        required: false
+        default: omega.discovery
+
+permissions:
+  contents: write
+
+# All queue mutations serialize here. Component jobs do not: once a lease is committed,
+# separate worker workflows may execute concurrently.
+concurrency:
+  group: omega-analysis-broker-state
+  cancel-in-progress: false
+
+jobs:
+  claim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      has_work: ${{ steps.claim.outputs.has_work }}
+      claimed_count: ${{ steps.claim.outputs.claimed_count }}
+      active_before: ${{ steps.claim.outputs.active_before }}
+      active_after: ${{ steps.claim.outputs.active_after }}
+      claims_json: ${{ steps.claim.outputs.claims_json }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Load durable broker queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/analysis-broker-current
+          if git ls-remote --exit-code --heads origin analysis-broker-state >/dev/null 2>&1; then
+            git fetch --depth=1 origin analysis-broker-state
+            git archive FETCH_HEAD | tar -x -C catalog/analysis-broker-current
+          fi
+          if [ ! -s catalog/analysis-broker-current/index.json ]; then
+            python tools/security/analysis_broker.py init --state catalog/analysis-broker-current/index.json
+          fi
+      - name: Recover leases and reserve available worker-pool capacity
+        id: claim
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf catalog/analysis-broker-next
+          cp -a catalog/analysis-broker-current catalog/analysis-broker-next
+          python tools/security/analysis_dispatcher.py claim-batch \
+            --state catalog/analysis-broker-next/index.json \
+            --dispatcher-id '${{ inputs.dispatcher_id }}' \
+            --lease-seconds '${{ inputs.lease_seconds }}' \
+            --max-attempts '${{ inputs.max_attempts }}' \
+            --max-claims '${{ inputs.max_claims }}' \
+            --max-in-flight '${{ inputs.max_in_flight }}' \
+            --allowed-components '${{ inputs.allowed_components }}' \
+            --batch-output catalog/analysis-dispatch-batch.json \
+            --recovery-output catalog/analysis-dispatch-recovery.json \
+            --github-output "$GITHUB_OUTPUT"
+          cat catalog/analysis-dispatch-batch.json
+      - name: Detect queue mutation
+        id: changed
+        shell: bash
+        run: |
+          if cmp -s catalog/analysis-broker-current/index.json catalog/analysis-broker-next/index.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish all leases atomically before any worker launch
+        if: steps.changed.outputs.changed == 'true'
+        run: >-
+          python tools/security/publish_analysis_broker_state.py
+          --input catalog/analysis-broker-next
+          --repo .
+          --branch analysis-broker-state
+          --push
+      - name: Upload batch diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-analysis-dispatch-batch-${{ github.run_id }}
+          path: |
+            catalog/analysis-dispatch-batch.json
+            catalog/analysis-dispatch-recovery.json
+            catalog/analysis-broker-next/index.json
+          if-no-files-found: warn
+          retention-days: 30

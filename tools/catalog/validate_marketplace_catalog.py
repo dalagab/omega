@@ -66,22 +66,27 @@ def validate_bytes(descriptor_bytes: bytes, bundle: bytes, *, require_v2: bool =
                 raise RuntimeError("marketplace integrity_check failed")
             if int(db.execute("SELECT COUNT(*) FROM runtime_plugin_variants").fetchone()[0]) <= 0:
                 raise RuntimeError("marketplace runtime projection is empty")
-            if int(db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='marketplace_security_current'").fetchone()[0]) != 1:
-                raise RuntimeError("marketplace current-security summary table is missing")
-            security_columns = {row[1] for row in db.execute("PRAGMA table_info(marketplace_security_current)")}
-            for required in ("dependencies_json", "dependency_total_count", "known_advisory_count", "known_advisory_highest_severity", "risk_score"):
-                if required not in security_columns:
-                    raise RuntimeError(f"marketplace dependency summary column is missing: {required}")
             runtime_columns = {row[1] for row in db.execute("PRAGMA table_info(runtime_plugin_variants)")}
             for required in ("security_dependencies_json", "security_dependency_total_count", "security_known_advisory_count", "security_known_advisory_highest_severity", "security_risk_score"):
                 if required not in runtime_columns:
                     raise RuntimeError(f"runtime dependency projection column is missing: {required}")
-            for advisory_count, risk_score in db.execute("SELECT known_advisory_count,risk_score FROM marketplace_security_current"):
+            has_summary_table = int(db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='marketplace_security_current'").fetchone()[0]) == 1
+            if has_summary_table:
+                # Legacy projector compatibility while older catalog-latest bundles age out.
+                security_columns = {row[1] for row in db.execute("PRAGMA table_info(marketplace_security_current)")}
+                for required in ("dependencies_json", "dependency_total_count", "known_advisory_count", "known_advisory_highest_severity", "risk_score"):
+                    if required not in security_columns:
+                        raise RuntimeError(f"marketplace dependency summary column is missing: {required}")
+                summary_rows = db.execute("SELECT dependencies_json,dependency_total_count,known_advisory_count,risk_score FROM marketplace_security_current")
+            else:
+                # Fresh allow-listed client databases freeze the current projection directly and do
+                # not ship its server-side backing summary table.
+                summary_rows = db.execute("SELECT security_dependencies_json,security_dependency_total_count,security_known_advisory_count,security_risk_score FROM runtime_plugin_variants")
+            for encoded, total, advisory_count, risk_score in summary_rows:
                 if int(advisory_count or 0) < 0:
                     raise RuntimeError("marketplace known-advisory count cannot be negative")
                 if not 0 <= int(risk_score or 0) <= 100:
                     raise RuntimeError("marketplace internal risk score must stay within 0..100")
-            for encoded, total in db.execute("SELECT dependencies_json,dependency_total_count FROM marketplace_security_current"):
                 dependencies = json.loads(encoded or "[]")
                 if not isinstance(dependencies, list) or len(dependencies) > 30:
                     raise RuntimeError("marketplace dependency summary is malformed or exceeds the 30-entry bound")
@@ -91,6 +96,8 @@ def validate_bytes(descriptor_bytes: bytes, bundle: bytes, *, require_v2: bool =
             if leaked:
                 raise RuntimeError(f"detailed security tables leaked into marketplace database: {leaked}")
             meta = dict(db.execute("SELECT key,value FROM catalog_meta"))
+            if not has_summary_table and meta.get("client_projection_mode") != "fresh-allowlist-v1":
+                raise RuntimeError("marketplace summary backing table is absent without fresh allow-list projection metadata")
             if meta.get("database_role") != "marketplace" or meta.get("detailed_security_evidence_included") != "0":
                 raise RuntimeError("marketplace database role metadata is invalid")
             revision_pairs = (
@@ -114,7 +121,7 @@ def validate_bytes(descriptor_bytes: bytes, bundle: bytes, *, require_v2: bool =
                 "securityRevision": meta.get("security_revision", ""),
                 "evidenceRevision": meta.get("evidence_revision", ""),
                 "variants": int(db.execute("SELECT COUNT(*) FROM runtime_plugin_variants").fetchone()[0]),
-                "dependencySummaryRows": int(db.execute("SELECT COUNT(*) FROM marketplace_security_current WHERE dependency_total_count>0").fetchone()[0]),
+                "dependencySummaryRows": int(db.execute("SELECT COUNT(*) FROM runtime_plugin_variants WHERE security_dependency_total_count>0").fetchone()[0]),
             }
         finally:
             db.close()

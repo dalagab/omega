@@ -4,9 +4,9 @@ The Investigator perspective is for answering a concrete question about one plug
 
 ## Start from a case or plugin
 
-Use **Cases** when you want the current items that deserve attention. Use **Plugins** or global search when you already know the plugin name, hash, endpoint or component.
+Use **Cases** for your local Investigator notebook: create an investigation, add notes, and pin the findings, observations, pivots or Evidence-v2 snapshots you want to revisit. Case reference health tells you whether each pin is still current, retained, re-observed, changed or no longer resolvable, and the Timeline keeps the local investigation chronology together. These cases are local-only and never become findings, policy input, queue requests or published evidence. Use **Published findings**, **Plugins**, or global search to start from authoritative/derived security state.
 
-Once a plugin is selected, DeltaScope keeps it as the current subject while you move between evidence views.
+Once a plugin is selected, DeltaScope keeps it as the current subject while you move between evidence views. See [Local Investigator cases](LOCAL-CASES.md) for the storage and authority contract.
 
 ## Recommended investigation order
 

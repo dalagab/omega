@@ -1263,6 +1263,36 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                         f"srlRuleProjections reanalysis count mismatch: index={expected_requests}, actual={actual_requests}"
                     )
 
+                raw_observation_request = projection_index.get("observationRequests")
+                if raw_observation_request is not None:
+                    if not bool(projection_index.get("observationRequestBrokerMutationAuthorized")):
+                        errors.append("srlRuleProjections observation requests do not carry explicit broker mutation authority")
+                    if not isinstance(raw_observation_request, dict):
+                        errors.append("srlRuleProjections observationRequests descriptor is not an object")
+                    else:
+                        observation_request = dict(raw_observation_request)
+                        observation_request_rel = safe_relpath((projection_root / safe_relpath(str(observation_request.get("path") or ""))).as_posix())
+                        observation_request_entry = dict(observation_request)
+                        observation_request_entry["path"] = observation_request_rel
+                        referenced_rule_projection_files.add(observation_request_rel)
+                        errors.extend(
+                            f"srlRuleProjections observation requests: {item}"
+                            for item in verify_file_entry(root, observation_request_entry, max_bytes=MAX_PUBLISH_FILE_BYTES)
+                        )
+                        observation_request_payload = read_json_file(root, observation_request_rel)
+                        if str(observation_request_payload.get("schema") or "") != "omega.stigma-1.observation-requests.v1":
+                            errors.append("srlRuleProjections observation request schema is invalid")
+                        if str(observation_request_payload.get("queueMutationScope") or "") != "analysis-broker-only":
+                            errors.append("srlRuleProjections observation requests have an invalid queue mutation scope")
+                        if bool(observation_request_payload.get("productionFindingsWriteBack")):
+                            errors.append("srlRuleProjections observation requests enable production findings write-back")
+                        expected_observation_requests = int(observation_request.get("records") or 0)
+                        actual_observation_requests = len(observation_request_payload.get("requests") or []) if isinstance(observation_request_payload.get("requests"), list) else -1
+                        if expected_observation_requests != actual_observation_requests:
+                            errors.append(
+                                f"srlRuleProjections observation request count mismatch: index={expected_observation_requests}, actual={actual_observation_requests}"
+                            )
+
                 raw_deep_request = projection_index.get("analysisRequests")
                 if raw_deep_request is not None:
                     if not isinstance(raw_deep_request, dict):

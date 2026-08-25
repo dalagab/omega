@@ -16,10 +16,11 @@ if str(CATALOG_DIR) not in sys.path:
     sys.path.insert(0, str(CATALOG_DIR))
 from capability_registry import load_registry  # noqa: E402
 import observation_projection  # noqa: E402
+import collector_contracts  # noqa: E402
 
 SCHEMA = "omega.deltascope.rule-author-reference.v1"
 
-COLLECTIONS: dict[str, dict[str, Any]] = {
+SECURITY_COLLECTIONS: dict[str, dict[str, Any]] = {
     "managedCallSites": {
         "dataset": "calls",
         "source": "plugin_security_managed_calls",
@@ -135,6 +136,24 @@ COLLECTIONS: dict[str, dict[str, Any]] = {
 }
 
 
+def _collector_authoring_collections() -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for name, spec in collector_contracts.OBSERVATION_TYPES.items():
+        result[name] = {
+            "dataset": "collector observation bundle",
+            "source": ", ".join(collector_contracts.providers_for(name, include_planned=True)),
+            "scope": str(spec.get("semanticClass") or "collector observation"),
+            "fields": dict(spec.get("fields") or {}),
+            "notes": "Rules bind to this logical observation type, not to a collector implementation. Provider provenance is retained on each row.",
+            "authority": str(spec.get("authority") or "context-only"),
+            "providers": collector_contracts.providers_for(name, include_planned=True),
+        }
+    return result
+
+
+COLLECTIONS: dict[str, dict[str, Any]] = {**SECURITY_COLLECTIONS, **_collector_authoring_collections()}
+
+
 def build_reference() -> dict[str, Any]:
     registry = load_registry()
     return {
@@ -151,6 +170,8 @@ def build_reference() -> dict[str, Any]:
             "capabilities": registry.get("capabilities"),
         },
         "collections": COLLECTIONS,
+        "collectorRegistry": collector_contracts.build_registry(),
+        "ruleCollectorBinding": "logical observation type; collector implementation IDs are provenance/provider-resolution only",
         "implementedOperators": ["equals", "equals-ci", "in", "in-ci", "contains", "contains-ci", "starts-with", "starts-with-ci", "ends-with", "ends-with-ci", "exists", "missing", "gt", "gte", "lt", "lte", "all", "any", "not", "count"],
         "plannedOperators": ["equals", "equals-ci", "in", "in-ci", "contains", "contains-ci", "starts-with", "starts-with-ci", "ends-with", "ends-with-ci", "exists", "missing", "gt", "gte", "lt", "lte", "all", "any", "not", "count"],
         "forbiddenRuleActions": ["execute code", "open arbitrary files", "network requests", "spawn processes", "raw SQL", "environment access", "developer-authority override"],

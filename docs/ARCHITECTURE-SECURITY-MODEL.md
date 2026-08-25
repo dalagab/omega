@@ -5,9 +5,19 @@ This document is the concise technical architecture contract. For the broader pl
 ## Component boundary
 
 ```text
-Collectors → Catalog → SigmaScope → observations → Stigma-1 → Security Evidence v2
-                          ↘ source/secondary evidence ↗          ↓
-                                                           DeltaScope / Omega
+Public ecosystem → Omega Discovery collectors → typed candidate observations → Catalog
+                                                                    ↓
+                                              SigmaScope → retained security observations
+                                                                    ↓
+                                              Stigma-1 ← collector observation bundles
+                                                   │       │
+                                      analysisRequest       observationRequest
+                                                   │       │
+                                                   ↓       ↓
+                                            orchestrated evidence acquisition
+                                                   │
+                                                   ↓
+                                          Security Evidence v2 → DeltaScope / Omega
 ```
 
 Rift is a separate experimental execution branch; Alpha is a component inside Rift. Neither is part of the ordinary SigmaScope scan path.
@@ -19,7 +29,8 @@ Rift is a separate experimental execution branch; Alpha is a component inside Ri
 - Public source is separate evidence unless source-to-artifact correspondence is verified.
 - Developer declarations explain expected behavior but cannot suppress evidence.
 - Secondary engines provide supplemental evidence.
-- SRL rules can only consume registered bounded inputs.
+- SRL rules can only consume registered bounded inputs; collector implementation identity remains provenance/provider metadata rather than an executable rule hook.
+- `observationRequest` can name only a logical registered collector observation type; provider resolution is non-executable and orchestration retains execution authority.
 - Local DeltaScope rules have no production authority.
 - Current active plugin state drives current totals; historical snapshots are archive evidence.
 - Evidence integrity failures fail closed.

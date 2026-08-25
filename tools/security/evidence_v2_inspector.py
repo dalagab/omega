@@ -20,10 +20,14 @@ import urllib.request
 
 import observation_projection
 import reputation_intelligence
+import deltascope_plugin_inventory
+import deltascope_plugin_divergence
+import deltascope_developer_guidance
 
 
 SEVERITY_RANK = {"none": 0, "informational": 1, "low": 1, "caution": 2, "medium": 2, "high": 3, "critical": 4}
 DEFAULT_ONLINE_BASE_URL = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
+DEFAULT_CATALOG_BASE_URL = "https://raw.githubusercontent.com/dalagab/omega/catalog-data/catalog/"
 DEFAULT_MAX_REMOTE_FILE_BYTES = 32 * 1024 * 1024
 DEFAULT_REMOTE_CACHE_BYTES = 128 * 1024 * 1024
 USER_AGENT = "Omega-Sigmascope-Developer-View/2.0"
@@ -291,6 +295,8 @@ class V2SigmascopeInspector:
         cache_dir: Path | None = None,
         cache_limit_bytes: int = DEFAULT_REMOTE_CACHE_BYTES,
         urlopen: Callable[..., Any] | None = None,
+        catalog_base_url: str = "",
+        catalog_cache_dir: Path | None = None,
     ):
         if root is not None and base_url:
             raise ValueError("choose either a local Evidence v2 root or an online base URL")
@@ -308,6 +314,19 @@ class V2SigmascopeInspector:
         self.remote = self.source.mode == "online"
         self.evidence_path = self.source.display
         self.marketplace_path: Path | None = None
+        self.catalog_source: RemoteEvidenceSource | None = None
+        if self.remote and str(catalog_base_url or "").strip():
+            if cache_dir is None:
+                raise ValueError("cache_dir is required for online catalog browsing")
+            self.catalog_source = RemoteEvidenceSource(
+                str(catalog_base_url).strip(),
+                (catalog_cache_dir or (cache_dir.parent / "catalog-http")).resolve(),
+                cache_limit_bytes=max(8 * 1024 * 1024, min(cache_limit_bytes, 64 * 1024 * 1024)),
+                urlopen=urlopen,
+            )
+        self._catalog_inventory_cache: dict[str, Any] | None = None
+        self._catalog_source_index_cache: dict[int, dict[str, Any]] | None = None
+        self._catalog_plugin_payload_cache: dict[int, dict[str, Any]] = {}
         self._payload_cache: dict[int, dict[str, Any]] = {}
         self._manifest_cache: dict[str, dict[str, Any]] = {}
         self._identity_maps: dict[str, dict[int, dict[str, Any]]] | None = None
@@ -321,12 +340,20 @@ class V2SigmascopeInspector:
         cache_dir: Path,
         cache_limit_bytes: int = DEFAULT_REMOTE_CACHE_BYTES,
         urlopen: Callable[..., Any] | None = None,
+        catalog_base_url: str = "",
+        catalog_cache_dir: Path | None = None,
     ) -> "V2SigmascopeInspector":
-        return cls(base_url=base_url, cache_dir=cache_dir, cache_limit_bytes=cache_limit_bytes, urlopen=urlopen)
+        return cls(
+            base_url=base_url, cache_dir=cache_dir, cache_limit_bytes=cache_limit_bytes, urlopen=urlopen,
+            catalog_base_url=catalog_base_url, catalog_cache_dir=catalog_cache_dir,
+        )
 
     def close(self) -> None:
         self._payload_cache.clear()
         self._manifest_cache.clear()
+        self._catalog_plugin_payload_cache.clear()
+        self._catalog_source_index_cache = None
+        self._catalog_inventory_cache = None
         self._workbench_relationship_cache = None
         self._threat_intelligence_cache = None
 
@@ -434,6 +461,15 @@ class V2SigmascopeInspector:
         value = self.source.read_json(path, expected_sha256=str(descriptor.get("sha256") or ""))
         self._queue_payload_cache = value if isinstance(value, dict) else {"schema": "", "items": {}, "recentCompleted": []}
         return self._queue_payload_cache
+
+    def scan_queue_state(self) -> dict[str, Any]:
+        """Return a shallow read-only copy of the verified published queue state.
+
+        DeltaScope projections use this only for explanation. Queue mutation remains
+        exclusively owned by the SigmaScope production workflow.
+        """
+        payload = self._queue_payload()
+        return dict(payload) if isinstance(payload, dict) else {"schema": "", "items": {}, "recentCompleted": []}
 
     def _payload_for_entry(self, entry: dict[str, Any]) -> dict[str, Any]:
         path = str(entry.get("variantPath") or "")
@@ -785,6 +821,356 @@ class V2SigmascopeInspector:
         self._load_snapshot(root=remote_root)
         return True
 
+    @staticmethod
+    def _catalog_descriptor(root: dict[str, Any], path: str) -> dict[str, Any]:
+        for item in root.get("files") or []:
+            if isinstance(item, dict) and str(item.get("path") or "") == path:
+                return item
+        return {}
+
+    def _remote_catalog_inventory(self, *, refresh: bool = False) -> dict[str, Any] | None:
+        """Load the current catalog logical-plugin index as a separate read-only context.
+
+        Catalog identity is newer/different state from Security Evidence-v2 and is never
+        treated as scan evidence.  A failure here degrades the picker to the Evidence-v2
+        identity index instead of making the security workbench unavailable.
+        """
+        if self.catalog_source is None:
+            return None
+        if self._catalog_inventory_cache is not None and not refresh:
+            return self._catalog_inventory_cache
+        try:
+            if refresh:
+                self.catalog_source.clear_snapshot_pin()
+            self.catalog_source.pin_current_github_commit()
+            root = self.catalog_source.read_json("index.json", refresh=refresh)
+            if str(root.get("schema") or "") != "omega.catalog-json.v1" or int(root.get("formatVersion") or 0) != 1:
+                raise ValueError("published catalog JSON root has an unsupported schema")
+            revision = str(root.get("catalogRevision") or "")
+            self.catalog_source.set_revision(revision or "catalog")
+            descriptor = self._catalog_descriptor(root, "plugins/index.json")
+            plugins = self.catalog_source.read_json(
+                "plugins/index.json", expected_sha256=str(descriptor.get("sha256") or "")
+            )
+            if str(plugins.get("schema") or "") != "omega.catalog-json.plugins-index.v1":
+                raise ValueError("published catalog plugin index has an unsupported schema")
+            result = {
+                "catalogRevision": revision,
+                "catalogBaseRevision": str(root.get("catalogBaseRevision") or ""),
+                "identityEpoch": str(root.get("identityEpoch") or ""),
+                "generatedAtUtc": str(root.get("generatedAtUtc") or ""),
+                "plugins": [dict(row) for row in plugins.get("plugins") or [] if isinstance(row, dict)],
+                "records": int(plugins.get("records") or 0),
+                "activePlugins": int(plugins.get("activePlugins") or 0),
+                "sourceIndexDescriptor": dict(self._catalog_descriptor(root, "sources/index.json")),
+                "source": self.catalog_source.display,
+                "snapshotCommit": str(self.catalog_source.snapshot_commit or ""),
+            }
+            self._catalog_inventory_cache = result
+            self._catalog_source_index_cache = None
+            self._catalog_plugin_payload_cache.clear()
+            return result
+        except Exception:
+            # Catalog context is useful but must never weaken or block verified Evidence-v2.
+            return None
+
+    def _evidence_inventory_rows(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for variant_id in self.entries:
+            try:
+                identity = self._entry_identity(variant_id)
+            except Exception:
+                continue
+            identity = dict(identity)
+            identity["variant_id"] = int(variant_id)
+            rows.append(identity)
+        return rows
+
+    def logical_plugin_inventory(
+        self, q: str = "", limit: int = 2000, offset: int = 0, *, refresh: bool = False,
+        include_legacy: bool = False, current_api_level: int = deltascope_plugin_inventory.DEFAULT_DALAMUD_API_LEVEL,
+    ) -> dict[str, Any]:
+        """Return one developer-picker row per logical catalog plugin.
+
+        The default projection is compatibility-focused: logical plugins with at least one
+        current stable variant for ``current_api_level`` remain visible, as do API-unknown
+        rows so missing metadata cannot silently erase a known plugin.  Old, future,
+        testing-only and retired identities remain available with ``include_legacy``.
+        """
+        current_api_level = min(max(1, int(current_api_level or deltascope_plugin_inventory.DEFAULT_DALAMUD_API_LEVEL)), 100)
+        evidence_rows = self._evidence_inventory_rows()
+        maps = self._load_identity_maps()
+        variant_rows = list((maps.get("variants") or {}).values())
+        catalog = self._remote_catalog_inventory(refresh=refresh)
+        source = "evidence-identities"
+        catalog_revision = str(((self.root.get("revisions") or {}).get("catalogDataRevision") or (self.root.get("revisions") or {}).get("catalogRevision") or ""))
+        identity_epoch = str(((self.root.get("revisions") or {}).get("catalogIdentityEpoch") or ""))
+        if catalog:
+            all_rows = deltascope_plugin_inventory.merge_catalog_plugins(
+                catalog.get("plugins") or [], evidence_rows,
+                catalog_revision=str(catalog.get("catalogRevision") or ""),
+                identity_epoch=str(catalog.get("identityEpoch") or ""),
+                variant_rows=variant_rows, current_api_level=current_api_level, include_legacy=True,
+            )
+            source = "catalog-data"
+            catalog_revision = str(catalog.get("catalogRevision") or "")
+            identity_epoch = str(catalog.get("identityEpoch") or "")
+        elif maps.get("plugins"):
+            variants_by_plugin: dict[int, list[int]] = {}
+            for variant_id, variant in maps.get("variants", {}).items():
+                if int(variant.get("active") or 0) != 1:
+                    continue
+                plugin_id = int(variant.get("plugin_id") or 0)
+                if plugin_id:
+                    variants_by_plugin.setdefault(plugin_id, []).append(int(variant_id))
+            catalog_like = []
+            for plugin_id, plugin in maps.get("plugins", {}).items():
+                active_ids = sorted(variants_by_plugin.get(int(plugin_id), []))
+                catalog_like.append({
+                    "pluginId": int(plugin_id),
+                    "internalName": str(plugin.get("internal_name") or ""),
+                    "name": str(plugin.get("canonical_name") or plugin.get("internal_name") or ""),
+                    "active": int(plugin.get("active") or 0) == 1,
+                    "variantCount": sum(1 for row in variant_rows if int(row.get("plugin_id") or 0) == int(plugin_id)),
+                    "activeVariantCount": len(active_ids),
+                    "activeVariantIds": active_ids,
+                })
+            all_rows = deltascope_plugin_inventory.merge_catalog_plugins(
+                catalog_like, evidence_rows, catalog_revision=catalog_revision, identity_epoch=identity_epoch,
+                variant_rows=variant_rows, current_api_level=current_api_level, include_legacy=True,
+            )
+        else:
+            # Legacy Evidence-v2 without identity maps cannot prove API compatibility. Keep
+            # those rows visible as unknown rather than guessing unsupported state.
+            all_rows = deltascope_plugin_inventory.group_evidence_variants(evidence_rows)
+            for row in all_rows:
+                row.update({
+                    "compatibility_state": "unknown",
+                    "compatibility_current_api_level": current_api_level,
+                    "compatibility_known": False,
+                    "stable_api_levels": [],
+                    "testing_api_levels": [],
+                    "catalog_active": True,
+                })
+        counts = deltascope_plugin_inventory.compatibility_counts(all_rows)
+        visible_rows = all_rows if include_legacy else [
+            row for row in all_rows if str(row.get("compatibility_state") or "unknown") in deltascope_plugin_inventory.CURRENT_VISIBILITY_STATES
+        ]
+        filtered = deltascope_plugin_inventory.filter_inventory(visible_rows, q=q, limit=limit, offset=offset)
+        return {
+            "schema": "omega.deltascope.logical-plugin-inventory.v1",
+            "readOnly": True,
+            "mutationAuthority": "none",
+            "policyInput": False,
+            "groupingAuthority": "catalog-plugin-id",
+            "assemblyNameMergeAuthority": False,
+            "source": source,
+            "catalogRevision": catalog_revision,
+            "catalogIdentityEpoch": identity_epoch,
+            "evidenceRevision": self._revision(self.root),
+            "compatibilityTargetApiLevel": current_api_level,
+            "compatibilityTargetSource": "deltascope-browser-preference",
+            "includeOldUnsupported": bool(include_legacy),
+            "compatibilityCounts": counts,
+            "hiddenOldUnsupported": sum(count for state, count in counts.items() if state not in deltascope_plugin_inventory.CURRENT_VISIBILITY_STATES),
+            "plugins": filtered,
+            "shown": len(filtered),
+            "totalLogicalPlugins": len(visible_rows),
+            "totalKnownLogicalPlugins": len(all_rows),
+            "withCurrentEvidence": sum(1 for row in visible_rows if int(row.get("evidence_variant_count") or 0) > 0),
+            "withoutCurrentEvidence": sum(1 for row in visible_rows if int(row.get("evidence_variant_count") or 0) <= 0),
+        }
+
+    def _remote_catalog_sources(self) -> dict[int, dict[str, Any]]:
+        """Resolve catalog source IDs lazily for the selected logical-plugin dossier."""
+        if self._catalog_source_index_cache is not None:
+            return self._catalog_source_index_cache
+        if self.catalog_source is None:
+            return {}
+        try:
+            catalog = self._remote_catalog_inventory() or {}
+            descriptor = dict(catalog.get("sourceIndexDescriptor") or {})
+            payload = self.catalog_source.read_json(
+                "sources/index.json", expected_sha256=str(descriptor.get("sha256") or "")
+            )
+            if str(payload.get("schema") or "") != "omega.catalog-json.sources-index.v1":
+                raise ValueError("published catalog source index has an unsupported schema")
+            rows = {
+                int(row.get("sourceId") or 0): dict(row)
+                for row in payload.get("sources") or []
+                if isinstance(row, dict) and int(row.get("sourceId") or 0) > 0
+            }
+            self._catalog_source_index_cache = rows
+            return rows
+        except Exception:
+            # Source labels are convenience context only. Variant identity and Evidence-v2
+            # detail remain usable when the catalog source index is temporarily unavailable.
+            return {}
+
+    def _catalog_plugin_for_variant(self, variant_id: int) -> tuple[dict[str, Any], dict[str, Any]] | None:
+        catalog = self._remote_catalog_inventory()
+        if not catalog or self.catalog_source is None:
+            return None
+        plugin_id_hint = 0
+        try:
+            plugin_id_hint = int(((self._load_identity_maps().get("variants") or {}).get(int(variant_id), {}) or {}).get("plugin_id") or 0)
+        except Exception:
+            plugin_id_hint = 0
+        for row in catalog.get("plugins") or []:
+            active_ids = {int(value or 0) for value in row.get("activeVariantIds") or []}
+            plugin_id = int(row.get("pluginId") or 0)
+            if int(variant_id) not in active_ids and (plugin_id_hint <= 0 or plugin_id != plugin_id_hint):
+                continue
+            if plugin_id <= 0:
+                return None
+            payload = self._catalog_plugin_payload_cache.get(plugin_id)
+            if payload is None:
+                path = str(row.get("path") or "")
+                if not path:
+                    return None
+                payload = self.catalog_source.read_json(path, expected_sha256=str(row.get("sha256") or ""))
+                if int(((payload.get("plugin") or {}).get("plugin_id") or 0)) != plugin_id:
+                    raise ValueError(f"catalog plugin identity mismatch for plugin {plugin_id}")
+                self._catalog_plugin_payload_cache[plugin_id] = payload
+            return dict(row), dict(payload)
+        return None
+
+    def _catalog_context_for_variant(self, variant_id: int) -> dict[str, Any] | None:
+        """Return lazy logical-plugin/catalog context with current Evidence-v2 coverage overlay.
+
+        The catalog shard is fetched only for the selected plugin.  Sibling security state is
+        derived from the compact current Evidence-v2 index; opening one logical plugin must not
+        fan out into one evidence payload request per active variant.
+        """
+        try:
+            resolved = self._catalog_plugin_for_variant(variant_id)
+            if resolved is None:
+                return None
+            index_row, payload = resolved
+            plugin = dict(payload.get("plugin") or {})
+            active_ids = {int(value or 0) for value in index_row.get("activeVariantIds") or [] if int(value or 0) > 0}
+            raw_variants = [dict(item.get("variant") or {}) for item in payload.get("variants") or [] if isinstance(item, dict)]
+            sources = self._remote_catalog_sources()
+            variants: list[dict[str, Any]] = []
+            for variant in raw_variants:
+                sibling_id = int(variant.get("variant_id") or 0)
+                if sibling_id <= 0 or (active_ids and sibling_id not in active_ids):
+                    continue
+                entry = self.current_entries.get(sibling_id) or {}
+                summary = dict(entry.get("summary") or {}) if isinstance(entry, dict) else {}
+                has_evidence = sibling_id in self.current_entries
+                source = dict(sources.get(int(variant.get("source_id") or 0), {}))
+                variants.append({
+                    **variant,
+                    "source_name": str(source.get("name") or ""),
+                    "source_url": str(source.get("url") or ""),
+                    "source_provider": str(source.get("provider") or ""),
+                    "currentEvidence": has_evidence,
+                    "evidenceScanId": int(entry.get("scanId") or summary.get("scan_id") or 0) if has_evidence else 0,
+                    "evidenceStatus": str(summary.get("scan_status") or summary.get("status") or ("complete" if has_evidence else "unscanned")),
+                    "evidenceHighestSeverity": str(summary.get("highest_severity") or "none").casefold() if has_evidence else "none",
+                    "evidenceScannedAtUtc": str(summary.get("scanned_at_utc") or "") if has_evidence else "",
+                    "evidenceAssemblyVersion": str(summary.get("assembly_version") or "") if has_evidence else "",
+                    "evidenceArtifactSha256": str(entry.get("artifactSha256") or summary.get("artifact_sha256") or "") if has_evidence else "",
+                    "evidenceFindingCounts": {
+                        "informational": int(summary.get("informational_count") or 0) if has_evidence else 0,
+                        "caution": int(summary.get("caution_count") or 0) if has_evidence else 0,
+                        "high": int(summary.get("high_count") or 0) if has_evidence else 0,
+                        "critical": int(summary.get("critical_count") or 0) if has_evidence else 0,
+                    },
+                    "selected": sibling_id == int(variant_id),
+                })
+            catalog = self._remote_catalog_inventory() or {}
+            covered = sum(1 for row in variants if row.get("currentEvidence"))
+            catalog_active = index_row.get("active") is not False
+            active_variant_count = sum(1 for row in variants if int(row.get("active") or 0) == 1 and int(row.get("is_hide") or 0) != 1)
+            context = {
+                "schema": "omega.deltascope.logical-plugin-context.v1",
+                "readOnly": True,
+                "mutationAuthority": "none",
+                "policyInput": False,
+                "groupingAuthority": "catalog-plugin-id",
+                "pluginId": int(plugin.get("plugin_id") or index_row.get("pluginId") or 0),
+                "catalogRevision": str(catalog.get("catalogRevision") or ""),
+                "catalogIdentityEpoch": str(catalog.get("identityEpoch") or ""),
+                "catalogActive": bool(catalog_active),
+                "variantScope": "active" if catalog_active else "historical",
+                "activeVariantIds": sorted(active_ids),
+                "activeVariantCount": active_variant_count,
+                "shownVariantCount": len(variants),
+                "currentEvidenceVariantCount": covered,
+                "withoutCurrentEvidenceVariantCount": max(0, len(variants) - covered),
+                "variants": variants,
+                "presentation": payload.get("presentation") or {},
+                "search": payload.get("search") or {},
+            }
+            context["divergence"] = deltascope_plugin_divergence.project_logical_plugin_divergence(context)
+            return context
+        except Exception:
+            # Catalog context is navigation/explanation only and must never block verified
+            # Evidence-v2 detail for the selected variant.
+            return None
+
+    def _with_catalog_context(self, detail: dict[str, Any], variant_id: int) -> dict[str, Any]:
+        context = self._catalog_context_for_variant(variant_id)
+        if context is None:
+            detail["developerReviewPlan"] = deltascope_developer_guidance.project_developer_review_plan(detail)
+            return detail
+        enriched = {**detail, "catalogContext": context, "logicalPluginContext": True}
+        enriched["developerReviewPlan"] = deltascope_developer_guidance.project_developer_review_plan(enriched)
+        return enriched
+
+    def _catalog_only_detail(self, variant_id: int) -> dict[str, Any] | None:
+        resolved = self._catalog_plugin_for_variant(variant_id)
+        if resolved is None:
+            return None
+        index_row, payload = resolved
+        plugin = dict(payload.get("plugin") or {})
+        variants = [dict(item.get("variant") or {}) for item in payload.get("variants") or [] if isinstance(item, dict)]
+        variant = next((row for row in variants if int(row.get("variant_id") or 0) == int(variant_id)), {})
+        if not variant:
+            return None
+        context = self._catalog_context_for_variant(variant_id) or {}
+        identity = {
+            **plugin, **variant,
+            "plugin_id": int(plugin.get("plugin_id") or index_row.get("pluginId") or 0),
+            "variant_id": int(variant_id),
+            "canonical_name": str(plugin.get("canonical_name") or variant.get("name") or plugin.get("internal_name") or ""),
+            "internal_name": str(plugin.get("internal_name") or ""),
+            "scan_id": 0, "scan_status": "unscanned", "highest_severity": "none",
+            "scanned_at_utc": "", "artifact_sha256": "", "scanner_version": "",
+        }
+        return {
+            "catalogOnly": True,
+            "catalogContext": context,
+            "identity": identity,
+            "advisories": [], "advisorySummary": {"count": 0, "highestSeverity": "none", "points": 0},
+            "riskScore": 0, "audit": [], "sourceScope": {}, "sourceArtifactComparison": {}, "lineage": {}, "drift": [],
+            "marketplaceSecurity": None, "snapshotKind": "catalog-only", "lifecycle": {"state": "active"},
+            "analysis": {}, "observations": {}, "projection": {}, "scanProvenance": {}, "contracts": {},
+            "artifactIdentity": {}, "manifestObservation": {}, "sourceAttribution": {}, "sourceProvenance": {},
+            "sourceCoverage": {
+                "artifactAvailable": False, "sourceCodeAvailable": False, "mode": "catalog-only",
+                "repository": str(variant.get("repo_url") or ""), "commit": "", "selectedRef": "",
+                "coverageLabel": "Catalog identity is known; no current Evidence-v2 scan is published for this active variant.",
+                "attributionConfidence": 0, "sourceToBinaryVerified": False, "reproducibleSourceToArtifact": False,
+            },
+            "sourceEvidence": {}, "behaviorConsistency": {}, "secondarySecurity": {}, "package": {},
+            "endpointSummary": {}, "networkEndpoints": [], "componentSummary": {}, "intelligenceCoverage": {}, "intelligenceLimits": {},
+            "datasetCatalog": [], "datasetError": "",
+            "researcher": {
+                "priority": "routine", "signals": [{
+                    "kind": "coverage", "level": "informational",
+                    "label": "Plugin is present in the current Omega catalog but this active variant has no current published Evidence-v2 scan."
+                }],
+                "findingCounts": {"informational": 0, "caution": 0, "high": 0, "critical": 0},
+                "findings": [], "capabilities": [], "capabilityIds": [], "capabilityRegistryRevision": "",
+                "automationCapabilities": [], "automationLevel": "none", "secondaryMatchCount": 0,
+            },
+            "findings": [],
+            "readOnly": True, "mutationAuthority": "none", "policyInput": False,
+        }
+
     def list_plugins(self, q: str = "", severity: str = "", status: str = "", known_risk: bool = False, limit: int = 300, offset: int = 0) -> list[dict[str, Any]]:
         needle = q.casefold().strip()
         rows: list[dict[str, Any]] = []
@@ -1022,6 +1408,7 @@ class V2SigmascopeInspector:
         if severities:
             highest = max(severities, key=lambda value: SEVERITY_RANK.get(value.casefold(), 0))
             base["advisorySummary"] = {"count": len(severities), "highestSeverity": highest, "points": 0}
+        base["developerReviewPlan"] = deltascope_developer_guidance.project_developer_review_plan(base)
         if self.remote:
             return {
                 **base, "lazyDatasets": True, "datasetCounts": dataset_counts,
@@ -1063,17 +1450,45 @@ class V2SigmascopeInspector:
         return rows
 
     def plugin_detail(self, variant_id: int) -> dict[str, Any]:
+        def with_snapshot_identity(detail: dict[str, Any], entry: dict[str, Any] | None) -> dict[str, Any]:
+            if not entry:
+                return detail
+            return {
+                **detail,
+                "variantPath": str(entry.get("variantPath") or ""),
+                "snapshotSha256": str(entry.get("variantSha256") or ""),
+            }
+
         try:
-            return self._detail_from_payload(self._payload(variant_id), snapshot_kind="current")
+            return self._with_catalog_context(with_snapshot_identity(
+                self._detail_from_payload(self._payload(variant_id), snapshot_kind="current"),
+                self.current_entries.get(variant_id),
+            ), variant_id)
         except Exception as exc:
+            catalog_only = self._catalog_only_detail(variant_id) if variant_id not in self.current_entries else None
+            if catalog_only is not None:
+                return catalog_only
             if not self._refresh_after_snapshot_race(exc):
                 raise
             if variant_id in self.current_entries:
-                return {**self._detail_from_payload(self._payload(variant_id), snapshot_kind="current"), "onlineSnapshotRefreshed": True}
+                return {
+                    **self._with_catalog_context(with_snapshot_identity(
+                        self._detail_from_payload(self._payload(variant_id), snapshot_kind="current"),
+                        self.current_entries.get(variant_id),
+                    ), variant_id),
+                    "onlineSnapshotRefreshed": True,
+                }
             retained = self._snapshot_entries_for_variant(variant_id)
             if retained:
                 entry = retained[0]
-                return {**self._detail_from_payload(self._payload_for_entry(entry), snapshot_kind=str(entry.get("snapshotKind") or "snapshot")), "onlineSnapshotRefreshed": True, "variantNoLongerCurrent": True}
+                return {
+                    **with_snapshot_identity(
+                        self._detail_from_payload(self._payload_for_entry(entry), snapshot_kind=str(entry.get("snapshotKind") or "snapshot")),
+                        entry,
+                    ),
+                    "onlineSnapshotRefreshed": True,
+                    "variantNoLongerCurrent": True,
+                }
             raise ValueError(f"variant {variant_id} is no longer present in the refreshed Evidence v2 snapshot") from exc
 
     def snapshot_detail(self, variant_path: str) -> dict[str, Any]:
@@ -1088,12 +1503,21 @@ class V2SigmascopeInspector:
 
         try:
             entry, kind = resolve()
-            return self._detail_from_payload(self._payload_for_entry(entry), snapshot_kind=kind)
+            return {
+                **self._detail_from_payload(self._payload_for_entry(entry), snapshot_kind=kind),
+                "variantPath": path,
+                "snapshotSha256": str(entry.get("variantSha256") or ""),
+            }
         except Exception as exc:
             if not self._refresh_after_snapshot_race(exc):
                 raise
             entry, kind = resolve()
-            return {**self._detail_from_payload(self._payload_for_entry(entry), snapshot_kind=kind), "onlineSnapshotRefreshed": True}
+            return {
+                **self._detail_from_payload(self._payload_for_entry(entry), snapshot_kind=kind),
+                "variantPath": path,
+                "snapshotSha256": str(entry.get("variantSha256") or ""),
+                "onlineSnapshotRefreshed": True,
+            }
 
     def variant_snapshots(self, variant_id: int) -> list[dict[str, Any]]:
         return self._snapshot_entries_for_variant(variant_id)

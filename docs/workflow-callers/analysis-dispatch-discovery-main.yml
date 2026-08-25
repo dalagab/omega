@@ -1,0 +1,48 @@
+name: Omega analysis worker - Discovery
+
+# Install on default main. This workflow is started asynchronously by the dispatcher
+# only after the claim has already been committed to analysis-broker-state.
+on:
+  workflow_dispatch:
+    inputs:
+      work_item_id:
+        type: string
+        required: true
+      claim_token:
+        type: string
+        required: true
+
+permissions:
+  contents: write
+  issues: read
+
+jobs:
+  component:
+    uses: dalagab/omega/.github/workflows/catalog-discovery.yml@sigmascope
+    secrets: inherit
+
+  settle-success:
+    needs: component
+    if: always() && needs.component.result == 'success'
+    uses: dalagab/omega/.github/workflows/analysis-dispatcher-settle.yml@sigmascope
+    with:
+      work_item_id: ${{ inputs.work_item_id }}
+      claim_token: ${{ inputs.claim_token }}
+      outcome: completed
+      retry_failed: true
+      max_attempts: 3
+      result_json: >-
+        {"workerWorkflow":"${{ github.workflow }}","workerRunId":"${{ github.run_id }}","workerRunAttempt":"${{ github.run_attempt }}","component":"omega.discovery","componentOutcome":"success"}
+
+  settle-failure:
+    needs: component
+    if: always() && needs.component.result != 'success'
+    uses: dalagab/omega/.github/workflows/analysis-dispatcher-settle.yml@sigmascope
+    with:
+      work_item_id: ${{ inputs.work_item_id }}
+      claim_token: ${{ inputs.claim_token }}
+      outcome: failed
+      retry_failed: true
+      max_attempts: 3
+      result_json: >-
+        {"workerWorkflow":"${{ github.workflow }}","workerRunId":"${{ github.run_id }}","workerRunAttempt":"${{ github.run_attempt }}","component":"omega.discovery","componentOutcome":"${{ needs.component.result }}"}

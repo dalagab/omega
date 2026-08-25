@@ -107,6 +107,31 @@ class DeltaScopeCollectorTests(unittest.TestCase):
         self.assertEqual(3181, sigma_metrics["Queue pending"])
 
 
+    def test_first_class_discovery_json_metrics_preserve_operational_trend_label(self) -> None:
+        metrics = deltascope_collectors._log_metrics("source-discovery", r'''
+{
+  "schema": "omega.catalog-discovery.v1",
+  "counts": {
+    "candidateSourceCount": 91,
+    "knownSourcesSkipped": 83,
+    "validatedNovelSources": 4,
+    "newPluginFacts": 3,
+    "newVariantFacts": 2,
+    "projectLinksObserved": 45,
+    "repositoryCandidates": 17,
+    "repositoryTreesInspected": 12,
+    "webSearchResults": 8
+  }
+}
+''')
+        by_label = {row["label"]: row["value"] for row in metrics}
+        self.assertEqual(91, by_label["Deduplicated sources"])
+        self.assertEqual(83, by_label["Known sources skipped"])
+        self.assertEqual(4, by_label["Validated novel sources"])
+        self.assertEqual(3, by_label["New plugin facts"])
+        self.assertEqual(12, by_label["Repository trees inspected"])
+        self.assertEqual(8, by_label["Web-search results"])
+
     def test_collector_trends_flag_duration_and_stable_volume_regression(self) -> None:
         runs = []
         values = [10, 44, 45, 43, 44]

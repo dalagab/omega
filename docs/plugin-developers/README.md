@@ -1,10 +1,28 @@
 # Plugin Developer guide
 
 The Plugin Developer perspective is designed around one question:
+By default **My Plugins** shows logical plugins that have a stable variant matching the selected current Dalamud API target (**15** by default). Entries whose API metadata is unknown remain visible rather than being guessed unsupported. Open the plugin-picker preferences and enable **Show old / unsupported** to include testing-only, outdated, future-API, hidden and retired identities. The API target and legacy toggle are browser-local DeltaScope display settings only; they do not change Omega installation compatibility, Catalog identity, SigmaScope scan eligibility or published security evidence.
+
 
 > What did Omega observe about my plugin, what needs explanation, and what can I provide to make the record more accurate and useful?
 
-Select your plugin once from the plugin picker in the global header. Developer pages stay scoped to that plugin; the corpus-wide plugin browser belongs to the Investigator and Security Researcher perspectives.
+Select your plugin once from **My Plugins** in the global header. This picker is the logical Omega catalog: one row per canonical catalog `plugin_id`, even when the security system retains several source/build/version variants underneath it. Assembly name/version is context only and does not merge different plugin IDs. Developer pages stay scoped to that logical plugin; the corpus-wide variant browser belongs to the Investigator and Security Researcher perspectives.
+
+Catalog plugins are shown even before a current security scan exists. **UNSCANNED / NO CURRENT EVIDENCE** means Omega knows the catalog identity but does not yet have matching current Evidence-v2 coverage; it is not a safe/clean verdict.
+
+After selecting a plugin, **Current catalog variants** shows what the single My Plugins row represents underneath: every active source/build variant, its version/API and repository context, and whether that exact variant has current Evidence-v2. Use **Inspect variant** to drill into a sibling. Partial coverage stays partial: evidence for one sibling never makes another sibling look scanned.
+
+### Cross-source comparison
+
+Above that matrix, DeltaScope summarizes how the siblings differ without inventing a security verdict. It can call out:
+
+- partial current Evidence-v2 coverage;
+- different assembly versions across current sources;
+- mixed/unknown Dalamud API metadata;
+- same-version + same-API siblings whose published artifact SHA-256 differs;
+- same-version + same-API siblings whose compact severity/finding counts differ.
+
+A same-version difference is a **review cue**, not proof that either source is malicious or incorrect. Different artifact hashes across *different plugin versions* are treated as ordinary version/release skew. Use the exact variant buttons to inspect the source/build involved before drawing conclusions.
 
 ## Overview
 

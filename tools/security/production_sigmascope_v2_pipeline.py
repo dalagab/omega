@@ -41,6 +41,7 @@ import catalog_revisions  # noqa: E402
 import collect_public_advisories  # noqa: E402
 import project_marketplace_catalog  # noqa: E402
 import scan_queue  # noqa: E402
+import sigmascope_request_adapter  # noqa: E402
 import sigmascope  # noqa: E402
 import variant_lifecycle  # noqa: E402
 import observation_projection  # noqa: E402
@@ -897,7 +898,7 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
     }
 
 
-def _build_plugins_artifacts_indexes(candidate: Path) -> tuple[dict[str, Any], dict[str, Any], int, int, int, int, int]:
+def _build_plugins_artifacts_indexes(candidate: Path, *, lifecycle_contract_version: int = 1) -> tuple[dict[str, Any], dict[str, Any], int, int, int, int, int]:
     current_rows: list[dict[str, Any]] = []
     terminal_rows: list[dict[str, Any]] = []
     history_rows: list[dict[str, Any]] = []
@@ -921,7 +922,7 @@ def _build_plugins_artifacts_indexes(candidate: Path) -> tuple[dict[str, Any], d
             "analysisId": analysis_id,
             "variantPath": rel,
             "variantSha256": sha256_file(path),
-            "summary": variant_index_summary(payload),
+            "summary": variant_index_summary(payload, lifecycle_contract_version=lifecycle_contract_version),
         }
         if kind != "current":
             entry["lifecycle"] = lifecycle
@@ -959,14 +960,14 @@ def _build_plugins_artifacts_indexes(candidate: Path) -> tuple[dict[str, Any], d
     history_rows.sort(key=lambda row: (int(row["variantId"]), int(row["scanId"]), str(row["variantPath"])))
     plugins_payload = {
         "schema": "omega.security-evidence.plugins-index.v2",
-        "lifecycleContractVersion": 1,
+        "lifecycleContractVersion": lifecycle_contract_version,
         "currentVariants": current_rows,
         "terminalVariants": terminal_rows,
         "historicalSnapshots": history_rows,
     }
     artifacts_payload = {
         "schema": "omega.security-evidence.artifacts-index.v2",
-        "lifecycleContractVersion": 1,
+        "lifecycleContractVersion": lifecycle_contract_version,
         "artifacts": [
             {
                 "artifactSha256": key,
@@ -1514,7 +1515,14 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     advisory_queue_item: dict[str, Any] | None = None
     queue_state_before = b""
     selected_internal_names = str(args.internal_names or "")
+    analysis_request_arg = getattr(args, "analysis_request", None)
+    analysis_request_path = analysis_request_arg.resolve() if analysis_request_arg else None
+    analysis_work_item_id = str(getattr(args, "analysis_work_item_id", "") or "")
+    analysis_target: dict[str, Any] | None = None
+    selected_analysis_queue_key = ""
     queue_seed: dict[str, Any] = {}
+    if analysis_request_path is not None and not queue_enabled:
+        raise RuntimeError("generic SigmaScope analysis requests require the canonical frozen scan queue")
     if queue_enabled:
         queue_seed = preloaded_queue_seed
         for key, expected in (
@@ -1538,6 +1546,20 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 queue_db,
                 [item.strip() for item in selected_internal_names.split(",") if item.strip()],
             )
+            if analysis_request_path is not None:
+                if not analysis_request_path.is_file():
+                    raise RuntimeError(f"generic SigmaScope analysis request is missing: {analysis_request_path}")
+                analysis_request_value = json.loads(analysis_request_path.read_text(encoding="utf-8"))
+                if not isinstance(analysis_request_value, dict):
+                    raise RuntimeError("generic SigmaScope analysis request must be a JSON object")
+                analysis_target = sigmascope_request_adapter.enqueue_request(
+                    queue_state, queue_db, analysis_request_value,
+                    work_item_id=analysis_work_item_id, definitions_root=Path(args.frozen_definitions).resolve() if args.frozen_definitions else None,
+                )
+                selected_analysis_queue_key = str(analysis_target.get("queueKey") or "")
+                (work_dir / "analysis-request-target.json").write_text(
+                    json.dumps(analysis_target, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+                )
         queue_state_before = scan_queue.canonical(previous_queue_state)
         selected_internal_names = ""
 
@@ -1554,12 +1576,18 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     stopped_by_batch_budget = False
 
     if queue_enabled and queue_state is not None:
-        for _batch_index in range(max(0, int(args.max_scans))):
+        effective_max_scans = 1 if selected_analysis_queue_key else max(0, int(args.max_scans))
+        for _batch_index in range(effective_max_scans):
             if scan_deadline is not None and time.monotonic() >= scan_deadline:
                 stopped_by_batch_budget = True
                 break
-            selected = scan_queue.select_next(queue_state)
+            selected = (
+                scan_queue.select_key(queue_state, selected_analysis_queue_key)
+                if selected_analysis_queue_key else scan_queue.select_next(queue_state)
+            )
             if selected is None:
+                if selected_analysis_queue_key:
+                    raise RuntimeError(f"broker-bound SigmaScope queue item is not eligible: {selected_analysis_queue_key}")
                 break
             selected_queue_items.append(selected)
             if selected_queue_item is None:
@@ -1778,6 +1806,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "reasons": list((selected_queue_item or {}).get("reasons") or []),
             "attemptCount": int((selected_queue_item or {}).get("attemptCount") or 0),
         } if selected_queue_item else {},
+        "analysisRequest": analysis_target or {},
         "queueBatch": {
             "selectedCount": len(selected_queue_items),
             "variantIds": [int(item.get("variantId") or 0) for item in selected_queue_items if int(item.get("variantId") or 0) > 0],
@@ -1950,6 +1979,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "changed": provenance_changed,
         },
         "marketplace": marketplace_report,
+        "analysisRequest": analysis_target or {},
         "queue": {
             "enabled": queue_enabled,
             "selected": selected_queue_item or {},
@@ -2021,6 +2051,8 @@ def main() -> int:
     parser.add_argument("--max-batch-seconds", type=int, default=DEFAULT_MAX_BATCH_SECONDS)
     parser.add_argument("--internal-names", default="")
     parser.add_argument("--variant-ids", default="", help="Optional exact variant IDs; normally supplied by the persistent queue")
+    parser.add_argument("--analysis-request", type=Path, help="Optional exact omega.analysis-request.v1 to merge into the canonical SigmaScope queue")
+    parser.add_argument("--analysis-work-item-id", default="", help="Optional Analysis Broker work-item lineage for --analysis-request")
     parser.add_argument("--skip-source", action="store_true")
     parser.add_argument("--osv-timeout", type=float, default=20.0)
     parser.add_argument("--max-osv-packages", type=int, default=2000)

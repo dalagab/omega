@@ -1,3 +1,138 @@
+## 2026-08-25 — DeltaScope relationship-capacity hotfix
+
+- Fixed production Sigmascope launcher failure `32782612429`: the existing Evidence-v2 relationship projection was already at 198,846 / 200,000 component edges before the batch, so normal scan growth crossed the obsolete fixed ceiling.
+- Suppress exact duplicate component relationship rows before DeltaScope transport counting/writing.
+- Replace the fixed 200,000 relationship guard with a catalog-scaled bounded ceiling: minimum 250,000, 512 edges per represented current variant, absolute maximum 2,000,000.
+- Publish relationship-capacity and duplicate-suppression diagnostics in the read-only workbench relationship manifest.
+- Preserve the existing 8 MiB compressed shard target and 32 MiB per-file Evidence-v2 publication ceiling.
+- No main-branch dispatcher change and no narrow SigmaScope artifact/source analysis semantic change.
+
+## 2026-08-25 — Closed-loop Stigma evidence acquisition
+
+- Added production `omega.observation-inventory.v1` materialization from current Evidence-v2 and compatible Discovery observations, including immutable/static and TTL freshness semantics.
+- Added hash-pinned Stigma `observation-requests.json` projections with explicit broker-only evidence-acquisition mutation authority and no production finding write-back.
+- Added deterministic/idempotent Stigma → Analysis Broker reconciliation for typed observation requests and compatible retained-observation replay gaps.
+- Added stable exact-subject broker request identities; repeated reconciliation does not create duplicate work.
+- Extended Analysis Broker enqueue/resolve to consume the production inventory and safely re-resolve already-compiled requests.
+- Updated the default-main dispatcher v4 ordering to `reconcile → reserve → asynchronous workers`.
+- Updated the missing-components roadmap: Stigma→Broker ingestion and observation-inventory materialization are implemented; remaining work is explicitly ranked.
+- Final workflow audit removed a duplicate `allowed_components` input declaration from the batch-claim reusable workflow, added the same explicit allow-list to manual dispatch, and added a regression assertion for duplicate-key recurrence.
+- No Rift implementation changes and no change to narrow SigmaScope artifact/source analysis revisions.
+
+## 2026-08-24 — Generic SigmaScope request adapter and roadmap
+
+- Added generic Analysis Broker → SigmaScope request adaptation into the existing canonical scan queue.
+- Added exact canonical queue-key execution for broker-bound work and post-run Evidence-v2 observation verification.
+- Marked SigmaScope broker-dispatchable with `maxConcurrent: 1`; parallel Evidence-v2 writers remain prohibited.
+- Added rollout-safe dispatcher `allowed_components` handling so older main runners cannot lease newly enabled component work.
+- Added main SigmaScope dispatcher worker template.
+- Added `docs/platform/MISSING-COMPONENTS.md`, documenting missing deployable components, missing SigmaScope collectors and remaining control-plane/Evidence/DeltaScope work.
+- No Rift implementation changes.
+
+# Rift Evidence-v2 production adapter v1
+
+- Activate `omega.collector.rift.runtime` as a typed runtime-observation provider.
+- Add `riftRuntimeEvents`, `riftRuntimeExercise`, `riftRuntimeBoundary`, and optional `riftComponentSecurity` observation contracts.
+- Add broker-bound `omega.rift.execution-request.v1` generated from current Evidence-v2 variant/artifact identity.
+- Add production `rift.supervisor-attestation.v2` overlay binding request ID, variant ID and distributed artifact SHA-256 to the trusted supervisor report digest.
+- Add fail-closed Rift runtime contract validation, Evidence-v2 adapter, independent ingestion audit, and reusable/manual ingestion workflow.
+- Retain exact runtime-report bytes and broker/attestation/typed-observation documents under bounded per-variant derived Rift evidence.
+- Preserve standalone Rift attestation v1 compatibility while prohibiting it from production Evidence-v2 publication.
+- Keep existing deep-scan worker static/non-executing; dynamic broker routing/download capture/fresh reruns remain deferred.
+- Preserve SigmaScope 2.15.0, DeltaScope 4.21.5, and unchanged narrow artifact/source analysis revisions.
+
+# First-class collector observations / Omega Discovery
+
+- Promote the independent six-hour discovery plane into **Omega Discovery** (`omega.discovery`) with stable collector IDs and typed observation contracts.
+- Add `omega.collector-registry.v1` and `omega.collector-observation-bundle.v1`, including deterministic provider registration, per-row collector/provenance metadata and fail-closed provider/type validation.
+- Add bounded project-page/README candidate reuse, rotating GitHub repository-tree manifest inspection, Omega issue hints and optional configured Brave Web Search queries to discovery.
+- Keep canonical-known source URLs skip-first and preserve reusable normalized novel-feed shards for the daily builder.
+- Register SigmaScope static/source/secondary observation producers in the shared provider vocabulary; reserve Rift runtime collection as planned/inactive.
+- Let Stigma-1 consume rule-eligible external collector observations without changing Evidence-v2 collection contracts.
+- Add non-executable `observationRequest` outcomes that name only a logical collection; resolve provider candidates with orchestration-only execution authority and reject implementation `collectorId` binding.
+- Let DeltaScope evaluate a local rule against a typed collector bundle and display the new discovery workflow without losing legacy source-discovery operational history.
+- Add Omega Discovery/collector architecture documentation and a shipped discovery rule/fixture.
+
+## 2.15.0 — fresh Omega client projection + independent catalog discovery
+
+- Change the Omega marketplace projector to **1.7.0** and build every downloadable client SQLite database from a new empty allow-listed schema (`client_projection_mode=fresh-allowlist-v1`). The client receives only `catalog_meta`, reduced `sources`, reduced changelog-capable `plugins`/`plugin_variants`, the frozen current `runtime_plugin_variants` table, and `catalog_changelog` when present. Raw manifests, scraper state, source/identity working tables and detailed security tables cannot cross this boundary.
+- Add `client_database_audit.py` and a catalog publication gate that reports table/page usage, rejects prohibited server-side tables, caps the client DB at 48 MiB, and rejects >20% unexplained growth versus the previous release when available.
+- Stop using yesterday's downloadable client DB as the builder cache. Manifest and website conditional-fetch hints are materialized from the previous canonical `catalog-data` snapshot instead.
+- Add independent `catalog-discovery` snapshots. The reusable worker searches public JSON candidates, checks open Omega source-submission/follow-up issues, skips canonical source URLs without fetching them, validates only genuinely novel PluginMaster feeds, and classifies entries as new-plugin or new-source-variant facts without assigning catalog identity.
+- Persist each freshly validated novel feed as a bounded normalized discovery shard. The next daily enrichment run reuses that shard directly while it is fresh (24-hour default), so discovery does not immediately pay for a second download/parse of the same JSON source.
+- Make the daily catalog collector preserve the entire current canonical source inventory, overlay a fresh discovery snapshot, and skip duplicate GitHub code search while that snapshot is fresh. A missing/stale discovery snapshot falls back to the existing live search.
+- Add an Evidence-v2 storage audit that measures bytes by artifacts/current variants/history/queue/derived areas and exact duplicate SHA groups. This pass is measurement-only: no security evidence/history is deleted or rewritten.
+- Add a default-branch discovery launcher (every 6 hours) plus reusable `sigmascope` worker. The discovery branch is an orphan/replaceable non-authoritative snapshot, not a second catalog database.
+
+## 2.15.0 — DeltaScope 4.21.5 / deterministic developer review plan
+
+- Add `omega.deltascope.developer-review-plan.v1`, a bounded read-only **Next actions** projection for the selected Plugin Developer dossier.
+- Prioritize exact existing pivots for elevated findings, sibling divergence/coverage gaps, source attribution/source-to-artifact gaps, incomplete secondary engines, frozen advisories, retained history and temporary immutable-dataset transport failures.
+- Keep the plan deterministic and bounded to eight actions; each cue routes to an existing dossier tab and never executes scans or mutates production state.
+- An empty plan means only that no compact current cue requires a specific follow-up; it is never a clean/safe verdict.
+- Add dedicated unit coverage for guidance priority/authority/routing and keep the broader DeltaScope regression suite passing.
+
+## DeltaScope 4.21.4 — logical-plugin cross-source divergence and Overview runtime repair
+
+- Restore the scanned-plugin `dossierOverviewHtml()` browser renderer accidentally dropped during the 4.21.3 compatibility refactor; add a regression contract that requires the runtime Overview function to exist.
+- Add read-only `omega.deltascope.logical-plugin-divergence.v1` beneath the selected logical-plugin context so a collapsed My Plugins row explains whether current source/build siblings actually align.
+- Surface partial Evidence-v2 coverage, version/API skew, and source multiplicity without treating ordinary release/repository skew as suspicious.
+- Escalate only same-version + same-API artifact-hash or compact security-summary differences into explicit review cues. Those cues are navigation/explanation only and never SigmaScope findings or source-trust verdicts.
+- Carry compact per-sibling artifact SHA-256 plus finding-count summaries in both online Evidence-v2 and local SQLite logical-plugin context; no N-sibling detailed-evidence fan-out is added.
+- Put the selected variant first and current-compatible siblings ahead of legacy siblings in the variant matrix, while retaining exact variant identity and direct Inspect variant pivots.
+- Keep 4.21 as the main DeltaScope line; subsequent refinements continue as 4.21.5, 4.21.6, etc. until an explicit main-version advance.
+
+## DeltaScope 4.21.3 — current-compatible My Plugins and legacy visibility
+
+- Make Plugin Developer **My Plugins** current-compatible by default: stable variants matching the selected Dalamud API target are shown normally, while API-unknown catalog identities remain visible rather than being silently discarded.
+- Add a browser-local **Show old / unsupported** preference plus a browser-local current Dalamud API target (default **15**). These settings affect DeltaScope display/navigation only and never change Omega install policy, Catalog identity, SigmaScope coverage, findings, queues or Evidence-v2.
+- Classify logical plugins and sibling variants as `current`, `unknown`, `testing-current`, `outdated`, `future`, `hidden`, or `retired`, and show the reason directly in the picker and selected-plugin variant matrix.
+- Prefer a current-compatible sibling as the logical picker representative when one exists, even if an older sibling is the only variant with current security evidence. Security evidence remains independently attributed per variant.
+- Preserve the full logical catalog model behind the filter. Enabling legacy visibility restores old/unsupported/historical identities without changing their catalog `plugin_id` grouping.
+- Align online Evidence-v2 and local SQLite mode: inactive logical plugins expose their historical sibling variants and retained API/hidden metadata instead of local mode silently dropping them.
+- Keep **4.21** as the main DeltaScope line; subsequent refinements continue as `4.21.4`, `4.21.5`, etc. until an explicit main-version advance.
+
+## DeltaScope 4.21.2 — logical plugin variant/source coverage matrix
+
+- Keep **My Plugins** at one row per canonical catalog `plugin_id`, while making the active source/build/version variants underneath that logical identity directly inspectable from the selected-plugin Overview.
+- Add read-only `omega.deltascope.logical-plugin-context.v1` to selected plugin dossiers in both online Evidence-v2 mode and local SQLite mode.
+- Show every active catalog variant with its source identity, assembly version/API, repository context, exact current Evidence-v2 presence, scan ID and highest severity.
+- Distinguish partial coverage at the logical-plugin boundary: an unscanned selected variant can show that a sibling variant is covered without treating either state as a verdict for the other.
+- Add **Inspect variant** actions so Plugin Developer can drill into a specific source/build variant without reintroducing duplicate logical rows in the global My Plugins picker.
+- Keep sibling coverage lightweight: online detail loads one selected catalog plugin shard and overlays sibling state from the already-loaded compact current Evidence-v2 index; it does not fan out into one evidence-payload request per sibling.
+- Preserve security authority boundaries: catalog grouping/context is navigation and coverage explanation only; Investigator/Security Researcher remain variant-oriented and no scanner, queue, finding, severity, Definitions, Evidence-v2 publication or catalog mutation semantics change.
+- Keep **4.21** as the main DeltaScope line; subsequent refinements continue as `4.21.3`, `4.21.4`, etc. until an explicit main-version advance.
+
+## DeltaScope 4.21.1 — logical My Plugins and full catalog inventory
+
+- Change the global **My Plugins** picker from Evidence-v2 variant rows to one row per canonical Omega catalog `plugin_id`; repository/build/version variants remain separately inspectable in Investigator and Security Researcher security views.
+- Read the verified current `catalog-data/catalog/plugins/index.json` logical-plugin inventory in online mode and overlay matching current Evidence-v2 coverage, so catalog-known plugins no longer disappear merely because security evidence is pending.
+- Keep assembly name/version as display and diagnostic context only. They are **not** merge authority, preventing unrelated plugin IDs that happen to ship the same assembly name from being collapsed together.
+- Gate current coverage by the catalog's active variant IDs: evidence from an old/inactive variant cannot make a current catalog variant look scanned.
+- Allow catalog-only selections to open a read-only **Known catalog plugin · security coverage pending** dossier, lazily fetching only that plugin's verified catalog shard. `UNSCANNED / NO CURRENT EVIDENCE` is explicitly not a clean/security verdict.
+- Keep the existing security workbench variant-oriented; no SigmaScope queue, scanner, finding, severity, Definitions, Evidence-v2 publication or catalog mutation semantics change.
+- Keep **4.21** as the main DeltaScope version line; subsequent refinements continue as `4.21.2`, `4.21.3`, etc. until an explicit main-version advance.
+
+## DeltaScope 4.21.0 — Investigator case reference health and timeline
+
+- Upgrade local Investigator Cases from passive pin lists into a bounded casework workspace with **Pins / Timeline / Notebook** views.
+- Resolve up to 250 pinned references per case against the current verified evidence snapshot, caching by variant so repeated pins do not create duplicate dossier fetches.
+- Distinguish exact current references, retained historical snapshots, findings re-observed on a newer scan, changed references, unresolved pivots and missing variants without silently substituting current evidence for an unproven historical target.
+- Reopen retained finding/observation/snapshot pins through the exact retained snapshot path when scan/artifact identity can be proven.
+- Build a chronological local investigation timeline from case creation, evidence timestamps, pins and investigator notes.
+- Keep the projection read-only/local-only with zero security/finding/policy/Definitions/Evidence/queue/publication/repository authority.
+- Keep **4.21** as the main DeltaScope version line; follow-up refinements should use 4.21.1, 4.21.2, and so on rather than advancing to 4.22 immediately.
+
+## 2.15.0 — DeltaScope 4.20.0 / scan queue causality and coverage-first explainability
+
+- Add **Operations → Scan Queue** as a dedicated read-only workspace instead of routing queue inspection through generic Reports.
+- Project the published SigmaScope queue as `omega.deltascope.scan-queue-causality.v1`, with explicit first-coverage, first-coverage-retry, and already-covered refresh/follow-up lanes.
+- Explain `baselineSecurityRebuild` and the catalog identity epoch separately from ordinary `new_variant` coverage work, so an alphabetical return to A is not mistaken for deleted Evidence or a full security reset.
+- Preview the next bounded queue items using the exact published `coverage-first-v1` ordering contract, including the deterministic `InternalName` tie-break. If a future selection policy is unknown, DeltaScope refuses to claim exact order.
+- Expand queue reasons into human-readable causes (`new_variant`, artifact/source analysis changes, source follow-up, advisory refresh, failed retry, baseline scan, and Stigma-1 observation requirements).
+- Keep queue causality explanation-only: `mutationAuthority=none`, `policyInput=false`, and no queue mutation, scan execution, Definitions, Evidence-v2, or publication authority.
+- Add the Operations manual `docs/operations/SCAN-QUEUE.md` explaining coverage-first behavior and the identity-epoch boundary.
+
 # DeltaScope finding lineage
 
 - Add clickable **Trace lineage** actions to current plugin findings, latest findings, and Investigator case findings.
@@ -17,6 +152,14 @@
 - Recent GitHub Actions history is expanded to eight runs while log downloads stay bounded to collector-relevant jobs in the newest four runs. Older runs contribute outcome/timing history without log downloads.
 - Collectors now show mini trend plots, current-vs-baseline values, explicit anomaly explanations, duration and throughput in recent-run history, and top-level degrading/warning/stale summaries.
 - Collector trend state remains read-only diagnostic context and has no security-policy or production mutation authority.
+
+## 2.15.0 — DeltaScope 4.19.0 / local Investigator notebooks and cases
+
+- Add a bounded local Investigator case store under `~/.omega/deltascope/investigator/v1` with `OMEGA_DELTASCOPE_CASE_HOME` / `--case-home` override.
+- Investigator **Cases** now supports local titles/status/labels, notes, plugin bookmarks, pinned finding and retained-observation references, saved intelligence pivots, and Evidence-v2 snapshot references.
+- Preserve useful variant/scan/Evidence/Definitions/rule-set/artifact-hash identity in pins when available so a later publication refresh does not erase the investigator's original context.
+- Expose pin actions only in the Investigator perspective and keep published findings/incidents as a separate read-only route.
+- Every local case and item is explicitly non-authoritative: no finding, severity, policy, queue, Definitions, Evidence-v2, publication, repository or production write-back.
 
 ## 2.15.0 — DeltaScope 4.15.0 / Detection Coverage and blind-spot matrix
 
@@ -614,3 +757,17 @@ DeltaScope now exposes a permanent top-level **Antivirus & YARA** panel and move
 - Remove the tile border/background from the Omega masthead mark.
 - Add explicit undo/redo history for editable local rule YAML.
 - Expand Visual rule authoring with side properties and a Focus canvas mode.
+
+
+## Analysis Dispatcher v1
+
+- Added `omega.analysis-dispatcher` as a first-class control-plane component.
+- Added lease-based one-item queue claims with expired-runner recovery and bounded retries.
+- Added exact claim-token settlement so stale runners cannot settle a later retry.
+- Added reusable claim/settle broker-state workflows sharing the broker concurrency boundary.
+- Added a five-minute default-branch dispatcher template with explicit static routing for `omega.discovery`; queue data cannot select workflow paths.
+- Kept SigmaScope on its canonical scan queue and made no Rift implementation changes.
+
+## Analysis Dispatcher worker-pool refinement
+
+The generic dispatcher is now a short-lived parallel runner rather than a one-job synchronous chain. SRL/Stigma-1 observation requests become broker work; `analysis-dispatcher-batch-claim.yml` atomically persists leases before launch, with a default four-job global pool and component-specific `maxConcurrent` limits. The default-main runner then starts allow-listed worker workflows asynchronously, so a later dispatcher immediately sees existing `running` leases and can reserve different work. Omega Discovery is capped at one concurrent full refresh. In the current tree SigmaScope is also generic-broker dispatchable through the canonical scan-queue adapter, with `maxConcurrent: 1` until scan execution is separated from serialized Evidence-v2 merge/publication. No Rift implementation is changed by these SigmaScope passes.

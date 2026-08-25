@@ -12,7 +12,8 @@ SRL does not expose arbitrary code execution, imports, shell commands, filesyste
 
 Rules can consume:
 
-- registered observation collections;
+- registered Evidence-v2 observation collections;
+- registered external collector observation types carried in an explicit collector bundle;
 - typed facts emitted by earlier rules;
 - bounded scalar fields exposed by the SRL data contract.
 
@@ -49,6 +50,19 @@ A finding includes stable identity, severity/category, human explanation and evi
 ### Analysis request
 
 An analysis request asks for a registered Deep Scan profile. It is not executable code.
+
+### Observation request
+
+An observation request asks orchestration for another **logical collector observation type**. It is not network/execution authority and cannot name a collector implementation. The evaluator only resolves the request to registered provider candidates.
+
+```yaml
+observationRequest:
+  collection: catalogRepositoryCandidates
+  reason: Resolve a repository candidate for the newly observed plugin.
+  priority: 700
+```
+
+Allowed fields are `schema`, `collection`, `reason` and `priority`. A `collectorId` or any other implementation-binding field is rejected.
 
 ## Completeness and replay
 

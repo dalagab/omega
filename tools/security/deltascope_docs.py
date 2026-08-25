@@ -14,6 +14,8 @@ DOCS: tuple[dict[str, str], ...] = (
     {"id": "platform", "group": "Start here", "title": "Omega security platform", "path": "docs/platform/README.md", "summary": "What the whole platform does, how data flows, and where each component's authority stops."},
     {"id": "perspectives", "group": "Start here", "title": "Choose a DeltaScope perspective", "path": "docs/DELTASCOPE-PERSPECTIVES.md", "summary": "Plugin Developer, Investigator, Security Researcher and Operations workflows over the same evidence."},
     {"id": "architecture", "group": "Start here", "title": "Security architecture", "path": "docs/platform/ARCHITECTURE.md", "summary": "Collectors, Catalog, SigmaScope, Definitions, Stigma-1, Deep Scan, Evidence-v2, DeltaScope, Rift and Alpha."},
+    {"id": "discovery", "group": "Start here", "title": "Omega Discovery", "path": "docs/platform/DISCOVERY.md", "summary": "Six-hour ecosystem intelligence, first-class collector IDs, typed observations, provenance and the non-authoritative catalog handoff."},
+    {"id": "component-registry", "group": "Start here", "title": "Component Registry & Analysis Broker", "path": "docs/platform/COMPONENT-REGISTRY-AND-ANALYSIS-BROKER.md", "summary": "Machine-readable service boundaries, launchability, typed provider resolution, freshness and durable generic analysis-request state."},
     {"id": "evidence-lifecycle", "group": "Start here", "title": "Evidence lifecycle & authority", "path": "docs/platform/EVIDENCE-LIFECYCLE.md", "summary": "Current versus archive versions, immutable analyses, source provenance, coverage, integrity and replay."},
 
     {"id": "plugin-developers", "group": "Plugin developers", "title": "Plugin Developer guide", "path": "docs/plugin-developers/README.md", "summary": "Understand findings, Journey, version changes, source/build provenance and what Omega needs from your plugin."},
@@ -21,6 +23,7 @@ DOCS: tuple[dict[str, str], ...] = (
     {"id": "behavior", "group": "Plugin developers", "title": "Observed versus declared behavior", "path": "docs/BEHAVIOR-CONSISTENCY.md", "summary": "How Omega compares independent observations with developer-authored explanations."},
 
     {"id": "investigators", "group": "Investigators", "title": "Investigator guide", "path": "docs/investigators/README.md", "summary": "Follow a plugin from case to Journey, findings, endpoints, relationships, events and exact evidence."},
+    {"id": "investigator-cases", "group": "Investigators", "title": "Local Investigator cases", "path": "docs/investigators/LOCAL-CASES.md", "summary": "Local-only notebooks for notes, bookmarks, pinned observations/findings, saved pivots and Evidence-v2 snapshot references; never security authority."},
     {"id": "finding-lineage", "group": "Investigators", "title": "Finding lineage", "path": "docs/platform/FINDING-LINEAGE.md", "summary": "Trace a current finding from collector and retained observations through Stigma-1/static evaluation into published evidence."},
 
     {"id": "researchers", "group": "Security researchers", "title": "Security Researcher guide", "path": "docs/security-researchers/README.md", "summary": "Corpus-wide intelligence, comparisons, raw evidence, replay and rule research."},
@@ -31,6 +34,7 @@ DOCS: tuple[dict[str, str], ...] = (
     {"id": "tagging", "group": "Security researchers", "title": "Tagging & classification", "path": "docs/platform/TAGGING-AND-CLASSIFICATION.md", "summary": "Marketplace tags, profile tags, capability vocabulary, source permissions and presentation classifications."},
 
     {"id": "operations", "group": "Operations", "title": "Operations guide", "path": "docs/operations/README.md", "summary": "Dashboard, pipelines, collectors, queues, evidence, Definitions and production authority gates."},
+    {"id": "scan-queue", "group": "Operations", "title": "Scan queue causality", "path": "docs/operations/SCAN-QUEUE.md", "summary": "Why scanning can appear to start at A again, coverage-first lanes, queue reasons and the catalog identity baseline boundary."},
     {"id": "collectors", "group": "Operations", "title": "Collectors & data acquisition", "path": "docs/platform/COLLECTORS.md", "summary": "What every collector consumes/produces, how DeltaScope reviews recent runner history, and how to add one."},
     {"id": "platform-operations", "group": "Operations", "title": "Operational model", "path": "docs/platform/OPERATIONS.md", "summary": "How to interpret pipeline/collector failures, queues, last-known-good evidence and gates."},
 
@@ -48,6 +52,8 @@ DOCS: tuple[dict[str, str], ...] = (
     {"id": "rule-workbench", "group": "Reference", "title": "Rule workbench architecture", "path": "docs/DELTASCOPE-RULE-WORKBENCH.md", "summary": "System Rules, My Rules, YAML/visual/test surfaces and the local/production authority boundary."},
     {"id": "deltascope", "group": "Reference", "title": "DeltaScope workbench", "path": "docs/DELTASCOPE-SECURITY-WORKBENCH.md", "summary": "Object-centric workbench, perspectives, read-only boundaries and documentation model."},
     {"id": "architecture-contract", "group": "Reference", "title": "Architecture authority contract", "path": "docs/ARCHITECTURE-SECURITY-MODEL.md", "summary": "Concise component/authority and re-analysis contract."},
+    {"id": "discovery-rule-example", "group": "Reference", "title": "Discovery collector rule example", "path": "docs/rule-authors/examples/catalog-discovery-rule.yaml", "summary": "Compileable rule over Omega Discovery observations with a non-executable typed observationRequest."},
+    {"id": "discovery-rule-fixture", "group": "Reference", "title": "Discovery rule positive fixture", "path": "docs/rule-authors/examples/catalog-discovery-positive.fixture.yaml", "summary": "Fixture showing a newly discovered plugin requesting repository-candidate context."},
     {"id": "rule-example", "group": "Reference", "title": "Example SRL rules", "path": "docs/rule-authors/examples/process-network-rules.yaml", "summary": "Compileable observation and correlation ruleset."},
     {"id": "rule-example-positive", "group": "Reference", "title": "Example positive fixture", "path": "docs/rule-authors/examples/process-network-positive.fixture.yaml", "summary": "Positive fixture for the shipped example ruleset."},
     {"id": "rule-example-negative", "group": "Reference", "title": "Example negative fixture", "path": "docs/rule-authors/examples/process-network-negative.fixture.yaml", "summary": "Near-miss fixture showing expected non-match behavior."},

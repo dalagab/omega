@@ -1,0 +1,74 @@
+name: Omega analysis dispatcher runner
+
+# Install on default main. The runner is intentionally short-lived: reserve work,
+# persist the leases, asynchronously start allow-listed worker workflows, then exit.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+
+permissions:
+  contents: write
+  actions: write
+  issues: read
+
+jobs:
+  reconcile:
+    uses: dalagab/omega/.github/workflows/analysis-broker.yml@sigmascope
+    with:
+      reconcile_stigma: true
+
+  reserve:
+    needs: reconcile
+    uses: dalagab/omega/.github/workflows/analysis-dispatcher-batch-claim.yml@sigmascope
+    with:
+      dispatcher_id: main-analysis-dispatcher-${{ github.run_id }}-${{ github.run_attempt }}
+      lease_seconds: 3600
+      max_attempts: 3
+      max_claims: 4
+      max_in_flight: 4
+      allowed_components: omega.discovery,omega.sigmascope
+
+  launch:
+    needs: reserve
+    if: needs.reserve.outputs.has_work == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CLAIMS_JSON: ${{ needs.reserve.outputs.claims_json }}
+    steps:
+      - name: Start each reserved job asynchronously through an explicit allow-list
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$CLAIMS_JSON" | jq -c '.[]' | while IFS= read -r claim; do
+            component=$(jq -r '.componentId' <<<"$claim")
+            work_item=$(jq -r '.workItemId' <<<"$claim")
+            token=$(jq -r '.claimToken' <<<"$claim")
+            case "$component" in
+              omega.discovery)
+                gh workflow run analysis-dispatch-discovery.yml \
+                  --repo "$GITHUB_REPOSITORY" \
+                  --ref main \
+                  -f work_item_id="$work_item" \
+                  -f claim_token="$token"
+                ;;
+              omega.sigmascope)
+                request_json=$(jq -c '.request' <<<"$claim")
+                gh workflow run analysis-dispatch-sigmascope.yml \
+                  --repo "$GITHUB_REPOSITORY" \
+                  --ref main \
+                  -f work_item_id="$work_item" \
+                  -f claim_token="$token" \
+                  -f request_json="$request_json"
+                ;;
+              *)
+                echo "No main allow-list worker exists for claimed component: $component" >&2
+                exit 1
+                ;;
+            esac
+          done

@@ -1,5 +1,7 @@
 # Extending Omega security logic
 
+> Platform implementation status and missing components are tracked in [MISSING-COMPONENTS.md](MISSING-COMPONENTS.md). Use that roadmap before creating a new component: many missing capabilities belong as collectors inside an existing trust boundary.
+
 This guide helps contributors choose the correct extension point for new security or catalog behavior.
 
 ## Decision table

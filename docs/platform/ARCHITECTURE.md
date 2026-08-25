@@ -4,13 +4,25 @@ Omega separates collection, observation, interpretation and publication so that 
 
 ## Main components
 
+### Component Registry
+
+The Component Registry (`omega.component-registry.v1`) defines deployable/trust-boundary services separately from collectors. It records component ownership, branch, execution class, authority, launchability and whether a component can currently accept an implementation-neutral Analysis Broker request. The daily Definitions snapshot freezes the exact component and collector registry revisions used by Stigma-1 and orchestration.
+
+### Analysis Broker
+
+The Analysis Broker accepts `omega.analysis-request.v1` requests for logical observation types, resolves collector/component providers, applies freshness/reuse policy and retains bounded durable state. It does not invoke scanner workflows. The `omega.analysis-dispatcher` queue runner on `main` atomically reserves a bounded set of eligible items with leases, persists those leases before launch, then asynchronously starts explicit allow-listed worker workflows. Other dispatcher runs see the same in-flight leases and can fill only remaining global/per-component capacity; queue data never selects an arbitrary workflow path.
+
 ### Omega client
 
 The in-game client is the user-facing discovery and installation experience. It consumes catalog and security information. It is not the security scanner and does not independently re-interpret scanner evidence.
 
+### Omega Discovery
+
+Omega Discovery (`omega.discovery`) is the ecosystem-intelligence component. Its bounded collectors search public indexes, PluginMaster feeds, project/README links, repository trees and source issues, then publish provenance-backed candidate observations. It runs independently of security analysis and has no catalog identity or security authority.
+
 ### Catalog services
 
-Catalog services discover plugin repositories and normalize plugin identities, variants, manifests, project metadata, tags, source references and installable artifact URLs. The catalog defines **what plugin variant exists and what artifact should be inspected**.
+Catalog services reconcile discovery observations, configured sources and the prior canonical snapshot into plugin identities, variants, manifests, project metadata, tags, source references and installable artifact URLs. The catalog defines **what plugin variant exists and what artifact should be inspected**.
 
 ### SigmaScope
 
@@ -45,23 +57,35 @@ Rift is a separate branch-level experimental execution environment. Alpha is a c
 ## Data flow
 
 ```text
-Repository/feed discovery
+Public ecosystem / search indexes / project pages / issues
         ↓
-Catalog normalization
+Omega Discovery collectors
+        ↓
+Typed candidate observations + provenance
+        ↓
+Catalog normalization / canonical identity
         ↓
 Active plugin variant + installable artifact
         ↓
-SigmaScope artifact analysis ────────┐
-        ↓                             │
-Source attribution / source analysis │
-        ↓                             │
-Secondary security evidence          │
-        ↓                             │
-Registered observations              │
-        ↓                             │
-Stigma-1 rules                        │
-        ↓                             │
-Optional Deep Scan ──────────────────┘
+Component Registry + Collector Registry
+        ↓
+Stigma-1 may request additional logical observations
+        ↓
+Analysis Broker ── freshness/reuse ── durable request state
+    │
+    └── Analysis Dispatcher ── lease/claim ── static main route
+        │
+        └── main control plane launches only compatible component workflows
+
+SigmaScope artifact/source analysis ────────┐
+        ↓                                    │
+Secondary security evidence                 │
+        ↓                                    │
+Registered observations                     │
+        ↓                                    │
+Stigma-1 rules                               │
+        ↓                                    │
+Optional bounded extra analysis ────────────┘
         ↓
 Security Evidence v2
         ↓
@@ -72,7 +96,10 @@ DeltaScope / Omega
 
 | Data | Who can produce it | What it means |
 | --- | --- | --- |
-| Catalog metadata | Catalog collectors/builders | Identity, source, manifest and presentation data |
+| Component definition | Component Registry | Deployment/trust-boundary metadata; never a security verdict |
+| Analysis request/work item | Analysis Broker | Request/queue state only; does not execute providers |
+| Discovery observation | Omega Discovery collectors | Candidate public fact with collector provenance; not canonical identity |
+| Catalog metadata | Canonical catalog builder | Identity, source, manifest and presentation data |
 | Artifact observations | SigmaScope | Static observations from the selected installable artifact |
 | Source observations | Source-analysis pipeline | Evidence from attributed public source |
 | Developer profile | Plugin developer | Explanatory declaration only |

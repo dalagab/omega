@@ -245,6 +245,46 @@ class SecurityDeveloperViewTests(unittest.TestCase):
                 failures = [x for x in detail["audit"] if x["status"] == "fail"]
                 self.assertEqual([], failures)
                 self.assertEqual("FixturePlugin.csproj", detail["sourceScope"]["primaryProject"])
+                self.assertEqual("omega.deltascope.logical-plugin-context.v1", detail["catalogContext"]["schema"])
+                self.assertEqual(1, detail["catalogContext"]["activeVariantCount"])
+                self.assertEqual(1, detail["catalogContext"]["currentEvidenceVariantCount"])
+                self.assertTrue(detail["catalogContext"]["variants"][0]["currentEvidence"])
+            finally:
+                inspector.close()
+
+    def test_local_sqlite_legacy_plugin_detail_keeps_historical_siblings_and_api_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            evidence = Path(td) / "evidence.sqlite"
+            make_evidence(evidence)
+            now = "2026-08-24T12:00:00Z"
+            with closing(sqlite3.connect(evidence)) as db:
+                db.execute("INSERT INTO plugins(plugin_id,internal_name,canonical_name,first_seen_utc,last_seen_utc,active) VALUES(2,'RetiredFixture','Retired Fixture',?,?,0)", (now, now))
+                db.execute("""
+                    INSERT INTO plugin_variants(variant_id,plugin_id,source_id,source_entry_key,author,name,assembly_version,dalamud_api_level,
+                                                testing_dalamud_api_level,is_hide,repo_url,first_seen_utc,last_seen_utc,active)
+                    VALUES(20,2,1,'retired|1.0|14|stable','Fixture Author','Retired Fixture','1.0',14,15,0,
+                           'https://github.com/example/retired',?,?,0)
+                """, (now, now))
+                db.execute("""
+                    INSERT INTO plugin_variants(variant_id,plugin_id,source_id,source_entry_key,author,name,assembly_version,dalamud_api_level,
+                                                testing_dalamud_api_level,is_hide,repo_url,first_seen_utc,last_seen_utc,active)
+                    VALUES(21,2,1,'retired|2.0|13|stable','Fixture Author','Retired Fixture','2.0',13,0,1,
+                           'https://github.com/example/retired',?,?,0)
+                """, (now, now))
+                db.commit()
+            inspector = view.SecurityInspector(evidence)
+            try:
+                detail = inspector.plugin_detail(20)
+                context = detail["catalogContext"]
+                self.assertFalse(context["catalogActive"])
+                self.assertEqual("historical", context["variantScope"])
+                self.assertEqual(2, context["shownVariantCount"])
+                self.assertEqual(0, context["activeVariantCount"])
+                self.assertEqual({20, 21}, {row["variant_id"] for row in context["variants"]})
+                selected = next(row for row in context["variants"] if row["variant_id"] == 20)
+                hidden = next(row for row in context["variants"] if row["variant_id"] == 21)
+                self.assertEqual(15, selected["testing_dalamud_api_level"])
+                self.assertEqual(1, hidden["is_hide"])
             finally:
                 inspector.close()
 
@@ -700,6 +740,7 @@ class SecurityDeveloperViewTests(unittest.TestCase):
                 self.assertEqual(1, summary["counts"]["queuePending"])
                 self.assertEqual(20, summary["lastBatch"]["selectedCount"])
                 detail = inspector.plugin_detail(1)
+                self.assertEqual("variants/0000/1.json", detail["variantPath"])
                 self.assertEqual(3, detail["contracts"]["secondarySecurityContractVersion"])
                 self.assertEqual(70, detail["sourceAttribution"]["confidence"])
                 self.assertTrue(detail["sourceCoverage"]["sourceCodeAvailable"])
@@ -715,6 +756,7 @@ class SecurityDeveloperViewTests(unittest.TestCase):
                 self.assertEqual("Fixture.dll", inspector.plugin_dataset(1, "assemblies")[0]["path"])
                 self.assertEqual("superseded", inspector.variant_snapshots(1)[1]["snapshotKind"])
                 snapshot = inspector.snapshot_detail("variants/history/1-old.json")
+                self.assertEqual("variants/history/1-old.json", snapshot["variantPath"])
                 self.assertEqual("superseded", snapshot["snapshotKind"])
                 self.assertEqual("superseded", snapshot["lifecycle"]["state"])
                 self.assertEqual("artifact", inspector.browse_table("v2_queue_items")["rows"][0]["workType"])
@@ -1184,6 +1226,28 @@ class SecurityDeveloperViewTests(unittest.TestCase):
         self.assertIn('Critical finding', html)
         self.assertIn('Automatic published-state refresh failed', html)
 
+    def test_investigator_cases_are_local_notebooks_not_security_authority(self) -> None:
+        html = view.HTML
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        self.assertIn('id="workbench-notebooks"', html)
+        self.assertIn('LOCAL ONLY · NO SECURITY AUTHORITY', html)
+        self.assertIn('Investigator cases', html)
+        self.assertIn('/api/investigator/cases', html)
+        self.assertIn('/api/investigator/case/item', html)
+        self.assertIn('data-pin-finding-index', html)
+        self.assertIn('data-pin-observation-index', html)
+        self.assertIn('data-pin-intelligence-pivot', html)
+        self.assertIn('data-pin-snapshot', html)
+        self.assertIn('body:not(.perspective-investigator) .investigator-pin{display:none!important}', html)
+        self.assertIn('deltascope_case_store.LocalInvestigatorCaseStore', source)
+        self.assertIn('deltascope_casework.project_casework', source)
+        self.assertIn('parsed.path == "/api/investigator/casework"', source)
+        self.assertIn('Investigation timeline', html)
+        self.assertIn('Refresh reference health', html)
+        self.assertIn('case-ref-state', html)
+        self.assertIn('--case-home', source)
+        self.assertIn('OMEGA_DELTASCOPE_CASE_HOME', (ROOT / 'tools' / 'security' / 'deltascope_case_store.py').read_text(encoding='utf-8'))
+
     def test_plugin_developer_routes_do_not_show_corpus_plugin_queue(self) -> None:
         html = view.HTML
         self.assertIn('body.perspective-developer #workbench-assets .triage-panel{display:none!important}', html)
@@ -1271,6 +1335,29 @@ class SecurityDeveloperViewTests(unittest.TestCase):
         self.assertIn('function toggleVisualFocus()', html)
         self.assertIn('#ruleBrowserShell.visual-focus .visual-palette,#ruleBrowserShell.visual-focus .visual-properties{display:none!important}', html)
 
+
+    def test_my_plugin_picker_uses_logical_catalog_identity_instead_of_variant_rows(self) -> None:
+        html = view.HTML
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        self.assertIn("/api/plugin-catalog?", html)
+        self.assertIn("MY PLUGINS", html)
+        self.assertIn("catalog variant", html)
+        self.assertIn("NO CURRENT EVIDENCE", html)
+        self.assertIn("function catalogOnlyPluginHtml", html)
+        self.assertIn("function logicalPluginVariantsHtml", html)
+        self.assertIn("Current catalog variants", html)
+        self.assertIn('pluginPickerShowOldUnsupported', html)
+        self.assertIn('pluginPickerApiLevel', html)
+        self.assertIn('deltascope.myPlugins.preferences.v1', html)
+        self.assertIn("params.set('include_legacy','1')", html)
+        self.assertIn("api_level:String(myPluginPreferences.apiLevel)", html)
+        self.assertIn('OUTDATED', html)
+        self.assertIn('TESTING ONLY', html)
+        self.assertIn("data-open-logical-variant", html)
+        self.assertIn("currentEvidenceVariantCount", html)
+        self.assertIn('parsed.path == "/api/plugin-catalog"', source)
+        self.assertNotIn("assemblyNameMergeAuthority\": True", source)
+
     def test_default_developer_view_mode_is_online_v2_without_full_release_download(self) -> None:
         fake = mock.Mock()
         fake.evidence_path = "https://raw.githubusercontent.com/dalagab/omega/security-evidence-v2/"
@@ -1350,6 +1437,27 @@ class SecurityDeveloperViewTests(unittest.TestCase):
         self.assertIn('deltascope_detection_coverage.project_detection_coverage', source)
 
 
+
+    def test_operations_scan_queue_explains_coverage_first_causality(self) -> None:
+        html = view.HTML
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        self.assertIn('data-workbench-view="queue"', html)
+        self.assertIn('id="queueExplanation"', html)
+        self.assertIn('id="queueNextRows"', html)
+        self.assertIn('function loadScanQueue', html)
+        self.assertIn("This is first-coverage work, not a scan reset", (SECURITY_TOOLS / "deltascope_scan_queue.py").read_text(encoding="utf-8"))
+        self.assertIn('parsed.path == "/api/workbench/scan-queue"', source)
+        self.assertIn('deltascope_scan_queue.project_scan_queue', source)
+        self.assertIn('OmegaDeltaScope/4.21.5', source)
+
+    def test_logical_plugin_divergence_and_scanned_overview_runtime_contract(self) -> None:
+        html = view.HTML
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        self.assertIn("function dossierOverviewHtml", html, "scanned plugin Overview renderer must exist at runtime")
+        self.assertIn("function logicalPluginDivergenceHtml", html)
+        self.assertIn("Cross-source comparison · read only", html)
+        self.assertIn("Same-version siblings have different artifact hashes", (SECURITY_TOOLS / "deltascope_plugin_divergence.py").read_text(encoding="utf-8"))
+        self.assertIn("deltascope_plugin_divergence.project_logical_plugin_divergence", source)
 
     def test_threat_intelligence_is_full_endpoint_inventory_not_match_only_view(self) -> None:
         html = view.HTML

@@ -1,6 +1,6 @@
 # Collectors and data acquisition
 
-Collectors are the parts of Omega that obtain or refresh external facts before those facts are normalized into catalog or security evidence. They are reviewable operational components, not invisible background plumbing.
+Collectors are named observation providers **owned by first-class Omega components**. They obtain or refresh external facts before those facts are normalized into catalog or security evidence. A collector is not itself a deployable service boundary: the Component Registry defines that boundary, while the Collector Registry defines which typed observations each component can provide.
 
 DeltaScope exposes collector health in the **Operations → Collectors** workspace. The collector view combines bounded recent GitHub Actions history with current published evidence metrics so an operator can answer:
 
@@ -15,6 +15,12 @@ DeltaScope exposes collector health in the **Operations → Collectors** workspa
 - What current published-evidence metric demonstrates the resulting coverage?
 - Which GitHub Actions runs produced the recent results?
 
+
+## Component and collector identities
+
+Every collector has a stable `omega.collector.*` identity and a `componentId`. The component owns execution/trust boundaries; the collector owns an observation-provider contract. Stigma-1 rules bind to logical observation types rather than either implementation identity. The Analysis Broker resolves observation → collector → component and may queue work only when the owning component is explicitly marked broker-dispatchable.
+
+Operational views may aggregate collectors by component, but collector health and component launchability are different signals. A healthy collector does not grant its component new authority, and merely registering a planned collector never makes it runnable.
 
 ## Health versus trend
 
@@ -66,17 +72,23 @@ DeltaScope derives ratios only where the runner exposes both numerator and denom
 
 ## Collector inventory
 
-### Source discovery
+### Omega Discovery / source intelligence
 
-**Purpose:** find public PluginMaster/source feeds.
+**Purpose:** continuously map public PluginMaster/source/plugin facts outside the heavy canonical/security pipeline.
 
-**Inputs:** curated source registry, validated community source registry, Puni.sh publisher discovery and GitHub search where enabled.
+**Component:** `omega.discovery`.
 
-**Output:** `catalog/raw-sources.json`.
+**Inputs:** canonical source identities, curated/community registries, Puni.sh, GitHub code search, retained project/README links, source issues, bounded repository trees and an optional configured public web-search API.
 
-**Implementation:** `tools/catalog/collect_sources.py`.
+**Output:** replaceable `catalog-discovery` snapshot containing typed collector observations plus reusable normalized shards for novel feeds.
 
-**Review signals:** recent `catalog-builder.yml` / `Discover source feeds` job and its `Discover curated, Puni.sh and GitHub PluginMaster sources` step.
+**Implementation:** `tools/catalog/catalog_discovery.py`, `tools/catalog/discovery_collectors.py` and `tools/security/collector_contracts.py`.
+
+**Review signals:** recent `catalog-discovery.yml` / `Discover new PluginMaster and plugin facts` job and `Run typed discovery collectors and validate only novel source facts` step. DeltaScope preserves legacy source-discovery history across the workflow cutover so the Operations trend does not reset merely because the producer moved.
+
+**Authority:** observation-only. Discovery cannot assign catalog identity, freeze Definitions, queue scans, execute rules or publish client/security state.
+
+See **Omega Discovery** for the collector graph, observation schemas and six-hour boundary.
 
 ### Manifest normalization
 
@@ -176,6 +188,9 @@ A successful workflow is not enough if the collector-specific step was skipped o
 6. Add the collector to the workflow with a stable job/step name.
 7. Register the collector in DeltaScope’s collector inventory so Operations can review its recent history.
 8. Document which downstream component consumes the output and whether that data has security authority or is contextual only.
+9. Register a stable implementation ID in `tools/security/collector_contracts.py` and declare the logical observation types it provides.
+10. Put implementation identity/provenance on retained rows, but make Stigma-1 rules bind the logical observation type rather than the implementation ID.
+11. If a rule may request additional data, expose it through a typed `observationRequest`; collectors are resolved/executed only by orchestration.
 
 ## What collectors must not do
 

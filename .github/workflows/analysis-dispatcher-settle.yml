@@ -1,0 +1,142 @@
+name: Omega Analysis Dispatcher settle
+
+on:
+  workflow_call:
+    inputs:
+      work_item_id:
+        type: string
+        required: true
+      claim_token:
+        type: string
+        required: true
+      outcome:
+        description: completed, failed, or cancelled
+        type: string
+        required: true
+      result_json:
+        description: Bounded JSON object with workflow/run lineage
+        type: string
+        required: false
+        default: "{}"
+      retry_failed:
+        type: boolean
+        required: false
+        default: true
+      max_attempts:
+        type: number
+        required: false
+        default: 3
+    outputs:
+      state:
+        value: ${{ jobs.settle.outputs.state }}
+      retry_scheduled:
+        value: ${{ jobs.settle.outputs.retry_scheduled }}
+  workflow_dispatch:
+    inputs:
+      work_item_id:
+        type: string
+        required: true
+      claim_token:
+        type: string
+        required: true
+      outcome:
+        type: choice
+        required: true
+        options: [completed, failed, cancelled]
+      result_json:
+        type: string
+        required: false
+        default: "{}"
+      retry_failed:
+        type: boolean
+        required: false
+        default: true
+      max_attempts:
+        type: number
+        required: false
+        default: 3
+
+permissions:
+  contents: write
+
+concurrency:
+  group: omega-analysis-broker-state
+  cancel-in-progress: false
+
+jobs:
+  settle:
+    name: Settle exact dispatcher lease
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      state: ${{ steps.outputs.outputs.state }}
+      retry_scheduled: ${{ steps.outputs.outputs.retry_scheduled }}
+    steps:
+      - name: Checkout dispatcher contracts
+        uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: true
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Load durable broker queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/analysis-broker-current
+          git fetch --depth=1 origin analysis-broker-state
+          git archive FETCH_HEAD | tar -x -C catalog/analysis-broker-current
+          test -s catalog/analysis-broker-current/index.json
+
+      - name: Settle claimed work item
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf catalog/analysis-broker-next
+          cp -a catalog/analysis-broker-current catalog/analysis-broker-next
+          args=(
+            --state catalog/analysis-broker-next/index.json
+            --work-item '${{ inputs.work_item_id }}'
+            --claim-token '${{ inputs.claim_token }}'
+            --outcome '${{ inputs.outcome }}'
+            --result-json '${{ inputs.result_json }}'
+            --max-attempts '${{ inputs.max_attempts }}'
+            --settlement-output catalog/analysis-dispatch-settlement.json
+          )
+          if [ '${{ inputs.retry_failed }}' != 'true' ]; then args+=(--no-retry); fi
+          python tools/security/analysis_dispatcher.py settle "${args[@]}"
+          cat catalog/analysis-dispatch-settlement.json
+
+      - name: Export settlement outputs
+        id: outputs
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          x=json.load(open('catalog/analysis-dispatch-settlement.json', encoding='utf-8'))
+          print('state=' + str(x.get('state','')))
+          print('retry_scheduled=' + ('true' if x.get('retryScheduled') else 'false'))
+          PY
+
+      - name: Publish settled queue state atomically
+        run: >-
+          python tools/security/publish_analysis_broker_state.py
+          --input catalog/analysis-broker-next
+          --repo .
+          --branch analysis-broker-state
+          --push
+
+      - name: Upload dispatcher settlement diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-analysis-dispatch-settlement-${{ github.run_id }}
+          path: |
+            catalog/analysis-dispatch-settlement.json
+            catalog/analysis-broker-next/index.json
+          if-no-files-found: warn
+          retention-days: 30

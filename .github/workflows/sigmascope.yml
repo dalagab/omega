@@ -7,10 +7,30 @@ on:
         type: string
         required: false
         default: ""
+      analysis_request_json:
+        description: Optional exact omega.analysis-request.v1 JSON object from the leased Analysis Broker worker
+        type: string
+        required: false
+        default: ""
+      analysis_work_item_id:
+        description: Optional broker work-item lineage for analysis_request_json
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
     inputs:
       internal_names:
         description: "Optional comma-separated InternalName allow-list for a bounded developer run"
+        type: string
+        required: false
+        default: ""
+      analysis_request_json:
+        description: "Optional exact omega.analysis-request.v1 JSON object; intended for broker/adapter testing"
+        type: string
+        required: false
+        default: ""
+      analysis_work_item_id:
+        description: "Optional broker work-item lineage"
         type: string
         required: false
         default: ""
@@ -131,11 +151,27 @@ jobs:
         id: v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANALYSIS_REQUEST_JSON: ${{ inputs.analysis_request_json || '' }}
+          ANALYSIS_WORK_ITEM_ID: ${{ inputs.analysis_work_item_id || '' }}
         shell: bash
         run: |
           set -euo pipefail
           pipeline="$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
           deep_args=()
+          analysis_args=()
+          if [ -n "$ANALYSIS_REQUEST_JSON" ]; then
+            if ! python "$pipeline" --help 2>&1 | grep -q -- '--analysis-request'; then
+              echo "::error::Frozen Definitions worker predates generic SigmaScope analysis-request support. Run the daily/manual Definitions freeze before enabling the SigmaScope dispatcher route on main."
+              exit 1
+            fi
+            mkdir -p catalog/security-v2-work
+            printf '%s' "$ANALYSIS_REQUEST_JSON" > catalog/security-v2-work/analysis-request.json
+            python -m json.tool catalog/security-v2-work/analysis-request.json >/dev/null
+            analysis_args+=(
+              --analysis-request catalog/security-v2-work/analysis-request.json
+              --analysis-work-item-id "$ANALYSIS_WORK_ITEM_ID"
+            )
+          fi
           # Rollout compatibility: the workflow can land before the next Definitions freeze.
           # Only pass deep-scan arguments after the frozen worker advertises that contract.
           if python "$pipeline" --help 2>&1 | grep -q -- '--deep-scan-output'; then
@@ -169,7 +205,15 @@ jobs:
             --internal-names "${{ inputs.internal_names || '' }}" \
             --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json" \
             "${deep_args[@]}" \
+            "${analysis_args[@]}" \
             --github-output "$GITHUB_OUTPUT"
+      - name: Verify broker-requested observation is retained in candidate Evidence v2
+        if: inputs.analysis_request_json != ''
+        run: >-
+          python "$OMEGA_FROZEN_WORKER/tools/security/sigmascope_request_adapter.py" verify
+          --evidence-root catalog/security-v2-candidate
+          --target catalog/security-v2-work/analysis-request-target.json
+          --output catalog/security-v2-work/analysis-request-verification.json
       - name: Publish durable Stigma-1 deep-scan queue
         if: steps.v2.outcome == 'success' && steps.v2.outputs.deep_scan_changed == 'true' && hashFiles('catalog/security-v2-work/deep-scan-state/index.json') != ''
         continue-on-error: true
@@ -219,6 +263,12 @@ jobs:
             if [ -s "$audit" ]; then python "$OMEGA_FROZEN_WORKER/tools/security/print_sigmascope_audit_failures.py" "$audit" --limit 20 || true; fi
             exit "$status"
           fi
+      - name: Audit Security Evidence v2 storage ownership and duplication
+        if: steps.v2.outputs.publish_v2 == 'true'
+        run: >-
+          python "$OMEGA_FROZEN_WORKER/tools/security/evidence_storage_audit.py"
+          --root catalog/security-v2-candidate
+          --report catalog/security-v2-work/evidence-storage-audit.json
       - name: Publish validated Security Evidence v2 snapshot atomically
         if: steps.v2.outputs.publish_v2 == 'true'
         env:

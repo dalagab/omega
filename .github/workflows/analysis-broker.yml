@@ -1,0 +1,166 @@
+name: Omega Analysis Broker state
+
+on:
+  workflow_call:
+    inputs:
+      request_json:
+        description: Optional generic omega.analysis-request.v1 JSON object
+        type: string
+        required: false
+        default: ""
+      reconcile_stigma:
+        description: Reconcile retained production Stigma observation/reanalysis dependencies into broker state
+        type: boolean
+        required: false
+        default: false
+  workflow_dispatch:
+    inputs:
+      request_json:
+        description: Optional generic omega.analysis-request.v1 JSON object
+        type: string
+        required: false
+        default: ""
+      reconcile_stigma:
+        description: Reconcile retained production Stigma dependencies
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: omega-analysis-broker-state
+  cancel-in-progress: false
+
+jobs:
+  enqueue:
+    name: Reconcile reusable observations and analysis dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ANALYSIS_REQUEST_JSON: ${{ inputs.request_json || '' }}
+      RECONCILE_STIGMA: ${{ inputs.reconcile_stigma || false }}
+    steps:
+      - name: Checkout control contracts
+        uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: true
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Checkout current Security Evidence v2
+        uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Load latest replaceable Discovery snapshot when available
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/discovery-current
+          if git ls-remote --exit-code --heads origin catalog-discovery >/dev/null 2>&1; then
+            git fetch --depth=1 origin catalog-discovery
+            git archive FETCH_HEAD | tar -x -C catalog/discovery-current
+          fi
+
+      - name: Materialize current reusable observation inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --evidence-root catalog/security-v2-current
+            --output catalog/observation-inventory.json
+          )
+          if [ -s catalog/discovery-current/index.json ]; then
+            args+=(--discovery-root catalog/discovery-current)
+          fi
+          python tools/security/observation_inventory.py "${args[@]}"
+
+      - name: Load current durable broker state
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/analysis-broker-current
+          if git ls-remote --exit-code --heads origin analysis-broker-state >/dev/null 2>&1; then
+            git fetch --depth=1 origin analysis-broker-state
+            git archive FETCH_HEAD | tar -x -C catalog/analysis-broker-current
+          fi
+          if [ ! -s catalog/analysis-broker-current/index.json ]; then
+            python tools/security/analysis_broker.py init --state catalog/analysis-broker-current/index.json
+          fi
+          rm -rf catalog/analysis-broker-next
+          cp -a catalog/analysis-broker-current catalog/analysis-broker-next
+
+      - name: Resolve explicit request against current inventory
+        if: inputs.request_json != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/analysis_broker.py enqueue \
+            --state catalog/analysis-broker-next/index.json \
+            --inventory catalog/observation-inventory.json \
+            --request-json "$ANALYSIS_REQUEST_JSON" \
+            --resolution-output catalog/analysis-broker-resolution.json
+          cat catalog/analysis-broker-resolution.json
+
+      - name: Reconcile retained Stigma-1 hard dependencies
+        if: inputs.reconcile_stigma == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -s catalog/security-v2-current/rule-projections/index.json ]; then
+            python tools/security/stigma_broker_bridge.py \
+              --state catalog/analysis-broker-next/index.json \
+              --projection-root catalog/security-v2-current/rule-projections \
+              --evidence-root catalog/security-v2-current \
+              --inventory catalog/observation-inventory.json \
+              --report catalog/stigma-broker-bridge-report.json
+            cat catalog/stigma-broker-bridge-report.json
+          else
+            printf '%s\n' '{"schema":"omega.stigma-analysis-broker-bridge.v1","candidateRequests":0,"reason":"no retained rule-projection sidecar"}' \
+              > catalog/stigma-broker-bridge-report.json
+          fi
+
+      - name: Summarize broker state and detect mutation
+        id: state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/analysis_broker.py summary \
+            --state catalog/analysis-broker-next/index.json \
+            > catalog/analysis-broker-summary.json
+          before=$(python -c "import json; print(json.load(open('catalog/analysis-broker-current/index.json')).get('stateRevision',''))")
+          after=$(python -c "import json; print(json.load(open('catalog/analysis-broker-next/index.json')).get('stateRevision',''))")
+          if [ "$before" != "$after" ]; then echo 'changed=true' >> "$GITHUB_OUTPUT"; else echo 'changed=false' >> "$GITHUB_OUTPUT"; fi
+          cat catalog/analysis-broker-summary.json
+
+      - name: Publish broker state atomically
+        if: steps.state.outputs.changed == 'true'
+        run: >-
+          python tools/security/publish_analysis_broker_state.py
+          --input catalog/analysis-broker-next
+          --repo .
+          --branch analysis-broker-state
+          --push
+
+      - name: Upload broker diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-analysis-broker-diagnostics
+          path: |
+            catalog/observation-inventory.json
+            catalog/analysis-broker-resolution.json
+            catalog/stigma-broker-bridge-report.json
+            catalog/analysis-broker-summary.json
+            catalog/analysis-broker-next/index.json
+          if-no-files-found: warn
+          retention-days: 30

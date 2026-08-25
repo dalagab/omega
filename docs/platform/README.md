@@ -6,16 +6,20 @@ This documentation describes the platform by **purpose and responsibility**. It 
 
 ## The platform at a glance
 
-1. **Collectors discover and normalize ecosystem data.** They find PluginMaster feeds, manifests, project pages, source revisions, dependency intelligence and external advisory data.
-2. **The catalog identifies plugins and active variants.** It preserves source attribution, metadata, tags, artifact URLs and lifecycle state.
-3. **SigmaScope acquires and inspects the installable artifact.** It performs bounded static analysis and retains typed observations.
-4. **Source analysis adds attributable source evidence when available.** Source and artifact are kept as separate evidence domains unless correspondence can actually be proven.
-5. **Secondary security engines add supplemental evidence.** YARA, ClamAV and OSV-derived intelligence supplement the scanner; they do not erase other observations.
-6. **Stigma-1 evaluates deterministic rules over registered observations and facts.** Rules are data, not arbitrary executable code.
-7. **Deep Scan can acquire more evidence when an approved rule requests it.** Deep-analysis profiles and budgets are code-owned and bounded.
-8. **Security Evidence v2 publishes the retained result.** Current plugin state, immutable analyses, history, provenance and indexes are separated so consumers can distinguish current risk from archive evidence.
-9. **DeltaScope provides human access to the evidence.** Different perspectives show the same evidence for plugin developers, investigators, security researchers and operators.
-10. **Omega consumes the resulting security context in the plugin-discovery experience.**
+1. **The Component Registry describes deployable/trust-boundary services.** It records ownership, branch, execution class, authority, launchability and whether a component can currently accept a generic broker request.
+2. **The Analysis Broker resolves logical observation requests.** It uses the component/collector registries, freshness policy and durable state; it never executes components itself.
+3. **The Analysis Dispatcher is a leased worker-pool runner on `main`.** It atomically reserves bounded parallel capacity, persists every lease before launch, asynchronously starts only explicit static component workers, and settles/retries each exact claim; it never chooses providers or accepts a workflow path from queue data.
+3. **Omega Discovery continuously maps the public plugin ecosystem.** First-class collectors find PluginMaster feeds, project/README links, repository manifests, issue hints and optional web-search candidates, publishing typed observations without catalog/security authority.
+4. **Other collectors acquire security and supporting intelligence.** They obtain source revisions, dependency intelligence and external advisory data.
+5. **The catalog identifies plugins and active variants.** It preserves source attribution, metadata, tags, artifact URLs and lifecycle state.
+6. **SigmaScope acquires and inspects the installable artifact.** It performs bounded static analysis and retains typed observations.
+7. **Source analysis adds attributable source evidence when available.** Source and artifact are kept as separate evidence domains unless correspondence can actually be proven.
+8. **Secondary security engines add supplemental evidence.** YARA, ClamAV and OSV-derived intelligence supplement the scanner; they do not erase other observations.
+9. **Stigma-1 evaluates deterministic rules over registered observations and facts.** Rules are data, not arbitrary executable code.
+10. **Deep Scan can acquire more evidence when an approved rule requests it.** Deep-analysis profiles and budgets are code-owned and bounded.
+11. **Security Evidence v2 publishes the retained result.** Current plugin state, immutable analyses, history, provenance and indexes are separated so consumers can distinguish current risk from archive evidence.
+12. **DeltaScope provides human access to the evidence.** Different perspectives show the same evidence for plugin developers, investigators, security researchers and operators.
+13. **Omega consumes the resulting security context in the plugin-discovery experience.**
 
 ## Core principles
 

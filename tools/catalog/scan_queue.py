@@ -49,6 +49,7 @@ REASON_PRIORITIES = {
     "artifact_url_changed": 875,
     "artifact_version_changed": 870,
     "artifact_analysis_changed": 850,
+    "analysis_observation_requested": 845,
     "srl_observation_missing": 840,
     "advisory_changed": 800,
     "source_candidates_changed": 725,
@@ -66,6 +67,7 @@ REASON_CONTRACTS = {
     "artifact_url_changed": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "selected_artifact_url_changed"},
     "artifact_version_changed": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "selected_artifact_version_changed"},
     "artifact_analysis_changed": {"workType": "artifact", "invalidates": ["artifact", "source-followup"], "event": "artifact_analysis_revision_changed"},
+    "analysis_observation_requested": {"workType": "typed", "invalidates": ["required-observation"], "event": "analysis_broker_required_observation"},
     "srl_observation_missing": {"workType": "typed", "invalidates": ["required-observation"], "event": "srl_required_observation_missing"},
     "failed_retry": {"workType": "artifact", "invalidates": ["failed-work"], "event": "previous_artifact_attempt_incomplete"},
     "source_followup": {"workType": "source", "invalidates": ["source-attribution", "source-analysis"], "event": "artifact_analysis_completed"},
@@ -1030,32 +1032,17 @@ def add_manual_items_from_database(
         state.setdefault("items", {})[item["queueKey"]] = item
 
 
-def select_next(state: dict[str, Any], *, now: dt.datetime | None = None) -> dict[str, Any] | None:
-    """Select one eligible item under the single Sigmascope workflow lock.
-
-    There is deliberately no lease/expiry state. If a runner dies before publication,
-    its mutation is never committed to Security Evidence v2 and the next worker simply
-    selects the same previously-published item again.
-    """
-    now_dt = now or dt.datetime.now(dt.timezone.utc)
-    eligible: list[dict[str, Any]] = []
-    for item in (state.get("items") or {}).values():
-        if not isinstance(item, dict) or str(item.get("state") or "") == "complete":
-            continue
-        next_at = parse_utc(str(item.get("nextEligibleAtUtc") or ""))
-        if next_at is not None and now_dt < next_at:
-            item["state"] = "retry"
-            continue
-        if str(item.get("state") or "") == "attempted":
-            # An attempted state should not normally survive atomic publication, but
-            # treating it as eligible is the safest recovery behavior.
-            item["state"] = "pending"
-        eligible.append(item)
-    if not eligible:
+def _select_item(state: dict[str, Any], item: dict[str, Any], *, now_dt: dt.datetime) -> dict[str, Any] | None:
+    if str(item.get("state") or "") == "complete":
         return None
-
-    eligible.sort(key=_selection_sort_key)
-    item = eligible[0]
+    next_at = parse_utc(str(item.get("nextEligibleAtUtc") or ""))
+    if next_at is not None and now_dt < next_at:
+        item["state"] = "retry"
+        return None
+    if str(item.get("state") or "") == "attempted":
+        # An attempted state should not normally survive atomic publication, but
+        # treating it as eligible is the safest recovery behavior.
+        item["state"] = "pending"
     attempt_count = int(item.get("attemptCount") or 0) + 1
     attempt_id = f"attempt-v2-{digest([item.get('targetFingerprint'), attempt_count, utc_now(now_dt)])[:16]}"
     attempt = {
@@ -1073,6 +1060,44 @@ def select_next(state: dict[str, Any], *, now: dt.datetime | None = None) -> dic
     item["nextEligibleAtUtc"] = ""
     state["updatedAtUtc"] = utc_now(now_dt)
     return dict(item)
+
+
+def select_key(state: dict[str, Any], queue_key: str, *, now: dt.datetime | None = None) -> dict[str, Any] | None:
+    """Select one exact queue item, used by broker-bound SigmaScope requests.
+
+    This bypasses only queue ordering, never eligibility/retry semantics. The request
+    adapter first merges the broker dependency into the canonical variant/source item,
+    so the selected work remains ordinary SigmaScope queue state.
+    """
+    item = (state.get("items") or {}).get(str(queue_key or ""))
+    if not isinstance(item, dict):
+        return None
+    return _select_item(state, item, now_dt=now or dt.datetime.now(dt.timezone.utc))
+
+
+def select_next(state: dict[str, Any], *, now: dt.datetime | None = None) -> dict[str, Any] | None:
+    """Select one eligible item under the single Sigmascope workflow lock.
+
+    There is deliberately no lease/expiry state. If a runner dies before publication,
+    its mutation is never committed to Security Evidence v2 and the next worker simply
+    selects the same previously-published item again.
+    """
+    now_dt = now or dt.datetime.now(dt.timezone.utc)
+    eligible: list[dict[str, Any]] = []
+    for item in (state.get("items") or {}).values():
+        if not isinstance(item, dict) or str(item.get("state") or "") == "complete":
+            continue
+        next_at = parse_utc(str(item.get("nextEligibleAtUtc") or ""))
+        if next_at is not None and now_dt < next_at:
+            item["state"] = "retry"
+            continue
+        if str(item.get("state") or "") == "attempted":
+            item["state"] = "pending"
+        eligible.append(item)
+    if not eligible:
+        return None
+    eligible.sort(key=_selection_sort_key)
+    return _select_item(state, eligible[0], now_dt=now_dt)
 
 
 def finish_attempt(

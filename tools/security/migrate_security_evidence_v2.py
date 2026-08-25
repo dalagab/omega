@@ -479,8 +479,29 @@ def _export_global_table(db: sqlite3.Connection, output: Path, table: str, filen
 
 WORKBENCH_RELATIONSHIP_SCHEMA = "omega.security-evidence.workbench-relationships.v2"
 WORKBENCH_RELATIONSHIP_LEGACY_SCHEMA = "omega.security-evidence.workbench-relationships.v1"
-WORKBENCH_RELATIONSHIP_LIMIT = 200_000
+WORKBENCH_RELATIONSHIP_MIN_LIMIT = 250_000
+WORKBENCH_RELATIONSHIP_EDGES_PER_CURRENT_VARIANT = 512
+WORKBENCH_RELATIONSHIP_ABSOLUTE_LIMIT = 2_000_000
 WORKBENCH_RELATIONSHIP_CHUNK_BYTES = 8 * 1024 * 1024
+
+
+def _workbench_relationship_limit(db: sqlite3.Connection, variant_ids: set[int] | None = None) -> tuple[int, int]:
+    """Return a bounded relationship-edge ceiling scaled to current catalog coverage.
+
+    DeltaScope relationships are read-only navigation data and naturally grow as more
+    current variants complete analysis.  A fixed global ceiling eventually turns normal
+    catalog growth into a publication outage, so retain a hard absolute guard while
+    scaling ordinary capacity with the number of current variants represented.
+    """
+    if variant_ids is not None:
+        current_variant_count = len(variant_ids)
+    elif table_exists(db, "plugin_security_current") and {"variant_id", "status"}.issubset(set(table_columns(db, "plugin_security_current"))):
+        row = db.execute("SELECT COUNT(*) FROM plugin_security_current WHERE status='complete'").fetchone()
+        current_variant_count = int(row[0] or 0) if row is not None else 0
+    else:
+        current_variant_count = 0
+    scaled = max(WORKBENCH_RELATIONSHIP_MIN_LIMIT, current_variant_count * WORKBENCH_RELATIONSHIP_EDGES_PER_CURRENT_VARIANT)
+    return min(WORKBENCH_RELATIONSHIP_ABSOLUTE_LIMIT, scaled), current_variant_count
 
 
 def _json_object(value: Any) -> dict[str, Any]:
@@ -512,6 +533,7 @@ def _export_workbench_relationship_index(db: sqlite3.Connection, output: Path, *
     This is derived transport/navigation data only. It does not become a SigmaScope
     observation, finding, queue input, or policy signal.
     """
+    relationship_limit, relationship_variant_count = _workbench_relationship_limit(db, variant_ids)
     endpoints: dict[str, dict[str, Any]] = {}
     endpoint_observations = 0
     current_columns = set(table_columns(db, "plugin_security_current"))
@@ -551,8 +573,11 @@ def _export_workbench_relationship_index(db: sqlite3.Connection, output: Path, *
                 item["pluginIds"].add(int(row["plugin_id"]))
                 item["observations"] += 1
                 endpoint_observations += 1
-                if endpoint_observations > WORKBENCH_RELATIONSHIP_LIMIT:
-                    raise RuntimeError(f"DeltaScope endpoint relationship observations exceed hard limit {WORKBENCH_RELATIONSHIP_LIMIT}")
+                if endpoint_observations > relationship_limit:
+                    raise RuntimeError(
+                        f"DeltaScope endpoint relationship observations exceed bounded adaptive limit {relationship_limit} "
+                        f"for {relationship_variant_count} current variants"
+                    )
 
     component_meta: dict[str, dict[str, Any]] = {}
     if table_exists(db, "plugin_security_dependency_components"):
@@ -576,6 +601,9 @@ def _export_workbench_relationship_index(db: sqlite3.Connection, output: Path, *
 
     component_edges: dict[str, list[dict[str, Any]]] = {}
     component_edge_count = 0
+    component_edge_rows = 0
+    component_edge_duplicates = 0
+    component_edge_seen: set[tuple[Any, ...]] = set()
     resolution_columns = set(table_columns(db, "plugin_security_dependency_resolutions"))
     required_resolution_columns = {
         "dependency_id", "source_variant_id", "source_plugin_id", "scan_id", "component_key", "dependency_kind",
@@ -601,16 +629,30 @@ def _export_workbench_relationship_index(db: sqlite3.Connection, output: Path, *
             if variant_ids is not None and int(row["source_variant_id"] or 0) not in variant_ids:
                 continue
             key = str(row["component_key"] or "")
-            component_edges.setdefault(key, []).append({
+            edge = {
                 "variantId": int(row["source_variant_id"] or 0), "pluginId": int(row["source_plugin_id"] or 0),
                 "scanId": int(row["scan_id"] or 0), "observedVersion": str(row["resolved_version"] or row["dependency_version"] or ""),
                 "requirement": str(row["requirement"] or ""), "relationship": str(row["relationship"] or ""),
                 "confidence": str(row["relationship_confidence"] or ""), "origin": str(row["origin"] or ""),
                 "path": str(row["path"] or ""),
-            })
+            }
+            component_edge_rows += 1
+            edge_identity = (
+                key, edge["variantId"], edge["pluginId"], edge["scanId"], edge["observedVersion"],
+                edge["requirement"], edge["relationship"], edge["confidence"], edge["origin"], edge["path"],
+            )
+            if edge_identity in component_edge_seen:
+                component_edge_duplicates += 1
+                continue
+            component_edge_seen.add(edge_identity)
+            component_edges.setdefault(key, []).append(edge)
             component_edge_count += 1
-            if component_edge_count > WORKBENCH_RELATIONSHIP_LIMIT:
-                raise RuntimeError(f"DeltaScope component relationship edges exceed hard limit {WORKBENCH_RELATIONSHIP_LIMIT}")
+            if component_edge_count > relationship_limit:
+                raise RuntimeError(
+                    f"DeltaScope component relationship edges exceed bounded adaptive limit {relationship_limit} "
+                    f"for {relationship_variant_count} current variants "
+                    f"({component_edge_rows} raw rows, {component_edge_duplicates} exact duplicates suppressed)"
+                )
 
     components: list[dict[str, Any]] = []
     component_keys = set(component_edges) if variant_ids is not None else (set(component_meta) | set(component_edges))
@@ -682,6 +724,17 @@ def _export_workbench_relationship_index(db: sqlite3.Connection, output: Path, *
         "readOnly": True,
         "mutationAuthority": "none",
         "policyInput": False,
+        "limits": {
+            "relationshipEdges": relationship_limit,
+            "currentVariantCount": relationship_variant_count,
+            "minimumEdges": WORKBENCH_RELATIONSHIP_MIN_LIMIT,
+            "edgesPerCurrentVariant": WORKBENCH_RELATIONSHIP_EDGES_PER_CURRENT_VARIANT,
+            "absoluteEdges": WORKBENCH_RELATIONSHIP_ABSOLUTE_LIMIT,
+        },
+        "diagnostics": {
+            "rawComponentRelationshipRows": component_edge_rows,
+            "exactComponentRelationshipDuplicatesSuppressed": component_edge_duplicates,
+        },
         "counts": counts,
         "datasets": datasets,
     }

@@ -210,5 +210,34 @@ class SecondaryDefinitionsTests(unittest.TestCase):
                     self._build(root, "name-mismatch", configured)
 
 
+    def test_component_and_collector_registries_are_frozen_as_platform_definitions(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-platform-registries-") as td:
+            root = Path(td)
+            bindir = self._fake_yara(root)
+            with mock.patch.dict(os.environ, {"PATH": str(bindir) + os.pathsep + os.environ.get("PATH", "")}):
+                index = self._build(root, "platform-registries")
+                report = definitions_snapshot.verify_snapshot(definitions_root=root / "definitions-platform-registries")
+            self.assertTrue(report["ok"], report.get("errors"))
+            component = index["componentRegistry"]
+            collector = index["collectorRegistry"]
+            self.assertEqual("omega.component-registry.v1", component["schema"])
+            self.assertEqual("omega.collector-registry.v1", collector["schema"])
+            self.assertTrue((root / "definitions-platform-registries" / component["path"]).is_file())
+            self.assertTrue((root / "definitions-platform-registries" / collector["path"]).is_file())
+            self.assertGreaterEqual(component["componentCount"], 8)
+            self.assertGreaterEqual(collector["collectorCount"], 16)
+
+    def test_platform_registry_tampering_is_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-platform-registry-tamper-") as td:
+            root = Path(td)
+            bindir = self._fake_yara(root)
+            with mock.patch.dict(os.environ, {"PATH": str(bindir) + os.pathsep + os.environ.get("PATH", "")}):
+                index = self._build(root, "platform-tamper")
+                target = root / "definitions-platform-tamper" / index["componentRegistry"]["path"]
+                target.write_text('{}\n', encoding="utf-8")
+                report = definitions_snapshot.verify_snapshot(definitions_root=root / "definitions-platform-tamper")
+            self.assertFalse(report["ok"])
+            self.assertTrue(any("componentRegistry" in error for error in report["errors"]), report["errors"])
+
 if __name__ == "__main__":
     unittest.main()

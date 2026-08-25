@@ -43,6 +43,8 @@ import definition_packs  # noqa: E402
 import srl_migration_parity  # noqa: E402
 import sigmascope  # noqa: E402
 import secondary_security_assets  # noqa: E402
+import component_registry  # noqa: E402
+import collector_contracts  # noqa: E402
 
 SCHEMA = "omega.definitions.v1"
 FORMAT_VERSION = 1
@@ -604,7 +606,7 @@ def definitions_revision(
     *, scanner_version: str, scanner_revision: str, scanner_rule_revision: str, fingerprints: dict[str, str],
     artifact_analysis_revision: str, source_analysis_revision: str, source_observation_revision: str,
     osv_document: dict[str, Any], reputation: dict[str, Any], secondary_security: dict[str, Any],
-    srl_definition_packs: dict[str, Any],
+    srl_definition_packs: dict[str, Any], component_registry_revision: str, collector_registry_revision: str,
 ) -> str:
     semantic = {
         "schema": SCHEMA,
@@ -616,6 +618,8 @@ def definitions_revision(
         "sourceObservationRevision": source_observation_revision,
         "ruleSetRevision": scanner_rule_revision,
         "ruleFiles": fingerprints,
+        "componentRegistryRevision": component_registry_revision,
+        "collectorRegistryRevision": collector_registry_revision,
         "osv": _semantic_osv(osv_document),
         "reputation": _semantic_reputation(reputation),
         "secondarySecurity": _secondary_security_semantic(secondary_security),
@@ -886,6 +890,32 @@ def build_snapshot(
         "categoryCount": len(capability_registry_document.get("categories") or []),
     }
 
+    # Freeze platform topology/collector contracts as explicit Definitions payloads.
+    # These govern orchestration and Stigma authoring/replay, but are intentionally
+    # outside artifact/source analysis revisions so topology changes never imply a
+    # fleet-wide plugin rescan.
+    platform_output = output / "platform"
+    platform_output.mkdir(parents=True, exist_ok=True)
+    component_registry_document = component_registry.build_registry()
+    collector_registry_document = collector_contracts.build_registry()
+    component_registry_path = platform_output / "component-registry.json"
+    collector_registry_path = platform_output / "collector-registry.json"
+    component_registry_path.write_text(json.dumps(component_registry_document, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    collector_registry_path.write_text(json.dumps(collector_registry_document, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    component_registry_descriptor = {
+        "schema": component_registry.REGISTRY_SCHEMA, "path": "platform/component-registry.json",
+        "sha256": sha256_file(component_registry_path), "revision": component_registry.component_revision(),
+        "componentCount": len(component_registry_document.get("components") or []),
+        "launchableCount": len(component_registry_document.get("launchableComponents") or []),
+        "dispatchableCount": len(component_registry_document.get("dispatchableComponents") or []),
+    }
+    collector_registry_descriptor = {
+        "schema": collector_contracts.REGISTRY_SCHEMA, "path": "platform/collector-registry.json",
+        "sha256": sha256_file(collector_registry_path), "revision": collector_contracts.registry_revision(),
+        "collectorCount": len(collector_registry_document.get("collectors") or []),
+        "observationTypeCount": len(collector_registry_document.get("observationTypes") or {}),
+    }
+
     revision = definitions_revision(
         scanner_version=sigmascope.SCANNER_VERSION,
         scanner_revision=scanner_revision,
@@ -898,6 +928,8 @@ def build_snapshot(
         reputation=reputation,
         secondary_security=secondary_security_document,
         srl_definition_packs=srl_definition_packs_descriptor,
+        component_registry_revision=component_registry_descriptor["revision"],
+        collector_registry_revision=collector_registry_descriptor["revision"],
     )
     advisory_revision = f"osv-v1-{sha256_bytes(canonical(_semantic_osv(document)))[:16]}"
     index = {
@@ -940,6 +972,8 @@ def build_snapshot(
             "matchedEndpointHosts": int((reputation.get("counts") or {}).get("matchedEndpointHosts") or 0),
         },
         "capabilityRegistry": capability_registry_descriptor,
+        "componentRegistry": component_registry_descriptor,
+        "collectorRegistry": collector_registry_descriptor,
         "secondarySecurity": secondary_security_descriptor,
         "srlDefinitionPacks": srl_definition_packs_descriptor,
     }
@@ -983,6 +1017,33 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
                 errors.append("frozen capability registry capability count mismatch")
         except Exception as exc:
             errors.append(f"frozen capability registry invalid: {type(exc).__name__}: {exc}")
+
+    for descriptor_key, expected_schema, expected_revision, builder in (
+        ("componentRegistry", component_registry.REGISTRY_SCHEMA, component_registry.component_revision(), component_registry.build_registry),
+        ("collectorRegistry", collector_contracts.REGISTRY_SCHEMA, collector_contracts.registry_revision(), collector_contracts.build_registry),
+    ):
+        descriptor = index.get(descriptor_key) if isinstance(index.get(descriptor_key), dict) else {}
+        rel = str(descriptor.get("path") or "")
+        path = definitions_root / rel
+        if not rel or not path.is_file():
+            errors.append(f"frozen {descriptor_key} is missing")
+            continue
+        if sha256_file(path) != str(descriptor.get("sha256") or ""):
+            errors.append(f"frozen {descriptor_key} hash mismatch")
+            continue
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+            if str(document.get("schema") or "") != expected_schema:
+                errors.append(f"frozen {descriptor_key} schema mismatch")
+            if str(document.get("revision") or "") != str(descriptor.get("revision") or ""):
+                errors.append(f"frozen {descriptor_key} descriptor revision mismatch")
+            # Verification uses the worker's frozen registry code. A mismatch means the
+            # payload and executable orchestration contracts have drifted.
+            current = builder()
+            if str(document.get("revision") or "") != str(current.get("revision") or expected_revision):
+                errors.append(f"frozen {descriptor_key} revision does not match frozen registry code")
+        except Exception as exc:
+            errors.append(f"frozen {descriptor_key} unreadable: {type(exc).__name__}: {exc}")
 
     secondary_descriptor = index.get("secondarySecurity") if isinstance(index.get("secondarySecurity"), dict) else {}
     secondary_security_document, secondary_errors = verify_secondary_security_snapshot(definitions_root, secondary_descriptor)
@@ -1090,6 +1151,8 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
             reputation=payloads["reputation"],
             secondary_security=secondary_security_document,
             srl_definition_packs=srl_descriptor,
+            component_registry_revision=str((index.get("componentRegistry") or {}).get("revision") or ""),
+            collector_registry_revision=str((index.get("collectorRegistry") or {}).get("revision") or ""),
         )
         if expected_definitions != str(index.get("definitionsRevision") or ""):
             errors.append("Definitions revision does not match frozen semantic payload")

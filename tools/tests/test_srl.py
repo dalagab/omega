@@ -266,6 +266,16 @@ emit:
         self.assertTrue(payload["passed"])
 
 
+    def test_shipped_discovery_collector_rule_and_fixture(self) -> None:
+        rules = srl.compile_yaml_text((ROOT / "docs" / "rule-authors" / "examples" / "catalog-discovery-rule.yaml").read_text(encoding="utf-8"))
+        fixture = srl.parse_yaml_text((ROOT / "docs" / "rule-authors" / "examples" / "catalog-discovery-positive.fixture.yaml").read_text(encoding="utf-8"))
+        result = srl.evaluate_ruleset(rules, fixture["observations"])
+        self.assertTrue(result["evaluated"], result["replayAudit"])
+        self.assertIn("catalog.plugin.repository-needed", result["facts"])
+        self.assertEqual(1, len(result["observationRequests"]))
+        self.assertEqual("catalogRepositoryCandidates", result["observationRequests"][0]["collection"])
+        self.assertTrue(result["observationRequests"][0]["satisfiable"])
+
     def test_ruleset_rejects_duplicate_rule_id_and_duplicate_fact_emitter(self) -> None:
         rule = srl.parse_yaml_text(PROCESS_RULE)
         with self.assertRaisesRegex(srl.SRLCompileError, "duplicate rule IDs"):
@@ -274,6 +284,106 @@ emit:
         second["id"] = "capability.process.execute.other"
         with self.assertRaisesRegex(srl.SRLCompileError, "emitted by both"):
             srl.compile_ruleset({"schema": srl.RULESET_SCHEMA, "rules": [rule, second]})
+
+    def test_discovery_observation_collection_is_rule_referenceable(self) -> None:
+        text = """
+schema: omega.sigmascope.rule.v1
+id: catalog.new-plugin-needs-repository
+kind: observation
+status: reviewed
+requires: [catalogPluginFacts]
+selectors:
+  new_without_repo:
+    collection: catalogPluginFacts
+    where:
+      classification: {equals: new-plugin}
+      repoUrl: {equals: ''}
+condition: new_without_repo
+emit:
+  fact: catalog.plugin.repository-needed
+observationRequest:
+  collection: catalogRepositoryCandidates
+  reason: Resolve a repository candidate for the newly observed plugin.
+  priority: 700
+"""
+        compiled = srl.compile_yaml_text(text)
+        result = srl.evaluate_ruleset(compiled, {
+            "catalogPluginFacts": [{"classification": "new-plugin", "repoUrl": "", "internalName": "Example"}]
+        })
+        self.assertTrue(result["evaluated"], result["replayAudit"])
+        self.assertEqual(["catalog.plugin.repository-needed"], result["facts"])
+        self.assertEqual(1, len(result["observationRequests"]))
+        request = result["observationRequests"][0]
+        self.assertEqual("catalogRepositoryCandidates", request["collection"])
+        self.assertTrue(request["satisfiable"])
+        self.assertIn("omega.collector.discovery.project-page", request["providerCandidates"])
+
+    def test_discovery_rule_cannot_bind_observation_request_to_implementation(self) -> None:
+        text = """
+schema: omega.sigmascope.rule.v1
+id: catalog.bad-provider-binding
+kind: observation
+requires: [catalogPluginFacts]
+selectors:
+  any_new:
+    collection: catalogPluginFacts
+    where:
+      classification: {equals: new-plugin}
+condition: any_new
+emit:
+  fact: catalog.plugin.new
+observationRequest:
+  collection: catalogRepositoryCandidates
+  reason: Need repository
+  collectorId: omega.collector.discovery.github-code-search
+"""
+        with self.assertRaisesRegex(srl.SRLCompileError, "unsupported fields"):
+            srl.compile_yaml_text(text)
+
+    def test_engine_reference_exposes_collector_provider_registry(self) -> None:
+        ref = srl.engine_reference()
+        self.assertIn("catalogPluginFacts", ref["typedCollections"])
+        self.assertTrue(ref["observationRequestAvailable"])
+        self.assertEqual("omega.collector-registry.v1", ref["collectorRegistry"]["schema"])
+        self.assertIn("omega.collector.discovery.pluginmaster-validator", ref["collectionProviders"]["catalogPluginFacts"])
+
+    def test_deltascope_rule_eval_accepts_typed_collector_bundle(self) -> None:
+        import tempfile
+        import collector_contracts
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            rule = root / "rule.yaml"
+            rule.write_text("""
+schema: omega.sigmascope.rule.v1
+id: catalog.new-plugin
+kind: observation
+status: reviewed
+requires: [catalogPluginFacts]
+selectors:
+  new:
+    collection: catalogPluginFacts
+    where:
+      classification: {equals: new-plugin}
+condition: new
+emit:
+  fact: catalog.plugin.new
+""", encoding="utf-8")
+            row = collector_contracts.make_row(
+                "catalogPluginFacts", "omega.collector.discovery.pluginmaster-validator",
+                {"classification": "new-plugin", "internalName": "Example", "name": "Example", "assemblyVersion": "1.0.0", "testingAssemblyVersion": "", "dalamudApiLevel": 15, "testingDalamudApiLevel": 0, "sourceUrl": "https://example.invalid/repo.json", "sourceProvider": "fixture", "repoUrl": "", "originCollectorId": "omega.collector.discovery.github-code-search"},
+                observed_at="2026-08-24T12:00:00Z",
+            )
+            bundle = collector_contracts.build_bundle({"catalogPluginFacts": [row]}, generated_at="2026-08-24T12:00:00Z")
+            bundle_path = root / "observations.json"
+            bundle_path.write_text(json.dumps(bundle), encoding="utf-8")
+            proc = subprocess.run(
+                [sys.executable, str(ROOT / "tools" / "security" / "deltascope.py"), "rule-eval",
+                 "--rule", str(rule), "--collector-bundle", str(bundle_path)],
+                cwd=ROOT, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
+            )
+            payload = json.loads(proc.stdout)
+            self.assertTrue(payload["evaluated"], payload["replayAudit"])
+            self.assertEqual(["catalog.plugin.new"], payload["facts"])
 
 
 if __name__ == "__main__":

@@ -1,5 +1,7 @@
 # Deep Scan workflow
 
+> **Control-plane distinction:** Deep Scan is the existing code-owned static escalation path and is not the generic Analysis Broker. `omega.analysis-request.v1` is a component-neutral observation request; the broker may retain/resolve such requests, while the current Deep Scan queue continues to accept only its existing approved profile contract.
+
 Deep Scan is Omega’s bounded follow-up analysis path for cases that justify more evidence than the normal scan budget.
 
 ## Why it exists

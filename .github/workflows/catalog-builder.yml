@@ -89,14 +89,37 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - name: Discover curated, Puni.sh and GitHub PluginMaster sources
+      - name: Checkout latest independent discovery snapshot when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-discovery
+          path: catalog/discovery-state
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Checkout current canonical source inventory
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/current-catalog
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Discover curated/Puni.sh sources and reuse independent GitHub discovery
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          python tools/catalog/collect_sources.py
-          --curated sources/curated-sources.json
-          --community sources/community-sources.json
-          --output catalog/raw-sources.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --curated sources/curated-sources.json
+            --community sources/community-sources.json
+            --canonical-source-index catalog/current-catalog/catalog/sources/index.json
+            --output catalog/raw-sources.json
+          )
+          if [ -f catalog/discovery-state/source-candidates.json ]; then
+            args+=(--discovery-snapshot catalog/discovery-state/source-candidates.json --discovery-max-age-hours 24)
+          fi
+          python tools/catalog/collect_sources.py "${args[@]}"
       - uses: actions/upload-artifact@v7
         with:
           name: raw-sources
@@ -119,25 +142,47 @@ jobs:
         with:
           name: raw-sources
           path: catalog/
-      - name: Download previous published marketplace DB for conditional request hints
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout fresh independent discovery enrichment when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-discovery
+          path: catalog/discovery-state
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Checkout previous canonical catalog for conditional request hints
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/previous-state
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Materialize canonical source cache hints
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          gh release download catalog-latest --repo "${{ github.repository }}" --pattern omega-marketplace.sqlite.zip --dir catalog/seed || true
-          if [ -f catalog/seed/omega-marketplace.sqlite.zip ]; then
-            python -m zipfile -e catalog/seed/omega-marketplace.sqlite.zip catalog/seed
+          if [ -f catalog/previous-state/catalog/index.json ]; then
+            python tools/catalog/catalog_json_store.py materialize \
+              --root catalog/previous-state/catalog \
+              --database catalog/seed/omega-catalog.sqlite
           fi
-      - name: Fetch PluginMaster feeds
-        run: >-
-          python tools/catalog/enrich_metadata.py
-          --input catalog/raw-sources.json
-          --output catalog/enriched-sources.json
-          --seed-database catalog/seed/omega-catalog.sqlite
-          --concurrency ${{ inputs.concurrency || '8' }}
-          --timeout ${{ inputs.timeout || '20' }}
+      - name: Fetch PluginMaster feeds, reusing fresh independently scraped novel feeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --input catalog/raw-sources.json
+            --output catalog/enriched-sources.json
+            --seed-database catalog/seed/omega-catalog.sqlite
+            --concurrency "${{ inputs.concurrency || '8' }}"
+            --timeout "${{ inputs.timeout || '20' }}"
+          )
+          if [ -f catalog/discovery-state/index.json ]; then
+            args+=(--discovery-root catalog/discovery-state --discovery-max-age-hours 24)
+          fi
+          python tools/catalog/enrich_metadata.py "${args[@]}"
       - uses: actions/upload-artifact@v7
         with:
           name: enriched-sources
@@ -160,16 +205,23 @@ jobs:
         with:
           name: enriched-sources
           path: catalog/
-      - name: Download previous published marketplace DB for website cache hints
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout previous canonical catalog for website cache hints
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/previous-state
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Materialize canonical website cache hints
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          gh release download catalog-latest --repo "${{ github.repository }}" --pattern omega-marketplace.sqlite.zip --dir catalog/seed || true
-          if [ -f catalog/seed/omega-marketplace.sqlite.zip ]; then
-            python -m zipfile -e catalog/seed/omega-marketplace.sqlite.zip catalog/seed
+          if [ -f catalog/previous-state/catalog/index.json ]; then
+            python tools/catalog/catalog_json_store.py materialize \
+              --root catalog/previous-state/catalog \
+              --database catalog/seed/omega-catalog.sqlite
           fi
       - name: Reuse fresh enrichment and scrape only new/stale project pages
         env:
@@ -457,6 +509,24 @@ jobs:
           --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json"
       - name: Validate exact client publication
         run: python tools/catalog/validate_marketplace_catalog.py --root catalog/client-dist --require-v2
+      - name: Audit fresh client database footprint and server-data boundary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/client-audit
+          gh release download catalog-latest --repo "${{ github.repository }}" --pattern omega-marketplace.sqlite.zip --dir catalog/client-audit || true
+          args=(
+            --database catalog/client-dist/omega-marketplace.sqlite
+            --report catalog/client-dist/storage-audit.json
+            --max-bytes 50331648
+            --max-growth-ratio 1.20
+          )
+          if [ -f catalog/client-audit/omega-marketplace.sqlite.zip ]; then
+            args+=(--previous-bundle catalog/client-audit/omega-marketplace.sqlite.zip)
+          fi
+          python tools/catalog/client_database_audit.py "${args[@]}"
       - name: Publish canonical JSON state atomically
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -513,6 +583,7 @@ jobs:
             catalog/state/source-inventory.json
             catalog/client-dist/catalog.json
             catalog/client-dist/database-build.json
+            catalog/client-dist/storage-audit.json
           retention-days: 30
 
   notify-discord:

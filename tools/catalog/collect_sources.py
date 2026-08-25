@@ -40,6 +40,9 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
+import discovery_collectors
+from pathlib import Path
+
 
 # ---------------------------------------------------------------------------
 # Config
@@ -149,6 +152,7 @@ def collect_punish_publisher_urls() -> list[dict]:
         "provider": "puni.sh-studio",
         "kind": "aggregator",
         "discoveredBy": "puni.sh/directory/repositories",
+        "collectorId": discovery_collectors.COLLECTOR_PUNI,
         "sourceRepoUrl": PUNI_SH,
     })
     for slug in slugs:
@@ -157,6 +161,7 @@ def collect_punish_publisher_urls() -> list[dict]:
             "provider": slug,
             "kind": "aggregator",
             "discoveredBy": "puni.sh/directory/repositories",
+            "collectorId": discovery_collectors.COLLECTOR_PUNI,
             "sourceRepoUrl": PUNI_SH,
         })
     return out
@@ -179,12 +184,44 @@ def collect_curated_file(
         url = str(item.get("url") or "").strip()
         if not url.startswith("https://"):
             continue
+        collector_id = (
+            "omega.collector.discovery.community-registry"
+            if "community" in discovered_by.casefold()
+            else "omega.collector.discovery.curated-registry"
+        )
         out.append({
             "url": url,
             "provider": str(item.get("name") or item.get("id") or urllib.parse.urlparse(url).netloc),
             "kind": kind,
             "discoveredBy": discovered_by,
+            "collectorId": collector_id,
             "sourceRepoUrl": str(item.get("sourceRepoUrl") or ""),
+        })
+    return out
+
+
+def collect_canonical_source_index(path: str | None) -> list[dict]:
+    """Reuse every canonical source identity so skipping discovery never means dropping a known feed."""
+    if not path:
+        return []
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    out: list[dict] = []
+    for item in data.get("sources") or [] if isinstance(data, dict) else []:
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("url") or "").strip()
+        if not url.startswith("https://"):
+            continue
+        out.append({
+            "url": url,
+            "provider": str(item.get("provider") or item.get("name") or urllib.parse.urlparse(url).netloc),
+            "kind": "canonical",
+            "discoveredBy": "catalog-data/sources/index.json",
+            "collectorId": "omega.collector.discovery.curated-registry",
+            "sourceRepoUrl": "",
         })
     return out
 
@@ -196,6 +233,7 @@ def collect_curated_urls() -> list[dict]:
             "provider": provider,
             "kind": "aggregator",
             "discoveredBy": "curated-sources.json",
+            "collectorId": "omega.collector.discovery.curated-registry",
             "sourceRepoUrl": upstream,
         }
         for (url, provider, _kind, upstream) in CURATED_AGGREGATORS
@@ -251,6 +289,7 @@ def collect_github_search_urls(token: str, max_pages: int = 5, per_page: int = 1
                 "provider": full_name,
                 "kind": "scanned",
                 "discoveredBy": "github-code-search",
+                "collectorId": discovery_collectors.COLLECTOR_GITHUB,
                 "sourceRepoUrl": f"https://github.com/{full_name}",
                 "blobUrl": blob_url,
             })
@@ -261,11 +300,53 @@ def collect_github_search_urls(token: str, max_pages: int = 5, per_page: int = 1
     return out
 
 
+def collect_discovery_snapshot(path: str | None, max_age_hours: float = 24.0) -> tuple[list[dict], bool]:
+    """Load independently validated novel source candidates when the snapshot is fresh."""
+    if not path:
+        return [], False
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        return [], False
+    if not isinstance(data, dict) or data.get("schema") != "omega.catalog-discovery.sources.v1":
+        return [], False
+    generated = str(data.get("generatedAtUtc") or "")
+    try:
+        stamp = datetime.fromisoformat(generated.replace("Z", "+00:00"))
+        age = (datetime.now(timezone.utc) - stamp.astimezone(timezone.utc)).total_seconds() / 3600.0
+        fresh = age <= max(1.0, float(max_age_hours))
+    except Exception:
+        fresh = False
+    out: list[dict] = []
+    for row in data.get("sources") or []:
+        if not isinstance(row, dict):
+            continue
+        url = str(row.get("url") or "").strip()
+        if not url.startswith("https://"):
+            continue
+        out.append({
+            "url": url,
+            "provider": str(row.get("provider") or urllib.parse.urlparse(url).netloc),
+            "kind": str(row.get("kind") or "discovered"),
+            "discoveredBy": "catalog-discovery",
+            "collectorId": str(row.get("originCollectorId") or row.get("collectorId") or discovery_collectors.COLLECTOR_PROJECT),
+            "sourceRepoUrl": str(row.get("sourceRepoUrl") or ""),
+        })
+    return out, fresh
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
 
-def collect(verbose: bool = True, curated_path: str | None = None, community_path: str | None = None) -> dict:
+def collect(
+    verbose: bool = True,
+    curated_path: str | None = None,
+    community_path: str | None = None,
+    discovery_path: str | None = None,
+    discovery_max_age_hours: float = 24.0,
+    canonical_source_index: str | None = None,
+) -> dict:
     def log(msg: str) -> None:
         if verbose:
             print(msg, file=sys.stderr)
@@ -282,22 +363,27 @@ def collect(verbose: bool = True, curated_path: str | None = None, community_pat
         log(f"      Puni.sh discovery unavailable: {type(exc).__name__}: {exc}")
     log(f"      got {len(punish)} puni.sh URL(s)")
 
-    log("[2/3] Loading curated and validated community source URLs ...")
+    log("[2/3] Loading curated, community and current canonical source URLs ...")
     curated = collect_curated_file(curated_path) or collect_curated_urls()
     community = collect_curated_file(
         community_path, discovered_by="community-sources.json", kind="community"
     )
-    log(f"      got {len(curated)} curated and {len(community)} community URL(s)")
+    canonical = collect_canonical_source_index(canonical_source_index)
+    log(f"      got {len(curated)} curated, {len(community)} community and {len(canonical)} canonical URL(s)")
 
-    if github_enabled:
-        log("[3/3] Searching GitHub for 'DalamudApiLevel' in .json files ...")
+    discovery, discovery_fresh = collect_discovery_snapshot(discovery_path, discovery_max_age_hours)
+    if discovery_fresh:
+        log(f"[3/3] Using fresh independent catalog-discovery snapshot ({len(discovery)} novel source candidate(s)); skipping duplicate GitHub code search")
+        github = []
+    elif github_enabled:
+        log("[3/3] Discovery snapshot absent/stale; searching GitHub for 'DalamudApiLevel' in .json files ...")
         github = collect_github_search_urls(token)
         log(f"      got {len(github)} GitHub result(s)")
     else:
-        log("[3/3] Skipping GitHub code search (no GITHUB_TOKEN in env)")
+        log("[3/3] Skipping GitHub code search (no fresh discovery snapshot and no GITHUB_TOKEN in env)")
         github = []
 
-    sources = curated + community + punish + github  # curated first (authoritative order)
+    sources = curated + community + canonical + punish + discovery + github  # curated first (authoritative order)
 
     # Dedup by URL
     seen_url: set[str] = set()
@@ -315,10 +401,13 @@ def collect(verbose: bool = True, curated_path: str | None = None, community_pat
             "generatedAt": datetime.now(timezone.utc).isoformat(),
             "elapsedSeconds": round(elapsed, 2),
             "githubSearchEnabled": github_enabled,
+            "discoverySnapshotFresh": discovery_fresh,
             "sourceCounts": {
                 "curated": len(curated),
                 "community": len(community),
+                "canonical": len(canonical),
                 "punish": len(punish),
+                "discoverySnapshot": len(discovery),
                 "githubSearch": len(github),
                 "deduplicated": len(sources),
             },
@@ -334,9 +423,16 @@ def main() -> int:
     ap.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
     ap.add_argument("--curated", default="sources/curated-sources.json", help="Human-maintained curated source list")
     ap.add_argument("--community", default="sources/community-sources.json", help="Validated community-submitted source list")
+    ap.add_argument("--discovery-snapshot", default="", help="Independent catalog-discovery source-candidates.json snapshot")
+    ap.add_argument("--discovery-max-age-hours", type=float, default=24.0, help="Maximum age for discovery snapshot to replace live GitHub code search")
+    ap.add_argument("--canonical-source-index", default="", help="Current catalog-data catalog/sources/index.json; preserves all known source identities without rediscovery")
     args = ap.parse_args()
 
-    data = collect(verbose=not args.quiet, curated_path=args.curated, community_path=args.community)
+    data = collect(
+        verbose=not args.quiet, curated_path=args.curated, community_path=args.community,
+        discovery_path=args.discovery_snapshot or None, discovery_max_age_hours=args.discovery_max_age_hours,
+        canonical_source_index=args.canonical_source_index or None,
+    )
     text = json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False)
 
     if args.output == "-":
@@ -350,7 +446,7 @@ def main() -> int:
         print(
             f"\nWrote {args.output}: "
             f"{counts['deduplicated']} source(s) — "
-            f"{counts['curated']} curated, {counts['community']} community, {counts['punish']} puni.sh, {counts['githubSearch']} github-search"
+            f"{counts['curated']} curated, {counts['community']} community, {counts['canonical']} canonical, {counts['punish']} puni.sh, {counts['discoverySnapshot']} discovery, {counts['githubSearch']} github-search"
         )
     return 0
 

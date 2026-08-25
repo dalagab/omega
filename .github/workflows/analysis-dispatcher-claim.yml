@@ -1,0 +1,153 @@
+name: Omega Analysis Dispatcher claim
+
+on:
+  workflow_call:
+    inputs:
+      dispatcher_id:
+        description: Stable dispatcher instance identity for lease lineage
+        type: string
+        required: false
+        default: main-analysis-dispatcher
+      lease_seconds:
+        description: Claim lease in seconds
+        type: number
+        required: false
+        default: 3600
+      max_attempts:
+        description: Maximum dispatch attempts before terminal failure
+        type: number
+        required: false
+        default: 3
+    outputs:
+      has_work:
+        description: Whether one dispatchable queued item was claimed
+        value: ${{ jobs.claim.outputs.has_work }}
+      work_item_id:
+        value: ${{ jobs.claim.outputs.work_item_id }}
+      request_id:
+        value: ${{ jobs.claim.outputs.request_id }}
+      component_id:
+        value: ${{ jobs.claim.outputs.component_id }}
+      observation:
+        value: ${{ jobs.claim.outputs.observation }}
+      claim_token:
+        value: ${{ jobs.claim.outputs.claim_token }}
+      expires_at_utc:
+        value: ${{ jobs.claim.outputs.expires_at_utc }}
+      request_mode:
+        value: ${{ jobs.claim.outputs.request_mode }}
+      workflow:
+        value: ${{ jobs.claim.outputs.workflow }}
+  workflow_dispatch:
+    inputs:
+      dispatcher_id:
+        description: Stable dispatcher instance identity for lease lineage
+        type: string
+        required: false
+        default: main-analysis-dispatcher
+      lease_seconds:
+        description: Claim lease in seconds
+        type: number
+        required: false
+        default: 3600
+      max_attempts:
+        description: Maximum dispatch attempts before terminal failure
+        type: number
+        required: false
+        default: 3
+
+permissions:
+  contents: write
+
+concurrency:
+  group: omega-analysis-broker-state
+  cancel-in-progress: false
+
+jobs:
+  claim:
+    name: Recover stale leases and claim one work item
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      has_work: ${{ steps.claim.outputs.has_work }}
+      work_item_id: ${{ steps.claim.outputs.work_item_id }}
+      request_id: ${{ steps.claim.outputs.request_id }}
+      component_id: ${{ steps.claim.outputs.component_id }}
+      observation: ${{ steps.claim.outputs.observation }}
+      claim_token: ${{ steps.claim.outputs.claim_token }}
+      expires_at_utc: ${{ steps.claim.outputs.expires_at_utc }}
+      request_mode: ${{ steps.claim.outputs.request_mode }}
+      workflow: ${{ steps.claim.outputs.workflow }}
+    steps:
+      - name: Checkout dispatcher contracts
+        uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: true
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Load durable broker queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/analysis-broker-current
+          if git ls-remote --exit-code --heads origin analysis-broker-state >/dev/null 2>&1; then
+            git fetch --depth=1 origin analysis-broker-state
+            git archive FETCH_HEAD | tar -x -C catalog/analysis-broker-current
+          fi
+          if [ ! -s catalog/analysis-broker-current/index.json ]; then
+            python tools/security/analysis_broker.py init --state catalog/analysis-broker-current/index.json
+          fi
+
+      - name: Claim exactly one currently dispatchable item
+        id: claim
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf catalog/analysis-broker-next
+          cp -a catalog/analysis-broker-current catalog/analysis-broker-next
+          python tools/security/analysis_dispatcher.py claim \
+            --state catalog/analysis-broker-next/index.json \
+            --dispatcher-id '${{ inputs.dispatcher_id }}' \
+            --lease-seconds '${{ inputs.lease_seconds }}' \
+            --max-attempts '${{ inputs.max_attempts }}' \
+            --claim-output catalog/analysis-dispatch-claim.json \
+            --recovery-output catalog/analysis-dispatch-recovery.json \
+            --github-output "$GITHUB_OUTPUT"
+          cat catalog/analysis-dispatch-recovery.json
+          cat catalog/analysis-dispatch-claim.json
+
+      - name: Detect broker-state mutation
+        id: changed
+        shell: bash
+        run: |
+          if cmp -s catalog/analysis-broker-current/index.json catalog/analysis-broker-next/index.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish claimed/recovered queue state atomically
+        if: steps.changed.outputs.changed == 'true'
+        run: >-
+          python tools/security/publish_analysis_broker_state.py
+          --input catalog/analysis-broker-next
+          --repo .
+          --branch analysis-broker-state
+          --push
+
+      - name: Upload dispatcher claim diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-analysis-dispatch-claim-${{ github.run_id }}
+          path: |
+            catalog/analysis-dispatch-claim.json
+            catalog/analysis-dispatch-recovery.json
+            catalog/analysis-broker-next/index.json
+          if-no-files-found: warn
+          retention-days: 30

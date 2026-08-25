@@ -6,7 +6,13 @@ import sqlite3
 import tempfile
 import unittest
 
-from migrate_security_evidence_v2 import _export_workbench_relationship_index
+from migrate_security_evidence_v2 import (
+    WORKBENCH_RELATIONSHIP_ABSOLUTE_LIMIT,
+    WORKBENCH_RELATIONSHIP_EDGES_PER_CURRENT_VARIANT,
+    WORKBENCH_RELATIONSHIP_MIN_LIMIT,
+    _export_workbench_relationship_index,
+    _workbench_relationship_limit,
+)
 from security_evidence_v2 import read_record_dataset, sha256_file, validate_snapshot
 from tools.tests import common
 
@@ -93,6 +99,47 @@ class DeltaScopeRelationshipIndexTests(unittest.TestCase):
                 for file_info in descriptor.get("files") or []
                 if int(descriptor.get("records") or 0) > 0
             ))
+
+
+    def test_relationship_limit_scales_with_current_variants_but_stays_absolutely_bounded(self):
+        with tempfile.TemporaryDirectory() as td:
+            db = self.make_db(Path(td) / "fixture.sqlite")
+            try:
+                small_limit, small_count = _workbench_relationship_limit(db, {1, 2})
+                scaled_variants = set(range(1, 1502))
+                scaled_limit, scaled_count = _workbench_relationship_limit(db, scaled_variants)
+                huge_limit, huge_count = _workbench_relationship_limit(db, set(range(1, 100_001)))
+            finally:
+                db.close()
+            self.assertEqual(2, small_count)
+            self.assertEqual(WORKBENCH_RELATIONSHIP_MIN_LIMIT, small_limit)
+            self.assertEqual(1501, scaled_count)
+            self.assertEqual(1501 * WORKBENCH_RELATIONSHIP_EDGES_PER_CURRENT_VARIANT, scaled_limit)
+            self.assertEqual(100000, huge_count)
+            self.assertEqual(WORKBENCH_RELATIONSHIP_ABSOLUTE_LIMIT, huge_limit)
+
+    def test_relationship_index_suppresses_exact_duplicate_component_edges(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "indexes").mkdir()
+            db = self.make_db(root / "fixture.sqlite")
+            try:
+                db.execute("INSERT INTO plugin_security_dependencies VALUES(?,?,?,?)", (100, 20, "deps-json", "plugin10.deps.json"))
+                db.execute(
+                    "INSERT INTO plugin_security_dependency_resolutions VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (100, 20, 1, 10, "nuget", "Example.Package", "1.0.0", "1.0.0", "nuget:example.package", "required", "package-reference", "High"),
+                )
+                db.commit()
+                entry, counts = _export_workbench_relationship_index(db, root)
+            finally:
+                db.close()
+            payload = json.loads((root / entry["path"]).read_text(encoding="utf-8"))
+            components = read_record_dataset(root, payload["datasets"]["components"])
+            self.assertEqual(2, counts["componentVariantEdges"])
+            self.assertEqual(3, payload["diagnostics"]["rawComponentRelationshipRows"])
+            self.assertEqual(1, payload["diagnostics"]["exactComponentRelationshipDuplicatesSuppressed"])
+            self.assertEqual(2, len(components[0]["usage"]))
+            self.assertGreaterEqual(payload["limits"]["relationshipEdges"], WORKBENCH_RELATIONSHIP_MIN_LIMIT)
 
     def test_relationship_index_is_deterministic(self):
         with tempfile.TemporaryDirectory() as td:

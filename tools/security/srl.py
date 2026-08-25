@@ -23,11 +23,14 @@ from typing import Any, Iterable, Mapping, Sequence
 import yaml
 
 try:
-    from . import observation_projection, rule_author_reference, deep_scan_contract
+    from . import observation_projection, rule_author_reference, deep_scan_contract, collector_contracts, component_registry, analysis_broker
 except ImportError:  # direct script/import from tools/security
     import observation_projection  # type: ignore
     import rule_author_reference  # type: ignore
     import deep_scan_contract  # type: ignore
+    import collector_contracts  # type: ignore
+    import component_registry  # type: ignore
+    import analysis_broker  # type: ignore
 
 RULE_SCHEMA = "omega.sigmascope.rule.v1"
 RULESET_SCHEMA = "omega.sigmascope.ruleset.v1"
@@ -195,7 +198,20 @@ def _observation_field_registry() -> dict[str, dict[str, str]]:
             continue
         fields = spec.get("fields") if isinstance(spec.get("fields"), dict) else {}
         result[name] = {str(k): str(v) for k, v in fields.items() if str(v) in KNOWN_TYPES}
+    # First-class external collectors (Discovery today, Rift later) use a separate
+    # retained bundle contract so Evidence-v2's immutable observation revision does not
+    # change merely because a new contextual collector exists.
+    for name, fields in collector_contracts.srl_field_registry().items():
+        result[name] = {str(k): str(v) for k, v in fields.items() if str(v) in KNOWN_TYPES}
     return result
+
+
+def _srl_collection(name: str) -> bool:
+    spec = observation_projection.COLLECTIONS.get(name)
+    if spec is not None and bool(spec.get("srlEligible")):
+        return True
+    external = collector_contracts.OBSERVATION_TYPES.get(name)
+    return external is not None and bool(external.get("ruleEligible"))
 
 
 FIELD_REGISTRY = _observation_field_registry()
@@ -229,6 +245,15 @@ def engine_reference() -> dict[str, Any]:
             "maxFindings": MAX_FINDINGS,
         },
         "typedCollections": FIELD_REGISTRY,
+        "componentRegistry": component_registry.build_registry(),
+        "collectorRegistry": collector_contracts.build_registry(),
+        "collectionProviders": {name: collector_contracts.providers_for(name, include_planned=True) for name in sorted(FIELD_REGISTRY)},
+        "genericAnalysisRequestSchema": analysis_broker.ANALYSIS_REQUEST_SCHEMA,
+        "analysisBrokerStateSchema": analysis_broker.STATE_SCHEMA,
+        "observationInventorySchema": analysis_broker.INVENTORY_SCHEMA,
+        "componentDispatchByRules": False,
+        "observationRequestAvailable": True,
+        "observationRequestSchema": collector_contracts.REQUEST_SCHEMA,
         "forbiddenInputs": sorted(observation_projection.PROJECTION_DATASETS) + ["behaviorConsistency", "permissionCandidates", "automationCapabilities"],
         "deterministic": True,
         "nonExecutable": True,
@@ -349,8 +374,7 @@ def _compile_selector(name: str, raw: Any, kind: str) -> dict[str, Any]:
     where = raw.get("where")
     if not collection or not isinstance(where, dict) or not where:
         raise SRLCompileError(f"selector {name} requires collection and non-empty where")
-    legal = observation_projection.COLLECTIONS.get(collection)
-    if legal is None or not bool(legal.get("srlEligible")):
+    if not _srl_collection(collection):
         raise SRLCompileError(f"selector {name} uses non-SRL or unknown collection {collection}")
     fields = FIELD_REGISTRY.get(collection)
     if fields is None:
@@ -480,8 +504,7 @@ def compile_rule(raw: Mapping[str, Any]) -> dict[str, Any]:
         raise SRLCompileError("rule must declare a requires collection list (use [] for fact-only correlations)")
     required_names = sorted({_require_id(item, "required collection") for item in required})
     for collection in required_names:
-        spec = observation_projection.COLLECTIONS.get(collection)
-        if spec is None or not bool(spec.get("srlEligible")):
+        if not _srl_collection(collection):
             raise SRLCompileError(f"rule requires unknown/non-SRL collection {collection}")
     selector_collections = sorted({s["collection"] for s in selectors.values() if s["type"] == "collection"})
     missing_requires = sorted(set(selector_collections) - set(required_names))
@@ -498,6 +521,7 @@ def compile_rule(raw: Mapping[str, Any]) -> dict[str, Any]:
     emit = _compile_emit(kind, raw.get("emit"))
     try:
         analysis_request = deep_scan_contract.compile_analysis_request(raw.get("analysisRequest"))
+        observation_request = collector_contracts.compile_observation_request(raw.get("observationRequest"))
     except ValueError as exc:
         raise SRLCompileError(str(exc)) from exc
     metadata: dict[str, Any] = {}
@@ -515,6 +539,7 @@ def compile_rule(raw: Mapping[str, Any]) -> dict[str, Any]:
         "condition": condition,
         "emit": emit,
         "analysisRequest": analysis_request,
+        "observationRequest": observation_request,
         "metadata": metadata,
     }
     compiled_core["ruleRevision"] = f"srl-rule-v1-{_sha(compiled_core)[:24]}"
@@ -673,8 +698,9 @@ def rule_to_authoring_graph(document: Any) -> dict[str, Any]:
     emit_id = "emit:result"
     emit = dict(raw.get("emit") or {}) if isinstance(raw.get("emit"), Mapping) else {}
     analysis_request = dict(raw.get("analysisRequest") or {}) if isinstance(raw.get("analysisRequest"), Mapping) else {}
+    observation_request = dict(raw.get("observationRequest") or {}) if isinstance(raw.get("observationRequest"), Mapping) else {}
     nodes.append({
-        "id": emit_id, "type": "emit", "label": "EMIT", "config": {"emit": emit, "analysisRequest": analysis_request},
+        "id": emit_id, "type": "emit", "label": "EMIT", "config": {"emit": emit, "analysisRequest": analysis_request, "observationRequest": observation_request},
         "position": {"x": 720, "y": 80},
     })
     edges.append({"from": root_id, "to": emit_id, "order": 0})
@@ -815,6 +841,9 @@ def authoring_graph_to_rule(graph: Mapping[str, Any]) -> dict[str, Any]:
     analysis_request = emit_config.get("analysisRequest")
     if isinstance(analysis_request, Mapping) and analysis_request:
         rule["analysisRequest"] = dict(analysis_request)
+    observation_request = emit_config.get("observationRequest")
+    if isinstance(observation_request, Mapping) and observation_request:
+        rule["observationRequest"] = dict(observation_request)
     compile_rule(rule)
     return rule
 
@@ -974,12 +1003,24 @@ def evaluate_rule(compiled_rule: Mapping[str, Any], observations: Mapping[str, S
     fact_set = {str(item) for item in facts if str(item)}
     if len(fact_set) > MAX_FACTS:
         raise SRLEvaluationError(f"fact input exceeds {MAX_FACTS}")
+    required = list(compiled_rule.get("requires") or [])
+    evidence_required = [name for name in required if name in observation_projection.COLLECTIONS]
+    collector_required = [name for name in required if name in collector_contracts.OBSERVATION_TYPES]
     replay = observation_projection.replay_audit(
         {"contractRevision": observation_projection.contract_revision(), "collections": {
             name: {"completeness": "retained"} for name in observations if name in observation_projection.COLLECTIONS
         }},
-        compiled_rule.get("requires") or [],
+        evidence_required,
     )
+    collector_replay = collector_contracts.replay_audit(
+        {"contractRevision": collector_contracts.registry_revision(), "collections": {
+            name: {"completeness": "retained-snapshot"} for name in observations if name in collector_contracts.OBSERVATION_TYPES
+        }},
+        collector_required,
+    )
+    replay["collectorObservations"] = collector_replay
+    replay["requiredCollections"] = sorted(required)
+    replay["reusableWithoutRescan"] = bool(replay.get("reusableWithoutRescan")) and bool(collector_replay.get("reusable"))
     # Direct evaluator inputs are assumed complete fixture/local rows. Production/real
     # Evidence evaluation must pass the retained variant contract through the ruleset
     # evaluator's observation_contract parameter instead of synthesizing completeness.
@@ -998,6 +1039,7 @@ def evaluate_rule(compiled_rule: Mapping[str, Any], observations: Mapping[str, S
     emitted_fact = ""
     finding: dict[str, Any] | None = None
     analysis_request: dict[str, Any] | None = None
+    observation_request: dict[str, Any] | None = None
     if matched and compiled_rule["status"] not in {"disabled", "deprecated"}:
         if compiled_rule["kind"] in {"observation", "classification"}:
             emitted_fact = str(compiled_rule["emit"]["fact"])
@@ -1019,6 +1061,13 @@ def evaluate_rule(compiled_rule: Mapping[str, Any], observations: Mapping[str, S
                 "ruleId": str(compiled_rule.get("id") or ""),
                 "ruleRevision": str(compiled_rule.get("ruleRevision") or ""),
             }
+        collector_request = compiled_rule.get("observationRequest") if isinstance(compiled_rule.get("observationRequest"), Mapping) else {}
+        if collector_request:
+            observation_request = {
+                **collector_contracts.resolve_observation_request(collector_request),
+                "ruleId": str(compiled_rule.get("id") or ""),
+                "ruleRevision": str(compiled_rule.get("ruleRevision") or ""),
+            }
     return {
         "schema": EVALUATION_SCHEMA,
         "ruleId": compiled_rule["id"],
@@ -1030,6 +1079,7 @@ def evaluate_rule(compiled_rule: Mapping[str, Any], observations: Mapping[str, S
         "emittedFact": emitted_fact,
         "finding": finding,
         "analysisRequest": analysis_request,
+        "observationRequest": observation_request,
         "evidenceTruncated": len(evidence) >= MAX_EVIDENCE_ROWS_PER_RULE,
         "fixtureReplay": replay,
     }
@@ -1048,13 +1098,27 @@ def evaluate_ruleset(
     if len(rules) > MAX_RULES:
         raise SRLEvaluationError(f"compiled ruleset exceeds {MAX_RULES} rules")
     required = sorted({name for rule in rules for name in rule.get("requires") or []})
+    evidence_required = [name for name in required if name in observation_projection.COLLECTIONS]
+    collector_required = [name for name in required if name in collector_contracts.OBSERVATION_TYPES]
     if observation_contract is None:
         replay_contract = {"contractRevision": observation_projection.contract_revision(), "collections": {
             name: {"completeness": "retained"} for name in observations if name in observation_projection.COLLECTIONS
         }}
+        collector_replay_contract = {"contractRevision": collector_contracts.registry_revision(), "collections": {
+            name: {"completeness": "retained-snapshot"} for name in observations if name in collector_contracts.OBSERVATION_TYPES
+        }}
     else:
         replay_contract = dict(observation_contract)
-    replay = observation_projection.replay_audit(replay_contract, required)
+        collector_replay_contract = dict(observation_contract)
+    evidence_replay = observation_projection.replay_audit(replay_contract, evidence_required)
+    collector_replay = collector_contracts.replay_audit(collector_replay_contract, collector_required)
+    replay = dict(evidence_replay)
+    replay["collectorObservations"] = collector_replay
+    replay["requiredCollections"] = required
+    replay["reusableWithoutRescan"] = bool(evidence_replay.get("reusableWithoutRescan")) and bool(collector_replay.get("reusable"))
+    replay["missingCollections"] = sorted(set(evidence_replay.get("missingCollections") or []) | set(collector_replay.get("missingCollections") or []))
+    if collector_replay.get("incompleteCollections"):
+        replay["collectorIncompleteCollections"] = collector_replay["incompleteCollections"]
     if not replay["reusableWithoutRescan"]:
         return {
             "schema": RULESET_EVALUATION_SCHEMA,
@@ -1064,11 +1128,13 @@ def evaluate_ruleset(
             "facts": sorted(facts),
             "findings": [],
             "analysisRequests": [],
+            "observationRequests": [],
             "rules": [],
         }
     evaluations: list[dict[str, Any]] = []
     findings: list[dict[str, Any]] = []
     analysis_requests: list[dict[str, Any]] = []
+    observation_requests: list[dict[str, Any]] = []
     # Compiler ordering guarantees observation/classification before correlation.
     for rule in rules:
         result = evaluate_rule(rule, observations, facts)
@@ -1081,6 +1147,9 @@ def evaluate_ruleset(
         request = result.get("analysisRequest")
         if isinstance(request, dict):
             analysis_requests.append(dict(request))
+        observation_request = result.get("observationRequest")
+        if isinstance(observation_request, dict):
+            observation_requests.append(dict(observation_request))
         finding = result.get("finding")
         if isinstance(finding, dict):
             findings.append(finding)
@@ -1095,6 +1164,7 @@ def evaluate_ruleset(
         "facts": sorted(facts),
         "findings": findings,
         "analysisRequests": sorted(analysis_requests, key=lambda item: (str(item.get("ruleId") or ""), str(item.get("profile") or ""))),
+        "observationRequests": sorted(observation_requests, key=lambda item: (str(item.get("ruleId") or ""), str(item.get("collection") or ""))),
         "rules": evaluations,
     }
 
@@ -1109,7 +1179,7 @@ def run_fixture(compiled_ruleset: Mapping[str, Any], fixture: Mapping[str, Any])
     clean_observations: dict[str, list[dict[str, Any]]] = {}
     for collection, rows in observations.items():
         collection = str(collection)
-        if collection not in observation_projection.COLLECTIONS or not bool(observation_projection.COLLECTIONS[collection].get("srlEligible")):
+        if not _srl_collection(collection):
             raise SRLCompileError(f"fixture uses unknown/non-SRL collection {collection}")
         if not isinstance(rows, list):
             raise SRLCompileError(f"fixture collection {collection} must be a list")

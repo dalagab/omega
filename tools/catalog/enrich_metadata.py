@@ -326,6 +326,57 @@ def _is_metadata_complete(plugin: dict) -> bool:
 # Orchestration
 # ---------------------------------------------------------------------------
 
+def load_discovery_enrichment(root: str | None, max_age_hours: float = 24.0) -> dict[str, dict]:
+    """Load fresh per-source normalized records produced by the independent discovery worker."""
+    if not root:
+        return {}
+    base = Path(root)
+    try:
+        index = json.loads((base / "index.json").read_text(encoding="utf-8"))
+        generated = str(index.get("generatedAtUtc") or "")
+        stamp = datetime.fromisoformat(generated.replace("Z", "+00:00"))
+        age = (datetime.now(timezone.utc) - stamp.astimezone(timezone.utc)).total_seconds() / 3600.0
+        if age > max(1.0, float(max_age_hours)):
+            return {}
+        source_doc = json.loads((base / "source-candidates.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    out: dict[str, dict] = {}
+    for row in source_doc.get("sources") or []:
+        if not isinstance(row, dict):
+            continue
+        url = normalize_url(str(row.get("url") or "")).lower()
+        rel = str(row.get("enrichedPath") or "")
+        if not url or not rel:
+            continue
+        try:
+            shard = json.loads((base / rel).read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        record = shard.get("source") if isinstance(shard, dict) and isinstance(shard.get("source"), dict) else {}
+        if record.get("ok") and normalize_url(str(record.get("url") or "")).lower() == url:
+            out[url] = record
+    return out
+
+
+def fetch_sources_with_discovery(
+    sources: list[dict], *, concurrency: int, timeout: float, cache: dict[str, dict], discovery: dict[str, dict]
+) -> tuple[list[dict], int]:
+    reused: list[dict] = []
+    pending: list[dict] = []
+    for source in sources:
+        key = normalize_url(str(source.get("url") or "")).lower()
+        record = discovery.get(key)
+        if record is not None:
+            reused.append(record)
+        else:
+            pending.append(source)
+    fetched = fetch_sources_parallel(pending, concurrency=concurrency, timeout=timeout, cache=cache) if pending else []
+    records = reused + fetched
+    records.sort(key=lambda r: (not r.get("ok"), r.get("provider") or ""))
+    return records, len(reused)
+
+
 def fetch_sources_parallel(sources: list[dict], concurrency: int = 8, timeout: float = 20.0, cache: dict[str, dict] | None = None) -> list[dict]:
     out: list[dict] = []
     with ThreadPoolExecutor(max_workers=concurrency) as ex:
@@ -342,7 +393,10 @@ def fetch_sources_parallel(sources: list[dict], concurrency: int = 8, timeout: f
     return out
 
 
-def enrich(raw_sources_path: str, concurrency: int = 8, timeout: float = 20.0, verbose: bool = True, seed_database: str | None = None) -> dict:
+def enrich(
+    raw_sources_path: str, concurrency: int = 8, timeout: float = 20.0, verbose: bool = True,
+    seed_database: str | None = None, discovery_root: str | None = None, discovery_max_age_hours: float = 24.0,
+) -> dict:
     def log(msg: str) -> None:
         if verbose:
             print(msg, file=sys.stderr)
@@ -355,7 +409,10 @@ def enrich(raw_sources_path: str, concurrency: int = 8, timeout: float = 20.0, v
     log(f"  -> {len(sources)} source URL(s)")
 
     log(f"Fetching {len(sources)} source(s) in parallel (concurrency={concurrency}) ...")
-    records = fetch_sources_parallel(sources, concurrency=concurrency, timeout=timeout, cache=load_source_cache(seed_database))
+    records, discovery_reused = fetch_sources_with_discovery(
+        sources, concurrency=concurrency, timeout=timeout, cache=load_source_cache(seed_database),
+        discovery=load_discovery_enrichment(discovery_root, discovery_max_age_hours),
+    )
     ok = sum(1 for r in records if r["ok"])
 
     # Flatten plugins + add sourceRepo field
@@ -382,6 +439,7 @@ def enrich(raw_sources_path: str, concurrency: int = 8, timeout: float = 20.0, v
             "sourceOk": ok,
             "sourceFailed": len(sources) - ok,
             "sourceNotModified": sum(1 for r in records if r.get("notModified")),
+            "sourceDiscoveryReused": discovery_reused,
             "totalPluginCount": len(all_plugins),
             "metadataCompletePluginCount": len(complete),
             "dalamudApiLevelDistribution": apis,
@@ -401,7 +459,9 @@ def main() -> int:
     ap.add_argument("--concurrency", "-c", type=int, default=8, help="Parallel fetchers (default: %(default)s)")
     ap.add_argument("--timeout", type=float, default=20.0, help="Per-request timeout (default: %(default)s)")
     ap.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
-    ap.add_argument("--seed-database", default="", help="Previous omega-catalog.sqlite for ETag/Last-Modified conditional fetches")
+    ap.add_argument("--seed-database", default="", help="Previous canonical omega-catalog.sqlite for ETag/Last-Modified conditional fetches")
+    ap.add_argument("--discovery-root", default="", help="Fresh catalog-discovery snapshot root containing reusable novel-source shards")
+    ap.add_argument("--discovery-max-age-hours", type=float, default=24.0)
     args = ap.parse_args()
 
     if args.input == "-":
@@ -427,7 +487,10 @@ def main() -> int:
     started = time.time()
     log(f"Loaded {len(sources)} source URL(s) from input")
     log(f"Fetching in parallel (concurrency={args.concurrency}) ...")
-    records = fetch_sources_parallel(sources, concurrency=args.concurrency, timeout=args.timeout, cache=load_source_cache(args.seed_database))
+    records, discovery_reused = fetch_sources_with_discovery(
+        sources, concurrency=args.concurrency, timeout=args.timeout, cache=load_source_cache(args.seed_database),
+        discovery=load_discovery_enrichment(args.discovery_root or None, args.discovery_max_age_hours),
+    )
     ok = sum(1 for r in records if r["ok"])
     log(f"  -> {ok}/{len(sources)} OK")
 
@@ -454,6 +517,7 @@ def main() -> int:
             "sourceOk": ok,
             "sourceFailed": len(sources) - ok,
             "sourceNotModified": sum(1 for r in records if r.get("notModified")),
+            "sourceDiscoveryReused": discovery_reused,
             "totalPluginCount": len(all_plugins),
             "metadataCompletePluginCount": len(complete),
             "dalamudApiLevelDistribution": apis,

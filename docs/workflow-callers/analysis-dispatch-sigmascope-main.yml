@@ -1,0 +1,57 @@
+name: Omega analysis worker - SigmaScope
+
+# Install on default main only after a Definitions freeze containing the generic
+# SigmaScope request adapter. The dispatcher commits the claim before starting this
+# worker. SigmaScope keeps its existing serialized Evidence-v2 publication boundary.
+on:
+  workflow_dispatch:
+    inputs:
+      work_item_id:
+        type: string
+        required: true
+      claim_token:
+        type: string
+        required: true
+      request_json:
+        description: Exact omega.analysis-request.v1 copied from the committed dispatcher claim
+        type: string
+        required: true
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+jobs:
+  component:
+    uses: dalagab/omega/.github/workflows/sigmascope.yml@sigmascope
+    with:
+      analysis_request_json: ${{ inputs.request_json }}
+      analysis_work_item_id: ${{ inputs.work_item_id }}
+    secrets: inherit
+
+  settle-success:
+    needs: component
+    if: always() && needs.component.result == 'success'
+    uses: dalagab/omega/.github/workflows/analysis-dispatcher-settle.yml@sigmascope
+    with:
+      work_item_id: ${{ inputs.work_item_id }}
+      claim_token: ${{ inputs.claim_token }}
+      outcome: completed
+      retry_failed: true
+      max_attempts: 3
+      result_json: >-
+        {"workerWorkflow":"${{ github.workflow }}","workerRunId":"${{ github.run_id }}","workerRunAttempt":"${{ github.run_attempt }}","component":"omega.sigmascope","componentOutcome":"success"}
+
+  settle-failure:
+    needs: component
+    if: always() && needs.component.result != 'success'
+    uses: dalagab/omega/.github/workflows/analysis-dispatcher-settle.yml@sigmascope
+    with:
+      work_item_id: ${{ inputs.work_item_id }}
+      claim_token: ${{ inputs.claim_token }}
+      outcome: failed
+      retry_failed: true
+      max_attempts: 3
+      result_json: >-
+        {"workerWorkflow":"${{ github.workflow }}","workerRunId":"${{ github.run_id }}","workerRunAttempt":"${{ github.run_attempt }}","component":"omega.sigmascope","componentOutcome":"${{ needs.component.result }}"}
