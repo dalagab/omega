@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 import unittest
 
@@ -11,6 +10,8 @@ SECURITY = common.ROOT / "tools" / "security"
 if str(SECURITY) not in sys.path:
     sys.path.insert(0, str(SECURITY))
 import rule_author_reference
+import observation_projection
+import srl
 
 
 class RuleAuthorReferenceTests(unittest.TestCase):
@@ -28,29 +29,22 @@ class RuleAuthorReferenceTests(unittest.TestCase):
         self.assertIn("raw SQL", reference["forbiddenRuleActions"])
         self.assertIn("network requests", reference["forbiddenRuleActions"])
 
-    def test_deltascope_observation_schema_cli_is_machine_readable(self) -> None:
-        proc = subprocess.run(
-            [sys.executable, str(common.ROOT / "tools" / "security" / "deltascope.py"), "observation-schema"],
-            cwd=common.ROOT, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
-        )
-        payload = json.loads(proc.stdout)
+    def test_published_observation_reference_is_machine_readable(self) -> None:
+        payload = json.loads(json.dumps(observation_projection.build_schema_reference(), sort_keys=True))
         self.assertEqual("omega.deltascope.observation-reference.v1", payload["schema"])
         self.assertIn("networkEndpoints", payload["collections"])
         self.assertTrue(payload["collections"]["managedCallSites"]["srlEligible"])
         self.assertFalse(payload["legacyProjectionDatasets"]["findings"]["srlEligible"])
 
-    def test_deltascope_rule_schema_cli_is_machine_readable(self) -> None:
-        proc = subprocess.run(
-            [sys.executable, str(common.ROOT / "tools" / "security" / "deltascope.py"), "rule-schema"],
-            cwd=common.ROOT, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
-        )
-        payload = json.loads(proc.stdout)
+    def test_published_rule_and_engine_references_are_machine_readable(self) -> None:
+        payload = json.loads(json.dumps(rule_author_reference.build_reference(), sort_keys=True))
+        engine = json.loads(json.dumps(srl.engine_reference(), sort_keys=True))
         self.assertEqual("omega.deltascope.rule-author-reference.v1", payload["schema"])
         self.assertFalse(payload["productionRuleEvaluationEnabled"])
-        self.assertEqual("omega.sigmascope.srl-engine.v1", payload["srlEngine"]["schema"])
-        self.assertTrue(payload["srlEngine"]["compilerAvailable"])
-        self.assertTrue(payload["srlEngine"]["evaluatorAvailable"])
-        self.assertIn("managedCallSites", payload["srlEngine"]["typedCollections"])
+        self.assertEqual("omega.sigmascope.srl-engine.v1", engine["schema"])
+        self.assertTrue(engine["compilerAvailable"])
+        self.assertTrue(engine["evaluatorAvailable"])
+        self.assertIn("managedCallSites", engine["typedCollections"])
 
 
 if __name__ == "__main__":

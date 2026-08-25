@@ -182,26 +182,15 @@ class SrlEvidenceReplayTests(unittest.TestCase):
             self.assertEqual(1, report["auditErrorVariants"])
             self.assertTrue(report["variants"][0]["auditError"])
 
-    def test_deltascope_rule_replay_uses_same_retained_evidence_path(self) -> None:
+    def test_producer_rule_replay_cli_uses_retained_evidence_path(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-srl-replay-cli-") as td:
             root = Path(td)
             database = self.make_database(root / "evidence.sqlite", include_static_observations=True)
             evidence = root / "v2"
             migrate(database, evidence, reset=True, chunk_bytes=1024 * 1024)
             proc = subprocess.run(
-                [
-                    sys.executable,
-                    str(ROOT / "tools" / "security" / "deltascope.py"),
-                    "rule-replay",
-                    "--evidence-v2",
-                    str(evidence),
-                ],
-                cwd=ROOT,
-                check=True,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=30,
+                [sys.executable, str(ROOT / "tools" / "security" / "srl_evidence_replay.py"), "--evidence-root", str(evidence)],
+                cwd=ROOT, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
             )
             report = json.loads(proc.stdout)
             self.assertTrue(report["cutoverReady"], report)

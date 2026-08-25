@@ -29,17 +29,11 @@ class SigmascopeBrandingTests(unittest.TestCase):
         self.assertIn("Compatibility shim", shim)
         self.assertIn("from sigmascope import", shim)
 
-        # Client-side Sigmascope presentation identity belongs to main after the branch split.
+        # Client and developer-tool presentation code lives outside the SigmaScope branch.
         self.assertFalse((root / "Omega").exists())
-        deltascope = (root / "tools" / "security" / "deltascope.py").read_text(encoding="utf-8")
-        self.assertIn("DeltaScope", deltascope)
-        self.assertIn("developer-only", deltascope)
-        self.assertIn("never scans plugins", deltascope)
-        self.assertIn("never publishes catalog, Definitions, or Security", deltascope)
-        self.assertIn("Published/security state is inspected read-only", deltascope)
-        self.assertIn("versioned user-authored SRL YAML", deltascope)
-        self.assertIn("Stigma-1", deltascope)
-
+        self.assertFalse((root / "tools" / "security" / "deltascope.py").exists())
+        self.assertFalse((root / ".github" / "workflows" / "deltascope.yml").exists())
+        self.assertFalse((root / "deltascope_sdk").exists())
 
 
 if __name__ == "__main__":

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
-import subprocess
 import json
 import unittest
 
@@ -245,25 +244,17 @@ emit:
         self.assertTrue(result["rules"][0]["matched"])
         self.assertEqual([], result["facts"])
 
-    def test_deltascope_rule_compile_cli_uses_srl_v1(self) -> None:
-        proc = subprocess.run(
-            [sys.executable, str(ROOT / "tools" / "security" / "deltascope.py"), "rule-compile",
-             "--rule", str(ROOT / "docs" / "rule-authors" / "examples" / "process-network-rules.yaml")],
-            cwd=ROOT, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
-        )
-        payload = json.loads(proc.stdout)
+    def test_producer_compiles_shipped_srl_v1_rule_file(self) -> None:
+        payload = srl.compile_file(ROOT / "docs" / "rule-authors" / "examples" / "process-network-rules.yaml")
         self.assertEqual(srl.COMPILED_RULESET_SCHEMA, payload["schema"])
         self.assertEqual(3, len(payload["rules"]))
 
-    def test_deltascope_rule_test_cli_passes_shipped_fixture(self) -> None:
-        proc = subprocess.run(
-            [sys.executable, str(ROOT / "tools" / "security" / "deltascope.py"), "rule-test",
-             "--rule", str(ROOT / "docs" / "rule-authors" / "examples" / "process-network-rules.yaml"),
-             "--fixture", str(ROOT / "docs" / "rule-authors" / "examples" / "process-network-positive.fixture.yaml")],
-            cwd=ROOT, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
+    def test_producer_runs_shipped_srl_fixture(self) -> None:
+        payload = srl.run_fixture_file(
+            ROOT / "docs" / "rule-authors" / "examples" / "process-network-rules.yaml",
+            ROOT / "docs" / "rule-authors" / "examples" / "process-network-positive.fixture.yaml",
         )
-        payload = json.loads(proc.stdout)
-        self.assertTrue(payload["passed"])
+        self.assertTrue(payload["passed"], payload["failures"])
 
 
     def test_shipped_discovery_collector_rule_and_fixture(self) -> None:
@@ -347,13 +338,9 @@ observationRequest:
         self.assertEqual("omega.collector-registry.v1", ref["collectorRegistry"]["schema"])
         self.assertIn("omega.collector.discovery.pluginmaster-validator", ref["collectionProviders"]["catalogPluginFacts"])
 
-    def test_deltascope_rule_eval_accepts_typed_collector_bundle(self) -> None:
-        import tempfile
+    def test_producer_srl_accepts_typed_collector_bundle(self) -> None:
         import collector_contracts
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            rule = root / "rule.yaml"
-            rule.write_text("""
+        rule = srl.compile_yaml_text("""
 schema: omega.sigmascope.rule.v1
 id: catalog.new-plugin
 kind: observation
@@ -367,23 +354,16 @@ selectors:
 condition: new
 emit:
   fact: catalog.plugin.new
-""", encoding="utf-8")
-            row = collector_contracts.make_row(
-                "catalogPluginFacts", "omega.collector.discovery.pluginmaster-validator",
-                {"classification": "new-plugin", "internalName": "Example", "name": "Example", "assemblyVersion": "1.0.0", "testingAssemblyVersion": "", "dalamudApiLevel": 15, "testingDalamudApiLevel": 0, "sourceUrl": "https://example.invalid/repo.json", "sourceProvider": "fixture", "repoUrl": "", "originCollectorId": "omega.collector.discovery.github-code-search"},
-                observed_at="2026-08-24T12:00:00Z",
-            )
-            bundle = collector_contracts.build_bundle({"catalogPluginFacts": [row]}, generated_at="2026-08-24T12:00:00Z")
-            bundle_path = root / "observations.json"
-            bundle_path.write_text(json.dumps(bundle), encoding="utf-8")
-            proc = subprocess.run(
-                [sys.executable, str(ROOT / "tools" / "security" / "deltascope.py"), "rule-eval",
-                 "--rule", str(rule), "--collector-bundle", str(bundle_path)],
-                cwd=ROOT, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
-            )
-            payload = json.loads(proc.stdout)
-            self.assertTrue(payload["evaluated"], payload["replayAudit"])
-            self.assertEqual(["catalog.plugin.new"], payload["facts"])
+""")
+        row = collector_contracts.make_row(
+            "catalogPluginFacts", "omega.collector.discovery.pluginmaster-validator",
+            {"classification": "new-plugin", "internalName": "Example", "name": "Example", "assemblyVersion": "1.0.0", "testingAssemblyVersion": "", "dalamudApiLevel": 15, "testingDalamudApiLevel": 0, "sourceUrl": "https://example.invalid/repo.json", "sourceProvider": "fixture", "repoUrl": "", "originCollectorId": "omega.collector.discovery.github-code-search"},
+            observed_at="2026-08-24T12:00:00Z",
+        )
+        bundle = collector_contracts.build_bundle({"catalogPluginFacts": [row]}, generated_at="2026-08-24T12:00:00Z")
+        payload = srl.evaluate_ruleset(rule, collector_contracts.rows_from_bundle(bundle), observation_contract=collector_contracts.bundle_contract(bundle))
+        self.assertTrue(payload["evaluated"], payload["replayAudit"])
+        self.assertEqual(["catalog.plugin.new"], payload["facts"])
 
 
 if __name__ == "__main__":
