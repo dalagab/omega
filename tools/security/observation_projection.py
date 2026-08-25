@@ -166,6 +166,27 @@ def contract_revision() -> str:
     return f"observations-v1-{_sha(semantic)[:16]}"
 
 
+def compatible_contract_revision(value: Any) -> bool:
+    """Return whether a declared v1 observation contract can be replay-audited.
+
+    The revision fingerprints the *registry available when the evidence was written*,
+    not the immutable observation bytes themselves.  Additive collection-registry
+    growth therefore must not retroactively corrupt older Evidence-v2 rows.  A v1
+    declaration is accepted here only as a compatibility envelope; every declared
+    collection is still validated below against the current schema/eligibility
+    contract, its retained descriptor/digest and the immutable analysis manifest.
+
+    Incompatible semantic changes must advance the contract schema/version rather than
+    silently reusing the v1 revision prefix.
+    """
+    revision = str(value or "")
+    prefix = "observations-v1-"
+    if not revision.startswith(prefix):
+        return False
+    suffix = revision[len(prefix):]
+    return len(suffix) == 16 and all(char in "0123456789abcdef" for char in suffix)
+
+
 def projection_contract_revision() -> str:
     semantic = {"schema": PROJECTION_CONTRACT_SCHEMA, "projectionDatasets": PROJECTION_DATASETS}
     return f"projection-contract-v1-{_sha(semantic)[:16]}"
@@ -487,7 +508,7 @@ def validation_errors(variant_payload: dict[str, Any], analysis_manifest: dict[s
     if observations is not None:
         if str(observations.get("schema") or "") != OBSERVATION_CONTRACT_SCHEMA:
             errors.append("observation contract schema is invalid")
-        if str(observations.get("contractRevision") or "") != contract_revision():
+        if not compatible_contract_revision(observations.get("contractRevision")):
             errors.append("observation contract revision is invalid")
         expected = build_variant_observation_contract(analysis_manifest or {}, report)
         expected_collections = expected.get("collections") if isinstance(expected.get("collections"), dict) else {}

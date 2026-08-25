@@ -18,6 +18,7 @@ for path in (SECURITY, CATALOG):
 import analysis_revision
 import definition_packs
 from migrate_security_evidence_v2 import migrate
+import observation_projection
 import rule_reprojection
 import security_evidence_v2
 
@@ -136,6 +137,28 @@ class RuleReprojectionTests(unittest.TestCase):
             self.assertEqual(["network.http", "process.launch"], [f for f in projection["facts"] if f in {"network.http", "process.launch"}])
             self.assertEqual(["compound.network-execute"], [row["ruleId"] for row in projection["findings"]])
             self.assertFalse(projection["productionWriteBack"])
+
+    def test_prior_v1_contract_revision_is_replay_compatible_after_registry_growth(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-reproject-prior-contract-") as td:
+            root = Path(td)
+            evidence = self.evidence(root)
+            entry, payload = next(iter(security_evidence_v2.iter_variant_entries(evidence)))
+            observations = payload.get("observations") if isinstance(payload.get("observations"), dict) else {}
+            self.assertNotEqual("observations-v1-16863eebb61bc136", observations.get("contractRevision"))
+            observations["contractRevision"] = "observations-v1-16863eebb61bc136"
+            variant_path = evidence / str(entry.get("variantPath") or "")
+            variant_path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+
+            plan = rule_reprojection.plan_reprojection(evidence, self.compiled())
+            self.assertTrue(plan["auditOk"], plan)
+            self.assertEqual(0, plan["auditErrorVariants"], plan)
+            self.assertEqual(1, plan["reprojectedVariants"], plan)
+            self.assertEqual("observations-v1-16863eebb61bc136", plan["variants"][0]["projection"]["observationContractRevision"])
+
+            contract = observations
+            audit = observation_projection.replay_audit(contract, ["staticPatternMatches", "sourceBuildProjects"])
+            self.assertFalse(audit["reusableWithoutRescan"])
+            self.assertEqual(["sourceBuildProjects"], audit["missingCollections"])
 
     def test_missing_observation_gets_precise_targeted_reanalysis_reason(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-reproject-missing-") as td:

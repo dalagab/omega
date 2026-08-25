@@ -111,6 +111,18 @@ class ObservationProjectionTests(unittest.TestCase):
         variant["observations"]["observationDigest"] = "tampered"
         self.assertIn("observation contract digest is not reproducible", op.validation_errors(variant, manifest))
 
+    def test_additive_registry_growth_keeps_prior_v1_evidence_valid(self) -> None:
+        manifest = {"datasets": {"calls": {"records": 1, "recordDigest": "f" * 64, "files": []}}}
+        report = {"scanProvenance": {"ruleSetRevision": "rules-a"}}
+        observations = op.build_variant_observation_contract(manifest, report)
+        self.assertNotEqual("observations-v1-16863eebb61bc136", observations["contractRevision"])
+        observations["contractRevision"] = "observations-v1-16863eebb61bc136"
+        variant = {"current": {"report_json": report}, "observations": observations}
+        self.assertEqual([], op.validation_errors(variant, manifest))
+
+        observations["contractRevision"] = "observations-v2-deadbeefdeadbeef"
+        self.assertIn("observation contract revision is invalid", op.validation_errors(variant, manifest))
+
 
 if __name__ == "__main__":
     unittest.main()
