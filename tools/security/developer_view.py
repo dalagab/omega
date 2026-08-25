@@ -45,18 +45,16 @@ import webbrowser
 import zipfile
 from typing import Any, Iterable
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import yaml
 
 from evidence_v2_inspector import DEFAULT_CATALOG_BASE_URL, DEFAULT_ONLINE_BASE_URL, DEFAULT_REMOTE_CACHE_BYTES, V2SigmascopeInspector
-from rule_author_reference import build_reference as build_rule_author_reference
-import observation_projection
-import collector_contracts
-import definition_packs
-import stigma1 as srl
-import srl_evidence_replay
-import srl_migration_parity
+from deltascope_sdk.rule_author_reference import build_reference as build_rule_author_reference
+from deltascope_sdk import observation_projection, collector_contracts, definition_packs, srl, configure_published_contracts, sdk_status
 import rule_lab
-import rule_reprojection
 import deltascope_workbench
 import deltascope_rule_store
 import deltascope_case_store
@@ -71,6 +69,7 @@ import deltascope_scan_queue
 import deltascope_plugin_inventory
 import deltascope_plugin_divergence
 import deltascope_developer_guidance
+import deltascope_resources
 
 CATALOG_MODULE_ROOT = Path(__file__).resolve().parents[1] / "catalog"
 if str(CATALOG_MODULE_ROOT) not in sys.path:
@@ -85,7 +84,6 @@ MARKETPLACE_ASSET = "omega-marketplace.sqlite.zip"
 GITHUB_API = "https://api.github.com"
 USER_AGENT = "Omega-Security-Developer-View/1.0"
 DEFAULT_PORT = 8765
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOCAL_DEFINITION_PACKS_ROOT = PROJECT_ROOT / "security-definitions" / "packs"
 LOCAL_DEFINITION_LIBRARY_SCHEMA = "omega.deltascope.definition-library.v1"
 MAX_SQL_ROWS = 1000
@@ -352,21 +350,24 @@ def security_risk_score(informational: int, caution: int, high: int, critical: i
     return min(100, max(0, informational) + max(0, caution) * 6 + max(0, high) * 15 + max(0, critical) * 30 + max(0, advisory_points))
 
 
-def local_definition_library(packs_root: Path | None = None) -> dict[str, Any]:
-    """Build a bounded read-only browser over repository Definition Pack source.
+def local_definition_library(
+    packs_root: Path | None = None, *, source_authority: str = "repository-source-only",
+    source_root_label: str = "security-definitions/packs",
+) -> dict[str, Any]:
+    """Build a bounded read-only browser over a Definition Pack source.
 
-    This is intentionally separate from the published/frozen active-rule provenance.  It lets
-    authors inspect and learn from the source-controlled packs that ship with the checkout even
-    when the currently opened Evidence-v2 snapshot predates the provenance sidecar.  Nothing in
-    this payload is activation state or a production policy input.
+    The source may be the verified published Definitions cache or the repository fallback.
+    It remains intentionally separate from production activation/authority: authors can inspect
+    packs even when the opened Evidence-v2 snapshot predates provenance metadata, but nothing in
+    this payload is a production policy input.
     """
     root = (packs_root or LOCAL_DEFINITION_PACKS_ROOT).resolve()
     if not root.exists() or not root.is_dir():
         return {
             "schema": LOCAL_DEFINITION_LIBRARY_SCHEMA,
             "available": False, "readOnly": True, "mutationAuthority": "none",
-            "policyInput": False, "sourceAuthority": "repository-source-only",
-            "sourceRoot": "security-definitions/packs", "packs": [],
+            "policyInput": False, "sourceAuthority": source_authority,
+            "sourceRoot": source_root_label, "packs": [],
             "packCount": 0, "ruleCount": 0, "fixtureCount": 0,
         }
 
@@ -405,7 +406,7 @@ def local_definition_library(packs_root: Path | None = None) -> dict[str, Any]:
                 raw_rules = [item for item in document if isinstance(item, dict)]
             else:
                 raw_rules = []
-            source_label = f"security-definitions/packs/{pack_id}/{rel}"
+            source_label = f"{source_root_label.rstrip('/')}/{pack_id}/{rel}"
             ids: list[str] = []
             for raw_rule in raw_rules:
                 rule_id = str(raw_rule.get("id") or "")
@@ -452,7 +453,7 @@ def local_definition_library(packs_root: Path | None = None) -> dict[str, Any]:
             frozen = compiled_fixtures.get(rel, {})
             fixtures.append({
                 "path": rel,
-                "sourcePath": f"security-definitions/packs/{pack_id}/{rel}",
+                "sourcePath": f"{source_root_label.rstrip('/')}/{pack_id}/{rel}",
                 "name": str(frozen.get("name") or rel),
                 "passed": bool(frozen.get("passed")),
                 "sourceText": source_path.read_text(encoding="utf-8"),
@@ -471,7 +472,7 @@ def local_definition_library(packs_root: Path | None = None) -> dict[str, Any]:
             "review": dict(pack_review),
             "provenance": dict(compiled_meta.get("provenance") or {}) if isinstance(compiled_meta.get("provenance"), dict) else {},
             "license": str(compiled_meta.get("license") or ""),
-            "manifestPath": f"security-definitions/packs/{pack_id}/pack.yaml",
+            "manifestPath": f"{source_root_label.rstrip('/')}/{pack_id}/pack.yaml",
             "manifestSource": manifest_path.read_text(encoding="utf-8"),
             "rules": sorted(rules, key=lambda item: item["ruleId"]),
             "ruleFiles": rule_files,
@@ -482,8 +483,8 @@ def local_definition_library(packs_root: Path | None = None) -> dict[str, Any]:
 
     packs.sort(key=lambda item: item["packId"])
     semantic = {
-        "sourceAuthority": "repository-source-only",
-        "sourceRoot": "security-definitions/packs",
+        "sourceAuthority": source_authority,
+        "sourceRoot": source_root_label,
         "packs": packs,
         "packCount": len(packs),
         "ruleCount": rule_count,
@@ -498,13 +499,16 @@ def local_definition_library(packs_root: Path | None = None) -> dict[str, Any]:
     }
 
 
-def rule_workspace_library(rule_store: deltascope_rule_store.LocalRuleStore, packs_root: Path | None = None) -> dict[str, Any]:
+def rule_workspace_library(
+    rule_store: deltascope_rule_store.LocalRuleStore, packs_root: Path | None = None, *,
+    source_authority: str = "repository-source-only", source_root_label: str = "security-definitions/packs",
+) -> dict[str, Any]:
     """Combine repository rules and versioned local authoring rules for DeltaScope's tree.
 
     Repository Definitions remain read-only. The local store is explicitly non-production and
     lives outside the checkout, so editing/forking cannot mutate frozen Definitions by accident.
     """
-    system = local_definition_library(packs_root)
+    system = local_definition_library(packs_root, source_authority=source_authority, source_root_label=source_root_label)
     local = rule_store.list_rules()
     return {
         "schema": "omega.deltascope.rule-workspace-library.v1",
@@ -2195,11 +2199,12 @@ function collectorMetricInRun(r,label){const row=(r?.metrics||[]).find(m=>String
 function collectorHistoryTable(c){const rows=Array.isArray(c?.history)?c.history:[],label=String(c?.trend?.throughput?.label||'');if(!rows.length)return '<div class="workspace-empty">No recent matching runner history is available.</div>';return `<table><thead><tr><th>Run</th><th>Time</th><th>Result</th><th>Duration</th>${label?`<th>${esc(label)}</th>`:''}</tr></thead><tbody>${rows.map(r=>{const tv=collectorMetricInRun(r,label);return `<tr><td>${r.url?`<a href="${esc(r.url)}" target=_blank rel="noopener noreferrer">#${fmt(r.runNumber||r.runId||0)}</a>`:`#${fmt(r.runNumber||r.runId||0)}`}<div class="muted small">${r.stepObserved?'step observed':'step not found'}</div></td><td>${esc(r.createdAtUtc||'—')}</td><td><span class="collector-state ${collectorStateClass(r.state)}">${esc(String(r.state||'unknown'))}</span></td><td>${collectorDuration(r.durationSeconds)}</td>${label?`<td>${tv===null?'—':fmt(tv)}</td>`:''}</tr>`}).join('')}</tbody></table>`}
 function collectorTrendPanel(c){const t=c?.trend||{},out=t.outcomes||{},dur=t.duration||{},thr=t.throughput||{},fresh=t.freshness||{},signals=Array.isArray(t.signals)?t.signals:[];const success=out.successRate===null||out.successRate===undefined?'—':`${out.successRate}%`;const durationDelta=collectorDelta(dur.deltaPercent),throughputDelta=collectorDelta(thr.deltaPercent);const freshnessValue=fresh.state==='event-driven'?'Event-driven':fresh.ageHours===null||fresh.ageHours===undefined?(fresh.state||'Unknown'):`${Number(fresh.ageHours).toFixed(1)}h old`;return `<div class=collector-trend-grid><div class=collector-trend-cell><div class=collector-trend-label>Recent outcomes</div><div class=collector-trend-value>${esc(success)}</div><div class=collector-trend-detail>${fmt(out.successes||0)} success · ${fmt(out.failures||0)} failed</div></div><div class=collector-trend-cell><div class=collector-trend-label>Duration</div><div class=collector-trend-value>${collectorDuration(dur.latestSeconds)}</div><div class=collector-trend-detail>${dur.baselineMedianSeconds===null||dur.baselineMedianSeconds===undefined?'No baseline yet':`baseline ${collectorDuration(dur.baselineMedianSeconds)} ${durationDelta?`· ${esc(durationDelta)}`:''}`}</div>${collectorSparkline(dur.points)}</div><div class=collector-trend-cell><div class=collector-trend-label>${esc(thr.label||'Throughput')}</div><div class=collector-trend-value>${thr.latest===null||thr.latest===undefined?'—':fmt(thr.latest)}</div><div class=collector-trend-detail>${thr.baselineMedian===null||thr.baselineMedian===undefined?'No parsed baseline yet':`baseline ${fmt(thr.baselineMedian)} ${throughputDelta?`· ${esc(throughputDelta)}`:''}`}</div>${collectorSparkline(thr.points)}</div><div class=collector-trend-cell><div class=collector-trend-label>Freshness</div><div class=collector-trend-value>${esc(freshnessValue)}</div><div class=collector-trend-detail>${fresh.expectedIntervalHours?`recent cadence ≈ ${Number(fresh.expectedIntervalHours).toFixed(1)}h`:esc(fresh.cadenceMode||'cadence unknown')}</div></div></div>${signals.length?`<div class=collector-signals>${signals.map(s=>`<div class="collector-signal ${collectorTrendClass(s.level)}"><b>${esc(s.title||s.code||'Trend signal')}</b><div>${esc(s.detail||'')}</div></div>`).join('')}</div>`:'<div class=collector-trend-note>No degradation signal in the bounded runner-history window. Runner trends are diagnostic only; published catalog and Security Evidence remain authoritative.</div>'}`}
 function renderCollectors(payload){
- currentCollectors=payload;const rows=Array.isArray(payload?.collectors)?payload.collectors:[];
+ currentCollectors=payload;const rows=Array.isArray(payload?.collectors)?payload.collectors:[],providers=Array.isArray(payload?.registeredProviders)?payload.registeredProviders:[];
  const healthy=rows.filter(x=>x.state==='healthy').length,degrading=Number(payload?.degradingCount||0),warnings=Number(payload?.warningTrendCount||0),stale=Number(payload?.staleCount||0);
- $('collectorCards').innerHTML=card('Collectors',rows.length,{},'registered acquisition/projection stages')+card('Latest healthy',healthy,{},'latest matching runner step succeeded')+card('Degrading',degrading,{},'trend model found a strong anomaly')+card('Trend warnings',warnings,{},'drift worth reviewing')+card('Late / stale',stale,{},'behind recent observed cadence');
+ $('collectorCards').innerHTML=card('Runner stages',rows.length,{},'operational acquisition/projection stages')+card('Registered providers',providers.length,{},'published collector registry · auto-discovered')+card('Latest healthy',healthy,{},'latest matching runner step succeeded')+card('Degrading',degrading,{},'trend model found a strong anomaly')+card('Trend warnings',warnings,{},'drift worth reviewing')+card('Late / stale',stale,{},'behind recent observed cadence');
  const host=$('collectorRows');if(!host)return;
- host.innerHTML=rows.map(c=>{
+ const registryHtml=providers.length?`<article class=collector-item><div class=collector-item-head><div><div class=collector-title>Published observation providers</div><div class=collector-purpose>Discovered from <code>${esc(payload.collectorRegistryRevision||'collector registry')}</code>. New registered providers appear here without a DeltaScope code change.</div></div><span class="collector-state healthy">${fmt(providers.length)} registered</span></div><div class=collector-body><div class=collector-history><table><thead><tr><th>Provider</th><th>Component</th><th>Status</th><th>Provides</th></tr></thead><tbody>${providers.map(p=>`<tr><td><b>${esc(p.title||p.id)}</b><div class="muted small"><code>${esc(p.id||'')}</code></div></td><td>${esc(p.component||p.componentId||'—')}</td><td><span class="collector-state ${p.status==='active'?'healthy':'unknown'}">${esc(p.status||'active')}</span></td><td>${esc((p.provides||[]).join(', ')||'—')}</td></tr>`).join('')}</tbody></table></div></div></article>`:'';
+ host.innerHTML=registryHtml+rows.map(c=>{
    const metrics=Array.isArray(c.metrics)?c.metrics:[],latest=c.latest||{},rate=c.recentSuccessRate;
    return `<article class=collector-item><div class=collector-item-head><div><div class=collector-title>${esc(c.title||c.id||'Collector')}</div><div class=collector-purpose>${esc(c.purpose||'')}</div></div><div class=collector-head-status><span class="collector-trend-badge ${collectorTrendClass(c.trendState)}">trend ${esc(String(c.trendState||'unknown'))}</span><span class="collector-state ${collectorStateClass(c.state)}">latest ${esc(String(c.state||'unknown'))}</span></div></div><div class=collector-body>${c.error?`<div class=collector-error>${esc(c.error)}</div>`:''}${collectorTrendPanel(c)}<div class=collector-meta><b>Workflow</b><span>${esc(c.workflow||'—')}</span><b>Job</b><span>${esc(c.job||'—')}</span><b>Step</b><span>${esc(c.step||'—')}</span><b>Implementation</b><span>${esc(c.implementation||'—')}</span></div><div class=collector-io><div><h4>Consumes</h4>${collectorList(c.inputs)}</div><div><h4>Produces</h4>${collectorList(c.outputs)}</div></div>${metrics.length?`<div class=collector-metrics>${metrics.map(m=>`<div class=collector-metric><div class=collector-metric-value>${collectorMetricValue(m)}</div><div class=collector-metric-label>${esc(m.label||'Metric')}</div><div class=collector-metric-source>${esc(m.source||'')}</div></div>`).join('')}</div>`:'<div class="muted small">No parsed throughput/coverage metric is available for the latest retained runner history.</div>'}${Array.isArray(latest.artifacts)&&latest.artifacts.length?`<div><h4 style="margin:0 0 6px">Latest workflow artifacts</h4><div class=collector-artifacts>${latest.artifacts.map(a=>`<span class="collector-artifact ${a.expired?'expired':''}">${esc(a.name||'artifact')} · ${a.bytes?esc((Number(a.bytes)/1024).toFixed(1)+' KiB'):''}${a.expired?' · expired':''}</span>`).join('')}</div></div>`:''}<div class=collector-run-summary><span><strong>${fmt(c.recentObservedRuns||0)}</strong> recent observed run(s)</span><span><strong>${fmt(c.recentSuccesses||0)}</strong> succeeded</span><span><strong>${fmt(c.recentFailures||0)}</strong> failed</span><span><strong>${rate===null||rate===undefined?'—':esc(rate+'%')}</strong> success rate</span>${latest.createdAtUtc?`<span>latest ${esc(latest.createdAtUtc)}</span>`:''}</div><div class=collector-history>${collectorHistoryTable(c)}</div><div class=collector-actions><button data-collector-doc="${esc(c.docs||'collectors')}">How this collector works</button>${latest.url?`<button data-collector-run="${esc(latest.url)}">Open latest GitHub run</button>`:''}</div></div></article>`
  }).join('')||'<div class="workspace-empty">No collector definitions are registered.</div>';
@@ -2493,7 +2498,8 @@ init().then(()=>{checkEvidenceRevision();setInterval(checkEvidenceRevision,60000
 
 class AppHandler(BaseHTTPRequestHandler):
     inspector: Any
-    server_version = "OmegaDeltaScope/4.21.5"
+    platform_resources: deltascope_resources.PublishedResources | None = None
+    server_version = "OmegaDeltaScope/4.21.8"
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(f"[{self.log_date_time_string()}] {fmt % args}", file=sys.stderr)
@@ -2662,12 +2668,22 @@ class AppHandler(BaseHTTPRequestHandler):
                         "mutationAuthority": "none", "components": [], "events": [],
                         "actionsRunning": 0, "recentFailureCount": 0, "error": "GitHub status disabled",
                     })
-                return self.json_response(self.operations_client.status(refresh=(query.get("refresh") or ["0"])[0] == "1"))
+                operations = self.operations_client.status(refresh=(query.get("refresh") or ["0"])[0] == "1")
+                if getattr(self, "platform_resources", None):
+                    operations = deltascope_operations.merge_component_registry(operations, self.platform_resources.component_registry)
+                return self.json_response(operations)
             if parsed.path == "/api/workbench/threat-intelligence":
                 limit = min(max(1, int((query.get("limit") or ["500"])[0])), 5000)
                 return self.json_response(deltascope_threat_intelligence.project_threat_intelligence(self.inspector, limit=limit))
             if parsed.path == "/api/workbench/detection-coverage":
-                repository_library = None if hasattr(self.inspector, "definition_provenance") else local_definition_library()
+                resources = getattr(self, "platform_resources", None)
+                if resources:
+                    repository_library = local_definition_library(
+                        resources.packs_root, source_authority="published-frozen-definitions",
+                        source_root_label=f"published Definitions {resources.manifest.get('definitionPackRevision','')}/srl/packs",
+                    )
+                else:
+                    repository_library = None if hasattr(self.inspector, "definition_provenance") else local_definition_library()
                 return self.json_response(deltascope_detection_coverage.project_detection_coverage(
                     self.inspector, repository_library=repository_library
                 ))
@@ -2680,13 +2696,13 @@ class AppHandler(BaseHTTPRequestHandler):
                 }
                 workflow_histories: dict[str, dict[str, Any]] = {}
                 refresh = (query.get("refresh") or ["0"])[0] == "1"
-                workflows = sorted({str(row.get("workflow") or "") for row in deltascope_collectors.COLLECTORS if row.get("workflow")})
+                resources = getattr(self, "platform_resources", None)
+                execution_topology = resources.execution_topology if resources else None
+                workflow_map = deltascope_collectors.workflow_contracts(execution_topology)
+                workflows = sorted(workflow_map)
                 if getattr(self, "operations_client", None):
                     for workflow_file in workflows:
-                        log_jobs = {
-                            str(row.get("job") or "") for row in deltascope_collectors.COLLECTORS
-                            if str(row.get("workflow") or "") == workflow_file and str(row.get("job") or "")
-                        }
+                        log_jobs = set(workflow_map.get(workflow_file) or set())
                         workflow_histories[workflow_file] = self.operations_client.workflow_history(
                             workflow_file, limit=8, include_logs=True, log_job_names=log_jobs or None,
                             log_run_limit=4, refresh=refresh
@@ -2698,14 +2714,45 @@ class AppHandler(BaseHTTPRequestHandler):
                             "mutationAuthority": "none", "workflowFile": workflow_file, "runs": [],
                             "error": "GitHub Actions history disabled",
                         }
-                return self.json_response(deltascope_collectors.project_collectors(workflow_histories, summary, context))
+                platform_registry = resources.collector_registry if resources else None
+                return self.json_response(deltascope_collectors.project_collectors(
+                    workflow_histories, summary, context, platform_registry=platform_registry,
+                    execution_topology=execution_topology,
+                ))
             if parsed.path == "/api/docs":
                 return self.json_response(deltascope_docs.catalog())
             if parsed.path == "/api/doc":
                 return self.json_response(deltascope_docs.read_document((query.get("id") or [""])[0]))
+            if parsed.path == "/api/platform-contracts":
+                resources = getattr(self, "platform_resources", None)
+                if not resources:
+                    return self.json_response({
+                        "schema": deltascope_resources.RESOURCE_SCHEMA, "available": False, "readOnly": True,
+                        "mutationAuthority": "none", "policyInput": False, "error": "published platform resources are not loaded",
+                    })
+                return self.json_response({
+                    **resources.public_status(),
+                    "components": resources.component_registry,
+                    "collectors": resources.collector_registry,
+                    "capabilities": resources.capability_registry,
+                    "executionTopology": resources.execution_topology,
+                    "consumerSdk": sdk_status(),
+                })
             if parsed.path == "/api/workbench/rule-library":
+                resources = getattr(self, "platform_resources", None)
+                if resources:
+                    return self.json_response(local_definition_library(
+                        resources.packs_root, source_authority="published-frozen-definitions",
+                        source_root_label=f"published Definitions {resources.manifest.get('definitionPackRevision','')}/srl/packs",
+                    ))
                 return self.json_response(local_definition_library())
             if parsed.path == "/api/workbench/rule-workspace":
+                resources = getattr(self, "platform_resources", None)
+                if resources:
+                    return self.json_response(rule_workspace_library(
+                        self.rule_store, resources.packs_root, source_authority="published-frozen-definitions",
+                        source_root_label=f"published Definitions {resources.manifest.get('definitionPackRevision','')}/srl/packs",
+                    ))
                 return self.json_response(rule_workspace_library(self.rule_store))
             if parsed.path == "/api/rule-lab/local":
                 rule_id = str((query.get("rule_id") or [""])[0])
@@ -2952,12 +2999,14 @@ class AppHandler(BaseHTTPRequestHandler):
 def serve(
     inspector: Any, host: str, port: int, open_browser: bool, rule_home: Path | None = None, case_home: Path | None = None,
     *, github_repository: str = REPOSITORY, github_status: bool = True,
+    platform_resources: deltascope_resources.PublishedResources | None = None,
 ) -> int:
     rule_store = deltascope_rule_store.LocalRuleStore(rule_home)
     case_store = deltascope_case_store.LocalInvestigatorCaseStore(case_home)
     operations_client = deltascope_operations.GitHubOperationsClient(github_repository) if github_status else None
     handler = type("BoundAppHandler", (AppHandler,), {
         "inspector": inspector, "rule_store": rule_store, "case_store": case_store, "operations_client": operations_client,
+        "platform_resources": platform_resources,
     })
     server = ThreadingHTTPServer((host, port), handler)
     url = f"http://{host}:{server.server_address[1]}/"
@@ -2966,6 +3015,12 @@ def serve(
     print(f"Local rule home: {rule_store.root}", file=sys.stderr)
     print(f"Local Investigator case home: {case_store.root}", file=sys.stderr)
     print(f"GitHub operations: {'public read-only '+github_repository if github_status else 'disabled'}", file=sys.stderr)
+    if platform_resources:
+        status = platform_resources.public_status()
+        suffix = " · cached fallback" if status.get("stale") else ""
+        print(f"Published contracts: {status.get('definitionsRevision','')} · {status.get('definitionPackRevision','')}{suffix}", file=sys.stderr)
+    else:
+        print("Published contracts: unavailable; repository-local rule sources are fallback-only", file=sys.stderr)
     print("Press Ctrl+C to stop.", file=sys.stderr)
     if open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
@@ -2981,11 +3036,14 @@ def serve(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="DeltaScope: browse Omega SigmaScope evidence read-only. Published Evidence v2 is streamed lazily from GitHub by default.")
-    parser.add_argument("command", nargs="?", choices=["fetch", "serve", "serve-online", "audit", "rule-schema", "observation-schema", "capabilities", "definition-packs", "rule-compile", "rule-test", "rule-eval", "rule-parity", "rule-replay", "rule-reproject"], default="serve")
+    parser.add_argument("command", nargs="?", choices=["fetch", "sync-resources", "serve", "serve-online", "audit", "rule-schema", "observation-schema", "capabilities", "definition-packs", "rule-compile", "rule-test", "rule-eval"], default="serve")
     parser.add_argument("--database", type=Path, help="Local omega-security-evidence.sqlite; uses legacy/local SQLite view.")
     parser.add_argument("--evidence-v2", type=Path, help="Local Security Evidence v2 JSON directory; opens it directly without publication or download.")
     parser.add_argument("--online-base-url", default=DEFAULT_ONLINE_BASE_URL, help="Published Evidence v2 raw HTTPS root. Default: dalagab/omega security-evidence-v2 branch.")
     parser.add_argument("--catalog-base-url", default=DEFAULT_CATALOG_BASE_URL, help="Published canonical catalog JSON HTTPS root used by the My Plugin logical-identity picker. It is read-only context, never security evidence.")
+    parser.add_argument("--definitions-base-url", default=deltascope_resources.DEFAULT_DEFINITIONS_BASE_URL, help="Published frozen Definitions HTTPS root used for DeltaScope rules and platform registries.")
+    parser.add_argument("--offline-resources", action="store_true", help="Do not refresh published rules/registries; use only the last verified local resource snapshot.")
+    parser.add_argument("--no-stale-resources", action="store_true", help="Fail resource synchronization instead of falling back to the last verified snapshot.")
     parser.add_argument("--marketplace-database", type=Path, help="Optional local omega-marketplace.sqlite for projection comparison.")
     parser.add_argument("--cache-dir", type=Path, default=default_cache_dir())
     parser.add_argument("--online-cache-mb", type=int, default=DEFAULT_REMOTE_CACHE_BYTES // (1024 * 1024), help="Bounded on-demand Evidence v2 HTTP cache size in MiB.")
@@ -3004,12 +3062,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--collector-bundle", type=Path, help="Typed omega.collector-observation-bundle.v1 snapshot (for example catalog-discovery/observations.json) for rule-eval.")
     parser.add_argument("--observation-contract", type=Path, help="Optional JSON Phase-4/Evidence or collector observation contract for exact replay gating during rule-eval.")
     parser.add_argument("--initial-fact", action="append", default=[], help="Optional pre-existing typed fact for rule-eval; repeat as needed.")
-    parser.add_argument("--packs-root", type=Path, help="Source Definition Pack root for rule-parity/rule-replay/rule-reproject. Defaults to repository security-definitions/packs.")
     parser.add_argument("--rule-home", type=Path, help="Versioned DeltaScope local rule root. Default: ~/.omega/deltascope/rules/v1 (or OMEGA_DELTASCOPE_RULE_HOME).")
     parser.add_argument("--case-home", type=Path, help="Local Investigator notebook/case root. Default: ~/.omega/deltascope/investigator/v1 (or OMEGA_DELTASCOPE_CASE_HOME).")
     parser.add_argument("--github-repository", default=os.environ.get("OMEGA_GITHUB_REPOSITORY", REPOSITORY), help="Public GitHub owner/name used for read-only Actions status. Default: dalagab/omega.")
     parser.add_argument("--no-github-status", action="store_true", help="Disable the optional read-only GitHub Actions status/events feed.")
-    parser.add_argument("--projection-output", type=Path, help="Optional non-production output directory for rule-reproject materialization.")
     return parser
 
 
@@ -3026,40 +3082,6 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.evidence_v2 and args.database:
             raise ValueError("choose either --database or --evidence-v2, not both")
-        if args.command == "rule-parity":
-            packs_root = (args.packs_root or (Path(__file__).resolve().parents[2] / "security-definitions" / "packs")).resolve()
-            report = srl_migration_parity.run_pack_root_parity(packs_root)
-            print(json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True))
-            return 0 if report.get("ok") else 2
-        if args.command == "rule-replay":
-            if not args.evidence_v2:
-                raise ValueError("--evidence-v2 is required for rule-replay")
-            packs_root = (args.packs_root or (Path(__file__).resolve().parents[2] / "security-definitions" / "packs")).resolve()
-            compiled = definition_packs.compile_pack_root(packs_root)["compiledRuleSet"]
-            srl_migration_parity._assert_migrated_rules(compiled)
-            report = srl_evidence_replay.replay_evidence_root(args.evidence_v2.resolve(), compiled)
-            print(json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True))
-            if not report.get("auditOk"):
-                return 2
-            return 3 if args.strict_warnings and not report.get("cutoverReady") else 0
-        if args.command == "rule-reproject":
-            if not args.evidence_v2:
-                raise ValueError("--evidence-v2 is required for rule-reproject")
-            packs_root = (args.packs_root or (Path(__file__).resolve().parents[2] / "security-definitions" / "packs")).resolve()
-            compiled = definition_packs.compile_pack_root(packs_root)["compiledRuleSet"]
-            report = rule_reprojection.plan_reprojection(args.evidence_v2.resolve(), compiled)
-            if args.projection_output:
-                output = args.projection_output.resolve()
-                index = rule_reprojection.materialize_projection_set(output, report)
-                report["materialized"] = {
-                    "path": str(output),
-                    "index": index,
-                    "validation": rule_reprojection.verify_projection_set(output),
-                }
-            print(json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True))
-            if not report.get("auditOk"):
-                return 2
-            return 3 if args.strict_warnings and int(report.get("reanalysisRequiredVariants") or 0) > 0 else 0
         if args.command == "definition-packs":
             if not args.definitions_root:
                 raise ValueError("--definitions-root is required for definition-packs")
@@ -3141,6 +3163,18 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, indent=2, ensure_ascii=False, sort_keys=True))
             return 0 if result.get("evaluated") else 3
 
+        if args.command == "sync-resources":
+            resources = deltascope_resources.sync_published_resources(
+                args.cache_dir.resolve() / "platform-resources", base_url=args.definitions_base_url,
+                offline=args.offline_resources, allow_stale=not args.no_stale_resources,
+            )
+            configure_published_contracts(
+                components=resources.component_registry, collectors=resources.collector_registry,
+                capabilities=resources.capability_registry,
+            )
+            print(json.dumps({**resources.public_status(), "consumerSdk": sdk_status()}, indent=2, ensure_ascii=False, sort_keys=True))
+            return 0
+
         if args.command == "fetch":
             if args.evidence_v2:
                 raise ValueError("fetch is not available for a local --evidence-v2 directory")
@@ -3151,7 +3185,22 @@ def main(argv: list[str] | None = None) -> int:
         use_online = args.command == "serve-online" or (args.command == "serve" and not args.database and not args.evidence_v2 and not args.no_download)
         if args.command == "serve-online" and (args.database or args.evidence_v2):
             raise ValueError("serve-online cannot be combined with --database or --evidence-v2")
+        platform_resources = None
         if use_online:
+            try:
+                platform_resources = deltascope_resources.sync_published_resources(
+                    args.cache_dir.resolve() / "platform-resources", base_url=args.definitions_base_url,
+                    offline=args.offline_resources, allow_stale=not args.no_stale_resources,
+                )
+                configure_published_contracts(
+                    components=platform_resources.component_registry,
+                    collectors=platform_resources.collector_registry,
+                    capabilities=platform_resources.capability_registry,
+                )
+                if platform_resources.warning:
+                    print(f"DeltaScope resources: {platform_resources.warning}", file=sys.stderr)
+            except (deltascope_resources.ResourceError, ValueError) as exc:
+                print(f"DeltaScope resources unavailable; continuing with bundled fallback sources: {exc}", file=sys.stderr)
             inspector = V2SigmascopeInspector.online(
                 base_url=args.online_base_url,
                 cache_dir=args.cache_dir.resolve() / "evidence-v2-http",
@@ -3180,6 +3229,7 @@ def main(argv: list[str] | None = None) -> int:
         return serve(
             inspector, args.host, args.port, not args.no_browser, args.rule_home, args.case_home,
             github_repository=args.github_repository, github_status=not args.no_github_status,
+            platform_resources=platform_resources,
         )
     except (RuntimeError, OSError, ValueError, sqlite3.DatabaseError, urllib.error.URLError) as exc:
         print(f"error: {exc}", file=sys.stderr)

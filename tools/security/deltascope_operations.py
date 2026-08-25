@@ -402,3 +402,88 @@ class GitHubOperationsClient:
             self._cache = dict(payload)
             self._cached_at = now
         return payload
+
+
+def merge_component_registry(payload: Mapping[str, Any], registry: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Overlay the published component registry onto Actions-derived status.
+
+    DeltaScope's dashboard must not require a code change merely because the platform gains a
+    component.  The registry is authoritative only for component identity/declared launch
+    metadata; Actions remains diagnostic runtime status.  Unknown/unobserved components are
+    therefore shown as ``unknown`` rather than inferred healthy/failed.
+    """
+    result = dict(payload or {})
+    if not isinstance(registry, Mapping) or str(registry.get("schema") or "") != "omega.component-registry.v1":
+        result["componentRegistryAvailable"] = False
+        return result
+
+    events = [dict(row) for row in (result.get("events") or []) if isinstance(row, Mapping)]
+    legacy_components = [dict(row) for row in (result.get("components") or []) if isinstance(row, Mapping)]
+    registered = [dict(row) for row in (registry.get("components") or []) if isinstance(row, Mapping)]
+
+    def workflow_name(component: Mapping[str, Any]) -> str:
+        launch = component.get("launch") if isinstance(component.get("launch"), Mapping) else {}
+        path = str(launch.get("workflow") or "").replace("\\", "/")
+        return path.rsplit("/", 1)[-1].casefold()
+
+    def matching_event(component: Mapping[str, Any]) -> dict[str, Any] | None:
+        wanted = workflow_name(component)
+        if not wanted:
+            return None
+        for event in events:
+            raw_path = str(event.get("workflowPath") or "").replace("\\", "/").rsplit("/", 1)[-1].casefold()
+            workflow = str(event.get("workflow") or "").casefold()
+            if raw_path == wanted or workflow == wanted or workflow.endswith(wanted):
+                return event
+        return None
+
+    rows: list[dict[str, Any]] = []
+    claimed_legacy: set[str] = set()
+    for component in registered:
+        component_id = str(component.get("id") or "")
+        name = str(component.get("name") or component_id)
+        launch = dict(component.get("launch") or {}) if isinstance(component.get("launch"), Mapping) else {}
+        event = matching_event(component)
+        state = str((event or {}).get("state") or "unknown")
+        detail = str((event or {}).get("stateDetail") or ("not observed in recent Actions history" if event is None else ""))
+        # Avoid retaining a duplicate legacy dashboard row when the same workflow/name has now
+        # been described by the platform registry.
+        for legacy in legacy_components:
+            latest = legacy.get("activeRun") or legacy.get("latestRun") or {}
+            legacy_workflow = str((latest or {}).get("workflowPath") or (latest or {}).get("workflow") or "").replace("\\", "/").rsplit("/", 1)[-1].casefold()
+            if workflow_name(component) and legacy_workflow == workflow_name(component):
+                claimed_legacy.add(str(legacy.get("componentId") or ""))
+            elif str(legacy.get("component") or "").casefold() == name.casefold():
+                claimed_legacy.add(str(legacy.get("componentId") or ""))
+        rows.append({
+            "componentId": component_id,
+            "component": name,
+            "componentType": str(component.get("type") or ""),
+            "componentStatus": str(component.get("status") or ""),
+            "executionClass": str(component.get("executionClass") or ""),
+            "state": state,
+            "stateDetail": detail,
+            "runningCount": 1 if state == "running" else 0,
+            "latestRun": event,
+            "activeRun": event if state == "running" else None,
+            "observed": event is not None,
+            "launch": launch,
+            "readOnly": True,
+            "registryDriven": True,
+        })
+
+    for legacy in legacy_components:
+        legacy_id = str(legacy.get("componentId") or "")
+        if legacy_id not in claimed_legacy:
+            rows.append({**legacy, "registryDriven": False})
+
+    rows.sort(key=lambda row: (
+        0 if row.get("registryDriven") else 1,
+        str(row.get("componentStatus") or "active") != "active",
+        str(row.get("component") or row.get("componentId") or "").casefold(),
+    ))
+    result["components"] = rows
+    result["componentRegistryAvailable"] = True
+    result["componentRegistryRevision"] = str(registry.get("revision") or "")
+    result["registeredComponentCount"] = len(registered)
+    return result

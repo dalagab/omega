@@ -22,11 +22,7 @@ import urllib.parse
 
 import yaml
 
-try:
-    from . import definition_packs, srl
-except ImportError:  # direct invocation from tools/security
-    import definition_packs  # type: ignore
-    import srl  # type: ignore
+from deltascope_sdk import definition_packs, srl
 
 CANDIDATE_ISSUE_SCHEMA = "omega.sigmascope.rule-candidate-issue.v1"
 VALIDATION_SCHEMA = "omega.sigmascope.rule-candidate-validation.v1"

@@ -18,7 +18,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-import observation_projection
+from deltascope_sdk import observation_projection
 import reputation_intelligence
 import deltascope_plugin_inventory
 import deltascope_plugin_divergence

@@ -19,7 +19,7 @@ import urllib.parse
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
-from capability_registry import describe_capability, load_registry, normalize_capability_id
+from deltascope_sdk.capability_registry import describe_capability, load_registry, normalize_capability_id
 
 PROFILE_SCHEMA = "omega.plugin-profile.v1"
 PROFILE_OBSERVATION_SCHEMA = "omega.plugin-profile-observation.v1"

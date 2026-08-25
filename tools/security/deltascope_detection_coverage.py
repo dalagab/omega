@@ -15,8 +15,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping
 
-import observation_projection
-import rule_author_reference
+from deltascope_sdk import observation_projection
+from deltascope_sdk import rule_author_reference
 
 SCHEMA = "omega.deltascope.detection-coverage.v1"
 

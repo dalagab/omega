@@ -14,8 +14,7 @@ SECURITY = ROOT / "tools" / "security"
 if str(SECURITY) not in sys.path:
     sys.path.insert(0, str(SECURITY))
 
-import srl
-import stigma1
+from deltascope_sdk import srl
 import rule_lab
 import deltascope_rule_store
 import developer_view
@@ -120,14 +119,6 @@ class SRLCoreAuthoringTests(unittest.TestCase):
         self.assertEqual("Stigma-1", ref["srlCore"]["component"])
         self.assertTrue(ref["srlCore"]["compatibilityAlias"])
 
-    def test_stigma1_is_the_canonical_srl_core_facade(self) -> None:
-        self.assertEqual("Stigma-1", stigma1.STIGMA_NAME)
-        self.assertEqual("SRL Core", stigma1.STIGMA_TECHNICAL_NAME)
-        self.assertEqual("omega.stigma-1", stigma1.STIGMA_COMPONENT_ID)
-        engine = stigma1.engine_reference()
-        self.assertEqual("Stigma-1", engine["component"])
-        self.assertEqual("SRL Core", engine["technicalName"])
-        self.assertEqual(srl.compile_yaml_text(RULE), stigma1.compile_yaml_text(RULE))
 
     def test_local_store_versions_validated_rules_only(self) -> None:
         with tempfile.TemporaryDirectory() as td:

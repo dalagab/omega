@@ -13,12 +13,7 @@ import hashlib
 import json
 from typing import Any, Iterable, Mapping, Sequence
 
-try:
-    from . import observation_projection
-    from . import stigma1 as srl
-except ImportError:  # direct tools/security import path
-    import observation_projection  # type: ignore
-    import stigma1 as srl  # type: ignore
+from deltascope_sdk import observation_projection, srl
 
 SCHEMA = "omega.deltascope.finding-lineage.v1"
 MAX_GRAPH_NODES = 180

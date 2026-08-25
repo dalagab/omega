@@ -8,7 +8,7 @@ import urllib.request
 
 import deltascope_finding_lineage as lineage
 import developer_view
-import stigma1 as srl
+from deltascope_sdk import srl
 
 
 RULES = """

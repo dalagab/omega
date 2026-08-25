@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""One-command launcher for DeltaScope from the SigmaScope repository root.
+"""One-command launcher for the standalone DeltaScope source tree.
 
 The launcher keeps DeltaScope's Python dependencies in a repository-local virtual
 environment.  Users only need a working Python 3 installation; the first launch creates
 ``.deltascope-venv`` and installs the pinned requirements from
-``tools/requirements-security.txt``.  Subsequent launches reuse that environment until
+``deltascope/requirements.txt``.  Subsequent launches reuse that environment until
 the requirements file changes.
 """
 from __future__ import annotations
@@ -19,14 +19,14 @@ from typing import List, Optional
 
 ROOT = Path(__file__).resolve().parent
 VENV_DIR = ROOT / ".deltascope-venv"
-REQUIREMENTS = ROOT / "tools" / "requirements-security.txt"
+REQUIREMENTS = ROOT / "deltascope" / "requirements.txt"
 ENTRYPOINT = ROOT / "tools" / "security" / "deltascope.py"
-MARKER = VENV_DIR / ".omega-requirements.sha256"
+MARKER = VENV_DIR / ".deltascope-requirements.sha256"
 
 DELTA_COMMANDS = {
-    "fetch", "serve", "serve-online", "audit", "rule-schema", "observation-schema",
+    "fetch", "sync-resources", "serve", "serve-online", "audit", "rule-schema", "observation-schema",
     "capabilities", "definition-packs", "rule-compile", "rule-test", "rule-eval",
-    "rule-parity", "rule-replay", "rule-reproject",
+    
 }
 
 

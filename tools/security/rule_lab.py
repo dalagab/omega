@@ -20,13 +20,13 @@ import zipfile
 
 import yaml
 
+from deltascope_sdk import observation_projection, srl
+from deltascope_sdk import rule_author_reference
 try:
-    from . import observation_projection, stigma1 as srl, rule_candidate, rule_author_reference
+    from . import rule_candidate
 except ImportError:  # direct script/import from tools/security
-    import observation_projection  # type: ignore
-    import stigma1 as srl  # type: ignore
     import rule_candidate  # type: ignore
-    import rule_author_reference  # type: ignore
+
 
 RULE_LAB_SCHEMA = "omega.deltascope.rule-lab.v1"
 COMPILE_SCHEMA = "omega.deltascope.rule-lab.compile.v1"

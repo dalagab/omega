@@ -11,8 +11,7 @@ SECURITY = ROOT / "tools" / "security"
 if str(SECURITY) not in sys.path:
     sys.path.insert(0, str(SECURITY))
 
-import observation_projection as op
-import srl
+from deltascope_sdk import observation_projection as op, srl
 
 
 PROCESS_RULE = """
@@ -349,7 +348,7 @@ observationRequest:
 
     def test_deltascope_rule_eval_accepts_typed_collector_bundle(self) -> None:
         import tempfile
-        import collector_contracts
+        from deltascope_sdk import collector_contracts
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             rule = root / "rule.yaml"

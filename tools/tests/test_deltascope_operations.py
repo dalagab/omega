@@ -18,8 +18,6 @@ for path in (SECURITY, CATALOG):
 import deltascope_docs
 import deltascope_operations
 import developer_view
-import build_sqlite_catalog
-import sigmascope
 
 
 class _Response(io.BytesIO):
@@ -211,30 +209,6 @@ class DeltaScopeOperationsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             deltascope_docs.read_document("../../README")
 
-    def test_sqlite_latest_findings_are_current_and_newest_first(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            db_path = Path(td) / "evidence.sqlite"
-            with closing(__import__("sqlite3").connect(db_path)) as db:
-                db.executescript(build_sqlite_catalog.SCHEMA_SQL)
-                sigmascope.ensure_schema(db)
-                for variant_id, scan_id, when, title in (
-                    (1, 10, "2026-08-22T10:00:00Z", "older"),
-                    (2, 20, "2026-08-22T12:00:00Z", "newer"),
-                ):
-                    db.execute("INSERT OR IGNORE INTO sources(source_id,url,name,provider,kind) VALUES(1,'https://example.invalid/repo.json','Example','Example','curated')")
-                    db.execute("INSERT INTO plugins(plugin_id,internal_name,canonical_name,first_seen_utc,last_seen_utc,active) VALUES(?,?,?,?,?,1)", (variant_id, f"P{variant_id}", f"Plugin {variant_id}", when, when))
-                    db.execute("INSERT INTO plugin_variants(variant_id,plugin_id,source_id,source_entry_key,author,name,assembly_version,dalamud_api_level,download_link_install,repo_url,first_seen_utc,last_seen_utc,active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,1)", (variant_id, variant_id, 1, f"v{variant_id}", "Author", f"Plugin {variant_id}", "1.0", 15, "https://example.invalid/p.zip", "https://github.com/example/p", when, when))
-                    db.execute("INSERT INTO plugin_security_scans(scan_id,plugin_id,variant_id,source_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,scanned_at_utc,highest_severity,high_count,report_json) VALUES(?,?,?,?,?,?,?,?,?,'complete',?,'high',1,'{}')", (scan_id, variant_id, variant_id, 1, "1.0", "stable", "https://example.invalid/p.zip", str(variant_id)*64, sigmascope.SCANNER_VERSION, when))
-                    db.execute("INSERT INTO plugin_security_current(variant_id,scan_id,assembly_version,artifact_channel,artifact_url,artifact_sha256,scanner_version,status,scanned_at_utc,highest_severity,high_count,findings_json,report_json) VALUES(?,?,?,?,?,?,?,'complete',?,'high',1,'[]','{}')", (variant_id, scan_id, "1.0", "stable", "https://example.invalid/p.zip", str(variant_id)*64, sigmascope.SCANNER_VERSION, when))
-                    db.execute("INSERT INTO plugin_security_findings(scan_id,rule_id,severity,category,title,description,evidence_json) VALUES(?,?,'high','test',?,'','[]')", (scan_id, f"rule.{variant_id}", title))
-                db.commit()
-            inspector = developer_view.SecurityInspector(db_path)
-            try:
-                rows = inspector.latest_findings(10)
-            finally:
-                inspector.close()
-            self.assertEqual(["newer", "older"], [row["title"] for row in rows])
-            self.assertEqual([2, 1], [row["variantId"] for row in rows])
 
     def test_ui_exposes_findings_operations_and_documentation_without_main_scroll(self) -> None:
         view = (ROOT / "tools" / "security" / "developer_view.py").read_text(encoding="utf-8")

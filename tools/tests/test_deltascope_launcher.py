@@ -21,6 +21,11 @@ class DeltaScopeRootLauncherTests(unittest.TestCase):
         self.assertTrue((common.ROOT / "deltascope.cmd").is_file())
         self.assertTrue((common.ROOT / "deltascope.sh").is_file())
 
+    def test_runtime_dependencies_are_owned_by_deltascope(self) -> None:
+        self.assertEqual(common.ROOT / "deltascope" / "requirements.txt", launcher.REQUIREMENTS)
+        self.assertNotEqual(common.ROOT / "tools" / "requirements-security.txt", launcher.REQUIREMENTS)
+        self.assertTrue(launcher.REQUIREMENTS.is_file())
+
     def test_default_launch_is_online_workbench(self) -> None:
         self.assertEqual(["serve-online"], launcher.delta_args([]))
         self.assertEqual(["serve-online", "--no-browser"], launcher.delta_args(["--no-browser"]))

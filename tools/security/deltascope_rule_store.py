@@ -29,10 +29,7 @@ import re
 import threading
 from typing import Any, Mapping
 
-try:
-    from . import stigma1 as srl
-except ImportError:  # direct script/import from tools/security
-    import stigma1 as srl  # type: ignore
+from deltascope_sdk import srl
 
 STORE_SCHEMA = "omega.deltascope.local-rule-store.v1"
 ENTRY_SCHEMA = "omega.deltascope.local-rule.v1"

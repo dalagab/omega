@@ -16,7 +16,7 @@ SECURITY = ROOT / "tools" / "security"
 if str(SECURITY) not in sys.path:
     sys.path.insert(0, str(SECURITY))
 
-import observation_projection  # noqa: E402
+from deltascope_sdk import observation_projection  # noqa: E402
 import rule_lab  # noqa: E402
 import developer_view  # noqa: E402
 

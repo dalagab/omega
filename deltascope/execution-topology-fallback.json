@@ -1,0 +1,538 @@
+{
+  "byComponent": {
+    "omega.catalog": [
+      "manifest-normalization",
+      "source-revision-observer",
+      "website-enrichment"
+    ],
+    "omega.discovery": [
+      "source-discovery"
+    ],
+    "omega.evidence-v2": [
+      "evidence-publication"
+    ],
+    "omega.sigmascope": [
+      "advisory-collector",
+      "deep-scan-worker",
+      "sigmascope-batch",
+      "source-followup"
+    ],
+    "omega.threat-intelligence": [
+      "threat-intelligence"
+    ]
+  },
+  "byId": {
+    "advisory-collector": {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.sigmascope",
+      "docs": "collectors",
+      "id": "advisory-collector",
+      "implementation": "tools/catalog/collect_public_advisories.py + tools/catalog/definitions_snapshot.py",
+      "inputs": [
+        "Evidence-v2 NuGet package/version index",
+        "OSV public API"
+      ],
+      "job": "Freeze JSON state and compile the Omega client DB",
+      "logParser": "advisory-collector",
+      "outputs": [
+        "frozen OSV advisory data in Security Definitions"
+      ],
+      "purpose": "Query/freeze advisory intelligence for exact NuGet package/version pairs observed in current evidence.",
+      "step": "Freeze daily Definitions and OSV data",
+      "title": "NuGet / OSV advisory collector",
+      "trendMetric": "Packages queried",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-builder.yml"
+    },
+    "deep-scan-worker": {
+      "cadenceMode": "event-driven",
+      "componentId": "omega.sigmascope",
+      "docs": "deep-scan",
+      "id": "deep-scan-worker",
+      "implementation": "tools/security/deep_scan_worker.py",
+      "inputs": [
+        "durable deep-scan queue",
+        "frozen Definitions/worker",
+        "selected analysis profile"
+      ],
+      "job": "",
+      "logParser": "deep-scan-worker",
+      "outputs": [
+        "durable deep-scan result state",
+        "deep-scan diagnostics artifact"
+      ],
+      "purpose": "Execute an approved bounded deep-analysis profile selected from the durable Stigma-1 analysis-request queue.",
+      "step": "Execute selected safe deep-scan request",
+      "title": "Deep Scan worker",
+      "workflow": "deep-scan.yml"
+    },
+    "evidence-publication": {
+      "cadenceMode": "continuous",
+      "componentId": "omega.evidence-v2",
+      "docs": "collectors",
+      "id": "evidence-publication",
+      "implementation": "tools/security/publish_security_evidence_v2.py",
+      "inputs": [
+        "validated Evidence-v2 candidate"
+      ],
+      "job": "Process bounded Sigmascope batch against frozen daily inputs",
+      "outputs": [
+        "security-evidence-v2 branch snapshot"
+      ],
+      "purpose": "Publish a validated candidate as the new coherent Security Evidence v2 snapshot while preserving last-known-good state on failure.",
+      "step": "Publish validated Security Evidence v2 snapshot atomically",
+      "title": "Evidence publication",
+      "workflow": "sigmascope.yml"
+    },
+    "manifest-normalization": {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.catalog",
+      "docs": "collectors",
+      "id": "manifest-normalization",
+      "implementation": "tools/catalog/enrich_metadata.py",
+      "inputs": [
+        "catalog/raw-sources.json",
+        "previous catalog HTTP cache hints"
+      ],
+      "job": "Fetch and normalize manifests",
+      "logParser": "manifest-normalization",
+      "outputs": [
+        "catalog/enriched-sources.json",
+        "enriched-sources workflow artifact"
+      ],
+      "purpose": "Fetch discovered PluginMaster feeds and normalize plugin manifests into one catalog input model.",
+      "step": "Fetch PluginMaster feeds",
+      "title": "Manifest normalization",
+      "trendMetric": "Plugins normalized",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-builder.yml"
+    },
+    "sigmascope-batch": {
+      "cadenceMode": "continuous",
+      "componentId": "omega.sigmascope",
+      "docs": "collectors",
+      "id": "sigmascope-batch",
+      "implementation": "tools/security/production_sigmascope_v2_pipeline.py",
+      "inputs": [
+        "frozen catalog",
+        "frozen Definitions",
+        "scan queue seed",
+        "last-known-good Evidence-v2"
+      ],
+      "job": "Process bounded Sigmascope batch against frozen daily inputs",
+      "logParser": "sigmascope-batch",
+      "outputs": [
+        "Evidence-v2 candidate",
+        "updated scanner queue",
+        "deep-scan requests where applicable"
+      ],
+      "purpose": "Acquire due artifacts/source evidence and produce bounded immutable analyses plus current Evidence-v2 projections.",
+      "step": "Examine bounded due-variant batch and build Evidence v2 candidate",
+      "title": "SigmaScope artifact / source analysis",
+      "trendMetric": "Completed in batch",
+      "trendPolicy": "workload-volume",
+      "workflow": "sigmascope.yml"
+    },
+    "source-discovery": {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.discovery",
+      "contract": "omega.collector-registry.v1",
+      "docs": "collectors",
+      "id": "source-discovery",
+      "implementation": "tools/catalog/catalog_discovery.py + tools/catalog/discovery_collectors.py",
+      "inputs": [
+        "canonical catalog-data",
+        "curated/community registries",
+        "Puni.sh",
+        "GitHub code search",
+        "canonical project-page enrichment",
+        "Omega source issues",
+        "optional configured web-search API"
+      ],
+      "job": "Discover new PluginMaster and plugin facts",
+      "legacyContracts": [
+        {
+          "job": "Discover source feeds",
+          "step": "Discover curated, Puni.sh and GitHub PluginMaster sources",
+          "workflow": "catalog-builder.yml"
+        }
+      ],
+      "logParser": "source-discovery",
+      "outputs": [
+        "catalog-discovery snapshot",
+        "typed collector observations",
+        "normalized reusable novel-source shards"
+      ],
+      "provides": [
+        "catalogSourceCandidates",
+        "catalogPluginFacts",
+        "catalogProjectLinks",
+        "catalogRepositoryCandidates",
+        "catalogManifestCandidates",
+        "catalogIssueHints"
+      ],
+      "purpose": "Run the first-class Omega Discovery component: source search, project-page links, issue hints, optional web search, rotating repository-tree inspection and PluginMaster validation.",
+      "step": "Run typed discovery collectors and validate only novel source facts",
+      "title": "Omega Discovery / source intelligence",
+      "trendMetric": "Deduplicated sources",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-discovery.yml"
+    },
+    "source-followup": {
+      "cadenceMode": "continuous",
+      "componentId": "omega.sigmascope",
+      "docs": "collectors",
+      "id": "source-followup",
+      "implementation": "source follow-up projection in the frozen SigmaScope worker",
+      "inputs": [
+        "current artifact analysis",
+        "source candidates",
+        "source revision observations"
+      ],
+      "job": "Process bounded Sigmascope batch against frozen daily inputs",
+      "outputs": [
+        "source follow-up state",
+        "source attribution/provenance evidence"
+      ],
+      "purpose": "Project source attribution/re-analysis follow-ups from artifact results and source-observation changes.",
+      "step": "Project public-source coverage follow-ups",
+      "title": "Public source follow-up",
+      "workflow": "sigmascope.yml"
+    },
+    "source-revision-observer": {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.catalog",
+      "docs": "collectors",
+      "id": "source-revision-observer",
+      "implementation": "tools/catalog/source_revision_observer.py",
+      "inputs": [
+        "canonical catalog source inventory"
+      ],
+      "job": "Freeze JSON state and compile the Omega client DB",
+      "logParser": "source-revision-observer",
+      "outputs": [
+        "catalog/source-revision-observations.json"
+      ],
+      "purpose": "Observe public repository HEAD revisions so source changes can invalidate attribution/source-analysis work deterministically.",
+      "step": "Observe public source HEAD revisions without fetching source bodies",
+      "title": "Source revision observer",
+      "trendMetric": "Observed",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-builder.yml"
+    },
+    "threat-intelligence": {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.threat-intelligence",
+      "docs": "threat-intelligence",
+      "id": "threat-intelligence",
+      "implementation": "tools/catalog/collect_reputation_intelligence.py",
+      "inputs": [
+        "current Evidence-v2 endpoint relationship index",
+        "Feodo Tracker recommended active C2 feed",
+        "optional ThreatFox recent IOC API"
+      ],
+      "job": "Freeze JSON state and compile the Omega client DB",
+      "logParser": "threat-intelligence",
+      "outputs": [
+        "catalog/reputation-intelligence.json",
+        "frozen Definitions reputation.json",
+        "Evidence-v2 threat-intelligence index"
+      ],
+      "purpose": "Fetch frozen URL/domain/IP threat indicators, resolve currently observed endpoint hosts, and retain deterministic match provenance for SRL reprojection.",
+      "step": "Collect daily endpoint threat intelligence",
+      "title": "Endpoint threat-intelligence collector",
+      "trendMetric": "Indicators",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-builder.yml"
+    },
+    "website-enrichment": {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.catalog",
+      "docs": "collectors",
+      "id": "website-enrichment",
+      "implementation": "tools/catalog/scrape_websites_incremental.py",
+      "inputs": [
+        "catalog/enriched-sources.json",
+        "previous marketplace website cache hints"
+      ],
+      "job": "Incrementally enrich public project pages",
+      "logParser": "website-enrichment",
+      "outputs": [
+        "catalog/website-enrichment.json",
+        "website-enrichment workflow artifact"
+      ],
+      "purpose": "Refresh bounded public project-page metadata while reusing still-fresh cached enrichment.",
+      "step": "Reuse fresh enrichment and scrape only new/stale project pages",
+      "title": "Website / project enrichment",
+      "trendMetric": "Websites considered",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-builder.yml"
+    }
+  },
+  "componentRegistry": {
+    "revision": "component-registry-v1-5dafe02d163c9104d350",
+    "schema": "omega.component-registry.v1"
+  },
+  "launchAuthority": false,
+  "mutationAuthority": "none",
+  "nodeCount": 10,
+  "nodes": [
+    {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.sigmascope",
+      "docs": "collectors",
+      "id": "advisory-collector",
+      "implementation": "tools/catalog/collect_public_advisories.py + tools/catalog/definitions_snapshot.py",
+      "inputs": [
+        "Evidence-v2 NuGet package/version index",
+        "OSV public API"
+      ],
+      "job": "Freeze JSON state and compile the Omega client DB",
+      "logParser": "advisory-collector",
+      "outputs": [
+        "frozen OSV advisory data in Security Definitions"
+      ],
+      "purpose": "Query/freeze advisory intelligence for exact NuGet package/version pairs observed in current evidence.",
+      "step": "Freeze daily Definitions and OSV data",
+      "title": "NuGet / OSV advisory collector",
+      "trendMetric": "Packages queried",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-builder.yml"
+    },
+    {
+      "cadenceMode": "event-driven",
+      "componentId": "omega.sigmascope",
+      "docs": "deep-scan",
+      "id": "deep-scan-worker",
+      "implementation": "tools/security/deep_scan_worker.py",
+      "inputs": [
+        "durable deep-scan queue",
+        "frozen Definitions/worker",
+        "selected analysis profile"
+      ],
+      "job": "",
+      "logParser": "deep-scan-worker",
+      "outputs": [
+        "durable deep-scan result state",
+        "deep-scan diagnostics artifact"
+      ],
+      "purpose": "Execute an approved bounded deep-analysis profile selected from the durable Stigma-1 analysis-request queue.",
+      "step": "Execute selected safe deep-scan request",
+      "title": "Deep Scan worker",
+      "workflow": "deep-scan.yml"
+    },
+    {
+      "cadenceMode": "continuous",
+      "componentId": "omega.evidence-v2",
+      "docs": "collectors",
+      "id": "evidence-publication",
+      "implementation": "tools/security/publish_security_evidence_v2.py",
+      "inputs": [
+        "validated Evidence-v2 candidate"
+      ],
+      "job": "Process bounded Sigmascope batch against frozen daily inputs",
+      "outputs": [
+        "security-evidence-v2 branch snapshot"
+      ],
+      "purpose": "Publish a validated candidate as the new coherent Security Evidence v2 snapshot while preserving last-known-good state on failure.",
+      "step": "Publish validated Security Evidence v2 snapshot atomically",
+      "title": "Evidence publication",
+      "workflow": "sigmascope.yml"
+    },
+    {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.catalog",
+      "docs": "collectors",
+      "id": "manifest-normalization",
+      "implementation": "tools/catalog/enrich_metadata.py",
+      "inputs": [
+        "catalog/raw-sources.json",
+        "previous catalog HTTP cache hints"
+      ],
+      "job": "Fetch and normalize manifests",
+      "logParser": "manifest-normalization",
+      "outputs": [
+        "catalog/enriched-sources.json",
+        "enriched-sources workflow artifact"
+      ],
+      "purpose": "Fetch discovered PluginMaster feeds and normalize plugin manifests into one catalog input model.",
+      "step": "Fetch PluginMaster feeds",
+      "title": "Manifest normalization",
+      "trendMetric": "Plugins normalized",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-builder.yml"
+    },
+    {
+      "cadenceMode": "continuous",
+      "componentId": "omega.sigmascope",
+      "docs": "collectors",
+      "id": "sigmascope-batch",
+      "implementation": "tools/security/production_sigmascope_v2_pipeline.py",
+      "inputs": [
+        "frozen catalog",
+        "frozen Definitions",
+        "scan queue seed",
+        "last-known-good Evidence-v2"
+      ],
+      "job": "Process bounded Sigmascope batch against frozen daily inputs",
+      "logParser": "sigmascope-batch",
+      "outputs": [
+        "Evidence-v2 candidate",
+        "updated scanner queue",
+        "deep-scan requests where applicable"
+      ],
+      "purpose": "Acquire due artifacts/source evidence and produce bounded immutable analyses plus current Evidence-v2 projections.",
+      "step": "Examine bounded due-variant batch and build Evidence v2 candidate",
+      "title": "SigmaScope artifact / source analysis",
+      "trendMetric": "Completed in batch",
+      "trendPolicy": "workload-volume",
+      "workflow": "sigmascope.yml"
+    },
+    {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.discovery",
+      "contract": "omega.collector-registry.v1",
+      "docs": "collectors",
+      "id": "source-discovery",
+      "implementation": "tools/catalog/catalog_discovery.py + tools/catalog/discovery_collectors.py",
+      "inputs": [
+        "canonical catalog-data",
+        "curated/community registries",
+        "Puni.sh",
+        "GitHub code search",
+        "canonical project-page enrichment",
+        "Omega source issues",
+        "optional configured web-search API"
+      ],
+      "job": "Discover new PluginMaster and plugin facts",
+      "legacyContracts": [
+        {
+          "job": "Discover source feeds",
+          "step": "Discover curated, Puni.sh and GitHub PluginMaster sources",
+          "workflow": "catalog-builder.yml"
+        }
+      ],
+      "logParser": "source-discovery",
+      "outputs": [
+        "catalog-discovery snapshot",
+        "typed collector observations",
+        "normalized reusable novel-source shards"
+      ],
+      "provides": [
+        "catalogSourceCandidates",
+        "catalogPluginFacts",
+        "catalogProjectLinks",
+        "catalogRepositoryCandidates",
+        "catalogManifestCandidates",
+        "catalogIssueHints"
+      ],
+      "purpose": "Run the first-class Omega Discovery component: source search, project-page links, issue hints, optional web search, rotating repository-tree inspection and PluginMaster validation.",
+      "step": "Run typed discovery collectors and validate only novel source facts",
+      "title": "Omega Discovery / source intelligence",
+      "trendMetric": "Deduplicated sources",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-discovery.yml"
+    },
+    {
+      "cadenceMode": "continuous",
+      "componentId": "omega.sigmascope",
+      "docs": "collectors",
+      "id": "source-followup",
+      "implementation": "source follow-up projection in the frozen SigmaScope worker",
+      "inputs": [
+        "current artifact analysis",
+        "source candidates",
+        "source revision observations"
+      ],
+      "job": "Process bounded Sigmascope batch against frozen daily inputs",
+      "outputs": [
+        "source follow-up state",
+        "source attribution/provenance evidence"
+      ],
+      "purpose": "Project source attribution/re-analysis follow-ups from artifact results and source-observation changes.",
+      "step": "Project public-source coverage follow-ups",
+      "title": "Public source follow-up",
+      "workflow": "sigmascope.yml"
+    },
+    {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.catalog",
+      "docs": "collectors",
+      "id": "source-revision-observer",
+      "implementation": "tools/catalog/source_revision_observer.py",
+      "inputs": [
+        "canonical catalog source inventory"
+      ],
+      "job": "Freeze JSON state and compile the Omega client DB",
+      "logParser": "source-revision-observer",
+      "outputs": [
+        "catalog/source-revision-observations.json"
+      ],
+      "purpose": "Observe public repository HEAD revisions so source changes can invalidate attribution/source-analysis work deterministically.",
+      "step": "Observe public source HEAD revisions without fetching source bodies",
+      "title": "Source revision observer",
+      "trendMetric": "Observed",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-builder.yml"
+    },
+    {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.threat-intelligence",
+      "docs": "threat-intelligence",
+      "id": "threat-intelligence",
+      "implementation": "tools/catalog/collect_reputation_intelligence.py",
+      "inputs": [
+        "current Evidence-v2 endpoint relationship index",
+        "Feodo Tracker recommended active C2 feed",
+        "optional ThreatFox recent IOC API"
+      ],
+      "job": "Freeze JSON state and compile the Omega client DB",
+      "logParser": "threat-intelligence",
+      "outputs": [
+        "catalog/reputation-intelligence.json",
+        "frozen Definitions reputation.json",
+        "Evidence-v2 threat-intelligence index"
+      ],
+      "purpose": "Fetch frozen URL/domain/IP threat indicators, resolve currently observed endpoint hosts, and retain deterministic match provenance for SRL reprojection.",
+      "step": "Collect daily endpoint threat intelligence",
+      "title": "Endpoint threat-intelligence collector",
+      "trendMetric": "Indicators",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-builder.yml"
+    },
+    {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.catalog",
+      "docs": "collectors",
+      "id": "website-enrichment",
+      "implementation": "tools/catalog/scrape_websites_incremental.py",
+      "inputs": [
+        "catalog/enriched-sources.json",
+        "previous marketplace website cache hints"
+      ],
+      "job": "Incrementally enrich public project pages",
+      "logParser": "website-enrichment",
+      "outputs": [
+        "catalog/website-enrichment.json",
+        "website-enrichment workflow artifact"
+      ],
+      "purpose": "Refresh bounded public project-page metadata while reusing still-fresh cached enrichment.",
+      "step": "Reuse fresh enrichment and scrape only new/stale project pages",
+      "title": "Website / project enrichment",
+      "trendMetric": "Websites considered",
+      "trendPolicy": "stable-volume",
+      "workflow": "catalog-builder.yml"
+    }
+  ],
+  "policyInput": false,
+  "readOnly": true,
+  "revision": "execution-topology-v1-02953e4f7970bb4018a6",
+  "schema": "omega.execution-topology.v1",
+  "workflowCount": 4,
+  "workflows": [
+    "catalog-builder.yml",
+    "catalog-discovery.yml",
+    "deep-scan.yml",
+    "sigmascope.yml"
+  ]
+}
