@@ -46,7 +46,7 @@ import sigmascope  # noqa: E402
 import variant_lifecycle  # noqa: E402
 import observation_projection  # noqa: E402
 import definition_packs  # noqa: E402
-import deltascope_provenance  # noqa: E402
+import definition_provenance  # noqa: E402
 import rule_reprojection  # noqa: E402
 import deep_scan_queue  # noqa: E402
 from local_sigmascope_v2_test import summarize as summarize_database  # noqa: E402
@@ -1323,9 +1323,9 @@ def materialize_definition_provenance_index(candidate: Path, frozen_definitions:
     if frozen_definitions is None:
         path.unlink(missing_ok=True)
         return {}
-    descriptor = deltascope_provenance.write_definition_provenance(frozen_definitions.resolve(), path)
+    descriptor = definition_provenance.write_definition_provenance(frozen_definitions.resolve(), path)
     payload = json.loads(path.read_text(encoding="utf-8"))
-    errors = deltascope_provenance.validate_definition_provenance(payload)
+    errors = definition_provenance.validate_definition_provenance(payload)
     if errors:
         path.unlink(missing_ok=True)
         raise RuntimeError("DeltaScope Definition provenance failed validation: " + "; ".join(errors))

@@ -1,10 +1,32 @@
-## 2026-08-25 — Stigma deep-scan publication authentication hotfix
+## 2.15.0 — DeltaScope source-tree extraction boundary
 
-- Fix the Sigmascope launcher Stigma-1 deep-scan-state publisher to authenticate temporary-repository pushes with the workflow `GITHUB_TOKEN` via `gh auth setup-git`.
-- Apply the same authenticated push contract to the standalone Deep Scan worker; its temporary publication repository has the same credential boundary.
-- Keep launcher deep-scan publication best-effort (`continue-on-error`) so validated Security Evidence v2 publication is not rolled back by queue-transport failure.
-- Add workflow-contract regressions requiring authenticated deep-scan publication in both workflows.
-- No DeltaScope version bump and no SigmaScope artifact/source analysis semantic change.
+- Physically separate the DeltaScope application/consumer SDK from the SigmaScope security-services source package.
+- Replace the production Evidence-v2 dependency on `deltascope_provenance` with SigmaScope-owned `definition_provenance`.
+- Make the reputation collector read the published Evidence-v2 relationship contract directly instead of importing the DeltaScope inspector.
+- Keep execution-topology/component/collector/capability/SRL contracts as the supported consumer boundary.
+
+## 2.15.0 — DeltaScope 4.21.7 / consumer SDK + execution-topology separation
+
+- Extract a bundled non-authoritative `deltascope_sdk` containing DeltaScope's deterministic SRL parser/evaluator, observation/Definition-Pack compatibility contracts, and registry readers; primary DeltaScope runtime modules no longer import the production Stigma/SigmaScope copies directly.
+- Allow the consumer SDK to bind hash-verified published component, collector/provider and capability registry **data** at runtime, so future component kinds and rule-eligible observation types can become visible/authorable without remote code loading or DeltaScope ID-specific cases.
+- Add `omega.execution-topology.v1` as a frozen Definitions platform contract describing execution nodes, component ownership and workflow/job/step correlation without launch/policy authority.
+- Make DeltaScope Operations derive workflow history targets from the published execution topology; unknown future execution nodes render generically even without a custom metrics parser.
+- Download/hash-verify the execution topology when the descriptor is present, while retaining a bundled read-only rollout fallback for older published Definitions.
+- Expose consumer-SDK and execution-topology state through `/api/platform-contracts` and `sync-resources`.
+- Preserve Python, offline last-known-good resource behavior, local-only rule/case writes, and the strict ban on downloading `definitions/worker/**` or any executable scanner code.
+- No change to SigmaScope artifact/source analysis revisions, Security Evidence authority, Stigma production gating, broker/dispatcher authority, or Rift execution.
+
+## 2.15.0 — DeltaScope 4.21.6 / published-contract separation pass
+
+- Give DeltaScope its own `deltascope/requirements.txt`; the root launcher no longer inherits `tools/requirements-security.txt`, so future scanner dependencies do not leak into the local workbench runtime.
+- Add a verified read-only published-resource cache over `catalog-data/definitions`: online DeltaScope materializes frozen SRL pack sources/fixtures, the compiled SRL ruleset, and component/collector/capability registries as data.
+- Verify every child payload against the SHA-256 pinned by the published Definitions/SRL indexes, store immutable revision snapshots, and reuse only the last verified snapshot when refresh is unavailable.
+- Explicitly exclude the frozen `definitions/worker/**` SigmaScope bundle from DeltaScope resource synchronization; this is data/contract consumption, not remote scanner-code loading.
+- Add `sync-resources`, `--definitions-base-url`, `--offline-resources`, and stale-cache controls for explicit consumer synchronization/diagnostics.
+- Feed published Definition Pack sources into the Rule Library/Rule Workspace in online mode instead of requiring the repository copy to be current. Local repository packs remain a fail-soft development fallback.
+- Overlay the published component registry on the Components & Actions dashboard and expose the published collector/provider registry generically, so newly registered components/providers can appear without DeltaScope-specific ID cases.
+- Add `/api/platform-contracts`, `deltascope/runtime-contract.json`, and `docs/DELTASCOPE-SEPARATION.md` to make the consumer boundary inspectable.
+- Keep Python and the bundled SRL compatibility/evaluator layer for now; production findings, queues, Definitions, Evidence-v2 and dispatcher authority remain unchanged.
 
 ## 2026-08-25 — DeltaScope relationship-capacity hotfix
 

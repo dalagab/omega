@@ -13,8 +13,6 @@ for folder in (ROOT / "tools" / "security", ROOT / "tools" / "catalog"):
         sys.path.insert(0, str(folder))
 
 import collect_reputation_intelligence as collector
-import deltascope_threat_intelligence
-import deltascope_workbench
 import definitions_snapshot
 import reputation_intelligence
 import rule_reprojection
@@ -76,41 +74,7 @@ class ReputationIntelligenceTests(unittest.TestCase):
             self.assertTrue(result["retainedPrevious"])
             self.assertEqual(json.loads(output.read_text())["reputationRevision"], "reputation-v2-test")
 
-    def test_threat_intelligence_workbench_projection_lists_urls_ips_and_risk(self) -> None:
-        class Inspector:
-            def threat_intelligence(self_nonlocal):
-                return self.sample_document()
-        projected = deltascope_threat_intelligence.project_threat_intelligence(Inspector())
-        self.assertEqual(projected["summary"]["criticalHosts"], 1)
-        row = projected["endpointMatches"][0]
-        self.assertEqual(row["host"], "bad.example")
-        self.assertEqual(row["resolvedIps"], ["8.8.8.8"])
-        self.assertEqual(row["risk"], "critical")
-        self.assertEqual(row["variantIds"], [12])
 
-
-    def test_threat_intelligence_inventory_includes_unlisted_endpoints_without_calling_them_safe(self) -> None:
-        doc = self.sample_document()
-        doc["observedEndpointResolutions"].append({
-            "host": "ordinary.example",
-            "resolvedIps": ["1.1.1.1"],
-            "resolutionStatus": "resolved",
-            "urlSamples": ["https://ordinary.example/api"],
-            "variantIds": [13],
-            "pluginIds": [5],
-        })
-        class Inspector:
-            def threat_intelligence(self_nonlocal):
-                return doc
-        projected = deltascope_threat_intelligence.project_threat_intelligence(Inspector())
-        self.assertEqual(projected["summary"]["observedHosts"], 2)
-        self.assertEqual(projected["summary"]["matchedHosts"], 1)
-        self.assertEqual(projected["summary"]["unlistedHosts"], 1)
-        ordinary = next(row for row in projected["endpointInventory"] if row["host"] == "ordinary.example")
-        self.assertFalse(ordinary["matched"])
-        self.assertEqual(ordinary["risk"], "none")
-        self.assertEqual(ordinary["reputationState"], "unlisted")
-        self.assertIn("not a safe/clean verdict", projected["note"])
 
     def test_optional_threatfox_failure_keeps_fresh_feodo_and_disables_stale_optional_rows(self) -> None:
         previous = self.sample_document()
@@ -133,64 +97,9 @@ class ReputationIntelligenceTests(unittest.TestCase):
         self.assertEqual(retained["confidence"], "retained-previous")
         self.assertNotIn(retained["indicatorId"], document["indexes"]["byHost"].get("old.example", []))
 
-    def test_compare_attributes_same_artifact_rule_change_to_definitions(self) -> None:
-        before = {
-            "identity": {"variant_id": 1, "artifact_sha256": "a" * 64, "highest_severity": "high"},
-            "scanProvenance": {"definitionsRevision": "defs-a", "artifactAnalysisRevision": "art-a", "sourceAnalysisRevision": "src-a", "ruleSetRevision": "rules-a"},
-            "researcher": {"findings": [{"findingId": "one"}]},
-        }
-        after = {
-            "identity": {"variant_id": 1, "artifact_sha256": "a" * 64, "highest_severity": "none"},
-            "scanProvenance": {"definitionsRevision": "defs-b", "artifactAnalysisRevision": "art-a", "sourceAnalysisRevision": "src-a", "ruleSetRevision": "rules-b"},
-            "researcher": {"findings": []},
-        }
-        result = deltascope_workbench.project_version_compare(before, after)
-        self.assertEqual(result["changeAttribution"]["primaryCause"], "definitions-change")
 
 
-    def test_compare_attributes_reputation_only_change_to_frozen_intelligence_without_rescan(self) -> None:
-        before = {
-            "identity": {"variant_id": 1, "artifact_sha256": "a" * 64, "highest_severity": "high"},
-            "scanProvenance": {"definitionsRevision": "defs-a", "artifactAnalysisRevision": "art-a", "sourceAnalysisRevision": "src-a", "ruleSetRevision": "rules-a", "reputationRevision": "rep-a"},
-            "projection": {"ruleSetRevision": "rules-a", "reputationRevision": "rep-a"},
-            "researcher": {"findings": [{"findingId": "one"}]},
-        }
-        after = {
-            "identity": {"variant_id": 1, "artifact_sha256": "a" * 64, "highest_severity": "critical"},
-            "scanProvenance": {"definitionsRevision": "defs-b", "artifactAnalysisRevision": "art-a", "sourceAnalysisRevision": "src-a", "ruleSetRevision": "rules-a", "reputationRevision": "rep-b"},
-            "projection": {"ruleSetRevision": "rules-a", "reputationRevision": "rep-b"},
-            "researcher": {"findings": [{"findingId": "one"}, {"findingId": "threat"}]},
-        }
-        result = deltascope_workbench.project_version_compare(before, after)
-        attribution = result["changeAttribution"]
-        self.assertEqual(attribution["primaryCause"], "reputation-intelligence")
-        self.assertTrue(attribution["artifact"]["same"])
-        self.assertFalse(attribution["evaluation"]["artifactReanalysis"])
-        self.assertTrue(attribution["evaluation"]["retainedEvidenceOnly"])
-        self.assertTrue(attribution["evaluation"]["ruleReprojectionOnly"])
 
-    def test_compare_scanner_semantics_change_requires_reanalysis_even_when_artifact_is_same(self) -> None:
-        before = {
-            "identity": {"variant_id": 1, "artifact_sha256": "a" * 64, "highest_severity": "none"},
-            "scanProvenance": {"definitionsRevision": "defs-a", "artifactAnalysisRevision": "art-a", "sourceAnalysisRevision": "src-a"},
-            "researcher": {"findings": []},
-        }
-        after = {
-            "identity": {"variant_id": 1, "artifact_sha256": "a" * 64, "highest_severity": "high"},
-            "scanProvenance": {"definitionsRevision": "defs-a", "artifactAnalysisRevision": "art-b", "sourceAnalysisRevision": "src-a"},
-            "researcher": {"findings": [{"findingId": "new-detector"}]},
-        }
-        result = deltascope_workbench.project_version_compare(before, after)
-        attribution = result["changeAttribution"]
-        self.assertEqual(attribution["primaryCause"], "scanner-change")
-        self.assertTrue(attribution["evaluation"]["artifactReanalysis"])
-        self.assertEqual(attribution["evaluation"]["mode"], "artifact-analysis")
-
-    def test_compare_uses_mixed_when_plugin_and_definitions_both_changed(self) -> None:
-        before = {"identity": {"variant_id": 1, "artifact_sha256": "a" * 64, "highest_severity": "none"}, "scanProvenance": {"definitionsRevision": "defs-a"}, "researcher": {"findings": []}}
-        after = {"identity": {"variant_id": 1, "artifact_sha256": "b" * 64, "highest_severity": "high"}, "scanProvenance": {"definitionsRevision": "defs-b"}, "researcher": {"findings": [{"findingId": "x"}]}}
-        result = deltascope_workbench.project_version_compare(before, after)
-        self.assertEqual(result["changeAttribution"]["primaryCause"], "mixed")
 
     def test_daily_workflow_collects_reputation_before_freeze(self) -> None:
         text = (ROOT / ".github" / "workflows" / "catalog-builder.yml").read_text(encoding="utf-8")

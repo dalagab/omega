@@ -31,7 +31,7 @@ import compile_marketplace_snapshot
 import definitions_snapshot
 import definition_packs
 import validate_marketplace_catalog
-import developer_view as developer_view
+import security_developer_audit as developer_view
 from migrate_security_evidence_v2 import migrate
 from production_sigmascope_v2_pipeline import (
     _current_rows,
@@ -656,7 +656,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
 
             # Reproduce the live workflow's next gate: the independent developer audit
             # must accept the self-healed historical row after materialization.
-            inspector = developer_view.SecurityInspector(work)
+            inspector = developer_view.SecurityAuditInspector(work)
             try:
                 failures = [item for item in inspector.audit_variant(variant_id) if item.status == "fail"]
                 self.assertEqual([], failures)

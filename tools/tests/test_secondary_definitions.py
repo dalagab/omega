@@ -220,12 +220,16 @@ class SecondaryDefinitionsTests(unittest.TestCase):
             self.assertTrue(report["ok"], report.get("errors"))
             component = index["componentRegistry"]
             collector = index["collectorRegistry"]
+            topology = index["executionTopology"]
             self.assertEqual("omega.component-registry.v1", component["schema"])
             self.assertEqual("omega.collector-registry.v1", collector["schema"])
+            self.assertEqual("omega.execution-topology.v1", topology["schema"])
             self.assertTrue((root / "definitions-platform-registries" / component["path"]).is_file())
             self.assertTrue((root / "definitions-platform-registries" / collector["path"]).is_file())
+            self.assertTrue((root / "definitions-platform-registries" / topology["path"]).is_file())
             self.assertGreaterEqual(component["componentCount"], 8)
             self.assertGreaterEqual(collector["collectorCount"], 16)
+            self.assertGreaterEqual(topology["nodeCount"], 10)
 
     def test_platform_registry_tampering_is_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-platform-registry-tamper-") as td:

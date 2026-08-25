@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Read-only Definition/Rule provenance projection for DeltaScope.
+"""Frozen Definition/Rule provenance contract for Security Evidence v2.
 
 The provenance sidecar is derived from the exact frozen Daily Definitions snapshot that
-SigmaScope already validated.  It is navigation/audit metadata only: it is never a rule
+SigmaScope already validated.  It is published navigation/audit metadata only: it is never a rule
 input, observation, finding, queue instruction, or writable Definition surface.
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ from typing import Any, Mapping
 
 try:
     from . import definition_packs
-except ImportError:  # direct execution / worker-style import path
+except ImportError:  # direct script/import from tools/security
     import definition_packs  # type: ignore
 
 DEFINITION_PROVENANCE_SCHEMA = "omega.security-evidence.definition-provenance.v1"

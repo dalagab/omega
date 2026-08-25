@@ -29,7 +29,7 @@ from artifact_source_model import (  # noqa: E402
 )
 from behavior_consistency import compact_behavior_consistency, compute_behavior_consistency  # noqa: E402
 import observation_projection  # noqa: E402
-import deltascope_provenance  # noqa: E402
+import definition_provenance  # noqa: E402
 
 SCHEMA = "omega.security-evidence.v2"
 FORMAT_VERSION = 2
@@ -1424,12 +1424,12 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
     definition_provenance_entry = indexes.get("definitionProvenance") if isinstance(indexes.get("definitionProvenance"), dict) else {}
     if definition_provenance_entry:
         try:
-            definition_provenance = read_json_file(root, str(definition_provenance_entry.get("path") or ""))
-            errors.extend(deltascope_provenance.validate_definition_provenance(definition_provenance))
-            if str(definition_provenance_entry.get("provenanceRevision") or "") != str(definition_provenance.get("provenanceRevision") or ""):
+            definition_provenance_payload = read_json_file(root, str(definition_provenance_entry.get("path") or ""))
+            errors.extend(definition_provenance.validate_definition_provenance(definition_provenance_payload))
+            if str(definition_provenance_entry.get("provenanceRevision") or "") != str(definition_provenance_payload.get("provenanceRevision") or ""):
                 errors.append("definitionProvenance provenanceRevision mismatch")
-            definitions = definition_provenance.get("definitions") if isinstance(definition_provenance.get("definitions"), dict) else {}
-            srl = definition_provenance.get("srl") if isinstance(definition_provenance.get("srl"), dict) else {}
+            definitions = definition_provenance_payload.get("definitions") if isinstance(definition_provenance_payload.get("definitions"), dict) else {}
+            srl = definition_provenance_payload.get("srl") if isinstance(definition_provenance_payload.get("srl"), dict) else {}
             source = index.get("source") if isinstance(index.get("source"), dict) else {}
             if str(definitions.get("definitionsRevision") or "") != str(source.get("definitionsRevision") or (index.get("revisions") or {}).get("definitionsRevision") or ""):
                 errors.append("definitionProvenance Definitions revision does not match Evidence-v2 source context")

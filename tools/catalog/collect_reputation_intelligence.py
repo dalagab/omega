@@ -28,7 +28,7 @@ SECURITY_DIR = REPO_ROOT / "tools" / "security"
 import sys
 if str(SECURITY_DIR) not in sys.path:
     sys.path.insert(0, str(SECURITY_DIR))
-from evidence_v2_inspector import V2SigmascopeInspector  # noqa: E402
+from security_evidence_v2 import read_json_file, read_record_dataset, safe_relpath, sha256_file, verify_file_entry  # noqa: E402
 
 SCHEMA = "omega.reputation-definitions.v2"
 REVISION_PREFIX = "reputation-v2"
@@ -292,14 +292,46 @@ def collect_threatfox(auth_key: str, timeout: float, days: int = 7) -> tuple[dic
 
 
 def _current_endpoint_rows(evidence_root: Path | None) -> list[dict[str, Any]]:
+    """Read the published endpoint relationship index without depending on DeltaScope."""
     if evidence_root is None or not (evidence_root / "index.json").is_file():
         return []
-    inspector = V2SigmascopeInspector(root=evidence_root)
-    try:
-        relationships = inspector.workbench_relationship_index()
-        return [dict(row) for row in relationships.get("endpoints") or [] if isinstance(row, dict)]
-    finally:
-        inspector.close()
+    root = read_json_file(evidence_root, "index.json")
+    indexes = root.get("indexes") if isinstance(root.get("indexes"), dict) else {}
+    meta = indexes.get("workbenchRelationships") if isinstance(indexes.get("workbenchRelationships"), dict) else {}
+    rel = str(meta.get("path") or "")
+    if not rel:
+        return []
+    rel = safe_relpath(rel)
+    relationship_path = evidence_root / rel
+    expected_sha = str(meta.get("sha256") or "").lower()
+    if expected_sha and sha256_file(relationship_path) != expected_sha:
+        raise ValueError("workbench relationship index SHA-256 mismatch")
+    relationships = read_json_file(evidence_root, rel)
+    if not isinstance(relationships, dict):
+        raise ValueError("workbench relationship index must be an object")
+    schema = str(relationships.get("schema") or "")
+    if schema not in {"omega.security-evidence.workbench-relationships.v1", "omega.security-evidence.workbench-relationships.v2"}:
+        raise ValueError("unsupported workbench relationship index schema")
+    if relationships.get("readOnly") is not True or str(relationships.get("mutationAuthority") or "") != "none" or bool(relationships.get("policyInput")):
+        raise ValueError("workbench relationship index violates its read-only contract")
+    if schema.endswith(".v1"):
+        rows = relationships.get("endpoints") if isinstance(relationships.get("endpoints"), list) else []
+        return [dict(row) for row in rows if isinstance(row, dict)]
+    if str(relationships.get("storage") or "") != "sharded-jsonl-gzip":
+        raise ValueError("unsupported workbench relationship storage")
+    datasets = relationships.get("datasets") if isinstance(relationships.get("datasets"), dict) else {}
+    descriptor = datasets.get("endpoints") if isinstance(datasets.get("endpoints"), dict) else {}
+    for item in descriptor.get("files") or []:
+        if not isinstance(item, dict):
+            raise ValueError("malformed endpoint relationship shard descriptor")
+        errors = verify_file_entry(evidence_root, item)
+        if errors:
+            raise ValueError("; ".join(errors))
+    rows = read_record_dataset(evidence_root, descriptor)
+    expected = int((relationships.get("counts") or {}).get("endpoints") or 0) if isinstance(relationships.get("counts"), dict) else 0
+    if expected != len(rows):
+        raise ValueError("workbench endpoint relationship count mismatch")
+    return [dict(row) for row in rows if isinstance(row, dict)]
 
 
 def _previous_resolution_map(previous: dict[str, Any] | None) -> dict[str, list[str]]:

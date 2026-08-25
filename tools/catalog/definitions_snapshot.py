@@ -45,6 +45,7 @@ import sigmascope  # noqa: E402
 import secondary_security_assets  # noqa: E402
 import component_registry  # noqa: E402
 import collector_contracts  # noqa: E402
+import execution_topology  # noqa: E402
 
 SCHEMA = "omega.definitions.v1"
 FORMAT_VERSION = 1
@@ -607,6 +608,7 @@ def definitions_revision(
     artifact_analysis_revision: str, source_analysis_revision: str, source_observation_revision: str,
     osv_document: dict[str, Any], reputation: dict[str, Any], secondary_security: dict[str, Any],
     srl_definition_packs: dict[str, Any], component_registry_revision: str, collector_registry_revision: str,
+    execution_topology_revision: str,
 ) -> str:
     semantic = {
         "schema": SCHEMA,
@@ -620,6 +622,7 @@ def definitions_revision(
         "ruleFiles": fingerprints,
         "componentRegistryRevision": component_registry_revision,
         "collectorRegistryRevision": collector_registry_revision,
+        "executionTopologyRevision": execution_topology_revision,
         "osv": _semantic_osv(osv_document),
         "reputation": _semantic_reputation(reputation),
         "secondarySecurity": _secondary_security_semantic(secondary_security),
@@ -916,6 +919,16 @@ def build_snapshot(
         "observationTypeCount": len(collector_registry_document.get("observationTypes") or {}),
     }
 
+    execution_topology_document = execution_topology.build_topology()
+    execution_topology_path = platform_output / "execution-topology.json"
+    execution_topology_path.write_text(json.dumps(execution_topology_document, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    execution_topology_descriptor = {
+        "schema": execution_topology.TOPOLOGY_SCHEMA, "path": "platform/execution-topology.json",
+        "sha256": sha256_file(execution_topology_path), "revision": execution_topology.topology_revision(),
+        "nodeCount": len(execution_topology_document.get("nodes") or []),
+        "workflowCount": len(execution_topology_document.get("workflows") or []),
+    }
+
     revision = definitions_revision(
         scanner_version=sigmascope.SCANNER_VERSION,
         scanner_revision=scanner_revision,
@@ -930,6 +943,7 @@ def build_snapshot(
         srl_definition_packs=srl_definition_packs_descriptor,
         component_registry_revision=component_registry_descriptor["revision"],
         collector_registry_revision=collector_registry_descriptor["revision"],
+        execution_topology_revision=execution_topology_descriptor["revision"],
     )
     advisory_revision = f"osv-v1-{sha256_bytes(canonical(_semantic_osv(document)))[:16]}"
     index = {
@@ -974,6 +988,7 @@ def build_snapshot(
         "capabilityRegistry": capability_registry_descriptor,
         "componentRegistry": component_registry_descriptor,
         "collectorRegistry": collector_registry_descriptor,
+        "executionTopology": execution_topology_descriptor,
         "secondarySecurity": secondary_security_descriptor,
         "srlDefinitionPacks": srl_definition_packs_descriptor,
     }
@@ -1021,6 +1036,7 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
     for descriptor_key, expected_schema, expected_revision, builder in (
         ("componentRegistry", component_registry.REGISTRY_SCHEMA, component_registry.component_revision(), component_registry.build_registry),
         ("collectorRegistry", collector_contracts.REGISTRY_SCHEMA, collector_contracts.registry_revision(), collector_contracts.build_registry),
+        ("executionTopology", execution_topology.TOPOLOGY_SCHEMA, execution_topology.topology_revision(), execution_topology.build_topology),
     ):
         descriptor = index.get(descriptor_key) if isinstance(index.get(descriptor_key), dict) else {}
         rel = str(descriptor.get("path") or "")
@@ -1153,6 +1169,7 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
             srl_definition_packs=srl_descriptor,
             component_registry_revision=str((index.get("componentRegistry") or {}).get("revision") or ""),
             collector_registry_revision=str((index.get("collectorRegistry") or {}).get("revision") or ""),
+            execution_topology_revision=str((index.get("executionTopology") or {}).get("revision") or ""),
         )
         if expected_definitions != str(index.get("definitionsRevision") or ""):
             errors.append("Definitions revision does not match frozen semantic payload")
@@ -1170,6 +1187,7 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
         "reputationRevision": str((index.get("reputation") or {}).get("reputationRevision") or ""),
         "secondarySecurityRevision": str(secondary_descriptor.get("revision") or ""),
         "capabilityRegistryRevision": str(capability_descriptor.get("revision") or ""),
+        "executionTopologyRevision": str((index.get("executionTopology") or {}).get("revision") or ""),
         "srlDefinitionPackRevision": str(srl_descriptor.get("definitionPackRevision") or ""),
         "srlRuleSetRevision": str(srl_descriptor.get("ruleSetRevision") or ""),
         "builtFromDevCommit": str(index.get("builtFromDevCommit") or ""),

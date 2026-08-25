@@ -23,7 +23,7 @@ from security_evidence_v2 import (
 from validate_security_evidence_v2 import infer_database_from_migration_state, validate
 import definition_packs
 from production_sigmascope_v2_pipeline import materialize_definition_provenance_index
-from evidence_v2_inspector import V2SigmascopeInspector
+from evidence_contract_reader import read_workbench_relationship_index
 
 
 class SecurityEvidenceV2Tests(unittest.TestCase):
@@ -424,12 +424,10 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             output = root / "v2"
             migrate(database, output, reset=True, chunk_bytes=1024 * 1024)
 
-            inspector = V2SigmascopeInspector(output)
-            relationship = inspector.workbench_relationship_index()
+            relationship = read_workbench_relationship_index(output)
             self.assertEqual("omega.security-evidence.workbench-relationships.v2", relationship["schema"])
             self.assertTrue(relationship["readOnly"])
             self.assertFalse(relationship["policyInput"])
-            inspector.close()
 
             index = json.loads((output / "index.json").read_text(encoding="utf-8"))
             manifest_entry = index["indexes"]["workbenchRelationships"]
