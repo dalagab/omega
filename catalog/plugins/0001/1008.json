@@ -1,0 +1,201 @@
+{
+  "plugin": {
+    "active": 1,
+    "canonical_name": "RaceFilter",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "internal_name": "RaceFilter",
+    "last_seen_utc": "2026-08-26T03:31:07Z",
+    "plugin_id": 1008
+  },
+  "presentation": {
+    "description": "Rule-based filtering: hide models, suppress chat, and mute voices/footsteps of players by race and/or gender. Friends, party, alliance, and FC members are exempt. Pauses automatically in duties.",
+    "image_urls_json": "[]",
+    "nsfw": 0,
+    "official": 0,
+    "plugin_id": 1008,
+    "preferred_variant_id": 1875,
+    "presentation_variant_id": 1875,
+    "rich_card": 0,
+    "richness_score": 1180,
+    "summary": "Hide and mute players by race and gender.",
+    "web_enriched": 1
+  },
+  "schema": "omega.catalog-json.plugin.v1",
+  "search": {
+    "author": "Vali",
+    "description": "Rule-based filtering: hide models, suppress chat, and mute voices/footsteps of players by race and/or gender. Friends, party, alliance, and FC members are exempt. Pauses automatically in duties.",
+    "internal_name": "RaceFilter",
+    "name": "RaceFilter",
+    "plugin_id": 1008,
+    "punchline": "Hide and mute players by race and gender.",
+    "tags": "filter hide visibility",
+    "website_text": "FFXIV Dalamud plugin that hides and mutes players by race and gender through configurable rules # RaceFilter\n\n[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Valiice/RaceFilter/total?style=flat-square&color=blue)](https://github.com/Valiice/RaceFilter/releases)\n[![GitHub Release](https://img.shields.io/github/v/release/Valiice/RaceFilter?include_prereleases&style=flat-square&color=green)](https://github.com/Valiice/RaceFilter/releases/latest)\n[![GitHub License](https://img.shields.io/github/license/Valiice/RaceFilter?style=flat-square&color=orange)](LICENSE.md)\n[![GitHub Issues](https://img.shields.io/github/issues/Valiice/RaceFilter?style=flat-square)](https://github.com/Valiice/RaceFilter/issues)\n\n**RaceFilter** is a Dalamud plugin for Final Fantasy XIV that hides and mutes players by race and/or gender through a configurable rule list. Each rule targets a race, a gender, or both, and independently controls three effects: hiding the model, blocking chat, and muting audio.\n\nIt ships with one default rule: hide, chat-block, and mute all Lalafells, with friends and Free Company members exempt.\n\n## Features\n\n* **Rule-based targeting:** any combination of race (Hyur, Elezen, Lalafell, Miqo'te, Roegadyn, Au Ra, Hrothgar, Viera, or \"Any\") and gender (Male, Female, or \"Any\"). Duplicate race+gender rules are prevented by the UI.\n* **Three independent effects per rule:**\n  * **Hide:** removes the model and nameplate\n  * **Chat:** blocks their chat messages\n  * **Mute:** silences their voice lines (emotes, battle shouts), footsteps, and ability/animation sound effects\n* **Per-rule exemptions:** Friends and Free Company members (same home world) can be excluded per rule. Exempt players are fully untouched.\n* **Content-safe by design:** grouped players and duties are protected automatically (see the behavior table below).\n* **Far-away chat filtering:** a persistent race cache remembers every player you have seen, so chat from matched players is filtered even when they are out of render range. Never-seen senders always pass through.\n* **Tooltips everywhere:** hover any checkbox in the config to see exactly what checked and unchecked mean.\n\n## Behavior\n\n| Who / where | Hide model | Block chat | Mute audio |\n| :--- | :---: | :---: | :---: |\n| Matched player in the overworld | ✔ | ✔ | ✔ |\n| Party / alliance member, anywhere | never | never | ✔ |\n| Anyone, inside an instanced duty | never (paused) | never (paused) | ✔ |\n| Exempt friend / FC member | never | never | never |\n\nParty and alliance members always keep their model and chat visible, with no opt-out: you must be able to see, click-target, and read callouts from the people you are grouped with. Muting their audio is still allowed, and muting keeps working inside duties.\n\n## Installation\n\n1. Add my custom plugin repository: [https://raw.githubusercontent.com/Valiice/DalamudPluginRepo/master/repo.json](https://github.com/Valiice/DalamudPluginRepo)\n2. Search for **RaceFilter** in the Plugin Installer.\n3. Install and Enable.\n\n> **Note:** this plugin will never be on the mainline Dalamud repository; race-targeting plugins are not accepted there. It is only distributed through the custom repository above.\n\n## Commands\n\n* `/racefilter` - Opens the configuration window.\n* `/racefilter toggle` - Flips the master on/off switch.\n\n## Configuration\n\nOpen the config with `/racefilter`. Each row in the rules table is one rule:\n\n| Column | Meaning |\n| :--- | :--- |\n| **On** | Checked: the rule is active. Unchecked: ignored. |\n| **Race / Gender** | Who the rule targets. \"Any\" matches everyone. Options that would duplicate another rule are hidden. |\n| **Hide / Chat / Mute** | Checked: the effect is applied to matching players. |\n| **Friends / FC** | Checked: those players are exempt and the rule never touches them. Unchecked: they are filtered like anyone else. |\n\nThe race cache counter at the bottom shows how many players the plugin has learned; **Clear cache** forgets them all (chat filtering for far-away players resets until they are seen again).\n\n## Limitations\n\n* A player's race can only be known once their character has rendered near you at least once (or is remembered in the cache). Chat from never-seen players always passes through.\n* Cross-realm party members who are out of render range are exempt in party chat, but their tells/shouts may still be filtered (their party membership cannot be resolved remotely).\n* The race cache persists on clean plugin unload; a game crash loses the current session's sightings.\n\n## Troubleshooting\n\n* **Someone is not being hidden?** Check they are not in your party/alliance or in a duty with you (both always show models), and that no Friends/FC exemption applies. Race is only known once they have rendered nearby.\n* **Part of the audio muting stopped after a game patch?** The footstep and ability-sound hooks use byte signatures and memory offsets that can go stale on patches. Each hook degrades independently: the plugin keeps working (hide, chat, and the surviving mute paths) and logs the failure; update the plugin to restore the rest.\n* **A friend's chat got filtered?** Make sure the rule's **Friends** exemption is checked, and that they are actually on your friend list (friendship is per-character in FFXIV).\n\n## License & Copyright\n\nCopyright © 2026 Valiice\n\nRaceFilter is licensed under the GNU Affero General Public License v3.0; see [LICENSE](LICENSE.md) for details. You are free to use, modify, and redistribute the source code, provided derivative works keep the same license, credit this project with a link back to [https://github.com/Valiice/RaceFilter](https://github.com/Valiice/RaceFilter), and retain this copyright notice."
+  },
+  "variants": [
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "filter",
+          "variant_id": 1875
+        },
+        {
+          "kind": "tag",
+          "tag": "hide",
+          "variant_id": 1875
+        },
+        {
+          "kind": "tag",
+          "tag": "visibility",
+          "variant_id": 1875
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "1.2.0.0",
+        "author": "Vali",
+        "authors_json": "[\"Vali\"]",
+        "category_tags_json": "[]",
+        "changelog": "- Mute animation and VFX sounds via Apricot listener hook\n- Document ability sound muting in README",
+        "dalamud_api_level": 15,
+        "description": "Rule-based filtering: hide models, suppress chat, and mute voices/footsteps of players by race and/or gender. Friends, party, alliance, and FC members are exempt. Pauses automatically in duties.",
+        "dip17_channel": "",
+        "download_count": 12,
+        "download_link_install": "https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip",
+        "download_link_testing": "https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip",
+        "download_link_update": "https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip",
+        "first_seen_utc": "2026-08-20T06:02:54Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-20T06:02:54Z",
+        "last_update": 1785389949,
+        "minimum_dalamud_version": null,
+        "name": "RaceFilter",
+        "plugin_id": 1008,
+        "punchline": "Hide and mute players by race and gender.",
+        "raw_manifest_json": "{\"Author\":\"Vali\",\"Name\":\"RaceFilter\",\"InternalName\":\"RaceFilter\",\"AssemblyVersion\":\"1.2.0.0\",\"Description\":\"Rule-based filtering: hide models, suppress chat, and mute voices/footsteps of players by race and/or gender. Friends, party, alliance, and FC members are exempt. Pauses automatically in duties.\",\"ApplicableVersion\":\"any\",\"RepoUrl\":\"https://github.com/Valiice/RaceFilter\",\"Tags\":[\"visibility\",\"filter\",\"hide\"],\"DalamudApiLevel\":15,\"LoadRequiredState\":0,\"LoadSync\":false,\"CanUnloadAsync\":false,\"LoadPriority\":0,\"Punchline\":\"Hide and mute players by race and gender.\",\"Changelog\":\"- Mute animation and VFX sounds via Apricot listener hook\\n- Document ability sound muting in README\",\"DownloadLinkInstall\":\"https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip\",\"DownloadLinkTesting\":\"https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip\",\"DownloadLinkUpdate\":\"https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip\",\"IsHide\":false,\"IsTestingExclusive\":false,\"AcceptsFeedback\":false,\"LastUpdate\":1785389949,\"ImageUrls\":[],\"DownloadCount\":12,\"_SourceId\":\"valiice-dalamudpluginrepo\",\"_SourceName\":\"Valiice DalamudPluginRepo\",\"_SourceUrl\":\"https://raw.githubusercontent.com/Valiice/DalamudPluginRepo/master/repo.json\"}",
+        "repo_url": "https://github.com/Valiice/RaceFilter",
+        "source_entry_key": "racefilter|1.2.0.0|15|0|8",
+        "source_id": 566,
+        "tags_json": "[\"visibility\",\"filter\",\"hide\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 1875
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "filter",
+          "variant_id": 2663
+        },
+        {
+          "kind": "tag",
+          "tag": "hide",
+          "variant_id": 2663
+        },
+        {
+          "kind": "tag",
+          "tag": "visibility",
+          "variant_id": 2663
+        }
+      ],
+      "variant": {
+        "active": 0,
+        "applicable_version": "any",
+        "assembly_version": "1.2.0.0",
+        "author": "Vali",
+        "authors_json": "[\"Vali\"]",
+        "category_tags_json": "[]",
+        "changelog": "- Mute animation and VFX sounds via Apricot listener hook\n- Document ability sound muting in README",
+        "dalamud_api_level": 15,
+        "description": "Rule-based filtering: hide models, suppress chat, and mute voices/footsteps of players by race and/or gender. Friends, party, alliance, and FC members are exempt. Pauses automatically in duties.",
+        "dip17_channel": "",
+        "download_count": 13,
+        "download_link_install": "https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip",
+        "download_link_testing": "https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip",
+        "download_link_update": "https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip",
+        "first_seen_utc": "2026-08-22T09:49:09Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-25T07:26:03Z",
+        "last_update": 1785389949,
+        "minimum_dalamud_version": null,
+        "name": "RaceFilter",
+        "plugin_id": 1008,
+        "punchline": "Hide and mute players by race and gender.",
+        "raw_manifest_json": "{\"Author\":\"Vali\",\"Name\":\"RaceFilter\",\"InternalName\":\"RaceFilter\",\"AssemblyVersion\":\"1.2.0.0\",\"Description\":\"Rule-based filtering: hide models, suppress chat, and mute voices/footsteps of players by race and/or gender. Friends, party, alliance, and FC members are exempt. Pauses automatically in duties.\",\"ApplicableVersion\":\"any\",\"RepoUrl\":\"https://github.com/Valiice/RaceFilter\",\"Tags\":[\"visibility\",\"filter\",\"hide\"],\"DalamudApiLevel\":15,\"LoadRequiredState\":0,\"LoadSync\":false,\"CanUnloadAsync\":false,\"LoadPriority\":0,\"Punchline\":\"Hide and mute players by race and gender.\",\"Changelog\":\"- Mute animation and VFX sounds via Apricot listener hook\\n- Document ability sound muting in README\",\"DownloadLinkInstall\":\"https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip\",\"DownloadLinkTesting\":\"https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip\",\"DownloadLinkUpdate\":\"https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip\",\"IsHide\":false,\"IsTestingExclusive\":false,\"AcceptsFeedback\":false,\"LastUpdate\":1785389949,\"ImageUrls\":[],\"DownloadCount\":13,\"_SourceId\":\"valiice-dalamudpluginrepo\",\"_SourceName\":\"Valiice DalamudPluginRepo\",\"_SourceUrl\":\"https://raw.githubusercontent.com/Valiice/DalamudPluginRepo/master/repo.json\",\"_Category\":\"qol\"}",
+        "repo_url": "https://github.com/Valiice/RaceFilter",
+        "source_entry_key": "racefilter|1.2.0.0|15|0|104",
+        "source_id": 595,
+        "tags_json": "[\"visibility\",\"filter\",\"hide\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 2663
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "filter",
+          "variant_id": 3362
+        },
+        {
+          "kind": "tag",
+          "tag": "hide",
+          "variant_id": 3362
+        },
+        {
+          "kind": "tag",
+          "tag": "visibility",
+          "variant_id": 3362
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "1.2.0.0",
+        "author": "Vali",
+        "authors_json": "[\"Vali\"]",
+        "category_tags_json": "[]",
+        "changelog": "- Mute animation and VFX sounds via Apricot listener hook\n- Document ability sound muting in README",
+        "dalamud_api_level": 15,
+        "description": "Rule-based filtering: hide models, suppress chat, and mute voices/footsteps of players by race and/or gender. Friends, party, alliance, and FC members are exempt. Pauses automatically in duties.",
+        "dip17_channel": "",
+        "download_count": 13,
+        "download_link_install": "https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip",
+        "download_link_testing": "https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip",
+        "download_link_update": "https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip",
+        "first_seen_utc": "2026-08-25T20:59:09Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-26T03:31:07Z",
+        "last_update": 1785389949,
+        "minimum_dalamud_version": null,
+        "name": "RaceFilter",
+        "plugin_id": 1008,
+        "punchline": "Hide and mute players by race and gender.",
+        "raw_manifest_json": "{\"Author\":\"Vali\",\"Name\":\"RaceFilter\",\"InternalName\":\"RaceFilter\",\"AssemblyVersion\":\"1.2.0.0\",\"Description\":\"Rule-based filtering: hide models, suppress chat, and mute voices/footsteps of players by race and/or gender. Friends, party, alliance, and FC members are exempt. Pauses automatically in duties.\",\"ApplicableVersion\":\"any\",\"RepoUrl\":\"https://github.com/Valiice/RaceFilter\",\"Tags\":[\"visibility\",\"filter\",\"hide\"],\"DalamudApiLevel\":15,\"LoadRequiredState\":0,\"LoadSync\":false,\"CanUnloadAsync\":false,\"LoadPriority\":0,\"Punchline\":\"Hide and mute players by race and gender.\",\"Changelog\":\"- Mute animation and VFX sounds via Apricot listener hook\\n- Document ability sound muting in README\",\"DownloadLinkInstall\":\"https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip\",\"DownloadLinkTesting\":\"https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip\",\"DownloadLinkUpdate\":\"https://github.com/Valiice/RaceFilter/releases/download/v1.2.0/RaceFilter.zip\",\"IsHide\":false,\"IsTestingExclusive\":false,\"AcceptsFeedback\":false,\"LastUpdate\":1785389949,\"ImageUrls\":[],\"DownloadCount\":13,\"_SourceId\":\"valiice-dalamudpluginrepo\",\"_SourceName\":\"Valiice DalamudPluginRepo\",\"_SourceUrl\":\"https://raw.githubusercontent.com/Valiice/DalamudPluginRepo/master/repo.json\",\"_Category\":\"qol\"}",
+        "repo_url": "https://github.com/Valiice/RaceFilter",
+        "source_entry_key": "racefilter|1.2.0.0|15|0|105",
+        "source_id": 595,
+        "tags_json": "[\"visibility\",\"filter\",\"hide\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 3362
+      }
+    }
+  ]
+}

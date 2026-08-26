@@ -1,0 +1,296 @@
+{
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Auto PVP LB",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "PvpAutoLb",
+    "last_seen_utc": "2026-08-26T03:31:07Z",
+    "plugin_id": 588
+  },
+  "presentation": {
+    "description": "Fires your PvP Limit Break for you when an enemy's HP drops below a configurable threshold.\n\nPlugin from https://raw.githubusercontent.com/XeldarAlz/DalamudPlugins/main/repo.json",
+    "image_urls_json": "[\"https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/master/PvpAutoLb/Images/demo.gif\"]",
+    "nsfw": 0,
+    "official": 0,
+    "plugin_id": 588,
+    "preferred_variant_id": 623,
+    "presentation_variant_id": 623,
+    "rich_card": 1,
+    "richness_score": 11200,
+    "summary": "Your PvP Limit Break, fired for you.",
+    "web_enriched": 1
+  },
+  "schema": "omega.catalog-json.plugin.v1",
+  "search": {
+    "author": "XeldarAlz",
+    "description": "Fires your PvP Limit Break for you when an enemy's HP drops below a configurable threshold.\n\nPlugin from https://raw.githubusercontent.com/XeldarAlz/DalamudPlugins/main/repo.json",
+    "internal_name": "PvpAutoLb",
+    "name": "Auto PVP LB",
+    "plugin_id": 588,
+    "punchline": "Your PvP Limit Break, fired for you.",
+    "tags": "automation combat limit break pvp",
+    "website_text": "Your PvP Limit Break, fired for you. <p align=\"center\">\n  <img src=\"PvpAutoLb/Images/Icon.png\" width=\"180\" alt=\"Auto PVP LB icon\" />\n</p>\n\n<h1 align=\"center\">Auto PVP LB</h1>\n\n<p align=\"center\">\n  <a href=\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest\"><img alt=\"Release\" src=\"https://img.shields.io/github/v/release/XeldarAlz/FFXIV-AutoPVPLimitBreak?style=flat-square&color=blue\"></a>\n  <a href=\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases\"><img alt=\"Downloads\" src=\"https://img.shields.io/github/downloads/XeldarAlz/FFXIV-AutoPVPLimitBreak/total?style=flat-square&color=blue\"></a>\n  <a href=\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/actions/workflows/release.yml\"><img alt=\"Build\" src=\"https://img.shields.io/github/actions/workflow/status/XeldarAlz/FFXIV-AutoPVPLimitBreak/release.yml?style=flat-square\"></a>\n  <a href=\"LICENSE.md\"><img alt=\"License\" src=\"https://img.shields.io/badge/license-AGPL--3.0--or--later-blue?style=flat-square\"></a>\n</p>\n\n<p align=\"center\">\n  <em>Your PvP Limit Break, fired for you. Built on Dalamud.</em>\n</p>\n\n---\n\n<p align=\"center\">\n  <img src=\"PvpAutoLb/Images/demo.gif\" alt=\"Auto PVP LB demo\" />\n</p>\n\n## What it does\n\nMonitors enemy HP during PvP. When the target's HP drops below your configured threshold, fires your job's PvP Limit Break. Great for burst jobs like Ninja or Machinist to lock in kills.\n\nJobs whose PvP LB is defensive or support-focused (e.g. Paladin's Phalanx) are flagged in the status window and never auto-fired.\n\n## Features\n\n- **Configurable threshold**: percent of max HP or absolute HP, with per-job overrides.\n- **Range- and shape-aware targeting**: single-target LBs respect cast range; circle-around-target LBs prefer clustered enemies; PBAoE LBs fire when any below-threshold enemy is in radius.\n- **Shield-aware HP**: threshold checks against effective HP (`CurrentHp + ShieldHp`) so shields don't trigger early fires.\n- **Skip doomed targets**: predicts time-to-death and skips enemies that will die before the LB lands.\n- **Player blocklist + duty filter**: named players are never targeted; per-mode checkboxes (CC / Frontline / Rival Wings / Custom Match / Other) scope auto-fire.\n- **Auto-target**: picks the lowest-effective-HP hostile in range; falls back to manual hard target when off.\n- **Status window**: current target, HP bar with shield overlay and threshold marker, distance, range/shape, granular readiness (`READY` / `FIRING` / `PAUSED` / `OUT OF RANGE` / `GAUGE LOW` / `DEFENSIVE`).\n- **Session + lifetime stats**: fires, attributed kills, total enemies hit. Lifetime persists across reloads.\n- **Optional feedback**: chat sound (`/se1`–`/se16`) and/or chat line on fire.\n\n## Install\n\nIn-game: `/xlsettings` → **Experimental** → paste into **Custom Plugin Repositories**:\n\n```\nhttps://raw.githubusercontent.com/XeldarAlz/DalamudPlugins/main/repo.json\n```\n\nTick **Enabled**, click **+**, then **Save and Close**. Open `/xlplugins` → **All Plugins**, search for **Auto PVP LB**, and install.\n\n## Commands\n\n| Command | Action |\n|---|---|\n| `/pvpautolb` | Toggle the status window |\n| `/palb` | Alias for `/pvpautolb` |\n| `/pvpautolb config` | Open settings |\n\n## Configuration\n\nOpen via `/pvpautolb config` or the gear icon in the status window.\n\n- **Threshold**: mode (percent / absolute) and value. Below this, the LB fires.\n- **Per-job override**: each job can have its own threshold mode and value.\n- **Targeting**: auto-select toggle and scan radius (5–50 yalms). When off, only your hard target is considered.\n- **Filters**: skip doomed targets, allowed duty types (CC / Frontline / Rival Wings / Custom / Other).\n- **Player blocklist**: names listed here are never auto-targeted.\n- **Feedback**: optional chat sound and/or chat line on fire.\n\n## Job compatibility\n\nLimit Breaks are resolved from game data, so every job is wired up automatically. The table tracks what has been verified in live PvP matches. If you test a job, please open an issue or PR.\n\n**Legend:** ✅ confirmed · ❔ untested · 🛡 defensive/support: not auto-fired\n\n| Tanks | Status | | Healers | Status |\n|---|---|---|---|---|\n| Paladin | 🛡 Phalanx | | White Mage | ✅ |\n| Warrior | 🛡 Primal Scream | | Scholar | 🛡 Seraphism |\n| Dark Knight | ✅ | | Astrologian | 🛡 Celestial River |\n| Gunbreaker | ✅ | | Sage | 🛡 Mesotes |\n\n| Melee DPS | Status | | Ranged DPS | Status |\n|---|---|---|---|---|\n| Monk | ✅ | | Bard | 🛡 Final Fantasia |\n| Dragoon | ✅ | | Machinist | ✅ |\n| Ninja | ✅ | | Dancer | 🛡 Contradance |\n| Samurai | ✅ | | Black Mage | 🛡 Soul Resonance |\n| Reaper | 🛡 Tenebrae Lemurum | | Summoner | 🛡 Phoenix & Bahamut |\n| Viper | ✅ | | Red Mage | ✅ Southern Cross |\n|  |  | | Pictomancer | 🛡 Advent of Chocobastion |\n\n## More from me\n\nIf you liked this plugin, take a look at my other Dalamud work. You might find something else there for you.\n\n→ [XeldarAlz Dalamud Plugins](https://github.com/XeldarAlz/DalamudPlugins)\n\n## License\n\nAGPL-3.0-or-later. See [LICENSE.md](LICENSE.md)."
+  },
+  "variants": [
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "pvp",
+          "variant_id": 623
+        },
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 623
+        },
+        {
+          "kind": "tag",
+          "tag": "combat",
+          "variant_id": 623
+        },
+        {
+          "kind": "tag",
+          "tag": "limit break",
+          "variant_id": 623
+        },
+        {
+          "kind": "tag",
+          "tag": "pvp",
+          "variant_id": 623
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "1.1.0.0",
+        "author": "XeldarAlz",
+        "authors_json": "[\"XeldarAlz\"]",
+        "category_tags_json": "[\"pvp\"]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Fires your PvP Limit Break for you when an enemy's HP drops below a configurable threshold.\n\nPlugin from https://raw.githubusercontent.com/XeldarAlz/DalamudPlugins/main/repo.json",
+        "dip17_channel": "",
+        "download_count": 7602,
+        "download_link_install": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "download_link_testing": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "download_link_update": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "first_seen_utc": "2026-08-19T22:49:06Z",
+        "icon_url": "https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/master/PvpAutoLb/Images/Icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-26T03:31:07Z",
+        "last_update": 1787083573,
+        "minimum_dalamud_version": null,
+        "name": "Auto PVP LB",
+        "plugin_id": 588,
+        "punchline": "Your PvP Limit Break, fired for you.",
+        "raw_manifest_json": "{\"Author\":\"XeldarAlz\",\"Name\":\"Auto PVP LB\",\"InternalName\":\"PvpAutoLb\",\"AssemblyVersion\":\"1.1.0.0\",\"TestingAssemblyVersion\":\"1.1.0.0\",\"Description\":\"Fires your PvP Limit Break for you when an enemy's HP drops below a configurable threshold.\\n\\nPlugin from https://raw.githubusercontent.com/XeldarAlz/DalamudPlugins/main/repo.json\",\"Punchline\":\"Your PvP Limit Break, fired for you.\",\"RepoUrl\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak\",\"ApplicableVersion\":\"any\",\"Tags\":[\"pvp\",\"limit break\",\"combat\",\"automation\"],\"CategoryTags\":[\"pvp\"],\"DalamudApiLevel\":15,\"IconUrl\":\"https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/master/PvpAutoLb/Images/Icon.png\",\"DownloadLinkInstall\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"DownloadLinkUpdate\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"DownloadLinkTesting\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"IsTestingExclusive\":false,\"AcceptsFeedback\":true,\"DownloadCount\":7602,\"LastUpdate\":\"1787083573\",\"originRepository\":\"https://raw.githubusercontent.com/XeldarAlz/DalamudPlugins/main/repo.json\"}",
+        "repo_url": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak",
+        "source_entry_key": "pvpautolb|1.1.0.0|15|0|84",
+        "source_id": 113,
+        "tags_json": "[\"pvp\",\"limit break\",\"combat\",\"automation\"]",
+        "testing_assembly_version": "1.1.0.0",
+        "testing_dalamud_api_level": null,
+        "variant_id": 623
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "pvp",
+          "variant_id": 1704
+        },
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 1704
+        },
+        {
+          "kind": "tag",
+          "tag": "combat",
+          "variant_id": 1704
+        },
+        {
+          "kind": "tag",
+          "tag": "limit break",
+          "variant_id": 1704
+        },
+        {
+          "kind": "tag",
+          "tag": "pvp",
+          "variant_id": 1704
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "1.1.0.0",
+        "author": "XeldarAlz",
+        "authors_json": "[\"XeldarAlz\"]",
+        "category_tags_json": "[\"pvp\"]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Fires your PvP Limit Break for you when an enemy's HP drops below a configurable threshold.",
+        "dip17_channel": "",
+        "download_count": 7602,
+        "download_link_install": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "download_link_testing": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "download_link_update": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "first_seen_utc": "2026-08-20T06:02:54Z",
+        "icon_url": "https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/master/PvpAutoLb/Images/Icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-26T03:31:07Z",
+        "last_update": 1787083573,
+        "minimum_dalamud_version": null,
+        "name": "Auto PVP LB",
+        "plugin_id": 588,
+        "punchline": "Your PvP Limit Break, fired for you.",
+        "raw_manifest_json": "{\"Author\":\"XeldarAlz\",\"Name\":\"Auto PVP LB\",\"InternalName\":\"PvpAutoLb\",\"AssemblyVersion\":\"1.1.0.0\",\"TestingAssemblyVersion\":\"1.1.0.0\",\"Description\":\"Fires your PvP Limit Break for you when an enemy's HP drops below a configurable threshold.\",\"Punchline\":\"Your PvP Limit Break, fired for you.\",\"RepoUrl\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak\",\"ApplicableVersion\":\"any\",\"Tags\":[\"pvp\",\"limit break\",\"combat\",\"automation\"],\"CategoryTags\":[\"pvp\"],\"DalamudApiLevel\":15,\"IconUrl\":\"https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/master/PvpAutoLb/Images/Icon.png\",\"DownloadLinkInstall\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"DownloadLinkUpdate\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"DownloadLinkTesting\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"IsTestingExclusive\":false,\"AcceptsFeedback\":true,\"DownloadCount\":7602,\"LastUpdate\":\"1787083573\",\"IsHide\":false,\"_SourceId\":\"xeldaralz\",\"_SourceName\":\"XeldarAlz\",\"_SourceUrl\":\"https://raw.githubusercontent.com/XeldarAlz/DalamudPlugins/main/repo.json\"}",
+        "repo_url": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak",
+        "source_entry_key": "pvpautolb|1.1.0.0|15|0|0",
+        "source_id": 347,
+        "tags_json": "[\"pvp\",\"limit break\",\"combat\",\"automation\"]",
+        "testing_assembly_version": "1.1.0.0",
+        "testing_dalamud_api_level": null,
+        "variant_id": 1704
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "pvp",
+          "variant_id": 1999
+        },
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 1999
+        },
+        {
+          "kind": "tag",
+          "tag": "combat",
+          "variant_id": 1999
+        },
+        {
+          "kind": "tag",
+          "tag": "limit break",
+          "variant_id": 1999
+        },
+        {
+          "kind": "tag",
+          "tag": "pvp",
+          "variant_id": 1999
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "1.1.0.0",
+        "author": "XeldarAlz",
+        "authors_json": "[\"XeldarAlz\"]",
+        "category_tags_json": "[\"pvp\"]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Fires your PvP Limit Break for you when an enemy's HP drops below a configurable threshold.",
+        "dip17_channel": "",
+        "download_count": 7602,
+        "download_link_install": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "download_link_testing": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "download_link_update": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "first_seen_utc": "2026-08-20T08:17:59Z",
+        "icon_url": "https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/master/PvpAutoLb/Images/Icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-26T03:31:07Z",
+        "last_update": 1787083573,
+        "minimum_dalamud_version": null,
+        "name": "Auto PVP LB",
+        "plugin_id": 588,
+        "punchline": "Your PvP Limit Break, fired for you.",
+        "raw_manifest_json": "{\"Author\":\"XeldarAlz\",\"Name\":\"Auto PVP LB\",\"InternalName\":\"PvpAutoLb\",\"AssemblyVersion\":\"1.1.0.0\",\"TestingAssemblyVersion\":\"1.1.0.0\",\"Description\":\"Fires your PvP Limit Break for you when an enemy's HP drops below a configurable threshold.\",\"Punchline\":\"Your PvP Limit Break, fired for you.\",\"RepoUrl\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak\",\"ApplicableVersion\":\"any\",\"Tags\":[\"pvp\",\"limit break\",\"combat\",\"automation\"],\"CategoryTags\":[\"pvp\"],\"DalamudApiLevel\":15,\"IconUrl\":\"https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/master/PvpAutoLb/Images/Icon.png\",\"DownloadLinkInstall\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"DownloadLinkUpdate\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"DownloadLinkTesting\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"IsTestingExclusive\":false,\"AcceptsFeedback\":true,\"DownloadCount\":7602,\"LastUpdate\":\"1787083573\",\"IsHide\":false,\"_SourceId\":\"xeldaralz\",\"_SourceName\":\"XeldarAlz\",\"_SourceUrl\":\"https://raw.githubusercontent.com/XeldarAlz/DalamudPlugins/main/repo.json\",\"_Category\":\"combat\"}",
+        "repo_url": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak",
+        "source_entry_key": "pvpautolb|1.1.0.0|15|0|5",
+        "source_id": 570,
+        "tags_json": "[\"pvp\",\"limit break\",\"combat\",\"automation\"]",
+        "testing_assembly_version": "1.1.0.0",
+        "testing_dalamud_api_level": null,
+        "variant_id": 1999
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "pvp",
+          "variant_id": 3167
+        },
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 3167
+        },
+        {
+          "kind": "tag",
+          "tag": "combat",
+          "variant_id": 3167
+        },
+        {
+          "kind": "tag",
+          "tag": "limit break",
+          "variant_id": 3167
+        },
+        {
+          "kind": "tag",
+          "tag": "pvp",
+          "variant_id": 3167
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "1.1.0.0",
+        "author": "XeldarAlz",
+        "authors_json": "[\"XeldarAlz\"]",
+        "category_tags_json": "[\"pvp\"]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Fires your PvP Limit Break for you when an enemy's HP drops below a configurable threshold.",
+        "dip17_channel": "",
+        "download_count": 7610,
+        "download_link_install": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "download_link_testing": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "download_link_update": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip",
+        "first_seen_utc": "2026-08-25T07:26:03Z",
+        "icon_url": "https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/master/PvpAutoLb/Images/Icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-26T03:31:07Z",
+        "last_update": 1787083573,
+        "minimum_dalamud_version": null,
+        "name": "Auto PVP LB",
+        "plugin_id": 588,
+        "punchline": "Your PvP Limit Break, fired for you.",
+        "raw_manifest_json": "{\"Author\":\"XeldarAlz\",\"Name\":\"Auto PVP LB\",\"InternalName\":\"PvpAutoLb\",\"AssemblyVersion\":\"1.1.0.0\",\"TestingAssemblyVersion\":\"1.1.0.0\",\"Description\":\"Fires your PvP Limit Break for you when an enemy's HP drops below a configurable threshold.\",\"Punchline\":\"Your PvP Limit Break, fired for you.\",\"RepoUrl\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak\",\"ApplicableVersion\":\"any\",\"Tags\":[\"pvp\",\"limit break\",\"combat\",\"automation\"],\"CategoryTags\":[\"pvp\"],\"DalamudApiLevel\":15,\"IconUrl\":\"https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/master/PvpAutoLb/Images/Icon.png\",\"DownloadLinkInstall\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"DownloadLinkUpdate\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"DownloadLinkTesting\":\"https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak/releases/latest/download/latest.zip\",\"IsTestingExclusive\":false,\"AcceptsFeedback\":true,\"DownloadCount\":7610,\"LastUpdate\":\"1787083573\"}",
+        "repo_url": "https://github.com/XeldarAlz/FFXIV-AutoPVPLimitBreak",
+        "source_entry_key": "pvpautolb|1.1.0.0|15|0|0",
+        "source_id": 679,
+        "tags_json": "[\"pvp\",\"limit break\",\"combat\",\"automation\"]",
+        "testing_assembly_version": "1.1.0.0",
+        "testing_dalamud_api_level": null,
+        "variant_id": 3167
+      }
+    }
+  ]
+}

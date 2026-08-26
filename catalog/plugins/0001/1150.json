@@ -1,0 +1,206 @@
+{
+  "plugin": {
+    "active": 1,
+    "canonical_name": "PlayerNexusTracker",
+    "first_seen_utc": "2026-08-22T09:49:09Z",
+    "internal_name": "PlayerNexusTracker",
+    "last_seen_utc": "2026-08-26T03:31:07Z",
+    "plugin_id": 1150
+  },
+  "presentation": {
+    "description": "Track players you meet in FFXIV — who they are, when you ran into them, how their characters change over time. A focused social tracker built on the NexusKit framework.\n\nPer-player detail view with Summary, Equipment, Class/Jobs, Achievements, Free Company, Encounters, History and Notes tabs. Optional enrichment from Lodestone (gear, FC link, achievement progress) and FFXIVCollect (mounts, minions, full achievement catalog). Live throttled refresh queue keeps external data fresh without hammering either service.\n\nConfigurable chat and toast notifications when players you've seen before change — rename, server transfer, Free Company join/leave/switch, achievement growth, refresh failures. Per-event filtering and history grouping so the chat doesn't drown you.\n\nPowerful player-filter language with live preview to slice your list however you want; encounter history scoped per duty and content type; optional bridges to other Dalamud plugins (Lifestream world-travel, more to come).\n\nLocal-first: all data lives in a single SQLite file under your XIVLauncher config. Automated weekly maintenance keeps it tidy. English and German localization.",
+    "image_urls_json": "[]",
+    "nsfw": 0,
+    "official": 0,
+    "plugin_id": 1150,
+    "preferred_variant_id": 3355,
+    "presentation_variant_id": 3355,
+    "rich_card": 0,
+    "richness_score": 2192,
+    "summary": "Track every adventurer you meet in Eorzea.",
+    "web_enriched": 1
+  },
+  "schema": "omega.catalog-json.plugin.v1",
+  "search": {
+    "author": "nxships",
+    "description": "Track players you meet in FFXIV — who they are, when you ran into them, how their characters change over time. A focused social tracker built on the NexusKit framework.\n\nPer-player detail view with Summary, Equipment, Class/Jobs, Achievements, Free Company, Encounters, History and Notes tabs. Optional enrichment from Lodestone (gear, FC link, achievement progress) and FFXIVCollect (mounts, minions, full achievement catalog). Live throttled refresh queue keeps external data fresh without hammering either service.\n\nConfigurable chat and toast notifications when players you've seen before change — rename, server transfer, Free Company join/leave/switch, achievement growth, refresh failures. Per-event filtering and history grouping so the chat doesn't drown you.\n\nPowerful player-filter language with live preview to slice your list however you want; encounter history scoped per duty and content type; optional bridges to other Dalamud plugins (Lifestream world-travel, more to come).\n\nLocal-first: all data lives in a single SQLite file under your XIVLauncher config. Automated weekly maintenance keeps it tidy. English and German localization.",
+    "internal_name": "PlayerNexusTracker",
+    "name": "PlayerNexusTracker",
+    "plugin_id": 1150,
+    "punchline": "Track every adventurer you meet in Eorzea.",
+    "tags": "encounters ffxivcollect history lodestone nexus nexuskit player social tracker",
+    "website_text": "FFXIV Dalamud plugin: successor to PlayerTrack/PlayerNexus # PlayerNexusTracker\n\n**A Dalamud plugin for FINAL FANTASY XIV, built on [NexusKit](https://github.com/NexusFFXIV/NexusKit) + [NexusKit.Modules](https://github.com/NexusFFXIV/NexusKit.Modules).**\n\n[![Build](https://github.com/NexusFFXIV/PlayerNexusTracker/actions/workflows/release.yml/badge.svg)](https://github.com/NexusFFXIV/PlayerNexusTracker/actions/workflows/release.yml)\n[![CodeQL](https://github.com/NexusFFXIV/PlayerNexusTracker/actions/workflows/codeql.yml/badge.svg)](https://github.com/NexusFFXIV/PlayerNexusTracker/actions/workflows/codeql.yml)\n[![Release](https://img.shields.io/github/v/release/NexusFFXIV/PlayerNexusTracker?label=release&logo=github)](https://github.com/NexusFFXIV/PlayerNexusTracker/releases)\n[![Dalamud API](https://img.shields.io/badge/Dalamud_API-15-9D5BFF)](https://github.com/goatcorp/Dalamud)\n[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)\n[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)\n\n## Overview\n\nPlayerNexusTracker tracks players you meet in FFXIV — locally observed sessions plus optional enrichment from public sources (Lodestone, FFXIVCollect). It is the reference consumer of the NexusKit framework: see how the framework's hosting, persistence, IPC, UI, and module systems get wired together in a real plugin.\n\n## Install (as a player)\n\n1. Open Dalamud's **Settings → Experimental** tab.\n2. Under **Custom Plugin Repositories**, paste the NexusFFXIV repo URL and hit Save:\n   ```\n   https://raw.githubusercontent.com/NexusFFXIV/DalamudRepo/main/pluginmaster.json\n   ```\n3. Reopen **Settings → Experimental** if needed and tick the new entry as **Enabled**.\n4. Open `/xlplugins`, switch to **All Plugins**, search **PlayerNexusTracker**, Install.\n\n### Testing builds (opt-in)\n\nTick **Settings → Experimental → Get plugin testing builds** to surface pre-release versions when available. Testing builds are tagged `vX.Y.Z-rc.N` in this repo and ship through the same Dalamud repo URL — non-testers continue to see only stable releases.\n\n> The standard Dalamud repo channel will follow once the plugin matures.\n\n## Build from source\n\n```powershell\ngit clone https://github.com/NexusFFXIV/PlayerNexusTracker.git\ncd PlayerNexusTracker\n\n# Configure access to NexusKit packages on GitHub Packages\n# 1. Create a classic PAT at https://github.com/settings/tokens with scope: read:packages\n# 2. Set it as a User env var:\n[System.Environment]::SetEnvironmentVariable(\"GITHUB_PACKAGES_PAT\", \"<your_pat>\", \"User\")\n# (restart PowerShell so the var is visible)\n\ndotnet build PlayerNexusTracker.sln -c Debug -p:Platform=x64\n```\n\nOutput lands at `PlayerNexusTracker.Plugin/bin/x64/Debug/PlayerNexusTracker.dll` — the path XIVLauncher's dev-plugin loader expects.\n\n## Architecture\n\nPlayerNexusTracker is intentionally thin: most of the heavy lifting lives in NexusKit + NexusKit.Modules. The plugin itself contains:\n\n- Composition wiring (`Composition/PluginServiceCollectionExtensions.cs`) — `services.AddNexusKitX()` calls\n- Plugin-specific notification producers (FC events, history events, …)\n- Plugin-specific UI windows\n- Localization resources (English + German)\n\nFor the framework architecture, see [NexusKit/docs/architecture.md](https://github.com/NexusFFXIV/NexusKit/blob/main/docs/architecture.md).\n\n## Contributing\n\nIssue reports welcome. Code contributions accepted under AGPL-3.0-only.\n\n## License\n\n[AGPL-3.0-only](LICENSE). This plugin and its derivative works must stay open under the same license."
+  },
+  "variants": [
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "encounters",
+          "variant_id": 2656
+        },
+        {
+          "kind": "tag",
+          "tag": "ffxivcollect",
+          "variant_id": 2656
+        },
+        {
+          "kind": "tag",
+          "tag": "history",
+          "variant_id": 2656
+        },
+        {
+          "kind": "tag",
+          "tag": "lodestone",
+          "variant_id": 2656
+        },
+        {
+          "kind": "tag",
+          "tag": "nexus",
+          "variant_id": 2656
+        },
+        {
+          "kind": "tag",
+          "tag": "nexuskit",
+          "variant_id": 2656
+        },
+        {
+          "kind": "tag",
+          "tag": "player",
+          "variant_id": 2656
+        },
+        {
+          "kind": "tag",
+          "tag": "social",
+          "variant_id": 2656
+        },
+        {
+          "kind": "tag",
+          "tag": "tracker",
+          "variant_id": 2656
+        }
+      ],
+      "variant": {
+        "active": 0,
+        "applicable_version": "any",
+        "assembly_version": "0.3.0.0",
+        "author": "nxships",
+        "authors_json": "[\"nxships\"]",
+        "category_tags_json": "[]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Track players you meet in FFXIV — who they are, when you ran into them, how their characters change over time. A focused social tracker built on the NexusKit framework.\n\nPer-player detail view with Summary, Equipment, Class/Jobs, Achievements, Free Company, Encounters, History and Notes tabs. Optional enrichment from Lodestone (gear, FC link, achievement progress) and FFXIVCollect (mounts, minions, full achievement catalog). Live throttled refresh queue keeps external data fresh without hammering either service.\n\nConfigurable chat and toast notifications when players you've seen before change — rename, server transfer, Free Company join/leave/switch, achievement growth, refresh failures. Per-event filtering and history grouping so the chat doesn't drown you.\n\nPowerful player-filter language with live preview to slice your list however you want; encounter history scoped per duty and content type; optional bridges to other Dalamud plugins (Lifestream world-travel, more to come).\n\nLocal-first: all data lives in a single SQLite file under your XIVLauncher config. Automated weekly maintenance keeps it tidy. English and German localization.",
+        "dip17_channel": "",
+        "download_count": 54,
+        "download_link_install": "https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip",
+        "download_link_testing": "https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip",
+        "download_link_update": "https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip",
+        "first_seen_utc": "2026-08-22T09:49:09Z",
+        "icon_url": "https://raw.githubusercontent.com/NexusFFXIV/PlayerNexusTracker/main/PlayerNexusTracker.Plugin/images/icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-25T07:26:03Z",
+        "last_update": 1785787418,
+        "minimum_dalamud_version": null,
+        "name": "PlayerNexusTracker",
+        "plugin_id": 1150,
+        "punchline": "Track every adventurer you meet in Eorzea.",
+        "raw_manifest_json": "{\"Author\":\"nxships\",\"Name\":\"PlayerNexusTracker\",\"InternalName\":\"PlayerNexusTracker\",\"Description\":\"Track players you meet in FFXIV — who they are, when you ran into them, how their characters change over time. A focused social tracker built on the NexusKit framework.\\n\\nPer-player detail view with Summary, Equipment, Class/Jobs, Achievements, Free Company, Encounters, History and Notes tabs. Optional enrichment from Lodestone (gear, FC link, achievement progress) and FFXIVCollect (mounts, minions, full achievement catalog). Live throttled refresh queue keeps external data fresh without hammering either service.\\n\\nConfigurable chat and toast notifications when players you've seen before change — rename, server transfer, Free Company join/leave/switch, achievement growth, refresh failures. Per-event filtering and history grouping so the chat doesn't drown you.\\n\\nPowerful player-filter language with live preview to slice your list however you want; encounter history scoped per duty and content type; optional bridges to other Dalamud plugins (Lifestream world-travel, more to come).\\n\\nLocal-first: all data lives in a single SQLite file under your XIVLauncher config. Automated weekly maintenance keeps it tidy. English and German localization.\",\"Punchline\":\"Track every adventurer you meet in Eorzea.\",\"Tags\":[\"player\",\"tracker\",\"social\",\"lodestone\",\"ffxivcollect\",\"history\",\"encounters\",\"nexus\",\"nexuskit\"],\"ApplicableVersion\":\"any\",\"DalamudApiLevel\":15,\"AssemblyVersion\":\"0.3.0.0\",\"RepoUrl\":\"https://github.com/NexusFFXIV/PlayerNexusTracker\",\"IconUrl\":\"https://raw.githubusercontent.com/NexusFFXIV/PlayerNexusTracker/main/PlayerNexusTracker.Plugin/images/icon.png\",\"AcceptsFeedback\":true,\"FeedbackMessage\":\"Please send feedback over to GitHub instead of using this dialog — the form there lets you pick the right category (Bug report, Feature request, or General question via Discussions) and asks for the context we need to act on the report (plugin version, repro steps, etc).\\n\\nOpen the chooser at:\\nhttps://github.com/NexusFFXIV/PlayerNexusTracker/issues/new/choose\\n\\nNote: text you type in this Dalamud dialog goes to the Dalamud team aggregator and does not reach the plugin author directly.\",\"IsHide\":false,\"IsTestingExclusive\":false,\"LastUpdate\":1785787418,\"DownloadCount\":54,\"DownloadLinkInstall\":\"https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip\",\"DownloadLinkUpdate\":\"https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip\",\"DownloadLinkTesting\":\"https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip\",\"TestingAssemblyVersion\":\"0.3.0.0\",\"TestingDalamudApiLevel\":15,\"_SourceId\":\"nexusffxiv-dalamudrepo\",\"_SourceName\":\"NexusFFXIV DalamudRepo\",\"_SourceUrl\":\"https://raw.githubusercontent.com/NexusFFXIV/DalamudRepo/main/all-repo.json\",\"_Category\":\"qol\"}",
+        "repo_url": "https://github.com/NexusFFXIV/PlayerNexusTracker",
+        "source_entry_key": "playernexustracker|0.3.0.0|15|15|97",
+        "source_id": 595,
+        "tags_json": "[\"player\",\"tracker\",\"social\",\"lodestone\",\"ffxivcollect\",\"history\",\"encounters\",\"nexus\",\"nexuskit\"]",
+        "testing_assembly_version": "0.3.0.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 2656
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "encounters",
+          "variant_id": 3355
+        },
+        {
+          "kind": "tag",
+          "tag": "ffxivcollect",
+          "variant_id": 3355
+        },
+        {
+          "kind": "tag",
+          "tag": "history",
+          "variant_id": 3355
+        },
+        {
+          "kind": "tag",
+          "tag": "lodestone",
+          "variant_id": 3355
+        },
+        {
+          "kind": "tag",
+          "tag": "nexus",
+          "variant_id": 3355
+        },
+        {
+          "kind": "tag",
+          "tag": "nexuskit",
+          "variant_id": 3355
+        },
+        {
+          "kind": "tag",
+          "tag": "player",
+          "variant_id": 3355
+        },
+        {
+          "kind": "tag",
+          "tag": "social",
+          "variant_id": 3355
+        },
+        {
+          "kind": "tag",
+          "tag": "tracker",
+          "variant_id": 3355
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.3.0.0",
+        "author": "nxships",
+        "authors_json": "[\"nxships\"]",
+        "category_tags_json": "[]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Track players you meet in FFXIV — who they are, when you ran into them, how their characters change over time. A focused social tracker built on the NexusKit framework.\n\nPer-player detail view with Summary, Equipment, Class/Jobs, Achievements, Free Company, Encounters, History and Notes tabs. Optional enrichment from Lodestone (gear, FC link, achievement progress) and FFXIVCollect (mounts, minions, full achievement catalog). Live throttled refresh queue keeps external data fresh without hammering either service.\n\nConfigurable chat and toast notifications when players you've seen before change — rename, server transfer, Free Company join/leave/switch, achievement growth, refresh failures. Per-event filtering and history grouping so the chat doesn't drown you.\n\nPowerful player-filter language with live preview to slice your list however you want; encounter history scoped per duty and content type; optional bridges to other Dalamud plugins (Lifestream world-travel, more to come).\n\nLocal-first: all data lives in a single SQLite file under your XIVLauncher config. Automated weekly maintenance keeps it tidy. English and German localization.",
+        "dip17_channel": "",
+        "download_count": 54,
+        "download_link_install": "https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip",
+        "download_link_testing": "https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip",
+        "download_link_update": "https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip",
+        "first_seen_utc": "2026-08-25T20:59:09Z",
+        "icon_url": "https://raw.githubusercontent.com/NexusFFXIV/PlayerNexusTracker/main/PlayerNexusTracker.Plugin/images/icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-26T03:31:07Z",
+        "last_update": 1785787418,
+        "minimum_dalamud_version": null,
+        "name": "PlayerNexusTracker",
+        "plugin_id": 1150,
+        "punchline": "Track every adventurer you meet in Eorzea.",
+        "raw_manifest_json": "{\"Author\":\"nxships\",\"Name\":\"PlayerNexusTracker\",\"InternalName\":\"PlayerNexusTracker\",\"Description\":\"Track players you meet in FFXIV — who they are, when you ran into them, how their characters change over time. A focused social tracker built on the NexusKit framework.\\n\\nPer-player detail view with Summary, Equipment, Class/Jobs, Achievements, Free Company, Encounters, History and Notes tabs. Optional enrichment from Lodestone (gear, FC link, achievement progress) and FFXIVCollect (mounts, minions, full achievement catalog). Live throttled refresh queue keeps external data fresh without hammering either service.\\n\\nConfigurable chat and toast notifications when players you've seen before change — rename, server transfer, Free Company join/leave/switch, achievement growth, refresh failures. Per-event filtering and history grouping so the chat doesn't drown you.\\n\\nPowerful player-filter language with live preview to slice your list however you want; encounter history scoped per duty and content type; optional bridges to other Dalamud plugins (Lifestream world-travel, more to come).\\n\\nLocal-first: all data lives in a single SQLite file under your XIVLauncher config. Automated weekly maintenance keeps it tidy. English and German localization.\",\"Punchline\":\"Track every adventurer you meet in Eorzea.\",\"Tags\":[\"player\",\"tracker\",\"social\",\"lodestone\",\"ffxivcollect\",\"history\",\"encounters\",\"nexus\",\"nexuskit\"],\"ApplicableVersion\":\"any\",\"DalamudApiLevel\":15,\"AssemblyVersion\":\"0.3.0.0\",\"RepoUrl\":\"https://github.com/NexusFFXIV/PlayerNexusTracker\",\"IconUrl\":\"https://raw.githubusercontent.com/NexusFFXIV/PlayerNexusTracker/main/PlayerNexusTracker.Plugin/images/icon.png\",\"AcceptsFeedback\":true,\"FeedbackMessage\":\"Please send feedback over to GitHub instead of using this dialog — the form there lets you pick the right category (Bug report, Feature request, or General question via Discussions) and asks for the context we need to act on the report (plugin version, repro steps, etc).\\n\\nOpen the chooser at:\\nhttps://github.com/NexusFFXIV/PlayerNexusTracker/issues/new/choose\\n\\nNote: text you type in this Dalamud dialog goes to the Dalamud team aggregator and does not reach the plugin author directly.\",\"IsHide\":false,\"IsTestingExclusive\":false,\"LastUpdate\":1785787418,\"DownloadCount\":54,\"DownloadLinkInstall\":\"https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip\",\"DownloadLinkUpdate\":\"https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip\",\"DownloadLinkTesting\":\"https://github.com/NexusFFXIV/PlayerNexusTracker/releases/download/v0.3.0/PlayerNexusTracker-0.3.0.zip\",\"TestingAssemblyVersion\":\"0.3.0.0\",\"TestingDalamudApiLevel\":15,\"_SourceId\":\"nexusffxiv-dalamudrepo\",\"_SourceName\":\"NexusFFXIV DalamudRepo\",\"_SourceUrl\":\"https://raw.githubusercontent.com/NexusFFXIV/DalamudRepo/main/all-repo.json\",\"_Category\":\"qol\"}",
+        "repo_url": "https://github.com/NexusFFXIV/PlayerNexusTracker",
+        "source_entry_key": "playernexustracker|0.3.0.0|15|15|98",
+        "source_id": 595,
+        "tags_json": "[\"player\",\"tracker\",\"social\",\"lodestone\",\"ffxivcollect\",\"history\",\"encounters\",\"nexus\",\"nexuskit\"]",
+        "testing_assembly_version": "0.3.0.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 3355
+      }
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+schema: omega.sigmascope.ruleset.v1
+rules:
+  - schema: omega.sigmascope.rule.v1
+    id: compound.network-execute
+    kind: correlation
+    status: reviewed
+    requires: []
+    selectors:
+      network_http:
+        facts:
+          any: [network.http]
+      execution:
+        facts:
+          any: [process.launch, shell.powershell]
+    condition:
+      all: [network_http, execution]
+    emit:
+      findingId: compound.network-execute
+      title: Network plus process execution
+      description: The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.
+      severity: high
+      category: compound
+
+  - schema: omega.sigmascope.rule.v1
+    id: compound.credential-network
+    kind: correlation
+    status: reviewed
+    requires: []
+    selectors:
+      credential_api:
+        facts:
+          any: [credential.api]
+      network:
+        facts:
+          any: [network.http, network.socket]
+    condition:
+      all: [credential_api, network]
+    emit:
+      findingId: compound.credential-network
+      title: Credential APIs plus network access
+      description: The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.
+      severity: high
+      category: compound

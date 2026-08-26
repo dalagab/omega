@@ -1,0 +1,96 @@
+{
+  "plugin": {
+    "active": 1,
+    "canonical_name": "FyteClub",
+    "first_seen_utc": "2026-08-26T03:31:07Z",
+    "internal_name": "FyteClub",
+    "last_seen_utc": "2026-08-26T03:31:07Z",
+    "plugin_id": 1256
+  },
+  "presentation": {
+    "description": "Sync mods between players using Penumbra, Glamourer, and other plugins",
+    "image_urls_json": "[]",
+    "nsfw": 0,
+    "official": 0,
+    "plugin_id": 1256,
+    "preferred_variant_id": 3666,
+    "presentation_variant_id": 3666,
+    "rich_card": 0,
+    "richness_score": 948,
+    "summary": "Share your mods with friends",
+    "web_enriched": 1
+  },
+  "schema": "omega.catalog-json.plugin.v1",
+  "search": {
+    "author": "FyteClub Team",
+    "description": "Sync mods between players using Penumbra, Glamourer, and other plugins",
+    "internal_name": "FyteClub",
+    "name": "FyteClub",
+    "plugin_id": 1256,
+    "punchline": "Share your mods with friends",
+    "tags": "character customization mods sharing",
+    "website_text": " # FyteClub\n\nP2P mod sync for FFXIV thats kinda like Mare but its serverless.\n\nEvery Mare fork still runs a server, meaning some guy you don't know is paying for bandwidth and logging god knows what, and whoever's running it is also exactly who Square Enix goes after. FyteClub skips that entirely, two clients just find each other and talk directly, nothing to shut down and nobody to trust. Not claiming I'll personally run this forever either, it's open source, PRs welcome, the whole point is nobody has to trust one guy long term.\n\n[WebRTC](https://webrtc.org/) does the actual data transfer, same tech video calls run on to push data around fast. [Nostr](https://nostr.com/) (public relays, not mine, not anybody's) is just pub/sub so two clients can find each other without either one standing up infrastructure. Syncshells are password-derived group keys, invite people and they're in, nothing routes through anything I control because there's nothing I control. Tried a lightweight phonebook server once to speed up peer discovery, killed it fast once I realized everyone syncing through it meant everyone had my IP, exact same problem I was trying to avoid. If it helps: mods are the neurotransmitter, the clients are neurons, Nostr's the signal that something's nearby, WebRTC's the synapse it crosses.\n\nRuns on [Dalamud](https://github.com/goatcorp/Dalamud), talks to [Penumbra](https://github.com/xivdev/Penumbra), [Glamourer](https://github.com/Ottermandias/Glamourer), [Customize+](https://github.com/Aether-Tools/CustomizePlus), [SimpleHeels](https://github.com/Caraxi/SimpleHeels), and [Honorific](https://github.com/Caraxi/Honorific). Auto-syncs with nearby group members (~50m), manual sync button if you don't want to wait.\n\n## platform support, honestly\n\nWindows only, currently. The WebRTC transport ships a native x64 Windows DLL (`mrwebrtc.dll`) - there's no macOS or Linux build, and it won't load under a non-Windows Dalamud. Running FFXIV through XIVLauncher on Windows (the normal case) is fine. Wine/Proton/Mac XIVLauncher - untested, probably broken, no promises either way.\n\n## syncshell size, honestly\n\nEvery peer connects directly to every other peer, full mesh, no relay server thinning the connection count. That's fine for a small friend group and gets worse fast as it grows - N people means each client is holding N-1 simultaneous WebRTC connections. Somewhere around 8 people is the practical ceiling before things get flaky. There's no hard cap enforced in code today, nothing stops you adding a 20th person, it's just where the design stops making sense. A supernode/relay-based mesh for bigger groups is on the roadmap, not built.\n\n## security, honestly\n\nWebRTC connections are encrypted (DTLS) once two clients are actually talking to each other, so mod data in transit isn't sitting in the clear. The signaling exchange that happens *before* that - the SDP offer/answer and ICE candidates, sent over public Nostr relays - is now also encrypted, AES-256-GCM keyed off the syncshell's own secret, so a relay operator watching that traffic sees ciphertext, not who's connecting to whom. That wasn't always true; it's a gap an earlier version of this README flagged and has since been closed.\n\nSyncshell membership is a password-derived key, meaning it's only as strong as the password you picked and who you handed it to, same as any group chat invite link. Invite codes now expire - 24 hours for a first-time invite (it might sit in a friend's chat until they next log in), 1 hour for the bootstrap/reconnect code used once you're already in the mesh - but they're not signed or tamper-checked, so treat one the same as a shared password: don't paste it somewhere public.\n\nRemoving someone from a syncshell now actually does something: the host mints a fresh signed encryption key and every remaining member rotates onto it, so a removed member's old key stops working for future syncs. That mechanism is real and has tests behind it, but there's no \"kick\" button in the UI yet to trigger it - it's wired up internally, just not exposed to a click.\n\nAnd once you've sent someone a mod, they have the file, permanently, there's no DRM and there never will be, client-side file protection is theater and I'm not pretending otherwise. Don't sync mods with people you wouldn't hand a USB stick to.\n\nCompared to Mare or a Mare clone: their whole security model runs through a server, meaning there's a login system, a database, and a box somewhere that knows who you are, what group you're in, and probably your IP, all sitting in one place waiting to be breached, subpoenaed, or just misconfigured by whoever's running it. Take that server down and every single user is locked out at once, no warning, no recourse. FyteClub doesn't have that box. There's no account database to leak, no central log of who's synced with who, and no single point that going down takes everyone else with it. Worse security in some specific spots (see above, I'm not going to pretend it's flawless), but a fundamentally different failure mode, one person's bad day doesn't end the project for everyone else.\n\nI've been building this quietly since the day Mare got taken down, on purpose. Wasn't trying to make noise about it or attract attention while it wasn't ready, the entire point was to not repeat what happened to Mare. Hard to take down infrastructure that doesn't exist.\n\n## connectivity\n\nPublic STUN plus a public TURN relay are baked in for NAT traversal, no setup needed for most people. If you're behind a strict/symmetric NAT (common on CGNAT or some mobile/campus networks) and connections keep failing, the plugin config has a Network tab for adding your own TURN server - it applies to your own connections and gets shared with anyone you invite. There's also a \"Diagnose\" button next to each syncshell that shows what actually happened on the last connection attempt: which ICE candidate types got gathered, whether a TURN server is in play, and a plain-English guess at what's wrong.\n\n## install\n\nXIVLauncher + Dalamud, then add the repo `https://raw.githubusercontent.com/fyteclubplugin/fyteclub/main/plugin/repo.json`, install FyteClub from the plugin installer, `/fyteclub` in game to make or join a syncshell.\n\n## build from source\n\n```bash\ncd plugin\ndotnet build -c Release\n```\n\n## license\n\nMIT, see LICENSE. Not affiliated with Square Enix or FFXIV, obviously."
+  },
+  "variants": [
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "character",
+          "variant_id": 3666
+        },
+        {
+          "kind": "tag",
+          "tag": "customization",
+          "variant_id": 3666
+        },
+        {
+          "kind": "tag",
+          "tag": "mods",
+          "variant_id": 3666
+        },
+        {
+          "kind": "tag",
+          "tag": "sharing",
+          "variant_id": 3666
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "5.0.14",
+        "author": "FyteClub Team",
+        "authors_json": "[\"FyteClub Team\"]",
+        "category_tags_json": "[]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Sync mods between players using Penumbra, Glamourer, and other plugins",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/fyteclubplugin/fyteclub/releases/latest/download/FyteClub-Plugin.zip",
+        "download_link_testing": "https://github.com/fyteclubplugin/fyteclub/releases/latest/download/FyteClub-Plugin.zip",
+        "download_link_update": "https://github.com/fyteclubplugin/fyteclub/releases/latest/download/FyteClub-Plugin.zip",
+        "first_seen_utc": "2026-08-26T03:31:07Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-26T03:31:07Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "FyteClub",
+        "plugin_id": 1256,
+        "punchline": "Share your mods with friends",
+        "raw_manifest_json": "{\"Author\":\"FyteClub Team\",\"Name\":\"FyteClub\",\"Punchline\":\"Share your mods with friends\",\"Description\":\"Sync mods between players using Penumbra, Glamourer, and other plugins\",\"InternalName\":\"FyteClub\",\"AssemblyVersion\":\"5.0.14\",\"RepoUrl\":\"https://github.com/fyteclubplugin/fyteclub\",\"ApplicableVersion\":\"any\",\"Tags\":[\"mods\",\"sharing\",\"character\",\"customization\"],\"DalamudApiLevel\":15,\"LoadRequiredState\":0,\"LoadSync\":false,\"CanUnloadAsync\":false,\"LoadPriority\":0,\"IconUrl\":\"\",\"ImageUrls\":[],\"AcceptsFeedback\":true,\"DownloadLinkInstall\":\"https://github.com/fyteclubplugin/fyteclub/releases/latest/download/FyteClub-Plugin.zip\",\"DownloadLinkTesting\":\"https://github.com/fyteclubplugin/fyteclub/releases/latest/download/FyteClub-Plugin.zip\",\"DownloadLinkUpdate\":\"https://github.com/fyteclubplugin/fyteclub/releases/latest/download/FyteClub-Plugin.zip\",\"DownloadCount\":0,\"LastUpdated\":\"2026-08-09T00:25:59.000Z\",\"IsHide\":false,\"IsTestingExclusive\":false,\"_SourceId\":\"fyteclubplugin-fyteclub\",\"_SourceName\":\"FyteClub\",\"_SourceUrl\":\"https://raw.githubusercontent.com/fyteclubplugin/fyteclub/main/plugin/repo.json\",\"_Category\":\"glamour\"}",
+        "repo_url": "https://github.com/fyteclubplugin/fyteclub",
+        "source_entry_key": "fyteclub|5.0.14|15|0|28",
+        "source_id": 690,
+        "tags_json": "[\"mods\",\"sharing\",\"character\",\"customization\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 3666
+      }
+    }
+  ]
+}

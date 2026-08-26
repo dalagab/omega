@@ -1,0 +1,106 @@
+{
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Restocker",
+    "first_seen_utc": "2026-08-21T08:24:10Z",
+    "internal_name": "Restocker",
+    "last_seen_utc": "2026-08-26T03:31:07Z",
+    "plugin_id": 1059
+  },
+  "presentation": {
+    "description": "Cross-retainer market workbench with a plan-then-apply flow. Reprice tab: per-retainer 'lowest -N g' / 'lowest exact' buttons walk each listing, fetch live market data via Dalamud's IMarketBoard.OfferingsReceived (skipping your own retainers, deduplicated per item/HQ), stage every change in a queue, then commit them all via a single Apply that calls SetRetainerMarketPrice directly. New listing tab: per-row qty x slots, target retainer combo, auto stack-splitting (e.g. 990 / 99 → ten listings of 99), and direct listing from character bag / Chocobo Saddlebag with no entrust step (saddle items are bulk-staged to the bag in one phase, then listed). Live progress dialog shows the current step (selecting retainer, fetching market data, listing, …) so long runs don't look frozen. Six-language UI (EN/JA/DE/FR/ZH/KO). Warns once at startup if AutoRetainer is also loaded since both drive retainer summoning.",
+    "image_urls_json": "[]",
+    "nsfw": 0,
+    "official": 0,
+    "plugin_id": 1059,
+    "preferred_variant_id": 2218,
+    "presentation_variant_id": 2218,
+    "rich_card": 0,
+    "richness_score": 2058,
+    "summary": "Bulk reprice and split-list retainer market listings across all retainers.",
+    "web_enriched": 1
+  },
+  "schema": "omega.catalog-json.plugin.v1",
+  "search": {
+    "author": "yagi2",
+    "description": "Cross-retainer market workbench with a plan-then-apply flow. Reprice tab: per-retainer 'lowest -N g' / 'lowest exact' buttons walk each listing, fetch live market data via Dalamud's IMarketBoard.OfferingsReceived (skipping your own retainers, deduplicated per item/HQ), stage every change in a queue, then commit them all via a single Apply that calls SetRetainerMarketPrice directly. New listing tab: per-row qty x slots, target retainer combo, auto stack-splitting (e.g. 990 / 99 → ten listings of 99), and direct listing from character bag / Chocobo Saddlebag with no entrust step (saddle items are bulk-staged to the bag in one phase, then listed). Live progress dialog shows the current step (selecting retainer, fetching market data, listing, …) so long runs don't look frozen. Six-language UI (EN/JA/DE/FR/ZH/KO). Warns once at startup if AutoRetainer is also loaded since both drive retainer summoning.",
+    "internal_name": "Restocker",
+    "name": "Restocker",
+    "plugin_id": 1059,
+    "punchline": "Bulk reprice and split-list retainer market listings across all retainers.",
+    "tags": "bulk list market marketboard reprice retainer",
+    "website_text": "A cross-retainer market workbench for FFXIV — bulk reprice and split-list across all retainers with its own bell automation. # Restocker\n\n<p align=\"center\"><img src=\"images/icon.png\" alt=\"Restocker icon\" width=\"160\"></p>\n\nA Dalamud plugin for FFXIV that turns every retainer's market board work into a **plan once, apply once** workflow:\n\n- See every listing across every retainer in one aggregated view\n- **Reprice** all listings to the live market lowest (or lowest minus *N* gil) — Restocker drives the in-game market lookup itself, no manual searching\n- **New listings** with automatic stack-splitting (e.g. 990 ÷ 99 → ten stacks) and per-row routing to whichever retainer you choose, including direct-list from your character bag or Chocobo Saddlebag\n- Plan-then-apply UX: every change is staged in a list at the bottom of the tab, you review/delete what you don't want, then a single **Apply** button commits all of them\n- A live progress dialog shows what the executor is doing on each step (selecting retainer, opening sell list, fetching market data, listing, …) so long runs don't look frozen\n- Six-language UI: English / 日本語 / Deutsch / Français / 简体中文 / 한국어\n\n## Install\n\nAdd the personal Dalamud index to Dalamud:\n\n```\nhttps://raw.githubusercontent.com/yagi2/dalamud-plugins/main/repo.json\n```\n\nThen install **Restocker** from the plugin list. After install, type `/restocker` or open the retainer bell — the main window shows up automatically when the bell opens (configurable).\n\n## What you can do with it\n\n### Reprice tab — drop every listing to the lowest\n\nFor each retainer:\n\n1. Set the undercut amount in the inline `- N g` input (per-session, default 1).\n2. Click **All items: lowest -N g** *or* **All items: lowest (exact)**.\n3. Restocker walks the listings, for each one opens *Adjust price → Compare prices*, reads the actual market data via Dalamud's `IMarketBoard.OfferingsReceived`, and fills the row's new price.\n4. Skim the table, then either click **+** on rows you want to commit, or **Add all to plan** to queue the whole retainer.\n5. The bottom panel shows queued plans across all retainers (item / target / qty / old → new). Use **x** on a row to drop it, **Clear all** to wipe.\n6. Press **Apply**. Confirmed prices are written via `InventoryManager.SetRetainerMarketPrice` directly — no per-listing dialogs to click through.\n\nPer row you can also type a price manually, or click **fill** to copy that row's new price to every other listing on the same retainer.\n\nThe fetch step:\n- Skips your own retainers' listings when picking the lowest (no self-undercut).\n- Deduplicates per `(item, HQ)` within one run, so a retainer with five stacks of the same item only hits the market board once.\n- Tolerates the occasional listing where the dialog doesn't open, logs a warning, and moves on instead of aborting the whole run.\n\n### New listing tab — split, route, plan, apply\n\nFor each retainer / character bag / Chocobo Saddlebag section:\n\n- Set **price**, **qty per listing × number of slots**, **target retainer** per row.\n- The **M** button next to qty fills it with `min(MaxStack, owned)`.\n- Click **+ Add** to push a `PendingPlan` onto the queue at the bottom of the tab.\n- Repeat for as many items / target retainers as you want — the same item from your saddlebag can be split between retainer A and retainer B in one Apply run.\n- Press **Apply**. Restocker:\n  - For saddlebag sources, **bulk-pre-stages** the required quantity from saddle to character bag in one phase, lets the server settle, then enters the listing phase.\n  - For each new listing, calls `InventoryManager.MoveToRetainerMarket` to commit a `qty × price` listing in a single API call, then waits for the server to actually land it before moving on.\n\nNo retainer↔retainer item moves. No deposit step. The character bag sources its own items and lists them directly under the chosen retainer.\n\n### Progress dialog\n\nWhile the executor is running, an auto-shown floating window surfaces:\n\n- Mode (Refresh all / Apply actions)\n- Current step localised (`Pre-staging saddle items to bag…`, `Waiting for sell dialog…`, etc.)\n- Two progress bars: retainers and individual actions\n- Cancel button\n\nThis is the \"is it stuck or just thinking\" window — phases like saddle pre-staging or per-listing server confirmation can take seconds.\n\n### Settings\n\n- **Auto-open on bell** — the main window appears whenever `RetainerList` opens, RepeatBuy-style.\n- **Language** — Auto (follow client) or explicit override across the six supported locales.\n\n## How market data gets in\n\nRestocker subscribes to **Dalamud's `IMarketBoard.OfferingsReceived`** event. Every time a market board search lands — whether you ran it from Restocker's reprice flow or browsed the market manually — listings are filtered (skip your own retainers, take the cheapest per HQ/NQ) and stored in an in-memory cache.\n\nThe reprice flow drives those searches itself by:\n\n1. Clicking the listing row in `RetainerSellList`,\n2. Picking *Adjust price* in the context menu,\n3. Pressing the *Compare prices* button on the price dialog.\n\nIt also resolves which item is actually displayed in the dialog (not what the snapshot says — those can drift if you sort the sell list) by reading the dialog's item name and looking it up in the Lumina `Item` sheet.\n\n## Co-existence with other plugins\n\n- **AutoRetainer** — both plugins drive the retainer summon flow. If both are loaded you get a one-time toast warning; pause one while the other runs. Restocker doesn't itself touch venture / quick exploration.\n- **PriceBuddy / Marketbuddy** — these listen on `OfferingsReceived` too, and most don't conflict; but if PriceBuddy auto-clicks *Compare prices* the moment a `RetainerSell` opens, that's harmless to Restocker since Restocker would have clicked it anyway. Disable their auto-click feature only if you see unwanted churn.\n\n## Build\n\n```\ndotnet build -c Release\n```\n\nOutput: `bin/Release/Restocker/Restocker.dll` plus `bin/Release/Restocker/latest.zip` (uploaded by the GitHub Actions release workflow).\n\nThe `<PlatformTarget>x64</PlatformTarget>` + `<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>` block in `Restocker.csproj` keeps the SDK 15 default `bin/x64/Release/` from breaking Dev Plugin Locations and the GHA workflow.\n\n## Test\n\n```\ndotnet test\n```\n\n`tests/Restocker.Tests/` is a pure-logic xUnit project — no Dalamud / Lumina references at runtime, so it can be run on plain .NET. Coverage:\n\n- `Planner` — stack splitting, listing-cap behaviour, qty clamping, free-slot capping, plan / overflow accounting\n- `LowestPriceResolver` — outlier rejection, single / empty input, gap-ratio threshold knobs\n- `AddonText` predicates — six-language pattern matching for the SelectString and ContextMenu entries\n- `RetainerSnapshot.MakeKey` / `CharacterSnapshot.MakeKey`\n\nGame-side wiring (executor state machine, addon callbacks) is verified in-game, not by tests.\n\n## Related projects\n\n- **[GilDelta](https://github.com/yagi2/GilDelta)** — same author's read-only gil tracker. Same SDK / project shape; useful as a reference for plugin scaffolding.\n- **[RepeatBuy](https://github.com/yagi2/RepeatBuy)** — earlier author plugin, smaller surface, also references the bell-aware UI behaviour.\n- **[yagi2/dalamud-plugins](https://github.com/yagi2/dalamud-plugins)** — the personal Dalamud plugin index that hosts Restocker, GilDelta, RepeatBuy.\n\n## License\n\nMIT."
+  },
+  "variants": [
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "bulk",
+          "variant_id": 2218
+        },
+        {
+          "kind": "tag",
+          "tag": "list",
+          "variant_id": 2218
+        },
+        {
+          "kind": "tag",
+          "tag": "market",
+          "variant_id": 2218
+        },
+        {
+          "kind": "tag",
+          "tag": "marketboard",
+          "variant_id": 2218
+        },
+        {
+          "kind": "tag",
+          "tag": "reprice",
+          "variant_id": 2218
+        },
+        {
+          "kind": "tag",
+          "tag": "retainer",
+          "variant_id": 2218
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.1.0.0",
+        "author": "yagi2",
+        "authors_json": "[\"yagi2\"]",
+        "category_tags_json": "[]",
+        "changelog": "0.1.0.0 — Initial release.",
+        "dalamud_api_level": 15,
+        "description": "Cross-retainer market workbench with a plan-then-apply flow. Reprice tab: per-retainer 'lowest -N g' / 'lowest exact' buttons walk each listing, fetch live market data via Dalamud's IMarketBoard.OfferingsReceived (skipping your own retainers, deduplicated per item/HQ), stage every change in a queue, then commit them all via a single Apply that calls SetRetainerMarketPrice directly. New listing tab: per-row qty x slots, target retainer combo, auto stack-splitting (e.g. 990 / 99 → ten listings of 99), and direct listing from character bag / Chocobo Saddlebag with no entrust step (saddle items are bulk-staged to the bag in one phase, then listed). Live progress dialog shows the current step (selecting retainer, fetching market data, listing, …) so long runs don't look frozen. Six-language UI (EN/JA/DE/FR/ZH/KO). Warns once at startup if AutoRetainer is also loaded since both drive retainer summoning.",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/yagi2/Restocker/releases/latest/download/latest.zip",
+        "download_link_testing": "https://github.com/yagi2/Restocker/releases/latest/download/latest.zip",
+        "download_link_update": "https://github.com/yagi2/Restocker/releases/latest/download/latest.zip",
+        "first_seen_utc": "2026-08-21T08:24:10Z",
+        "icon_url": "https://raw.githubusercontent.com/yagi2/Restocker/main/images/icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-26T03:31:07Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "Restocker",
+        "plugin_id": 1059,
+        "punchline": "Bulk reprice and split-list retainer market listings across all retainers.",
+        "raw_manifest_json": "{\"Author\":\"yagi2\",\"Name\":\"Restocker\",\"InternalName\":\"Restocker\",\"Punchline\":\"Bulk reprice and split-list retainer market listings across all retainers.\",\"Description\":\"Cross-retainer market workbench with a plan-then-apply flow. Reprice tab: per-retainer 'lowest -N g' / 'lowest exact' buttons walk each listing, fetch live market data via Dalamud's IMarketBoard.OfferingsReceived (skipping your own retainers, deduplicated per item/HQ), stage every change in a queue, then commit them all via a single Apply that calls SetRetainerMarketPrice directly. New listing tab: per-row qty x slots, target retainer combo, auto stack-splitting (e.g. 990 / 99 → ten listings of 99), and direct listing from character bag / Chocobo Saddlebag with no entrust step (saddle items are bulk-staged to the bag in one phase, then listed). Live progress dialog shows the current step (selecting retainer, fetching market data, listing, …) so long runs don't look frozen. Six-language UI (EN/JA/DE/FR/ZH/KO). Warns once at startup if AutoRetainer is also loaded since both drive retainer summoning.\",\"AssemblyVersion\":\"0.1.0.0\",\"RepoUrl\":\"https://github.com/yagi2/Restocker\",\"ApplicableVersion\":\"any\",\"Tags\":[\"retainer\",\"market\",\"marketboard\",\"bulk\",\"reprice\",\"list\"],\"DalamudApiLevel\":15,\"IconUrl\":\"https://raw.githubusercontent.com/yagi2/Restocker/main/images/icon.png\",\"DownloadLinkInstall\":\"https://github.com/yagi2/Restocker/releases/latest/download/latest.zip\",\"DownloadLinkUpdate\":\"https://github.com/yagi2/Restocker/releases/latest/download/latest.zip\",\"DownloadLinkTesting\":\"https://github.com/yagi2/Restocker/releases/latest/download/latest.zip\",\"Changelog\":\"0.1.0.0 — Initial release.\",\"IsHide\":false,\"IsTestingExclusive\":false,\"_SourceId\":\"yagi2-dalamud-plugins\",\"_SourceName\":\"yagi2 / dalamud-plugins\",\"_SourceUrl\":\"https://raw.githubusercontent.com/yagi2/dalamud-plugins/main/repo.json\",\"_Category\":\"crafting\"}",
+        "repo_url": "https://github.com/yagi2/Restocker",
+        "source_entry_key": "restocker|0.1.0.0|15|0|17",
+        "source_id": 579,
+        "tags_json": "[\"retainer\",\"market\",\"marketboard\",\"bulk\",\"reprice\",\"list\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 2218
+      }
+    }
+  ]
+}

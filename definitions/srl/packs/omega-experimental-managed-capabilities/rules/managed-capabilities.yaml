@@ -1,0 +1,266 @@
+schema: omega.sigmascope.ruleset.v1
+rules:
+  - schema: omega.sigmascope.rule.v1
+    id: capability.game.ui.callback
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      callback:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: AtkUnitBase}
+          targetName: {in-ci: [FireCallback, ReceiveEvent, SendAction, Invoke, Fire]}
+    condition: callback
+    emit:
+      fact: game.ui.callback
+      confidence: high
+      title: Game UI callback capability observed
+      description: A managed call site targets a game-addon callback/event mechanism.
+      category: game-automation
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.game.ui.synthetic-click
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      click:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: Click}
+          targetName: {in-ci: [Click, Select, Invoke, Fire, Execute]}
+      select_dialog:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: Select}
+          targetName: {in-ci: [Click, Select, Invoke, Fire, Execute]}
+    condition: {any: [click, select_dialog]}
+    emit:
+      fact: game.ui.synthetic_click
+      confidence: high
+      title: Synthetic game UI interaction observed
+      description: A managed call site targets click/selection functionality associated with game UI automation.
+      category: game-automation
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.game.character.target
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      target:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: TargetManager}
+          targetName: {in-ci: [set_Target, set_FocusTarget, SetTarget, SetFocusTarget, Target]}
+    condition: target
+    emit:
+      fact: game.character.target
+      confidence: high
+      title: Character target-control capability observed
+      description: A managed call site targets functionality capable of changing the player target/focus target.
+      category: game-automation
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.game.character.execute-action
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      action:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: ActionManager}
+          targetName: {in-ci: [UseAction, UseActionLocation, UseActionOnLocation, UseActionOnTarget]}
+    condition: action
+    emit:
+      fact: game.character.execute_action
+      confidence: high
+      title: Character action-execution capability observed
+      description: A managed call site targets action-execution APIs capable of combat, crafting, gathering, or other character actions.
+      category: game-automation
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.game.character.interact
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      interact:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: TargetSystem}
+          targetName: {in-ci: [InteractWithObject, Interact, Use, ExecuteInteraction]}
+    condition: interact
+    emit:
+      fact: game.character.interact
+      confidence: high
+      title: World/NPC interaction capability observed
+      description: A managed call site targets a mechanism capable of activating an NPC, object, or world target.
+      category: game-automation
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.game.character.teleport
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      teleport:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: Telepo}
+          targetName: {in-ci: [Teleport, TeleportWithTickets, ExecuteTeleport, SelectDestination]}
+    condition: teleport
+    emit:
+      fact: game.character.teleport
+      confidence: high
+      title: Teleport/travel-control capability observed
+      description: A managed call site targets teleport or travel-control functionality.
+      category: game-automation
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.game.character.move
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      navigation:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: Navmesh}
+          targetName: {in-ci: [Move, SetMovement, MoveTo, Pathfind, PathfindAndMoveTo, Stop, StopMoving]}
+      movement:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: Movement}
+          targetName: {in-ci: [Move, SetMovement, MoveTo, Pathfind, PathfindAndMoveTo, Stop, StopMoving]}
+    condition: {any: [navigation, movement]}
+    emit:
+      fact: game.character.move
+      confidence: high
+      title: Character movement capability observed
+      description: A managed call site targets movement/navigation functionality capable of moving the player character.
+      category: game-automation
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.game.camera.control
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      camera_named:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: Camera}
+          targetName: {in-ci: [SetCamera, SetPosition, SetRotation, SetYaw, SetPitch]}
+      camera_setter:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: Camera}
+          targetName: {starts-with-ci: set_}
+    condition: {any: [camera_named, camera_setter]}
+    emit:
+      fact: game.camera.control
+      confidence: high
+      title: Camera-control capability observed
+      description: A managed call site targets camera-mutating functionality.
+      category: game-automation
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.game.ui.inventory-control
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      inventory:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: Inventory}
+          targetName: {in-ci: [MoveItemSlot, DiscardItem, UseItem, MoveItem, Execute, HandleAction]}
+    condition: inventory
+    emit:
+      fact: game.ui.inventory_control
+      confidence: high
+      title: Inventory-control capability observed
+      description: A managed call site targets inventory-mutating or inventory-action functionality.
+      category: game-automation
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.game.ui.vendor-control
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      vendor:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: Shop}
+          targetName: {in-ci: [Buy, Sell, Purchase, Execute, HandleAction]}
+      vendor_named:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: Vendor}
+          targetName: {in-ci: [Buy, Sell, Purchase, Execute, HandleAction]}
+    condition: {any: [vendor, vendor_named]}
+    emit:
+      fact: game.ui.vendor_control
+      confidence: high
+      title: Vendor/shop-control capability observed
+      description: A managed call site targets shop functionality capable of buying or selling items.
+      category: game-automation
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.game.ui.retainer-control
+    kind: observation
+    status: experimental
+    requires: [managedCallSites]
+    selectors:
+      retainer:
+        collection: managedCallSites
+        where:
+          targetDeclaringType: {contains-ci: Retainer}
+          targetName: {in-ci: [Entrust, Withdraw, Sell, Execute, HandleAction, Select]}
+    condition: retainer
+    emit:
+      fact: game.ui.retainer_control
+      confidence: high
+      title: Retainer-control capability observed
+      description: A managed call site targets retainer-management functionality.
+      category: game-automation
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.input.keyboard-inject
+    kind: observation
+    status: experimental
+    requires: [nativeImports]
+    selectors:
+      native_input:
+        collection: nativeImports
+        where:
+          entryPoint: {in-ci: [SendInput, keybd_event]}
+    condition: native_input
+    emit:
+      fact: input.keyboard.inject
+      confidence: high
+      title: Keyboard input-injection capability observed
+      description: A native import exposes Windows keyboard/input injection functionality.
+      category: input
+
+  - schema: omega.sigmascope.rule.v1
+    id: capability.input.mouse-inject
+    kind: observation
+    status: experimental
+    requires: [nativeImports]
+    selectors:
+      native_input:
+        collection: nativeImports
+        where:
+          entryPoint: {in-ci: [SendInput, mouse_event]}
+    condition: native_input
+    emit:
+      fact: input.mouse.inject
+      confidence: high
+      title: Mouse input-injection capability observed
+      description: A native import exposes Windows mouse/input injection functionality.
+      category: input

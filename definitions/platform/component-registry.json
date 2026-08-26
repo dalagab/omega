@@ -1,0 +1,724 @@
+{
+  "byId": {
+    "omega.analysis-broker": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": false,
+        "queueRequests": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "git-state-publication-only",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "observation-request-resolution",
+      "id": "omega.analysis-broker",
+      "launch": {
+        "available": true,
+        "brokerDispatchable": false,
+        "mainLauncher": "docs/workflow-callers/analysis-broker-main.yml",
+        "mode": "reusable-workflow",
+        "requestMode": "analysis-request-state",
+        "workflow": ".github/workflows/analysis-broker.yml"
+      },
+      "name": "Omega Analysis Broker",
+      "purpose": "Resolve logical observation requests against component/collector registries, freshness and durable queue state without executing providers.",
+      "status": "active",
+      "type": "control-plane"
+    },
+    "omega.analysis-dispatcher": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": true,
+        "observations": false,
+        "queueRequests": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "github-workflow-control-only",
+        "writesEvidence": false
+      },
+      "branch": "main",
+      "executionClass": "queue-claim-and-component-dispatch",
+      "id": "omega.analysis-dispatcher",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mainLauncher": "docs/workflow-callers/analysis-dispatcher-main.yml",
+        "mode": "none"
+      },
+      "name": "Omega Analysis Dispatcher",
+      "purpose": "Run a bounded leased worker pool over broker work: atomically reserve eligible items, expose in-flight state to other dispatcher runs, and route only through explicit allow-listed main workflows; it does not choose providers or evaluate rules.",
+      "status": "active",
+      "type": "control-plane"
+    },
+    "omega.catalog": {
+      "authority": {
+        "catalogIdentity": true,
+        "dispatch": false,
+        "observations": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "bounded-public-catalog-acquisition",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "canonical-catalog-normalization",
+      "id": "omega.catalog",
+      "launch": {
+        "available": true,
+        "brokerDispatchable": false,
+        "mainLauncher": "external-main-caller",
+        "mode": "reusable-workflow",
+        "requestMode": "daily-or-manual-canonical-build",
+        "workflow": ".github/workflows/catalog-builder.yml"
+      },
+      "name": "Omega Catalog",
+      "purpose": "Reconcile discovery/configured/canonical history into authoritative plugin/source/variant identity and client projections.",
+      "status": "active",
+      "type": "catalog"
+    },
+    "omega.client": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "catalog-client-fetch",
+        "writesEvidence": false
+      },
+      "branch": "",
+      "executionClass": "dalamud-client-consumer",
+      "id": "omega.client",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "none"
+      },
+      "name": "Omega Client",
+      "purpose": "Consume compact catalog/security projections for plugin discovery and installation; never re-grade production evidence.",
+      "status": "active",
+      "type": "client"
+    },
+    "omega.deltascope": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "operator-research",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "read-only-research-workbench",
+      "id": "omega.deltascope",
+      "launch": {
+        "available": true,
+        "brokerDispatchable": false,
+        "mode": "reusable-workflow",
+        "requestMode": "developer-workbench",
+        "workflow": ".github/workflows/deltascope.yml"
+      },
+      "name": "DeltaScope",
+      "purpose": "Read-only developer/security research and explanation surface; never part of production scan decisions.",
+      "status": "active",
+      "type": "workbench"
+    },
+    "omega.discovery": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "public-discovery-only",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "ecosystem-discovery",
+      "id": "omega.discovery",
+      "launch": {
+        "available": true,
+        "brokerDispatchable": true,
+        "mainLauncher": ".github/workflows/catalog-discovery-launcher.yml",
+        "maxConcurrent": 1,
+        "mode": "reusable-workflow",
+        "requestMode": "full-refresh",
+        "workflow": ".github/workflows/catalog-discovery.yml"
+      },
+      "name": "Omega Discovery",
+      "purpose": "Continuously discover provenance-backed public ecosystem facts without canonical catalog authority.",
+      "status": "active",
+      "type": "intelligence"
+    },
+    "omega.evidence-v2": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "none",
+        "writesEvidence": true
+      },
+      "branch": "security-evidence-v2",
+      "executionClass": "immutable-evidence-storage",
+      "id": "omega.evidence-v2",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "none"
+      },
+      "name": "Security Evidence v2",
+      "purpose": "Retain immutable/current security observations, findings, lineage and analysis state.",
+      "status": "active",
+      "type": "evidence-store"
+    },
+    "omega.platform.main": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": true,
+        "observations": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "workflow-dependent",
+        "writesEvidence": false
+      },
+      "branch": "main",
+      "executionClass": "workflow-orchestration",
+      "id": "omega.platform.main",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "none"
+      },
+      "name": "Omega Main Control Plane",
+      "purpose": "Own thin launchers, scheduling and dispatch policy; security logic remains in component branches.",
+      "status": "active",
+      "type": "control-plane"
+    },
+    "omega.rebuilder": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "constrained-build-dependency-restore",
+        "sourceBuildExecution": true,
+        "writesEvidence": false
+      },
+      "branch": "rebuild",
+      "executionClass": "isolated-source-build",
+      "id": "omega.rebuilder",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "none"
+      },
+      "name": "Omega Build Provenance",
+      "purpose": "Produce reproducible source-to-artifact build proof for exact source/artifact subjects.",
+      "status": "planned",
+      "type": "scanner"
+    },
+    "omega.rift": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": true,
+        "network": "rift-defined",
+        "writesEvidence": false
+      },
+      "branch": "rift",
+      "executionClass": "isolated-runtime-analysis",
+      "id": "omega.rift",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "external-contract",
+        "workflow": "managed-by-rift-workstream"
+      },
+      "name": "Rift",
+      "purpose": "Provide neutral runtime observations. Implementation and launch wiring are owned by the separate Rift workstream.",
+      "status": "external",
+      "type": "scanner"
+    },
+    "omega.sigmascope": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "bounded-artifact-source-acquisition",
+        "writesEvidence": true
+      },
+      "branch": "sigmascope",
+      "executionClass": "static-security-analysis",
+      "id": "omega.sigmascope",
+      "launch": {
+        "available": true,
+        "brokerDispatchable": true,
+        "mainLauncher": "docs/workflow-callers/analysis-dispatch-sigmascope-main.yml",
+        "maxConcurrent": 1,
+        "mode": "reusable-workflow",
+        "requestAdapter": "tools/security/sigmascope_request_adapter.py",
+        "requestMode": "generic-analysis-request-v1",
+        "workflow": ".github/workflows/sigmascope.yml"
+      },
+      "name": "SigmaScope",
+      "purpose": "Perform bounded non-executing artifact/source/security analysis and registered specialist collection. Core requests use the canonical scan queue while typed specialist observations may route to bounded sibling lanes; Evidence-v2 publication remains serialized.",
+      "status": "active",
+      "type": "scanner"
+    },
+    "omega.stigma-1": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": false,
+        "securityFindings": true
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "none",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "deterministic-rule-evaluation",
+      "id": "omega.stigma-1",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "embedded"
+      },
+      "name": "Stigma-1",
+      "purpose": "Evaluate deterministic rules over retained typed observations and request additional observation classes without executing collectors.",
+      "status": "active",
+      "type": "rule-engine"
+    },
+    "omega.threat-intelligence": {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "live-intelligence-lookups",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "live-security-intelligence",
+      "id": "omega.threat-intelligence",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "embedded",
+        "workflow": ".github/workflows/catalog-builder.yml"
+      },
+      "name": "Omega Threat Intelligence",
+      "purpose": "Target component for time-dependent DNS/reputation/connectivity intelligence; current reputation collection remains embedded during transition.",
+      "status": "embedded-transition",
+      "type": "intelligence"
+    }
+  },
+  "components": [
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": false,
+        "queueRequests": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "git-state-publication-only",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "observation-request-resolution",
+      "id": "omega.analysis-broker",
+      "launch": {
+        "available": true,
+        "brokerDispatchable": false,
+        "mainLauncher": "docs/workflow-callers/analysis-broker-main.yml",
+        "mode": "reusable-workflow",
+        "requestMode": "analysis-request-state",
+        "workflow": ".github/workflows/analysis-broker.yml"
+      },
+      "name": "Omega Analysis Broker",
+      "purpose": "Resolve logical observation requests against component/collector registries, freshness and durable queue state without executing providers.",
+      "status": "active",
+      "type": "control-plane"
+    },
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": true,
+        "observations": false,
+        "queueRequests": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "github-workflow-control-only",
+        "writesEvidence": false
+      },
+      "branch": "main",
+      "executionClass": "queue-claim-and-component-dispatch",
+      "id": "omega.analysis-dispatcher",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mainLauncher": "docs/workflow-callers/analysis-dispatcher-main.yml",
+        "mode": "none"
+      },
+      "name": "Omega Analysis Dispatcher",
+      "purpose": "Run a bounded leased worker pool over broker work: atomically reserve eligible items, expose in-flight state to other dispatcher runs, and route only through explicit allow-listed main workflows; it does not choose providers or evaluate rules.",
+      "status": "active",
+      "type": "control-plane"
+    },
+    {
+      "authority": {
+        "catalogIdentity": true,
+        "dispatch": false,
+        "observations": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "bounded-public-catalog-acquisition",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "canonical-catalog-normalization",
+      "id": "omega.catalog",
+      "launch": {
+        "available": true,
+        "brokerDispatchable": false,
+        "mainLauncher": "external-main-caller",
+        "mode": "reusable-workflow",
+        "requestMode": "daily-or-manual-canonical-build",
+        "workflow": ".github/workflows/catalog-builder.yml"
+      },
+      "name": "Omega Catalog",
+      "purpose": "Reconcile discovery/configured/canonical history into authoritative plugin/source/variant identity and client projections.",
+      "status": "active",
+      "type": "catalog"
+    },
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "catalog-client-fetch",
+        "writesEvidence": false
+      },
+      "branch": "",
+      "executionClass": "dalamud-client-consumer",
+      "id": "omega.client",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "none"
+      },
+      "name": "Omega Client",
+      "purpose": "Consume compact catalog/security projections for plugin discovery and installation; never re-grade production evidence.",
+      "status": "active",
+      "type": "client"
+    },
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "operator-research",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "read-only-research-workbench",
+      "id": "omega.deltascope",
+      "launch": {
+        "available": true,
+        "brokerDispatchable": false,
+        "mode": "reusable-workflow",
+        "requestMode": "developer-workbench",
+        "workflow": ".github/workflows/deltascope.yml"
+      },
+      "name": "DeltaScope",
+      "purpose": "Read-only developer/security research and explanation surface; never part of production scan decisions.",
+      "status": "active",
+      "type": "workbench"
+    },
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "public-discovery-only",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "ecosystem-discovery",
+      "id": "omega.discovery",
+      "launch": {
+        "available": true,
+        "brokerDispatchable": true,
+        "mainLauncher": ".github/workflows/catalog-discovery-launcher.yml",
+        "maxConcurrent": 1,
+        "mode": "reusable-workflow",
+        "requestMode": "full-refresh",
+        "workflow": ".github/workflows/catalog-discovery.yml"
+      },
+      "name": "Omega Discovery",
+      "purpose": "Continuously discover provenance-backed public ecosystem facts without canonical catalog authority.",
+      "status": "active",
+      "type": "intelligence"
+    },
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "none",
+        "writesEvidence": true
+      },
+      "branch": "security-evidence-v2",
+      "executionClass": "immutable-evidence-storage",
+      "id": "omega.evidence-v2",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "none"
+      },
+      "name": "Security Evidence v2",
+      "purpose": "Retain immutable/current security observations, findings, lineage and analysis state.",
+      "status": "active",
+      "type": "evidence-store"
+    },
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": true,
+        "observations": false,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "workflow-dependent",
+        "writesEvidence": false
+      },
+      "branch": "main",
+      "executionClass": "workflow-orchestration",
+      "id": "omega.platform.main",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "none"
+      },
+      "name": "Omega Main Control Plane",
+      "purpose": "Own thin launchers, scheduling and dispatch policy; security logic remains in component branches.",
+      "status": "active",
+      "type": "control-plane"
+    },
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "constrained-build-dependency-restore",
+        "sourceBuildExecution": true,
+        "writesEvidence": false
+      },
+      "branch": "rebuild",
+      "executionClass": "isolated-source-build",
+      "id": "omega.rebuilder",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "none"
+      },
+      "name": "Omega Build Provenance",
+      "purpose": "Produce reproducible source-to-artifact build proof for exact source/artifact subjects.",
+      "status": "planned",
+      "type": "scanner"
+    },
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": true,
+        "network": "rift-defined",
+        "writesEvidence": false
+      },
+      "branch": "rift",
+      "executionClass": "isolated-runtime-analysis",
+      "id": "omega.rift",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "external-contract",
+        "workflow": "managed-by-rift-workstream"
+      },
+      "name": "Rift",
+      "purpose": "Provide neutral runtime observations. Implementation and launch wiring are owned by the separate Rift workstream.",
+      "status": "external",
+      "type": "scanner"
+    },
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "bounded-artifact-source-acquisition",
+        "writesEvidence": true
+      },
+      "branch": "sigmascope",
+      "executionClass": "static-security-analysis",
+      "id": "omega.sigmascope",
+      "launch": {
+        "available": true,
+        "brokerDispatchable": true,
+        "mainLauncher": "docs/workflow-callers/analysis-dispatch-sigmascope-main.yml",
+        "maxConcurrent": 1,
+        "mode": "reusable-workflow",
+        "requestAdapter": "tools/security/sigmascope_request_adapter.py",
+        "requestMode": "generic-analysis-request-v1",
+        "workflow": ".github/workflows/sigmascope.yml"
+      },
+      "name": "SigmaScope",
+      "purpose": "Perform bounded non-executing artifact/source/security analysis and registered specialist collection. Core requests use the canonical scan queue while typed specialist observations may route to bounded sibling lanes; Evidence-v2 publication remains serialized.",
+      "status": "active",
+      "type": "scanner"
+    },
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": false,
+        "securityFindings": true
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "none",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "deterministic-rule-evaluation",
+      "id": "omega.stigma-1",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "embedded"
+      },
+      "name": "Stigma-1",
+      "purpose": "Evaluate deterministic rules over retained typed observations and request additional observation classes without executing collectors.",
+      "status": "active",
+      "type": "rule-engine"
+    },
+    {
+      "authority": {
+        "catalogIdentity": false,
+        "dispatch": false,
+        "observations": true,
+        "securityFindings": false
+      },
+      "boundary": {
+        "hostileCodeExecution": false,
+        "network": "live-intelligence-lookups",
+        "writesEvidence": false
+      },
+      "branch": "sigmascope",
+      "executionClass": "live-security-intelligence",
+      "id": "omega.threat-intelligence",
+      "launch": {
+        "available": false,
+        "brokerDispatchable": false,
+        "mode": "embedded",
+        "workflow": ".github/workflows/catalog-builder.yml"
+      },
+      "name": "Omega Threat Intelligence",
+      "purpose": "Target component for time-dependent DNS/reputation/connectivity intelligence; current reputation collection remains embedded during transition.",
+      "status": "embedded-transition",
+      "type": "intelligence"
+    }
+  ],
+  "dispatchableComponents": [
+    "omega.discovery",
+    "omega.sigmascope"
+  ],
+  "launchableComponents": [
+    "omega.analysis-broker",
+    "omega.catalog",
+    "omega.deltascope",
+    "omega.discovery",
+    "omega.sigmascope"
+  ],
+  "policy": {
+    "brokerMayExecuteCode": false,
+    "collectorDefinition": "typed-observation-provider-owned-by-component",
+    "componentDefinition": "deployable-or-trust-boundary-unit",
+    "dispatcherMayChooseProviders": false,
+    "dispatcherMayExecuteQueueWorkflowPath": false,
+    "mainOwnsWorkflowLaunch": true,
+    "rulesMayDispatch": false
+  },
+  "revision": "component-registry-v1-19c1b7b330cc1f672077",
+  "schema": "omega.component-registry.v1"
+}

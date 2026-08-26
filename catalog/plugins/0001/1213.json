@@ -1,0 +1,166 @@
+{
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Cosmic Claw",
+    "first_seen_utc": "2026-08-24T12:11:33Z",
+    "internal_name": "HClawsweep",
+    "last_seen_utc": "2026-08-26T03:31:07Z",
+    "plugin_id": 1213
+  },
+  "presentation": {
+    "description": "Play the Cosmic Predator's Magitek Claw Sweep animation on demand, once or on a loop, while you're riding it. Purely cosmetic and local-only; nothing is sent to the server. Works on both the Cosmic Predator and the standard Magitek Predator. Commands: /clawsweep and /clawsweeploop.",
+    "image_urls_json": "[]",
+    "nsfw": 0,
+    "official": 0,
+    "plugin_id": 1213,
+    "preferred_variant_id": 3068,
+    "presentation_variant_id": 3068,
+    "rich_card": 0,
+    "richness_score": 1374,
+    "summary": "Haha claw goes whoosh",
+    "web_enriched": 1
+  },
+  "schema": "omega.catalog-json.plugin.v1",
+  "search": {
+    "author": "The Enceladeum",
+    "description": "Play the Cosmic Predator's Magitek Claw Sweep animation on demand, once or on a loop, while you're riding it. Purely cosmetic and local-only; nothing is sent to the server. Works on both the Cosmic Predator and the standard Magitek Predator. Commands: /clawsweep and /clawsweeploop.",
+    "internal_name": "HClawsweep",
+    "name": "Cosmic Claw",
+    "plugin_id": 1213,
+    "punchline": "Haha claw goes whoosh",
+    "tags": "animation cosmic mount other predator",
+    "website_text": "Play the Cosmic Predator's Magitek Claw Sweep animation locally in FFXIV — a small cosmetic Dalamud plugin (Cosmic Claw). # Cosmic Claw\n\nPlay the **Cosmic Predator**'s Magitek *Claw Sweep* animation on demand once, or on\na loop while you're riding it. Purely cosmetic and **local-only**: nothing is sent to\nthe server, so there's no unlock to earn and nothing for other players' clients to\nvalidate.\n\nDistributed as the **HClawsweep** plugin.\n\n## Commands\n\n- `/clawsweep` plays the claw sweep once, then settles back to idle.\n- `/clawsweeploop` toggles a continuous sweep. Run it again (or dismount) to stop; moving\n  around won't interrupt it.\n\nYou must be mounted on a Magitek Predator (Cosmic or standard); otherwise the command tells\nyou so.\n\n## Installing\n\n### From the custom repo (recommended)\n\n1. In game, open `/xlsettings` → **Experimental** → **Custom Plugin Repositories**.\n2. Paste this URL into a new row, click the **+**, then **Save**:\n\n   ```\n   https://raw.githubusercontent.com/Enceladeum/DalamudPlugins/main/repo.json\n   ```\n\n   This one URL is The Enceladeum's shared feed: it lists **every** plugin by this\n   author (and any added later), so there's nothing else to track down.\n3. Open the plugin installer (`/xlplugins`), search for **Cosmic Claw**, and click\n   **Install**.\n\n### Local dev build\n\n1. Build it (see **Building**). The output folder gets `HClawsweep.dll` and a generated\n   `HClawsweep.json` manifest.\n2. In game, `/xlsettings` → **Experimental** → **Dev Plugin Locations**. Add the path to\n   the built `HClawsweep.dll` (or its folder), save, and hit the reload/scan button.\n3. **Cosmic Claw** appears in **Installed Dev Plugins**; enable it.\n\n## How it works\n\nThe Magitek Predator's claw sweep is `ActionTimeline` row **15140**. While you're mounted\n(the Cosmic Predator is Mount row **440**; the standard Magitek Predator is row **121**, a\nreskin that shares the same animations), the plugin plays that timeline directly on the\n**ridden mount object** via `TimelineContainer.PlayActionTimeline(intro, loop)`:\n\n- **single** is `PlayActionTimeline(15140, 0)`: the sweep plays once, then the loop slot\n  settles back to base/idle.\n- **loop** keeps the sweep going. Row 15140 is a one-shot timeline that does not\n  self-repeat, so a plain `PlayActionTimeline(15140, 15140)` plays it through only once\n  and stops. Instead the plugin watches the mount's animation slots from the framework\n  update and re-asserts the sweep whenever it has left every slot. Re-asserting after the\n  fact, rather than fighting the animation controller each frame, is what lets running,\n  jumping and rotating play out without ever interrupting the loop.\n\nNo action request is sent to the server, so there's no grant or unlock that can fail; the\nanimation just plays on your client. By the same token other players don't see it: a\npurely client-side timeline is never broadcast, and appearance-sync tools (Mare, Lightless\nand the like) sync files and glamour, not local animation events.\n\nThe companion **Predatory Dash** is deliberately *not* implemented: it's a displacement (a\nposition change), and there's no server-safe way to author that purely client-side.\n\nEverything that touches game memory runs on the framework thread, and the plugin drops any\nrunning loop back to idle when it unloads.\n\n## Building\n\n```\ndotnet build -c Release\n```\n\nRequires the Dalamud dev environment (the `Dalamud.NET.Sdk` resolves the game\nreferences). The `Dalamud.NET.Sdk` version in the `.csproj` must match your installed\nDalamud (15.x here); the SDK generates the manifest and stamps the API level — there is\nno hand-written `.json`. Load `bin/Release/HClawsweep.dll` as a dev plugin.\n\n## Caveats\n\n- Only works while you're mounted on a **Magitek Predator** (Cosmic row 440 or standard\n  row 121).\n- Other players can't see the sweep. It plays only on your client; there's no server-side\n  trigger for a sync tool to relay, so VFX sync won't carry it to a friend.\n- The data values (`Mount` 440/121, `ActionTimeline` 15140) are game-data specific; if a\n  patch shuffles them and the sweep stops playing, those are the first things to\n  re-check.\n\n## License\n\nMIT — see [LICENSE](LICENSE)."
+  },
+  "variants": [
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "other",
+          "variant_id": 3068
+        },
+        {
+          "kind": "tag",
+          "tag": "animation",
+          "variant_id": 3068
+        },
+        {
+          "kind": "tag",
+          "tag": "cosmic",
+          "variant_id": 3068
+        },
+        {
+          "kind": "tag",
+          "tag": "mount",
+          "variant_id": 3068
+        },
+        {
+          "kind": "tag",
+          "tag": "predator",
+          "variant_id": 3068
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.1.1.0",
+        "author": "The Enceladeum",
+        "authors_json": "[\"The Enceladeum\"]",
+        "category_tags_json": "[\"other\"]",
+        "changelog": "0.1.1: loop now repeats until toggled off; also works on the standard Magitek Predator (mount 121); tidier command help and quieter chat.",
+        "dalamud_api_level": 15,
+        "description": "Play the Cosmic Predator's Magitek Claw Sweep animation on demand, once or on a loop, while you're riding it. Purely cosmetic and local-only; nothing is sent to the server. Works on both the Cosmic Predator and the standard Magitek Predator. Commands: /clawsweep and /clawsweeploop.",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip",
+        "download_link_testing": "https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip",
+        "download_link_update": "https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip",
+        "first_seen_utc": "2026-08-24T12:11:33Z",
+        "icon_url": "https://raw.githubusercontent.com/Enceladeum/HClawsweep/main/images/icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-26T03:31:07Z",
+        "last_update": 1781703870,
+        "minimum_dalamud_version": null,
+        "name": "Cosmic Claw",
+        "plugin_id": 1213,
+        "punchline": "Haha claw goes whoosh",
+        "raw_manifest_json": "{\"Author\":\"The Enceladeum\",\"Name\":\"Cosmic Claw\",\"InternalName\":\"HClawsweep\",\"Punchline\":\"Haha claw goes whoosh\",\"Description\":\"Play the Cosmic Predator's Magitek Claw Sweep animation on demand, once or on a loop, while you're riding it. Purely cosmetic and local-only; nothing is sent to the server. Works on both the Cosmic Predator and the standard Magitek Predator. Commands: /clawsweep and /clawsweeploop.\",\"Changelog\":\"0.1.1: loop now repeats until toggled off; also works on the standard Magitek Predator (mount 121); tidier command help and quieter chat.\",\"Tags\":[\"cosmic\",\"mount\",\"animation\",\"predator\"],\"CategoryTags\":[\"other\"],\"IsHide\":false,\"IsTestingExclusive\":false,\"ApplicableVersion\":\"any\",\"RepoUrl\":\"https://github.com/Enceladeum/HClawsweep\",\"AssemblyVersion\":\"0.1.1.0\",\"DalamudApiLevel\":15,\"LoadRequiredState\":0,\"LoadSync\":false,\"CanUnloadAsync\":false,\"LoadPriority\":0,\"AcceptsFeedback\":true,\"DownloadCount\":0,\"LastUpdate\":1781703870,\"DownloadLinkInstall\":\"https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip\",\"DownloadLinkUpdate\":\"https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip\",\"DownloadLinkTesting\":\"https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip\",\"IconUrl\":\"https://raw.githubusercontent.com/Enceladeum/HClawsweep/main/images/icon.png\",\"_SourceId\":\"enceladeum-dalamudplugins\",\"_SourceName\":\"Enceladeum / DalamudPlugins\",\"_SourceUrl\":\"https://raw.githubusercontent.com/Enceladeum/DalamudPlugins/main/repo.json\"}",
+        "repo_url": "https://github.com/Enceladeum/HClawsweep",
+        "source_entry_key": "hclawsweep|0.1.1.0|15|0|1",
+        "source_id": 672,
+        "tags_json": "[\"cosmic\",\"mount\",\"animation\",\"predator\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 3068
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "other",
+          "variant_id": 3652
+        },
+        {
+          "kind": "tag",
+          "tag": "animation",
+          "variant_id": 3652
+        },
+        {
+          "kind": "tag",
+          "tag": "cosmic",
+          "variant_id": 3652
+        },
+        {
+          "kind": "tag",
+          "tag": "mount",
+          "variant_id": 3652
+        },
+        {
+          "kind": "tag",
+          "tag": "predator",
+          "variant_id": 3652
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.1.1.0",
+        "author": "The Enceladeum",
+        "authors_json": "[\"The Enceladeum\"]",
+        "category_tags_json": "[\"other\"]",
+        "changelog": "0.1.1: loop now repeats until toggled off; also works on the standard Magitek Predator (mount 121); tidier command help and quieter chat.",
+        "dalamud_api_level": 15,
+        "description": "Play the Cosmic Predator's Magitek Claw Sweep animation on demand, once or on a loop, while you're riding it. Purely cosmetic and local-only; nothing is sent to the server. Works on both the Cosmic Predator and the standard Magitek Predator. Commands: /clawsweep and /clawsweeploop.",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip",
+        "download_link_testing": "https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip",
+        "download_link_update": "https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip",
+        "first_seen_utc": "2026-08-26T03:31:07Z",
+        "icon_url": "https://raw.githubusercontent.com/Enceladeum/HClawsweep/main/images/icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-26T03:31:07Z",
+        "last_update": 1781703870,
+        "minimum_dalamud_version": null,
+        "name": "Cosmic Claw",
+        "plugin_id": 1213,
+        "punchline": "Haha claw goes whoosh",
+        "raw_manifest_json": "{\"Author\":\"The Enceladeum\",\"Name\":\"Cosmic Claw\",\"InternalName\":\"HClawsweep\",\"Punchline\":\"Haha claw goes whoosh\",\"Description\":\"Play the Cosmic Predator's Magitek Claw Sweep animation on demand, once or on a loop, while you're riding it. Purely cosmetic and local-only; nothing is sent to the server. Works on both the Cosmic Predator and the standard Magitek Predator. Commands: /clawsweep and /clawsweeploop.\",\"Changelog\":\"0.1.1: loop now repeats until toggled off; also works on the standard Magitek Predator (mount 121); tidier command help and quieter chat.\",\"Tags\":[\"cosmic\",\"mount\",\"animation\",\"predator\"],\"CategoryTags\":[\"other\"],\"IsHide\":false,\"IsTestingExclusive\":false,\"ApplicableVersion\":\"any\",\"RepoUrl\":\"https://github.com/Enceladeum/HClawsweep\",\"AssemblyVersion\":\"0.1.1.0\",\"DalamudApiLevel\":15,\"LoadRequiredState\":0,\"LoadSync\":false,\"CanUnloadAsync\":false,\"LoadPriority\":0,\"AcceptsFeedback\":true,\"DownloadCount\":0,\"LastUpdate\":1781703870,\"DownloadLinkInstall\":\"https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip\",\"DownloadLinkUpdate\":\"https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip\",\"DownloadLinkTesting\":\"https://github.com/Enceladeum/HClawsweep/releases/latest/download/latest.zip\",\"IconUrl\":\"https://raw.githubusercontent.com/Enceladeum/HClawsweep/main/images/icon.png\",\"_SourceId\":\"enceladeum-dalamudplugins\",\"_SourceName\":\"Enceladeum / DalamudPlugins\",\"_SourceUrl\":\"https://raw.githubusercontent.com/Enceladeum/DalamudPlugins/main/repo.json\",\"_Category\":\"glamour\"}",
+        "repo_url": "https://github.com/Enceladeum/HClawsweep",
+        "source_entry_key": "hclawsweep|0.1.1.0|15|0|14",
+        "source_id": 690,
+        "tags_json": "[\"cosmic\",\"mount\",\"animation\",\"predator\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 3652
+      }
+    }
+  ]
+}
