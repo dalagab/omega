@@ -48,9 +48,79 @@ jobs:
     uses: ./.github/workflows/worker-images.yml
     secrets: inherit
 
+  bootstrap-operational-state:
+    name: Bootstrap and dispatch Phase-3 collector state
+    needs: prepare-worker-images
+    uses: ./.github/workflows/security-reconcile.yml
+    secrets: inherit
+
+  wait-for-operational-state:
+    name: Wait for all required collector lanes to settle
+    needs: bootstrap-operational-state
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Wait for freezeable durable work state
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          state_dir="$RUNNER_TEMP/security-work-state"
+          rm -rf "$state_dir"
+          git init -q "$state_dir"
+          git -C "$state_dir" remote add origin "https://github.com/${{ github.repository }}.git"
+          gh auth setup-git
+
+          for attempt in $(seq 1 270); do
+            echo "Phase-3 settlement check $attempt/270"
+            git -C "$state_dir" fetch --force --no-tags --depth=1 origin refs/heads/security-work-state
+            git -C "$state_dir" reset --hard -q FETCH_HEAD
+
+            set +e
+            python tools/orchestration/work_state_readiness.py \
+              --work-state "$state_dir" \
+              --policy security-definitions/orchestration/work-policy.json \
+              --output "$RUNNER_TEMP/work-state-readiness.json"
+            status=$?
+            set -e
+
+            cat "$RUNNER_TEMP/work-state-readiness.json"
+            if [ "$status" -eq 0 ]; then
+              cat "$RUNNER_TEMP/work-state-readiness.json" >> "$GITHUB_STEP_SUMMARY"
+              echo "All implemented collector queues are settled and ready for the freeze boundary."
+              exit 0
+            fi
+            if [ "$status" -eq 20 ]; then
+              cat "$RUNNER_TEMP/work-state-readiness.json" >> "$GITHUB_STEP_SUMMARY"
+              echo "::error::A required collector queue reached blocked/terminal state. Refusing Phase-4 migration."
+              exit 20
+            fi
+            if [ "$status" -ne 10 ]; then
+              echo "::error::Unexpected work-state readiness exit code: $status"
+              exit "$status"
+            fi
+            # Worker completions normally wake the reconciler themselves. Re-dispatch it
+            # periodically as a recovery path for delayed retries or a missed wake-up.
+            if [ $((attempt % 6)) -eq 0 ]; then
+              gh workflow run security-reconcile.yml --repo "${{ github.repository }}" --ref "${GITHUB_REF_NAME}"
+            fi
+            sleep 20
+          done
+          echo "::error::Timed out waiting for the Phase-3 collector lanes to settle."
+          exit 21
+
   freeze-current-definitions:
     name: Freeze current SigmaScope code into catalog/Definitions
-    needs: prepare-worker-images
+    needs: wait-for-operational-state
     uses: ./.github/workflows/catalog-freeze.yml
     with:
       allow_source_removal: false

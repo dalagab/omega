@@ -105,26 +105,41 @@ jobs:
       - name: Record security-services source commit
         id: security_source
         shell: bash
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v6
+        env:
+          SECURITY_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$SECURITY_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid immutable security-services source SHA: $SECURITY_SOURCE_SHA"; exit 3; }
+          echo "sha=$SECURITY_SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - name: Checkout authoritative Security Evidence v2
+        uses: actions/checkout@v6
         with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 1, persist-credentials: false}
-      - uses: actions/checkout@v6
+      - name: Checkout previous frozen catalog state
+        uses: actions/checkout@v6
         with: {ref: catalog-data, path: catalog/previous-state, fetch-depth: 1, persist-credentials: false}
-      - uses: actions/checkout@v6
+      - name: Checkout durable security work state
+        uses: actions/checkout@v6
         with: {ref: security-work-state, path: catalog/work-state, fetch-depth: 1, persist-credentials: false}
-      - uses: actions/checkout@v6
+      - name: Checkout catalog discovery lane result
+        uses: actions/checkout@v6
         with: {ref: catalog-discovery-work-state, path: catalog/lane-results/catalog-discovery, fetch-depth: 1, persist-credentials: false}
-      - uses: actions/checkout@v6
+      - name: Checkout catalog enrichment lane result
+        uses: actions/checkout@v6
         with: {ref: catalog-enrichment-state, path: catalog/lane-results/catalog-enrichment, fetch-depth: 1, persist-credentials: false}
-      - uses: actions/checkout@v6
+      - name: Checkout website scrape lane result
+        uses: actions/checkout@v6
         with: {ref: catalog-scrape-state, path: catalog/lane-results/catalog-scrape, fetch-depth: 1, persist-credentials: false}
-      - uses: actions/checkout@v6
+      - name: Checkout source HEAD observation lane result
+        uses: actions/checkout@v6
         with: {ref: source-head-state, path: catalog/lane-results/source-head-observation, fetch-depth: 1, persist-credentials: false}
-      - uses: actions/checkout@v6
+      - name: Checkout threat-intelligence lane result
+        uses: actions/checkout@v6
         with: {ref: threat-intelligence-state, path: catalog/lane-results/threat-intelligence, fetch-depth: 1, persist-credentials: false}
-      - uses: actions/checkout@v6
+      - name: Checkout OSV advisory lane result
+        uses: actions/checkout@v6
         with: {ref: osv-advisory-state, path: catalog/lane-results/osv-advisories, fetch-depth: 1, persist-credentials: false}
-      - uses: actions/checkout@v6
+      - name: Checkout secondary-security definitions lane result
+        uses: actions/checkout@v6
         with: {ref: secondary-security-state, path: catalog/lane-results/secondary-security-definitions, fetch-depth: 1, persist-credentials: false}
       - name: Validate all lane results against settled durable queues
         run: >-
