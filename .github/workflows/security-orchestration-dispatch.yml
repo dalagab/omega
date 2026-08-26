@@ -1,0 +1,41 @@
+name: Omega security services · internal orchestration dispatcher
+
+# Default-branch registration copy only. Internal callers always dispatch this
+# workflow with --ref sigmascope, causing GitHub to execute the branch-local
+# router implementation at this same path.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Internal routing mode (worker or reconcile)
+        required: true
+        type: string
+      queue_id:
+        description: Durable queue id when mode=worker
+        required: false
+        type: string
+        default: ""
+      work_id:
+        description: Durable work item id when mode=worker
+        required: false
+        type: string
+        default: ""
+      claim_token:
+        description: Durable lease claim token when mode=worker
+        required: false
+        type: string
+        default: ""
+
+permissions: {}
+
+jobs:
+  registration-only:
+    name: Internal dispatcher registration only
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Refuse direct main execution
+        shell: bash
+        run: |
+          echo "::error::This is an internal registration copy. Security orchestration dispatches it with Branch= sigmascope."
+          exit 2
