@@ -108,6 +108,37 @@ class AnalysisRevisionTests(unittest.TestCase):
             self.assertEqual(first["artifactAnalysisRevision"], second["artifactAnalysisRevision"])
             self.assertNotEqual(first["sourceAnalysisRevision"], second["sourceAnalysisRevision"])
 
+    def test_service_registry_change_changes_artifact_and_source_revisions(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-analysis-revision-services-") as td:
+            repo = self.copy_analysis_tree(Path(td))
+            first = analysis_revision.compute(repo)
+            registry = repo / "security-definitions/services/registry.json"
+            registry.write_text(registry.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+            second = analysis_revision.compute(repo)
+            self.assertNotEqual(first["artifactAnalysisRevision"], second["artifactAnalysisRevision"])
+            self.assertNotEqual(first["sourceAnalysisRevision"], second["sourceAnalysisRevision"])
+
+    def test_semantic_api_registry_change_changes_only_source_revision(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-analysis-revision-semantic-api-") as td:
+            repo = self.copy_analysis_tree(Path(td))
+            first = analysis_revision.compute(repo)
+            registry = repo / "security-definitions/semantic-apis/registry.json"
+            registry.write_text(registry.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+            second = analysis_revision.compute(repo)
+            self.assertEqual(first["artifactAnalysisRevision"], second["artifactAnalysisRevision"])
+            self.assertNotEqual(first["sourceAnalysisRevision"], second["sourceAnalysisRevision"])
+
+    def test_source_behavior_collector_change_changes_only_source_revision(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-analysis-revision-source-behavior-") as td:
+            repo = self.copy_analysis_tree(Path(td))
+            first = analysis_revision.compute(repo)
+            helper = repo / "tools/catalog/source_behavior.py"
+            helper.write_text(helper.read_text(encoding="utf-8") + "\nOMEGA_SOURCE_BEHAVIOR_REVISION_TEST_FIXTURE = 1\n", encoding="utf-8")
+            second = analysis_revision.compute(repo)
+            self.assertEqual(first["artifactAnalysisRevision"], second["artifactAnalysisRevision"])
+            self.assertNotEqual(first["sourceAnalysisRevision"], second["sourceAnalysisRevision"])
+
+
 
 if __name__ == "__main__":
     unittest.main()

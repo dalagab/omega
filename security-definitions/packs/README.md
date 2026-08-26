@@ -15,15 +15,16 @@ Production workers must never read this source tree directly. The only productio
 
 ## Current library
 
-DeltaScope 4.5 ships **6 packs, 54 rules and 14 fixtures**:
+The current source tree ships **7 packs, 66 rules and 17 fixtures**:
 
 - `omega-core-static-primitives` — **14 reviewed** literal-backed legacy static observation-to-fact migrations;
 - `omega-core-compound` — **2 reviewed** legacy compound correlations;
 - `omega-experimental-managed-capabilities` — **13 experimental** managed-call/game-input capability facts;
-- `omega-experimental-network-endpoints` — **9 experimental** endpoint-classification facts;
+- `omega-experimental-network-endpoints` — **12 experimental** endpoint-classification facts;
 - `omega-experimental-provenance` — **8 experimental** source-provenance/attribution facts;
-- `omega-experimental-correlations` — **8 experimental** higher-order research correlations, including a typed Deep Scan request example.
+- `omega-experimental-correlations` — **11 experimental** higher-order research correlations, including a typed Deep Scan request example;
+- `omega-experimental-source-behavior` — **6 experimental** source-operation/control/data-flow behavior facts.
 
 The reviewed production-tier migration set is therefore **16 rules**. It is parity-tested against the current hard-coded legacy behavior over **147 primitive cases** and **32 compound combinations**. Production SRL finding writeback remains separately gated by the cutover process; being reviewed/frozen does not itself switch production evaluation on.
 
-The 38 experimental rules exist so DeltaScope has a useful corpus for inspection, learning, forking, fixture replay, and future review. Experimental rules are never production-active merely because they compile or freeze.
+The 50 experimental rules exist so DeltaScope has a useful corpus for inspection, learning, forking, fixture replay, and future review. Experimental rules are never production-active merely because they compile or freeze.

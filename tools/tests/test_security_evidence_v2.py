@@ -324,6 +324,15 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
                     "provenance": {"repository": "https://github.com/example/fixture", "selectedRef": "1.0.0"},
                     "dependencyIntelligence": {
                         "sourceFiles": [{"path": "FixturePlugin/Plugin.cs", "sha256": "b" * 64}],
+                        "sourceBehavior": {
+                            "schema": "omega.sigmascope.source-behavior.v1", "contractVersion": 1,
+                            "operations": [{"operationId": "op-a", "origin": "source", "path": "FixturePlugin/Plugin.cs", "line": 10, "method": "Run", "operation": "network.http.request", "symbol": "httpClient.GetStringAsync", "receiver": "httpClient", "member": "GetStringAsync", "matcherId": "dotnet.http.get", "semanticApiRegistryRevision": "semantic-apis-v1-test", "awaited": True, "semanticTarget": "", "guardConditionId": "", "delayMs": 0, "serviceId": "ffxiv.universalis", "serviceName": "Universalis", "serviceRecognition": "established", "serviceCategories": ["ffxiv-data"], "serviceCapabilities": ["ffxiv.market-data"], "serviceRegistryRevision": "services-v1-test", "upstreamServiceIds": [], "upstreamServiceCapabilities": [], "evidence": ["source:FixturePlugin/Plugin.cs:10"]}],
+                            "flowEdges": [],
+                            "triggers": [],
+                            "conditions": [],
+                            "dataFlow": [{"edgeId": "data-a", "origin": "source", "path": "FixturePlugin/Plugin.cs", "method": "Run", "fromOperationId": "op-a", "toOperationId": "op-b", "fromOperation": "network.http.request", "toOperation": "game.marketboard.purchase", "relation": "value-used-by", "valueId": "prices", "fromServiceCapabilities": ["ffxiv.market-data"], "evidence": ["source:FixturePlugin/Plugin.cs:11"]}],
+                            "summary": {"analysisMode": "bounded-lexical-source-behavior"},
+                        },
                         "sourceBuildIntelligence": {
                             "schema": "omega.sigmascope.source-build-intelligence.v1", "contractVersion": 1,
                             "projects": [{"origin": "source", "path": "FixturePlugin/FixturePlugin.csproj", "role": "primary", "sdk": "Dalamud.NET.Sdk/13.0.0", "targetFrameworks": ["net10.0-windows"], "runtimeIdentifiers": [], "packageReferenceCount": 1, "projectReferenceCount": 0, "importCount": 0, "conditionalItemCount": 0}],
@@ -354,7 +363,8 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             for name in (
                 "nativeImports", "networkEndpoints", "staticPatternMatches", "sourceFiles",
                 "sourceBuildProjects", "sourceBuildEdges", "sourceBuildInputs", "sourceBuildEnvironment",
-                "sourceDependencyDeclarations", "sourceReleaseWorkflows", "binaryClassifications",
+                "sourceDependencyDeclarations", "sourceReleaseWorkflows", "sourceOperations", "sourceFlowEdges",
+                "sourceTriggers", "sourceConditions", "sourceDataFlow", "binaryClassifications",
                 "developerProfile", "sourceAttribution", "sourceProvenance", "secondarySecurity",
                 "artifactIdentity", "manifestObservation",
             ):

@@ -96,6 +96,49 @@ class SecondaryDefinitionsTests(unittest.TestCase):
             validation = definitions_snapshot.verify_snapshot(definitions_root=root / "definitions-capabilities")
             self.assertTrue(validation["ok"], validation["errors"])
 
+
+    def test_semantic_service_and_api_registries_are_frozen_first_class_payloads(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-semantic-definitions-") as td:
+            root = Path(td)
+            bindir = self._fake_yara(root)
+            with mock.patch.dict(os.environ, {"PATH": str(bindir) + os.pathsep + os.environ.get("PATH", "")}):
+                index = self._build(root, "semantic-registries")
+            service = index.get("serviceRegistry") or {}
+            api = index.get("semanticApiRegistry") or {}
+            self.assertEqual("omega.service-registry.v1", service.get("schema"))
+            self.assertTrue(str(service.get("revision") or "").startswith("services-v1-"))
+            self.assertEqual("semantic/service-registry.json", service.get("path"))
+            self.assertGreaterEqual(int(service.get("serviceCount") or 0), 7)
+            self.assertEqual("omega.semantic-api-registry.v1", api.get("schema"))
+            self.assertTrue(str(api.get("revision") or "").startswith("semantic-apis-v1-"))
+            self.assertEqual("semantic/api-registry.json", api.get("path"))
+            self.assertGreaterEqual(int(api.get("sourceMatcherCount") or 0), 8)
+            definitions = root / "definitions-semantic-registries"
+            self.assertTrue((definitions / service["path"]).is_file())
+            self.assertTrue((definitions / api["path"]).is_file())
+            worker = definitions / "worker"
+            self.assertTrue((worker / "security-definitions/services/registry.json").is_file())
+            self.assertTrue((worker / "security-definitions/semantic-apis/registry.json").is_file())
+            validation = definitions_snapshot.verify_snapshot(definitions_root=definitions)
+            self.assertTrue(validation["ok"], validation["errors"])
+            self.assertEqual(service["revision"], validation["serviceRegistryRevision"])
+            self.assertEqual(api["revision"], validation["semanticApiRegistryRevision"])
+
+    def test_semantic_registry_tampering_is_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-semantic-definitions-tamper-") as td:
+            root = Path(td)
+            bindir = self._fake_yara(root)
+            with mock.patch.dict(os.environ, {"PATH": str(bindir) + os.pathsep + os.environ.get("PATH", "")}):
+                self._build(root, "semantic-tamper")
+            definitions = root / "definitions-semantic-tamper"
+            frozen = definitions / "semantic/service-registry.json"
+            document = json.loads(frozen.read_text(encoding="utf-8"))
+            document["services"][0]["purpose"] = "tampered"
+            frozen.write_text(json.dumps(document), encoding="utf-8")
+            validation = definitions_snapshot.verify_snapshot(definitions_root=definitions)
+            self.assertFalse(validation["ok"])
+            self.assertTrue(any("serviceRegistry" in item for item in validation["errors"]))
+
     def test_capability_registry_tampering_is_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-capability-definitions-tamper-") as td:
             root = Path(td)

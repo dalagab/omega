@@ -62,6 +62,7 @@ from source_resolution import github_repository_url, public_repository_url, sour
 from public_git_source import MAX_GIT_TREE_ENTRIES, PublicGitSource
 from plugin_profile import observe_profile
 import source_build_intelligence
+import source_behavior
 from capability_registry import legacy_capability_ids, load_registry
 from behavior_consistency import refresh_behavior_consistency
 from artifact_source_model import (
@@ -1402,6 +1403,7 @@ def empty_dependency_intelligence(origin: str) -> dict:
         "sourceFiles": [],
         "networkEndpoints": [],
         "staticPatternMatches": [],
+        "sourceBehavior": {},
         "endpointSummary": {},
         "componentSummary": {},
         "limits": {"truncated": False, "droppedByCollection": {}},
@@ -2441,6 +2443,16 @@ def _inspect_source_tree(
     files_scanned = 0
     total_text = 0
     if analyze:
+        # Source behavior is scoped to the selected plugin source surface so an unrelated
+        # project elsewhere in a monorepo cannot contribute behavioral observations. Candidate
+        # resolution uses analyze=False and deliberately does not pay this analysis cost or
+        # advertise an empty collection as a complete negative result.
+        behavior_entries = {
+            path: source_entries[path]
+            for path in scope.get("criticalPaths") or []
+            if path in source_entries
+        }
+        intel["sourceBehavior"] = source_behavior.collect(behavior_entries, read_file)
         for logical_name in sorted(scope["criticalPaths"], key=str.casefold):
             if files_scanned >= 500 or total_text >= MAX_SOURCE_TEXT_TOTAL:
                 break

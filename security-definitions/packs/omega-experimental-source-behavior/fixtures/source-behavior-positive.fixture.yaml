@@ -1,0 +1,50 @@
+schema: omega.sigmascope.rule-fixture.v1
+name: source behavior market purchase relationships
+observations:
+  sourceOperations:
+    - operationId: op-request
+      operation: network.http.request
+      serviceCapabilities: [ffxiv.market-data]
+  sourceDataFlow:
+    - edgeId: data-request-purchase
+      relation: value-used-by
+      fromOperation: data.select
+      toOperation: game.marketboard.purchase
+      fromServiceCapabilities: [ffxiv.market-data]
+  sourceFlowEdges:
+    - edgeId: flow-move-purchase
+      relation: happens-before
+      fromOperation: game.character.move
+      toOperation: game.marketboard.purchase
+      minimumDelayMs: 0
+    - edgeId: flow-delay-purchase
+      relation: happens-before
+      fromOperation: time.delay
+      toOperation: game.marketboard.purchase
+      minimumDelayMs: 500
+    - edgeId: flow-event-purchase
+      relation: triggers
+      fromOperation: trigger.event
+      toOperation: game.marketboard.purchase
+      minimumDelayMs: 0
+    - edgeId: flow-periodic-purchase
+      relation: triggers
+      fromOperation: trigger.periodic
+      toOperation: game.marketboard.purchase
+      minimumDelayMs: 5000
+expected:
+  facts:
+    - behavior.market-data.retrieve
+    - behavior.marketboard.delayed-purchase
+    - behavior.marketboard.external-data-driven-purchase
+    - behavior.marketboard.navigation-before-purchase
+    - behavior.marketboard.periodic-purchase
+    - behavior.marketboard.triggered-purchase
+  matchedRules:
+    - source-behavior.delay-before-market-purchase
+    - source-behavior.event-triggered-market-purchase
+    - source-behavior.market-data-drives-purchase
+    - source-behavior.market-data-request
+    - source-behavior.navigation-before-market-purchase
+    - source-behavior.periodic-market-purchase
+  findingIds: []

@@ -99,6 +99,26 @@ COLLECTIONS: dict[str, dict[str, Any]] = {
         "semanticClass": "source-build-context", "srlEligible": True, "origin": "source",
         "authority": "developer-source-context-only",
     },
+    "sourceOperations": {
+        "schema": "omega.sigmascope.observation.source-operation.v1", "backingDataset": "sourceOperations",
+        "semanticClass": "source-behavior-observation", "srlEligible": True, "origin": "source", "sameRecordSemantics": True,
+    },
+    "sourceFlowEdges": {
+        "schema": "omega.sigmascope.observation.source-flow-edge.v1", "backingDataset": "sourceFlowEdges",
+        "semanticClass": "source-behavior-observation", "srlEligible": True, "origin": "source", "sameRecordSemantics": True,
+    },
+    "sourceTriggers": {
+        "schema": "omega.sigmascope.observation.source-trigger.v1", "backingDataset": "sourceTriggers",
+        "semanticClass": "source-behavior-observation", "srlEligible": True, "origin": "source", "sameRecordSemantics": True,
+    },
+    "sourceConditions": {
+        "schema": "omega.sigmascope.observation.source-condition.v1", "backingDataset": "sourceConditions",
+        "semanticClass": "source-behavior-observation", "srlEligible": True, "origin": "source", "sameRecordSemantics": True,
+    },
+    "sourceDataFlow": {
+        "schema": "omega.sigmascope.observation.source-data-flow.v1", "backingDataset": "sourceDataFlow",
+        "semanticClass": "source-behavior-observation", "srlEligible": True, "origin": "source", "sameRecordSemantics": True,
+    },
     "binaryClassifications": {
         "schema": "omega.sigmascope.observation.binary-classifications.v1", "backingDataset": "binaryClassifications",
         "semanticClass": "observation", "srlEligible": True, "origin": "artifact",
@@ -272,6 +292,7 @@ def report_observation_rows(report_or_row: dict[str, Any]) -> dict[str, list[dic
     source = report.get("source") if isinstance(report.get("source"), dict) else {}
     source_intel = source.get("dependencyIntelligence") if isinstance(source.get("dependencyIntelligence"), dict) else {}
     source_build = source_intel.get("sourceBuildIntelligence") if isinstance(source_intel.get("sourceBuildIntelligence"), dict) else {}
+    source_behavior = source_intel.get("sourceBehavior") if isinstance(source_intel.get("sourceBehavior"), dict) else {}
     package = report.get("package") if isinstance(report.get("package"), dict) else {}
 
     profile = source.get("developerProfile") if isinstance(source.get("developerProfile"), dict) else {}
@@ -286,6 +307,11 @@ def report_observation_rows(report_or_row: dict[str, Any]) -> dict[str, list[dic
         "networkEndpoints": [dict(item) for item in intelligence.get("networkEndpoints") or [] if isinstance(item, dict)],
         "staticPatternMatches": [dict(item) for item in intelligence.get("staticPatternMatches") or [] if isinstance(item, dict)],
         "sourceFiles": [dict(item) for item in source_intel.get("sourceFiles") or intelligence.get("sourceFiles") or [] if isinstance(item, dict)],
+        "sourceOperations": [dict(item) for item in source_behavior.get("operations") or [] if isinstance(item, dict)],
+        "sourceFlowEdges": [dict(item) for item in source_behavior.get("flowEdges") or [] if isinstance(item, dict)],
+        "sourceTriggers": [dict(item) for item in source_behavior.get("triggers") or [] if isinstance(item, dict)],
+        "sourceConditions": [dict(item) for item in source_behavior.get("conditions") or [] if isinstance(item, dict)],
+        "sourceDataFlow": [dict(item) for item in source_behavior.get("dataFlow") or [] if isinstance(item, dict)],
         "sourceBuildProjects": [dict(item) for item in source_build.get("projects") or [] if isinstance(item, dict)],
         "sourceBuildEdges": [dict(item) for item in source_build.get("edges") or [] if isinstance(item, dict)],
         "sourceBuildInputs": [dict(item) for item in source_build.get("inputs") or [] if isinstance(item, dict)],
@@ -323,6 +349,13 @@ def report_collection_complete(report_or_row: dict[str, Any], collection_name: s
         source_intel = source.get("dependencyIntelligence") if isinstance(source.get("dependencyIntelligence"), dict) else {}
         source_build = source_intel.get("sourceBuildIntelligence") if isinstance(source_intel.get("sourceBuildIntelligence"), dict) else {}
         return int(source_build.get("contractVersion") or 0) == 1
+    if collection_name in {
+        "sourceOperations", "sourceFlowEdges", "sourceTriggers", "sourceConditions", "sourceDataFlow",
+    }:
+        source = report.get("source") if isinstance(report.get("source"), dict) else {}
+        source_intel = source.get("dependencyIntelligence") if isinstance(source.get("dependencyIntelligence"), dict) else {}
+        source_behavior = source_intel.get("sourceBehavior") if isinstance(source_intel.get("sourceBehavior"), dict) else {}
+        return int(source_behavior.get("contractVersion") or 0) == 1
     return False
 
 

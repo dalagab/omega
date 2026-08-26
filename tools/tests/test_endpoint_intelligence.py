@@ -28,6 +28,28 @@ class EndpointIntelligenceTests(unittest.TestCase):
         self.assertEqual("https://discord.com/api/webhooks/<redacted>", item["url"])
         self.assertTrue(item["concreteDestinationEvidence"])
 
+    def test_registered_service_metadata_is_definition_backed(self) -> None:
+        endpoints = endpoint_candidates(
+            'const string url = "https://universalis.app/api/v2/Europe/5333";',
+            "source:Plugin.cs",
+        )
+        self.assertEqual(1, len(endpoints))
+        item = endpoints[0]
+        self.assertEqual("recognised-platform", item["classification"])
+        self.assertEqual("ffxiv.universalis", item["serviceId"])
+        self.assertIn("ffxiv.market-data", item["serviceCapabilities"])
+        self.assertTrue(item["serviceRegistryRevision"].startswith("services-v1-"))
+
+    def test_special_endpoint_classification_keeps_service_identity(self) -> None:
+        endpoints = endpoint_candidates(
+            'https://discord.com/api/webhooks/123456789012345678901234/abcdefghijklmnopqrstuvwxyzABCDE',
+            "source:Plugin.cs",
+        )
+        item = endpoints[0]
+        self.assertEqual("webhook-endpoint", item["classification"])
+        self.assertEqual("platform.discord", item["serviceId"])
+        self.assertEqual("established", item["serviceRecognition"])
+
     def test_binary_certificate_url_is_inventory_evidence_not_destination(self) -> None:
         endpoints = endpoint_candidates(
             "https://ocsp.digicert.com/ https://api.unknown-service.test/v1",

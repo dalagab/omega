@@ -89,6 +89,8 @@ SECURITY_COLLECTIONS: dict[str, dict[str, Any]] = {
         "fields": {
             "url": "string", "host": "string", "origin": "string", "originType": "string",
             "classification": "string", "purpose": "string", "confidence": "string",
+            "serviceId": "string", "serviceName": "string", "serviceRecognition": "string",
+            "serviceCategories": "string[]", "serviceCapabilities": "string[]", "serviceRegistryRevision": "string",
             "concreteDestinationEvidence": "boolean", "evidence": "string[]",
             "resolvedIps": "string[]", "threatIntelMatched": "boolean", "threatIntelActive": "boolean",
             "threatIntelRisk": "string", "threatIntelCategories": "string[]", "threatIntelSources": "string[]",
@@ -167,6 +169,56 @@ SECURITY_COLLECTIONS: dict[str, dict[str, Any]] = {
             "truncated": "boolean", "sha256": "string", "bytes": "integer", "identityMatched": "boolean",
         },
         "notes": "A workflow is source context, not proof that a published plugin artifact came from that workflow.",
+    },
+    "sourceOperations": {
+        "dataset": "sourceOperations", "source": "source.dependencyIntelligence.sourceBehavior.operations",
+        "scope": "immutable bounded primitive source operation observation",
+        "fields": {
+            "operationId": "string", "origin": "string", "path": "string", "line": "integer", "method": "string",
+            "operation": "string", "symbol": "string", "receiver": "string", "member": "string", "matcherId": "string",
+            "semanticApiRegistryRevision": "string", "awaited": "boolean", "semanticTarget": "string",
+            "guardConditionId": "string", "delayMs": "integer", "serviceId": "string", "serviceName": "string",
+            "serviceRecognition": "string", "serviceCategories": "string[]", "serviceCapabilities": "string[]",
+            "serviceRegistryRevision": "string", "upstreamServiceIds": "string[]", "upstreamServiceCapabilities": "string[]",
+            "evidence": "string[]",
+        },
+        "notes": "Primitive static operation only. Matcher/service semantics are Definitions-backed and revision-stamped; high-level behavior belongs in SRL.",
+    },
+    "sourceFlowEdges": {
+        "dataset": "sourceFlowEdges", "source": "source.dependencyIntelligence.sourceBehavior.flowEdges",
+        "scope": "immutable bounded source control/temporal relationship",
+        "fields": {
+            "edgeId": "string", "origin": "string", "path": "string", "method": "string",
+            "fromOperationId": "string", "toOperationId": "string", "fromOperation": "string", "toOperation": "string",
+            "relation": "string", "minimumDelayMs": "integer", "guardConditionId": "string",
+            "fromServiceCapabilities": "string[]", "toServiceCapabilities": "string[]", "evidence": "string[]",
+        },
+    },
+    "sourceTriggers": {
+        "dataset": "sourceTriggers", "source": "source.dependencyIntelligence.sourceBehavior.triggers",
+        "scope": "immutable bounded source trigger observation",
+        "fields": {
+            "triggerId": "string", "origin": "string", "path": "string", "line": "integer", "method": "string",
+            "kind": "string", "event": "string", "handler": "string", "periodMs": "integer", "evidence": "string[]",
+        },
+    },
+    "sourceConditions": {
+        "dataset": "sourceConditions", "source": "source.dependencyIntelligence.sourceBehavior.conditions",
+        "scope": "immutable bounded redacted source condition observation",
+        "fields": {
+            "conditionId": "string", "origin": "string", "path": "string", "line": "integer", "method": "string",
+            "kind": "string", "normalizedExpression": "string", "expressionSha256": "string", "evidence": "string[]",
+        },
+    },
+    "sourceDataFlow": {
+        "dataset": "sourceDataFlow", "source": "source.dependencyIntelligence.sourceBehavior.dataFlow",
+        "scope": "immutable bounded conservative source value-flow relationship",
+        "fields": {
+            "edgeId": "string", "origin": "string", "path": "string", "method": "string",
+            "fromOperationId": "string", "toOperationId": "string", "fromOperation": "string", "toOperation": "string",
+            "relation": "string", "valueId": "string", "fromServiceCapabilities": "string[]", "evidence": "string[]",
+        },
+        "notes": "Local lexical value-use relation; does not claim full interprocedural C# semantic proof.",
     },
     "sourceAttribution": {
         "dataset": "compact scan report",
