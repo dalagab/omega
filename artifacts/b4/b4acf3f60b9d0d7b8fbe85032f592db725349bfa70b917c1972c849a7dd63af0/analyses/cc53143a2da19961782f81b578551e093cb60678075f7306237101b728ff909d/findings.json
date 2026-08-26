@@ -1,0 +1,73 @@
+[
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "il:ModSettingCommands.dll:ModSettingCommands.Cmds.MscCmd.HandleAssert+0x263: call ModSettingCommands.Cmds.MscCmd.ExecuteCmdsInTask: cmd.exe",
+      "il:ModSettingCommands.dll:ModSettingCommands.Cmds.MscCmd.HandleTmpAssert+0x271: call ModSettingCommands.Cmds.MscCmd.ExecuteCmdsInTask: cmd.exe"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:ModSettingCommands.dll: s://github.com/anya-hichu/ModSettingCommands",
+      "artifact:System.CommandLine.dll: s://github.com/dotnet/command-line-api",
+      "artifact:System.CommandLine.dll: s://github.com/dotnet/command-line-api/issues/1638",
+      "artifact:System.CommandLine.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:System.CommandLine.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:System.CommandLine.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:System.CommandLine.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:System.CommandLine.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:ModSettingCommands.dll: SigScanner",
+      "il:ModSettingCommands.dll:ModSettingCommands.Plugin..ctor+0x7: call ModSettingCommands.Plugin.get_SigScanner: SigScanner",
+      "il:ModSettingCommands.dll:ModSettingCommands.Chat.ChatServer..ctor+0x16: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:ModSettingCommands.dll:ModSettingCommands.Chat.ChatServer..ctor+0x31: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "artifact:ModSettingCommands.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:System.CommandLine.dll: System.Diagnostics.Process",
+      "metadata:System.CommandLine.dll: ProcessStartInfo",
+      "metadata:System.CommandLine.dll: ShellExecute",
+      "metadata:System.CommandLine.dll: Process.Start",
+      "il:System.CommandLine.dll:System.CommandLine.Invocation.Process.StartProcess+0x1f: newobj System.Diagnostics.Process..ctor: System.Diagnostics.Process",
+      "il:System.CommandLine.dll:System.CommandLine.Invocation.Process.StartProcess+0x25: callvirt System.Diagnostics.Process.get_StartInfo: System.Diagnostics.Process",
+      "il:System.CommandLine.dll:System.CommandLine.Invocation.Process.StartProcess+0x2b: callvirt System.Diagnostics.ProcessStartInfo.set_Arguments: System.Diagnostics.Process",
+      "il:System.CommandLine.dll:System.CommandLine.Invocation.Process.StartProcess+0x2b: callvirt System.Diagnostics.ProcessStartInfo.set_Arguments: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:System.CommandLine.dll: WriteAllText",
+      "il:System.CommandLine.dll:<EnsureRegistered>d__3.MoveNext+0xb9: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:System.CommandLine.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]

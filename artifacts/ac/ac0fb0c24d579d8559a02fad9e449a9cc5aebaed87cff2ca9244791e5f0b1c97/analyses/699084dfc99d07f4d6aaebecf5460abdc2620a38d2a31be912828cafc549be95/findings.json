@@ -1,0 +1,381 @@
+[
+  {
+    "category": "network-endpoint",
+    "description": "Literal private or loopback endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: http://localhost:42428/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.b89d8ed4d1c2",
+    "severity": "high",
+    "title": "Endpoint: localhost"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for camera control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:Brio.dll:Brio.UI.Controls.Editors.CameraEditor.DrawFreeCam+0x225: callvirt Brio.Game.Camera.VirtualCamera.set_FoV",
+      "il:Brio.dll:Brio.UI.Controls.Editors.CameraEditor.DrawFreeCam+0x26c: callvirt Brio.Game.Camera.VirtualCamera.set_PivotRotation",
+      "il:Brio.dll:Brio.UI.Controls.Editors.CameraEditor.DrawFreeCam+0x2b2: callvirt Brio.Game.Camera.VirtualCamera.set_PivotRotation",
+      "il:Brio.dll:Brio.UI.Controls.Editors.CameraEditor.DrawFreeCam+0x308: callvirt Brio.Game.Camera.FreeCamValues.set_MovementSpeed"
+    ],
+    "rule_id": "automation.game.camera.control",
+    "severity": "caution",
+    "title": "Camera control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MessagePack.dll: Reflection.Emit",
+      "metadata:MessagePack.dll: AssemblyLoadContext",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x28: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x35: callvirt System.Reflection.Emit.AssemblyBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x16: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x4d: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x55: callvirt System.Reflection.Emit.TypeBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x74: callvirt System.Reflection.Emit.TypeBuilder.DefineConstructor: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Brio.dll: s://github.com/cycleapple/Brio.git",
+      "artifact:Brio.dll: p://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      "artifact:Brio.dll: p://ns.adobe.com/xap/1.0/",
+      "artifact:Brio.dll: p://purl.org/dc/elements/1.1/",
+      "artifact:Brio.dll: p://ns.adobe.com/photoshop/1.0/",
+      "artifact:Brio.dll: p://ns.adobe.com/xap/1.0/mm/",
+      "artifact:Brio.dll: p://ns.adobe.com/xap/1.0/sType/ResourceEvent#",
+      "artifact:Brio.dll: p://ns.adobe.com/tiff/1.0/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Brio.dll: Dalamud.Hooking",
+      "metadata:Brio.dll: SigScanner",
+      "metadata:Brio.dll: HookFromAddress",
+      "il:Brio.dll:Brio.Brio.SetupServices+0x3b: callvirt Brio.Core.DalamudServices.get_SigScanner: SigScanner",
+      "il:Brio.dll:Brio.Game.World.TimeService..ctor+0x22: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "il:Brio.dll:Brio.Game.World.TimeService..ctor+0x39: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:Brio.dll:Brio.Game.World.WeatherService..ctor+0x35: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "il:Brio.dll:Brio.Game.World.WeatherService..ctor+0x4c: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:Brio.dll: HttpListener",
+      "artifact:Brio.dll: HttpListener",
+      "metadata:EmbedIO.dll: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer..ctor+0x9: call EmbedIO.WebServer.CreateHttpListener: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.Prepare+0x6: callvirt EmbedIO.IHttpListener.Start: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.CreateHttpListener+0x1: call EmbedIO.WebServer.<CreateHttpListener>g__DoCreate|20_0: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.CreateHttpListener+0xd: callvirt EmbedIO.IHttpListener.get_Name: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.CreateHttpListener+0x7f: callvirt EmbedIO.IHttpListener.AddPrefix: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: http://ns.adobe.com/xap/1.0/sType/ResourceEvent"
+    ],
+    "rule_id": "network.endpoint.insecure-http.176cb829538c",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: http://www.w3.org/1999/02/22-rdf-syntax-ns"
+    ],
+    "rule_id": "network.endpoint.insecure-http.34bcbe325c18",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: http://purl.org/dc/elements/1.1/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.481f09356511",
+    "severity": "caution",
+    "title": "Endpoint: purl.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: http://ns.adobe.com/xap/1.0/mm/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5d1a28a44b4d",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.NET.StringTools.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: http://ns.adobe.com/photoshop/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8536665032d4",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: http://ns.adobe.com/exif/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.af3a3c74db67",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: http://ns.adobe.com/tiff/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c9c2ffe17643",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: https://etheirystools.carrd.co/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.83c068be12a5",
+    "severity": "caution",
+    "title": "Endpoint: etheirystools.carrd.co"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: https://ko-fi.com/minmoosexiv"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c9d71bc420d0",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:EmbedIO.dll: System.Net.Sockets",
+      "metadata:EmbedIO.dll: SocketAsyncEventArgs",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x2b: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x51: callvirt System.Net.Sockets.Socket.SetSocketOption: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x62: callvirt System.Net.Sockets.Socket.Bind: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x72: callvirt System.Net.Sockets.Socket.Listen: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x77: newobj System.Net.Sockets.SocketAsyncEventArgs..ctor: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x77: newobj System.Net.Sockets.SocketAsyncEventArgs..ctor: SocketAsyncEventArgs"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Brio.dll: System.Diagnostics.Process",
+      "metadata:Brio.dll: ProcessStartInfo",
+      "metadata:Brio.dll: ShellExecute",
+      "metadata:Brio.dll: Process.Start",
+      "il:Brio.dll:Brio.UI.Windows.InfoWindow.Draw+0xc0: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:Brio.dll:Brio.UI.Windows.InfoWindow.Draw+0xc0: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:Brio.dll:Brio.UI.Windows.InfoWindow.Draw+0xcb: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:Brio.dll:Brio.UI.Windows.InfoWindow.Draw+0xcb: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Brio.dll: FileStream",
+      "metadata:Brio.dll: WriteAllText",
+      "metadata:Brio.dll: Directory.CreateDirectory",
+      "metadata:Brio.dll: WriteAllBytes",
+      "metadata:Brio.dll: File.Delete",
+      "il:Brio.dll:Brio.Resources.ResourceProvider.GetFileDocument+0x2: call Brio.Resources.ResourceProvider.GetFileStream: FileStream",
+      "il:Brio.dll:Brio.Resources.ResourceProvider.SaveFileDocument+0xe: call System.IO.File.WriteAllText: WriteAllText",
+      "il:Brio.dll:Brio.Game.Core.AutoSaveService.Start+0x13: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: https://discord.gg/KvGJCCnG8t"
+    ],
+    "rule_id": "network.endpoint.community-invite.e04e147da65b",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3b676f6154bf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: https://github.com/cycleapple/Brio.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.44f56a758b4f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EmbedIO.dll: https://github.com/unosquare/embedio/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.735d15796476",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Glamourer.Api.dll: https://github.com/Ottermandias/Glamourer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9608d0f55262",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OneOf.dll: https://github.com/mcintyre321/OneOf.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b6242a0ff84a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: https://github.com/Etheirys/Brio/issues"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e9b48a3b345e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f2dfd1030921",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub raw content (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.json: https://raw.githubusercontent.com/Etheirys/Brio/main/Resources/Images/BrioIcon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f52fabe8b240",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  }
+]

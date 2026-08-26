@@ -1,0 +1,82 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:MaskedCarnivale.dll: Dalamud.Hooking",
+      "artifact:MaskedCarnivale.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:SharpDX.D3DCompiler.dll: DllImportAttribute",
+      "metadata:SharpDX.Direct3D11.dll: DllImportAttribute",
+      "metadata:SharpDX.dll: DllImportAttribute",
+      "metadata:SharpDX.dll: GetProcAddress",
+      "il:SharpDX.dll:SharpDX.Utilities.GetProcAddress+0x2: call SharpDX.Utilities.GetProcAddress_ -> kernel32!GetProcAddress: GetProcAddress",
+      "artifact:SharpDX.dll: GetProcAddress",
+      "metadata:SharpDX.DXGI.dll: DllImportAttribute",
+      "metadata:SharpDX.DXGI.dll: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains one or more executable files.",
+    "evidence_json": [
+      "OutputWindow.exe"
+    ],
+    "rule_id": "package.executable",
+    "severity": "caution",
+    "title": "Bundled executable"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:MaskedCarnivale.dll: System.Diagnostics.Process",
+      "metadata:MaskedCarnivale.dll: Process.Start",
+      "il:MaskedCarnivale.dll:MaskedCarnivale.Job.AddProcess+0x7: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+      "il:MaskedCarnivale.dll:MaskedCarnivale.Plugin.Enable+0x23: call System.Diagnostics.Process.Start: System.Diagnostics.Process",
+      "il:MaskedCarnivale.dll:MaskedCarnivale.Plugin.Enable+0x23: call System.Diagnostics.Process.Start: Process.Start",
+      "artifact:MaskedCarnivale.dll: System.Diagnostics.Process",
+      "artifact:SharpDX.Direct3D11.dll: CreateProcess",
+      "artifact:SharpDX.dll: CreateProcess"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:MaskedCarnivale.dll: Directory.CreateDirectory",
+      "metadata:MaskedCarnivale.dll: WriteAllText",
+      "il:MaskedCarnivale.dll:MaskedCarnivale.Windows.WindowNameConfig.Save+0x5: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:MaskedCarnivale.dll:MaskedCarnivale.Windows.WindowNameConfig.Save+0x1a: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:MaskedCarnivale.dll: WriteAllText",
+      "il:SharpDX.dll:SharpDX.IO.NativeFile.ReadAllBytes+0x8: newobj SharpDX.IO.NativeFileStream..ctor: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFile.ReadAllText+0x8: newobj SharpDX.IO.NativeFileStream..ctor: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream..ctor+0x34: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]

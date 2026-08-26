@@ -1,0 +1,111 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Encore.dll:Encore.Plugin.StopActiveEmoteAnimation+0x1b: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Encore.dll: AssemblyLoadContext",
+      "il:Encore.dll:Encore.Plugin..ctor+0xd6: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+      "il:Encore.dll:Encore.Plugin..ctor+0x100: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromAssemblyPath: AssemblyLoadContext",
+      "il:Encore.dll:Encore.Plugin..ctor+0x153: callvirt System.Runtime.Loader.AssemblyLoadContext.add_Resolving: AssemblyLoadContext",
+      "il:Encore.dll:<>c__DisplayClass221_0.<.ctor>b__2+0x40: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromAssemblyPath: AssemblyLoadContext",
+      "artifact:Encore.dll: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Encore.dll: SigScanner",
+      "metadata:Encore.dll: Dalamud.Hooking",
+      "metadata:Encore.dll: HookFromAddress",
+      "il:Encore.dll:Encore.Plugin..ctor+0x305: call Encore.Plugin.get_SigScanner: SigScanner",
+      "il:Encore.dll:Encore.Plugin..ctor+0x11f3: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:Encore.dll:Encore.Services.BgmTrackerService.ResolveSig+0xd: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "artifact:Encore.dll: Dalamud.Hooking",
+      "artifact:Encore.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Encore.dll: Directory.CreateDirectory",
+      "metadata:Encore.dll: WriteAllBytes",
+      "metadata:Encore.dll: WriteAllText",
+      "metadata:Encore.dll: File.Delete",
+      "il:Encore.dll:Encore.Plugin..ctor+0x25c: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Encore.dll:Encore.Plugin.SetupEmoteSwap+0x33: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Encore.dll:Encore.Plugin.SetupEmoteSwap+0x73a: call System.IO.File.WriteAllBytes: WriteAllBytes",
+      "il:Encore.dll:Encore.Plugin.SetupEmoteSwap+0x908: call System.IO.File.WriteAllBytes: WriteAllBytes"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub raw content (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Encore.json: https://raw.githubusercontent.com/IcarusXIV/Encore/master/Encore/Assets/Icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1261372c0a34",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Encore.dll: https://github.com/IcarusXIV/Encore"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a9eeb778b346",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub raw content (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Encore.dll: https://raw.githubusercontent.com/IcarusXIV/Encore/master/Encore/repo.json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e0027ec6a094",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Encore.dll: System.Net.Http.HttpClient",
+      "il:Encore.dll:Encore.Plugin.CheckForUpdates+0x5: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:Encore.dll:Encore.Plugin..cctor+0x5a: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

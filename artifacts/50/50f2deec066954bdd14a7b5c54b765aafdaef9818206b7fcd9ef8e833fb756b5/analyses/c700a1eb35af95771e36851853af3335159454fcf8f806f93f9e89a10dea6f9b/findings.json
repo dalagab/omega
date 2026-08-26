@@ -1,0 +1,263 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:NextUIPlugin.dll:NextUIPlugin.Data.Handlers.TargetHandler.SetTargetInternal+0x65: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target",
+      "il:NextUIPlugin.dll:NextUIPlugin.Data.Handlers.TargetHandler.SetTargetInternal+0x72: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_FocusTarget"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:NextUIPlugin.dll:<>c__DisplayClass27_0.<BeginWriteInternal>b__0+0xe6: callvirt System.AsyncCallback.Invoke",
+      "il:NextUIPlugin.dll:<>c__DisplayClass27_0.<BeginWriteInternal>b__0+0x114: callvirt System.AsyncCallback.Invoke",
+      "il:Xilium.CefGlue.dll:Xilium.CefGlue.Interop.cef_v8value_t.get_array_buffer_release_callback+0x5c: callvirt get_array_buffer_release_callback_delegate.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for synthetic game ui interaction. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Xilium.CefGlue.dll:Xilium.CefGlue.Interop.cef_browser_host_t.send_mouse_click_event+0x61: callvirt send_mouse_click_event_delegate.Invoke"
+    ],
+    "rule_id": "automation.game.ui.synthetic_click",
+    "severity": "caution",
+    "title": "Synthetic game UI interaction"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:NextUIPlugin.dll: s://",
+      "artifact:NextUIPlugin.dll: s://google.com",
+      "artifact:NextUIPlugin.dll: s://kaminaris.github.io/Next-UI/?OVERLAY_WS=ws://127.0.0.1:10501/ws",
+      "artifact:NextUIPlugin.dll: s://kaminariss.gitlab.io/nextui-plugin/v11.1.5.0/latest.zip",
+      "artifact:Xilium.CefGlue.dll: s://gitlab.com/xiliumhq/chromiumembedded/cefglue",
+      "artifact:Xilium.CefGlue.dll: A:\\Projects\\Kaminaris\\Csharp\\cefglue\\CefGlue\\obj\\Debug\\netstandard2.0\\Xilium.CefGlue.pdb"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:NextUIPlugin.dll: SigScanner",
+      "metadata:NextUIPlugin.dll: Dalamud.Hooking",
+      "il:NextUIPlugin.dll:NextUIPlugin.Data.Handlers.ContextHandler.RegisterCommands+0xf: call NextUIPlugin.NextUIPlugin.get_sigScanner: SigScanner",
+      "il:NextUIPlugin.dll:NextUIPlugin.Data.Handlers.ContextHandler.RegisterCommands+0x19: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "il:NextUIPlugin.dll:NextUIPlugin.Data.Handlers.ContextHandler.RegisterCommands+0x48: call NextUIPlugin.NextUIPlugin.get_sigScanner: SigScanner",
+      "il:NextUIPlugin.dll:NextUIPlugin.Data.Handlers.ContextHandler.RegisterCommands+0x52: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "artifact:NextUIPlugin.dll: Dalamud.Hooking",
+      "artifact:NextUIPlugin.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:NextUIPlugin.dll: TcpListener",
+      "il:NextUIPlugin.dll:NextUIPlugin.Socket.NextUISocket.CheckIfPortAvailable+0x7: callvirt System.Net.NetworkInformation.IPGlobalProperties.GetActiveTcpListeners: TcpListener",
+      "artifact:NextUIPlugin.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:NextUIPlugin.dll: DllImportAttribute",
+      "metadata:Xilium.CefGlue.dll: DllImportAttribute",
+      "metadata:Xilium.CefGlue.dll: LoadLibrary",
+      "il:Xilium.CefGlue.dll:Xilium.CefGlue.CefRuntime.Load+0x27: call Xilium.CefGlue.CefRuntime.LoadLibraryWindows: LoadLibrary",
+      "il:Xilium.CefGlue.dll:Xilium.CefGlue.CefRuntime.LoadLibraryWindows+0x12: call Xilium.CefGlue.Platform.Windows.NativeMethods.LoadLibraryEx -> kernel32.dll!LoadLibraryEx: LoadLibrary",
+      "artifact:Xilium.CefGlue.dll: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0k/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.40e6221be78d",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0k"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0n/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.eaf7f9f0d685",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0n"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NextUIPlugin.dll: https://kaminariss.gitlab.io/nextui-plugin/v11.1.5.0/latest.zip"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.21456db07b3a",
+    "severity": "caution",
+    "title": "Endpoint: kaminariss.gitlab.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Xilium.CefGlue.dll: https://gitlab.com/xiliumhq/chromiumembedded/cefglue"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.452816774b67",
+    "severity": "caution",
+    "title": "Endpoint: gitlab.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: https://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5a592d877451",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NextUIPlugin.json: https://gitlab.com/kaminariss/nextui-plugin"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.84174942b312",
+    "severity": "caution",
+    "title": "Endpoint: gitlab.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NextUIPlugin.dll: https://kaminaris.github.io/Next-UI/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9e5833633802",
+    "severity": "caution",
+    "title": "Endpoint: kaminaris.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NextUIPlugin.dll: https://google.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c69ca44ab549",
+    "severity": "caution",
+    "title": "Endpoint: google.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:NextUIPlugin.dll: System.Net.Sockets",
+      "il:NextUIPlugin.dll:Fleck.SocketWrapper.get_RemoteIpAddress+0x6: callvirt System.Net.Sockets.Socket.get_RemoteEndPoint: System.Net.Sockets",
+      "il:NextUIPlugin.dll:Fleck.SocketWrapper.get_RemotePort+0x6: callvirt System.Net.Sockets.Socket.get_RemoteEndPoint: System.Net.Sockets",
+      "il:NextUIPlugin.dll:Fleck.SocketWrapper..ctor+0x34: callvirt System.Net.Sockets.Socket.get_Connected: System.Net.Sockets",
+      "il:NextUIPlugin.dll:Fleck.SocketWrapper..ctor+0x42: newobj System.Net.Sockets.NetworkStream..ctor: System.Net.Sockets",
+      "il:NextUIPlugin.dll:Fleck.SocketWrapper..ctor+0x60: callvirt System.Net.Sockets.Socket.IOControl: System.Net.Sockets",
+      "il:NextUIPlugin.dll:Fleck.SocketWrapper.Listen+0x7: callvirt System.Net.Sockets.Socket.Listen: System.Net.Sockets",
+      "il:NextUIPlugin.dll:Fleck.SocketWrapper.Bind+0x7: callvirt System.Net.Sockets.Socket.Bind: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:NextUIPlugin.dll: FileStream",
+      "metadata:NextUIPlugin.dll: File.Delete",
+      "metadata:NextUIPlugin.dll: Directory.Delete",
+      "metadata:NextUIPlugin.dll: Directory.CreateDirectory",
+      "il:NextUIPlugin.dll:<DownloadMicroPlugin>d__17.MoveNext+0x44: call System.IO.File.Delete: File.Delete",
+      "il:NextUIPlugin.dll:<DownloadMicroPlugin>d__17.MoveNext+0x197: newobj System.IO.FileStream..ctor: FileStream",
+      "il:NextUIPlugin.dll:<DownloadMicroPlugin>d__17.MoveNext+0x37b: call System.IO.Directory.Delete: Directory.Delete",
+      "il:NextUIPlugin.dll:<DownloadMicroPlugin>d__17.MoveNext+0x386: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: https://github.com/dotnet/reactive0"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2545080a4100",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: https://github.com/dotnet/reactive"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7c7f66411aeb",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:NextUIPlugin.dll: System.Net.Http.HttpClient",
+      "il:NextUIPlugin.dll:<DownloadMicroPlugin>d__17.MoveNext+0x50: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:NextUIPlugin.dll:<DownloadMicroPlugin>d__17.MoveNext+0x60: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:NextUIPlugin.dll:<DownloadMicroPlugin>d__17.MoveNext+0x89: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:Xilium.CefGlue.dll:Xilium.CefGlue.CefUrlRequestClient.on_download_data+0x22: callvirt Xilium.CefGlue.CefUrlRequestClient.OnDownloadData: DownloadData",
+      "artifact:Xilium.CefGlue.dll: DownloadData"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

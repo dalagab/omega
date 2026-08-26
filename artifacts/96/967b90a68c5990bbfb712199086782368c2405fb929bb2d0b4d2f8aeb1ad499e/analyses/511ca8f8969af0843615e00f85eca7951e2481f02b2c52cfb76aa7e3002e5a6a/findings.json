@@ -1,0 +1,709 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:BossMod.dll:BossMod.ActionManagerEx.ExecuteAction+0x6c: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseActionLocation",
+      "il:BossMod.dll:BossMod.ActionManagerEx.ExecuteAction+0x8a: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseActionLocation",
+      "il:BossMod.dll:BossMod.ActionManagerEx.ExecuteAction+0x164: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseActionLocation",
+      "il:BossMod.dll:BossMod.ActionManagerEx.UpdateDetour+0x566: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:System.Configuration.ConfigurationManager.dll: ProtectedData.Unprotect",
+      "il:System.Configuration.ConfigurationManager.dll:System.Configuration.DpapiProtectedConfigurationProvider.DecryptText+0x2f: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect",
+      "artifact:System.Configuration.ConfigurationManager.dll: CryptUnprotectData",
+      "metadata:runtimes\\win\\lib\\netstandard2.0\\System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData",
+      "il:runtimes\\win\\lib\\netstandard2.0\\System.Security.Cryptography.ProtectedData.dll:System.Security.Cryptography.ProtectedData.ProtectOrUnprotect+0x9a: call Crypt32.CryptUnprotectData -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:runtimes\\win\\lib\\netstandard2.0\\System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:BossMod.dll:BossMod.DebugObjects.ObjectContextMenu+0x3d: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+      "il:BossMod.dll:BossMod.Plugin.ExecuteHints+0x1fd: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+    ],
+    "rule_id": "automation.game.character.interact",
+    "severity": "caution",
+    "title": "World/NPC interaction control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:BossMod.dll:BossMod.DebugObjects.ObjectContextMenu+0x19: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target",
+      "il:BossMod.dll:BossMod.MainDebugWindow.DrawTargets+0x202: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:BossMod.dll:Clipper2Lib.ClipperOffset.OffsetPoint+0xa4: callvirt DeltaCallback64.Invoke",
+      "il:BossMod.dll:Clipper2Lib.ClipperOffset.OffsetOpenPath+0x2d: callvirt DeltaCallback64.Invoke",
+      "il:BossMod.dll:Clipper2Lib.ClipperOffset.OffsetOpenPath+0x12b: callvirt DeltaCallback64.Invoke",
+      "il:BossMod.dll:Clipper2Lib.ClipperOffset.DoGroupOffset+0x191: callvirt DeltaCallback64.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:BossMod.dll: AssemblyLoadContext",
+      "il:BossMod.dll:BossMod.PackLoader.get_Loaded+0xd: call System.Runtime.Loader.AssemblyLoadContext.get_Assemblies: AssemblyLoadContext",
+      "il:BossMod.dll:BossMod.PackLoader.Reload+0x66: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromAssemblyPath: AssemblyLoadContext",
+      "il:BossMod.dll:BossMod.PackLoader.Dispose+0xc: call System.Runtime.Loader.AssemblyLoadContext.Unload: AssemblyLoadContext",
+      "artifact:BossMod.dll: AssemblyLoadContext",
+      "metadata:EntityFramework.dll: Reflection.Emit",
+      "metadata:EntityFramework.dll: Assembly.Load",
+      "artifact:EntityFramework.dll: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:BossMod.dll: s://discord.gg/Zzrcc8kmvy",
+      "artifact:EntityFramework.dll: p://go.microsoft.com/fwlink/?LinkId=260882 for more information.",
+      "artifact:EntityFramework.dll: p://go.microsoft.com/fwlink/?LinkId=260883",
+      "artifact:EntityFramework.dll: p://go.microsoft.com/fwlink/?LinkId=260883 for more information.",
+      "artifact:EntityFramework.dll: p://www.w3.org/2001/XMLSchema:long",
+      "artifact:EntityFramework.dll: p://go.microsoft.com/fwlink/?LinkId=313468 for more information.",
+      "artifact:EntityFramework.dll: p://go.microsoft.com/fwlink/?LinkId=238269).",
+      "artifact:EntityFramework.dll: p://go.microsoft.com/fwlink/?LinkID=237468)."
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:BossMod.dll: SigScanner",
+      "metadata:BossMod.dll: Dalamud.Hooking",
+      "metadata:BossMod.dll: HookFromAddress",
+      "il:BossMod.dll:BossMod.DebugMapEffect..ctor+0x1: call BossMod.Service.get_SigScanner: SigScanner",
+      "il:BossMod.dll:BossMod.DebugMapEffect..ctor+0xb: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "il:BossMod.dll:BossMod.DebugVfx..ctor+0x1d: call BossMod.Service.get_SigScanner: SigScanner",
+      "il:BossMod.dll:BossMod.DebugVfx..ctor+0x27: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "il:BossMod.dll:BossMod.DebugVfx..ctor+0x37: call BossMod.Service.get_SigScanner: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:BossMod.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:BossMod.dll: DllImportAttribute",
+      "metadata:SharpDX.dll: DllImportAttribute",
+      "metadata:SharpDX.dll: GetProcAddress",
+      "il:SharpDX.dll:SharpDX.Utilities.GetProcAddress+0x2: call SharpDX.Utilities.GetProcAddress_ -> kernel32!GetProcAddress: GetProcAddress",
+      "artifact:SharpDX.dll: GetProcAddress",
+      "metadata:System.Data.SqlClient.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Data.SQLite.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2009/02/edm/annotation:StoreGeneratedPattern"
+    ],
+    "rule_id": "network.endpoint.insecure-http.022b801fa3ce",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2007/12/edm/<redacted>"
+    ],
+    "rule_id": "network.endpoint.insecure-http.08f10203371f",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2006/04/edm/ssdl",
+      "artifact:EntityFramework.SqlServer.dll: http://schemas.microsoft.com/ado/2006/04/edm/ssdl",
+      "artifact:System.Data.SQLite.EF6.dll: http://schemas.microsoft.com/ado/2006/04/edm/ssdl"
+    ],
+    "rule_id": "network.endpoint.insecure-http.1fe71414f018",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2009/11/edmx"
+    ],
+    "rule_id": "network.endpoint.insecure-http.2c0198766816",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2009/11/edm"
+    ],
+    "rule_id": "network.endpoint.insecure-http.2f6707347f34",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: http://schemas.microsoft.com/SQL/Notifications/QueryNotification",
+      "artifact:runtimes\\win\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: http://schemas.microsoft.com/SQL/Notifications/QueryNotification"
+    ],
+    "rule_id": "network.endpoint.insecure-http.39338ff559e2",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: http://schemas.microsoft.com/SQL/ServiceBroker/DialogTimer",
+      "artifact:runtimes\\win\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: http://schemas.microsoft.com/SQL/ServiceBroker/DialogTimer"
+    ],
+    "rule_id": "network.endpoint.insecure-http.53bd77b97abc",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2007/06/edmx"
+    ],
+    "rule_id": "network.endpoint.insecure-http.58d1da60548d",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2008/09/mapping/cs"
+    ],
+    "rule_id": "network.endpoint.insecure-http.6406996353b8",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0x/",
+      "artifact:System.Data.SQLite.dll: http://ocsp.digicert.com0x/",
+      "artifact:System.Data.SQLite.EF6.dll: http://ocsp.digicert.com0x/",
+      "artifact:runtimes\\win-x64\\native\\SQLite.Interop.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://go.microsoft.com/fwlink/",
+      "artifact:EntityFramework.SqlServer.dll: http://go.microsoft.com/fwlink/",
+      "artifact:System.Drawing.Common.dll: http://go.microsoft.com/fwlink/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.6ef4f8bb37b5",
+    "severity": "caution",
+    "title": "Endpoint: go.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2008/09/edm"
+    ],
+    "rule_id": "network.endpoint.insecure-http.75be06484f3e",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2006/04/edm/providermanifest",
+      "artifact:EntityFramework.SqlServer.dll: http://schemas.microsoft.com/ado/2006/04/edm/providermanifest",
+      "artifact:System.Data.SQLite.EF6.dll: http://schemas.microsoft.com/ado/2006/04/edm/providermanifest"
+    ],
+    "rule_id": "network.endpoint.insecure-http.83e177cacd46",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2009/11/mapping/cs"
+    ],
+    "rule_id": "network.endpoint.insecure-http.92f15d5e948f",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2013/11/edm/customannotation"
+    ],
+    "rule_id": "network.endpoint.insecure-http.9e456b5ac099",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: http://schemas.microsoft.com/SQL/Notifications/PostQueryNotification",
+      "artifact:runtimes\\win\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: http://schemas.microsoft.com/SQL/Notifications/PostQueryNotification"
+    ],
+    "rule_id": "network.endpoint.insecure-http.a3da9221274c",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2007/05/edm"
+    ],
+    "rule_id": "network.endpoint.insecure-http.a721e1420894",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2009/02/edm/annotation"
+    ],
+    "rule_id": "network.endpoint.insecure-http.ac8dec3689b4",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2006/04/edm",
+      "artifact:System.Data.SQLite.EF6.dll: http://schemas.microsoft.com/ado/2006/04/edm"
+    ],
+    "rule_id": "network.endpoint.insecure-http.af480d724358",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2009/11/edm/ssdl"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b53cda9d60d9",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"
+    ],
+    "rule_id": "network.endpoint.insecure-http.bd4b40b845ec",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2006/04/codegeneration",
+      "artifact:System.Data.SQLite.EF6.dll: http://schemas.microsoft.com/ado/2006/04/codegeneration"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c18c639ad747",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Configuration.ConfigurationManager.dll: http://schemas.microsoft.com/.NetConfiguration/v2.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c4ab9ea245be",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win-arm64\\native\\sni.dll: http://microsoft.com0/",
+      "artifact:runtimes\\win-x64\\native\\sni.dll: http://microsoft.com0/",
+      "artifact:runtimes\\win-x86\\native\\sni.dll: http://microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c521cfb4f4ae",
+    "severity": "caution",
+    "title": "Endpoint: microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/",
+      "artifact:System.Data.SQLite.dll: http://ocsp.digicert.com0c/",
+      "artifact:System.Data.SQLite.EF6.dll: http://ocsp.digicert.com0c/",
+      "artifact:runtimes\\win-x64\\native\\SQLite.Interop.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2009/02/edm/ssdl"
+    ],
+    "rule_id": "network.endpoint.insecure-http.cacf3d062d15",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EntityFramework.dll: http://schemas.microsoft.com/ado/2008/10/edmx"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d363d324821e",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Data.SQLite.dll: http://ocsp.digicert.com0/",
+      "artifact:System.Data.SQLite.EF6.dll: http://ocsp.digicert.com0/",
+      "artifact:runtimes\\win-x64\\native\\SQLite.Interop.dll: http://ocsp.digicert.com0/",
+      "artifact:runtimes\\win-x86\\native\\SQLite.Interop.dll: http://ocsp.digicert.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f7ff339eaae3",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0a/",
+      "artifact:System.Data.SQLite.dll: http://ocsp.digicert.com0a/",
+      "artifact:System.Data.SQLite.EF6.dll: http://ocsp.digicert.com0a/",
+      "artifact:runtimes\\win-x64\\native\\SQLite.Interop.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: https://go.microsoft.com/fwlink",
+      "artifact:runtimes\\win\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: https://go.microsoft.com/fwlink"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.430798e954be",
+    "severity": "caution",
+    "title": "Endpoint: go.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Win32.SystemEvents.dll: https://go.microsoft.com/fwlink/",
+      "artifact:System.Security.Permissions.dll: https://go.microsoft.com/fwlink/",
+      "artifact:runtimes\\unix\\lib\\netcoreapp3.0\\System.Drawing.Common.dll: https://go.microsoft.com/fwlink/",
+      "artifact:runtimes\\win\\lib\\netcoreapp3.0\\Microsoft.Win32.SystemEvents.dll: https://go.microsoft.com/fwlink/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b2a093ba178f",
+    "severity": "caution",
+    "title": "Endpoint: go.microsoft.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: System.Net.Sockets",
+      "metadata:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: UdpClient",
+      "metadata:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: Socket.Connect",
+      "il:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll:System.Data.SqlClient.SNI.SNITCPHandle..ctor+0x10b: callvirt System.Net.Sockets.Socket.get_Connected: System.Net.Sockets",
+      "il:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll:System.Data.SqlClient.SNI.SNITCPHandle..ctor+0x120: callvirt System.Net.Sockets.Socket.Dispose: System.Net.Sockets",
+      "il:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll:System.Data.SqlClient.SNI.SNITCPHandle..ctor+0x144: callvirt System.Net.Sockets.Socket.set_NoDelay: System.Net.Sockets",
+      "il:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll:System.Data.SqlClient.SNI.SNITCPHandle..ctor+0x151: newobj System.Net.Sockets.NetworkStream..ctor: System.Net.Sockets",
+      "il:runtimes\\unix\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll:System.Data.SqlClient.SNI.SNITCPHandle.Connect+0xb7: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:BossMod.dll: System.Diagnostics.Process",
+      "metadata:BossMod.dll: ProcessStartInfo",
+      "metadata:BossMod.dll: ShellExecute",
+      "metadata:BossMod.dll: Process.Start",
+      "il:BossMod.dll:BossMod.AboutTab.OpenLink+0x1: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:BossMod.dll:BossMod.AboutTab.OpenLink+0x1: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:BossMod.dll:BossMod.AboutTab.OpenLink+0x8: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:BossMod.dll:BossMod.AboutTab.OpenLink+0x8: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "native-pe:runtimes\\win-arm64\\native\\sni.dll: import ADVAPI32.dll!RegOpenKeyExA: RegOpenKey",
+      "artifact:runtimes\\win-arm64\\native\\sni.dll: RegOpenKey",
+      "native-pe:runtimes\\win-x64\\native\\sni.dll: import ADVAPI32.dll!RegOpenKeyExA: RegOpenKey",
+      "artifact:runtimes\\win-x64\\native\\sni.dll: RegOpenKey",
+      "native-pe:runtimes\\win-x86\\native\\sni.dll: import ADVAPI32.dll!RegOpenKeyExA: RegOpenKey",
+      "artifact:runtimes\\win-x86\\native\\sni.dll: RegOpenKey",
+      "metadata:runtimes\\win\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes\\win\\lib\\netcoreapp2.1\\System.Data.SqlClient.dll: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:BossMod.dll: FileStream",
+      "il:BossMod.dll:BossMod.ConfigConverter.ConvertV9Plans+0x3e: newobj System.IO.FileStream..ctor: FileStream",
+      "il:BossMod.dll:BossMod.ConfigConverter.ConvertV9Plans+0x1ee: newobj System.IO.FileStream..ctor: FileStream",
+      "il:BossMod.dll:BossMod.ReplayParserLog.Parse+0x6: newobj System.IO.FileStream..ctor: FileStream",
+      "il:BossMod.dll:BossMod.ReplayRecorder..ctor+0x79: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:BossMod.dll: FileStream",
+      "metadata:EntityFramework.dll: FileStream",
+      "metadata:EntityFramework.dll: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BossMod.dll: https://discord.gg/Zzrcc8kmvy"
+    ],
+    "rule_id": "network.endpoint.community-invite.21e883b91408",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub raw content (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BossMod.json: https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image1.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0e6fdefe3f25",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BossMod.json: https://github.com/cycleapple/ffxiv_bossmod"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.17861db39e01",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BossMod.dll: https://github.com/awgil/ffxiv_bossmod/wiki"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1e2d7aefeb70",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BossMod.dll: https://github.com/awgil/ffxiv_bossmod"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.373d58f3a87b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub raw content (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BossMod.json: https://raw.githubusercontent.com/awgil/ffxiv_bossmod/<redacted>/Data/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.54ea8dceb3de",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub raw content (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BossMod.json: https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image3.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8336689e9e10",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BossMod.dll: https://github.com/awgil/ffxiv_bossmod/wiki/AI-Migration-guide"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b34723d5f9d4",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub raw content (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BossMod.json: https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image2.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e3e36bbfb2b2",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:System.Configuration.ConfigurationManager.dll: DownloadData",
+      "il:System.Configuration.ConfigurationManager.dll:System.Configuration.ClientConfigurationHost.OpenStreamForRead+0x35: callvirt System.Net.WebClient.DownloadData: DownloadData",
+      "artifact:System.Configuration.ConfigurationManager.dll: DownloadData",
+      "metadata:runtimes\\win\\lib\\netcoreapp3.0\\System.Windows.Extensions.dll: WebRequest",
+      "il:runtimes\\win\\lib\\netcoreapp3.0\\System.Windows.Extensions.dll:System.Media.SoundPlayer.LoadSync+0x5d: call System.Net.WebRequest.Create: WebRequest",
+      "il:runtimes\\win\\lib\\netcoreapp3.0\\System.Windows.Extensions.dll:System.Media.SoundPlayer.LoadSync+0x6a: callvirt System.Net.WebRequest.set_Timeout: WebRequest",
+      "il:runtimes\\win\\lib\\netcoreapp3.0\\System.Windows.Extensions.dll:System.Media.SoundPlayer.LoadSync+0x70: callvirt System.Net.WebRequest.GetResponse: WebRequest",
+      "il:runtimes\\win\\lib\\netcoreapp3.0\\System.Windows.Extensions.dll:<>c.<CopyStreamAsync>b__66_0+0x6: callvirt System.Net.WebRequest.Abort: WebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes\\linux-x64\\native\\SQLite.Interop.dll",
+      "runtimes\\osx-x64\\native\\SQLite.Interop.dll",
+      "runtimes\\win-arm64\\native\\sni.dll",
+      "runtimes\\win-x64\\native\\sni.dll",
+      "runtimes\\win-x64\\native\\SQLite.Interop.dll",
+      "runtimes\\win-x86\\native\\sni.dll",
+      "runtimes\\win-x86\\native\\SQLite.Interop.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

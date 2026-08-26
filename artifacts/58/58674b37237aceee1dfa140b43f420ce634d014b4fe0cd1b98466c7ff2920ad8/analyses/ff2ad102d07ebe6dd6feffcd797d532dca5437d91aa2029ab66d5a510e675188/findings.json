@@ -1,0 +1,116 @@
+[
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:SharpGen.Runtime.dll: OpenProcess",
+      "il:SharpGen.Runtime.dll:SharpGen.Runtime.PlatformDetection.GetCurrentProcessToken+0xb: call SharpGen.Runtime.PlatformDetection.OpenProcessToken -> advapi32.dll!OpenProcessToken: OpenProcess",
+      "artifact:SharpGen.Runtime.dll: OpenProcess"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitScopeCache+0x1f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Luna.dll: s://github.com/Ottermandias/Luna.git",
+      "artifact:Luna.dll: s://reniguide.info/",
+      "artifact:Luna.dll: \\\\?\\UNC\\",
+      "artifact:Luna.dll: s://discord.gg/kVva7DHV4r",
+      "artifact:Luna.dll: s://ko-fi.com/ottermandias",
+      "artifact:Luna.dll: s://www.patreon.com/Ottermandias",
+      "artifact:Serilog.Sinks.File.dll: s://github.com/serilog/serilog-sinks-file",
+      "artifact:Serilog.Sinks.File.dll: p://ocsp.digicert.com0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Penumbra.GameData.dll: SigScanner",
+      "metadata:Penumbra.GameData.dll: Dalamud.Hooking",
+      "il:Penumbra.GameData.dll:Penumbra.GameData.Sigs.TestSignatures+0xa5: callvirt Dalamud.Plugin.Services.ISigScanner.ScanAllText: SigScanner",
+      "artifact:Penumbra.GameData.dll: Dalamud.Hooking",
+      "artifact:Penumbra.GameData.dll: SigScanner",
+      "metadata:Luna.dll: Dalamud.Hooking",
+      "metadata:Luna.dll: SigScanner",
+      "metadata:Luna.dll: CreateHook"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:SharpGen.Runtime.COM.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Vortice.Direct3D11.dll: DllImportAttribute",
+      "metadata:System.IO.Hashing.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:SharpGen.Runtime.dll: DllImportAttribute",
+      "metadata:Penumbra.GameData.dll: DllImportAttribute",
+      "metadata:Luna.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:SharpGen.Runtime.COM.dll: CreateProcess",
+      "artifact:Vortice.Direct3D11.dll: CreateProcess",
+      "metadata:Luna.dll: System.Diagnostics.Process",
+      "metadata:Luna.dll: ProcessStartInfo",
+      "metadata:Luna.dll: ShellExecute",
+      "metadata:Luna.dll: Process.Start",
+      "il:Luna.dll:Luna.SupportButton.Link+0x15: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:Luna.dll:Luna.SupportButton.Link+0x15: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Luna.dll: FileStream",
+      "metadata:Luna.dll: WriteAllBytes",
+      "metadata:Luna.dll: Directory.CreateDirectory",
+      "metadata:Luna.dll: File.Delete",
+      "metadata:Luna.dll: Directory.Delete",
+      "metadata:Luna.dll: File.Move",
+      "il:Luna.dll:Luna.FileCompactor.WriteAllBytes+0x2: call System.IO.File.WriteAllBytes: WriteAllBytes",
+      "il:Luna.dll:Luna.Interop.CompactFile+0x1b: callvirt System.IO.FileStream.get_SafeFileHandle: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]

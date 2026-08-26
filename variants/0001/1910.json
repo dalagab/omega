@@ -1,0 +1,1536 @@
+{
+  "analysis": {
+    "analysisId": "b22ae54ce3932c2f070613165753e828e0349f59654e29dbc98ccd70f0486c8e",
+    "artifactSha256": "5f1479e33bfcabf111d6be2662e913e1802afa55e7d81c5f2b81c55f5d716b17",
+    "path": "artifacts/5f/5f1479e33bfcabf111d6be2662e913e1802afa55e7d81c5f2b81c55f5d716b17/analyses/b22ae54ce3932c2f070613165753e828e0349f59654e29dbc98ccd70f0486c8e",
+    "recordCount": 208
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "5f1479e33bfcabf111d6be2662e913e1802afa55e7d81c5f2b81c55f5d716b17",
+    "artifact_url": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/latest.zip",
+    "assembly_version": "2.2.7.0",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "full-gameplay-automation",
+        "capabilityId": "game.character.execute_action",
+        "confidence": "high",
+        "evidence": [
+          "il:BardToolbox.dll:BardToolboxNamespace.Helpers.ActionHelper.UseItem+0x14b: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "indirect": false,
+        "label": "Character action execution",
+        "reachable": false,
+        "reason": "Invokes game action-execution APIs that can perform combat, crafting, gathering, or other character actions."
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.interact",
+        "confidence": "high",
+        "evidence": [
+          "il:BardToolbox.dll:BardToolboxNamespace.Helpers.ActionHelper.Interact+0xc: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+          "il:BardToolbox.dll:<ResidentTravel>d__2.MoveNext+0x5d: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+          "il:BardToolbox.dll:<WorldTravel>d__1.MoveNext+0x51: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "indirect": false,
+        "label": "World/NPC interaction control",
+        "reachable": false,
+        "reason": "Invokes an interaction mechanism capable of activating an NPC, object, or other world target."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "high",
+        "evidence": [
+          "il:BardToolbox.dll:BardToolboxNamespace.WindowManager.SendAction+0x44: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:BardToolbox.dll:BardToolboxNamespace.WindowManager.SendAction+0x2e: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": false,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      }
+    ],
+    "automation_level": "full-gameplay-automation",
+    "capabilities_json": [
+      "Character action execution",
+      "Dynamic code loading",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:BardToolbox.dll:BardToolboxNamespace.Helpers.ActionHelper.UseItem+0x14b: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "ruleId": "automation.game.character.execute_action",
+        "severity": "high",
+        "title": "Character action execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:BardToolbox.dll: System.Diagnostics.Process",
+          "metadata:BardToolbox.dll: ProcessStartInfo",
+          "metadata:BardToolbox.dll: ShellExecute",
+          "metadata:BardToolbox.dll: Process.Start",
+          "il:BardToolbox.dll:BardToolboxNamespace.Managers.AffinityControl.get_currentFlags+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:BardToolbox.dll:BardToolboxNamespace.Managers.AffinityControl.get_currentFlags+0x5: callvirt System.Diagnostics.Process.get_ProcessorAffinity: System.Diagnostics.Process",
+          "il:BardToolbox.dll:BardToolboxNamespace.Managers.Wintitle..ctor+0x6: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:BardToolbox.dll:BardToolboxNamespace.Managers.Wintitle..ctor+0xe: callvirt System.Diagnostics.Process.get_MainWindowHandle: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:BardToolbox.dll: DllImportAttribute",
+          "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.Extensions.Options.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:System.Memory.Data.dll: System.Runtime.InteropServices.DllImport"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:BardToolbox.dll: SigScanner",
+          "metadata:BardToolbox.dll: Dalamud.Hooking",
+          "metadata:BardToolbox.dll: HookFromAddress",
+          "il:BardToolbox.dll:BardToolboxNamespace.Managers.CamaraManager.Initialize+0x4f: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:BardToolbox.dll:BardToolboxNamespace.Managers.Chat..cctor+0x7: call Dalamud.Api.get_SigScanner: SigScanner",
+          "il:BardToolbox.dll:BardToolboxNamespace.Managers.Chat..cctor+0x13: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+          "il:BardToolbox.dll:BardToolboxNamespace.Managers.Chat..cctor+0x25: call Dalamud.Api.get_SigScanner: SigScanner",
+          "il:BardToolbox.dll:BardToolboxNamespace.Managers.Chat..cctor+0x31: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:MessagePack.dll: s://github.com/MessagePack-CSharp/MessagePack-CSharp",
+          "artifact:MessagePack.dll: /home/runner/work/MessagePack-CSharp/MessagePack-CSharp/obj/src/MessagePack/Release/net9.0/MessagePack.pdb"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:MessagePack.dll: Reflection.Emit",
+          "metadata:MessagePack.dll: AssemblyLoadContext",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x28: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x35: callvirt System.Reflection.Emit.AssemblyBuilder.SetCustomAttribute: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x16: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x4d: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x55: callvirt System.Reflection.Emit.TypeBuilder.SetCustomAttribute: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x74: callvirt System.Reflection.Emit.TypeBuilder.DefineConstructor: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:BardToolbox.dll:BardToolboxNamespace.WindowManager.SendAction+0x44: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:BardToolbox.dll:BardToolboxNamespace.WindowManager.SendAction+0x2e: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:BardToolbox.dll:BardToolboxNamespace.Helpers.ActionHelper.Interact+0xc: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+          "il:BardToolbox.dll:<ResidentTravel>d__2.MoveNext+0x5d: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+          "il:BardToolbox.dll:<WorldTravel>d__1.MoveNext+0x51: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "ruleId": "automation.game.character.interact",
+        "severity": "caution",
+        "title": "World/NPC interaction control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:BardToolbox.dll: WriteAllText",
+          "il:BardToolbox.dll:<>c__DisplayClass6_0.<WriteFileNameToFile>b__1+0x75: call System.IO.File.WriteAllText: WriteAllText",
+          "artifact:BardToolbox.dll: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 250,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-86356c502b54fd65",
+      "artifactBytes": 500706,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.2.7.0",
+        "artifactBytes": 500706,
+        "artifactSha256": "5f1479e33bfcabf111d6be2662e913e1802afa55e7d81c5f2b81c55f5d716b17",
+        "catalogAssemblyVersion": "2.2.7.0",
+        "manifestInternalName": "",
+        "manifestPath": "BardToolbox.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Dynamic code loading",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [],
+      "capabilityRegistryRevision": "",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 1,
+        "informational": 1
+      },
+      "engineVersion": "2.14.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {},
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {},
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/latest.zip",
+        "internalName": "BardToolbox",
+        "manifestVersion": "2.2.7.0",
+        "observationId": 3050,
+        "observationKey": "manifest-417d864e16d94591a3d007b17ec4",
+        "repositoryUrl": "https://discord.gg/h9Nt5NXZWz",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1910
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 13,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 15,
+        "uncompressedBytes": 1122701
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-86356c502b54fd65",
+        "attemptId": "attempt-v2-61f04a4f256e52e8",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-1d7c4bffd11c18ea",
+        "definitionsRevision": "defs-v1-102ba4ae785c165b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-1910",
+        "queueSeedRevision": "queue-seed-v2-5958b6f76ca34b13",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-c48990531389c0ea",
+        "scannerBundleSha256": "d419b951eff332f39fd4646cc023874bbea3f8b4bca2336dd5c667b36aaaee6d",
+        "scannerRevision": "scanner-v1-41f526c7c504a5b0",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-9bb9feeaad9e6585",
+        "sourceObservationRevision": "source-observations-v1-88b199cbaa8de452",
+        "targetFingerprint": "artifact-target-v2-2cb4c11df07f278e5a68",
+        "variantId": 1910,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-21T04:44:40Z",
+      "scannerVersion": "2.14.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "5f1479e33bfcabf111d6be2662e913e1802afa55e7d81c5f2b81c55f5d716b17",
+        "engines": [
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 41224,
+              "actualSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "actualVersion": "4.5.0",
+              "available": true,
+              "command": "yara",
+              "error": "",
+              "expectedBytes": 41224,
+              "expectedSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "expectedVersion": "4.5.0",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "2854676bc2687ebc1e3d76dc9e1ecb97b214199071d4a999d62706a8902b72bf",
+            "revision": "secondary-v1-9a0630d9ae7e5c563678",
+            "scanScope": {
+              "archiveDetected": true,
+              "archiveMemberBytesScanned": 1122701,
+              "archiveMemberCandidates": 15,
+              "archiveMembersScanned": 15,
+              "archiveMembersSkipped": 0,
+              "artifactContainerScanned": true,
+              "schema": "omega.sigmascope.yara-scan-scope.v1",
+              "skipReasons": {},
+              "targetCount": 16,
+              "truncated": false
+            },
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "4.5.0"
+          },
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 186688,
+              "actualSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "actualVersion": "ClamAV 1.5.3/28098/Thu Aug 20 06:24:22 2026",
+              "available": true,
+              "command": "clamscan",
+              "error": "",
+              "expectedBytes": 186688,
+              "expectedSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "expectedVersion": "ClamAV 1.5.3/28098/Thu Aug 20 06:24:22 2026",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "",
+            "revision": "secondary-v1-0dd7f87de3bdf6562b81",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "ClamAV 1.5.3/28098/Thu Aug 20 06:24:22 2026"
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://discord.gg/h9Nt5NXZWz",
+          "https://github.com/BardToolbox/BardToolbox-Release"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://discord.gg/h9Nt5NXZWz",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 253,
+    "scanned_at_utc": "2026-08-21T04:44:40Z",
+    "scanner_version": "2.14.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://discord.gg/h9Nt5NXZWz",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1910
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "5f1479e33bfcabf111d6be2662e913e1802afa55e7d81c5f2b81c55f5d716b17",
+      "current_assembly_version": "2.2.7.0",
+      "current_scan_id": 253,
+      "current_scanner_version": "2.14.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-21T05:18:36Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 1910
+    },
+    "sourceArtifactComparison": null
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 7359,
+          "encoding": "json",
+          "path": "derived/variants/0001/1910/advisory-matches.json",
+          "recordDigest": "5a707766cb670c585137db63d1afcabfb41a3c050c67afeb366954664152db7f",
+          "records": 13,
+          "sha256": "49f1a89a784c46b679925f4beab697e35c8fb04af287209f2d3271e74a307b86"
+        }
+      ],
+      "recordDigest": "5a707766cb670c585137db63d1afcabfb41a3c050c67afeb366954664152db7f",
+      "records": 13
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1910/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 151175,
+          "encoding": "json",
+          "path": "derived/variants/0001/1910/dependency-resolutions.json",
+          "recordDigest": "9a02414b94cf82c155da20d2c0d23d5800051af9dd693dc5b3657ccd550dbd8e",
+          "records": 156,
+          "sha256": "5b8735d07d0feebdf3a8bb3436dcc1faf59cb22357316da1409306d148a74b0d"
+        }
+      ],
+      "recordDigest": "9a02414b94cf82c155da20d2c0d23d5800051af9dd693dc5b3657ccd550dbd8e",
+      "records": 156
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1910/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "94d66ef9407215c5923c35e9c9ca0763191d85307b07bf441d2008666b69eee7",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "b4f5af86cae6ec5d2dea1dcb60a2c235d481a45bee50718042dbaad93aedeb88",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "b072bf2199184db1964046efcac8f5940cbeee437c6d7f96a359e12c2aa35a3e",
+        "records": 156,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "4c1852ef71bddd2938463c8ab1f49cd007255bf09c5cec925c41fe715f29da9b",
+        "records": 13,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "b96994b105bdf1bd9a82a334c2e8204c14c15e6424305a8f4b457d3bee851100",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "0a7c8de4bbe1d0769b58e18497b0bac7dde5eede3571cd8463971a98ae0b3e3b",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-12c44eb2432363af",
+    "legacyCompatibility": true,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "staticPatternMatches"
+    ],
+    "observationDigest": "obs-5897da66a4895ec7844adadd399ce19bcd729d4899c5f4140a67ac76c5ac032a",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-86356c502b54fd65",
+      "sourceAnalysisRevision": "source-analysis-v1-9bb9feeaad9e6585"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "BardToolbox",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "BardToolbox",
+    "last_seen_utc": "2026-08-26T03:31:07Z",
+    "plugin_id": 545
+  },
+  "pluginId": 545,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Plugin from https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/pluginmaster.json",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 427,
+      "summary": "An all-in-one toolbox, providing all the essentials bards & bands would need every day.\nSPECIAL THANKS to MidiBard and FFXIV Bards & Bands Community. Join: discord.gg/ff14bard",
+      "webEnriched": true
+    },
+    "projectRepository": "https://discord.gg/h9Nt5NXZWz",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "7e8b5da5d83f5a67029b34b4af4af80bb3dd750dc29af5e7d1221090012fd760",
+        "records": 3
+      },
+      "behaviorConsistency": {
+        "recordDigest": "e34d7945ee3b0a972cf6aeb9556fdea77747d9518a67aada4065e09d6d6cdf10",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "fb78ddd656a37ffad51ecc1af1cfcf61875e39b3f412eab52a8f49f0c4b4483e",
+        "records": 9
+      }
+    },
+    "projectionRevision": "projection-v1-bef1254d87407e1d",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-c48990531389c0ea",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "5f1479e33bfcabf111d6be2662e913e1802afa55e7d81c5f2b81c55f5d716b17",
+    "artifact_url": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/latest.zip",
+    "assembly_version": "2.2.7.0",
+    "capabilities_json": [
+      "Character action execution",
+      "Dynamic code loading",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 1,
+    "plugin_id": 545,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 250,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-86356c502b54fd65",
+      "artifactBytes": 500706,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.2.7.0",
+        "artifactBytes": 500706,
+        "artifactSha256": "5f1479e33bfcabf111d6be2662e913e1802afa55e7d81c5f2b81c55f5d716b17",
+        "catalogAssemblyVersion": "2.2.7.0",
+        "manifestInternalName": "",
+        "manifestPath": "BardToolbox.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Dynamic code loading",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [],
+      "capabilityRegistryRevision": "",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 1,
+        "informational": 1
+      },
+      "engineVersion": "2.14.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {},
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {},
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/latest.zip",
+        "internalName": "BardToolbox",
+        "manifestVersion": "2.2.7.0",
+        "observationId": 3050,
+        "observationKey": "manifest-417d864e16d94591a3d007b17ec4",
+        "repositoryUrl": "https://discord.gg/h9Nt5NXZWz",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1910
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 13,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 15,
+        "uncompressedBytes": 1122701
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-86356c502b54fd65",
+        "attemptId": "attempt-v2-61f04a4f256e52e8",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-1d7c4bffd11c18ea",
+        "definitionsRevision": "defs-v1-102ba4ae785c165b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-1910",
+        "queueSeedRevision": "queue-seed-v2-5958b6f76ca34b13",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-c48990531389c0ea",
+        "scannerBundleSha256": "d419b951eff332f39fd4646cc023874bbea3f8b4bca2336dd5c667b36aaaee6d",
+        "scannerRevision": "scanner-v1-41f526c7c504a5b0",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-9bb9feeaad9e6585",
+        "sourceObservationRevision": "source-observations-v1-88b199cbaa8de452",
+        "targetFingerprint": "artifact-target-v2-2cb4c11df07f278e5a68",
+        "variantId": 1910,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-21T05:18:36Z",
+      "scannerVersion": "2.14.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "5f1479e33bfcabf111d6be2662e913e1802afa55e7d81c5f2b81c55f5d716b17",
+        "engines": [
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 41224,
+              "actualSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "actualVersion": "4.5.0",
+              "available": true,
+              "command": "yara",
+              "error": "",
+              "expectedBytes": 41224,
+              "expectedSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "expectedVersion": "4.5.0",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "2854676bc2687ebc1e3d76dc9e1ecb97b214199071d4a999d62706a8902b72bf",
+            "revision": "secondary-v1-9a0630d9ae7e5c563678",
+            "scanScope": {
+              "archiveDetected": true,
+              "archiveMemberBytesScanned": 1122701,
+              "archiveMemberCandidates": 15,
+              "archiveMembersScanned": 15,
+              "archiveMembersSkipped": 0,
+              "artifactContainerScanned": true,
+              "schema": "omega.sigmascope.yara-scan-scope.v1",
+              "skipReasons": {},
+              "targetCount": 16,
+              "truncated": false
+            },
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "4.5.0"
+          },
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 186688,
+              "actualSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "actualVersion": "ClamAV 1.5.3/28098/Thu Aug 20 06:24:22 2026",
+              "available": true,
+              "command": "clamscan",
+              "error": "",
+              "expectedBytes": 186688,
+              "expectedSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "expectedVersion": "ClamAV 1.5.3/28098/Thu Aug 20 06:24:22 2026",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "",
+            "revision": "secondary-v1-0dd7f87de3bdf6562b81",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "ClamAV 1.5.3/28098/Thu Aug 20 06:24:22 2026"
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://discord.gg/h9Nt5NXZWz",
+          "https://github.com/BardToolbox/BardToolbox-Release"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://discord.gg/h9Nt5NXZWz",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 253,
+    "scanned_at_utc": "2026-08-21T05:18:36Z",
+    "scanner_version": "2.14.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 569,
+    "source_repository": "https://discord.gg/h9Nt5NXZWz",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1910
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "b163ea5ab11ca56cd555f4330ac5dc606cf802a249f124d052370dd3f37b0d3a",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"6c7c09b94c415b0a2413663cdf3c81dfdc28b0c4987dace36b8277f60a734385\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-08-26T03:31:07Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-26T03:31:07Z",
+    "name": "XenHat/dalamudrepo",
+    "plugin_count": 95,
+    "provider": "XenHat/dalamudrepo",
+    "source_id": 569,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/XenHat/dalamudrepo/main/repo.json"
+  },
+  "sourceId": 569,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "2.2.7.0",
+    "author": "BardToolbox",
+    "authors_json": [
+      "BardToolbox"
+    ],
+    "category_tags_json": [
+      "utility",
+      "other"
+    ],
+    "changelog": "Update for Dawntrail 7.5, Dalamud API 15 Update\n\nThanks for your support!",
+    "dalamud_api_level": 15,
+    "description": "",
+    "dip17_channel": "",
+    "download_count": 62310,
+    "download_link_install": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/latest.zip",
+    "download_link_testing": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/testing.zip",
+    "download_link_update": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/latest.zip",
+    "first_seen_utc": "2026-08-20T08:17:59Z",
+    "icon_url": "https://i.imgur.com/5BsJD3g.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-26T03:31:07Z",
+    "last_update": 1780454751,
+    "minimum_dalamud_version": null,
+    "name": "BardToolbox",
+    "plugin_id": 545,
+    "punchline": "An all-in-one toolbox, providing all the essentials bards & bands would need every day.\nSPECIAL THANKS to MidiBard and FFXIV Bards & Bands Community. Join: discord.gg/ff14bard",
+    "raw_manifest_json": {
+      "AcceptsFeedback": false,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "2.2.7.0",
+      "Author": "BardToolbox",
+      "CanUnloadAsync": false,
+      "CategoryTags": [
+        "utility",
+        "other"
+      ],
+      "Changelog": "Update for Dawntrail 7.5, Dalamud API 15 Update\n\nThanks for your support!",
+      "DalamudApiLevel": 15,
+      "Description": "",
+      "DownloadCount": 62310,
+      "DownloadLinkInstall": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/latest.zip",
+      "DownloadLinkTesting": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/testing.zip",
+      "DownloadLinkUpdate": "https://raw.githubusercontent.com/BardToolbox/BardToolbox-Release/master/plugins/BardToolbox/latest.zip",
+      "IconUrl": "https://i.imgur.com/5BsJD3g.png",
+      "InternalName": "BardToolbox",
+      "IsHide": "False",
+      "IsTestingExclusive": "False",
+      "LastUpdate": "1780454751",
+      "LoadPriority": 0,
+      "LoadRequiredState": 0,
+      "LoadSync": false,
+      "Name": "BardToolbox",
+      "Punchline": "An all-in-one toolbox, providing all the essentials bards & bands would need every day.\nSPECIAL THANKS to MidiBard and FFXIV Bards & Bands Community. Join: discord.gg/ff14bard",
+      "RepoUrl": "https://discord.gg/h9Nt5NXZWz",
+      "Tags": [
+        "bard",
+        "midi",
+        "play",
+        "band",
+        "music",
+        "perform",
+        "performance",
+        "party",
+        "teleport",
+        "invite",
+        "disband",
+        "local",
+        "hack",
+        "cam",
+        "camera",
+        "camerahack",
+        "window",
+        "size",
+        "title",
+        "layout",
+        "resolution",
+        "cpu",
+        "affinity",
+        "sync",
+        "key",
+        "command",
+        "broad",
+        "broadcast",
+        "multi",
+        "multibox",
+        "move",
+        "movement",
+        "follow",
+        "formation",
+        "auto",
+        "login",
+        "autologin",
+        "travel",
+        "macro",
+        "macrochain",
+        "item",
+        "isboxer",
+        "midibard",
+        "sandbox",
+        "btb",
+        "plugin",
+        "utility"
+      ],
+      "TestingAssemblyVersion": "3.0.0.2",
+      "TestingDalamudApiLevel": "15"
+    },
+    "repo_url": "https://discord.gg/h9Nt5NXZWz",
+    "source_entry_key": "bardtoolbox|2.2.7.0|15|15|11",
+    "source_id": 569,
+    "tags_json": [
+      "bard",
+      "midi",
+      "play",
+      "band",
+      "music",
+      "perform",
+      "performance",
+      "party",
+      "teleport",
+      "invite",
+      "disband",
+      "local",
+      "hack",
+      "cam",
+      "camera",
+      "camerahack",
+      "window",
+      "size",
+      "title",
+      "layout",
+      "resolution",
+      "cpu",
+      "affinity",
+      "sync",
+      "key",
+      "command",
+      "broad",
+      "broadcast",
+      "multi",
+      "multibox",
+      "move",
+      "movement",
+      "follow",
+      "formation",
+      "auto",
+      "login",
+      "autologin",
+      "travel",
+      "macro",
+      "macrochain",
+      "item",
+      "isboxer",
+      "midibard",
+      "sandbox",
+      "btb",
+      "plugin",
+      "utility"
+    ],
+    "testing_assembly_version": "3.0.0.2",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 1910
+  },
+  "variantId": 1910
+}

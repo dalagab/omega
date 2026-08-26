@@ -1,0 +1,4707 @@
+{
+  "analysis": {
+    "analysisId": "471b1f275c2e58df46509cc0c61899570be312c2aad6d52b0bf2b0ad9d56c8b8",
+    "artifactSha256": "0538a2d3c5975f524f17509bb42cc2f46e4bf33f8e1385ac38c7215f0961f8ae",
+    "path": "artifacts/05/0538a2d3c5975f524f17509bb42cc2f46e4bf33f8e1385ac38c7215f0961f8ae/analyses/471b1f275c2e58df46509cc0c61899570be312c2aad6d52b0bf2b0ad9d56c8b8",
+    "recordCount": 29167
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "0538a2d3c5975f524f17509bb42cc2f46e4bf33f8e1385ac38c7215f0961f8ae",
+    "artifact_url": "https://github.com/Aspher0/BypassEmote/releases/download/v1.7.4.0/latest.zip",
+    "assembly_version": "1.7.4.0",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: ffxivcollect.com",
+      "Endpoint: github.com",
+      "Endpoint: james.newtonking.com",
+      "Endpoint: ko-fi.com",
+      "Endpoint: microsoft.com",
+      "Endpoint: ocsp.digicert.com0c",
+      "Endpoint: ocsp.digicert.com0o",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: system.data.sqlite.org",
+      "Endpoint: www.castleproject.org",
+      "Endpoint: www.digicert.com",
+      "Endpoint: www.microsoft.com0",
+      "Endpoint: www.newtonsoft.com",
+      "Endpoint: www.nuget.org",
+      "Endpoint: www.w3.org",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Local server/listener",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Raw sockets",
+      "Registry access"
+    ],
+    "caution_count": 24,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "system",
+        "description": "References Windows Registry APIs.",
+        "evidence": [
+          "metadata:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll: Microsoft.Win32.Registry",
+          "metadata:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll: RegistryKey",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x13b: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x13b: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: RegistryKey",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x14a: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x14a: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x1a7: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x1a7: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey"
+        ],
+        "ruleId": "registry.access",
+        "severity": "caution",
+        "title": "Windows Registry access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:Newtonsoft.Json.dll: CreateProcess",
+          "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlDocumentWrapper.CreateProcessingInstruction+0x8: callvirt System.Xml.XmlDocument.CreateProcessingInstruction: CreateProcess",
+          "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlNodeConverter.CreateInstruction+0xf2: callvirt Newtonsoft.Json.Converters.IXmlDocument.CreateProcessingInstruction: CreateProcess",
+          "artifact:Newtonsoft.Json.dll: CreateProcess",
+          "metadata:NoireLib.dll: System.Diagnostics.Process",
+          "metadata:NoireLib.dll: ProcessStartInfo",
+          "metadata:NoireLib.dll: ShellExecute",
+          "metadata:NoireLib.dll: Process.Start"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "metadata:NoireLib.dll: System.Net.Sockets",
+          "metadata:NoireLib.dll: UdpClient",
+          "metadata:NoireLib.dll: TcpClient",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x4b: newobj System.Net.Sockets.UdpClient..ctor: System.Net.Sockets",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x4b: newobj System.Net.Sockets.UdpClient..ctor: UdpClient",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x53: callvirt System.Net.Sockets.UdpClient.set_ExclusiveAddressUse: System.Net.Sockets",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x53: callvirt System.Net.Sockets.UdpClient.set_ExclusiveAddressUse: UdpClient",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x59: callvirt System.Net.Sockets.UdpClient.get_Client: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BypassEmote.dll: https://ffxivcollect.com/api/emotes"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.f6e6319b4f2d",
+        "severity": "caution",
+        "title": "Endpoint: ffxivcollect.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.be2490e7d948",
+        "severity": "caution",
+        "title": "Endpoint: www.newtonsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/json"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.a7f45af35c13",
+        "severity": "caution",
+        "title": "Endpoint: www.newtonsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BypassEmote.dll: https://ko-fi.com/aspher0"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.7b6460435780",
+        "severity": "caution",
+        "title": "Endpoint: ko-fi.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.2fc10d6dbcb0",
+        "severity": "caution",
+        "title": "Endpoint: www.nuget.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:System.Data.SQLite.dll: https://system.data.sqlite.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.25e9e82fe061",
+        "severity": "caution",
+        "title": "Endpoint: system.data.sqlite.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Castle.Core.dll: http://www.w3.org/2000/xmlns/",
+          "artifact:Newtonsoft.Json.dll: http://www.w3.org/2000/xmlns/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.d06315e1b027",
+        "severity": "caution",
+        "title": "Endpoint: www.w3.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.c831a6f811e0",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0c"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.b80d4039aa50",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0o"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Castle.Core.dll: http://www.castleproject.org/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.b3e0afccfea1",
+        "severity": "caution",
+        "title": "Endpoint: www.castleproject.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Castle.Core.dll: http://www.w3.org/2001/XMLSchema"
+        ],
+        "ruleId": "network.endpoint.insecure-http.a22e50d71b05",
+        "severity": "caution",
+        "title": "Endpoint: www.w3.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Castle.Core.dll: http://www.w3.org/2001/XMLSchema-instance"
+        ],
+        "ruleId": "network.endpoint.insecure-http.922e0f6d900f",
+        "severity": "caution",
+        "title": "Endpoint: www.w3.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:System.Diagnostics.EventLog.dll: http://www.microsoft.com0/",
+          "artifact:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll: http://www.microsoft.com0/",
+          "artifact:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.Messages.dll: http://www.microsoft.com0/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.7b602439ebe0",
+        "severity": "caution",
+        "title": "Endpoint: www.microsoft.com0"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+        ],
+        "ruleId": "network.endpoint.insecure-http.49cce80f87f1",
+        "severity": "caution",
+        "title": "Endpoint: james.newtonking.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Castle.Core.dll: http://microsoft.com/wsdl/types/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.1c22b8baeea2",
+        "severity": "caution",
+        "title": "Endpoint: microsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+        ],
+        "ruleId": "network.endpoint.insecure-http.0bda789b1ee3",
+        "severity": "caution",
+        "title": "Endpoint: www.digicert.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:NoireLib.dll: DllImportAttribute",
+          "metadata:System.Data.SQLite.dll: DllImportAttribute",
+          "metadata:System.Data.SQLite.dll: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibraryWin32+0x1: call System.Data.SQLite.UnsafeNativeMethodsWin32.LoadLibrary -> kernel32!LoadLibrary: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x1: ldftn System.Data.SQLite.NativeLibraryHelper.LoadLibraryWin32: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x7: newobj LoadLibraryCallback..ctor: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x15: ldftn System.Data.SQLite.NativeLibraryHelper.LoadLibraryPosix: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x1b: newobj LoadLibraryCallback..ctor: LoadLibrary"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "network",
+        "description": "References APIs that can listen for inbound local/network connections.",
+        "evidence": [
+          "metadata:NoireLib.dll: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x10b: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x112: callvirt System.Net.Sockets.TcpListener.get_Server: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x124: callvirt System.Net.Sockets.TcpListener.get_Server: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x135: callvirt System.Net.Sockets.TcpListener.get_Server: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x146: callvirt System.Net.Sockets.TcpListener.get_Server: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x152: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StopTransport+0x81: call System.Net.Sockets.TcpListener.Stop: TcpListener"
+        ],
+        "ruleId": "local.listener",
+        "severity": "caution",
+        "title": "Local server/listener"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:NoireLib.dll: SigScanner",
+          "metadata:NoireLib.dll: Dalamud.Hooking",
+          "metadata:NoireLib.dll: HookFromAddress",
+          "il:NoireLib.dll:NoireLib.Hooking.HookWrapper`1..ctor+0xa: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:NoireLib.dll:NoireLib.Hooking.HookWrapperFactory.CreateResolvedHook+0xc: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "artifact:NoireLib.dll: Dalamud.Hooking",
+          "artifact:NoireLib.dll: SigScanner",
+          "artifact:NoireLib.dll: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:Castle.Core.dll: p://www.castleproject.org/",
+          "artifact:Castle.Core.dll: s://github.com/castleproject/Core",
+          "artifact:Castle.Core.dll: C:\\projects\\core\\src\\Castle.Core\\obj\\Release\\net6.0\\Castle.Core.pdb",
+          "artifact:Castle.Core.dll: p://www.w3.org/2000/xmlns/",
+          "artifact:Castle.Core.dll: p://www.w3.org/2001/XMLSchema-instance",
+          "artifact:Castle.Core.dll: p://microsoft.com/wsdl/types/",
+          "artifact:Castle.Core.dll: p://www.w3.org/2001/XMLSchema",
+          "artifact:NoireLib.dll: s://github.com/Aspher0/NoireLib"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:Castle.Core.dll: Reflection.Emit",
+          "metadata:Castle.Core.dll: Assembly.Load",
+          "il:Castle.Core.dll:Castle.DynamicProxy.CustomAttributeInfo..ctor+0x10: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+          "il:Castle.Core.dll:Castle.DynamicProxy.ModuleScope.CreateModule+0x1a: call System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly: Reflection.Emit",
+          "il:Castle.Core.dll:Castle.DynamicProxy.ModuleScope.CreateModule+0x20: callvirt System.Reflection.Emit.AssemblyBuilder.DefineDynamicModule: Reflection.Emit",
+          "il:Castle.Core.dll:Castle.DynamicProxy.ModuleScope.DefineType+0x13: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+          "il:Castle.Core.dll:Castle.DynamicProxy.Generators.BaseProxyGenerator.GenerateConstructor+0xcd: callvirt System.Reflection.Emit.ConstructorBuilder.DefineParameter: Reflection.Emit",
+          "il:Castle.Core.dll:Castle.DynamicProxy.Generators.BaseProxyGenerator.GenerateConstructor+0xf8: callvirt System.Reflection.Emit.ParameterBuilder.SetCustomAttribute: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:BypassEmote.dll: System.Net.Http.HttpClient",
+          "il:BypassEmote.dll:BypassEmote.Service..cctor+0x24: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:BypassEmote.dll:BypassEmote.Service..cctor+0x32: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+          "il:BypassEmote.dll:<FetchAndBuildEmoteSourcesAsync>d__26.MoveNext+0x46: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient",
+          "metadata:NoireLib.dll: System.Net.Http.HttpClient",
+          "il:NoireLib.dll:NoireLib.UpdateTracker.NoireUpdateTracker..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:NoireLib.dll:NoireLib.UpdateTracker.NoireUpdateTracker..ctor+0xf: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.b68d17bbb7cf",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:NoireLib.dll: https://github.com/Aspher0/NoireLib"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.a4d5206a81ec",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:System.Diagnostics.EventLog.dll: https://github.com/dotnet/runtime",
+          "artifact:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll: https://github.com/dotnet/runtime",
+          "artifact:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.Messages.dll: https://github.com/dotnet/runtime"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.9f15c9767ba8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BypassEmote.dll: https://github.com/Aspher0/BypassEmote.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.551372ad8f78",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Castle.Core.dll: https://github.com/castleproject/Core"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.528c88f69e97",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public platform: GitHub raw content (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BypassEmote.dll: https://raw.githubusercontent.com/Aspher0/BypassEmote/refs/heads/main/repo.json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.4ba5e04a33c7",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Castle.Core.dll: FileStream",
+          "il:Castle.Core.dll:Castle.Core.Logging.StreamLoggerFactory.Create+0xe: newobj System.IO.FileStream..ctor: FileStream",
+          "artifact:Castle.Core.dll: FileStream",
+          "metadata:NoireLib.dll: FileStream",
+          "metadata:NoireLib.dll: Directory.CreateDirectory",
+          "metadata:NoireLib.dll: WriteAllText",
+          "metadata:NoireLib.dll: File.Delete",
+          "metadata:NoireLib.dll: Directory.Delete"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 8,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-86356c502b54fd65",
+      "artifactBytes": 1095772,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.7.4.0",
+        "artifactBytes": 1095772,
+        "artifactSha256": "0538a2d3c5975f524f17509bb42cc2f46e4bf33f8e1385ac38c7215f0961f8ae",
+        "catalogAssemblyVersion": "1.7.4.0",
+        "manifestInternalName": "BypassEmote",
+        "manifestPath": "BypassEmote.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1054823141/8f7993aa-41fe-4ff3-b23e-62ef93d129f7?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-08-21T08%3A59%3A26Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-08-21T07%3A59%3A15Z&ske=2026-08-21T08%3A59%3A26Z&sks=b&skv=2018-11-09&sig=wB5NGjvu2Y2cG9cIfBln3P%2FiaiX4LthBiGHpp1MFRN0%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4NzI5OTY2OCwibmJmIjoxNzg3Mjk5MzY4LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.U9svCzRycr8xVPYuAkFSF8oNwXdyAh7maH_P0PaK9Tw&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.listener",
+            "label": "Local/network listener",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 11,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 11,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: ffxivcollect.com",
+        "Endpoint: github.com",
+        "Endpoint: james.newtonking.com",
+        "Endpoint: ko-fi.com",
+        "Endpoint: microsoft.com",
+        "Endpoint: ocsp.digicert.com0c",
+        "Endpoint: ocsp.digicert.com0o",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: system.data.sqlite.org",
+        "Endpoint: www.castleproject.org",
+        "Endpoint: www.digicert.com",
+        "Endpoint: www.microsoft.com0",
+        "Endpoint: www.newtonsoft.com",
+        "Endpoint: www.nuget.org",
+        "Endpoint: www.w3.org",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Local server/listener",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Raw sockets",
+        "Registry access"
+      ],
+      "capabilityIds": [],
+      "capabilityRegistryRevision": "",
+      "counts": {
+        "caution": 24,
+        "critical": 0,
+        "high": 1,
+        "informational": 8
+      },
+      "engineVersion": "2.14.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 135,
+          "exactVersionObservedCount": 127,
+          "families": {
+            "managed-assembly": 122,
+            "native": 8,
+            "nuget": 5
+          },
+          "fingerprint": "8e9ddca1a390d83c201863cf02387addcd6f4f40fdc1d3b0506b414a60a32201",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 224,
+            "platformLibrary": 32
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "ClearEventLog",
+              "library": "advapi32.dll",
+              "managedName": "ClearEventLog",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CloseEventLog",
+              "library": "advapi32.dll",
+              "managedName": "CloseEventLog",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "DeregisterEventSource",
+              "library": "advapi32.dll",
+              "managedName": "DeregisterEventSource",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetNumberOfEventLogRecords",
+              "library": "advapi32.dll",
+              "managedName": "GetNumberOfEventLogRecords",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetOldestEventLogRecord",
+              "library": "advapi32.dll",
+              "managedName": "GetOldestEventLogRecord",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "LookupAccountSidW",
+              "library": "advapi32.dll",
+              "managedName": "LookupAccountSid",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "NotifyChangeEventLog",
+              "library": "advapi32.dll",
+              "managedName": "NotifyChangeEventLog",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "OpenEventLog",
+              "library": "advapi32.dll",
+              "managedName": "OpenEventLog",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "ReadEventLog",
+              "library": "advapi32.dll",
+              "managedName": "ReadEventLog",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "RegisterEventSource",
+              "library": "advapi32.dll",
+              "managedName": "RegisterEventSource",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "ReportEvent",
+              "library": "advapi32.dll",
+              "managedName": "ReportEvent",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "RegisterExtensionFunctions",
+              "library": "e_sqlite3",
+              "managedName": "RegisterExtensionFunctions",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_backup_finish",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_backup_finish",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_bind_parameter_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_bind_parameter_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_close",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_close",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_close_v2",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_close_v2",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_database_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_database_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_database_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_database_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_decltype",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_decltype",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_decltype16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_decltype16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_origin_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_origin_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_origin_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_origin_name16",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 8,
+            "observed": 122,
+            "required": 5
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 130,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 5,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 8,
+            "observed": 122,
+            "optional": 0,
+            "required": 5,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 135
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 22,
+          "destinationsUndetermined": false,
+          "hostCount": 20,
+          "hosts": [
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "cacerts.digicert.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl.microsoft.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl3.digicert.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl4.digicert.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ffxivcollect.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 5,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 5,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "james.newtonking.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "microsoft.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0c",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0o",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "system.data.sqlite.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.castleproject.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.digicert.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "literalCount": 12,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "www.newtonsoft.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.nuget.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "www.w3.org",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 42,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 44197
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/DigiCertCSRSA4096RootG5.crt0E"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/NETFoundationProjectsCodeSigningCA2.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicTimStaPCA_2010-07-01.crl0Z"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/DigiCertCSRSA4096RootG5.crl0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/NETFoundationProjectsCodeSigningCA2.crl0F"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl4.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl4.digicert.com/NETFoundationProjectsCodeSigningCA2.crl0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ffxivcollect.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ffxivcollect.com/api/emotes"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Aspher0/BypassEmote.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Aspher0/NoireLib"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/JamesNK/Newtonsoft.Json"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/castleproject/Core"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/dotnet/runtime"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "james.newtonking.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://james.newtonking.com/projects/json"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ko-fi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/aspher0"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://microsoft.com/wsdl/types/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0c",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0c/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0o",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0o/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Aspher0/BypassEmote/refs/heads/main/repo.json"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "system.data.sqlite.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://system.data.sqlite.org/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.castleproject.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.castleproject.org/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.digicert.com/CPS0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/PKI/docs/CPS/default.htm0@"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicTimStaPCA_2010-07-01.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Identity%20Verification%20Root%20Certificate%20Authority%202020.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Public%20RSA%20Timestamping%20CA%202020.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Identity%20Verification%20Root%20Certificate%20Authority%202020.crl0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Public%20RSA%20Timestamping%20CA%202020.crl0y"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.microsoft.com0",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.microsoft.com0/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.newtonsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.newtonsoft.com/json"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.newtonsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.newtonsoft.com/jsonschema"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.nuget.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.w3.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.w3.org/2000/xmlns/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.w3.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.w3.org/2001/XMLSchema"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.w3.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.w3.org/2001/XMLSchema-instance"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Aspher0/BypassEmote/releases/download/v1.7.4.0/latest.zip",
+        "internalName": "BypassEmote",
+        "manifestVersion": "1.7.4.0",
+        "observationId": 1997,
+        "observationKey": "manifest-9f6c9cdc2cbe25563f1e278fca81",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1171
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 8,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 10,
+        "uncompressedBytes": 3695885
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-86356c502b54fd65",
+        "attemptId": "attempt-v2-ba75e84299049bfe",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-1d7c4bffd11c18ea",
+        "definitionsRevision": "defs-v1-102ba4ae785c165b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-1171",
+        "queueSeedRevision": "queue-seed-v2-5958b6f76ca34b13",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-c48990531389c0ea",
+        "scannerBundleSha256": "d419b951eff332f39fd4646cc023874bbea3f8b4bca2336dd5c667b36aaaee6d",
+        "scannerRevision": "scanner-v1-41f526c7c504a5b0",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-9bb9feeaad9e6585",
+        "sourceObservationRevision": "source-observations-v1-88b199cbaa8de452",
+        "targetFingerprint": "artifact-target-v2-36846feacea2167ce456",
+        "variantId": 1171,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-21T08:02:48Z",
+      "scannerVersion": "2.14.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "0538a2d3c5975f524f17509bb42cc2f46e4bf33f8e1385ac38c7215f0961f8ae",
+        "engines": [
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 41224,
+              "actualSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "actualVersion": "4.5.0",
+              "available": true,
+              "command": "yara",
+              "error": "",
+              "expectedBytes": 41224,
+              "expectedSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "expectedVersion": "4.5.0",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "2854676bc2687ebc1e3d76dc9e1ecb97b214199071d4a999d62706a8902b72bf",
+            "revision": "secondary-v1-9a0630d9ae7e5c563678",
+            "scanScope": {
+              "archiveDetected": true,
+              "archiveMemberBytesScanned": 3695885,
+              "archiveMemberCandidates": 10,
+              "archiveMembersScanned": 10,
+              "archiveMembersSkipped": 0,
+              "artifactContainerScanned": true,
+              "schema": "omega.sigmascope.yara-scan-scope.v1",
+              "skipReasons": {},
+              "targetCount": 11,
+              "truncated": false
+            },
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "4.5.0"
+          },
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 186688,
+              "actualSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "actualVersion": "ClamAV 1.5.3/28099/Fri Aug 21 06:26:38 2026",
+              "available": true,
+              "command": "clamscan",
+              "error": "",
+              "expectedBytes": 186688,
+              "expectedSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "expectedVersion": "ClamAV 1.5.3/28098/Thu Aug 20 06:24:22 2026",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "",
+            "revision": "secondary-v1-0dd7f87de3bdf6562b81",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "ClamAV 1.5.3/28099/Fri Aug 21 06:26:38 2026"
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://release-assets.githubusercontent.com/github-production-release-asset/1054823141/8f7993aa-41fe-4ff3-b23e-62ef93d129f7",
+          "https://github.com/Aspher0/BypassEmote"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 355,
+    "scanned_at_utc": "2026-08-21T08:02:48Z",
+    "scanner_version": "2.14.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1171
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "0538a2d3c5975f524f17509bb42cc2f46e4bf33f8e1385ac38c7215f0961f8ae",
+      "current_assembly_version": "1.7.4.0",
+      "current_scan_id": 355,
+      "current_scanner_version": "2.14.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-21T08:03:04Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 1171
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 73,
+      "artifact_only_count": 73,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:bypassemote",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "BypassEmote",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.7.4.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:castle.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Castle.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "5.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.50.0.8012"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.csharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.CSharp",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.registry",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Registry",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0",
+            "2.1.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:noirelib",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NoireLib",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.8.0.3"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.specialized",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Specialized",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.eventbasedasync",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.EventBasedAsync",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.typeconverter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.TypeConverter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.console",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.data.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Data.Common",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.data.sqlite",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "System.Data.SQLite",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.0.3.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.eventlog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.EventLog",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.eventlog.messages",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "System.Diagnostics.EventLog.Messages",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.tracesource",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.TraceSource",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression.zipfile",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression.ZipFile",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.filesystem.watcher",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.FileSystem.Watcher",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.mail",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Mail",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.nameresolution",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.NameResolution",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.sockets",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Sockets",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.objectmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.ilgeneration",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.lightweight",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.Lightweight",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.numerics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Numerics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.serialization.formatters",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Serialization.Formatters",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.serialization.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Serialization.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.principal.windows",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Principal.Windows",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.threadpool",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.ThreadPool",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.readerwriter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.ReaderWriter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xdocument",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XDocument",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xmlserializer",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XmlSerializer",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xpath",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XPath",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:advapi32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "advapi32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:e_sqlite3",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "e_sqlite3",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libc",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "libc",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libdl",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "libdl",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:wevtapi",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "wevtapi.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:castle.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Castle.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "5.2.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:newtonsoft.json",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "13.0.4"
+          ]
+        },
+        {
+          "componentKey": "nuget:noirelib",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NoireLib",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.8.0.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.data.sqlite",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Data.SQLite",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.0.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.eventlog",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.EventLog",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "6.0.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-21T08:03:04Z",
+      "comparison_id": 268,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 355,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 1171,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "7cc4eba8036c488eb4a43355d51dcd74508d513810ea9b93ce40aae77c983a0f",
+    "observedAtUtc": "2026-08-25T08:03:46Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "3de6692ecbde068a2172d6b9c9d8f8df54c86eed644419e3792e54aafb340c3a",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "ccaefbabc133b32a130706a12a0de0af753c4668ba116e96325182aab0c1805e",
+        "records": 135,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "7ee238bc469e26d4c2aa25b369829ed6b468442b077834227eb1f10bcfe856d2",
+        "records": 8,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "b08a4657c220516bae7003de0090e2db1554cb207f3ab5917c91639fdaac6d7d",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "ac993d70e16d81ccae2e3e01b25de6c0898a16613eda1ee3148a9c7b44327d72",
+        "records": 1589,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "bb5f99c9215e602948bfac7472c5f4acefa35d32b26b9320ea7abb2faf4030ba",
+        "records": 7345,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a017f5439668cd855612c993d8957573c85c82aa77d0a89bf1268f78c2a501c1",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "bounded-transport",
+        "recordDigest": "90584ed3b86faa3f35130c29731bcd4d82f6f1ef7a7a110e63e036c186e115a2",
+        "records": 42,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "fbb22f2d1a70336706e0153c2fe397dc63d8a6c67df91105752c2ea9609e3cb0",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-16863eebb61bc136",
+    "legacyCompatibility": true,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "sourceFiles",
+      "sourceProvenance",
+      "staticPatternMatches"
+    ],
+    "observationDigest": "obs-fe92fa0ea1aed02132d01126da381529e499a4df084b606fe3bb93afa1791dba",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-86356c502b54fd65",
+      "sourceAnalysisRevision": "source-analysis-v1-9bb9feeaad9e6585"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Bypass Emote",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "internal_name": "BypassEmote",
+    "last_seen_utc": "2026-08-25T03:26:58Z",
+    "plugin_id": 759
+  },
+  "pluginId": 759,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "A simple plugin that lets you play any game emote, whether you unlocked it or not.\nJust type the emote command as you would normally.\nWorks with custom animations and usable on Sync Services.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 336,
+      "summary": "Lets you play any emote, without restriction.",
+      "webEnriched": false
+    },
+    "projectRepository": "",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "4c4f8e1caf57fb0025e9d71d6a89a87b70bdd85c10927eedba1838c66d4c9ef1",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "41a50d5b20c6ec2c604450d3f48c70461baca47d9c85dd0ddb5501ee8c267462",
+        "records": 33
+      }
+    },
+    "projectionRevision": "projection-v1-bef1254d87407e1d",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-c48990531389c0ea",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "0538a2d3c5975f524f17509bb42cc2f46e4bf33f8e1385ac38c7215f0961f8ae",
+    "artifact_url": "https://github.com/Aspher0/BypassEmote/releases/download/v1.7.4.0/latest.zip",
+    "assembly_version": "1.7.4.0",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: ffxivcollect.com",
+      "Endpoint: github.com",
+      "Endpoint: james.newtonking.com",
+      "Endpoint: ko-fi.com",
+      "Endpoint: microsoft.com",
+      "Endpoint: ocsp.digicert.com0c",
+      "Endpoint: ocsp.digicert.com0o",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: system.data.sqlite.org",
+      "Endpoint: www.castleproject.org",
+      "Endpoint: www.digicert.com",
+      "Endpoint: www.microsoft.com0",
+      "Endpoint: www.newtonsoft.com",
+      "Endpoint: www.nuget.org",
+      "Endpoint: www.w3.org",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Local server/listener",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Raw sockets",
+      "Registry access"
+    ],
+    "caution_count": 24,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 8,
+    "plugin_id": 759,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-86356c502b54fd65",
+      "artifactBytes": 1095772,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.7.4.0",
+        "artifactBytes": 1095772,
+        "artifactSha256": "0538a2d3c5975f524f17509bb42cc2f46e4bf33f8e1385ac38c7215f0961f8ae",
+        "catalogAssemblyVersion": "1.7.4.0",
+        "manifestInternalName": "BypassEmote",
+        "manifestPath": "BypassEmote.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1054823141/8f7993aa-41fe-4ff3-b23e-62ef93d129f7?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-08-21T08%3A59%3A26Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-08-21T07%3A59%3A15Z&ske=2026-08-21T08%3A59%3A26Z&sks=b&skv=2018-11-09&sig=wB5NGjvu2Y2cG9cIfBln3P%2FiaiX4LthBiGHpp1MFRN0%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4NzI5OTY2OCwibmJmIjoxNzg3Mjk5MzY4LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.U9svCzRycr8xVPYuAkFSF8oNwXdyAh7maH_P0PaK9Tw&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.listener",
+            "label": "Local/network listener",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 11,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 11,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: ffxivcollect.com",
+        "Endpoint: github.com",
+        "Endpoint: james.newtonking.com",
+        "Endpoint: ko-fi.com",
+        "Endpoint: microsoft.com",
+        "Endpoint: ocsp.digicert.com0c",
+        "Endpoint: ocsp.digicert.com0o",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: system.data.sqlite.org",
+        "Endpoint: www.castleproject.org",
+        "Endpoint: www.digicert.com",
+        "Endpoint: www.microsoft.com0",
+        "Endpoint: www.newtonsoft.com",
+        "Endpoint: www.nuget.org",
+        "Endpoint: www.w3.org",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Local server/listener",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Raw sockets",
+        "Registry access"
+      ],
+      "capabilityIds": [],
+      "capabilityRegistryRevision": "",
+      "counts": {
+        "caution": 24,
+        "critical": 0,
+        "high": 1,
+        "informational": 8
+      },
+      "engineVersion": "2.14.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 135,
+          "exactVersionObservedCount": 127,
+          "families": {
+            "managed-assembly": 122,
+            "native": 8,
+            "nuget": 5
+          },
+          "fingerprint": "8e9ddca1a390d83c201863cf02387addcd6f4f40fdc1d3b0506b414a60a32201",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 224,
+            "platformLibrary": 32
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "ClearEventLog",
+              "library": "advapi32.dll",
+              "managedName": "ClearEventLog",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CloseEventLog",
+              "library": "advapi32.dll",
+              "managedName": "CloseEventLog",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "DeregisterEventSource",
+              "library": "advapi32.dll",
+              "managedName": "DeregisterEventSource",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetNumberOfEventLogRecords",
+              "library": "advapi32.dll",
+              "managedName": "GetNumberOfEventLogRecords",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetOldestEventLogRecord",
+              "library": "advapi32.dll",
+              "managedName": "GetOldestEventLogRecord",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "LookupAccountSidW",
+              "library": "advapi32.dll",
+              "managedName": "LookupAccountSid",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "NotifyChangeEventLog",
+              "library": "advapi32.dll",
+              "managedName": "NotifyChangeEventLog",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "OpenEventLog",
+              "library": "advapi32.dll",
+              "managedName": "OpenEventLog",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "ReadEventLog",
+              "library": "advapi32.dll",
+              "managedName": "ReadEventLog",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "RegisterEventSource",
+              "library": "advapi32.dll",
+              "managedName": "RegisterEventSource",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "ReportEvent",
+              "library": "advapi32.dll",
+              "managedName": "ReportEvent",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "RegisterExtensionFunctions",
+              "library": "e_sqlite3",
+              "managedName": "RegisterExtensionFunctions",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_backup_finish",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_backup_finish",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_bind_parameter_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_bind_parameter_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_close",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_close",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_close_v2",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_close_v2",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_database_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_database_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_database_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_database_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_decltype",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_decltype",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_decltype16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_decltype16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_origin_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_origin_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_origin_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_origin_name16",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 8,
+            "observed": 122,
+            "required": 5
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 130,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 5,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 8,
+            "observed": 122,
+            "optional": 0,
+            "required": 5,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 135
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 22,
+          "destinationsUndetermined": false,
+          "hostCount": 20,
+          "hosts": [
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "cacerts.digicert.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl.microsoft.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl3.digicert.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl4.digicert.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ffxivcollect.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 5,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 5,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "james.newtonking.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "microsoft.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0c",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0o",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "system.data.sqlite.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.castleproject.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.digicert.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "literalCount": 12,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "www.newtonsoft.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.nuget.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "www.w3.org",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 42,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 44197
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/DigiCertCSRSA4096RootG5.crt0E"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/NETFoundationProjectsCodeSigningCA2.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicTimStaPCA_2010-07-01.crl0Z"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/DigiCertCSRSA4096RootG5.crl0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/NETFoundationProjectsCodeSigningCA2.crl0F"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl4.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl4.digicert.com/NETFoundationProjectsCodeSigningCA2.crl0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ffxivcollect.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ffxivcollect.com/api/emotes"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Aspher0/BypassEmote.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Aspher0/NoireLib"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/JamesNK/Newtonsoft.Json"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/castleproject/Core"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/dotnet/runtime"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "james.newtonking.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://james.newtonking.com/projects/json"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ko-fi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/aspher0"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://microsoft.com/wsdl/types/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0c",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0c/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0o",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0o/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Aspher0/BypassEmote/refs/heads/main/repo.json"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "system.data.sqlite.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://system.data.sqlite.org/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.castleproject.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.castleproject.org/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.digicert.com/CPS0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/PKI/docs/CPS/default.htm0@"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicTimStaPCA_2010-07-01.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Identity%20Verification%20Root%20Certificate%20Authority%202020.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Public%20RSA%20Timestamping%20CA%202020.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Identity%20Verification%20Root%20Certificate%20Authority%202020.crl0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Public%20RSA%20Timestamping%20CA%202020.crl0y"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.microsoft.com0",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.microsoft.com0/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.newtonsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.newtonsoft.com/json"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.newtonsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.newtonsoft.com/jsonschema"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.nuget.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.w3.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.w3.org/2000/xmlns/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.w3.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.w3.org/2001/XMLSchema"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.w3.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.w3.org/2001/XMLSchema-instance"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Aspher0/BypassEmote/releases/download/v1.7.4.0/latest.zip",
+        "internalName": "BypassEmote",
+        "manifestVersion": "1.7.4.0",
+        "observationId": 1997,
+        "observationKey": "manifest-9f6c9cdc2cbe25563f1e278fca81",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1171
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 8,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 10,
+        "uncompressedBytes": 3695885
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-86356c502b54fd65",
+        "attemptId": "attempt-v2-ba75e84299049bfe",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-1d7c4bffd11c18ea",
+        "definitionsRevision": "defs-v1-102ba4ae785c165b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-1171",
+        "queueSeedRevision": "queue-seed-v2-5958b6f76ca34b13",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-c48990531389c0ea",
+        "scannerBundleSha256": "d419b951eff332f39fd4646cc023874bbea3f8b4bca2336dd5c667b36aaaee6d",
+        "scannerRevision": "scanner-v1-41f526c7c504a5b0",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-9bb9feeaad9e6585",
+        "sourceObservationRevision": "source-observations-v1-88b199cbaa8de452",
+        "targetFingerprint": "artifact-target-v2-36846feacea2167ce456",
+        "variantId": 1171,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-21T08:02:48Z",
+      "scannerVersion": "2.14.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "0538a2d3c5975f524f17509bb42cc2f46e4bf33f8e1385ac38c7215f0961f8ae",
+        "engines": [
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 41224,
+              "actualSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "actualVersion": "4.5.0",
+              "available": true,
+              "command": "yara",
+              "error": "",
+              "expectedBytes": 41224,
+              "expectedSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "expectedVersion": "4.5.0",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "2854676bc2687ebc1e3d76dc9e1ecb97b214199071d4a999d62706a8902b72bf",
+            "revision": "secondary-v1-9a0630d9ae7e5c563678",
+            "scanScope": {
+              "archiveDetected": true,
+              "archiveMemberBytesScanned": 3695885,
+              "archiveMemberCandidates": 10,
+              "archiveMembersScanned": 10,
+              "archiveMembersSkipped": 0,
+              "artifactContainerScanned": true,
+              "schema": "omega.sigmascope.yara-scan-scope.v1",
+              "skipReasons": {},
+              "targetCount": 11,
+              "truncated": false
+            },
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "4.5.0"
+          },
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 186688,
+              "actualSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "actualVersion": "ClamAV 1.5.3/28099/Fri Aug 21 06:26:38 2026",
+              "available": true,
+              "command": "clamscan",
+              "error": "",
+              "expectedBytes": 186688,
+              "expectedSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "expectedVersion": "ClamAV 1.5.3/28098/Thu Aug 20 06:24:22 2026",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "",
+            "revision": "secondary-v1-0dd7f87de3bdf6562b81",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "ClamAV 1.5.3/28099/Fri Aug 21 06:26:38 2026"
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://release-assets.githubusercontent.com/github-production-release-asset/1054823141/8f7993aa-41fe-4ff3-b23e-62ef93d129f7",
+          "https://github.com/Aspher0/BypassEmote"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 355,
+    "scanned_at_utc": "2026-08-21T08:02:48Z",
+    "scanner_version": "2.14.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 508,
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1171
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "cb5f52f1fedfe01586985fa38abef40b3d9931729fe5f46617e4da93870b283f",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "github-code-search",
+    "enabled_by_default": 1,
+    "etag": "\"3f5fb8b0ca5555ed837dc1ed0933e2580ee83965b0ff7eb6b655fd99b2808ac2\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "scanned",
+    "last_checked_utc": "2026-08-22T00:07:47Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-22T00:07:47Z",
+    "name": "Aspher0/BypassEmote",
+    "plugin_count": 1,
+    "provider": "Aspher0/BypassEmote",
+    "source_id": 508,
+    "source_repo_url": "https://github.com/Aspher0/BypassEmote",
+    "url": "https://raw.githubusercontent.com/Aspher0/BypassEmote/main/repo.json"
+  },
+  "sourceId": 508,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.7.4.0",
+    "author": "Aspher0",
+    "authors_json": [
+      "Aspher0"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "A simple plugin that lets you play any game emote, whether you unlocked it or not.\nJust type the emote command as you would normally.\nWorks with custom animations and usable on Sync Services.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/Aspher0/BypassEmote/releases/download/v1.7.4.0/latest.zip",
+    "download_link_testing": "https://github.com/Aspher0/BypassEmote/releases/download/v1.7.4.0/latest.zip",
+    "download_link_update": "https://github.com/Aspher0/BypassEmote/releases/download/v1.7.4.0/latest.zip",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "icon_url": "https://raw.githubusercontent.com/Aspher0/BypassEmote/main/Data/BypassEmote_LOGO.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-20T06:02:54Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "Bypass Emote",
+    "plugin_id": 759,
+    "punchline": "Lets you play any emote, without restriction.",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.7.4.0",
+      "Author": "Aspher0",
+      "CanUnloadAsync": false,
+      "DalamudApiLevel": 15,
+      "Description": "A simple plugin that lets you play any game emote, whether you unlocked it or not.\nJust type the emote command as you would normally.\nWorks with custom animations and usable on Sync Services.",
+      "DownloadLinkInstall": "https://github.com/Aspher0/BypassEmote/releases/download/v1.7.4.0/latest.zip",
+      "DownloadLinkTesting": "https://github.com/Aspher0/BypassEmote/releases/download/v1.7.4.0/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/Aspher0/BypassEmote/releases/download/v1.7.4.0/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/Aspher0/BypassEmote/main/Data/BypassEmote_LOGO.png",
+      "InternalName": "BypassEmote",
+      "LoadPriority": 0,
+      "LoadRequiredState": 0,
+      "LoadSync": false,
+      "Name": "Bypass Emote",
+      "Punchline": "Lets you play any emote, without restriction.",
+      "Tags": [
+        "emotes",
+        "unlocked",
+        "bypass",
+        "animations",
+        "sync"
+      ]
+    },
+    "repo_url": "",
+    "source_entry_key": "bypassemote|1.7.4.0|15|0|0",
+    "source_id": 508,
+    "tags_json": [
+      "emotes",
+      "unlocked",
+      "bypass",
+      "animations",
+      "sync"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 1171
+  },
+  "variantId": 1171
+}

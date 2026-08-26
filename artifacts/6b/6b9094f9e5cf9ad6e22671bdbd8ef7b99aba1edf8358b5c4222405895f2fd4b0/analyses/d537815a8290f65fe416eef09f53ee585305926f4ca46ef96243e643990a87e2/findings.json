@@ -1,0 +1,460 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:System.Configuration.ConfigurationManager.dll: ProtectedData.Unprotect",
+      "il:System.Configuration.ConfigurationManager.dll:System.Configuration.DpapiProtectedConfigurationProvider.DecryptText+0x2f: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect",
+      "artifact:System.Configuration.ConfigurationManager.dll: CryptUnprotectData",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:System.Security.Cryptography.ProtectedData.ProtectOrUnprotect+0x90: call Crypt32.CryptUnprotectData: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:Crypt32.CryptUnprotectData+0x30: call Crypt32.<CryptUnprotectData>g____PInvoke|1_0 -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "native-pe:runtimes\\win-x64\\native\\comerr64.dll: import KERNEL32.dll!OpenProcess: OpenProcess",
+      "artifact:runtimes\\win-x64\\native\\comerr64.dll: OpenProcess",
+      "artifact:runtimes\\win-x64\\native\\krb5_64.dll: OpenProcess",
+      "native-pe:runtimes\\win-x64\\native\\krbcc64.dll: import ADVAPI32.dll!OpenProcessToken: OpenProcess",
+      "artifact:runtimes\\win-x64\\native\\krbcc64.dll: OpenProcess"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:BouncyCastle.Cryptography.dll:Org.BouncyCastle.Tls.DtlsRecordLayer.ProcessRecord+0x21d: callvirt Org.BouncyCastle.Tls.DtlsRecordCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MySql.Data.dll: AssemblyLoadContext",
+      "metadata:MySql.Data.dll: Assembly.Load",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlPoolManager..cctor+0x8e: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlPoolManager..cctor+0x94: ldftn MySql.Data.MySqlClient.MySqlPoolManager.UnloadAssemblyLoadContext: AssemblyLoadContext",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlPoolManager..cctor+0x9f: callvirt System.Runtime.Loader.AssemblyLoadContext.add_Unloading: AssemblyLoadContext",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlPoolManager.UnloadPoolManager+0x72: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlPoolManager.UnloadPoolManager+0x81: ldftn MySql.Data.MySqlClient.MySqlPoolManager.UnloadAssemblyLoadContext: AssemblyLoadContext",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlPoolManager.UnloadPoolManager+0x92: callvirt System.Runtime.Loader.AssemblyLoadContext.remove_Unloading: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: s://github.com/bcgit/bc-csharp",
+      "artifact:BouncyCastle.Cryptography.dll: Y:/MfB",
+      "artifact:BouncyCastle.Cryptography.dll: b:\\l",
+      "artifact:BouncyCastle.Cryptography.dll: L:/za",
+      "artifact:BouncyCastle.Cryptography.dll: Z:\\PM",
+      "artifact:BouncyCastle.Cryptography.dll: z:/H:",
+      "artifact:BouncyCastle.Cryptography.dll: p:/A",
+      "artifact:BouncyCastle.Cryptography.dll: D:\\a"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:MySql.Data.dll: DllImportAttribute",
+      "metadata:MySql.Data.dll: LoadLibrary",
+      "il:MySql.Data.dll:MySqlX.Common.UnmanagedLibraryLoader.LoadUnmanagedLibraryFromEmbeddedResources+0x6c: call MySqlX.Common.UnmanagedLibraryLoader.LoadLibraryEx -> kernel32!LoadLibraryEx: LoadLibrary",
+      "artifact:MySql.Data.dll: LoadLibrary",
+      "metadata:System.Configuration.ConfigurationManager.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Diagnostics.EventLog.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Google.Protobuf.dll: http://www.digicert.com/CPS0",
+      "artifact:MySql.Data.dll: http://www.digicert.com/CPS0",
+      "artifact:runtimes\\win-x64\\native\\comerr64.dll: http://www.digicert.com/CPS0",
+      "artifact:runtimes\\win-x64\\native\\gssapi64.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://ocsp.sectigo.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.635e7622e035",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.sectigo.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Google.Protobuf.dll: http://ocsp.digicert.com0x/",
+      "artifact:MySql.Data.dll: http://ocsp.digicert.com0x/",
+      "artifact:runtimes\\win-x64\\native\\comerr64.dll: http://ocsp.digicert.com0x/",
+      "artifact:runtimes\\win-x64\\native\\gssapi64.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://ocsp.comodoca.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7af642f7bbc6",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.comodoca.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Configuration.ConfigurationManager.dll: http://www.microsoft.com0/",
+      "artifact:System.Diagnostics.EventLog.dll: http://www.microsoft.com0/",
+      "artifact:System.Security.Cryptography.ProtectedData.dll: http://www.microsoft.com0/",
+      "artifact:System.Security.Permissions.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crl.usertrust.com/USERTrustRSACertificationAuthority.crl0v"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8a267402d93a",
+    "severity": "caution",
+    "title": "Endpoint: crl.usertrust.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crt.usertrust.com/USERTrustRSAAddTrustCA.crt0%"
+    ],
+    "rule_id": "network.endpoint.insecure-http.aeb2bc651c32",
+    "severity": "caution",
+    "title": "Endpoint: crt.usertrust.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Configuration.ConfigurationManager.dll: http://schemas.microsoft.com/.NetConfiguration/v2.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c4ab9ea245be",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Google.Protobuf.dll: http://ocsp.digicert.com0c/",
+      "artifact:MySql.Data.dll: http://ocsp.digicert.com0c/",
+      "artifact:runtimes\\win-x64\\native\\comerr64.dll: http://ocsp.digicert.com0c/",
+      "artifact:runtimes\\win-x64\\native\\gssapi64.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://ocsp.usertrust.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e7b69f6dd1e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.usertrust.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Google.Protobuf.dll: http://ocsp.digicert.com0/",
+      "artifact:MySql.Data.dll: http://ocsp.digicert.com0/",
+      "artifact:runtimes\\win-x64\\native\\comerr64.dll: http://ocsp.digicert.com0/",
+      "artifact:runtimes\\win-x64\\native\\gssapi64.dll: http://ocsp.digicert.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f7ff339eaae3",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crt.sectigo.com/SectigoPublicCodeSigningRootR46.p7c0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f9f8662c9e9e",
+    "severity": "caution",
+    "title": "Endpoint: crt.sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Google.Protobuf.dll: http://ocsp.digicert.com0a/",
+      "artifact:MySql.Data.dll: http://ocsp.digicert.com0a/",
+      "artifact:runtimes\\win-x64\\native\\comerr64.dll: http://ocsp.digicert.com0a/",
+      "artifact:runtimes\\win-x64\\native\\gssapi64.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: https://sectigo.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9c9763950252",
+    "severity": "caution",
+    "title": "Endpoint: sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Security.Permissions.dll: https://go.microsoft.com/fwlink/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b2a093ba178f",
+    "severity": "caution",
+    "title": "Endpoint: go.microsoft.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:BouncyCastle.Cryptography.dll: System.Net.Sockets",
+      "il:BouncyCastle.Cryptography.dll:Org.BouncyCastle.Tls.TlsUtilities.IsTimeout+0x6: callvirt System.Net.Sockets.SocketException.get_SocketErrorCode: System.Net.Sockets",
+      "artifact:BouncyCastle.Cryptography.dll: System.Net.Sockets",
+      "metadata:MySql.Data.dll: System.Net.Sockets",
+      "metadata:MySql.Data.dll: TcpClient",
+      "metadata:MySql.Data.dll: Socket.Connect",
+      "il:MySql.Data.dll:MySql.Data.X.Communication.XPacketProcessor.ProcessPendingPackets+0x1d: callvirt System.Net.Sockets.Socket.get_Available: System.Net.Sockets",
+      "il:MySql.Data.dll:MySql.Data.Common.MyNetworkStream.get_IsSocketClosed+0xe: callvirt System.Net.Sockets.Socket.Poll: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:MySql.Data.dll: System.Diagnostics.Process",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlConnectAttrs.get_PID+0x6: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlConnectAttrs.get_PID+0xb: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlConnectAttrs.get_Thread+0x6: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlConnectAttrs.get_Thread+0xb: callvirt System.Diagnostics.Process.get_Threads: System.Diagnostics.Process",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlConnectAttrs.get_Thread+0x11: callvirt System.Diagnostics.ProcessThreadCollection.get_Item: System.Diagnostics.Process",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.MySqlConnectAttrs.get_Thread+0x16: callvirt System.Diagnostics.ProcessThread.get_Id: System.Diagnostics.Process",
+      "artifact:MySql.Data.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net8.0\\System.Diagnostics.EventLog.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes\\win\\lib\\net8.0\\System.Diagnostics.EventLog.dll: RegistryKey",
+      "il:runtimes\\win\\lib\\net8.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net8.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: RegistryKey",
+      "il:runtimes\\win\\lib\\net8.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net8.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes\\win\\lib\\net8.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net8.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:BouncyCastle.Cryptography.dll: FileStream",
+      "artifact:BouncyCastle.Cryptography.dll: FileStream",
+      "metadata:MySql.Data.dll: FileStream",
+      "metadata:MySql.Data.dll: File.Delete",
+      "metadata:MySql.Data.dll: WriteAllBytes",
+      "il:MySql.Data.dll:MySqlX.Common.UnmanagedLibraryLoader.LoadUnmanagedLibraryFromEmbeddedResources+0x59: call System.IO.File.Delete: File.Delete",
+      "il:MySql.Data.dll:MySqlX.Common.UnmanagedLibraryLoader.LoadUnmanagedLibraryFromEmbeddedResources+0x60: call System.IO.File.WriteAllBytes: WriteAllBytes",
+      "il:MySql.Data.dll:MySql.Data.MySqlClient.Common.NamedPipeStream.Open+0xc5: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ZstdSharp.dll: https://github.com/oleg-st/ZstdSharp.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4031a2c93a52",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FashionReport.json: https://github.com/WilliamW1979/FashionReport"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7ab3c44f4893",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Google.Protobuf.dll: https://github.com/protocolbuffers/protobuf.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.828d66189941",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:K4os.Compression.LZ4.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4",
+      "artifact:K4os.Compression.LZ4.Streams.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8d6d7403ad8a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Configuration.ConfigurationManager.dll: https://github.com/dotnet/runtime",
+      "artifact:System.Diagnostics.EventLog.dll: https://github.com/dotnet/runtime",
+      "artifact:System.Security.Cryptography.ProtectedData.dll: https://github.com/dotnet/runtime",
+      "artifact:System.Security.Permissions.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FashionReport.dll: https://github.com/WilliamW1979/FashionReport.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d3a9ef1c76e9",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:K4os.Hash.xxHash.dll: https://github.com/MiloszKrajewski/K4os.Hash.xxHash"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f7addd8e764e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: https://github.com/bcgit/bc-csharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.fe92c1786ba7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:System.Configuration.ConfigurationManager.dll: DownloadData",
+      "il:System.Configuration.ConfigurationManager.dll:System.Configuration.ClientConfigurationHost.OpenStreamForRead+0x35: callvirt System.Net.WebClient.DownloadData: DownloadData",
+      "artifact:System.Configuration.ConfigurationManager.dll: WebRequest",
+      "artifact:System.Configuration.ConfigurationManager.dll: HttpWebRequest",
+      "artifact:System.Configuration.ConfigurationManager.dll: DownloadData",
+      "artifact:System.Security.Permissions.dll: WebRequest",
+      "artifact:System.Security.Permissions.dll: HttpWebRequest",
+      "artifact:runtimes\\win\\lib\\net8.0\\System.Diagnostics.EventLog.dll: WebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes\\win-x64\\native\\comerr64.dll",
+      "runtimes\\win-x64\\native\\gssapi64.dll",
+      "runtimes\\win-x64\\native\\k5sprt64.dll",
+      "runtimes\\win-x64\\native\\krb5_64.dll",
+      "runtimes\\win-x64\\native\\krbcc64.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

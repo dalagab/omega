@@ -1,0 +1,101 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:HrothgarScent.dll:<>c.<Target>b__1_0+0x6: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+      "il:HrothgarScent.dll:<>c.<FocusTarget>b__3_0+0x6: callvirt Dalamud.Plugin.Services.ITargetManager.set_FocusTarget",
+      "il:HrothgarScent.dll:<>c.<ClearFocusTarget>b__4_0+0x6: callvirt Dalamud.Plugin.Services.ITargetManager.set_FocusTarget",
+      "il:HrothgarScent.dll:<>c__DisplayClass2_0.<TargetByIdentity>b__0+0x6d: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:HrothgarScent.dll: System.Diagnostics.Process",
+      "metadata:HrothgarScent.dll: ProcessStartInfo",
+      "metadata:HrothgarScent.dll: ShellExecute",
+      "metadata:HrothgarScent.dll: Process.Start",
+      "il:HrothgarScent.dll:HrothgarScent.Windows.PortraitWindow.OpenFileLocation+0xa: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:HrothgarScent.dll:HrothgarScent.Windows.PortraitWindow.OpenFileLocation+0xa: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:HrothgarScent.dll:HrothgarScent.Windows.PortraitWindow.OpenFileLocation+0x15: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:HrothgarScent.dll:HrothgarScent.Windows.PortraitWindow.OpenFileLocation+0x15: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:HrothgarScent.dll: Directory.CreateDirectory",
+      "metadata:HrothgarScent.dll: WriteAllText",
+      "il:HrothgarScent.dll:HrothgarScent.Scent.MarkStore.Load+0xf: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:HrothgarScent.dll:HrothgarScent.Scent.MarkStore.WriteLatest+0x6d: callvirt Dalamud.Plugin.Services.IReliableFileStorage.WriteAllTextAsync: WriteAllText",
+      "il:HrothgarScent.dll:HrothgarScent.Scent.SeenLog.Load+0xf: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:HrothgarScent.dll:HrothgarScent.Scent.SeenLog.WriteLatest+0x6d: callvirt Dalamud.Plugin.Services.IReliableFileStorage.WriteAllTextAsync: WriteAllText",
+      "il:HrothgarScent.dll:<CopyStoreAndSave>d__21.MoveNext+0x3f: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "artifact:HrothgarScent.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HrothgarScent.dll: https://github.com/ArcanineLS/HrothgarScent"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2e197945c7d7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HrothgarScent.json: https://github.com/ArcanineLS/HrothgarScent"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.326361f7541a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:HrothgarScent.dll: System.Net.Http.HttpClient",
+      "il:HrothgarScent.dll:HrothgarScent.Scent.LodestoneService..cctor+0x0: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:HrothgarScent.dll:HrothgarScent.Scent.LodestoneService..cctor+0x7: callvirt System.Net.Http.HttpClientHandler.set_UseCookies: System.Net.Http.HttpClient",
+      "il:HrothgarScent.dll:HrothgarScent.Scent.LodestoneService..cctor+0xc: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:HrothgarScent.dll:HrothgarScent.Scent.LodestoneService..cctor+0x1a: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:HrothgarScent.dll:<GetBytesPaced>d__3.MoveNext+0x86: callvirt System.Net.Http.HttpClient.GetByteArrayAsync: System.Net.Http.HttpClient",
+      "il:HrothgarScent.dll:<GetStringPaced>d__2.MoveNext+0x86: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

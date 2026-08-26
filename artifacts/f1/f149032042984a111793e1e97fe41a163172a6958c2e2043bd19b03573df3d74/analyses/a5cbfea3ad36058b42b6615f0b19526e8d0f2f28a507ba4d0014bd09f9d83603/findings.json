@@ -1,0 +1,737 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:CactbotSelf.dll: ReadProcessMemory",
+      "il:CactbotSelf.dll:CactbotSelf.MemHelper.ReadBytes+0x17: call CactbotSelf.MemHelper.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "artifact:CactbotSelf.dll: ReadProcessMemory",
+      "metadata:Machina.FFXIV.dll: OpenProcess",
+      "metadata:Machina.FFXIV.dll: VirtualAllocEx",
+      "metadata:Machina.FFXIV.dll: WriteProcessMemory",
+      "il:Machina.FFXIV.dll:Machina.FFXIV.Deucalion.DeucalionInjector.InjectLibrary+0x3e: call Machina.FFXIV.Deucalion.DeucalionInjector.OpenProcess -> kernel32.dll!OpenProcess: OpenProcess",
+      "il:Machina.FFXIV.dll:Machina.FFXIV.Deucalion.DeucalionInjector.InjectLibrary+0xd1: call Machina.FFXIV.Deucalion.DeucalionInjector.VirtualAllocEx -> kernel32.dll!VirtualAllocEx: VirtualAllocEx"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs commonly used to start execution in another process.",
+    "evidence_json": [
+      "metadata:Machina.FFXIV.dll: CreateRemoteThread",
+      "il:Machina.FFXIV.dll:Machina.FFXIV.Deucalion.DeucalionInjector.InjectLibrary+0x192: call Machina.FFXIV.Deucalion.DeucalionInjector.CreateRemoteThread -> kernel32.dll!CreateRemoteThread: CreateRemoteThread",
+      "artifact:Machina.FFXIV.dll: CreateRemoteThread"
+    ],
+    "rule_id": "memory.remote-thread",
+    "severity": "high",
+    "title": "Remote thread creation"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Advanced Combat Tracker.dll: http://127.0.0.1:80/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.7e83c1a434f7",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:Advanced Combat Tracker.dll:Advanced_Combat_Tracker.AttackType.get_ColCollection+0x36: callvirt StringDataCallback.Invoke",
+      "il:Advanced Combat Tracker.dll:Advanced_Combat_Tracker.AttackType.GetColumnByName+0x1c: callvirt StringDataCallback.Invoke",
+      "il:Advanced Combat Tracker.dll:Advanced_Combat_Tracker.CombatantData.get_ColCollection+0x36: callvirt StringDataCallback.Invoke",
+      "il:Advanced Combat Tracker.dll:Advanced_Combat_Tracker.CombatantData.GetColumnByName+0x1c: callvirt StringDataCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:CactbotSelf.dll: Reflection.Emit",
+      "metadata:CactbotSelf.dll: Assembly.Load",
+      "il:CactbotSelf.dll:CactbotSelf.MainClass.InitPlugin+0x2b: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:CactbotSelf.dll:CactbotSelf.SizeCache`1..cctor+0xdf: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:CactbotSelf.dll:CactbotSelf.SizeCache`1..cctor+0xe5: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:CactbotSelf.dll:CactbotSelf.SizeCache`1..cctor+0xf0: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:CactbotSelf.dll:CactbotSelf.SizeCache`1..cctor+0xfb: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:CactbotSelf.dll:CactbotSelf.SizeCache`1..cctor+0x105: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Advanced Combat Tracker.dll: p://connectionstrings.com/ can help you make a connection string for your specific SQL datasource.",
+      "artifact:Advanced Combat Tracker.dll: p://127.0.0.1:80/",
+      "artifact:FetchDependencies.dll: s://cninact.diemoe.net/CN",
+      "artifact:FetchDependencies.dll: s://cninact.diemoe.net/global/",
+      "artifact:H.Pipes.dll: s://github.com/HavenDV/H.Pipes",
+      "artifact:H.Pipes.dll: \\\\.\\pipe\\",
+      "artifact:NAudio.Core.dll: s://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: C:\\Users\\markh\\code\\mygithub\\NAudio\\NAudio.Core\\obj\\Release\\netstandard2.0\\NAudio.Core.pdb"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:IINACT.dll: SigScanner",
+      "metadata:IINACT.dll: Dalamud.Hooking",
+      "metadata:IINACT.dll: HookFromAddress",
+      "il:IINACT.dll:IINACT.ChatHelper..cctor+0x7: call IINACT.DalamudApi.get_SigScanner: SigScanner",
+      "il:IINACT.dll:IINACT.ChatHelper..cctor+0x13: callvirt Dalamud.Game.ISigScanner.TryScanText: SigScanner",
+      "il:IINACT.dll:IINACT.ChatHelper..cctor+0x25: call IINACT.DalamudApi.get_SigScanner: SigScanner",
+      "il:IINACT.dll:IINACT.ChatHelper..cctor+0x31: callvirt Dalamud.Game.ISigScanner.TryScanText: SigScanner",
+      "il:IINACT.dll:IINACT.Plugin..ctor+0x19d: call IINACT.DalamudApi.get_SigScanner: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:PostNamazu.dll: HttpListener",
+      "metadata:PostNamazu.dll: TcpListener",
+      "il:PostNamazu.dll:PostNamazu.Common.HttpServer..ctor+0xc: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:PostNamazu.dll:PostNamazu.Common.HttpServer..ctor+0x12: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:PostNamazu.dll:PostNamazu.Common.HttpServer..ctor+0x18: callvirt System.Net.Sockets.TcpListener.get_LocalEndpoint: TcpListener",
+      "il:PostNamazu.dll:PostNamazu.Common.HttpServer..ctor+0x28: callvirt System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "il:PostNamazu.dll:PostNamazu.Common.HttpServer.Stop+0x11: callvirt System.Net.HttpListener.Stop: HttpListener",
+      "il:PostNamazu.dll:PostNamazu.Common.HttpServer.Listen+0x1: newobj System.Net.HttpListener..ctor: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:CactbotSelf.dll: DllImportAttribute",
+      "metadata:CactbotSelf.dll: LoadLibrary",
+      "metadata:CactbotSelf.dll: GetProcAddress",
+      "il:CactbotSelf.dll:CactbotSelf.内存相关.OodleNative_Ffxiv.Initialize+0x5e: call CactbotSelf.内存相关.NativeMethods.LoadLibraryW -> kernel32!LoadLibraryW: LoadLibrary",
+      "il:CactbotSelf.dll:CactbotSelf.内存相关.offset.Offsets..ctor+0x64: call CactbotSelf.内存相关.NativeMethods.LoadLibraryW -> kernel32!LoadLibraryW: LoadLibrary",
+      "artifact:CactbotSelf.dll: LoadLibrary",
+      "artifact:CactbotSelf.dll: GetProcAddress",
+      "metadata:Machina.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Advanced Combat Tracker.dll: http://connectionstrings.com/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.1df4c6ca2c18",
+    "severity": "caution",
+    "title": "Endpoint: connectionstrings.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://cninact.diemoe.net/cactbot/ui/raidboss/raidboss.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.2dc29e994ed9",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://cninact.diemoe.net/cactbot/ui/oopsyraidsy/oopsyraidsy.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.37b106c47c6e",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://cninact.diemoe.net/cactbot/ui/eureka/eureka.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3b051be51742",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://cninact.diemoe.net/cactbot/ui/jobs/jobs.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5b2c929dced2",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://cninact.diemoe.net/cactbot/ui/radar/radar.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5ce24fe377ba",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://proxy.iinact.com/overlay/nextui/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5d3911aa56f2",
+    "severity": "caution",
+    "title": "Endpoint: proxy.iinact.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://cninact.diemoe.net/cactbot/ui/dps/rdmty/dps.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5e1acaecac23",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://cninact.diemoe.net/cactbot/ui/fisher/fisher.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.90ba8eac582d",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://cninact.diemoe.net/cactbot/ui/pullcounter/pullcounter.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.9426f91f2090",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://cninact.diemoe.net/cactbot/ui/config/config.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.a024b9de5b1a",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://cninact.diemoe.net/cactbot/ui/test/test.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.ad1ec416d403",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: http://cninact.diemoe.net/cactbot/ui/dps/xephero/xephero-cactbot.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fa7e42c21382",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://overlay.diemoe.net/ember/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0f8b82234987",
+    "severity": "caution",
+    "title": "Endpoint: overlay.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://overlay.diemoe.net/ikegami/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.218b86ecdc61",
+    "severity": "caution",
+    "title": "Endpoint: overlay.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://haeruhaeru.github.io/mopimopi/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.32ef48fb129f",
+    "severity": "caution",
+    "title": "Endpoint: haeruhaeru.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://goldenchrysus.github.io/ffxiv/ember-overlay/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3e0e71339496",
+    "severity": "caution",
+    "title": "Endpoint: goldenchrysus.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FetchDependencies.dll: https://cninact.diemoe.net/global/FFXIV_ACT_Plugin.dll"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3ffc7ee4473a",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://quisquous.github.io/cactbot/ui/jobs/jobs.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5dbfd10331aa",
+    "severity": "caution",
+    "title": "Endpoint: quisquous.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://bsides.github.io/horizoverlay/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.695b4db99f17",
+    "severity": "caution",
+    "title": "Endpoint: bsides.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://overlay.diemoe.net/kagerou/overlay/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.72e4c66a4a4c",
+    "severity": "caution",
+    "title": "Endpoint: overlay.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://overlay.diemoe.net/skyline/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8b9277264acd",
+    "severity": "caution",
+    "title": "Endpoint: overlay.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FetchDependencies.dll: https://cninact.diemoe.net/CN"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8b95d0f7d92a",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://quisquous.github.io/cactbot/ui/radar/radar.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.98c7984dc4cc",
+    "severity": "caution",
+    "title": "Endpoint: quisquous.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://kaminaris.github.io/Next-UI/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9e5833633802",
+    "severity": "caution",
+    "title": "Endpoint: kaminaris.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://quisquous.github.io/cactbot/ui/dps/rdmty/dps.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a0d4c6105ef4",
+    "severity": "caution",
+    "title": "Endpoint: quisquous.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://quisquous.github.io/cactbot/ui/config/config.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c12426744344",
+    "severity": "caution",
+    "title": "Endpoint: quisquous.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://quisquous.github.io/cactbot/ui/fisher/fisher.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c9ff8afca7ce",
+    "severity": "caution",
+    "title": "Endpoint: quisquous.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://overlay.diemoe.net/mopimopi2/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cbe0e117c7da",
+    "severity": "caution",
+    "title": "Endpoint: overlay.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://quisquous.github.io/cactbot/ui/oopsyraidsy/oopsyraidsy.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d0561468279b",
+    "severity": "caution",
+    "title": "Endpoint: quisquous.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://quisquous.github.io/cactbot/ui/dps/xephero/xephero-cactbot.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d71e451a46f3",
+    "severity": "caution",
+    "title": "Endpoint: quisquous.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FetchDependencies.dll: https://cninact.diemoe.net/global/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d9e1841934a8",
+    "severity": "caution",
+    "title": "Endpoint: cninact.diemoe.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://quisquous.github.io/cactbot/ui/raidboss/raidboss.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.defd97522236",
+    "severity": "caution",
+    "title": "Endpoint: quisquous.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://quisquous.github.io/cactbot/ui/pullcounter/pullcounter.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e7c00bf7a247",
+    "severity": "caution",
+    "title": "Endpoint: quisquous.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://quisquous.github.io/cactbot/ui/eureka/eureka.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e86f1a4373e7",
+    "severity": "caution",
+    "title": "Endpoint: quisquous.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://idyllshi.re/kagerou/overlay/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f3b9ed24443f",
+    "severity": "caution",
+    "title": "Endpoint: idyllshi.re"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://idyllshi.re/ikegami/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.fe3d99f6a74c",
+    "severity": "caution",
+    "title": "Endpoint: idyllshi.re"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:IINACT.dll: System.Net.Sockets",
+      "artifact:IINACT.dll: System.Net.Sockets",
+      "metadata:Machina.dll: System.Net.Sockets",
+      "metadata:Machina.dll: Socket.Connect",
+      "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StartCapture+0x5e: callvirt System.Net.Sockets.Socket.BeginReceive: System.Net.Sockets",
+      "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StopCapture+0x20: callvirt System.Net.Sockets.Socket.Shutdown: System.Net.Sockets",
+      "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StopCapture+0x2b: callvirt System.Net.Sockets.Socket.Close: System.Net.Sockets",
+      "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StopCapture+0x36: callvirt System.Net.Sockets.Socket.Dispose: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:CactbotSelf.dll: System.Diagnostics.Process",
+      "il:CactbotSelf.dll:CactbotSelf.CactbotSelf.Init+0x19: call System.Diagnostics.Process.GetProcessById: System.Diagnostics.Process",
+      "il:CactbotSelf.dll:CactbotSelf.CactbotSelf.Init+0x37: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:CactbotSelf.dll:CactbotSelf.CactbotSelf.Init+0x43: call System.Diagnostics.ProcessModule.get_FileName: System.Diagnostics.Process",
+      "il:CactbotSelf.dll:CactbotSelf.EventSource.SetupSearchSpace+0x1: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:CactbotSelf.dll:CactbotSelf.EventSource.Init+0x19: call System.Diagnostics.Process.GetProcessById: System.Diagnostics.Process",
+      "il:CactbotSelf.dll:CactbotSelf.EventSource.Init+0x1e: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:CactbotSelf.dll:CactbotSelf.EventSource.Init+0x29: call System.Diagnostics.ProcessModule.get_FileName: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "artifact:IINACT.deps.json: Microsoft.Win32.Registry",
+      "metadata:NAudio.Asio.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.Asio.dll: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: Microsoft.Win32.Registry"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Advanced Combat Tracker.dll: FileStream",
+      "il:Advanced Combat Tracker.dll:Advanced_Combat_Tracker.FormActMain.LogWriter+0x9: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Advanced Combat Tracker.dll: FileStream",
+      "metadata:CactbotSelf.dll: File.Delete",
+      "il:CactbotSelf.dll:CactbotSelf.CactbotSelf.DeInitPlugin+0x11: call System.IO.File.Delete: File.Delete",
+      "il:CactbotSelf.dll:CactbotSelf.内存相关.OodleNative_Ffxiv.UnInitialize+0x58: call System.IO.File.Delete: File.Delete",
+      "metadata:FetchDependencies.dll: FileStream",
+      "metadata:FetchDependencies.dll: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://discord.gg/ahFKcmx"
+    ],
+    "rule_id": "network.endpoint.community-invite.0c1915b3a48a",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NetCoreServer.dll: https://github.com/chronoxor/NetCoreServer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.29d4e4d3293d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:IINACT.json: https://github.com/tssailzz8/IINACT"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4ce3b40ce23d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Speech.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.Asio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Midi.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://github.com/ngld/OverlayPlugin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b9d1d7be31ba",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:H.Formatters.BinaryFormatter.dll: https://github.com/HavenDV/H.Pipes",
+      "artifact:H.Formatters.dll: https://github.com/HavenDV/H.Pipes",
+      "artifact:H.Pipes.dll: https://github.com/HavenDV/H.Pipes"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e8e3cc2a2de6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:FetchDependencies.dll: System.Net.Http.HttpClient",
+      "il:FetchDependencies.dll:FetchDependencies.FetchDependencies.NeedsUpdate+0x3f: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient",
+      "il:FetchDependencies.dll:FetchDependencies.FetchDependencies.NeedsUpdate+0x5d: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient",
+      "il:FetchDependencies.dll:FetchDependencies.FetchDependencies.DownloadPlugin+0x1f: callvirt System.Net.Http.HttpClient.GetStreamAsync: System.Net.Http.HttpClient",
+      "il:FetchDependencies.dll:FetchDependencies.FetchDependencies.DownloadPlugin+0x60: callvirt System.Net.Http.HttpClient.GetStreamAsync: System.Net.Http.HttpClient",
+      "metadata:IINACT.dll: System.Net.Http.HttpClient",
+      "il:IINACT.dll:IINACT.Plugin..ctor+0x4f: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "metadata:OverlayPlugin.Core.dll: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

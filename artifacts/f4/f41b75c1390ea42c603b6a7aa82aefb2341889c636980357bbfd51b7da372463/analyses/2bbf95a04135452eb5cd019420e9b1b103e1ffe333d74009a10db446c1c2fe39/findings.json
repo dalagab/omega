@@ -1,0 +1,104 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DDD.dll: http://127.0.0.1:2019/act"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.728838f117d3",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:DDD.dll: G:\\net11\\DDD-main\\SamplePlugin\\obj\\x64\\Release\\net10.0-windows7.0\\DDD.pdb",
+      "artifact:DDD.dll: p://127.0.0.1:2019/act",
+      "artifact:H.Pipes.dll: s://github.com/HavenDV/H.Pipes",
+      "artifact:H.Pipes.dll: \\\\.\\pipe\\"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:DDD.dll: SigScanner",
+      "metadata:DDD.dll: Dalamud.Hooking",
+      "metadata:DDD.dll: HookFromAddress",
+      "il:DDD.dll:DDD.Plugin..ctor+0xae: call Dalamud.DalamudApi.get_SigScanner: SigScanner",
+      "il:DDD.dll:DDD.Plugin..ctor+0xb9: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "il:DDD.dll:DDD.Plugin..ctor+0xc9: call Dalamud.DalamudApi.get_SigScanner: SigScanner",
+      "il:DDD.dll:DDD.Plugin..ctor+0xd3: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:DDD.dll:DDD.Plugin..ctor+0xe5: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:DDD.dll: System.Diagnostics.Process",
+      "il:DDD.dll:DDD.LogSender..ctor+0x1d: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:DDD.dll:DDD.LogSender..ctor+0x22: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+      "artifact:DDD.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:DDD.dll: FileStream",
+      "metadata:DDD.dll: Directory.CreateDirectory",
+      "il:DDD.dll:DDD.Event.NewFile+0x93: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "artifact:DDD.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:H.Formatters.System.Text.Json.dll: https://github.com/HavenDV/H.Pipes",
+      "artifact:H.Formatters.dll: https://github.com/HavenDV/H.Pipes",
+      "artifact:H.Pipes.dll: https://github.com/HavenDV/H.Pipes"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e8e3cc2a2de6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:DDD.dll: WebRequest",
+      "il:DDD.dll:<SendJson>d__9.MoveNext+0xd: call System.Net.WebRequest.Create: WebRequest",
+      "il:DDD.dll:<SendJson>d__9.MoveNext+0x19: callvirt System.Net.WebRequest.set_ContentType: WebRequest",
+      "il:DDD.dll:<SendJson>d__9.MoveNext+0x24: callvirt System.Net.WebRequest.set_Method: WebRequest",
+      "il:DDD.dll:<SendJson>d__9.MoveNext+0x2a: callvirt System.Net.WebRequest.GetRequestStream: WebRequest",
+      "il:DDD.dll:<SendJson>d__9.MoveNext+0x5e: callvirt System.Net.WebRequest.GetResponse: WebRequest",
+      "artifact:DDD.dll: WebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

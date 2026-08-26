@@ -1,0 +1,461 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:deniszykov.WebSocketListener.dll:<RunHttpNegotiationHandlerAsync>d__8.MoveNext+0x59: callvirt vtortola.WebSockets.HttpAuthenticationCallback.Invoke",
+      "il:deniszykov.WebSocketListener.dll:<NegotiateRequestAsync>d__16.MoveNext+0x298: callvirt vtortola.WebSockets.HttpAuthenticationCallback.Invoke",
+      "il:GagSpeak.dll:GagSpeak.Utils.AtkHelpers.GenerateCallback+0x15: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:deniszykov.WebSocketListener.dll: Assembly.Load",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketTransport..cctor+0x23: call System.Reflection.Assembly.Load: Assembly.Load",
+      "artifact:GagSpeak.deps.json: Reflection.Emit",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Buttplug.Client.Connectors.WebsocketConnector.dll: s://github.com/buttplugio/buttplug-csharp",
+      "artifact:Buttplug.Client.Connectors.WebsocketConnector.dll: D:\\a\\buttplug-csharp\\buttplug-csharp\\Buttplug.Client.Connectors.WebsocketConnector\\obj\\Release\\netstandard2.1\\Buttplug.Client.Connectors.WebsocketConnector.pdb",
+      "artifact:deniszykov.WebSocketListener.dll: s://github.com/deniszykov/WebSocketListener",
+      "artifact:deniszykov.WebSocketListener.dll: p://",
+      "artifact:deniszykov.WebSocketListener.dll: D:\\dev\\projects\\vtortola.WebSocketListener\\vtortola.WebSockets\\WebSocketListener.cs",
+      "artifact:deniszykov.WebSocketListener.dll: D:\\dev\\projects\\vtortola.WebSocketListener\\vtortola.WebSockets\\Http\\HttpNegotiationQueue.cs",
+      "artifact:GagSpeak.dll: s://localhost:12345",
+      "artifact:GagSpeak.dll: Z:/._\\"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:GagSpeak.dll: SigScanner",
+      "metadata:GagSpeak.dll: Dalamud.Hooking",
+      "metadata:GagSpeak.dll: HookFromAddress",
+      "il:GagSpeak.dll:XivCommon.Functions.RealChatInteraction..ctor+0xe: callvirt Dalamud.Game.ISigScanner.TryScanText: SigScanner",
+      "il:GagSpeak.dll:GagSpeak.Hardcore.BaseListener.OnSetupSelectListFeature.SetupOnItemSelectedHook+0x35: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:GagSpeak.dll:GagSpeak.Hardcore.Actions.GsActionManager..ctor+0xb7: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:GagSpeak.dll: Dalamud.Hooking",
+      "artifact:GagSpeak.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "il:deniszykov.WebSocketListener.dll:<ListenAsync>d__40.MoveNext+0x163: newobj vtortola.WebSockets.Transports.Tcp.TcpListener..ctor: TcpListener",
+      "artifact:deniszykov.WebSocketListener.dll: TcpListener",
+      "artifact:GarblerCore\\jsonFiles\\en_UK.json: Kestrel",
+      "artifact:GarblerCore\\jsonFiles\\en_US.json: Kestrel"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:NAudio.Asio.dll: DllImportAttribute",
+      "metadata:NAudio.Core.dll: DllImportAttribute",
+      "metadata:NAudio.Core.dll: LoadLibrary",
+      "metadata:NAudio.Core.dll: GetProcAddress",
+      "artifact:NAudio.Core.dll: LoadLibrary",
+      "artifact:NAudio.Core.dll: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OtterGui.dll: https://reniguide.info/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.06407015b781",
+    "severity": "caution",
+    "title": "Endpoint: reniguide.info"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2fc10d6dbcb0",
+    "severity": "caution",
+    "title": "Endpoint: www.nuget.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GagSpeak.dll: https://forms.gle/4AL43XUeWna2DtYK7"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.569c852abcdf",
+    "severity": "caution",
+    "title": "Endpoint: forms.gle"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GagSpeak.dll: https://www.youtube.com/watch"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.792d7cec19be",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GagSpeak.dll: https://ko-fi.com/cordeliamist"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a148e0c78e4b",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7f45af35c13",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.be2490e7d948",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GagSpeak.dll: https://www.youtube.com/playlist"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c87f6ea6b295",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:deniszykov.WebSocketListener.dll: System.Net.Sockets",
+      "metadata:deniszykov.WebSocketListener.dll: SocketAsyncEventArgs",
+      "metadata:deniszykov.WebSocketListener.dll: Socket.Connect",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketConnection.get_Available+0x6: callvirt System.Net.Sockets.Socket.get_Available: System.Net.Sockets",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketConnection.get_IsConnected+0x6: callvirt System.Net.Sockets.Socket.get_Connected: System.Net.Sockets",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketConnection.get_LingerState+0x6: callvirt System.Net.Sockets.Socket.get_LingerState: System.Net.Sockets",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketConnection.set_LingerState+0x7: callvirt System.Net.Sockets.Socket.set_LingerState: System.Net.Sockets",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketConnection.get_ReceiveBufferSize+0x6: callvirt System.Net.Sockets.Socket.get_ReceiveBufferSize: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:GagSpeak.dll: System.Diagnostics.Process",
+      "metadata:GagSpeak.dll: ProcessStartInfo",
+      "metadata:GagSpeak.dll: ShellExecute",
+      "metadata:GagSpeak.dll: Process.Start",
+      "il:GagSpeak.dll:GagSpeak.UI.Tabs.GeneralTab.GeneralTab.DrawHelperButtons+0xe9: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:GagSpeak.dll:GagSpeak.UI.Tabs.GeneralTab.GeneralTab.DrawHelperButtons+0xe9: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:GagSpeak.dll:GagSpeak.UI.Tabs.GeneralTab.GeneralTab.DrawHelperButtons+0xf4: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:GagSpeak.dll:GagSpeak.UI.Tabs.GeneralTab.GeneralTab.DrawHelperButtons+0xf4: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "artifact:GagSpeak.deps.json: Microsoft.Win32.Registry",
+      "metadata:NAudio.Asio.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.Asio.dll: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: Microsoft.Win32.Registry"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:GagSpeak.dll: System.Windows.Forms.Clipboard",
+      "il:GagSpeak.dll:GagSpeak.Utility.GenericHelpers.Copy+0x8: call System.Windows.Forms.Clipboard.Clear: System.Windows.Forms.Clipboard",
+      "il:GagSpeak.dll:GagSpeak.Utility.GenericHelpers.Copy+0x1d: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:deniszykov.WebSocketListener.dll: File.Delete",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketListener.Dispose+0x3a: call System.IO.File.Delete: File.Delete",
+      "il:deniszykov.WebSocketListener.dll:<TryAndRemoveUnixSocketFileAsync>d__43.MoveNext+0x199: call System.IO.File.Delete: File.Delete",
+      "metadata:NAudio.Core.dll: FileStream",
+      "il:NAudio.Core.dll:NAudio.SoundFont.SoundFont..ctor+0x4: newobj System.IO.FileStream..ctor: FileStream",
+      "il:NAudio.Core.dll:NAudio.Wave.AiffFileWriter..ctor+0x5: newobj System.IO.FileStream..ctor: FileStream",
+      "il:NAudio.Core.dll:NAudio.Wave.WaveFileWriter..ctor+0x5: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:NAudio.Core.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OtterGui.dll: https://discord.gg/kVva7DHV4r"
+    ],
+    "rule_id": "network.endpoint.community-invite.d54730561467",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Buttplug.Client.Connectors.WebsocketConnector.dll: https://github.com/buttplugio/buttplug-csharp",
+      "artifact:Buttplug.dll: https://github.com/buttplugio/buttplug-csharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1d8556c133bb",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GagSpeak.json: https://github.com/CordeliaMist/Dalamud-GagSpeak"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.536052411b1b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Glamourer.Api.dll: https://github.com/Ottermandias/Glamourer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9608d0f55262",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.Asio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Midi.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GagSpeak.dll: https://github.com/intiface/intiface-central/releases/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.adf006a87e46",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub raw content (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GagSpeak.json: https://raw.githubusercontent.com/CordeliaMist/Dalamud-GagSpeak/main/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bc0d45af6fa1",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.String.dll: https://github.com/Ottermandias/Penumbra.String"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c7fdaef2726e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:deniszykov.WebSocketListener.dll: https://github.com/deniszykov/WebSocketListener"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f8ed077c2fd7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  }
+]

@@ -1,0 +1,203 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:SharedMemory.dll: Reflection.Emit",
+      "il:SharedMemory.dll:SharedMemory.FastStructure`1.BuildFunction+0x4f: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:SharedMemory.dll:SharedMemory.FastStructure`1.BuildFunction+0x5e: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:SharedMemory.dll:SharedMemory.FastStructure`1.BuildFunction+0x69: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:SharedMemory.dll:SharedMemory.FastStructure`1.BuildFunction+0x74: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:SharedMemory.dll:SharedMemory.FastStructure`1.BuildFunction+0x7e: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:SharedMemory.dll:SharedMemory.FastStructure`1.BuildLoadFromPointerFunction+0x4a: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:SharedMemory.dll:SharedMemory.FastStructure`1.BuildLoadFromPointerFunction+0x59: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Browsingway.dll: s://github.com/Styr1x/Browsingway.git",
+      "artifact:Browsingway.dll: s://github.com/Styr1x/Browsingway/releases/tag/cef-binaries",
+      "artifact:Browsingway.dll: s://github.com/Styr1x/Browsingway/releases/download/cef-binaries/cefsharp-{VERSION}.zip"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Browsingway.dll: DllImportAttribute",
+      "native-pe:renderer/Browsingway.Renderer.exe: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:renderer/Browsingway.Renderer.exe: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+      "native-pe:renderer/Browsingway.Renderer.exe: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+      "artifact:renderer/Browsingway.Renderer.exe: LoadLibrary",
+      "artifact:renderer/Browsingway.Renderer.exe: GetProcAddress",
+      "metadata:renderer/Browsingway.Renderer.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:renderer/Browsingway.Renderer.exe: http://schemas.microsoft.com/SMI/2005/WindowsSettings"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e39ca1f01980",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:renderer/Browsingway.Renderer.exe: http://schemas.microsoft.com/SMI/2016/WindowsSettings"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f129d7f75f69",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains one or more executable files.",
+    "evidence_json": [
+      "renderer/Browsingway.Renderer.exe"
+    ],
+    "rule_id": "package.executable",
+    "severity": "caution",
+    "title": "Bundled executable"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Browsingway.dll: System.Diagnostics.Process",
+      "metadata:Browsingway.dll: ProcessStartInfo",
+      "metadata:Browsingway.dll: Process.Start",
+      "metadata:Browsingway.dll: ShellExecute",
+      "il:Browsingway.dll:Browsingway.ActHandler.<Check>b__11_0+0x5: call System.Diagnostics.Process.GetProcessesByName: System.Diagnostics.Process",
+      "il:Browsingway.dll:Browsingway.ActHandler.<Check>b__11_0+0x14: callvirt System.Diagnostics.Process.get_MainWindowTitle: System.Diagnostics.Process",
+      "il:Browsingway.dll:Browsingway.ActHandler.<Check>b__11_0+0x2b: callvirt System.Diagnostics.Process.get_StartTime: System.Diagnostics.Process",
+      "il:Browsingway.dll:Browsingway.ActHandler.<Check>b__11_0+0x6a: call System.Diagnostics.Process.GetProcessesByName: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "native-pe:renderer/Browsingway.Renderer.exe: import ADVAPI32.dll!RegOpenKeyExW: RegOpenKey",
+      "artifact:renderer/Browsingway.Renderer.exe: RegOpenKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Browsingway.dll: FileStream",
+      "metadata:Browsingway.dll: Directory.Delete",
+      "metadata:Browsingway.dll: Directory.CreateDirectory",
+      "metadata:Browsingway.dll: File.Delete",
+      "il:Browsingway.dll:Browsingway.DependencyManager.<InstallDependencies>b__22_0+0x8e: call System.IO.Directory.Delete: Directory.Delete",
+      "il:Browsingway.dll:<InstallDependency>d__23.MoveNext+0x91: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Browsingway.dll:<InstallDependency>d__23.MoveNext+0xd8: call System.IO.File.Delete: File.Delete",
+      "il:Browsingway.dll:<InstallDependency>d__23.MoveNext+0x1ec: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Browsingway.dll: https://github.com/Styr1x/Browsingway.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1f4f3ca3382c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Browsingway.json: https://github.com/Styr1x/Browsingway"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3c86fac86a55",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:renderer/CefSharp.OffScreen.dll: https://github.com/cefsharp/CefSharp/wiki/Trouble-Shooting"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.89c8b2dfdcde",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Browsingway.dll: https://github.com/Styr1x/Browsingway/releases/download/cef-binaries/cefsharp-{VERSION}.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9660ee59f4c0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Browsingway.dll: https://github.com/Styr1x/Browsingway/releases/tag/cef-binaries"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.afa264fa02d3",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FlatSharp.Runtime.dll: https://github.com/jamescourtney/FlatSharp/",
+      "artifact:renderer/FlatSharp.Runtime.dll: https://github.com/jamescourtney/FlatSharp/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e646ed5fdb44",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Browsingway.dll: DownloadFile",
+      "il:Browsingway.dll:<InstallDependency>d__23.MoveNext+0x141: callvirt System.Net.WebClient.DownloadFileTaskAsync: DownloadFile",
+      "artifact:Browsingway.dll: DownloadFile"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

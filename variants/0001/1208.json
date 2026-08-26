@@ -1,0 +1,2553 @@
+{
+  "analysis": {
+    "analysisId": "a4b31f5d958750f8861c3183df97c8fb9b8e311827e265504d92f0e2e5639b75",
+    "artifactSha256": "9f556e372a58f8ebdcb449a318d1e3e7b84b6b4a458b750b4c6037f8d70f2ff9",
+    "path": "artifacts/9f/9f556e372a58f8ebdcb449a318d1e3e7b84b6b4a458b750b4c6037f8d70f2ff9/analyses/a4b31f5d958750f8861c3183df97c8fb9b8e311827e265504d92f0e2e5639b75",
+    "recordCount": 24587
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "9f556e372a58f8ebdcb449a318d1e3e7b84b6b4a458b750b4c6037f8d70f2ff9",
+    "artifact_url": "https://github.com/KrisanThyme/Illusio-Vitae/releases/download/v1.0.5/IllusioVitae.zip",
+    "assembly_version": "1.0.5",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.camera.control",
+        "confidence": "very-high",
+        "evidence": [
+          "il:IVPlugin.dll:IVPlugin.Cutscene.IllusioCutsceneManager.StartPlayback+0x156: callvirt IVPlugin.Cutscene.VirtualCamera.set_IsActive",
+          "il:IVPlugin.dll:IVPlugin.Cutscene.IllusioCutsceneManager.StopPlayback+0x1a: callvirt IVPlugin.Cutscene.VirtualCamera.set_IsActive",
+          "il:IVPlugin.dll:IVPlugin.Cutscene.IllusioCutsceneManager.Update+0x1c5: callvirt IVPlugin.Cutscene.VirtualCamera.set_State"
+        ],
+        "indirect": false,
+        "label": "Camera control",
+        "reachable": true,
+        "reason": "References camera-mutating functionality."
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "very-high",
+        "evidence": [
+          "il:IVPlugin.dll:IVPlugin.UI.Windows.Tabs.ActorTab.Draw+0x8e0: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": true,
+        "reason": "References a target-setting API rather than only reading the current target."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Camera control",
+      "Character target control",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:Penumbra.String.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:IVPlugin.dll: Dalamud.Hooking",
+          "metadata:IVPlugin.dll: SigScanner",
+          "metadata:IVPlugin.dll: HookFromAddress",
+          "il:IVPlugin.dll:IVPlugin.VFX.VFXManager..ctor+0x22: call IVPlugin.Services.DalamudServices.get_SigScanner: SigScanner",
+          "il:IVPlugin.dll:IVPlugin.VFX.VFXManager..ctor+0x2c: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+          "il:IVPlugin.dll:IVPlugin.VFX.VFXManager..ctor+0x32: call IVPlugin.Services.DalamudServices.get_SigScanner: SigScanner",
+          "il:IVPlugin.dll:IVPlugin.VFX.VFXManager..ctor+0x3c: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+          "il:IVPlugin.dll:IVPlugin.VFX.VFXManager..ctor+0x42: call IVPlugin.Services.DalamudServices.get_SigScanner: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:IVPlugin.dll: p://www.w3.org/1999/02/22-rdf-syntax-ns#",
+          "artifact:IVPlugin.dll: p://ns.adobe.com/xap/1.0/",
+          "artifact:IVPlugin.dll: p://ns.adobe.com/xap/1.0/mm/",
+          "artifact:IVPlugin.dll: p://ns.adobe.com/xap/1.0/sType/ResourceEvent#",
+          "artifact:IVPlugin.dll: p://purl.org/dc/elements/1.1/",
+          "artifact:IVPlugin.dll: p://ns.adobe.com/photoshop/1.0/",
+          "artifact:IVPlugin.dll: p://www.gimp.org/xmp/",
+          "artifact:IVPlugin.dll: p://ns.adobe.com/tiff/1.0/"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:IVPlugin.dll:IVPlugin.UI.Windows.Tabs.ActorTab.Draw+0x8e0: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for camera control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:IVPlugin.dll:IVPlugin.Cutscene.IllusioCutsceneManager.StartPlayback+0x156: callvirt IVPlugin.Cutscene.VirtualCamera.set_IsActive",
+          "il:IVPlugin.dll:IVPlugin.Cutscene.IllusioCutsceneManager.StopPlayback+0x1a: callvirt IVPlugin.Cutscene.VirtualCamera.set_IsActive",
+          "il:IVPlugin.dll:IVPlugin.Cutscene.IllusioCutsceneManager.Update+0x1c5: callvirt IVPlugin.Cutscene.VirtualCamera.set_State"
+        ],
+        "ruleId": "automation.game.camera.control",
+        "severity": "caution",
+        "title": "Camera control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:IVPlugin.dll: FileStream",
+          "metadata:IVPlugin.dll: File.Delete",
+          "metadata:IVPlugin.dll: WriteAllText",
+          "metadata:IVPlugin.dll: Directory.Delete",
+          "metadata:IVPlugin.dll: Directory.CreateDirectory",
+          "metadata:IVPlugin.dll: WriteAllBytes",
+          "il:IVPlugin.dll:IVPlugin.UI.Windows.ModCreationWindow.WriteIVMP+0x9: call System.IO.File.Delete: File.Delete",
+          "il:IVPlugin.dll:IVPlugin.Mods.ModManager.CheckForMods+0x86: call System.IO.File.WriteAllText: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-6c2bbd1ab847a612",
+      "artifactBytes": 1335000,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.0.0.1",
+        "artifactBytes": 1335000,
+        "artifactSha256": "9f556e372a58f8ebdcb449a318d1e3e7b84b6b4a458b750b4c6037f8d70f2ff9",
+        "catalogAssemblyVersion": "1.0.5",
+        "manifestInternalName": "IVPlugin",
+        "manifestPath": "IVPlugin.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/833128106/b86d6b55-440b-4084-8e32-ff195815f6a3?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-08-23T09%3A55%3A53Z&rscd=attachment%3B+filename%3DIllusioVitae.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-08-23T08%3A55%3A30Z&ske=2026-08-23T09%3A55%3A53Z&sks=b&skv=2018-11-09&sig=MUTUJEXSApMmUwxYogmjs%2BhitykLLFSWAGL2E462UGU%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4NzQ3Njc2MSwibmJmIjoxNzg3NDc2NDYxLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.zLw2h1kmKUXUwM0_aSFGyylPHBxqQGeOXdnG93E6p4U&response-content-disposition=attachment%3B%20filename%3DIllusioVitae.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": false
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.camera.control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Camera control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.camera.control",
+            "label": "Camera control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "purl.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.gimp.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.w3.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "purl.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.gimp.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.w3.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 6,
+          "observedDestinationWithoutProfileCount": 6,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Camera control",
+        "Character target control",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.camera.control",
+        "game.character.target",
+        "game.memory.read",
+        "native.interop"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 39,
+          "exactVersionObservedCount": 38,
+          "families": {
+            "managed-assembly": 36,
+            "native": 1,
+            "nuget": 2
+          },
+          "fingerprint": "670f1e7132fdf8ed05bbcf65c2bcbd3e536af146db6ed51dff659de50b7067c9",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 4
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Penumbra.String.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_memicmp",
+              "library": "msvcrt.dll",
+              "managedName": "memicmp",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Penumbra.String.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "memcmp",
+              "library": "msvcrt.dll",
+              "managedName": "memcmp",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Penumbra.String.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "memcpy",
+              "library": "msvcrt.dll",
+              "managedName": "memcpy",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Penumbra.String.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "memset",
+              "library": "msvcrt.dll",
+              "managedName": "memset",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 3,
+            "observed": 34,
+            "required": 2
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 37,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 2,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 3,
+            "observed": 34,
+            "optional": 0,
+            "required": 2,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 39
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 11,
+          "destinationsUndetermined": false,
+          "hostCount": 6,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 5,
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "literalCount": 5,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "purl.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.gimp.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.w3.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 11,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 2449
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Ottermandias/Penumbra.Api"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Ottermandias/Penumbra.String"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/photoshop/1.0/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/tiff/1.0/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/xap/1.0/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/xap/1.0/mm/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/xap/1.0/sType/ResourceEvent"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "purl.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://purl.org/dc/elements/1.1/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/KrisanThyme/Illusio-Vitae/main/IVPlugin/Resources/Image/IVIcon.png"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.gimp.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.gimp.org/xmp/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.w3.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.w3.org/1999/02/22-rdf-syntax-ns"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/KrisanThyme/Illusio-Vitae/releases/download/v1.0.5/IllusioVitae.zip",
+        "internalName": "IVPlugin",
+        "manifestVersion": "1.0.5",
+        "observationId": 2041,
+        "observationKey": "manifest-b17f5230c6146e8cb1375464f411",
+        "repositoryUrl": "https://github.com/KrisanThyme/Illusio-Vitae",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1208
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 3,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 8,
+        "uncompressedBytes": 2519007
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-6c2bbd1ab847a612",
+        "attemptId": "attempt-v2-ed8904da55dc203b",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-c9e767513b219852",
+        "definitionsRevision": "defs-v1-eab90d4c15319e2f",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-1208",
+        "queueSeedRevision": "queue-seed-v2-5ac4294b3437775e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-89b2b408055b1984",
+        "scannerBundleSha256": "eca47cce15ff7e977b65484e09984844a25d76800caa7d3d06ab00b38402c344",
+        "scannerRevision": "scanner-v1-340d1ad50ea64500",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-6dbf8f81962644ba",
+        "sourceObservationRevision": "source-observations-v1-d242cebeafd5b57c",
+        "targetFingerprint": "artifact-target-v2-9c50fcbc982ef8dc5a9b",
+        "variantId": 1208,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-23T09:14:21Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "9f556e372a58f8ebdcb449a318d1e3e7b84b6b4a458b750b4c6037f8d70f2ff9",
+        "engines": [
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 41224,
+              "actualSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "actualVersion": "4.5.0",
+              "available": true,
+              "command": "yara",
+              "error": "",
+              "expectedBytes": 41224,
+              "expectedSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "expectedVersion": "4.5.0",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "2854676bc2687ebc1e3d76dc9e1ecb97b214199071d4a999d62706a8902b72bf",
+            "revision": "secondary-v1-9a0630d9ae7e5c563678",
+            "scanScope": {
+              "archiveDetected": true,
+              "archiveMemberBytesScanned": 2519007,
+              "archiveMemberCandidates": 8,
+              "archiveMembersScanned": 8,
+              "archiveMembersSkipped": 0,
+              "artifactContainerScanned": true,
+              "schema": "omega.sigmascope.yara-scan-scope.v1",
+              "skipReasons": {},
+              "targetCount": 9,
+              "truncated": false
+            },
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "4.5.0"
+          },
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 186688,
+              "actualSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "actualVersion": "ClamAV 1.5.3/28101/Sun Aug 23 06:26:53 2026",
+              "available": true,
+              "command": "clamscan",
+              "error": "",
+              "expectedBytes": 186688,
+              "expectedSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "expectedVersion": "ClamAV 1.5.3/28100/Sat Aug 22 06:23:58 2026",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "",
+            "revision": "secondary-v1-4918468b6b35b47a60f5",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "ClamAV 1.5.3/28101/Sun Aug 23 06:26:53 2026"
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/KrisanThyme/Illusio-Vitae",
+          "https://release-assets.githubusercontent.com/github-production-release-asset/833128106/b86d6b55-440b-4084-8e32-ff195815f6a3"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/KrisanThyme/Illusio-Vitae",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 1363,
+    "scanned_at_utc": "2026-08-23T09:14:21Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/KrisanThyme/Illusio-Vitae",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1208
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "9f556e372a58f8ebdcb449a318d1e3e7b84b6b4a458b750b4c6037f8d70f2ff9",
+      "current_assembly_version": "1.0.5",
+      "current_scan_id": 1363,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-23T09:14:35Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 1208
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 26,
+      "artifact_only_count": 26,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "10.0.0.13"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.0.4816.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:imgui.net",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "ImGui.NET",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.82.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ivplugin",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "IVPlugin",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.0.0.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:penumbra.api",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Penumbra.Api",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "5.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:penumbra.string",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Penumbra.String",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression.zipfile",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression.ZipFile",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.mail",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Mail",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices.javascript",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices.JavaScript",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:msvcrt",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "msvcrt.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.1.13"
+          ]
+        },
+        {
+          "componentKey": "nuget:penumbra.api",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Penumbra.Api",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "5.2.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-23T09:14:35Z",
+      "comparison_id": 972,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 1363,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 1208,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1208/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1208/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 36540,
+          "encoding": "json",
+          "path": "derived/variants/0001/1208/dependency-resolutions.json",
+          "recordDigest": "03047ab579a34174121ab4151e0db9cb3e9b1439400ef7149ee0b8d05e4802bb",
+          "records": 39,
+          "sha256": "9f595e7edee63ca5fd23c4a2eff15cf03c2a24b7d054b4a404f525dcdc212d8d"
+        }
+      ],
+      "recordDigest": "03047ab579a34174121ab4151e0db9cb3e9b1439400ef7149ee0b8d05e4802bb",
+      "records": 39
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1208/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "9e7cd6bd6ca5c5891de86fc8c6c2dfbdadab4899fe485407dfacc498bcbb8f29",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "595e4f92b8967a02ebe3f8d32e1153d2e2086993408ea0eeb3f7c69c381af467",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "99b9a51dd2f0de570c2c0d98e7769b09e17bab2069ffe6dc3159deee669c7663",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "38f364013e4bdf861a34cf730cdf4beb9711e0f7af4d1d22a9504aaf468e712d",
+        "records": 39,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "d70fcb90f7d92739394324db73a980ffb3319b4119c17dae494b9fcec5db0b63",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "0116106b4817f92ff5a84b4e2b6293a7f9c49cf1bf1f58be3d931fbeaaf40e64",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "d8b9bae7214d5df0dbab83df043dccc7787d240223ca25080a9b583997407366",
+        "records": 2573,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "01b1be8acb7bf13564241ea1b44fa9ea4425244542c91d1a20c1b6d030490b20",
+        "records": 1837,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "1fcdfda917198d9e5f1e88f57c6a173b5ab0a1bb3259da9f5ec7f19aa26e41b2",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "3ff8ab1af2a0870e73064be38b063a769cf4dd73b4c01ec50bc36c4faa97dfc3",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "56bd8d5ff7f2d93cfac36d118806d9be00a8a18246543460bea64ee83db4827b",
+        "records": 11,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "7ad89cec57c1a4bcd5052a8c498a4450110a08fabd6d8c94bfdc44a37841b442",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "bcaafd9134e8322d92965c4b7d7a392c7e2e9304bee93f1c1ae9f92e79cce29b",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "c90a0e49956071bde0bf0906789a75351694d121dd6e195caa9fd3d620fdc9c3",
+        "records": 85,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-12c44eb2432363af",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceDependencyDeclarations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows"
+    ],
+    "observationDigest": "obs-0659753876b67c053dba3bcf77752853b5165e70e87b5c6db3d2a81b20e31d9e",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-6c2bbd1ab847a612",
+      "sourceAnalysisRevision": "source-analysis-v1-6dbf8f81962644ba"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "IllusioVitae",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "internal_name": "IVPlugin",
+    "last_seen_utc": "2026-08-26T03:31:07Z",
+    "plugin_id": 780
+  },
+  "pluginId": 780,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Custom Emote Mod Manager and GPose Suite.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1007,
+      "summary": "Illusion of Life",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/KrisanThyme/Illusio-Vitae",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/KrisanThyme/Illusio-Vitae"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# Illusio Vitae\nDalamud Plugin for custom FFXIV Animations and Character Customization.\n\n# Requirements\nYou will need [Penumbra](https://github.com/xivdev/Penumbra) for this to work properly\n\n# Installation\n* Open Dalamud Settings by typing ```/xlsettings``` in chat.\n* Go to the \"Experimental\" tab.\n* Under Custom Plugin Repositories, add the following: ```https://raw.githubusercontent.com/KrisanThyme/Illusio-Vitae/main/IVPlugin/repo.json```\n* Click the ```Save & Close``` Button.\n* Open the \"Dalamud Plugin Installer\" and search for ```Illusio Vitae```.\n* Click on ```Illusio Vitae``` and select the ```Install``` Button.\n* The plugin should now be installed. You can open it with the ```/illusio``` command in chat.\n\n# Authors\n* **MrPolarburr** - Lead Programmer\n* **Krisan Thyme** - Reverse Engineer & Assistant Programmer\n\n# Credits / Special Thanks\n* **Chirp** - Bone Posing and manipulation\n* **Asgard** - Custom Actors and XAT Camera\n* **0ceal0t** - VFX Related Functionality\n* **Penumbra and its devs** - Without this it wouldnt be possible for this plugin to exist\n\n# License\nIllusio Vitae is licensed under the [AGPL-3.0 License](https://github.com/MrPolarburr/IVPlugin/blob/master/LICENSE.md).",
+      "title": "Illusio-Vitae",
+      "url": "https://github.com/KrisanThyme/Illusio-Vitae"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "10a855b924e11d2a3bbe8c428050b49528668ce8358653ed8c3263b2b29ab42f",
+        "records": 2
+      },
+      "behaviorConsistency": {
+        "recordDigest": "9382eb9455b2f81eaf4d4bb3963b3ee75a3b8d5e7ae88c5b82032d5634589f5e",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "2f5aabb0f92c4b8fb6f58a990da6fb45327be9d04e72006c7a1af878dd29fcf3",
+        "records": 8
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "d9dde38747dd05720cd59b6465e9cbedba494f2d3a9a61ad4bf21cc2f8e7bf90",
+        "records": 6
+      }
+    },
+    "projectionRevision": "projection-v1-83164c0caac6ba89",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-89b2b408055b1984",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "9f556e372a58f8ebdcb449a318d1e3e7b84b6b4a458b750b4c6037f8d70f2ff9",
+    "artifact_url": "https://github.com/KrisanThyme/Illusio-Vitae/releases/download/v1.0.5/IllusioVitae.zip",
+    "assembly_version": "1.0.5",
+    "capabilities_json": [
+      "Camera control",
+      "Character target control",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "plugin_id": 780,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-6c2bbd1ab847a612",
+      "artifactBytes": 1335000,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.0.0.1",
+        "artifactBytes": 1335000,
+        "artifactSha256": "9f556e372a58f8ebdcb449a318d1e3e7b84b6b4a458b750b4c6037f8d70f2ff9",
+        "catalogAssemblyVersion": "1.0.5",
+        "manifestInternalName": "IVPlugin",
+        "manifestPath": "IVPlugin.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/833128106/b86d6b55-440b-4084-8e32-ff195815f6a3?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-08-23T09%3A55%3A53Z&rscd=attachment%3B+filename%3DIllusioVitae.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-08-23T08%3A55%3A30Z&ske=2026-08-23T09%3A55%3A53Z&sks=b&skv=2018-11-09&sig=MUTUJEXSApMmUwxYogmjs%2BhitykLLFSWAGL2E462UGU%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4NzQ3Njc2MSwibmJmIjoxNzg3NDc2NDYxLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.zLw2h1kmKUXUwM0_aSFGyylPHBxqQGeOXdnG93E6p4U&response-content-disposition=attachment%3B%20filename%3DIllusioVitae.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": false
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.camera.control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Camera control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.camera.control",
+            "label": "Camera control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "purl.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.gimp.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.w3.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "purl.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.gimp.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.w3.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 6,
+          "observedDestinationWithoutProfileCount": 6,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Camera control",
+        "Character target control",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.camera.control",
+        "game.character.target",
+        "game.memory.read",
+        "native.interop"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 39,
+          "exactVersionObservedCount": 38,
+          "families": {
+            "managed-assembly": 36,
+            "native": 1,
+            "nuget": 2
+          },
+          "fingerprint": "670f1e7132fdf8ed05bbcf65c2bcbd3e536af146db6ed51dff659de50b7067c9",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 4
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Penumbra.String.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_memicmp",
+              "library": "msvcrt.dll",
+              "managedName": "memicmp",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Penumbra.String.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "memcmp",
+              "library": "msvcrt.dll",
+              "managedName": "memcmp",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Penumbra.String.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "memcpy",
+              "library": "msvcrt.dll",
+              "managedName": "memcpy",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Penumbra.String.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "memset",
+              "library": "msvcrt.dll",
+              "managedName": "memset",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 3,
+            "observed": 34,
+            "required": 2
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 37,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 2,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 3,
+            "observed": 34,
+            "optional": 0,
+            "required": 2,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 39
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 11,
+          "destinationsUndetermined": false,
+          "hostCount": 6,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 5,
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "literalCount": 5,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "purl.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.gimp.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.w3.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 11,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 2449
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Ottermandias/Penumbra.Api"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Ottermandias/Penumbra.String"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/photoshop/1.0/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/tiff/1.0/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/xap/1.0/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/xap/1.0/mm/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/xap/1.0/sType/ResourceEvent"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "purl.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://purl.org/dc/elements/1.1/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/KrisanThyme/Illusio-Vitae/main/IVPlugin/Resources/Image/IVIcon.png"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.gimp.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.gimp.org/xmp/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.w3.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.w3.org/1999/02/22-rdf-syntax-ns"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/KrisanThyme/Illusio-Vitae/releases/download/v1.0.5/IllusioVitae.zip",
+        "internalName": "IVPlugin",
+        "manifestVersion": "1.0.5",
+        "observationId": 2041,
+        "observationKey": "manifest-b17f5230c6146e8cb1375464f411",
+        "repositoryUrl": "https://github.com/KrisanThyme/Illusio-Vitae",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1208
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 3,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 8,
+        "uncompressedBytes": 2519007
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-6c2bbd1ab847a612",
+        "attemptId": "attempt-v2-ed8904da55dc203b",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-c9e767513b219852",
+        "definitionsRevision": "defs-v1-eab90d4c15319e2f",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-1208",
+        "queueSeedRevision": "queue-seed-v2-5ac4294b3437775e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-89b2b408055b1984",
+        "scannerBundleSha256": "eca47cce15ff7e977b65484e09984844a25d76800caa7d3d06ab00b38402c344",
+        "scannerRevision": "scanner-v1-340d1ad50ea64500",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-6dbf8f81962644ba",
+        "sourceObservationRevision": "source-observations-v1-d242cebeafd5b57c",
+        "targetFingerprint": "artifact-target-v2-9c50fcbc982ef8dc5a9b",
+        "variantId": 1208,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-23T09:14:21Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "9f556e372a58f8ebdcb449a318d1e3e7b84b6b4a458b750b4c6037f8d70f2ff9",
+        "engines": [
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 41224,
+              "actualSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "actualVersion": "4.5.0",
+              "available": true,
+              "command": "yara",
+              "error": "",
+              "expectedBytes": 41224,
+              "expectedSha256": "556283bf37712ed645552d5e84330a6c0c31d9000bd799dd375528bdc51245c3",
+              "expectedVersion": "4.5.0",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "2854676bc2687ebc1e3d76dc9e1ecb97b214199071d4a999d62706a8902b72bf",
+            "revision": "secondary-v1-9a0630d9ae7e5c563678",
+            "scanScope": {
+              "archiveDetected": true,
+              "archiveMemberBytesScanned": 2519007,
+              "archiveMemberCandidates": 8,
+              "archiveMembersScanned": 8,
+              "archiveMembersSkipped": 0,
+              "artifactContainerScanned": true,
+              "schema": "omega.sigmascope.yara-scan-scope.v1",
+              "skipReasons": {},
+              "targetCount": 9,
+              "truncated": false
+            },
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "4.5.0"
+          },
+          {
+            "available": true,
+            "enabled": true,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {
+              "actualBytes": 186688,
+              "actualSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "actualVersion": "ClamAV 1.5.3/28101/Sun Aug 23 06:26:53 2026",
+              "available": true,
+              "command": "clamscan",
+              "error": "",
+              "expectedBytes": 186688,
+              "expectedSha256": "178719b9b8b2136b0cc7434d756b1d023e688fba3f1b25175b78ef8cc89f6a4b",
+              "expectedVersion": "ClamAV 1.5.3/28100/Sat Aug 22 06:23:58 2026",
+              "schema": "omega.secondary-security.executable-identity.v1",
+              "verified": true
+            },
+            "matches": [],
+            "policyRevision": "",
+            "revision": "secondary-v1-4918468b6b35b47a60f5",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "complete",
+            "version": "ClamAV 1.5.3/28101/Sun Aug 23 06:26:53 2026"
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/KrisanThyme/Illusio-Vitae",
+          "https://release-assets.githubusercontent.com/github-production-release-asset/833128106/b86d6b55-440b-4084-8e32-ff195815f6a3"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/KrisanThyme/Illusio-Vitae",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 1363,
+    "scanned_at_utc": "2026-08-23T09:14:21Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 512,
+    "source_repository": "https://github.com/KrisanThyme/Illusio-Vitae",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1208
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "7dc431c89a7960fa5e66f3e96298d0b62012374bea8f9e0b07a26932a00ca17c",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"3a4066b7d18c88d9886186c95827f3569fa58b3b923225f49fa5251b33770119\"",
+    "highest_api": 10,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-08-26T03:31:07Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-26T03:31:07Z",
+    "name": "KrisanThyme/Illusio-Vitae",
+    "plugin_count": 1,
+    "provider": "KrisanThyme/Illusio-Vitae",
+    "source_id": 512,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/KrisanThyme/Illusio-Vitae/main/IVPlugin/repo.json"
+  },
+  "sourceId": 512,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.0.5",
+    "author": "Krisan Thyme & MrPolarbear",
+    "authors_json": [
+      "Krisan Thyme",
+      "MrPolarbear"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 10,
+    "description": "Custom Emote Mod Manager and GPose Suite.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/KrisanThyme/Illusio-Vitae/releases/download/v1.0.5/IllusioVitae.zip",
+    "download_link_testing": "",
+    "download_link_update": "https://github.com/KrisanThyme/Illusio-Vitae/releases/download/v1.0.5/IllusioVitae.zip",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "icon_url": "https://raw.githubusercontent.com/KrisanThyme/Illusio-Vitae/main/IVPlugin/Resources/Image/IVIcon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-20T06:02:54Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "IllusioVitae",
+    "plugin_id": 780,
+    "punchline": "Illusion of Life",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.0.5",
+      "Author": "Krisan Thyme & MrPolarbear",
+      "DalamudApiLevel": 10,
+      "Description": "Custom Emote Mod Manager and GPose Suite.",
+      "DownloadLinkInstall": "https://github.com/KrisanThyme/Illusio-Vitae/releases/download/v1.0.5/IllusioVitae.zip",
+      "DownloadLinkUpdate": "https://github.com/KrisanThyme/Illusio-Vitae/releases/download/v1.0.5/IllusioVitae.zip",
+      "IconUrl": "https://raw.githubusercontent.com/KrisanThyme/Illusio-Vitae/main/IVPlugin/Resources/Image/IVIcon.png",
+      "InternalName": "IVPlugin",
+      "Name": "IllusioVitae",
+      "Punchline": "Illusion of Life",
+      "RepoUrl": "https://github.com/KrisanThyme/Illusio-Vitae",
+      "Tags": [
+        "gpose",
+        "posing",
+        "animation",
+        "concept matrix",
+        "cmtool"
+      ],
+      "TestingAssemblyVersion": "1.0.5"
+    },
+    "repo_url": "https://github.com/KrisanThyme/Illusio-Vitae",
+    "source_entry_key": "ivplugin|1.0.5|10|0|0",
+    "source_id": 512,
+    "tags_json": [
+      "gpose",
+      "posing",
+      "animation",
+      "concept matrix",
+      "cmtool"
+    ],
+    "testing_assembly_version": "1.0.5",
+    "testing_dalamud_api_level": null,
+    "variant_id": 1208
+  },
+  "variantId": 1208
+}

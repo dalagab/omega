@@ -1,0 +1,539 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:System.Security.Cryptography.ProtectedData.ProtectOrUnprotect+0x90: call Crypt32.CryptUnprotectData: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:Crypt32.CryptUnprotectData+0x30: call Crypt32.<CryptUnprotectData>g____PInvoke|1_0 -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData",
+      "metadata:System.Configuration.ConfigurationManager.dll: ProtectedData.Unprotect",
+      "il:System.Configuration.ConfigurationManager.dll:System.Configuration.DpapiProtectedConfigurationProvider.DecryptText+0x2f: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect",
+      "artifact:System.Configuration.ConfigurationManager.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private or loopback endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:InfluxDB.Client.dll: http://localhost/api/v2"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.b94b16139f7d",
+    "severity": "high",
+    "title": "Endpoint: localhost"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private or loopback endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Influx.dll: http://localhost:8086/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.db0adf69d3f5",
+    "severity": "high",
+    "title": "Endpoint: localhost"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:RestSharp.dll:CustomSynchronizationContext.Run+0x30: callvirt System.Threading.SendOrPostCallback.Invoke",
+      "il:RestSharp.dll:<>c__DisplayClass38_0.<ConfigureHttpMessageHandler>b__0+0x10: callvirt System.Net.Security.RemoteCertificateValidationCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:net-questdb-client.dll: Assembly.Load",
+      "metadata:net-questdb-client.dll: Assembly.LoadFrom",
+      "il:net-questdb-client.dll:QuestDB.Signatures.CreateSignatureGenerator0+0x7: call System.Reflection.Assembly.LoadFrom: Assembly.Load",
+      "il:net-questdb-client.dll:QuestDB.Signatures.CreateSignatureGenerator0+0x7: call System.Reflection.Assembly.LoadFrom: Assembly.LoadFrom",
+      "metadata:Newtonsoft.Json.dll: Reflection.Emit",
+      "metadata:Newtonsoft.Json.dll: Assembly.Load",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x12: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x1d: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:RestSharp.dll: s://github.com/restsharp/RestSharp.git",
+      "artifact:RestSharp.dll: /home/runner/work/RestSharp/RestSharp/src/RestSharp/obj/Release/net8.0/RestSharp.pdb",
+      "artifact:System.Configuration.ConfigurationManager.dll: s://github.com/dotnet/runtime",
+      "artifact:System.Configuration.ConfigurationManager.dll: s://aka.ms/dotnet-warnings/{0}",
+      "artifact:System.Configuration.ConfigurationManager.dll: s://aka.ms/binaryformatter for more information.. Consider using Xml instead.",
+      "artifact:System.Configuration.ConfigurationManager.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:System.Configuration.ConfigurationManager.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:System.Configuration.ConfigurationManager.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:ECommons.dll: Dalamud.Hooking",
+      "metadata:ECommons.dll: SigScanner",
+      "metadata:ECommons.dll: HookFromAddress",
+      "il:ECommons.dll:ECommons.ObjectLifeTracker.ObjectLife.Init+0xf: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.ObjectLifeTracker.ObjectLife.Init+0x19: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "il:ECommons.dll:ECommons.ObjectLifeTracker.ObjectLife.Init+0x3a: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x7: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x13: callvirt Dalamud.Game.ISigScanner.TryScanText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:System.Security.Cryptography.ProtectedData.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: DllImportAttribute",
+      "metadata:System.Diagnostics.EventLog.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Configuration.ConfigurationManager.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:ECommons.dll: DllImportAttribute",
+      "metadata:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.Messages.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0k/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.40e6221be78d",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0k"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0x/",
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NodaTime.dll: http://ocsp.comodoca.com0/",
+      "artifact:NodaTime.Serialization.JsonNet.dll: http://ocsp.comodoca.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7af642f7bbc6",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.comodoca.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NodaTime.dll: http://crl.usertrust.com/USERTrustRSACertificationAuthority.crl0v",
+      "artifact:NodaTime.Serialization.JsonNet.dll: http://crl.usertrust.com/USERTrustRSACertificationAuthority.crl0v"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8a267402d93a",
+    "severity": "caution",
+    "title": "Endpoint: crl.usertrust.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NodaTime.dll: http://crt.usertrust.com/USERTrustRSAAddTrustCA.crt0%",
+      "artifact:NodaTime.Serialization.JsonNet.dll: http://crt.usertrust.com/USERTrustRSAAddTrustCA.crt0%"
+    ],
+    "rule_id": "network.endpoint.insecure-http.aeb2bc651c32",
+    "severity": "caution",
+    "title": "Endpoint: crt.usertrust.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/",
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0n/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.eaf7f9f0d685",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0n"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NodaTime.dll: http://crt.sectigo.com/SectigoPublicCodeSigningRootR46.p7c0",
+      "artifact:NodaTime.Serialization.JsonNet.dll: http://crt.sectigo.com/SectigoPublicCodeSigningRootR46.p7c0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f9f8662c9e9e",
+    "severity": "caution",
+    "title": "Endpoint: crt.sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0a/",
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Influx.json: https://git.carvel.li/liza/Influx"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2c8f14ab2147",
+    "severity": "caution",
+    "title": "Endpoint: git.carvel.li"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://crypto.nightmarexiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.4ce195eb4a2e",
+    "severity": "caution",
+    "title": "Endpoint: crypto.nightmarexiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:LLib.dll: https://git.carvel.li/liza/LLib.git"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6165019a59c4",
+    "severity": "caution",
+    "title": "Endpoint: git.carvel.li"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://discord.nightmarexiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6fcbaf3fcb63",
+    "severity": "caution",
+    "title": "Endpoint: discord.nightmarexiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NodaTime.dll: https://nodatime.org/api/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a976075e042b",
+    "severity": "caution",
+    "title": "Endpoint: nodatime.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Influx.dll: https://git.carvel.li/liza/Influx.git"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d5a95755e8f6",
+    "severity": "caution",
+    "title": "Endpoint: git.carvel.li"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://explore.nightmarexiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f9b41ae90b96",
+    "severity": "caution",
+    "title": "Endpoint: explore.nightmarexiv.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:net-questdb-client.dll: System.Net.Sockets",
+      "metadata:net-questdb-client.dll: Socket.Connect",
+      "il:net-questdb-client.dll:QuestDB.LineTcpSender.get_IsConnected+0xc: call System.Net.Sockets.Socket.get_Connected: System.Net.Sockets",
+      "il:net-questdb-client.dll:QuestDB.Senders.TcpSender.Build+0x2f: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:net-questdb-client.dll:QuestDB.Senders.TcpSender.Build+0x50: callvirt System.Net.Sockets.Socket.ConnectAsync: System.Net.Sockets",
+      "il:net-questdb-client.dll:QuestDB.Senders.TcpSender.Build+0x50: callvirt System.Net.Sockets.Socket.ConnectAsync: Socket.Connect",
+      "il:net-questdb-client.dll:QuestDB.Senders.TcpSender.Build+0x66: newobj System.Net.Sockets.NetworkStream..ctor: System.Net.Sockets",
+      "il:net-questdb-client.dll:QuestDB.Senders.TcpSender.Build+0x13f: callvirt System.Net.Sockets.Socket.Dispose: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Newtonsoft.Json.dll: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlDocumentWrapper.CreateProcessingInstruction+0x8: callvirt System.Xml.XmlDocument.CreateProcessingInstruction: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlNodeConverter.CreateInstruction+0xf2: callvirt Newtonsoft.Json.Converters.IXmlDocument.CreateProcessingInstruction: CreateProcess",
+      "artifact:Newtonsoft.Json.dll: CreateProcess",
+      "metadata:System.Configuration.ConfigurationManager.dll: System.Diagnostics.Process",
+      "il:System.Configuration.ConfigurationManager.dll:System.Configuration.ClientConfigPaths..ctor+0x90: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:System.Configuration.ConfigurationManager.dll:System.Configuration.ClientConfigPaths..ctor+0x9a: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:System.Configuration.ConfigurationManager.dll:System.Configuration.ClientConfigPaths..ctor+0xa6: call System.Diagnostics.ProcessModule.get_FileName: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll: RegistryKey",
+      "il:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: RegistryKey",
+      "il:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:RestSharp.dll: FileStream",
+      "artifact:RestSharp.dll: FileStream",
+      "metadata:System.Configuration.ConfigurationManager.dll: FileStream",
+      "metadata:System.Configuration.ConfigurationManager.dll: File.Delete",
+      "metadata:System.Configuration.ConfigurationManager.dll: Directory.Delete",
+      "metadata:System.Configuration.ConfigurationManager.dll: Directory.CreateDirectory",
+      "metadata:System.Configuration.ConfigurationManager.dll: File.Move",
+      "il:System.Configuration.ConfigurationManager.dll:System.IO.Internal.TempFileCollection.EnsureTempNameCreated+0x55: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RestSharp.dll: https://github.com/restsharp/RestSharp.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.04fc3cafe0f2",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: https://github.com/JetBrains/JetBrains.Annotations/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.081de96440b7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:net-questdb-client.dll: https://github.com/questdb/net-questdb-client"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0bc27572033a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: https://github.com/dotnet/reactive0"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2545080a4100",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: https://github.com/dotnet/reactive"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7c7f66411aeb",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CsvHelper.dll: https://github.com/JoshClose/CsvHelper"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9e7c5825f68c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.ProtectedData.dll: https://github.com/dotnet/runtime",
+      "artifact:System.Diagnostics.EventLog.dll: https://github.com/dotnet/runtime",
+      "artifact:System.Configuration.ConfigurationManager.dll: https://github.com/dotnet/runtime",
+      "artifact:runtimes/win/lib/net8.0/System.Diagnostics.EventLog.Messages.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.ObjectPool.dll: https://github.com/dotnet/aspnetcore"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ab7eadc8e64a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JsonSubTypes.dll: https://github.com/manuc66/JsonSubTypes"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d0060748a5cb",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:InfluxDB.Client.Core.dll: https://github.com/influxdata/influxdb-client-csharp",
+      "artifact:InfluxDB.Client.dll: https://github.com/influxdata/influxdb-client-csharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d6817d542530",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NodaTime.Serialization.JsonNet.dll: https://github.com/nodatime/nodatime.serialization"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ea23500efb02",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NodaTime.dll: https://github.com/nodatime/nodatime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f3c3b296227a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:net-questdb-client.dll: System.Net.Http.HttpClient",
+      "il:net-questdb-client.dll:QuestDB.Senders.HttpSender.Build+0x187: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:net-questdb-client.dll:QuestDB.Senders.HttpSender.Build+0x1d2: callvirt System.Net.Http.HttpClient.set_BaseAddress: System.Net.Http.HttpClient",
+      "il:net-questdb-client.dll:QuestDB.Senders.HttpSender.Build+0x1e2: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:net-questdb-client.dll:QuestDB.Senders.HttpSender.Build+0x211: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:net-questdb-client.dll:QuestDB.Senders.HttpSender.Build+0x26d: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:net-questdb-client.dll:QuestDB.Senders.HttpSender.Send+0x54: callvirt System.Net.Http.HttpClient.Send: System.Net.Http.HttpClient",
+      "il:net-questdb-client.dll:QuestDB.Senders.HttpSender.Send+0x142: callvirt System.Net.Http.HttpClient.Send: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

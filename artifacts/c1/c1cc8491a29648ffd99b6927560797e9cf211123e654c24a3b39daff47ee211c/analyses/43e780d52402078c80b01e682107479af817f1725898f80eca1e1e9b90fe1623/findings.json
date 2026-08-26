@@ -1,0 +1,365 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:Reloaded.Memory.dll: ReadProcessMemory",
+      "metadata:Reloaded.Memory.dll: WriteProcessMemory",
+      "metadata:Reloaded.Memory.dll: VirtualAllocEx",
+      "metadata:Reloaded.Memory.dll: VirtualProtectEx",
+      "il:Reloaded.Memory.dll:Reloaded.Memory.Sources.ExternalMemory.Read+0x3a: call Reloaded.Memory.Kernel32.Kernel32.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:Reloaded.Memory.dll:Reloaded.Memory.Sources.ExternalMemory.Read+0x3b: call Reloaded.Memory.Kernel32.Kernel32.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:Reloaded.Memory.dll:Reloaded.Memory.Sources.ExternalMemory.ReadRaw+0x3b: call Reloaded.Memory.Kernel32.Kernel32.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:Reloaded.Memory.dll:Reloaded.Memory.Sources.ExternalMemory.Write+0x37: call Reloaded.Memory.Kernel32.Kernel32.WriteProcessMemory -> kernel32.dll!WriteProcessMemory: WriteProcessMemory"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AutoRetainer.dll:AutoRetainer.Scheduler.Handlers.GCHandlers.InteractWithShop+0x8d: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+      "il:AutoRetainer.dll:AutoRetainer.Scheduler.Handlers.GCHandlers.InteractExchange+0x8d: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+      "il:AutoRetainer.dll:AutoRetainer.Scheduler.Handlers.PlayerWorldHandlers.InteractWithTargetedBell+0xa0: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.Voyage.VoyageScheduler.InteractWithVoyagePanel+0x7a: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+    ],
+    "rule_id": "automation.game.character.interact",
+    "severity": "caution",
+    "title": "World/NPC interaction control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AutoRetainer.dll:AutoRetainer.Modules.Voyage.VoyageScheduler.Lockon+0x62: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.Voyage.VoyageScheduler.InteractWithVoyagePanel+0x9c: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.Voyage.Tasks.TaskEnterWorkshop.LockonAdditionalChambers+0xca: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.Multi.HouseEnterTask.SetTarget+0x64: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AutoRetainer.dll:AutoRetainer.UI.Dbg.DebugMisc.Draw+0x541: call ECommons.Automation.Callback.Fire",
+      "il:AutoRetainer.dll:AutoRetainer.UI.Dbg.DebugScheduler.Draw+0x776: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:AutoRetainer.dll:AutoRetainer.UI.Dbg.DebugScheduler.Draw+0x804: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:AutoRetainer.dll:AutoRetainer.Scheduler.Tasks.TaskEntrustDuplicates.UncheckBlacklistedItems+0xdf: call ECommons.Automation.Callback.Fire"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for inventory ui/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AutoRetainer.dll:AutoRetainer.Scheduler.Tasks.TaskOpenAllCoffers.OpenCoffer+0x11: call FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInventoryContext.UseItem"
+    ],
+    "rule_id": "automation.game.ui.inventory_control",
+    "severity": "caution",
+    "title": "Inventory UI/control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for synthetic game ui interaction. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AutoRetainer.dll:AutoRetainer.Scheduler.Handlers.RetainerHandlers.ClickEntrustDuplicatesConfirm+0x6b: call AutoRetainer.Internal.Clicks.ClickButtonGeneric.Click",
+      "il:AutoRetainer.dll:AutoRetainer.Scheduler.Handlers.RetainerHandlers.ClickCloseEntrustWindow+0xe4: call AutoRetainer.Internal.Clicks.ClickButtonGeneric.Click",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.MiniTA.Tick+0x7c: callvirt ClickLib.Clicks.ClickTalk.Click",
+      "il:ClickLib.dll:ClickLib.Bases.ClickBase`2.InvokeReceiveEvent+0x18: callvirt ClickLib.Bases.ReceiveEventDelegate.Invoke"
+    ],
+    "rule_id": "automation.game.ui.synthetic_click",
+    "severity": "caution",
+    "title": "Synthetic game UI interaction"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:ECommons.dll: AssemblyLoadContext",
+      "artifact:ECommons.dll: AssemblyLoadContext",
+      "artifact:ECommons.xml: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:AutoRetainer.dll: D:\\CN\\AutoRetainer\\AutoRetainer\\obj\\x64\\Release\\AutoRetainer.pdb",
+      "artifact:AutoRetainer.dll: s://github.com/PunishXIV/AutoRetainer/issues/62",
+      "artifact:ECommons.dll: D:\\CN\\AutoRetainer\\ECommons\\ECommons\\obj\\x64\\Release\\ECommons.pdb",
+      "artifact:ECommons.dll: s://nightmarexiv.github.io/donate.html",
+      "artifact:Reloaded.Memory.dll: D:\\a\\Reloaded.Memory\\Reloaded.Memory\\source\\Reloaded.Memory\\obj\\Release\\net6.0\\Reloaded.Memory.pdb"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:AutoRetainer.dll: Dalamud.Hooking",
+      "metadata:AutoRetainer.dll: SigScanner",
+      "metadata:AutoRetainer.dll: HookFromAddress",
+      "il:AutoRetainer.dll:AutoRetainer.Internal.Memory.InstallInteractHook+0x25: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:AutoRetainer.dll:AutoRetainer.Helpers.UiHelper.Setup+0x0: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:AutoRetainer.dll:AutoRetainer.Helpers.UiHelper.Setup+0xa: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "artifact:AutoRetainer.dll: Dalamud.Hooking",
+      "artifact:AutoRetainer.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "artifact:AutoRetainer.dll: Kestrel"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:ECommons.dll: DllImportAttribute",
+      "metadata:PunishLib.dll: DllImportAttribute",
+      "metadata:Reloaded.Memory.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.xml: http://www.boost.org/doc/libs/1_53_0/libs/circular_buffer/doc/circular_buffer.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.a6a3f94b1cda",
+    "severity": "caution",
+    "title": "Endpoint: www.boost.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.xml: https://graphics.stanford.edu/~seander/bithacks.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.114e27c77ba6",
+    "severity": "caution",
+    "title": "Endpoint: graphics.stanford.edu"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PunishLib.dll: https://love.puni.sh/ment.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.132188e04987",
+    "severity": "caution",
+    "title": "Endpoint: love.puni.sh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PunishLib.dll: https://puni.sh/api/test/auth"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2849e22216f9",
+    "severity": "caution",
+    "title": "Endpoint: puni.sh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PunishLib.dll: https://ko-fi.com/spetsnaz"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.54d6dd6039b2",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AutoRetainer.json: https://love.puni.sh/resources/auto-retainer.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a57536a1df5e",
+    "severity": "caution",
+    "title": "Endpoint: love.puni.sh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://nightmarexiv.github.io/donate.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.aef8978f9bfe",
+    "severity": "caution",
+    "title": "Endpoint: nightmarexiv.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.xml: https://egorbo.com/llvm-range-checks.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f4c18a6e1831",
+    "severity": "caution",
+    "title": "Endpoint: egorbo.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:AutoRetainer.dll: System.Diagnostics.Process",
+      "il:AutoRetainer.dll:AutoRetainer.AutoRetainer.Tick+0x175: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:AutoRetainer.dll:AutoRetainer.AutoRetainer.Tick+0x17a: callvirt System.Diagnostics.Process.Kill: System.Diagnostics.Process",
+      "il:AutoRetainer.dll:AutoRetainer.UI.Dbg.DebugVoyage.Draw+0x5cf: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:AutoRetainer.dll:AutoRetainer.UI.Dbg.DebugVoyage.Draw+0x5d4: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:AutoRetainer.dll:AutoRetainer.UI.Dbg.DebugVoyage.Draw+0x5d9: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.PriorityManager.HighPriority+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.PriorityManager.HighPriority+0x5: callvirt System.Diagnostics.Process.get_PriorityClass: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:AutoRetainer.dll: Microsoft.Win32.Registry",
+      "metadata:AutoRetainer.dll: RegistryKey",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.Safety.Set+0x6: call Microsoft.Win32.RegistryKey.OpenBaseKey: Microsoft.Win32.Registry",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.Safety.Set+0x6: call Microsoft.Win32.RegistryKey.OpenBaseKey: RegistryKey",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.Safety.Set+0x10: callvirt Microsoft.Win32.RegistryKey.CreateSubKey: Microsoft.Win32.Registry",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.Safety.Set+0x10: callvirt Microsoft.Win32.RegistryKey.CreateSubKey: RegistryKey",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.Safety.Set+0x1a: callvirt Microsoft.Win32.RegistryKey.CreateSubKey: Microsoft.Win32.Registry",
+      "il:AutoRetainer.dll:AutoRetainer.Modules.Safety.Set+0x1a: callvirt Microsoft.Win32.RegistryKey.CreateSubKey: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:ECommons.dll: System.Windows.Forms.Clipboard",
+      "il:ECommons.dll:ECommons.GenericHelpers.Copy+0x8: call System.Windows.Forms.Clipboard.Clear: System.Windows.Forms.Clipboard",
+      "il:ECommons.dll:ECommons.GenericHelpers.Copy+0x1d: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard",
+      "il:ECommons.dll:ECommons.GenericHelpers.Paste+0x0: call System.Windows.Forms.Clipboard.GetText: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:AutoRetainer.dll: FileStream",
+      "il:AutoRetainer.dll:AutoRetainer.Internal.Singleton.AcquireLock+0x8: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:AutoRetainer.dll: FileStream",
+      "metadata:ECommons.dll: WriteAllText",
+      "metadata:ECommons.dll: File.Move",
+      "il:ECommons.dll:ECommons.LanguageHelpers.Localization.Save+0x39: call System.IO.File.WriteAllText: WriteAllText",
+      "il:ECommons.dll:ECommons.Configuration.EzConfig.Migrate+0xe1: call System.IO.File.Move: File.Move",
+      "il:ECommons.dll:<>c__DisplayClass16_0.<SaveConfiguration>g__Write|0+0xa9: call System.IO.File.Move: File.Move"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PunishLib.dll: https://discord.gg/Zzrcc8kmvy"
+    ],
+    "rule_id": "network.endpoint.community-invite.21e883b91408",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AutoRetainer.dll: https://github.com/PunishXIV/AutoRetainer/issues/62"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9304b69efa23",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AutoRetainer.json: https://github.com/PunishXIV/AutoRetainer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.952dc7590e86",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Dalamud.ContextMenu.dll: https://github.com/kalilistic/Dalamud.ContextMenu"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a5f5e425d436",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NotificationMasterAPI.dll: https://github.com/NightmareXIV/NotificationMasterAPI"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f95e50dca8ba",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:ECommons.dll: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.Opcodes.OpcodeUpdater.DownloadOpcodes+0x21: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler..cctor+0x3c: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler..cctor+0x50: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass1_0.<DownloadOpcodes>b__0+0x3e: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0x2: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0x16: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0x21: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

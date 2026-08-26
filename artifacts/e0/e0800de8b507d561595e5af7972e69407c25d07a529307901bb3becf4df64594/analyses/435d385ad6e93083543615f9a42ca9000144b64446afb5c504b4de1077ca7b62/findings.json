@@ -1,0 +1,590 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitScopeCache+0x1f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Aetherfit.dll: s://github.com/Kussie/Aetherfit",
+      "artifact:Aetherfit.dll: s://ko-fi.com/kussie",
+      "artifact:Aetherfit.dll: s://www.patreon.com/Kussie",
+      "artifact:Aetherfit.dll: s://huggingface.co/SmilingWolf/",
+      "artifact:Aetherfit.dll: s://github.com/microsoft/onnxruntime/releases/download/v1.22.1/onnxruntime-win-x64-1.22.1.zip",
+      "artifact:Aetherfit.dll: s://aetherfit-live-share.kussie.workers.dev/download/",
+      "artifact:Aetherfit.dll: s://aetherfit-live-share.kussie.workers.dev",
+      "artifact:Aetherfit.dll: s://raw.githubusercontent.com/Kussie/Aetherfit/refs/heads/master/flags.json"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Luna.dll: Dalamud.Hooking",
+      "metadata:Luna.dll: SigScanner",
+      "metadata:Luna.dll: CreateHook",
+      "metadata:Luna.dll: HookFromAddress",
+      "il:Luna.dll:Luna.HookManager.CreateHook+0x96: ldftn <CreateHook>g__Func|0: CreateHook",
+      "il:Luna.dll:Luna.HookManager.CreateHook+0x32: ldftn <CreateHook>g__Func|0: CreateHook",
+      "artifact:Luna.dll: Dalamud.Hooking",
+      "artifact:Luna.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Aetherfit.dll: System.Runtime.InteropServices.DllImport",
+      "il:Aetherfit.dll:Aetherfit.Services.Tagging.TagModelStore.EnsureNativeRuntimeLoaded+0x55: newobj System.Runtime.InteropServices.DllImportResolver..ctor: System.Runtime.InteropServices.DllImport",
+      "metadata:Luna.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Options.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.WPFonts.dll: http://www.microsoft.com/typography"
+    ],
+    "rule_id": "network.endpoint.insecure-http.212842a6f40b",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.WPFonts.dll: http://www.microsoft.com/typography/fonts/You"
+    ],
+    "rule_id": "network.endpoint.insecure-http.22dcb6ec4a9c",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.dll: http://purl.org/dc/elements/1.1/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.481f09356511",
+    "severity": "caution",
+    "title": "Endpoint: purl.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.dll: http://ns.adobe.com/xap/1.0/mm/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5d1a28a44b4d",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.dll: http://www.aiim.org/pdfa/ns/id/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.6b2c1f0af999",
+    "severity": "caution",
+    "title": "Endpoint: www.aiim.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.Snippets.dll: http://www.empira.de/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7a04c801da92",
+    "severity": "caution",
+    "title": "Endpoint: www.empira.de"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Logging.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Logging.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: http://www.jetbrains.com/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8888d82751c9",
+    "severity": "caution",
+    "title": "Endpoint: www.jetbrains.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.dll: http://www.pdfsharp.net/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.a4e5e13c78a0",
+    "severity": "caution",
+    "title": "Endpoint: www.pdfsharp.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.dll: http://ns.adobe.com/xap/1.0/",
+      "artifact:SixLabors.ImageSharp.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.dll: http://ns.adobe.com/pdf/1.3/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.bd44c55690bc",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.dll: http://www.color.org/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d0bb611b3695",
+    "severity": "caution",
+    "title": "Endpoint: www.color.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Luna.dll: https://reniguide.info/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.06407015b781",
+    "severity": "caution",
+    "title": "Endpoint: reniguide.info"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.Quality.dll: https://docs.pdfsharp.net/link/download-assets.html",
+      "artifact:PdfSharp.Shared.dll: https://docs.pdfsharp.net/link/download-assets.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3543f7f14ea1",
+    "severity": "caution",
+    "title": "Endpoint: docs.pdfsharp.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Aetherfit.dll: https://ko-fi.com/kussie"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3e706b287500",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Aetherfit.dll: https://huggingface.co/SmilingWolf/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5844d2837a93",
+    "severity": "caution",
+    "title": "Endpoint: huggingface.co"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.dll: https://docs.pdfsharp.net/",
+      "artifact:PdfSharp.Shared.dll: https://docs.pdfsharp.net/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5cb7fc5da4ad",
+    "severity": "caution",
+    "title": "Endpoint: docs.pdfsharp.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Aetherfit.dll: https://aetherfit-live-share.kussie.workers.dev/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.81e002c1e042",
+    "severity": "caution",
+    "title": "Endpoint: aetherfit-live-share.kussie.workers.dev"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.dll: https://docs.pdfsharp.net/link/font-resolving.html",
+      "artifact:PdfSharp.Shared.dll: https://docs.pdfsharp.net/link/font-resolving.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.85d4ded3c431",
+    "severity": "caution",
+    "title": "Endpoint: docs.pdfsharp.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Luna.dll: https://ko-fi.com/ottermandias"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.86e7fa25c3d3",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.dll: https://docs.pdfsharp.net/link/cannot-open-pdf-6.2.html",
+      "artifact:PdfSharp.Shared.dll: https://docs.pdfsharp.net/link/cannot-open-pdf-6.2.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8d99cc4d3d77",
+    "severity": "caution",
+    "title": "Endpoint: docs.pdfsharp.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Aetherfit.dll: https://www.patreon.com/Kussie"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a352a2269669",
+    "severity": "caution",
+    "title": "Endpoint: www.patreon.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: https://www.jetbrains.com/help/resharper/Navigation_and_Search__Structural_Search_and_Replace.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a5ec6e611d65",
+    "severity": "caution",
+    "title": "Endpoint: www.jetbrains.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: https://www.jetbrains.com/help/resharper/Code_Analysis__Find_and_Update_Obsolete_APIs.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7d3c5975c34",
+    "severity": "caution",
+    "title": "Endpoint: www.jetbrains.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Aetherfit.dll: https://aetherfit-live-share.kussie.workers.dev/download/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b0307e8c3dd6",
+    "severity": "caution",
+    "title": "Endpoint: aetherfit-live-share.kussie.workers.dev"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.Pkcs.dll: https://go.microsoft.com/fwlink/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b2a093ba178f",
+    "severity": "caution",
+    "title": "Endpoint: go.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Luna.dll: https://www.patreon.com/Ottermandias"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.dc6a464f5733",
+    "severity": "caution",
+    "title": "Endpoint: www.patreon.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PdfSharp.Shared.dll: https://docs.pdfsharp.net/link/migradoc-font-resolving-6.2.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.dfb964597520",
+    "severity": "caution",
+    "title": "Endpoint: docs.pdfsharp.net"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Luna.dll: System.Diagnostics.Process",
+      "metadata:Luna.dll: ProcessStartInfo",
+      "metadata:Luna.dll: ShellExecute",
+      "metadata:Luna.dll: Process.Start",
+      "il:Luna.dll:Luna.SupportButton.Link+0x15: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:Luna.dll:Luna.SupportButton.Link+0x15: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:Luna.dll:Luna.SupportButton.Link+0x1c: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:Luna.dll:Luna.SupportButton.Link+0x1c: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Aetherfit.dll: FileStream",
+      "metadata:Aetherfit.dll: Directory.Delete",
+      "metadata:Aetherfit.dll: Directory.CreateDirectory",
+      "metadata:Aetherfit.dll: File.Delete",
+      "metadata:Aetherfit.dll: File.Move",
+      "metadata:Aetherfit.dll: WriteAllBytes",
+      "metadata:Aetherfit.dll: WriteAllText",
+      "il:Aetherfit.dll:Aetherfit.Services.Tagging.TagModelStore.DeleteAll+0x31: call System.IO.Directory.Delete: Directory.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Luna.dll: https://discord.gg/kVva7DHV4r"
+    ],
+    "rule_id": "network.endpoint.community-invite.d54730561467",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Aetherfit.dll: https://github.com/microsoft/onnxruntime/releases/download/v1.22.1/onnxruntime-win-x64-1.22.1.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.06effe8ceca4",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: https://github.com/JetBrains/JetBrains.Annotations/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.081de96440b7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.GameData.dll: https://github.com/Ottermandias/Penumbra.GameData.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2d6344fe4ef9",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Aetherfit.json: https://github.com/Kussie/Aetherfit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.602e1dc9fbc9",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Aetherfit.dll: https://github.com/Kussie/Aetherfit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6315c4d4a7ce",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Luna.dll: https://github.com/Ottermandias/Luna.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.63f2167925ec",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Glamourer.Api.dll: https://github.com/Ottermandias/Glamourer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9608d0f55262",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Logging.Abstractions.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Logging.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub raw content (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Aetherfit.dll: https://raw.githubusercontent.com/Kussie/Aetherfit/refs/heads/master/flags.json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ae9eaa7870a6",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.String.dll: https://github.com/Ottermandias/Penumbra.String"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c7fdaef2726e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub raw content (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Aetherfit.json: https://raw.githubusercontent.com/Kussie/Aetherfit/master/Data/icon-square.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c897b021eae8",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.ML.OnnxRuntime.dll: https://github.com/microsoft/onnxruntime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d41fd8efdcc3",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public platform: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FlatSharp.Runtime.dll: https://github.com/jamescourtney/FlatSharp/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e646ed5fdb44",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Aetherfit.dll: System.Net.Http.HttpClient",
+      "il:Aetherfit.dll:Aetherfit.Services.Tagging.TagModelStore.DownloadAll+0x65: call Aetherfit.Services.Tagging.TagModelStore.DownloadFile: DownloadFile",
+      "il:Aetherfit.dll:Aetherfit.Services.Tagging.TagModelStore.DownloadAll+0x87: call Aetherfit.Services.Tagging.TagModelStore.DownloadFile: DownloadFile",
+      "il:Aetherfit.dll:Aetherfit.Services.Tagging.TagModelStore.DownloadAll+0xb7: call Aetherfit.Services.Tagging.TagModelStore.DownloadFile: DownloadFile",
+      "il:Aetherfit.dll:Aetherfit.Services.Tagging.TagModelStore.DownloadFile+0x67: callvirt System.Net.Http.HttpClient.Send: System.Net.Http.HttpClient",
+      "il:Aetherfit.dll:Aetherfit.Services.Tagging.TagModelStore.CreateHttpClient+0x0: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:Aetherfit.dll:Aetherfit.Services.Tagging.TagModelStore.CreateHttpClient+0x7: callvirt System.Net.Http.HttpClientHandler.set_AllowAutoRedirect: System.Net.Http.HttpClient",
+      "il:Aetherfit.dll:Aetherfit.Services.Tagging.TagModelStore.CreateHttpClient+0xc: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
