@@ -34,21 +34,45 @@ def run(
     return subprocess.run(cmd, cwd=str(cwd), text=True, capture_output=capture, check=check)
 
 
+def _repo_git(repo: Path, *args: str) -> list[str]:
+    """Build a Git command that trusts only the exact mounted checkout.
+
+    GitHub Actions job containers execute against a host-owned workspace mount.  Checkout's
+    temporary HOME makes that workspace safe only for the checkout action itself, so later
+    container steps must opt into the exact repository path again.  Never use
+    ``safe.directory=*`` here: authoritative publication should not broaden Git trust.
+    """
+    return ["git", "-c", f"safe.directory={repo.resolve()}", *args]
+
+
 def git_root(path: Path) -> Path:
-    result = run(["git", "rev-parse", "--show-toplevel"], cwd=path.resolve(), capture=True)
-    return Path(result.stdout.strip()).resolve()
+    requested = path.resolve()
+    result = run(_repo_git(requested, "rev-parse", "--show-toplevel"), cwd=requested, capture=True)
+    root = Path(result.stdout.strip()).resolve()
+    if root != requested:
+        raise RuntimeError(f"authoritative publication repo must be its exact Git root: requested={requested}, root={root}")
+    return root
 
 
 def remote_url(repo: Path, remote: str) -> str:
-    result = run(["git", "remote", "get-url", remote], cwd=repo, capture=True)
+    repo = repo.resolve()
+    result = run(_repo_git(repo, "remote", "get-url", remote), cwd=repo, capture=True)
     url = result.stdout.strip()
     if not url:
         raise RuntimeError(f"Git remote {remote!r} has no URL")
     return url
 
 
-def remote_branch_sha(repo: Path, remote: str, branch: str) -> str:
-    result = run(["git", "ls-remote", "--heads", remote, f"refs/heads/{branch}"], cwd=repo, capture=True)
+def remote_branch_sha(repo: Path, url: str, branch: str) -> str:
+    repo = repo.resolve()
+    # Use the already-resolved URL instead of asking Git to resolve a remote name from the
+    # mounted checkout a second time.  Keep the exact-path trust option nevertheless so this
+    # call is safe even if Git consults repository configuration in a future version.
+    result = run(
+        _repo_git(repo, "ls-remote", "--heads", url, f"refs/heads/{branch}"),
+        cwd=repo,
+        capture=True,
+    )
     line = result.stdout.strip()
     return line.split()[0] if line else ""
 
@@ -129,7 +153,7 @@ def publish_snapshot_tree(
 
     repo = git_root(repo.resolve())
     url = remote_url(repo, remote)
-    old_sha = remote_branch_sha(repo, remote, branch)
+    old_sha = remote_branch_sha(repo, url, branch)
     if expected_previous_head is not None and old_sha != expected_previous_head:
         raise RuntimeError(
             f"remote {branch!r} head mismatch: expected {expected_previous_head or '<missing>'}, observed {old_sha or '<missing>'}"
