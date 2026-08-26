@@ -47,7 +47,7 @@ class SecurityOrchestrationDispatchWorkflowTests(unittest.TestCase):
         self.assertIn("gh workflow run security-orchestration-dispatch.yml", text)
         self.assertIn("-f mode=reconcile", text)
         self.assertIn("redispatch_active_leases: true", text)
-        self.assertIn("group: omega-sigmascope-phase4-migration", text)
+        self.assertIn("group: omega-catalog-sigmascope-exclusive", text)
         self.assertNotIn("gh workflow run security-reconcile.yml", text)
 
 
