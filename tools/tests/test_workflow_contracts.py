@@ -482,11 +482,25 @@ class WorkflowContractTests(unittest.TestCase):
     def test_catalog_and_sigmascope_are_mutually_exclusive(self) -> None:
         catalog = self.read("catalog-builder.yml")
         security = self.read("sigmascope.yml")
-        shared_group = "group: omega-catalog-sigmascope-exclusive"
-        self.assertIn(shared_group, catalog)
-        self.assertIn(shared_group, security)
+        cutover = self.read("sigmascope-phase4-cutover-core.yml")
+        shared_group = "omega-catalog-sigmascope-exclusive"
+
+        # The continuous Evidence writer always owns the shared authority mutex.
+        self.assertIn(f"group: {shared_group}", security)
+
+        # A standalone catalog freeze owns that same mutex. Only the automatic Phase-4
+        # cutover may switch the nested builder to a run-local group, because its outer
+        # cutover workflow already owns the shared mutex for the complete transaction.
+        self.assertIn("inputs.authority_lock_held", catalog)
+        self.assertIn("omega-catalog-freeze-under-phase4-", catalog)
+        self.assertIn(f"|| '{shared_group}'", catalog)
+        self.assertIn(f"group: {shared_group}", cutover)
+        self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", cutover)
+        self.assertIn("authority_lock_held: true", cutover)
+
         self.assertIn("cancel-in-progress: false", catalog)
         self.assertIn("cancel-in-progress: false", security)
+        self.assertIn("cancel-in-progress: false", cutover)
         self.assertNotIn("group: omega-daily-catalog-publication", catalog)
         self.assertNotIn("group: omega-sigmascope", security)
 

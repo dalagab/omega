@@ -16,13 +16,27 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertIn("confirm_migration:", text)
         self.assertNotIn("schedule:", text)
         self.assertIn("uses: ./.github/workflows/worker-images.yml", text)
-        self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", text)
+        self.assertNotIn(
+            "uses: ./.github/workflows/catalog-freeze.yml",
+            text,
+            "the catalog freeze belongs inside the globally locked cutover core",
+        )
         self.assertIn("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml", text)
         self.assertIn("uses: ./.github/workflows/security-reconcile.yml", text)
         self.assertIn("redispatch_active_leases: true", text)
         self.assertIn("group: omega-sigmascope-phase4-migration", text)
         self.assertIn("gh workflow run security-orchestration-dispatch.yml", text)
         self.assertNotIn("gh workflow run security-reconcile.yml", text)
+
+        core = self.read("sigmascope-phase4-cutover-core.yml")
+        self.assertIn("group: omega-catalog-sigmascope-exclusive", core)
+        self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", core)
+        self.assertIn("authority_lock_held: true", core)
+        self.assertLess(
+            core.index("uses: ./.github/workflows/catalog-freeze.yml"),
+            core.index("uses: ./.github/workflows/sigmascope-parallel-shadow.yml"),
+            "the coherent catalog/Definitions freeze must happen before the Phase-4 proof under the same writer lock",
+        )
 
     def test_locked_core_owns_shadow_to_verify_under_global_writer_mutex(self) -> None:
         text = self.read("sigmascope-phase4-cutover-core.yml")
