@@ -19,6 +19,11 @@ on:
         type: boolean
         required: false
         default: false
+      authority_lock_held:
+        description: Internal only; the caller already owns omega-catalog-sigmascope-exclusive
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       allow_source_removal:
@@ -35,7 +40,10 @@ env:
   PYTHONUNBUFFERED: "1"
 
 concurrency:
-  group: omega-catalog-sigmascope-exclusive
+  # A standalone freeze owns the global catalog/Evidence writer mutex itself. During the
+  # automatic Phase-4 migration the outer cutover core already owns that mutex, so the nested
+  # freeze must use a run-local group instead of recursively waiting on its own authority lock.
+  group: ${{ inputs.authority_lock_held && format('omega-catalog-freeze-under-phase4-{0}', github.run_id) || 'omega-catalog-sigmascope-exclusive' }}
   cancel-in-progress: false
 
 # Release boundary only. All network-heavy collection is performed by independently leased

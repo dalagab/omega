@@ -14,10 +14,10 @@ on:
         type: number
         default: 4
 
-# Singular operator entry point. Preparation is intentionally outside the Evidence writer mutex:
-# worker-image publication and the catalog/Definitions freeze each have their own serialization.
-# The called cutover core then acquires omega-catalog-sigmascope-exclusive for the entire
-# shadow -> authorize -> publish -> verify sequence.
+# Singular operator entry point. Worker-image preparation and collector settlement stay outside
+# the Evidence writer mutex. The called cutover core then acquires
+# omega-catalog-sigmascope-exclusive before the catalog/Definitions freeze and keeps it for the
+# entire freeze -> shadow -> authorize -> publish -> verify transaction.
 concurrency:
   group: omega-sigmascope-phase4-migration
   cancel-in-progress: false
@@ -124,17 +124,9 @@ jobs:
           echo "::error::Timed out waiting for the Phase-3 collector lanes to settle."
           exit 21
 
-  freeze-current-definitions:
-    name: Freeze current SigmaScope code into catalog/Definitions
-    needs: wait-for-operational-state
-    uses: ./.github/workflows/catalog-freeze.yml
-    with:
-      allow_source_removal: false
-    secrets: inherit
-
   cutover:
-    name: Run locked Phase-4 proof and one-writer cutover
-    needs: freeze-current-definitions
+    name: Run locked Phase-4 freeze, proof and one-writer cutover
+    needs: wait-for-operational-state
     uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml
     with:
       confirm_migration: ${{ inputs.confirm_migration }}

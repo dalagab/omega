@@ -13,8 +13,9 @@ on:
         type: number
         default: 4
 # This one run owns the same mutex as every existing Evidence-v2 publisher. Once it starts,
-# the serialized fallback, Rift ingestion and standalone Phase-4C writer cannot advance
-# security-evidence-v2 until the cutover has been verified or failed closed.
+# the catalog/Definitions freeze, proof, authorization, publication and verification are one
+# uninterrupted authority transaction. The serialized fallback, Rift ingestion and standalone
+# Phase-4C writer cannot advance security-evidence-v2 until the cutover is verified or fails closed.
 concurrency:
   group: omega-catalog-sigmascope-exclusive
   cancel-in-progress: false
@@ -29,8 +30,17 @@ env:
   PYTHONUNBUFFERED: "1"
 
 jobs:
+  freeze-current-definitions:
+    name: Freeze coherent catalog/Definitions under the Evidence writer lock
+    uses: ./.github/workflows/catalog-freeze.yml
+    with:
+      allow_source_removal: false
+      authority_lock_held: true
+    secrets: inherit
+
   prerequisites:
     name: Prove prepared automatic-cutover prerequisites
+    needs: freeze-current-definitions
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
