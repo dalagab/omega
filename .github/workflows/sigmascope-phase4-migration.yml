@@ -50,12 +50,18 @@ jobs:
     name: Build and publish current digest-pinned worker images
     needs: validate-request
     uses: ./.github/workflows/worker-images.yml
+    permissions:
+      contents: write
+      packages: write
     secrets: inherit
 
   bootstrap-operational-state:
     name: Bootstrap and dispatch Phase-3 collector state
     needs: prepare-worker-images
     uses: ./.github/workflows/security-reconcile.yml
+    permissions:
+      contents: write
+      actions: write
     with:
       redispatch_active_leases: true
     secrets: inherit
@@ -128,6 +134,11 @@ jobs:
     name: Run locked Phase-4 freeze, proof and one-writer cutover
     needs: wait-for-operational-state
     uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml
+    permissions:
+      contents: write
+      actions: write
+      issues: write
+      packages: read
     with:
       confirm_migration: ${{ inputs.confirm_migration }}
       max_workers: ${{ inputs.max_workers }}
