@@ -59,8 +59,11 @@ class OrchestrationContractTests(unittest.TestCase):
         text = self.read_workflow("worker-images.yml")
         self.assertIn("packages: write", text)
         self.assertIn("ghcr.io/${{ github.repository_owner }}/omega-${{ matrix.image }}", text)
-        self.assertIn("awk '/digest: sha256:/", text)
+        self.assertIn("sed -nE 's/^.*digest: (sha256:[0-9a-f]{64})", text)
+        self.assertIn('[[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]', text)
         self.assertIn('digest_ref="$IMAGE@$digest"', text)
+        self.assertIn('[[ ! "$digest_ref" =~ @sha256:[0-9a-f]{64}$ ]]', text)
+        self.assertIn("image_ref_re=re.compile(r'^ghcr\\.io/[^@\\s]+@sha256:[0-9a-f]{64}$')", text)
         self.assertIn("worker-image-digest-${{ matrix.image }}", text)
         for name in ("catalog-worker", "sigmascope-worker", "intelligence-worker", "publisher-worker"):
             self.assertIn(name, text)

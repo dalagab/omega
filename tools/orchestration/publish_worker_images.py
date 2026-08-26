@@ -1,19 +1,34 @@
 #!/usr/bin/env python3
 """Publish the immutable worker-image digest manifest to a dedicated branch."""
 from __future__ import annotations
-import argparse, json, shutil, subprocess, tempfile
+import argparse, json, re, shutil, subprocess, tempfile
 from pathlib import Path
 
 SCHEMA="omega.worker-images.v1"
+EXPECTED_IMAGES=("catalog-worker","sigmascope-worker","intelligence-worker","publisher-worker")
+IMAGE_REF_RE=re.compile(r"^ghcr\.io/[^@\s]+@sha256:[0-9a-f]{64}$")
 
 def run(cmd, cwd=None, capture=False):
     return subprocess.run(cmd,cwd=str(cwd) if cwd else None,text=True,capture_output=capture,check=True)
 
-def main():
-    p=argparse.ArgumentParser(); p.add_argument('--input',type=Path,required=True); p.add_argument('--repo',type=Path,default=Path.cwd()); p.add_argument('--branch',default='security-worker-images'); p.add_argument('--remote',default='origin'); p.add_argument('--push',action='store_true'); a=p.parse_args()
-    source=a.input.resolve(); index=json.loads((source/'index.json').read_text())
+def validate_manifest(index):
     if index.get('schema')!=SCHEMA or not str(index.get('workerImagesRevision') or '').startswith('worker-images-v1-'):
         raise RuntimeError('invalid worker image manifest')
+    images=index.get('images')
+    if not isinstance(images,dict) or set(images)!=set(EXPECTED_IMAGES):
+        raise RuntimeError('worker image manifest must contain exactly the four expected toolchain images')
+    for name in EXPECTED_IMAGES:
+        ref=images.get(name)
+        if not isinstance(ref,str) or not IMAGE_REF_RE.fullmatch(ref):
+            raise RuntimeError(f'invalid immutable worker image reference for {name}: {ref!r}')
+    built_from=index.get('builtFromCommit')
+    if not isinstance(built_from,str) or not re.fullmatch(r'[0-9a-f]{40}',built_from):
+        raise RuntimeError(f'invalid builtFromCommit in worker image manifest: {built_from!r}')
+    return index
+
+def main():
+    p=argparse.ArgumentParser(); p.add_argument('--input',type=Path,required=True); p.add_argument('--repo',type=Path,default=Path.cwd()); p.add_argument('--branch',default='security-worker-images'); p.add_argument('--remote',default='origin'); p.add_argument('--push',action='store_true'); a=p.parse_args()
+    source=a.input.resolve(); index=validate_manifest(json.loads((source/'index.json').read_text()))
     root=Path(run(['git','rev-parse','--show-toplevel'],cwd=a.repo,capture=True).stdout.strip()); url=run(['git','remote','get-url',a.remote],cwd=root,capture=True).stdout.strip(); old=run(['git','ls-remote','--heads',a.remote,f'refs/heads/{a.branch}'],cwd=root,capture=True).stdout.strip(); oldsha=old.split()[0] if old else ''
     info={'branch':a.branch,'workerImagesRevision':index['workerImagesRevision'],'previousHead':oldsha,'pushed':False}
     if not a.push: print(json.dumps(info,indent=2)); return 0

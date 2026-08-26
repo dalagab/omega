@@ -54,9 +54,17 @@ jobs:
           tag="$IMAGE:toolchain-v1"
           docker build --pull --label "org.opencontainers.image.revision=${GITHUB_SHA}" -f "${{ matrix.dockerfile }}" -t "$tag" .
           docker push "$tag" | tee image-push.log
-          digest="$(awk '/digest: sha256:/{print $2}' image-push.log | tail -1)"
-          test -n "$digest"
+          digest="$(sed -nE 's/^.*digest: (sha256:[0-9a-f]{64})( .*)?$/\1/p' image-push.log | tail -1)"
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Could not extract a valid sha256 image digest from docker push output."
+            cat image-push.log
+            exit 2
+          fi
           digest_ref="$IMAGE@$digest"
+          if [[ ! "$digest_ref" =~ @sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Refusing malformed immutable worker image reference: $digest_ref"
+            exit 2
+          fi
           echo "digest_ref=$digest_ref" >> "$GITHUB_OUTPUT"
           printf '%s\n' "$digest_ref" > image-ref.txt
           echo "### ${{ matrix.image }}" >> "$GITHUB_STEP_SUMMARY"
@@ -86,15 +94,19 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import hashlib, json
+          import hashlib, json, re
           from pathlib import Path
           root=Path('image-digests')
+          image_ref_re=re.compile(r'^ghcr\.io/[^@\s]+@sha256:[0-9a-f]{64}$')
           images={}
           for name in ('catalog-worker','sigmascope-worker','intelligence-worker','publisher-worker'):
               matches=list(root.glob(f'worker-image-digest-{name}/image-ref.txt'))
               if len(matches)!=1:
                   raise SystemExit(f'missing digest artifact for {name}')
-              images[name]=matches[0].read_text().strip()
+              ref=matches[0].read_text().strip()
+              if not image_ref_re.fullmatch(ref):
+                  raise SystemExit(f'invalid immutable worker image reference for {name}: {ref!r}')
+              images[name]=ref
           semantic={'schema':'omega.worker-images.v1','images':images}
           digest=hashlib.sha256(json.dumps(semantic,sort_keys=True,separators=(',',':')).encode()).hexdigest()
           document={**semantic,'workerImagesRevision':f'worker-images-v1-{digest[:20]}','builtFromCommit':'${{ github.sha }}'}
