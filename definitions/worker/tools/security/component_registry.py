@@ -101,7 +101,7 @@ COMPONENTS: tuple[dict[str, Any], ...] = (
         "launch": {
             "mode": "reusable-workflow", "available": True, "brokerDispatchable": True, "requestMode": "full-refresh",
             "workflow": ".github/workflows/catalog-discovery.yml",
-            "mainLauncher": ".github/workflows/catalog-discovery-launcher.yml",
+            "mainLauncher": "docs/workflow-callers/analysis-dispatch-discovery-main.yml",
             "maxConcurrent": 1,
         },
         "authority": {"observations": True, "securityFindings": False, "catalogIdentity": False, "dispatch": False},

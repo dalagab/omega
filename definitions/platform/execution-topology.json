@@ -1,23 +1,33 @@
 {
   "byComponent": {
     "omega.catalog": [
+      "catalog-freeze",
       "manifest-normalization",
-      "source-revision-observer",
       "website-enrichment"
     ],
     "omega.discovery": [
       "source-discovery"
     ],
     "omega.evidence-v2": [
-      "evidence-publication"
+      "evidence-publication",
+      "sigmascope-parallel-candidate-merger",
+      "sigmascope-parallel-equivalence-preflight",
+      "sigmascope-parallel-merge-plan",
+      "sigmascope-parallel-one-writer-publisher"
+    ],
+    "omega.platform.main": [
+      "security-work-reconciler"
     ],
     "omega.sigmascope": [
       "advisory-collector",
       "deep-scan-worker",
+      "secondary-security-definitions",
       "sigmascope-authenticode",
       "sigmascope-batch",
       "sigmascope-native-structure",
-      "source-followup"
+      "sigmascope-parallel-result-worker",
+      "source-followup",
+      "source-revision-observer"
     ],
     "omega.threat-intelligence": [
       "threat-intelligence"
@@ -34,17 +44,38 @@
         "Evidence-v2 NuGet package/version index",
         "OSV public API"
       ],
-      "job": "Freeze JSON state and compile the Omega client DB",
+      "job": "Collect leased NuGet / OSV advisory working state",
       "logParser": "advisory-collector",
       "outputs": [
         "frozen OSV advisory data in Security Definitions"
       ],
       "purpose": "Query/freeze advisory intelligence for exact NuGet package/version pairs observed in current evidence.",
-      "step": "Freeze daily Definitions and OSV data",
+      "step": "Query OSV for the exact retained NuGet package/version set",
       "title": "NuGet / OSV advisory collector",
       "trendMetric": "Packages queried",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-builder.yml"
+      "workflow": "osv-worker.yml"
+    },
+    "catalog-freeze": {
+      "cadenceMode": "manual",
+      "componentId": "omega.catalog",
+      "docs": "collectors",
+      "id": "catalog-freeze",
+      "implementation": "tools/orchestration/freeze_inputs.py + tools/orchestration/catalog_freeze_identity.py + tools/catalog/catalog_state.py",
+      "inputs": [
+        "settled seven-lane work state",
+        "current Evidence-v2",
+        "digest-pinned publisher worker"
+      ],
+      "job": "Freeze coherent state and build the Omega client DB once",
+      "outputs": [
+        "frozen catalog-data snapshot",
+        "Omega marketplace database only when semantic freeze changes"
+      ],
+      "purpose": "Consume settled collection state and current Evidence-v2 at an explicit release boundary; unchanged semantic freezes are no-ops and collector activity cannot invoke this node.",
+      "step": "Validate settled lane inputs and compute semantic catalog-freeze identity",
+      "title": "Catalog freeze and client publication",
+      "workflow": "catalog-freeze.yml"
     },
     "deep-scan-worker": {
       "cadenceMode": "event-driven",
@@ -96,18 +127,60 @@
         "catalog/raw-sources.json",
         "previous catalog HTTP cache hints"
       ],
-      "job": "Fetch and normalize manifests",
+      "job": "Collect leased manifest enrichment working state",
       "logParser": "manifest-normalization",
       "outputs": [
         "catalog/enriched-sources.json",
         "enriched-sources workflow artifact"
       ],
       "purpose": "Fetch discovered PluginMaster feeds and normalize plugin manifests into one catalog input model.",
-      "step": "Fetch PluginMaster feeds",
+      "step": "Enrich manifests from the settled discovery result",
       "title": "Manifest normalization",
       "trendMetric": "Plugins normalized",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-builder.yml"
+      "workflow": "catalog-enrichment-worker.yml"
+    },
+    "secondary-security-definitions": {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.sigmascope",
+      "docs": "collectors",
+      "id": "secondary-security-definitions",
+      "implementation": "tools/catalog/secondary_security_assets.py + tools/orchestration/work_result.py",
+      "inputs": [
+        "exact secondary-security durable lease",
+        "previous frozen Definitions when available",
+        "ClamAV update service"
+      ],
+      "job": "Collect leased secondary-security working state",
+      "outputs": [
+        "lease-bound secondary-security work result",
+        "content-addressed ClamAV asset manifest"
+      ],
+      "purpose": "Refresh ClamAV definition assets independently of catalog freeze and retain a previous valid frozen asset when upstream refresh fails.",
+      "step": "Refresh and freeze content-addressed secondary-security assets",
+      "title": "Secondary-security definition refresh",
+      "workflow": "secondary-security-worker.yml"
+    },
+    "security-work-reconciler": {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.platform.main",
+      "docs": "collectors",
+      "id": "security-work-reconciler",
+      "implementation": "tools/orchestration/reconcile_work.py + tools/orchestration/work_queue.py",
+      "inputs": [
+        "orchestration work policy",
+        "previous security-work-state",
+        "independent lane result branches"
+      ],
+      "job": "Settle, reconcile, lease and dispatch collector work",
+      "outputs": [
+        "security-work-state",
+        "exact worker workflow dispatches"
+      ],
+      "purpose": "Act as the sole durable collection-queue mutator: settle exact lease-bound results, recover expired leases, enqueue due work and dispatch newly leased workers without catalog-freeze or client-publication authority.",
+      "step": "Reconcile completed results and create exact leases",
+      "title": "Security collection work reconciler",
+      "workflow": "security-reconcile.yml"
     },
     "sigmascope-authenticode": {
       "cadenceMode": "event-driven",
@@ -188,6 +261,116 @@
       "title": "SigmaScope ELF / Mach-O structural analysis",
       "workflow": "sigmascope.yml"
     },
+    "sigmascope-parallel-candidate-merger": {
+      "cadenceMode": "manual-shadow",
+      "componentId": "omega.evidence-v2",
+      "docs": "collectors",
+      "id": "sigmascope-parallel-candidate-merger",
+      "implementation": "tools/security/sigmascope_result_merger.py",
+      "inputs": [
+        "conflict-checked SigmaScope result bundles",
+        "exact current Evidence-v2 base",
+        "frozen catalog/Definitions",
+        "previous Deep Scan state"
+      ],
+      "job": "Build validated serialized Evidence-v2 candidate without publication",
+      "outputs": [
+        "validated candidate Evidence-v2 tree",
+        "candidate Deep Scan queue",
+        "source-followup projection",
+        "merge report"
+      ],
+      "purpose": "Apply bounded variant-local worker results over one exact Evidence-v2 base, reconstruct the working database, rebuild global indexes/SRL projections, reproduce source-followup and Deep Scan queue side effects, and intrinsically validate a candidate while retaining zero publication authority.",
+      "step": "Apply disjoint result bundles and rebuild global Evidence-v2 projections centrally",
+      "title": "SigmaScope serialized Evidence-v2 candidate merger (shadow)",
+      "workflow": "sigmascope-parallel-shadow.yml"
+    },
+    "sigmascope-parallel-equivalence-preflight": {
+      "cadenceMode": "manual-shadow",
+      "componentId": "omega.evidence-v2",
+      "docs": "collectors",
+      "id": "sigmascope-parallel-equivalence-preflight",
+      "implementation": "tools/security/sigmascope_merge_equivalence.py + tools/security/sigmascope_parallel_preflight.py",
+      "inputs": [
+        "parallel merged candidate",
+        "serialized reference candidate",
+        "developer audit",
+        "storage audit"
+      ],
+      "job": "Prove parallel candidate equivalence against serialized reference",
+      "outputs": [
+        "omega.sigmascope-parallel-equivalence.v1",
+        "omega.sigmascope-parallel-preflight.v1"
+      ],
+      "purpose": "Run the same exact queue assignments through a serialized reference, compare affected variant/queue/SRL/Deep Scan/source-followup semantics, then require intrinsic validation, independent developer audit and storage audit before labeling the candidate publishable. This node cannot publish Evidence-v2.",
+      "step": "Compare security semantics and assemble no-authority publication-readiness gates",
+      "title": "SigmaScope serialized equivalence and publication preflight (shadow)",
+      "workflow": "sigmascope-parallel-shadow.yml"
+    },
+    "sigmascope-parallel-merge-plan": {
+      "cadenceMode": "manual-shadow",
+      "componentId": "omega.evidence-v2",
+      "docs": "collectors",
+      "id": "sigmascope-parallel-merge-plan",
+      "implementation": "tools/security/sigmascope_result_bundle.py plan",
+      "inputs": [
+        "parallel SigmaScope result bundles",
+        "current Evidence-v2 base head"
+      ],
+      "job": "Validate parallel result bundles against one Evidence-v2 base head",
+      "outputs": [
+        "omega.sigmascope-result-merge-plan.v1 validation artifact"
+      ],
+      "purpose": "Validate result-bundle integrity, exact Evidence-v2 base binding, queue-key uniqueness and variant disjointness before a future serialized Evidence-v2 merger is allowed to apply worker results.",
+      "step": "Build conflict-checked non-authoritative merge plan",
+      "title": "SigmaScope parallel merge-plan validator (shadow)",
+      "workflow": "sigmascope-parallel-shadow.yml"
+    },
+    "sigmascope-parallel-one-writer-publisher": {
+      "cadenceMode": "manual-cutover",
+      "componentId": "omega.evidence-v2",
+      "docs": "collectors",
+      "id": "sigmascope-parallel-one-writer-publisher",
+      "implementation": "tools/security/sigmascope_parallel_publish_gate.py + tools/security/publish_security_evidence_v2.py",
+      "inputs": [
+        "successful Phase-4B shadow run artifacts",
+        "exact current Evidence-v2 Git head",
+        "digest-pinned SigmaScope/publisher images",
+        "frozen catalog/Definitions"
+      ],
+      "job": "Publish authorized Evidence first, then deferred side effects",
+      "outputs": [
+        "fast-forward Security Evidence-v2 commit",
+        "publication receipt",
+        "post-Evidence Deep Scan state",
+        "source-followup issue reconciliation"
+      ],
+      "purpose": "Reconstruct an exact successful Phase-4B candidate under read-only authority, bind it to the still-current Evidence Git parent, then give one tiny serialized writer the ability to fast-forward Evidence-v2 before publishing Deep Scan state and reconciling source follow-up issues. The existing serialized SigmaScope worker remains the production fallback during cutover.",
+      "step": "Publish exact authorized Security Evidence v2 child",
+      "title": "SigmaScope parallel one-writer Evidence publication (manual cutover)",
+      "workflow": "sigmascope-parallel-publish.yml"
+    },
+    "sigmascope-parallel-result-worker": {
+      "cadenceMode": "manual-shadow",
+      "componentId": "omega.sigmascope",
+      "docs": "collectors",
+      "id": "sigmascope-parallel-result-worker",
+      "implementation": "tools/security/production_sigmascope_v2_pipeline.py + tools/security/sigmascope_result_bundle.py",
+      "inputs": [
+        "exact persistent scanner queue key",
+        "frozen catalog/Definitions",
+        "current Evidence-v2 base head",
+        "digest-pinned SigmaScope worker image"
+      ],
+      "job": "Run one exact persistent queue key as a result-only worker",
+      "outputs": [
+        "omega.sigmascope-result-bundle.v1 Actions artifact"
+      ],
+      "purpose": "Execute one exact artifact/source queue key against a frozen Definitions worker and the current Evidence-v2 head, producing a bounded content-addressed variant-local result bundle without Evidence-v2 publication authority.",
+      "step": "Execute exact frozen queue work and emit immutable result bundle",
+      "title": "SigmaScope parallel result worker (shadow)",
+      "workflow": "sigmascope-parallel-worker.yml"
+    },
     "source-discovery": {
       "cadenceMode": "scheduled",
       "componentId": "omega.discovery",
@@ -204,7 +387,7 @@
         "Omega source issues",
         "optional configured web-search API"
       ],
-      "job": "Discover new PluginMaster and plugin facts",
+      "job": "Collect leased catalog discovery working state",
       "legacyContracts": [
         {
           "job": "Discover source feeds",
@@ -227,11 +410,11 @@
         "catalogIssueHints"
       ],
       "purpose": "Run the first-class Omega Discovery component: source search, project-page links, issue hints, optional web search, rotating repository-tree inspection and PluginMaster validation.",
-      "step": "Run typed discovery collectors and validate only novel source facts",
+      "step": "Run typed discovery collectors for the exact durable lease",
       "title": "Omega Discovery / source intelligence",
       "trendMetric": "Deduplicated sources",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-discovery.yml"
+      "workflow": "catalog-discovery-worker.yml"
     },
     "source-followup": {
       "cadenceMode": "continuous",
@@ -256,14 +439,14 @@
     },
     "source-revision-observer": {
       "cadenceMode": "scheduled",
-      "componentId": "omega.catalog",
+      "componentId": "omega.sigmascope",
       "docs": "collectors",
       "id": "source-revision-observer",
       "implementation": "tools/catalog/source_revision_observer.py",
       "inputs": [
         "canonical catalog source inventory"
       ],
-      "job": "Freeze JSON state and compile the Omega client DB",
+      "job": "Collect leased source HEAD working state",
       "logParser": "source-revision-observer",
       "outputs": [
         "catalog/source-revision-observations.json"
@@ -273,7 +456,7 @@
       "title": "Source revision observer",
       "trendMetric": "Observed",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-builder.yml"
+      "workflow": "source-head-worker.yml"
     },
     "threat-intelligence": {
       "cadenceMode": "scheduled",
@@ -286,7 +469,7 @@
         "Feodo Tracker recommended active C2 feed",
         "optional ThreatFox recent IOC API"
       ],
-      "job": "Freeze JSON state and compile the Omega client DB",
+      "job": "Collect leased endpoint threat-intelligence working state",
       "logParser": "threat-intelligence",
       "outputs": [
         "catalog/reputation-intelligence.json",
@@ -294,11 +477,11 @@
         "Evidence-v2 threat-intelligence index"
       ],
       "purpose": "Fetch frozen URL/domain/IP threat indicators, resolve currently observed endpoint hosts, and retain deterministic match provenance for SRL reprojection.",
-      "step": "Collect daily endpoint threat intelligence",
+      "step": "Collect TTL-backed endpoint threat intelligence",
       "title": "Endpoint threat-intelligence collector",
       "trendMetric": "Indicators",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-builder.yml"
+      "workflow": "threat-intelligence-worker.yml"
     },
     "website-enrichment": {
       "cadenceMode": "scheduled",
@@ -310,27 +493,27 @@
         "catalog/enriched-sources.json",
         "previous marketplace website cache hints"
       ],
-      "job": "Incrementally enrich public project pages",
+      "job": "Collect leased website scraper working state",
       "logParser": "website-enrichment",
       "outputs": [
         "catalog/website-enrichment.json",
         "website-enrichment workflow artifact"
       ],
       "purpose": "Refresh bounded public project-page metadata while reusing still-fresh cached enrichment.",
-      "step": "Reuse fresh enrichment and scrape only new/stale project pages",
+      "step": "Reuse fresh page state and scrape only new/stale project pages",
       "title": "Website / project enrichment",
       "trendMetric": "Websites considered",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-builder.yml"
+      "workflow": "catalog-scrape-worker.yml"
     }
   },
   "componentRegistry": {
-    "revision": "component-registry-v1-19c1b7b330cc1f672077",
+    "revision": "component-registry-v1-f4e6b22b487c46112fed",
     "schema": "omega.component-registry.v1"
   },
   "launchAuthority": false,
   "mutationAuthority": "none",
-  "nodeCount": 12,
+  "nodeCount": 20,
   "nodes": [
     {
       "cadenceMode": "scheduled",
@@ -342,17 +525,38 @@
         "Evidence-v2 NuGet package/version index",
         "OSV public API"
       ],
-      "job": "Freeze JSON state and compile the Omega client DB",
+      "job": "Collect leased NuGet / OSV advisory working state",
       "logParser": "advisory-collector",
       "outputs": [
         "frozen OSV advisory data in Security Definitions"
       ],
       "purpose": "Query/freeze advisory intelligence for exact NuGet package/version pairs observed in current evidence.",
-      "step": "Freeze daily Definitions and OSV data",
+      "step": "Query OSV for the exact retained NuGet package/version set",
       "title": "NuGet / OSV advisory collector",
       "trendMetric": "Packages queried",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-builder.yml"
+      "workflow": "osv-worker.yml"
+    },
+    {
+      "cadenceMode": "manual",
+      "componentId": "omega.catalog",
+      "docs": "collectors",
+      "id": "catalog-freeze",
+      "implementation": "tools/orchestration/freeze_inputs.py + tools/orchestration/catalog_freeze_identity.py + tools/catalog/catalog_state.py",
+      "inputs": [
+        "settled seven-lane work state",
+        "current Evidence-v2",
+        "digest-pinned publisher worker"
+      ],
+      "job": "Freeze coherent state and build the Omega client DB once",
+      "outputs": [
+        "frozen catalog-data snapshot",
+        "Omega marketplace database only when semantic freeze changes"
+      ],
+      "purpose": "Consume settled collection state and current Evidence-v2 at an explicit release boundary; unchanged semantic freezes are no-ops and collector activity cannot invoke this node.",
+      "step": "Validate settled lane inputs and compute semantic catalog-freeze identity",
+      "title": "Catalog freeze and client publication",
+      "workflow": "catalog-freeze.yml"
     },
     {
       "cadenceMode": "event-driven",
@@ -404,18 +608,60 @@
         "catalog/raw-sources.json",
         "previous catalog HTTP cache hints"
       ],
-      "job": "Fetch and normalize manifests",
+      "job": "Collect leased manifest enrichment working state",
       "logParser": "manifest-normalization",
       "outputs": [
         "catalog/enriched-sources.json",
         "enriched-sources workflow artifact"
       ],
       "purpose": "Fetch discovered PluginMaster feeds and normalize plugin manifests into one catalog input model.",
-      "step": "Fetch PluginMaster feeds",
+      "step": "Enrich manifests from the settled discovery result",
       "title": "Manifest normalization",
       "trendMetric": "Plugins normalized",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-builder.yml"
+      "workflow": "catalog-enrichment-worker.yml"
+    },
+    {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.sigmascope",
+      "docs": "collectors",
+      "id": "secondary-security-definitions",
+      "implementation": "tools/catalog/secondary_security_assets.py + tools/orchestration/work_result.py",
+      "inputs": [
+        "exact secondary-security durable lease",
+        "previous frozen Definitions when available",
+        "ClamAV update service"
+      ],
+      "job": "Collect leased secondary-security working state",
+      "outputs": [
+        "lease-bound secondary-security work result",
+        "content-addressed ClamAV asset manifest"
+      ],
+      "purpose": "Refresh ClamAV definition assets independently of catalog freeze and retain a previous valid frozen asset when upstream refresh fails.",
+      "step": "Refresh and freeze content-addressed secondary-security assets",
+      "title": "Secondary-security definition refresh",
+      "workflow": "secondary-security-worker.yml"
+    },
+    {
+      "cadenceMode": "scheduled",
+      "componentId": "omega.platform.main",
+      "docs": "collectors",
+      "id": "security-work-reconciler",
+      "implementation": "tools/orchestration/reconcile_work.py + tools/orchestration/work_queue.py",
+      "inputs": [
+        "orchestration work policy",
+        "previous security-work-state",
+        "independent lane result branches"
+      ],
+      "job": "Settle, reconcile, lease and dispatch collector work",
+      "outputs": [
+        "security-work-state",
+        "exact worker workflow dispatches"
+      ],
+      "purpose": "Act as the sole durable collection-queue mutator: settle exact lease-bound results, recover expired leases, enqueue due work and dispatch newly leased workers without catalog-freeze or client-publication authority.",
+      "step": "Reconcile completed results and create exact leases",
+      "title": "Security collection work reconciler",
+      "workflow": "security-reconcile.yml"
     },
     {
       "cadenceMode": "event-driven",
@@ -497,6 +743,116 @@
       "workflow": "sigmascope.yml"
     },
     {
+      "cadenceMode": "manual-shadow",
+      "componentId": "omega.evidence-v2",
+      "docs": "collectors",
+      "id": "sigmascope-parallel-candidate-merger",
+      "implementation": "tools/security/sigmascope_result_merger.py",
+      "inputs": [
+        "conflict-checked SigmaScope result bundles",
+        "exact current Evidence-v2 base",
+        "frozen catalog/Definitions",
+        "previous Deep Scan state"
+      ],
+      "job": "Build validated serialized Evidence-v2 candidate without publication",
+      "outputs": [
+        "validated candidate Evidence-v2 tree",
+        "candidate Deep Scan queue",
+        "source-followup projection",
+        "merge report"
+      ],
+      "purpose": "Apply bounded variant-local worker results over one exact Evidence-v2 base, reconstruct the working database, rebuild global indexes/SRL projections, reproduce source-followup and Deep Scan queue side effects, and intrinsically validate a candidate while retaining zero publication authority.",
+      "step": "Apply disjoint result bundles and rebuild global Evidence-v2 projections centrally",
+      "title": "SigmaScope serialized Evidence-v2 candidate merger (shadow)",
+      "workflow": "sigmascope-parallel-shadow.yml"
+    },
+    {
+      "cadenceMode": "manual-shadow",
+      "componentId": "omega.evidence-v2",
+      "docs": "collectors",
+      "id": "sigmascope-parallel-equivalence-preflight",
+      "implementation": "tools/security/sigmascope_merge_equivalence.py + tools/security/sigmascope_parallel_preflight.py",
+      "inputs": [
+        "parallel merged candidate",
+        "serialized reference candidate",
+        "developer audit",
+        "storage audit"
+      ],
+      "job": "Prove parallel candidate equivalence against serialized reference",
+      "outputs": [
+        "omega.sigmascope-parallel-equivalence.v1",
+        "omega.sigmascope-parallel-preflight.v1"
+      ],
+      "purpose": "Run the same exact queue assignments through a serialized reference, compare affected variant/queue/SRL/Deep Scan/source-followup semantics, then require intrinsic validation, independent developer audit and storage audit before labeling the candidate publishable. This node cannot publish Evidence-v2.",
+      "step": "Compare security semantics and assemble no-authority publication-readiness gates",
+      "title": "SigmaScope serialized equivalence and publication preflight (shadow)",
+      "workflow": "sigmascope-parallel-shadow.yml"
+    },
+    {
+      "cadenceMode": "manual-shadow",
+      "componentId": "omega.evidence-v2",
+      "docs": "collectors",
+      "id": "sigmascope-parallel-merge-plan",
+      "implementation": "tools/security/sigmascope_result_bundle.py plan",
+      "inputs": [
+        "parallel SigmaScope result bundles",
+        "current Evidence-v2 base head"
+      ],
+      "job": "Validate parallel result bundles against one Evidence-v2 base head",
+      "outputs": [
+        "omega.sigmascope-result-merge-plan.v1 validation artifact"
+      ],
+      "purpose": "Validate result-bundle integrity, exact Evidence-v2 base binding, queue-key uniqueness and variant disjointness before a future serialized Evidence-v2 merger is allowed to apply worker results.",
+      "step": "Build conflict-checked non-authoritative merge plan",
+      "title": "SigmaScope parallel merge-plan validator (shadow)",
+      "workflow": "sigmascope-parallel-shadow.yml"
+    },
+    {
+      "cadenceMode": "manual-cutover",
+      "componentId": "omega.evidence-v2",
+      "docs": "collectors",
+      "id": "sigmascope-parallel-one-writer-publisher",
+      "implementation": "tools/security/sigmascope_parallel_publish_gate.py + tools/security/publish_security_evidence_v2.py",
+      "inputs": [
+        "successful Phase-4B shadow run artifacts",
+        "exact current Evidence-v2 Git head",
+        "digest-pinned SigmaScope/publisher images",
+        "frozen catalog/Definitions"
+      ],
+      "job": "Publish authorized Evidence first, then deferred side effects",
+      "outputs": [
+        "fast-forward Security Evidence-v2 commit",
+        "publication receipt",
+        "post-Evidence Deep Scan state",
+        "source-followup issue reconciliation"
+      ],
+      "purpose": "Reconstruct an exact successful Phase-4B candidate under read-only authority, bind it to the still-current Evidence Git parent, then give one tiny serialized writer the ability to fast-forward Evidence-v2 before publishing Deep Scan state and reconciling source follow-up issues. The existing serialized SigmaScope worker remains the production fallback during cutover.",
+      "step": "Publish exact authorized Security Evidence v2 child",
+      "title": "SigmaScope parallel one-writer Evidence publication (manual cutover)",
+      "workflow": "sigmascope-parallel-publish.yml"
+    },
+    {
+      "cadenceMode": "manual-shadow",
+      "componentId": "omega.sigmascope",
+      "docs": "collectors",
+      "id": "sigmascope-parallel-result-worker",
+      "implementation": "tools/security/production_sigmascope_v2_pipeline.py + tools/security/sigmascope_result_bundle.py",
+      "inputs": [
+        "exact persistent scanner queue key",
+        "frozen catalog/Definitions",
+        "current Evidence-v2 base head",
+        "digest-pinned SigmaScope worker image"
+      ],
+      "job": "Run one exact persistent queue key as a result-only worker",
+      "outputs": [
+        "omega.sigmascope-result-bundle.v1 Actions artifact"
+      ],
+      "purpose": "Execute one exact artifact/source queue key against a frozen Definitions worker and the current Evidence-v2 head, producing a bounded content-addressed variant-local result bundle without Evidence-v2 publication authority.",
+      "step": "Execute exact frozen queue work and emit immutable result bundle",
+      "title": "SigmaScope parallel result worker (shadow)",
+      "workflow": "sigmascope-parallel-worker.yml"
+    },
+    {
       "cadenceMode": "scheduled",
       "componentId": "omega.discovery",
       "contract": "omega.collector-registry.v1",
@@ -512,7 +868,7 @@
         "Omega source issues",
         "optional configured web-search API"
       ],
-      "job": "Discover new PluginMaster and plugin facts",
+      "job": "Collect leased catalog discovery working state",
       "legacyContracts": [
         {
           "job": "Discover source feeds",
@@ -535,11 +891,11 @@
         "catalogIssueHints"
       ],
       "purpose": "Run the first-class Omega Discovery component: source search, project-page links, issue hints, optional web search, rotating repository-tree inspection and PluginMaster validation.",
-      "step": "Run typed discovery collectors and validate only novel source facts",
+      "step": "Run typed discovery collectors for the exact durable lease",
       "title": "Omega Discovery / source intelligence",
       "trendMetric": "Deduplicated sources",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-discovery.yml"
+      "workflow": "catalog-discovery-worker.yml"
     },
     {
       "cadenceMode": "continuous",
@@ -564,14 +920,14 @@
     },
     {
       "cadenceMode": "scheduled",
-      "componentId": "omega.catalog",
+      "componentId": "omega.sigmascope",
       "docs": "collectors",
       "id": "source-revision-observer",
       "implementation": "tools/catalog/source_revision_observer.py",
       "inputs": [
         "canonical catalog source inventory"
       ],
-      "job": "Freeze JSON state and compile the Omega client DB",
+      "job": "Collect leased source HEAD working state",
       "logParser": "source-revision-observer",
       "outputs": [
         "catalog/source-revision-observations.json"
@@ -581,7 +937,7 @@
       "title": "Source revision observer",
       "trendMetric": "Observed",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-builder.yml"
+      "workflow": "source-head-worker.yml"
     },
     {
       "cadenceMode": "scheduled",
@@ -594,7 +950,7 @@
         "Feodo Tracker recommended active C2 feed",
         "optional ThreatFox recent IOC API"
       ],
-      "job": "Freeze JSON state and compile the Omega client DB",
+      "job": "Collect leased endpoint threat-intelligence working state",
       "logParser": "threat-intelligence",
       "outputs": [
         "catalog/reputation-intelligence.json",
@@ -602,11 +958,11 @@
         "Evidence-v2 threat-intelligence index"
       ],
       "purpose": "Fetch frozen URL/domain/IP threat indicators, resolve currently observed endpoint hosts, and retain deterministic match provenance for SRL reprojection.",
-      "step": "Collect daily endpoint threat intelligence",
+      "step": "Collect TTL-backed endpoint threat intelligence",
       "title": "Endpoint threat-intelligence collector",
       "trendMetric": "Indicators",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-builder.yml"
+      "workflow": "threat-intelligence-worker.yml"
     },
     {
       "cadenceMode": "scheduled",
@@ -618,29 +974,39 @@
         "catalog/enriched-sources.json",
         "previous marketplace website cache hints"
       ],
-      "job": "Incrementally enrich public project pages",
+      "job": "Collect leased website scraper working state",
       "logParser": "website-enrichment",
       "outputs": [
         "catalog/website-enrichment.json",
         "website-enrichment workflow artifact"
       ],
       "purpose": "Refresh bounded public project-page metadata while reusing still-fresh cached enrichment.",
-      "step": "Reuse fresh enrichment and scrape only new/stale project pages",
+      "step": "Reuse fresh page state and scrape only new/stale project pages",
       "title": "Website / project enrichment",
       "trendMetric": "Websites considered",
       "trendPolicy": "stable-volume",
-      "workflow": "catalog-builder.yml"
+      "workflow": "catalog-scrape-worker.yml"
     }
   ],
   "policyInput": false,
   "readOnly": true,
-  "revision": "execution-topology-v1-e377f450f2c2864e1ecb",
+  "revision": "execution-topology-v1-2a26c81a6066ace1117e",
   "schema": "omega.execution-topology.v1",
-  "workflowCount": 4,
+  "workflowCount": 14,
   "workflows": [
-    "catalog-builder.yml",
-    "catalog-discovery.yml",
+    "catalog-discovery-worker.yml",
+    "catalog-enrichment-worker.yml",
+    "catalog-freeze.yml",
+    "catalog-scrape-worker.yml",
     "deep-scan.yml",
-    "sigmascope.yml"
+    "osv-worker.yml",
+    "secondary-security-worker.yml",
+    "security-reconcile.yml",
+    "sigmascope-parallel-publish.yml",
+    "sigmascope-parallel-shadow.yml",
+    "sigmascope-parallel-worker.yml",
+    "sigmascope.yml",
+    "source-head-worker.yml",
+    "threat-intelligence-worker.yml"
   ]
 }

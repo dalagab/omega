@@ -1518,11 +1518,16 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     analysis_request_arg = getattr(args, "analysis_request", None)
     analysis_request_path = analysis_request_arg.resolve() if analysis_request_arg else None
     analysis_work_item_id = str(getattr(args, "analysis_work_item_id", "") or "")
+    exact_queue_key = str(getattr(args, "queue_key", "") or "").strip()
+    if analysis_request_path is not None and exact_queue_key:
+        raise RuntimeError("choose either --analysis-request or --queue-key, not both")
     analysis_target: dict[str, Any] | None = None
     selected_analysis_queue_key = ""
     queue_seed: dict[str, Any] = {}
     if analysis_request_path is not None and not queue_enabled:
         raise RuntimeError("generic SigmaScope analysis requests require the canonical frozen scan queue")
+    if exact_queue_key and not queue_enabled:
+        raise RuntimeError("exact SigmaScope queue-key execution requires the canonical frozen scan queue")
     if queue_enabled:
         queue_seed = preloaded_queue_seed
         for key, expected in (
@@ -1576,18 +1581,20 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     stopped_by_batch_budget = False
 
     if queue_enabled and queue_state is not None:
-        effective_max_scans = 1 if selected_analysis_queue_key else max(0, int(args.max_scans))
+        selected_exact_queue_key = selected_analysis_queue_key or exact_queue_key
+        effective_max_scans = 1 if selected_exact_queue_key else max(0, int(args.max_scans))
         for _batch_index in range(effective_max_scans):
             if scan_deadline is not None and time.monotonic() >= scan_deadline:
                 stopped_by_batch_budget = True
                 break
             selected = (
-                scan_queue.select_key(queue_state, selected_analysis_queue_key)
-                if selected_analysis_queue_key else scan_queue.select_next(queue_state)
+                scan_queue.select_key(queue_state, selected_exact_queue_key)
+                if selected_exact_queue_key else scan_queue.select_next(queue_state)
             )
             if selected is None:
-                if selected_analysis_queue_key:
-                    raise RuntimeError(f"broker-bound SigmaScope queue item is not eligible: {selected_analysis_queue_key}")
+                if selected_exact_queue_key:
+                    qualifier = "broker-bound" if selected_analysis_queue_key else "exact"
+                    raise RuntimeError(f"{qualifier} SigmaScope queue item is not eligible: {selected_exact_queue_key}")
                 break
             selected_queue_items.append(selected)
             if selected_queue_item is None:
@@ -1985,6 +1992,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "selected": selected_queue_item or {},
             "selectedItems": selected_queue_items,
             "selectedCount": len(selected_queue_items),
+            "requestedQueueKey": exact_queue_key,
             "stoppedByBatchBudget": stopped_by_batch_budget,
             "stateChanged": queue_state_changed,
             "summary": scan_queue.state_summary(queue_state) if queue_state is not None else {},
@@ -2046,6 +2054,7 @@ def main() -> int:
     parser.add_argument("--rule-set-revision", default="", help="Frozen scanner rule-set revision; distinct from advisory-only Definitions changes")
     parser.add_argument("--advisory-revision", default="", help="Frozen OSV/advisory projection revision")
     parser.add_argument("--queue-seed", type=Path, help="Immutable daily scan queue seed from catalog-data")
+    parser.add_argument("--queue-key", default="", help="Optional exact persistent queue key; selects exactly one eligible item without granting publication authority")
     parser.add_argument("--source-overrides", type=Path, default=TOOLS_DIR.parent / "sources" / "source-overrides.json")
     parser.add_argument("--max-scans", type=int, default=DEFAULT_MAX_SCANS)
     parser.add_argument("--max-batch-seconds", type=int, default=DEFAULT_MAX_BATCH_SECONDS)
