@@ -16,47 +16,36 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertIn("confirm_migration:", text)
         self.assertNotIn("schedule:", text)
         self.assertIn("uses: ./.github/workflows/worker-images.yml", text)
-        self.assertNotIn(
-            "uses: ./.github/workflows/catalog-freeze.yml",
-            text,
-            "the catalog freeze belongs inside the globally locked cutover core",
-        )
-        self.assertIn("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml", text)
+        self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", text)
+        self.assertNotIn("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml", text)
         self.assertIn("uses: ./.github/workflows/security-reconcile.yml", text)
         self.assertIn("redispatch_active_leases: true", text)
-        self.assertIn("group: omega-sigmascope-phase4-migration", text)
+        self.assertIn("group: omega-catalog-sigmascope-exclusive", text)
+        self.assertNotIn("group: omega-sigmascope-phase4-migration", text)
         self.assertIn("gh workflow run security-orchestration-dispatch.yml", text)
         self.assertNotIn("gh workflow run security-reconcile.yml", text)
-        cutover = text[text.index("\n  cutover:\n") :]
-        self.assertIn("concurrency:", cutover)
-        self.assertIn("group: omega-catalog-sigmascope-exclusive", cutover)
-        self.assertIn("cancel-in-progress: false", cutover)
-        self.assertIn("queue: max", cutover)
-
-        core = self.read("sigmascope-phase4-cutover-core.yml")
-        self.assertNotIn("\nconcurrency:\n", core)
-        self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", core)
-        self.assertIn("authority_lock_held: true", core)
-        self.assertLess(
-            core.index("uses: ./.github/workflows/catalog-freeze.yml"),
-            core.index("uses: ./.github/workflows/sigmascope-parallel-shadow.yml"),
-            "the coherent catalog/Definitions freeze must happen before the Phase-4 proof under the same writer lock",
-        )
-
-    def test_locked_cutover_call_owns_shadow_to_verify_under_global_writer_mutex(self) -> None:
-        migration = self.read("sigmascope-phase4-migration.yml")
-        cutover = migration[migration.index("\n  cutover:\n") :]
-        self.assertIn("group: omega-catalog-sigmascope-exclusive", cutover)
-        text = self.read("sigmascope-phase4-cutover-core.yml")
-        self.assertIn("workflow_call:", text)
-        self.assertNotIn("\nconcurrency:\n", text)
-        self.assertIn("uses: ./.github/workflows/sigmascope-parallel-shadow.yml", text)
-        self.assertIn("uses: ./.github/workflows/sigmascope-parallel-publish.yml", text)
+        self.assertIn("\n  freeze-current-definitions:\n", text)
+        self.assertIn("\n  prerequisites:\n", text)
+        self.assertIn("\n  shadow:\n", text)
+        self.assertIn("\n  authorize-and-publish:\n", text)
+        self.assertIn("\n  verify:\n", text)
+        self.assertIn("authority_lock_held: true", text)
         self.assertIn("use_current_run_artifacts: true", text)
         self.assertIn("confirm_publish: true", text)
 
+    def test_complete_migration_owns_shadow_to_verify_under_global_writer_mutex(self) -> None:
+        text = self.read("sigmascope-phase4-migration.yml")
+        head = text[: text.index("\npermissions:\n")]
+        self.assertIn("group: omega-catalog-sigmascope-exclusive", head)
+        self.assertIn("cancel-in-progress: false", head)
+        self.assertIn("queue: max", head)
+        self.assertLess(text.index("\n  freeze-current-definitions:\n"), text.index("\n  prerequisites:\n"))
+        self.assertLess(text.index("\n  prerequisites:\n"), text.index("\n  shadow:\n"))
+        self.assertLess(text.index("\n  shadow:\n"), text.index("\n  authorize-and-publish:\n"))
+        self.assertLess(text.index("\n  authorize-and-publish:\n"), text.index("\n  verify:\n"))
+
     def test_prepared_prerequisites_fail_closed_before_real_corpus_shadow(self) -> None:
-        text = self.read("sigmascope-phase4-cutover-core.yml")
+        text = self.read("sigmascope-phase4-migration.yml")
         self.assertIn("Require all immutable Phase-4 worker images", text)
         self.assertIn("@sha256:[0-9a-f]{64}", text)
         self.assertIn("Require newly frozen fast-forward-capable Definitions worker", text)
@@ -66,7 +55,7 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertIn("No eligible real-corpus", text)
 
     def test_post_publication_verifies_authorized_evidence_and_deep_scan_state(self) -> None:
-        text = self.read("sigmascope-phase4-cutover-core.yml")
+        text = self.read("sigmascope-phase4-migration.yml")
         self.assertIn("sigmascope_parallel_publish_gate.py check-current", text)
         self.assertIn("already-published-immediate-child", text)
         self.assertIn("authorized-identical-tree-no-op", text)

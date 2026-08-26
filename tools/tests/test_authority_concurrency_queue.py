@@ -34,24 +34,21 @@ class AuthorityConcurrencyQueueTests(unittest.TestCase):
                     f"{path.name}: default queue:single can evict an existing pending authority writer",
                 )
 
-        self.assertGreaterEqual(len(users), 4)
+        self.assertGreaterEqual(len(users), 5)
         for expected in (
             "sigmascope.yml",
             "catalog-builder.yml",
+            "sigmascope-phase4-migration.yml",
             "sigmascope-parallel-publish.yml",
             "rift-evidence-ingest.yml",
         ):
             self.assertIn(expected, users)
 
         migration = (WORKFLOWS / "sigmascope-phase4-migration.yml").read_text(encoding="utf-8")
-        cutover = migration[migration.index("\n  cutover:\n") :]
-        self.assertIn("concurrency:", cutover)
-        self.assertIn(AUTHORITY_GROUP, cutover)
-        self.assertIn("cancel-in-progress: false", cutover)
-        self.assertIn("queue: max", cutover)
-
-        core = (WORKFLOWS / "sigmascope-phase4-cutover-core.yml").read_text(encoding="utf-8")
-        self.assertNotIn("\nconcurrency:\n", core)
+        head = migration[: migration.index("\npermissions:\n")]
+        self.assertIn(f"group: {AUTHORITY_GROUP}", head)
+        self.assertIn("cancel-in-progress: false", head)
+        self.assertIn("queue: max", head)
 
 
 if __name__ == "__main__":

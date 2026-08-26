@@ -12,36 +12,26 @@ class Phase4AuthorityLockTopologyTests(unittest.TestCase):
     def read(self, name: str) -> str:
         return (WORKFLOWS / name).read_text(encoding="utf-8")
 
-    def test_migration_enters_one_locked_core_only_after_collector_settlement(self) -> None:
+    def test_complete_migration_owns_one_global_authority_lock(self) -> None:
         migration = self.read("sigmascope-phase4-migration.yml")
-        self.assertNotIn("\n  freeze-current-definitions:\n", migration)
-        self.assertIn("name: Run locked Phase-4 freeze, proof and one-writer cutover", migration)
-        self.assertIn("needs: wait-for-operational-state", migration)
-        self.assertIn("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml", migration)
-        cutover = migration[migration.index("\n  cutover:\n") :]
-        self.assertIn("concurrency:", cutover)
-        self.assertIn("group: omega-catalog-sigmascope-exclusive", cutover)
-        self.assertIn("cancel-in-progress: false", cutover)
-        self.assertIn("queue: max", cutover)
-        self.assertLess(
-            cutover.index("concurrency:"),
-            cutover.index("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml"),
-        )
+        head = migration[: migration.index("\npermissions:\n")]
+        self.assertIn("group: omega-catalog-sigmascope-exclusive", head)
+        self.assertIn("cancel-in-progress: false", head)
+        self.assertIn("queue: max", head)
+        self.assertNotIn("group: omega-sigmascope-phase4-migration", migration)
+        self.assertNotIn("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml", migration)
 
-    def test_cutover_holds_global_authority_lock_across_freeze_and_evidence_transaction(self) -> None:
+    def test_migration_sequences_freeze_proof_publish_and_verify_under_same_lock(self) -> None:
         migration = self.read("sigmascope-phase4-migration.yml")
-        cutover = migration[migration.index("\n  cutover:\n") :]
-        core = self.read("sigmascope-phase4-cutover-core.yml")
-        self.assertIn("group: omega-catalog-sigmascope-exclusive", cutover)
-        self.assertNotIn("\nconcurrency:\n", core)
-        self.assertIn("freeze-current-definitions:", core)
-        self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", core)
-        self.assertIn("authority_lock_held: true", core)
-        self.assertIn("needs: freeze-current-definitions", core)
-        self.assertLess(core.index("freeze-current-definitions:"), core.index("prerequisites:"))
-        self.assertLess(core.index("prerequisites:"), core.index("shadow:"))
-        self.assertLess(core.index("shadow:"), core.index("authorize-and-publish:"))
-        self.assertLess(core.index("authorize-and-publish:"), core.index("verify:"))
+        self.assertIn("\n  freeze-current-definitions:\n", migration)
+        self.assertIn("needs: wait-for-operational-state", migration)
+        self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", migration)
+        self.assertIn("authority_lock_held: true", migration)
+        self.assertIn("needs: freeze-current-definitions", migration)
+        self.assertLess(migration.index("\n  freeze-current-definitions:\n"), migration.index("\n  prerequisites:\n"))
+        self.assertLess(migration.index("\n  prerequisites:\n"), migration.index("\n  shadow:\n"))
+        self.assertLess(migration.index("\n  shadow:\n"), migration.index("\n  authorize-and-publish:\n"))
+        self.assertLess(migration.index("\n  authorize-and-publish:\n"), migration.index("\n  verify:\n"))
 
     def test_nested_freeze_never_recursively_acquires_global_authority_lock(self) -> None:
         wrapper = self.read("catalog-freeze.yml")

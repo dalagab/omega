@@ -483,31 +483,23 @@ class WorkflowContractTests(unittest.TestCase):
         catalog = self.read("catalog-builder.yml")
         security = self.read("sigmascope.yml")
         migration = self.read("sigmascope-phase4-migration.yml")
-        cutover_core = self.read("sigmascope-phase4-cutover-core.yml")
         shared_group = "omega-catalog-sigmascope-exclusive"
 
-        # The continuous Evidence writer always owns the shared authority mutex.
+        # The continuous Evidence writer and the one-time migration share one authority mutex.
         self.assertIn(f"group: {shared_group}", security)
+        migration_head = migration[: migration.index("\npermissions:\n")]
+        self.assertIn(f"group: {shared_group}", migration_head)
+        self.assertIn("cancel-in-progress: false", migration_head)
+        self.assertIn("queue: max", migration_head)
 
-        # A standalone catalog freeze owns that same mutex. Only the automatic Phase-4
-        # cutover may switch the nested builder to a run-local group, because the reusable
-        # workflow call job already owns the shared mutex for the complete transaction.
+        # Standalone catalog freeze still owns the same mutex. During Phase 4 the complete
+        # migration already owns it, so the nested builder uses its run-local group.
         self.assertIn("inputs.authority_lock_held", catalog)
         self.assertIn("omega-catalog-freeze-under-phase4-", catalog)
         self.assertIn(f"|| '{shared_group}'", catalog)
-
-        cutover_job = migration[migration.index("\n  cutover:\n") :]
-        self.assertIn("concurrency:", cutover_job)
-        self.assertIn(f"group: {shared_group}", cutover_job)
-        self.assertIn("cancel-in-progress: false", cutover_job)
-        self.assertIn("queue: max", cutover_job)
-        self.assertIn("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml", cutover_job)
-
-        # The called core must not recursively acquire the global mutex. It receives the
-        # already-held authority context and uses run-local groups for nested writers.
-        self.assertNotIn("\nconcurrency:\n", cutover_core)
-        self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", cutover_core)
-        self.assertIn("authority_lock_held: true", cutover_core)
+        self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", migration)
+        self.assertIn("authority_lock_held: true", migration)
+        self.assertNotIn("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml", migration)
 
         self.assertIn("cancel-in-progress: false", catalog)
         self.assertIn("cancel-in-progress: false", security)

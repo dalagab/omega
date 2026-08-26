@@ -43,25 +43,22 @@ class Phase4ReusablePermissionTests(unittest.TestCase):
         )
         self.assert_call_permissions(
             "sigmascope-phase4-migration.yml",
-            "sigmascope-phase4-cutover-core.yml",
-            ("contents: write", "actions: write", "issues: write", "packages: read"),
-        )
-
-    def test_locked_core_never_relies_on_default_permissions_at_nested_calls(self) -> None:
-        self.assert_call_permissions(
-            "sigmascope-phase4-cutover-core.yml",
             "catalog-freeze.yml",
             ("contents: write", "packages: read"),
         )
         self.assert_call_permissions(
-            "sigmascope-phase4-cutover-core.yml",
+            "sigmascope-phase4-migration.yml",
             "sigmascope-parallel-shadow.yml",
             ("contents: read", "packages: read"),
         )
         self.assert_call_permissions(
-            "sigmascope-phase4-cutover-core.yml",
+            "sigmascope-phase4-migration.yml",
             "sigmascope-parallel-publish.yml",
             ("contents: write", "actions: write", "issues: write", "packages: read"),
+        )
+        self.assertNotIn(
+            "uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml",
+            read("sigmascope-phase4-migration.yml"),
         )
 
     def test_deeper_nested_calls_are_explicit_too(self) -> None:
