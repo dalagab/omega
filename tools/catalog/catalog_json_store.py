@@ -27,10 +27,18 @@ if str(SCRIPT_DIR) not in sys.path:
 import build_sqlite_catalog  # noqa: E402
 from catalog_revisions import read_meta, write_meta  # noqa: E402
 
-SCHEMA = "omega.catalog-json.v1"
-FORMAT_VERSION = 1
+SCHEMA = "omega.catalog-json.v2"
+FORMAT_VERSION = 2
 IDENTITY_EPOCH = "omega-catalog-identity-v1"
 MAX_FILE_BYTES = 16 * 1024 * 1024
+IDENTITY_SHARD_TARGET_BYTES = 4 * 1024 * 1024
+IDENTITY_TABLES = (
+    "manifest_observations",
+    "source_repositories",
+    "source_repository_aliases",
+    "manifest_source_candidates",
+    "plugin_identity_aliases",
+)
 BASE_TABLES = (
     "sources",
     "plugins",
@@ -77,6 +85,104 @@ def write_json(path: Path, value: Any) -> dict[str, Any]:
     temp.write_bytes(data)
     temp.replace(path)
     return {"path": path.as_posix(), "bytes": len(data), "sha256": sha256_bytes(data)}
+
+
+def _write_identity_store(
+    output: Path,
+    tables: dict[str, list[dict[str, Any]]],
+    files: list[dict[str, Any]],
+) -> None:
+    """Write current internal catalog identity state as bounded deterministic shards."""
+    table_index: dict[str, Any] = {}
+    for table in IDENTITY_TABLES:
+        rows = list(tables.get(table) or [])
+        shards: list[dict[str, Any]] = []
+        current: list[dict[str, Any]] = []
+        current_size = 0
+
+        def flush() -> None:
+            nonlocal current, current_size
+            if not current:
+                return
+            ordinal = len(shards)
+            rel = Path("identity") / table / f"{ordinal:06d}.json"
+            descriptor = write_json(output / rel, {
+                "schema": "omega.catalog-json.identity-shard.v2",
+                "table": table,
+                "records": current,
+            })
+            descriptor["path"] = rel.as_posix()
+            files.append(descriptor)
+            shards.append({
+                "path": rel.as_posix(),
+                "records": len(current),
+                "bytes": descriptor["bytes"],
+                "sha256": descriptor["sha256"],
+            })
+            current = []
+            current_size = 0
+
+        for row in rows:
+            # The compact canonical row size is only used as a deterministic shard boundary.
+            # write_json remains the authoritative 16 MiB per-file safety gate.
+            row_size = len(canonical_json_bytes(row)) + 2
+            if current and current_size + row_size > IDENTITY_SHARD_TARGET_BYTES:
+                flush()
+            current.append(row)
+            current_size += row_size
+        flush()
+        table_index[table] = {"records": len(rows), "shards": shards}
+
+    rel = Path("identity") / "index.json"
+    descriptor = write_json(output / rel, {
+        "schema": "omega.catalog-json.identity-index.v2",
+        "tables": table_index,
+    })
+    descriptor["path"] = rel.as_posix()
+    files.append(descriptor)
+
+
+def _read_identity_store(root: Path) -> dict[str, list[dict[str, Any]]]:
+    index = _read_json(root, "identity/index.json")
+    if index.get("schema") != "omega.catalog-json.identity-index.v2":
+        raise ValueError(f"unsupported identity index schema: {index.get('schema')!r}")
+    tables = index.get("tables")
+    if not isinstance(tables, dict):
+        raise ValueError("identity index tables must be an object")
+
+    result: dict[str, list[dict[str, Any]]] = {}
+    if set(tables) != set(IDENTITY_TABLES):
+        raise ValueError(f"identity index table set mismatch: {sorted(tables)}")
+    for table in IDENTITY_TABLES:
+        descriptor = tables.get(table)
+        if not isinstance(descriptor, dict):
+            raise ValueError(f"identity table descriptor missing: {table}")
+        shards = descriptor.get("shards")
+        if not isinstance(shards, list):
+            raise ValueError(f"identity table shards must be a list: {table}")
+        rows: list[dict[str, Any]] = []
+        for ordinal, shard in enumerate(shards):
+            if not isinstance(shard, dict):
+                raise ValueError(f"identity shard descriptor malformed: {table}#{ordinal}")
+            rel = str(shard.get("path") or "")
+            expected_rel = f"identity/{table}/{ordinal:06d}.json"
+            if rel != expected_rel:
+                raise ValueError(f"identity shard path mismatch: expected {expected_rel}, got {rel!r}")
+            payload = _read_json(root, rel, str(shard.get("sha256") or ""))
+            if payload.get("schema") != "omega.catalog-json.identity-shard.v2":
+                raise ValueError(f"identity shard schema mismatch: {rel}")
+            if payload.get("table") != table:
+                raise ValueError(f"identity shard table mismatch: {rel}")
+            records = payload.get("records")
+            if not isinstance(records, list) or any(not isinstance(row, dict) for row in records):
+                raise ValueError(f"identity shard records malformed: {rel}")
+            if len(records) != int(shard.get("records") or 0):
+                raise ValueError(f"identity shard record count mismatch: {rel}")
+            rows.extend(records)
+        if len(rows) != int(descriptor.get("records") or 0):
+            raise ValueError(f"identity table record count mismatch: {table}")
+        result[table] = rows
+    return result
 
 
 def _rows(db: sqlite3.Connection, table: str, *, where: str = "", params: tuple[Any, ...] = (), order: str = "") -> list[dict[str, Any]]:
@@ -229,16 +335,13 @@ def export_snapshot(database: Path, output: Path, *, source_commit: str = "") ->
         plugin_index_file["path"] = "plugins/index.json"
         files.append(plugin_index_file)
 
-        identity_model_file = write_json(output / "identity" / "model.json", {
-            "schema": "omega.catalog-json.identity-model.v1",
-            "manifestObservations": manifest_observations,
-            "sourceRepositories": source_repositories,
-            "sourceRepositoryAliases": source_repository_aliases,
-            "manifestSourceCandidates": manifest_source_candidates,
-            "pluginIdentityAliases": plugin_identity_aliases,
-        })
-        identity_model_file["path"] = "identity/model.json"
-        files.append(identity_model_file)
+        _write_identity_store(output, {
+            "manifest_observations": manifest_observations,
+            "source_repositories": source_repositories,
+            "source_repository_aliases": source_repository_aliases,
+            "manifest_source_candidates": manifest_source_candidates,
+            "plugin_identity_aliases": plugin_identity_aliases,
+        }, files)
 
         meta = {
             "schemaVersion": str(build_sqlite_catalog.SCHEMA_VERSION),
@@ -293,39 +396,6 @@ def _read_json(root: Path, relative: str, expected_sha256: str = "") -> Any:
     return json.loads(data.decode("utf-8"))
 
 
-def identity_compatibility(root: Path) -> dict[str, Any]:
-    """Report whether a snapshot belongs to the current catalog identity epoch.
-
-    This is intentionally lighter than full snapshot validation. It exists for the
-    daily migration boundary where an older canonical snapshot may be useful as an
-    optional normalization seed. An incompatible epoch must never be materialized,
-    but it also must not block a deliberate clean rebuild.
-    """
-    root = root.resolve()
-    try:
-        index = _read_json(root, "index.json")
-    except Exception as exc:
-        return {
-            "schema": "omega.catalog-json.identity-compatibility.v1",
-            "ok": False,
-            "compatible": False,
-            "expectedIdentityEpoch": IDENTITY_EPOCH,
-            "actualIdentityEpoch": "",
-            "error": f"index unreadable: {type(exc).__name__}: {exc}",
-        }
-    actual = str(index.get("identityEpoch") or "")
-    compatible = index.get("schema") == SCHEMA and actual == IDENTITY_EPOCH
-    return {
-        "schema": "omega.catalog-json.identity-compatibility.v1",
-        "ok": compatible,
-        "compatible": compatible,
-        "catalogSchema": str(index.get("schema") or ""),
-        "catalogRevision": str(index.get("catalogRevision") or ""),
-        "expectedIdentityEpoch": IDENTITY_EPOCH,
-        "actualIdentityEpoch": actual,
-    }
-
-
 def validate_snapshot(root: Path) -> dict[str, Any]:
     root = root.resolve()
     errors: list[str] = []
@@ -367,13 +437,13 @@ def validate_snapshot(root: Path) -> dict[str, Any]:
             errors.append(f"variant count mismatch: index={counts.get('variants')}, records={variants}")
         if len(source_index.get("sources") or []) != int(counts.get("sources") or 0):
             errors.append("source count mismatch")
-        identity = _read_json(root, "identity/model.json")
-        if identity.get("schema") != "omega.catalog-json.identity-model.v1":
-            errors.append("identity model schema mismatch")
-        if sum(1 for row in identity.get("manifestObservations") or [] if int(row.get("active") or 0) == 1) != int(counts.get("manifestObservations") or 0):
+        identity = _read_identity_store(root)
+        if sum(1 for row in identity["manifest_observations"] if int(row.get("active") or 0) == 1) != int(counts.get("manifestObservations") or 0):
             errors.append("manifest observation count mismatch")
-        if len(identity.get("sourceRepositories") or []) != int(counts.get("sourceRepositories") or 0):
+        if len(identity["source_repositories"]) != int(counts.get("sourceRepositories") or 0):
             errors.append("source repository count mismatch")
+        if sum(1 for row in identity["plugin_identity_aliases"] if int(row.get("active") or 0) == 1) != int(counts.get("identityAliases") or 0):
+            errors.append("plugin identity alias count mismatch")
     except Exception as exc:
         errors.append(f"index cross-check failed: {type(exc).__name__}: {exc}")
     return {
@@ -440,12 +510,9 @@ def materialize_snapshot(root: Path, database: Path, *, definitions_revision: st
             if isinstance(payload.get("search"), dict):
                 searches.append(payload["search"])
         _insert_rows(db, "plugin_variants", variants)
-        identity = _read_json(root, "identity/model.json")
-        _insert_rows(db, "manifest_observations", identity.get("manifestObservations") or [])
-        _insert_rows(db, "source_repositories", identity.get("sourceRepositories") or [])
-        _insert_rows(db, "source_repository_aliases", identity.get("sourceRepositoryAliases") or [])
-        _insert_rows(db, "manifest_source_candidates", identity.get("manifestSourceCandidates") or [])
-        _insert_rows(db, "plugin_identity_aliases", identity.get("pluginIdentityAliases") or [])
+        identity = _read_identity_store(root)
+        for table in IDENTITY_TABLES:
+            _insert_rows(db, table, identity[table])
         _insert_rows(db, "plugin_tags", tags)
         _insert_rows(db, "plugin_images", images)
         _insert_rows(db, "presentation", presentation)
@@ -491,8 +558,6 @@ def _main() -> int:
     export.add_argument("--built-from-dev-commit", "--source-commit", dest="source_commit", default="", help="Optional development provenance only; never an execution dependency")
     validate = sub.add_parser("validate")
     validate.add_argument("--root", required=True, type=Path)
-    identity = sub.add_parser("identity-compatible")
-    identity.add_argument("--root", required=True, type=Path)
     materialize = sub.add_parser("materialize")
     materialize.add_argument("--root", required=True, type=Path)
     materialize.add_argument("--database", required=True, type=Path)
@@ -503,11 +568,6 @@ def _main() -> int:
     elif args.command == "validate":
         result = validate_snapshot(args.root)
         if not result.get("ok"):
-            print(json.dumps(result, indent=2))
-            return 1
-    elif args.command == "identity-compatible":
-        result = identity_compatibility(args.root)
-        if not result.get("compatible"):
             print(json.dumps(result, indent=2))
             return 1
     else:

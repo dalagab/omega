@@ -35,8 +35,10 @@ class WorkflowContractTests(unittest.TestCase):
             "ref: secondary-security-state",
             "catalog_json_store.py materialize",
             "catalog_json_store.py export",
-            "identity-compatible",
-            "legacy/incompatible",
+            'schema == "omega.catalog-json.v2"',
+            'identityEpoch == "omega-catalog-identity-v1"',
+            "catalog_json_v1_seed.py",
+            "test_identity_rows_over_16_mib_are_sharded_and_round_trip",
             "source_inventory_guard.py",
             "--aliases sources/source-url-aliases.json",
             "--report catalog/source-inventory.json",
@@ -119,7 +121,7 @@ class WorkflowContractTests(unittest.TestCase):
         publisher = (common.ROOT / "tools" / "catalog" / "publish_catalog_state.py").read_text(encoding="utf-8")
         self.assertIn("catalog-data", builder)
         self.assertIn("omega.catalog-state.v1", (common.ROOT / "tools" / "catalog" / "catalog_state.py").read_text(encoding="utf-8"))
-        self.assertIn("omega.catalog-json.v1", (common.ROOT / "tools" / "catalog" / "catalog_json_store.py").read_text(encoding="utf-8"))
+        self.assertIn("omega.catalog-json.v2", (common.ROOT / "tools" / "catalog" / "catalog_json_store.py").read_text(encoding="utf-8"))
         self.assertIn("HISTORY_FAST_FORWARD", publisher)
         self.assertIn("publish_snapshot_tree", publisher)
         self.assertNotIn("checkout", "--orphan", publisher)

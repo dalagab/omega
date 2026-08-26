@@ -409,7 +409,7 @@ class DiscordNoticeTests(unittest.TestCase):
     def test_catalog_notification_merge_preserves_migration_and_v2_guards(self) -> None:
         workflow = (common.ROOT / ".github" / "workflows" / "catalog-builder.yml").read_text(encoding="utf-8")
         self.assertIn("id: previous_catalog", workflow)
-        self.assertIn('steps.previous_catalog.outputs.compatible', workflow)
+        self.assertIn('steps.previous_catalog.outputs.current', workflow)
         self.assertIn('args+=(--previous-catalog-root catalog/previous-state/catalog)', workflow)
         self.assertIn("validate_marketplace_catalog.py --root catalog/client-dist --require-v2", workflow)
 

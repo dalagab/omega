@@ -47,6 +47,10 @@ A developer can provide `.omega/plugin.yaml` to explain expected capabilities, d
 
 DeltaScope is primarily read-only. Local rule authoring is intentionally separate from production activation. Production rules, Definitions, queue state and published evidence move through reviewed repository/workflow boundaries.
 
+### Internal formats are not public compatibility contracts
+
+Omega/SigmaScope has one authoritative GitHub deployment. Compatibility is preserved for the current Omega client contract, required security provenance and intentional external input formats—not for retired internal state. See [Internal compatibility policy](INTERNAL-COMPATIBILITY-POLICY.md).
+
 ## Where to start
 
 - Plugin author: **Plugin Developer guide**
@@ -59,3 +63,4 @@ DeltaScope is primarily read-only. Local rule authoring is intentionally separat
 - Understanding retained evidence: **Evidence lifecycle and authority**
 
 - [Git-backed authoritative history](GIT-HISTORY.md) — accepted catalog/Evidence snapshot history, concurrency and provenance boundary.
+- [Internal compatibility policy](INTERNAL-COMPATIBILITY-POLICY.md) — what must stay compatible, what should be replaced cleanly, and current compatibility-debt cleanup targets.
