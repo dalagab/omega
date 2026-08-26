@@ -132,16 +132,20 @@ class OrchestrationContractTests(unittest.TestCase):
             text = self.read_workflow(name)
             self.assertIn("actions: write", text)
             self.assertIn("Wake the reconciler after result publication", text)
-            self.assertIn("gh workflow run security-reconcile.yml", text)
+            self.assertIn("gh workflow run security-orchestration-dispatch.yml", text)
+            self.assertIn("-f mode=reconcile", text)
+            self.assertNotIn("gh workflow run security-reconcile.yml", text)
             self.assertNotIn("gh workflow run catalog-freeze.yml", text)
             self.assertNotIn("gh workflow run catalog-builder.yml", text)
 
     def test_reconciler_dispatches_only_after_publishing_durable_leases(self) -> None:
         text=self.read_workflow("security-reconcile.yml")
         self.assertIn("Publish queue state before dispatch", text)
-        self.assertIn("Dispatch only newly leased exact work items", text)
-        self.assertLess(text.index("Publish queue state before dispatch"), text.index("Dispatch only newly leased exact work items"))
-        self.assertIn("gh workflow run", text)
+        self.assertIn("Dispatch newly leased or explicitly recovered exact work items", text)
+        self.assertLess(text.index("Publish queue state before dispatch"), text.index("Dispatch newly leased or explicitly recovered exact work items"))
+        self.assertIn("gh workflow run security-orchestration-dispatch.yml", text)
+        self.assertIn("-f mode=worker", text)
+        self.assertIn("row['queueId']", text)
         self.assertIn("actions: write", text)
 
     def test_worker_image_manifest_is_persisted_not_only_an_actions_artifact(self) -> None:

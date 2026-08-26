@@ -2,7 +2,19 @@ name: Omega security services reconciliation
 
 on:
   workflow_call:
+    inputs:
+      redispatch_active_leases:
+        description: Redispatch already-leased work to recover a failed dispatcher boundary
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
+    inputs:
+      redispatch_active_leases:
+        description: Redispatch already-leased work to recover a failed dispatcher boundary
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -98,18 +110,65 @@ jobs:
           set -euo pipefail
           gh auth setup-git
           python tools/orchestration/publish_work_state.py --input catalog/work-state-next --repo . --branch security-work-state --push
-      - name: Dispatch only newly leased exact work items
-        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+      - name: Dispatch newly leased or explicitly recovered exact work items
+        env:
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          REDISPATCH_ACTIVE_LEASES: "${{ inputs.redispatch_active_leases }}"
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY' > catalog/dispatch.tsv
-          import json
-          for row in json.load(open('catalog/work-state-next/dispatch.json')).get('dispatches',[]):
-              print('\t'.join([row['workflow'],row['workId'],row['claimToken']]))
+          import json, os
+          from pathlib import Path
+
+          rows = list(json.load(open('catalog/work-state-next/dispatch.json')).get('dispatches', []))
+          by_queue = {str(row.get('queueId') or ''): row for row in rows}
+
+          if os.environ.get('REDISPATCH_ACTIVE_LEASES', '').lower() == 'true':
+              policy = json.load(open('security-definitions/orchestration/work-policy.json'))
+              for spec in policy.get('queues', []):
+                  queue_id = str(spec.get('queueId') or '')
+                  consumer = spec.get('consumer') or {}
+                  if not consumer.get('implemented') or queue_id in by_queue:
+                      continue
+                  queue_path = Path('catalog/work-state-next/queues') / f'{queue_id}.json'
+                  queue = json.load(open(queue_path))
+                  leased = [item for item in queue.get('items', []) if item.get('state') == 'leased']
+                  if len(leased) > 1:
+                      raise SystemExit(f'{queue_id} has more than one active lease')
+                  if not leased:
+                      continue
+                  item = leased[0]
+                  lease = item.get('lease') or {}
+                  claim = str(lease.get('claimToken') or '')
+                  work_id = str(item.get('workId') or '')
+                  if not work_id or not claim:
+                      raise SystemExit(f'{queue_id} active lease is missing workId/claimToken')
+                  row = {'queueId': queue_id, 'workId': work_id, 'claimToken': claim}
+                  rows.append(row)
+                  by_queue[queue_id] = row
+                  print(f'# recovering active lease {queue_id} {work_id}', file=os.sys.stderr)
+
+          for row in rows:
+              print('\t'.join([row['queueId'], row['workId'], row['claimToken']]))
           PY
-          while IFS=$'\t' read -r workflow work_id claim_token; do
-            [ -n "$workflow" ] || continue
-            echo "Dispatching $workflow for $work_id"
-            gh workflow run "$workflow" --repo "${{ github.repository }}" --ref sigmascope -f work_id="$work_id" -f claim_token="$claim_token"
+          while IFS=$'\t' read -r queue_id work_id claim_token; do
+            [ -n "$queue_id" ] || continue
+            echo "Dispatching $queue_id for $work_id through the registered orchestration router"
+            dispatched=false
+            for attempt in 1 2 3; do
+              if gh workflow run security-orchestration-dispatch.yml \
+                --repo "${{ github.repository }}" \
+                --ref sigmascope \
+                -f mode=worker \
+                -f queue_id="$queue_id" \
+                -f work_id="$work_id" \
+                -f claim_token="$claim_token"; then
+                dispatched=true
+                break
+              fi
+              echo "::warning::Dispatch attempt $attempt failed for $queue_id/$work_id"
+              sleep $((attempt * 5))
+            done
+            test "$dispatched" = true || { echo "::error::Failed to dispatch exact leased work after 3 attempts: $queue_id/$work_id"; exit 4; }
           done < catalog/dispatch.tsv

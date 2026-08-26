@@ -1,0 +1,142 @@
+name: Omega security services · internal orchestration dispatcher
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Internal routing mode (worker or reconcile)
+        required: true
+        type: string
+      queue_id:
+        description: Durable queue id when mode=worker
+        required: false
+        type: string
+        default: ""
+      work_id:
+        description: Durable work item id when mode=worker
+        required: false
+        type: string
+        default: ""
+      claim_token:
+        description: Durable lease claim token when mode=worker
+        required: false
+        type: string
+        default: ""
+
+# This is an internal branch-local router. A tiny registration copy with the same
+# path exists on main solely so GitHub's dispatch API can resolve this workflow.
+permissions:
+  contents: write
+  actions: write
+  packages: read
+  issues: read
+
+jobs:
+  validate:
+    name: Validate internal dispatch
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Validate mode and lease routing inputs
+        env:
+          MODE: ${{ inputs.mode }}
+          QUEUE_ID: ${{ inputs.queue_id }}
+          WORK_ID: ${{ inputs.work_id }}
+          CLAIM_TOKEN: ${{ inputs.claim_token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$MODE" in
+            reconcile)
+              test -z "$QUEUE_ID" || { echo "::error::queue_id must be empty for reconcile mode"; exit 2; }
+              ;;
+            worker)
+              case "$QUEUE_ID" in
+                catalog-discovery|catalog-enrichment|catalog-scrape|source-head-observation|threat-intelligence|osv-advisories|secondary-security-definitions) ;;
+                *) echo "::error::Unknown worker queue_id: $QUEUE_ID"; exit 2 ;;
+              esac
+              test -n "$WORK_ID" || { echo "::error::work_id is required for worker mode"; exit 2; }
+              test -n "$CLAIM_TOKEN" || { echo "::error::claim_token is required for worker mode"; exit 2; }
+              ;;
+            *)
+              echo "::error::mode must be worker or reconcile"
+              exit 2
+              ;;
+          esac
+
+  reconcile:
+    name: Reconcile durable security work
+    needs: validate
+    if: ${{ inputs.mode == 'reconcile' }}
+    uses: ./.github/workflows/security-reconcile.yml
+    secrets: inherit
+
+  catalog-discovery:
+    name: Route catalog discovery worker
+    needs: validate
+    if: ${{ inputs.mode == 'worker' && inputs.queue_id == 'catalog-discovery' }}
+    uses: ./.github/workflows/catalog-discovery-worker.yml
+    with:
+      work_id: ${{ inputs.work_id }}
+      claim_token: ${{ inputs.claim_token }}
+    secrets: inherit
+
+  catalog-enrichment:
+    name: Route catalog enrichment worker
+    needs: validate
+    if: ${{ inputs.mode == 'worker' && inputs.queue_id == 'catalog-enrichment' }}
+    uses: ./.github/workflows/catalog-enrichment-worker.yml
+    with:
+      work_id: ${{ inputs.work_id }}
+      claim_token: ${{ inputs.claim_token }}
+    secrets: inherit
+
+  catalog-scrape:
+    name: Route website scraper worker
+    needs: validate
+    if: ${{ inputs.mode == 'worker' && inputs.queue_id == 'catalog-scrape' }}
+    uses: ./.github/workflows/catalog-scrape-worker.yml
+    with:
+      work_id: ${{ inputs.work_id }}
+      claim_token: ${{ inputs.claim_token }}
+    secrets: inherit
+
+  source-head:
+    name: Route source HEAD worker
+    needs: validate
+    if: ${{ inputs.mode == 'worker' && inputs.queue_id == 'source-head-observation' }}
+    uses: ./.github/workflows/source-head-worker.yml
+    with:
+      work_id: ${{ inputs.work_id }}
+      claim_token: ${{ inputs.claim_token }}
+    secrets: inherit
+
+  threat-intelligence:
+    name: Route threat intelligence worker
+    needs: validate
+    if: ${{ inputs.mode == 'worker' && inputs.queue_id == 'threat-intelligence' }}
+    uses: ./.github/workflows/threat-intelligence-worker.yml
+    with:
+      work_id: ${{ inputs.work_id }}
+      claim_token: ${{ inputs.claim_token }}
+    secrets: inherit
+
+  osv-advisories:
+    name: Route OSV advisory worker
+    needs: validate
+    if: ${{ inputs.mode == 'worker' && inputs.queue_id == 'osv-advisories' }}
+    uses: ./.github/workflows/osv-worker.yml
+    with:
+      work_id: ${{ inputs.work_id }}
+      claim_token: ${{ inputs.claim_token }}
+    secrets: inherit
+
+  secondary-security:
+    name: Route secondary security definitions worker
+    needs: validate
+    if: ${{ inputs.mode == 'worker' && inputs.queue_id == 'secondary-security-definitions' }}
+    uses: ./.github/workflows/secondary-security-worker.yml
+    with:
+      work_id: ${{ inputs.work_id }}
+      claim_token: ${{ inputs.claim_token }}
+    secrets: inherit

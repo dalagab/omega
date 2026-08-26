@@ -18,7 +18,11 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertIn("uses: ./.github/workflows/worker-images.yml", text)
         self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", text)
         self.assertIn("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml", text)
-        self.assertNotIn("gh workflow run", text, "migration must chain reusable stages, not launch/poll detached runs")
+        self.assertIn("uses: ./.github/workflows/security-reconcile.yml", text)
+        self.assertIn("redispatch_active_leases: true", text)
+        self.assertIn("group: omega-sigmascope-phase4-migration", text)
+        self.assertIn("gh workflow run security-orchestration-dispatch.yml", text)
+        self.assertNotIn("gh workflow run security-reconcile.yml", text)
 
     def test_locked_core_owns_shadow_to_verify_under_global_writer_mutex(self) -> None:
         text = self.read("sigmascope-phase4-cutover-core.yml")
@@ -56,6 +60,30 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertIn("workflow_call:", text)
         self.assertIn("workflow_dispatch:", text)
         self.assertIn("security-worker-images", text)
+
+    def test_worker_image_resolvers_fail_closed_and_do_not_escape_jq_filters(self) -> None:
+        single_resolvers = (
+            "catalog-builder.yml",
+            "catalog-discovery-worker.yml",
+            "catalog-enrichment-worker.yml",
+            "catalog-scrape-worker.yml",
+            "threat-intelligence-worker.yml",
+            "osv-worker.yml",
+            "source-head-worker.yml",
+            "secondary-security-worker.yml",
+            "sigmascope-parallel-worker.yml",
+            "sigmascope-parallel-shadow.yml",
+        )
+        for name in single_resolvers:
+            text = self.read(name)
+            self.assertIn("jq -er --arg image", text, name)
+            self.assertIn("@sha256:[0-9a-f]{64}", text, name)
+            self.assertNotIn(".images[\\\"", text, name)
+            self.assertNotIn('run: echo "image=$(jq', text, name)
+        publish = self.read("sigmascope-parallel-publish.yml")
+        self.assertGreaterEqual(publish.count("jq -er --arg image"), 2)
+        self.assertIn("@sha256:[0-9a-f]{64}", publish)
+        self.assertNotIn(".images[\\\"", publish)
 
 
 if __name__ == "__main__":

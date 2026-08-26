@@ -18,6 +18,10 @@ on:
 # worker-image publication and the catalog/Definitions freeze each have their own serialization.
 # The called cutover core then acquires omega-catalog-sigmascope-exclusive for the entire
 # shadow -> authorize -> publish -> verify sequence.
+concurrency:
+  group: omega-sigmascope-phase4-migration
+  cancel-in-progress: false
+
 permissions:
   contents: write
   actions: write
@@ -52,6 +56,8 @@ jobs:
     name: Bootstrap and dispatch Phase-3 collector state
     needs: prepare-worker-images
     uses: ./.github/workflows/security-reconcile.yml
+    with:
+      redispatch_active_leases: true
     secrets: inherit
 
   wait-for-operational-state:
@@ -111,7 +117,7 @@ jobs:
             # Worker completions normally wake the reconciler themselves. Re-dispatch it
             # periodically as a recovery path for delayed retries or a missed wake-up.
             if [ $((attempt % 6)) -eq 0 ]; then
-              gh workflow run security-reconcile.yml --repo "${{ github.repository }}" --ref "${GITHUB_REF_NAME}"
+              gh workflow run security-orchestration-dispatch.yml --repo "${{ github.repository }}" --ref "${GITHUB_REF_NAME}" -f mode=reconcile
             fi
             sleep 20
           done
