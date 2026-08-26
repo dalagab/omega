@@ -67,8 +67,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "merge_image=$(jq -r '.images[\"sigmascope-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
-          echo "publisher_image=$(jq -r '.images[\"publisher-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+          merge_ref="$(jq -er --arg image "sigmascope-worker" '.images[$image] // empty' image-state/index.json)"
+          publisher_ref="$(jq -er --arg image "publisher-worker" '.images[$image] // empty' image-state/index.json)"
+          for ref in "$merge_ref" "$publisher_ref"; do
+            [[ "$ref" =~ ^ghcr\.io/[^@[:space:]]+@sha256:[0-9a-f]{64}$ ]] || { echo "::error::Invalid or missing digest-pinned worker image reference: $ref"; exit 3; }
+          done
+          echo "merge_image=$merge_ref" >> "$GITHUB_OUTPUT"
+          echo "publisher_image=$publisher_ref" >> "$GITHUB_OUTPUT"
 
   authorize:
     name: Reconstruct exact shadow candidate and issue one-writer authorization

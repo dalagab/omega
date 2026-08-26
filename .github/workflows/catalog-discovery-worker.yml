@@ -35,7 +35,11 @@ jobs:
           persist-credentials: false
       - id: image
         shell: bash
-        run: echo "image=$(jq -r '.images[\"catalog-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          ref="$(jq -er --arg image "catalog-worker" '.images[$image] // empty' image-state/index.json)"
+          [[ "$ref" =~ ^ghcr\.io/[^@[:space:]]+@sha256:[0-9a-f]{64}$ ]] || { echo "::error::Invalid or missing digest-pinned worker image reference: $ref"; exit 3; }
+          echo "image=$ref" >> "$GITHUB_OUTPUT"
 
   collect:
     needs: resolve-image

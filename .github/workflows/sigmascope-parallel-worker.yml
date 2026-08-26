@@ -37,7 +37,11 @@ jobs:
         with: {ref: security-worker-images, path: image-state, persist-credentials: false}
       - id: image
         shell: bash
-        run: echo "image=$(jq -r '.images[\"sigmascope-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          ref="$(jq -er --arg image "sigmascope-worker" '.images[$image] // empty' image-state/index.json)"
+          [[ "$ref" =~ ^ghcr\.io/[^@[:space:]]+@sha256:[0-9a-f]{64}$ ]] || { echo "::error::Invalid or missing digest-pinned worker image reference: $ref"; exit 3; }
+          echo "image=$ref" >> "$GITHUB_OUTPUT"
 
   scan:
     name: Build immutable result bundle for ${{ inputs.queue_key }}
