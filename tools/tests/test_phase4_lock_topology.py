@@ -18,10 +18,22 @@ class Phase4AuthorityLockTopologyTests(unittest.TestCase):
         self.assertIn("name: Run locked Phase-4 freeze, proof and one-writer cutover", migration)
         self.assertIn("needs: wait-for-operational-state", migration)
         self.assertIn("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml", migration)
+        cutover = migration[migration.index("\n  cutover:\n") :]
+        self.assertIn("concurrency:", cutover)
+        self.assertIn("group: omega-catalog-sigmascope-exclusive", cutover)
+        self.assertIn("cancel-in-progress: false", cutover)
+        self.assertIn("queue: max", cutover)
+        self.assertLess(
+            cutover.index("concurrency:"),
+            cutover.index("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml"),
+        )
 
     def test_cutover_holds_global_authority_lock_across_freeze_and_evidence_transaction(self) -> None:
+        migration = self.read("sigmascope-phase4-migration.yml")
+        cutover = migration[migration.index("\n  cutover:\n") :]
         core = self.read("sigmascope-phase4-cutover-core.yml")
-        self.assertIn("group: omega-catalog-sigmascope-exclusive", core)
+        self.assertIn("group: omega-catalog-sigmascope-exclusive", cutover)
+        self.assertNotIn("\nconcurrency:\n", core)
         self.assertIn("freeze-current-definitions:", core)
         self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", core)
         self.assertIn("authority_lock_held: true", core)

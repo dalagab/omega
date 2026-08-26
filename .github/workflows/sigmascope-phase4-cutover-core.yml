@@ -12,15 +12,10 @@ on:
         required: false
         type: number
         default: 4
-# This one run owns the same mutex as every existing Evidence-v2 publisher. Once it starts,
-# the catalog/Definitions freeze, proof, authorization, publication and verification are one
-# uninterrupted authority transaction. The serialized fallback, Rift ingestion and standalone
-# Phase-4C writer cannot advance security-evidence-v2 until the cutover is verified or fails closed.
-concurrency:
-  # Authority work must queue rather than evict an already-pending writer.
-  group: omega-catalog-sigmascope-exclusive
-  cancel-in-progress: false
-  queue: max
+# The caller's cutover job owns the global Evidence writer mutex before this reusable workflow
+# starts and keeps that reservation for the complete freeze -> shadow -> authorize -> publish
+# -> verify invocation. Nested freeze/publication workflows use their run-local groups while the
+# caller-owned authority reservation is active.
 
 permissions:
   contents: write

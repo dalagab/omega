@@ -15,9 +15,9 @@ on:
         default: 4
 
 # Singular operator entry point. Worker-image preparation and collector settlement stay outside
-# the Evidence writer mutex. The called cutover core then acquires
-# omega-catalog-sigmascope-exclusive before the catalog/Definitions freeze and keeps it for the
-# entire freeze -> shadow -> authorize -> publish -> verify transaction.
+# the Evidence writer mutex. The reusable cutover call itself acquires
+# omega-catalog-sigmascope-exclusive before GitHub expands/starts the called workflow and holds
+# that job-level reservation through freeze -> shadow -> authorize -> publish -> verify.
 concurrency:
   group: omega-sigmascope-phase4-migration
   cancel-in-progress: false
@@ -133,6 +133,12 @@ jobs:
   cutover:
     name: Run locked Phase-4 freeze, proof and one-writer cutover
     needs: wait-for-operational-state
+    # Reserve authority on the reusable-call job itself. GitHub supports concurrency on
+    # reusable-workflow call jobs, so this reservation is made before the called workflow runs.
+    concurrency:
+      group: omega-catalog-sigmascope-exclusive
+      cancel-in-progress: false
+      queue: max
     uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml
     permissions:
       contents: write

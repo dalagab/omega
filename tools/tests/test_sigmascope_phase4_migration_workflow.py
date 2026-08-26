@@ -27,9 +27,14 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertIn("group: omega-sigmascope-phase4-migration", text)
         self.assertIn("gh workflow run security-orchestration-dispatch.yml", text)
         self.assertNotIn("gh workflow run security-reconcile.yml", text)
+        cutover = text[text.index("\n  cutover:\n") :]
+        self.assertIn("concurrency:", cutover)
+        self.assertIn("group: omega-catalog-sigmascope-exclusive", cutover)
+        self.assertIn("cancel-in-progress: false", cutover)
+        self.assertIn("queue: max", cutover)
 
         core = self.read("sigmascope-phase4-cutover-core.yml")
-        self.assertIn("group: omega-catalog-sigmascope-exclusive", core)
+        self.assertNotIn("\nconcurrency:\n", core)
         self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", core)
         self.assertIn("authority_lock_held: true", core)
         self.assertLess(
@@ -38,10 +43,13 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
             "the coherent catalog/Definitions freeze must happen before the Phase-4 proof under the same writer lock",
         )
 
-    def test_locked_core_owns_shadow_to_verify_under_global_writer_mutex(self) -> None:
+    def test_locked_cutover_call_owns_shadow_to_verify_under_global_writer_mutex(self) -> None:
+        migration = self.read("sigmascope-phase4-migration.yml")
+        cutover = migration[migration.index("\n  cutover:\n") :]
+        self.assertIn("group: omega-catalog-sigmascope-exclusive", cutover)
         text = self.read("sigmascope-phase4-cutover-core.yml")
         self.assertIn("workflow_call:", text)
-        self.assertIn("group: omega-catalog-sigmascope-exclusive", text)
+        self.assertNotIn("\nconcurrency:\n", text)
         self.assertIn("uses: ./.github/workflows/sigmascope-parallel-shadow.yml", text)
         self.assertIn("uses: ./.github/workflows/sigmascope-parallel-publish.yml", text)
         self.assertIn("use_current_run_artifacts: true", text)
