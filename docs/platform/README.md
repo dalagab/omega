@@ -57,3 +57,5 @@ DeltaScope is primarily read-only. Local rule authoring is intentionally separat
 - Adding or changing tags/classification: **Tagging and classification**
 - Adding Stigma-1 logic: **Rule authoring** and **Definition Packs**
 - Understanding retained evidence: **Evidence lifecycle and authority**
+
+- [Git-backed authoritative history](GIT-HISTORY.md) — accepted catalog/Evidence snapshot history, concurrency and provenance boundary.

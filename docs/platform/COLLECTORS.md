@@ -80,11 +80,11 @@ DeltaScope derives ratios only where the runner exposes both numerator and denom
 
 **Inputs:** canonical source identities, curated/community registries, Puni.sh, GitHub code search, retained project/README links, source issues, bounded repository trees and an optional configured public web-search API.
 
-**Output:** replaceable `catalog-discovery` snapshot containing typed collector observations plus reusable normalized shards for novel feeds.
+**Output:** lease-bound durable result on `catalog-discovery-work-state`, plus a backward-compatible replaceable `catalog-discovery` snapshot containing typed collector observations and reusable normalized shards for Analysis Broker/consumer reuse.
 
 **Implementation:** `tools/catalog/catalog_discovery.py`, `tools/catalog/discovery_collectors.py` and `tools/security/collector_contracts.py`.
 
-**Review signals:** recent `catalog-discovery.yml` / `Discover new PluginMaster and plugin facts` job and `Run typed discovery collectors and validate only novel source facts` step. DeltaScope preserves legacy source-discovery history across the workflow cutover so the Operations trend does not reset merely because the producer moved.
+**Review signals:** recent `catalog-discovery-worker.yml` lease/result runs for scheduled collection, or `catalog-discovery.yml` for an explicit Analysis Broker full refresh. DeltaScope preserves legacy source-discovery history across the workflow cutover so the Operations trend does not reset merely because the producer moved.
 
 **Authority:** observation-only. Discovery cannot assign catalog identity, freeze Definitions, queue scans, execute rules or publish client/security state.
 

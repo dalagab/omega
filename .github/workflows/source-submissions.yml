@@ -129,13 +129,13 @@ jobs:
           branch="sigmascope"
           git pull --rebase origin "$branch"
           git push origin "HEAD:$branch"
-      - name: Record daily processing boundary
+      - name: Record catalog-freeze processing boundary
         shell: bash
         run: |
           set -euo pipefail
           status="$(jq -r .status source-submission-result.json)"
           if [ "$status" = "accepted" ] || [ "$status" = "accepted-override" ]; then
-            echo "Accepted source metadata is durable immediately and will enter the next daily catalog/Definitions snapshot."
+            echo "Accepted source metadata is durable immediately and will enter the next explicit catalog freeze."
             echo "Use the manual catalog workflow only when an operator deliberately wants an out-of-cycle publication."
           fi
       - name: Confirm accepted source change
@@ -148,7 +148,7 @@ jobs:
           set -euo pipefail
           status="$(jq -r .status source-submission-result.json)"
           if [ "$status" = "accepted" ]; then
-            printf 'Omega validated and scraped this PluginMaster source and persisted it disabled-by-default. It will enter the next daily catalog/Definitions snapshot; an operator may run that workflow manually when an out-of-cycle publication is deliberately required.\n' > comment.md
+            printf 'Omega validated and scraped this PluginMaster source and persisted it disabled-by-default. It will enter the next explicit catalog freeze; an operator may run that workflow manually when an out-of-cycle publication is deliberately required.\n' > comment.md
             gh issue close "$ISSUE_NUMBER" --comment "$(cat comment.md)"
           elif [ "$status" = "accepted-override" ]; then
             printf 'Omega validated this public source repository against the plugin identity and persisted the source-repository override. It will enter the next daily Definitions/catalog snapshot and then become eligible for continuous Sigmascope review.\n' > comment.md

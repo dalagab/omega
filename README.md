@@ -49,6 +49,19 @@ The supported cross-tree boundary is data, not Python imports. Frozen Definition
 
 New components, providers, observation types, capabilities or execution nodes should extend those contracts. They should not require a DeltaScope code change merely to become discoverable.
 
+## Data-collection orchestration and catalog freeze
+
+The orchestration architecture is documented in `docs/SIGMASCOPE-DATA-COLLECTION-ORCHESTRATION.adoc`. Discovery, manifest enrichment, website scraping, source-HEAD observation, Threat Intelligence, OSV and secondary-security definition refresh now have independent durable queues, exact leases and content-addressed working-state results. Workers wake only the reconciler when they finish; the reconciler is the sole queue mutator and explicitly cannot request a client database build.
+
+A client database build is an explicit catalog-freeze action. The freeze consumes only settled lane outputs plus current Evidence-v2, validates their queue/result lineage, and becomes a no-op when the semantic freeze identity has not changed. Purpose-built GHCR toolchain images are resolved through a persistent digest manifest; each Linux work result records the exact `@sha256:` image reference while mutable frozen Definitions and security data remain runtime inputs rather than image contents. Production rollout still requires switching the default-branch launcher from the legacy daily builder to the reconciliation/freeze launchers supplied under `docs/examples/`.
+
+## Parallel SigmaScope result bundles and Phase 4 cutover
+
+Phase 4A/4B provide immutable exact-queue result bundles, a serialized central merger, and a real-corpus equivalence/preflight gate. `sigmascope-parallel-shadow.yml` remains independently runnable and read-only; it can fan out up to eight disjoint queue keys but cannot publish Evidence-v2.
+
+Phase 4C adds the one-writer publisher and the singular `Omega SigmaScope · Phase 4 automatic migration` workflow. The operator workflow first rebuilds/publishes the four digest-pinned worker images and runs the explicit catalog/Definitions freeze, then enters a reusable locked cutover core that holds the global Evidence writer mutex across the fresh Phase-4B proof, same-run authorization/publication, and final Evidence/Deep-Scan verification. A successful run emits `omega.sigmascope-phase4-migration.v1`. The older shadow and one-writer workflows remain available as diagnostic/manual building blocks; operators no longer need to prepare Phase-4 worker images/Definitions separately or copy a shadow run ID through the normal cutover path.
+
+
 ## Development
 
 Security-service dependencies remain pinned in:

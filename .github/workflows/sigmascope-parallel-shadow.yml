@@ -1,0 +1,323 @@
+name: Omega SigmaScope · parallel result-bundle shadow
+
+on:
+  workflow_call:
+    inputs:
+      max_workers:
+        description: Maximum parallel exact queue items for the shadow run
+        required: false
+        type: number
+        default: 4
+  workflow_dispatch:
+    inputs:
+      max_workers:
+        description: Maximum parallel exact queue items for the shadow run
+        required: false
+        type: number
+        default: 4
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+  OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
+  OMEGA_SECONDARY_SECURITY_ROOT: catalog/active-state/definitions/secondary-security
+  OMEGA_SECONDARY_SECURITY_CACHE: catalog/secondary-security-runtime
+
+concurrency:
+  group: omega-sigmascope-parallel-shadow
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan disjoint read-only SigmaScope assignments
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      count: ${{ steps.matrix.outputs.count }}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: catalog-data, path: catalog/active-state, fetch-depth: 1, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 1, persist-credentials: false}
+      - uses: actions/setup-python@v7
+        with: {python-version: "3.13"}
+      - name: Build non-authoritative exact queue-key plan
+        run: >-
+          python tools/security/sigmascope_parallel_plan.py
+          --queue-seed catalog/active-state/scan-queue.json
+          --evidence-root catalog/security-v2-current
+          --max-assignments "${{ inputs.max_workers || 4 }}"
+          --output catalog/sigmascope-parallel-plan.json
+      - id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "matrix=$(jq -c '{include:.assignments}' catalog/sigmascope-parallel-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "count=$(jq -r '.assignmentCount' catalog/sigmascope-parallel-plan.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-parallel-plan
+          path: catalog/sigmascope-parallel-plan.json
+          retention-days: 30
+
+  resolve-merge-image:
+    name: Resolve immutable serialized-merger toolchain
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: security-worker-images, path: image-state, persist-credentials: false}
+      - id: image
+        shell: bash
+        run: echo "image=$(jq -r '.images["sigmascope-worker"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+
+  workers:
+    name: Shadow result ${{ matrix.queueKey }}
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    uses: ./.github/workflows/sigmascope-parallel-worker.yml
+    with:
+      queue_key: ${{ matrix.queueKey }}
+    secrets: inherit
+
+  merge-plan:
+    name: Validate disjoint bundles against one Evidence head
+    needs: [plan, workers]
+    if: always() && needs.plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 1, persist-credentials: false}
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: omega-sigmascope-result-*
+          path: catalog/result-bundles
+      - uses: actions/setup-python@v7
+        with: {python-version: "3.13"}
+      - name: Build conflict-checked merge plan only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t bundles < <(find catalog/result-bundles -mindepth 1 -maxdepth 2 -name bundle.json -printf '%h\n' | sort)
+          test "${#bundles[@]}" -gt 0
+          python tools/security/sigmascope_result_bundle.py plan \
+            --current-evidence catalog/security-v2-current \
+            --output catalog/sigmascope-merge-plan.json \
+            "${bundles[@]}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-merge-plan
+          path: catalog/sigmascope-merge-plan.json
+          retention-days: 30
+
+  merge-candidate:
+    name: Build validated serialized Evidence-v2 candidate (no publication)
+    needs: [plan, workers, resolve-merge-image]
+    if: needs.plan.outputs.count != '0' && needs.workers.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    container:
+      image: ${{ needs.resolve-merge-image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: catalog-data, path: catalog/active-state, fetch-depth: 1, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout previous Deep Scan state when available
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/deep-scan-current
+          if git ls-remote --exit-code --heads origin deep-scan-state >/dev/null 2>&1; then
+            git fetch --depth=1 origin deep-scan-state
+            git archive FETCH_HEAD | tar -x -C catalog/deep-scan-current
+          fi
+      - uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-parallel-plan
+          path: catalog/parallel-plan-artifact
+      - name: Stage exact parallel assignment plan
+        run: cp catalog/parallel-plan-artifact/sigmascope-parallel-plan.json catalog/sigmascope-parallel-plan.json
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: omega-sigmascope-result-*
+          path: catalog/result-bundles
+      - name: Materialize frozen canonical catalog for serialized merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/security-input
+          defs_revision=$(jq -r '.definitionsRevision' catalog/active-state/definitions/index.json)
+          python tools/catalog/catalog_json_store.py materialize \
+            --root catalog/active-state/catalog \
+            --database catalog/security-input/omega-catalog.sqlite \
+            --definitions-revision "$defs_revision"
+      - name: Materialize exact frozen ClamAV definitions for serialized reference
+        continue-on-error: true
+        run: >-
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/secondary_security_assets.py" materialize-clamav
+          --definitions-root catalog/active-state/definitions
+          --output "$OMEGA_SECONDARY_SECURITY_CACHE"
+      - name: Build and intrinsically validate merged Evidence-v2 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t bundles < <(find catalog/result-bundles -mindepth 1 -maxdepth 2 -name bundle.json -printf '%h\n' | sort)
+          test "${#bundles[@]}" -gt 0
+          python tools/security/sigmascope_result_merger.py \
+            --current-evidence catalog/security-v2-current \
+            --base-database catalog/security-input/omega-catalog.sqlite \
+            --definitions-root catalog/active-state/definitions \
+            --candidate-evidence catalog/security-v2-merged-candidate \
+            --work-dir catalog/security-v2-merge-work \
+            --report catalog/sigmascope-merge-report.json \
+            --previous-deep-scan-state catalog/deep-scan-current/index.json \
+            --deep-scan-output catalog/security-v2-merge-work/deep-scan-state \
+            --source-followup-output catalog/security-v2-merge-work/sigmascope-source-followups.json \
+            "${bundles[@]}"
+      - name: Build sequential reference from the same exact queue assignments
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pipeline="$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/definitions_snapshot.py" verify-worker --definitions-root catalog/active-state/definitions
+          python "$pipeline" --help 2>&1 | grep -q -- '--queue-key'
+          rm -rf catalog/security-v2-serial-current catalog/security-v2-serial-next catalog/security-v2-serial-work-* catalog/security-v2-serial-deep
+          cp -a catalog/security-v2-current catalog/security-v2-serial-current
+          defs=catalog/active-state/definitions/index.json
+          ordinal=0
+          last_work=""
+          while IFS= read -r queue_key; do
+            test -n "$queue_key"
+            ordinal=$((ordinal + 1))
+            work="catalog/security-v2-serial-work-${ordinal}"
+            rm -rf catalog/security-v2-serial-next "$work"
+            python "$pipeline" \
+              --base-database catalog/security-input/omega-catalog.sqlite \
+              --current-evidence catalog/security-v2-serial-current \
+              --candidate-evidence catalog/security-v2-serial-next \
+              --work-dir "$work" \
+              --skip-marketplace \
+              --frozen-advisories catalog/active-state/definitions/osv-advisories.json \
+              --frozen-definitions catalog/active-state/definitions \
+              --catalog-revision "$(jq -r '.catalogRevision' "$defs")" \
+              --definitions-revision "$(jq -r '.definitionsRevision' "$defs")" \
+              --scanner-revision "$(jq -r '.scannerRevision' "$defs")" \
+              --artifact-analysis-revision "$(jq -r '.artifactAnalysisRevision' "$defs")" \
+              --source-analysis-revision "$(jq -r '.sourceAnalysisRevision' "$defs")" \
+              --scanner-bundle-sha256 "$(jq -r '.scannerBundle.sha256' "$defs")" \
+              --rule-set-revision "$(jq -r '.ruleSetRevision' "$defs")" \
+              --advisory-revision "$(jq -r '.advisoryRevision' "$defs")" \
+              --queue-seed catalog/active-state/scan-queue.json \
+              --queue-key "$queue_key" \
+              --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json" \
+              --max-scans 1 \
+              --max-batch-seconds 3000 \
+              --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json" \
+              --deep-scan-state catalog/deep-scan-current/index.json \
+              --deep-scan-output catalog/security-v2-serial-deep
+            rm -rf catalog/security-v2-serial-current
+            mv catalog/security-v2-serial-next catalog/security-v2-serial-current
+            last_work="$work"
+          done < <(jq -r '.assignments[].queueKey' catalog/sigmascope-parallel-plan.json)
+          test -n "$last_work"
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/sigmascope_source_followups.py" \
+            --database "$last_work/omega-security-v2-working.sqlite" \
+            --output catalog/security-v2-serial-source-followups.json
+          PYTHONPATH=tools/security python - <<'PYVALIDATE'
+          from pathlib import Path
+          from security_evidence_v2 import validate_snapshot
+          report = validate_snapshot(Path("catalog/security-v2-serial-current"), require_no_orphans=True)
+          if not report.get("ok"):
+              raise SystemExit("serialized shadow reference failed intrinsic Evidence-v2 validation: " + "; ".join(report.get("errors") or []))
+          PYVALIDATE
+      - name: Prove parallel merged semantics equal the serialized reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          variant_ids="$(jq -r '[.assignments[].variantId] | join(",")' catalog/sigmascope-parallel-plan.json)"
+          python tools/security/sigmascope_merge_equivalence.py \
+            --parallel-evidence catalog/security-v2-merged-candidate \
+            --serial-evidence catalog/security-v2-serial-current \
+            --variant-ids "$variant_ids" \
+            --parallel-deep-scan catalog/security-v2-merge-work/deep-scan-state/index.json \
+            --serial-deep-scan catalog/security-v2-serial-deep/index.json \
+            --parallel-source-followups catalog/security-v2-merge-work/sigmascope-source-followups.json \
+            --serial-source-followups catalog/security-v2-serial-source-followups.json \
+            --output catalog/sigmascope-parallel-equivalence.json
+      - name: Run independent developer audit against the merged working database
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/security_developer_audit.py \
+            --database catalog/security-v2-merge-work/omega-security-parallel-merge.sqlite \
+            --advisories catalog/active-state/definitions/osv-advisories.json \
+            --json > catalog/sigmascope-parallel-developer-audit.json
+      - name: Audit merged Evidence-v2 storage ownership and duplication
+        run: >-
+          python tools/security/evidence_storage_audit.py
+          --root catalog/security-v2-merged-candidate
+          --report catalog/sigmascope-parallel-storage-audit.json
+      - name: Assemble publication-readiness preflight without publication authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_head="$(git -C catalog/security-v2-current rev-parse HEAD)"
+          python tools/security/sigmascope_parallel_preflight.py \
+            --merge-report catalog/sigmascope-merge-report.json \
+            --equivalence-report catalog/sigmascope-parallel-equivalence.json \
+            --candidate-validation catalog/security-v2-merged-candidate/validation-report.json \
+            --developer-audit catalog/sigmascope-parallel-developer-audit.json \
+            --storage-audit catalog/sigmascope-parallel-storage-audit.json \
+            --base-evidence-git-head "$base_head" \
+            --source-run-id "${{ github.run_id }}" \
+            --source-run-attempt "${{ github.run_attempt }}" \
+            --output catalog/sigmascope-parallel-preflight.json
+      - name: Assert shadow merger retains zero publication authority and passed all preflight gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(jq -r '.authority' catalog/sigmascope-merge-report.json)" = "candidate-only-no-evidence-publication"
+          test "$(jq -r '.validation.ok' catalog/sigmascope-merge-report.json)" = "true"
+          test "$(jq -r '.equivalent' catalog/sigmascope-parallel-equivalence.json)" = "true"
+          test "$(jq -r '.authority' catalog/sigmascope-parallel-preflight.json)" = "preflight-only-no-evidence-publication"
+          test "$(jq -r '.publishable' catalog/sigmascope-parallel-preflight.json)" = "true"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-merged-candidate-validation
+          path: |
+            catalog/sigmascope-merge-report.json
+            catalog/security-v2-merge-work/merge-plan.json
+            catalog/security-v2-merged-candidate/index.json
+            catalog/security-v2-merged-candidate/validation-report.json
+            catalog/sigmascope-parallel-equivalence.json
+            catalog/sigmascope-parallel-developer-audit.json
+            catalog/sigmascope-parallel-storage-audit.json
+            catalog/sigmascope-parallel-preflight.json
+            catalog/security-v2-merge-work/sigmascope-source-followups.json
+            catalog/security-v2-merge-work/deep-scan-state/index.json
+            catalog/security-v2-serial-source-followups.json
+            catalog/security-v2-serial-deep/index.json
+          if-no-files-found: error
+          retention-days: 30

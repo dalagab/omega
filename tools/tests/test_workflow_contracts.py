@@ -14,99 +14,105 @@ class WorkflowContractTests(unittest.TestCase):
         for snippet in snippets:
             self.assertIn(snippet, text, f"workflow contract missing: {snippet}")
 
-    def test_catalog_builder_is_daily_or_manual_json_authority_and_client_compiler(self) -> None:
+    def test_catalog_builder_is_explicit_freeze_authority_and_client_compiler(self) -> None:
         text = self.read("catalog-builder.yml")
         self.assert_has(
             text,
-            "name: Omega catalog snapshot and client database",
+            "name: Omega catalog freeze worker",
             "workflow_call:",
             "workflow_dispatch:",
-            "name: Freeze JSON state and compile the Omega client DB",
-            "needs: [collect, enrich, scrape]",
-            "ref: security-evidence-v2",
-            "ref: catalog-data",
-            "catalog_json_store.py",
+            "Resolve immutable publisher toolchain",
+            'ref: security-worker-images',
+            'image: ${{ needs.resolve-publisher-image.outputs.image }}',
+            "Validate all lane results against settled durable queues",
+            "freeze_inputs.py",
+            "ref: catalog-discovery-work-state",
+            "ref: catalog-enrichment-state",
+            "ref: catalog-scrape-state",
+            "ref: source-head-state",
+            "ref: threat-intelligence-state",
+            "ref: osv-advisory-state",
+            "ref: secondary-security-state",
+            "catalog_json_store.py materialize",
             "catalog_json_store.py export",
             "identity-compatible",
-            "legacy/incompatible identity epoch",
+            "legacy/incompatible",
             "source_inventory_guard.py",
             "--aliases sources/source-url-aliases.json",
             "--report catalog/source-inventory.json",
-            "Observe public source HEAD revisions without fetching source bodies",
-            "source_revision_observer.py",
-            "--source-observations catalog/source-revision-observations.json",
-            "Freeze optional ClamAV feed into a content-addressed release asset",
-            "secondary_security_assets.py build-clamav",
-            "releases/download/sigmascope-definitions",
+            "--source-observations catalog/lane-results/source-head-observation/source-revision-observations.json",
+            "--reputation-input catalog/lane-results/threat-intelligence/reputation-intelligence.json",
+            "--advisories-input catalog/lane-results/osv-advisories/osv-advisories.json",
             "--secondary-security-asset-manifest",
             "definitions_snapshot.py build",
             "scan_queue.py build-seed",
-            "--output catalog/state-scan-queue.json",
             "catalog_state.py assemble",
-            "--queue-seed catalog/state-scan-queue.json",
-            "--source-inventory catalog/source-inventory.json",
             "catalog_state.py validate",
-            "publish_catalog_state.py",
-            "--branch catalog-data",
+            "catalog_freeze_identity.py",
+            "Compile Omega marketplace database exactly once for a changed freeze",
+            "if: steps.freeze_identity.outputs.changed == 'true'",
             "compile_marketplace_snapshot.py",
             "validate_marketplace_catalog.py --root catalog/client-dist",
-            "Publish the once-daily client database",
+            "Publish changed frozen JSON state atomically",
+            "publish_catalog_state.py",
+            "--branch catalog-data",
+            "Publish client database for changed freeze",
             "gh release upload catalog-latest",
             "omega-marketplace.sqlite.zip",
             "database-build.json",
         )
         self.assertLess(
             text.index("Validate exact client publication"),
-            text.index("Publish canonical JSON state atomically"),
-            "catalog-data must not advance until the exact daily client DB has compiled and validated locally",
+            text.index("Publish changed frozen JSON state atomically"),
+            "catalog-data must not advance until the exact frozen client DB has compiled and validated locally",
         )
         self.assertLess(
-            text.index("Publish canonical JSON state atomically"),
-            text.index("Publish the once-daily client database"),
+            text.index("Publish changed frozen JSON state atomically"),
+            text.index("Publish client database for changed freeze"),
             "publish frozen online inputs immediately before the matching client DB",
         )
-        self.assertNotIn("  schedule:", text, "schedule is owned by the thin default-branch launcher")
-        self.assertNotIn("--allow-legacy-identity", text, "legacy catalog snapshots may be skipped as seeds but must never be materialized by weakening validation")
+        self.assertNotIn("  schedule:", text, "freeze is an explicit release boundary")
+        for forbidden in (
+            "collect_sources.py", "enrich_metadata.py", "scrape_websites_incremental.py",
+            "source_revision_observer.py", "collect_reputation_intelligence.py",
+            "collect_public_advisories.py", "freshclam", "apt-get install", "pip install",
+        ):
+            self.assertNotIn(forbidden, text, f"freeze must consume settled state, not run collector {forbidden}")
+        self.assertNotIn("--allow-legacy-identity", text)
         self.assertNotIn("security-evidence-latest", text)
         self.assertNotIn("omega-security-evidence.sqlite.zip", text)
 
     def test_catalog_publish_installs_security_dependencies_before_definitions_freeze(self) -> None:
         text = self.read("catalog-builder.yml")
-        publish_start = text.index("\n  publish:\n")
-        publish_block = text[publish_start:]
-        install = "Install pinned Python security dependencies"
-        verify = "Verify Definitions freezer Python dependencies"
-        freeze = "Freeze daily Definitions and OSV data"
-        self.assertIn(install, publish_block)
-        self.assertIn("-r tools/requirements-security.txt", publish_block)
-        self.assertIn(verify, publish_block)
-        self.assertIn("import yaml", publish_block)
-        self.assertLess(publish_block.index(install), publish_block.index(verify))
-        self.assertLess(publish_block.index(verify), publish_block.index(freeze))
-        yara_install = "Install YARA compile-check dependency for Definitions freezer"
-        self.assertIn(yara_install, publish_block)
-        self.assertIn("apt-get install -y --no-install-recommends yara", publish_block)
-        self.assertLess(publish_block.index(yara_install), publish_block.index(freeze))
-
+        self.assertIn("Resolve immutable publisher toolchain", text)
+        self.assertIn('ref: security-worker-images', text)
+        self.assertIn('publisher-worker', text)
+        self.assertIn('image: ${{ needs.resolve-publisher-image.outputs.image }}', text)
+        self.assertIn("Verify frozen publisher toolchain", text)
+        self.assertIn("import yaml", text)
+        self.assertIn("yara --version", text)
+        self.assertLess(text.index("Verify frozen publisher toolchain"), text.index("Freeze Definitions only from settled collector outputs"))
+        self.assertNotIn("actions/setup-python", text)
+        self.assertNotIn("python -m pip install", text)
+        self.assertNotIn("apt-get install", text)
 
     def test_optional_clamav_freeze_is_atomic_and_never_blocks_definitions(self) -> None:
-        text = self.read("catalog-builder.yml")
-        start = text.index("Freeze optional ClamAV feed into a content-addressed release asset")
-        end = text.index("Freeze daily Definitions and OSV data", start)
-        block = text[start:end]
-        self.assertIn('pending_manifest="catalog/secondary-security-asset-manifest.pending.json"', block)
-        self.assertIn('--manifest-output "$pending_manifest"', block)
-        self.assertIn('gh release upload sigmascope-definitions', block)
-        self.assertIn('mv "$pending_manifest" "$final_manifest"', block)
-        self.assertLess(block.index('gh release upload sigmascope-definitions'), block.index('mv "$pending_manifest" "$final_manifest"'))
-        self.assertIn("retain-previous-clamav", block)
-        self.assertIn("continuing this Definitions revision without ClamAV", block)
-        self.assertIn("if ! sudo apt-get install -y --no-install-recommends clamav clamav-freshclam", block)
-        self.assertIn("if gh release upload", block)
-        build_start = block.index('secondary_security_assets.py build-clamav')
-        build_end = block.index('release_ready=true', build_start)
-        self.assertNotIn('--manifest-output "$final_manifest"', block[build_start:build_end])
-        self.assertNotIn("python - <<", block)
+        worker = self.read("secondary-security-worker.yml")
+        freeze = self.read("catalog-builder.yml")
+        self.assertIn("freshclam --stdout", worker)
+        self.assertIn("secondary_security_assets.py build-clamav", worker)
+        self.assertIn("gh release upload sigmascope-definitions", worker)
+        self.assertIn("retain-previous-clamav", worker)
+        self.assertIn("release-create-failed", worker)
+        self.assertIn("release-upload-failed", worker)
+        self.assertIn("retained the previous frozen ClamAV asset", worker)
+        self.assertIn("assetAvailable", worker)
+        self.assertIn("work_result.py build", worker)
+        self.assertIn("--branch secondary-security-state", worker)
+        self.assertNotIn("freshclam", freeze)
+        self.assertNotIn("secondary_security_assets.py build-clamav", freeze)
+        self.assertIn("secondary-security-asset-manifest.json", freeze)
+        self.assertIn("--secondary-security-asset-manifest", freeze)
 
     def test_catalog_json_is_authoritative_public_state_not_a_main_branch_generated_commit(self) -> None:
         builder = self.read("catalog-builder.yml")
@@ -114,7 +120,9 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("catalog-data", builder)
         self.assertIn("omega.catalog-state.v1", (common.ROOT / "tools" / "catalog" / "catalog_state.py").read_text(encoding="utf-8"))
         self.assertIn("omega.catalog-json.v1", (common.ROOT / "tools" / "catalog" / "catalog_json_store.py").read_text(encoding="utf-8"))
-        self.assertIn("force-with-lease", publisher)
+        self.assertIn("HISTORY_FAST_FORWARD", publisher)
+        self.assertIn("publish_snapshot_tree", publisher)
+        self.assertNotIn("checkout", "--orphan", publisher)
         self.assertNotIn("git add catalog/catalog-endpoint.json", builder)
         self.assertNotIn("git push\n", builder, "daily generated catalog state belongs on catalog-data, not main")
 
@@ -313,18 +321,17 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("apt-get install -y --no-install-recommends yara", text)
         self.assertLess(text.index("Install YARA compile-check dependency"), text.index("Run security-services Python regression suite"))
 
-        # Every workflow that executes the full repository suite must provide the
-        # same real YARA compiler first, because enabled production rules are
-        # intentionally compile-checked while Definitions fixtures are built.
-        for workflow in ("catalog-builder.yml", "catalog-compaction.yml"):
-            workflow_text = self.read(workflow)
-            self.assertIn("Install YARA compile-check dependency", workflow_text, workflow)
-            self.assertIn("apt-get install -y --no-install-recommends yara", workflow_text, workflow)
-            self.assertLess(
-                workflow_text.index("Install YARA compile-check dependency"),
-                workflow_text.index("Run repository Python regression suite"),
-                workflow,
-            )
+        compaction = self.read("catalog-compaction.yml")
+        self.assertIn("Install YARA compile-check dependency", compaction)
+        self.assertIn("apt-get install -y --no-install-recommends yara", compaction)
+        self.assertLess(compaction.index("Install YARA compile-check dependency"), compaction.index("Run repository Python regression suite"))
+
+        # Catalog freeze no longer installs the compiler at runtime; it executes in
+        # the digest-pinned publisher image and verifies the baked toolchain.
+        freeze = self.read("catalog-builder.yml")
+        self.assertIn("Resolve immutable publisher toolchain", freeze)
+        self.assertIn("yara --version", freeze)
+        self.assertNotIn("apt-get install -y --no-install-recommends yara", freeze)
 
     def test_definitions_freeze_rules_and_exact_osv_query_universe(self) -> None:
         definitions = (common.ROOT / "tools" / "catalog" / "definitions_snapshot.py").read_text(encoding="utf-8")
@@ -375,8 +382,8 @@ class WorkflowContractTests(unittest.TestCase):
             "needs: validate",
             "needs.validate.outputs.status == 'accepted'",
             "contents: write",
-            "Record daily processing boundary",
-            "next daily catalog/Definitions snapshot",
+            "Record catalog-freeze processing boundary",
+            "next explicit catalog freeze",
             'gh issue close "$ISSUE_NUMBER"',
             "persisted it disabled-by-default",
         )
@@ -392,35 +399,43 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("Revalidate and materialize the accepted source change", persist_block)
 
     def test_catalog_discovery_is_independent_and_non_authoritative(self) -> None:
-        worker = self.read("catalog-discovery.yml")
-        launcher = self.read("catalog-discovery-launcher.yml")
+        periodic = self.read("catalog-discovery-worker.yml")
+        broker_provider = self.read("catalog-discovery.yml")
+        reconciler = self.read("security-reconcile.yml")
         builder = self.read("catalog-builder.yml")
-        self.assertIn("workflow_call:", worker)
-        self.assertIn("catalog_discovery.py", worker)
-        self.assertIn("publish_catalog_discovery.py", worker)
-        self.assertIn("--branch catalog-discovery", worker)
-        self.assertNotIn("publish_catalog_state.py", worker)
-        self.assertNotIn("definitions_snapshot.py", worker)
-        self.assertNotIn("production_sigmascope_v2_pipeline.py", worker)
-        self.assertIn('cron: "41 */6 * * *"', launcher)
-        self.assertIn("uses: dalagab/omega/.github/workflows/catalog-discovery.yml@sigmascope", launcher)
-        self.assertIn("ref: catalog-discovery", builder)
-        self.assertIn("--canonical-source-index catalog/current-catalog/catalog/sources/index.json", builder)
-        self.assertIn("--discovery-snapshot catalog/discovery-state/source-candidates.json", builder)
-        self.assertIn("BRAVE_SEARCH_API_KEY", worker)
-        self.assertIn("Run typed discovery collectors and validate only novel source facts", worker)
-        self.assertIn("observations.json", worker)
-        self.assertIn("collector-registry.json", worker)
+        self.assertIn("catalog_discovery.py", periodic)
+        self.assertIn("worker_claim.py", periodic)
+        self.assertIn("work_result.py build", periodic)
+        self.assertIn("--branch catalog-discovery-work-state", periodic)
+        self.assertIn("Publish backward-compatible typed Discovery snapshot", periodic)
+        self.assertIn("publish_catalog_discovery.py", periodic)
+        self.assertIn("--branch catalog-discovery", periodic)
+        self.assertIn("BRAVE_SEARCH_API_KEY", periodic)
+        self.assertNotIn("publish_catalog_state.py", periodic)
+        self.assertNotIn("definitions_snapshot.py", periodic)
+        self.assertNotIn("compile_marketplace_snapshot.py", periodic)
+        policy = (common.ROOT / "security-definitions" / "orchestration" / "work-policy.json").read_text(encoding="utf-8")
+        self.assertIn("catalog-discovery-worker.yml", policy)
+        self.assertIn("ref: catalog-discovery-work-state", reconciler)
+        self.assertIn("ref: catalog-discovery-work-state", builder)
+        self.assertIn("name: Omega Discovery · broker full refresh", broker_provider)
+        self.assertIn("workflow_call:", broker_provider)
+        self.assertNotIn("schedule:", broker_provider)
+        self.assertIn("--branch catalog-discovery", broker_provider)
+        self.assertFalse((common.ROOT / ".github" / "workflows" / "catalog-discovery-launcher.yml").exists(), "legacy scheduled discovery launcher must be retired")
 
     def test_client_cache_hints_come_from_canonical_catalog_not_previous_client_db(self) -> None:
-        text = self.read("catalog-builder.yml")
-        self.assertIn("Materialize canonical source cache hints", text)
-        self.assertIn("Materialize canonical website cache hints", text)
-        self.assertGreaterEqual(text.count("catalog_json_store.py materialize"), 3)
-        self.assertNotIn("Download previous published marketplace DB for conditional request hints", text)
-        self.assertNotIn("Download previous published marketplace DB for website cache hints", text)
-        self.assertIn("client_database_audit.py", text)
-        self.assertIn("storage-audit.json", text)
+        enrichment = self.read("catalog-enrichment-worker.yml")
+        scraper = self.read("catalog-scrape-worker.yml")
+        freeze = self.read("catalog-builder.yml")
+        self.assertIn("Materialize previous catalog cache", enrichment)
+        self.assertIn("catalog_json_store.py materialize --root catalog/current-state/catalog", enrichment)
+        self.assertIn("Materialize previous catalog website cache", scraper)
+        self.assertIn("catalog_json_store.py materialize --root catalog/current-state/catalog", scraper)
+        self.assertNotIn("Download previous published marketplace DB for conditional request hints", enrichment + scraper + freeze)
+        self.assertNotIn("Download previous published marketplace DB for website cache hints", enrichment + scraper + freeze)
+        self.assertIn("client_database_audit.py", freeze)
+        self.assertIn("storage-audit.json", freeze)
 
     def test_catalog_builder_ingests_community_source_metadata_explicitly(self) -> None:
         text = self.read("catalog-builder.yml")
@@ -450,6 +465,10 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("validate_marketplace_catalog.py", builder)
         self.assertIn("production_sigmascope_v2_pipeline.py", security)
         self.assertIn("publish_security_evidence_v2.py", security)
+        self.assertIn("--history-mode fast-forward", builder)
+        self.assertIn("--history-mode fast-forward", security)
+        self.assertNotIn("--history-mode legacy-orphan", builder)
+        self.assertNotIn("--history-mode legacy-orphan", security)
         self.assertNotIn("compile_marketplace_snapshot.py", security)
 
     def test_catalog_and_sigmascope_are_mutually_exclusive(self) -> None:

@@ -185,6 +185,9 @@ def collect_packages(packages: list[tuple[str, str]], output: Path, timeout: flo
         "ecosystem": "NuGet",
         "queriedPackages": len(packages),
         "matchedPackages": len(matches),
+        "queriedPackageVersionPairs": [
+            {"name": name, "version": version} for name, version in packages
+        ],
         "advisories": advisories,
     }
     output.parent.mkdir(parents=True, exist_ok=True)

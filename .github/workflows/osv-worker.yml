@@ -1,0 +1,91 @@
+name: Omega collector · OSV advisories
+
+on:
+  workflow_dispatch:
+    inputs:
+      work_id: {required: true, type: string}
+      claim_token: {required: true, type: string}
+
+permissions:
+  contents: write
+  actions: write
+  packages: read
+
+concurrency:
+  group: omega-worker-osv-advisories
+  cancel-in-progress: false
+
+jobs:
+  resolve-image:
+    runs-on: ubuntu-latest
+    outputs: {image: "${{ steps.image.outputs.image }}"}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: security-worker-images, path: image-state, persist-credentials: false}
+      - id: image
+        shell: bash
+        run: echo "image=$(jq -r '.images[\"intelligence-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+
+  collect:
+    needs: resolve-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: ${{ needs.resolve-image.outputs.image }}
+      credentials: {username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: sigmascope, persist-credentials: true}
+      - uses: actions/checkout@v6
+        with: {ref: security-work-state, path: catalog/work-state, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 1, persist-credentials: false}
+      - name: Validate exact durable lease
+        run: >-
+          python tools/orchestration/worker_claim.py --work-state catalog/work-state --queue-id osv-advisories --work-id "${{ inputs.work_id }}" --owner omega.worker.osv --claim-token "${{ inputs.claim_token }}" --output catalog/work-item.json
+      - name: Collect OSV for the exact retained NuGet index
+        shell: bash
+        run: |
+          set -euo pipefail
+          nuget_path="$(python - <<'PY'
+          import json
+          d=json.load(open('catalog/security-v2-current/index.json'))
+          print(((d.get('indexes') or {}).get('nuget') or {}).get('path','indexes/nuget.json'))
+          PY
+          )"
+          if [ -f "catalog/security-v2-current/$nuget_path" ]; then
+            python tools/catalog/collect_public_advisories.py --nuget-index "catalog/security-v2-current/$nuget_path" --output catalog/osv-advisories.json --timeout 20
+          else
+            PYTHONPATH=tools/catalog python - <<'PY'
+          from pathlib import Path
+          import collect_public_advisories
+          collect_public_advisories.collect_packages([], Path('catalog/osv-advisories.json'), timeout=20)
+          PY
+          fi
+      - name: Build and publish lease-bound OSV result
+        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/lane-result
+          cp catalog/osv-advisories.json catalog/lane-result/
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          idx=json.load(open('catalog/security-v2-current/index.json'))
+          Path('catalog/lane-result/provenance.json').write_text(json.dumps({
+            'schema':'omega.osv-provenance.v1',
+            'evidenceRevision':(idx.get('revisions') or {}).get('evidenceRevision','')
+          },indent=2,sort_keys=True)+'\n')
+          PY
+          python tools/orchestration/work_result.py build --queue-id osv-advisories --work-item catalog/work-item.json --root catalog/lane-result --worker-image "${{ needs.resolve-image.outputs.image }}" --file osv-advisories.json --file provenance.json
+          gh auth setup-git
+          python tools/orchestration/publish_lane_state.py --input catalog/lane-result --repo . --branch osv-advisory-state --push
+      - name: Wake the reconciler after result publication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: >-
+          gh workflow run security-reconcile.yml
+          --repo "${{ github.repository }}"
+          --ref sigmascope

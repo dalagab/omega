@@ -1,0 +1,147 @@
+name: Omega collector · catalog discovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      work_id:
+        description: "Durable work item id"
+        required: true
+        type: string
+      claim_token:
+        description: "Durable lease claim token"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+  packages: read
+  issues: read
+
+concurrency:
+  group: omega-worker-catalog-discovery
+  cancel-in-progress: false
+
+jobs:
+  resolve-image:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: security-worker-images
+          path: image-state
+          persist-credentials: false
+      - id: image
+        shell: bash
+        run: echo "image=$(jq -r '.images[\"catalog-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+
+  collect:
+    needs: resolve-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: ${{ needs.resolve-image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: true
+      - uses: actions/checkout@v6
+        with:
+          ref: security-work-state
+          path: catalog/work-state
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/current-state
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Validate exact durable lease
+        run: >-
+          python tools/orchestration/worker_claim.py
+          --work-state catalog/work-state
+          --queue-id catalog-discovery
+          --work-id "${{ inputs.work_id }}"
+          --owner omega.worker.catalog-discovery
+          --claim-token "${{ inputs.claim_token }}"
+          --output catalog/work-item.json
+      - name: Collect configured and public source candidates
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/catalog/collect_sources.py
+          --curated sources/curated-sources.json
+          --community sources/community-sources.json
+          --canonical-source-index catalog/current-state/catalog/sources/index.json
+          --output catalog/discovery-candidates.json
+      - name: Run typed discovery collectors
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}
+        run: >-
+          python tools/catalog/catalog_discovery.py
+          --candidates catalog/discovery-candidates.json
+          --catalog-root catalog/current-state/catalog
+          --repository "${{ github.repository }}"
+          --output catalog/discovery-snapshot
+      - name: Build lease-bound discovery result
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/lane-result/discovery
+          cp catalog/discovery-candidates.json catalog/lane-result/
+          cp -R catalog/discovery-snapshot/. catalog/lane-result/discovery/
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          idx=json.load(open('catalog/current-state/catalog/index.json'))
+          Path('catalog/lane-result/provenance.json').write_text(json.dumps({
+            'schema':'omega.catalog-discovery-provenance.v1',
+            'baseCatalogRevision':idx.get('catalogRevision','')
+          },indent=2,sort_keys=True)+'\n')
+          PY
+          args=(--queue-id catalog-discovery --work-item catalog/work-item.json --root catalog/lane-result --outcome complete --worker-image "${{ needs.resolve-image.outputs.image }}")
+          for f in discovery-candidates.json provenance.json discovery/index.json discovery/source-candidates.json discovery/plugin-facts.json discovery/issues.json discovery/observations.json discovery/collector-registry.json discovery/component-registry.json; do
+            test -f "catalog/lane-result/$f"
+            args+=(--file "$f")
+          done
+          python tools/orchestration/work_result.py build "${args[@]}"
+          python tools/orchestration/work_result.py validate --root catalog/lane-result --queue-id catalog-discovery --work-id "${{ inputs.work_id }}" --owner omega.worker.catalog-discovery --claim-token "${{ inputs.claim_token }}"
+      - name: Publish discovery lane state
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          python tools/orchestration/publish_lane_state.py --input catalog/lane-result --repo . --branch catalog-discovery-work-state --push
+      - name: Publish backward-compatible typed Discovery snapshot
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          python tools/catalog/publish_catalog_discovery.py \
+            --input catalog/discovery-snapshot \
+            --repo . \
+            --branch catalog-discovery \
+            --push
+      - name: Wake the reconciler after result publication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: >-
+          gh workflow run security-reconcile.yml
+          --repo "${{ github.repository }}"
+          --ref sigmascope

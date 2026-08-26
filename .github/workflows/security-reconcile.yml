@@ -1,0 +1,115 @@
+name: Omega security services reconciliation
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: omega-security-work-reconcile
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    name: Settle, reconcile, lease and dispatch collector work
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Checkout previous work state when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: security-work-state, path: catalog/previous-work-state, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout catalog discovery result when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: catalog-discovery-work-state, path: catalog/lane-results/catalog-discovery, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout catalog enrichment result when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: catalog-enrichment-state, path: catalog/lane-results/catalog-enrichment, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout website scraper result when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: catalog-scrape-state, path: catalog/lane-results/catalog-scrape, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout source HEAD result when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: source-head-state, path: catalog/lane-results/source-head-observation, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout Threat Intelligence result when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: threat-intelligence-state, path: catalog/lane-results/threat-intelligence, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout OSV result when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: osv-advisory-state, path: catalog/lane-results/osv-advisories, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout secondary-security result when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: secondary-security-state, path: catalog/lane-results/secondary-security-definitions, fetch-depth: 1, persist-credentials: false}
+      - uses: actions/setup-python@v7
+        with: {python-version: "3.13"}
+      - name: Reconcile completed results and create exact leases
+        run: >-
+          python tools/orchestration/reconcile_work.py
+          --policy security-definitions/orchestration/work-policy.json
+          --previous-root catalog/previous-work-state
+          --results-root catalog/lane-results
+          --output catalog/work-state-next
+      - name: Validate complete generated work state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/orchestration/reconcile_work.py validate --root catalog/work-state-next
+          for queue in catalog/work-state-next/queues/*.json; do python tools/orchestration/work_queue.py validate --input "$queue"; done
+          python - <<'PY'
+          import json
+          index=json.load(open('catalog/work-state-next/index.json'))
+          assert index['securityAuthority'] is False
+          assert index['clientDatabaseBuildRequested'] is False
+          PY
+      - name: Check whether semantic work state changed
+        id: change
+        shell: bash
+        run: |
+          set -euo pipefail
+          new_revision="$(python -c "import json; print(json.load(open('catalog/work-state-next/index.json'))['workStateRevision'])")"
+          old_revision=""
+          if [ -f catalog/previous-work-state/index.json ]; then old_revision="$(python -c "import json; print(json.load(open('catalog/previous-work-state/index.json')).get('workStateRevision',''))")"; fi
+          if [ -n "$old_revision" ] && [ "$new_revision" = "$old_revision" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No semantic orchestration-state change; skipping branch publication."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish queue state before dispatch
+        if: steps.change.outputs.changed == 'true'
+        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          python tools/orchestration/publish_work_state.py --input catalog/work-state-next --repo . --branch security-work-state --push
+      - name: Dispatch only newly leased exact work items
+        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' > catalog/dispatch.tsv
+          import json
+          for row in json.load(open('catalog/work-state-next/dispatch.json')).get('dispatches',[]):
+              print('\t'.join([row['workflow'],row['workId'],row['claimToken']]))
+          PY
+          while IFS=$'\t' read -r workflow work_id claim_token; do
+            [ -n "$workflow" ] || continue
+            echo "Dispatching $workflow for $work_id"
+            gh workflow run "$workflow" --repo "${{ github.repository }}" --ref sigmascope -f work_id="$work_id" -f claim_token="$claim_token"
+          done < catalog/dispatch.tsv

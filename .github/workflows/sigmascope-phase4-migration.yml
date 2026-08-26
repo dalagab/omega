@@ -1,0 +1,66 @@
+name: Omega SigmaScope · Phase 4 automatic migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_migration:
+        description: I understand this run prepares frozen inputs and may publish a new authoritative Security Evidence v2 child after every gate passes
+        required: true
+        type: boolean
+        default: false
+      max_workers:
+        description: Parallel exact queue items to prove and migrate in this cutover run (1-8)
+        required: false
+        type: number
+        default: 4
+
+# Singular operator entry point. Preparation is intentionally outside the Evidence writer mutex:
+# worker-image publication and the catalog/Definitions freeze each have their own serialization.
+# The called cutover core then acquires omega-catalog-sigmascope-exclusive for the entire
+# shadow -> authorize -> publish -> verify sequence.
+permissions:
+  contents: write
+  actions: write
+  issues: write
+  packages: write
+
+jobs:
+  validate-request:
+    name: Validate migration request
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Require explicit acknowledgement and bounded worker count
+        env:
+          CONFIRM_MIGRATION: ${{ inputs.confirm_migration }}
+          MAX_WORKERS: ${{ inputs.max_workers }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CONFIRM_MIGRATION" = "true" || { echo "::error::Set confirm_migration=true to run the authoritative Phase-4 migration."; exit 2; }
+          [[ "$MAX_WORKERS" =~ ^[0-9]+$ ]] || { echo "::error::max_workers must be an integer from 1 through 8."; exit 2; }
+          test "$MAX_WORKERS" -ge 1 -a "$MAX_WORKERS" -le 8 || { echo "::error::max_workers must be from 1 through 8."; exit 2; }
+
+  prepare-worker-images:
+    name: Build and publish current digest-pinned worker images
+    needs: validate-request
+    uses: ./.github/workflows/worker-images.yml
+    secrets: inherit
+
+  freeze-current-definitions:
+    name: Freeze current SigmaScope code into catalog/Definitions
+    needs: prepare-worker-images
+    uses: ./.github/workflows/catalog-freeze.yml
+    with:
+      allow_source_removal: false
+    secrets: inherit
+
+  cutover:
+    name: Run locked Phase-4 proof and one-writer cutover
+    needs: freeze-current-definitions
+    uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml
+    with:
+      confirm_migration: ${{ inputs.confirm_migration }}
+      max_workers: ${{ inputs.max_workers }}
+    secrets: inherit

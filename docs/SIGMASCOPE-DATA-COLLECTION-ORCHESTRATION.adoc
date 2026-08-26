@@ -1,0 +1,447 @@
+= SigmaScope Data Collection, Queues, Containers, and Catalog Freeze Architecture
+:toc: left
+:toclevels: 3
+:sectnums:
+
+== Status
+
+This document is the implementation roadmap for the SigmaScope-side data collection and orchestration refactor.
+DeltaScope is intentionally outside this architecture. It may consume published contracts and evidence, but it is not a worker, queue owner, publisher, or security authority.
+
+The implementation now has a durable component-oriented collection control plane. Discovery, manifest enrichment, website scraping, source revision observation, Threat Intelligence, OSV, and secondary-security refresh have independent durable queues and lease-bound result branches. Discovery deliberately uses `catalog-discovery-work-state` for its durable queue result while retaining `catalog-discovery` as the replaceable typed observation snapshot consumed by Analysis Broker/legacy readers; this prevents the two contracts from racing on one branch. Workers publish immutable results and immediately wake only the serialized reconciler, which settles the exact lease and can release dependent queues; the hourly reconciliation schedule remains the recovery/fallback clock. The catalog freeze consumes only settled lane outputs and current Evidence-v2; it no longer performs those network-heavy collectors itself.
+
+The remaining production cutover is primarily operational: publish the worker-image manifest, run reconciliation until all required lanes have settled, perform the first explicit freeze, replace the default-branch daily monolithic launcher with the lightweight hourly reconciliation launcher, and execute the singular Phase-4 automatic migration workflow. That workflow prepares the current worker images and frozen Definitions itself before entering the locked cutover core; the Phase-4 shadow -> authorization -> one-writer publication sequence no longer requires manual run-ID handoff.
+
+== Non-negotiable invariants
+
+* Collector activity MUST NOT directly rebuild or publish the Omega client database.
+* A client database build MUST be downstream of an explicit catalog freeze operation.
+* Discovery, enrichment, threat intelligence, artifact analysis, source analysis, and specialist collectors MUST be independently retryable.
+* Workers MUST settle durable work items; a failed collector MUST NOT require rerunning unrelated collectors.
+* Evidence collectors observe facts. SRL decides what combinations of facts mean.
+* Mutable intelligence such as ThreatFox, DNS, OSV, and platform trust MUST use freshness/TTL semantics rather than pretending to be immutable artifact facts.
+* Frozen Definitions and other content-addressed security inputs remain external to worker images.
+* Worker images contain tooling and runtime dependencies, not mutable YARA rules, ClamAV databases, SRL packs, or threat feeds.
+* Evidence-v2 remains security evidence authority. Working queues and collector state are orchestration state, not findings authority.
+* Production publication remains fail-closed.
+* Existing artifact/source evidence MUST remain reusable across additive observation-contract evolution when its retained contents still validate.
+
+== Target control plane
+
+[source,text]
+----
+                  Reconciler (hourly or on demand)
+                              |
+                  "what work is due now?"
+                              |
+        +---------------------+----------------------+
+        |                     |                      |
+        v                     v                      v
+ Discovery queue       Enrichment queue      Threat-intel queue
+        |                     |                      |
+        v                     v                      v
+ discovery worker       manifest worker      intelligence worker
+        |                     |
+        +--------------> Scraper queue
+                              |
+                              v
+                        website worker
+        |                     |                      |
+        +---------------------+----------------------+
+                              |
+                    working observations/state
+                              |
+             +----------------+----------------+
+             |                                 |
+             v                                 v
+       Source analysis                   Artifact analysis
+             |                                 |
+             +----------------+----------------+
+                              |
+                       Analysis Broker
+                              |
+          +-------------------+--------------------+
+          |              |              |          |
+          v              v              v          v
+   Authenticode    Native structure   Deep scan   future providers
+                              |
+                              v
+                         Evidence-v2
+                              |
+                              v
+                    explicit catalog freeze
+                              |
+                    coherent frozen snapshot
+                              |
+                              v
+                   client DB build + publish
+----
+
+== State layers
+
+The system must distinguish four frequently confused forms of state.
+
+[cols="1,2,1,1",options="header"]
+|===
+|State |Purpose |May change frequently |Rebuild client DB
+|Working catalog/orchestration state |Discovery, scraped/enriched source metadata, due work, leases, retries |Yes |No
+|Definitions/intelligence |SRL packs, OSV, Threat Intelligence, secondary-security descriptors, registries |Yes |No
+|Evidence-v2 |Immutable/retained security observations and projections |Yes |No
+|Frozen marketplace snapshot |Coherent catalog release selected for Omega clients |Only on freeze |Yes, once
+|===
+
+A new ThreatFox refresh, a source HEAD change, or completion of 100 SigmaScope scans must never by itself imply a new marketplace SQLite build.
+
+== Generic durable work queue
+
+=== Contract
+
+All new orchestration queues use `omega.work-queue.v1` and `omega.work-item.v1`.
+A work item contains:
+
+* stable work identity;
+* owning component;
+* logical work kind;
+* bounded subject;
+* one or more reasons;
+* priority;
+* required revision/cadence bucket;
+* attempt count;
+* `notBeforeUtc` retry gate;
+* lease owner/token/expiry;
+* bounded settlement metadata.
+
+=== Lifecycle
+
+[source,text]
+----
+pending
+   |
+   v
+ leased
+   |
+   +---- complete ----> completed
+   +---- retry -------> pending (future notBeforeUtc)
+   +---- blocked -----> blocked
+   +---- terminal ----> terminal
+----
+
+Expired leases are recoverable by the reconciler. Completed work is retained as orchestration history but is not security evidence.
+
+=== Initial queues
+
+[cols="1,2,1",options="header"]
+|===
+|Queue |Responsibility |Initial cadence/trigger
+|`catalog-discovery` |Discover configured and novel PluginMaster/repository sources |6 hours
+|`catalog-enrichment` |PluginMaster/manifest/repository metadata enrichment |12 hours
+|`catalog-scrape` |Public project-page scraping using settled enrichment state |12 hours; per-page cache remains bounded separately
+|`source-head-observation` |Observe public source revisions without source-body scans |24 hours
+|`threat-intelligence` |ThreatFox/Feodo and future URL/domain/IP feeds; endpoint/DNS reprojection |4 hours
+|`osv-advisories` |Dependency advisory refresh |24 hours
+|`secondary-security-definitions` |ClamAV and future large secondary-security assets |24 hours
+|Artifact/source scan queues |Existing SigmaScope coverage work |event/revision driven
+|Analysis Broker |Specialist observations such as Authenticode/native structure/deep scan |request driven
+|===
+
+No automatic `catalog-freeze` work item is included in the first queue policy. Freeze is a separate operator/scheduled release boundary.
+
+== Reconciler
+
+The reconciler is deliberately cheap. It does not scrape websites or scan plugins. It:
+
+. validates the orchestration policy;
+. loads previous durable work state;
+. recovers expired leases;
+. determines cadence buckets that are due;
+. creates missing idempotent work items;
+. publishes new orchestration state only when it changed;
+. eventually dispatches bounded workers according to per-component concurrency.
+
+The reconciler is now the only queue mutator. It settles exact lease-bound `omega.work-result.v1` results, recovers expired leases, creates cadence work, respects queue prerequisites, claims at most one item per lane, publishes the durable leases, and only then dispatches worker workflows. Workers never write queue state.
+
+== Worker containers
+
+=== Images
+
+[cols="1,2",options="header"]
+|===
+|Image |Purpose
+|`omega-catalog-worker` |Discovery, scraping, manifest normalization, repository/source metadata
+|`omega-sigmascope-worker` |Linux artifact/source scanning, YARA, ClamAV executable, native/static tooling
+|`omega-intelligence-worker` |ThreatFox, Feodo, URLhaus/future feeds, DNS, OSV and other TTL intelligence
+|`omega-publisher-worker` |Deterministic merge, audits, Definitions freezing, projections and publication tooling
+|===
+
+=== Image boundary
+
+Images MAY contain:
+
+* Python/runtime;
+* pinned Python package dependencies;
+* `git`, `curl`, CA roots and bounded utility tooling;
+* YARA and ClamAV executables in the SigmaScope image;
+* publisher command-line tools in the publisher image.
+
+Images MUST NOT contain current:
+
+* YARA rules;
+* ClamAV CVD/CLD content;
+* SRL packs;
+* threat-intelligence feeds;
+* catalog data;
+* Evidence-v2;
+* frozen Definitions.
+
+Those remain explicit verified inputs so an execution can be identified as:
+
+[source,text]
+----
+worker image digest
++ frozen worker/Definitions revision
++ exact work item
++ exact subject
+= reproducible collection context
+----
+
+=== Image identity
+
+Production Linux jobs resolve images from the `security-worker-images` branch and execute the exact GHCR digest reference, for example `ghcr.io/dalagab/omega-catalog-worker@sha256:<digest>`. Mutable tags are build aliases only and are not the execution identity.
+
+The persistent manifest uses `omega.worker-images.v1`; worker jobs read it before the container job starts, and every `omega.work-result.v1` records the exact immutable worker-image reference used for that collection. Recording the same execution identity inside future SigmaScope scan-result/Evidence-v2 provenance remains part of the parallel-scanner result-bundle pass. Base-image digest pinning and image signing/SBOM publication are additional hardening items.
+
+=== Windows exception
+
+Authenticode remains on a Windows runner because its value comes from native Windows trust APIs. It is not forced into the Linux container model.
+
+== Catalog freeze boundary
+
+=== Reconciliation is not publication
+
+The current scheduled launcher on `main` invokes the monolithic catalog builder. During migration it must be replaced by a lightweight reconciliation launcher.
+
+The new release operation is `Omega catalog - freeze and publish` and is manual by default.
+An optional once-daily freeze schedule may be added later, but frequent workers never invoke it.
+
+=== Freeze sequence
+
+[source,text]
+----
+operator/schedule requests freeze
+        |
+        v
+snapshot current working catalog + Definitions + Evidence reference
+        |
+        v
+validate mandatory inputs and audit state
+        |
+        v
+calculate immutable freeze revision
+        |
+        +---- same semantic freeze as published ---> no-op
+        |
+        v
+publish frozen catalog state
+        |
+        v
+build client database exactly once
+        |
+        v
+validate exact client projection
+        |
+        v
+publish catalog-latest
+----
+
+A freeze must record at least catalog revision, Definitions revision, Evidence-v2 reference/revision, freeze time, publisher revision, and eventually publisher image digest.
+
+== Threat Intelligence expansion
+
+Current reputation collection is intentionally narrow and must be promoted into a first-class TTL-backed Threat Intelligence subsystem.
+
+=== Current issue
+
+Feodo `recommended` can legitimately contain only a handful of active C2 addresses. ThreatFox requires `ABUSECH_AUTH_KEY`; once configured, it significantly expands recent IP/domain/URL coverage.
+A one-item Feodo list must not be presented as if it were a comprehensive reputation database.
+
+=== Planned feeds and observations
+
+* Feodo active/recommended C2;
+* Feodo recent C2 history where useful;
+* ThreatFox recent IOC feed;
+* URLhaus or other vetted malware URL intelligence;
+* DNS resolution observations for plugin endpoints;
+* future certificate/ASN/network context providers where evidence value justifies them.
+
+Retain source, first/last seen, active/recent/offline state, category, confidence, and source record identity. SRL, not the feed adapter, decides whether a match is meaningful.
+
+Threat Intelligence refresh must be independent of artifact scanning and independent of client DB publication.
+
+== Remaining collection/platform work
+
+=== P0 orchestration
+
+* Switch the default-branch launcher from the old daily catalog-builder invocation to hourly/on-demand reconciliation.
+* Complete first production rollout of the seven queue lanes; the legacy scheduled discovery launcher has been removed from the SigmaScope tree and default-branch callers must use reconciliation.
+* Add provider activation reconciliation: blocked work wakes when a required provider becomes available.
+* Add broker prerequisite chaining rather than only reporting unsatisfied prerequisites.
+* Standardize generic provider result/settlement envelopes across all collector families.
+* Complete Phase 4C production cutover by running the singular automatic migration workflow against production: it rebuilds/publishes the current digest-pinned worker images, performs the explicit catalog/Definitions freeze, keeps the Phase-4B shadow preflight mandatory, performs read-only authorization and the one-writer Evidence-v2 publication under one global writer mutex, verifies the published child/deferred state, and emits a durable migration receipt. Phase-3 collection lanes must already be in a freezeable settled state. Raise steady-state scanner concurrency only after subsequent real-corpus receipts remain clean.
+
+=== P1 data collection
+
+* Expand Threat Intelligence as above.
+* Improve endpoint intelligence beyond literal hosts: DNS history, certificate/ASN context where bounded and useful.
+* Continue source provenance coverage for unresolved repositories.
+* Improve dependency identity/advisory correlation without rescanning artifacts when OSV changes.
+* Complete Authenticode coverage rollout and monitor TTL refresh behavior.
+* Continue ELF/Mach-O structural parity and add platform trust collectors only where native trust APIs are required.
+
+=== P1 SRL
+
+* Add only bounded language features required by collected observations.
+* Strengthen presence/absence/completeness semantics.
+* Strengthen cross-subject relationships between artifact, source, endpoint, dependency and runtime subjects.
+* Add provenance/confidence/freshness predicates.
+* Keep collector coverage policy separate from security findings.
+* Keep rule-only reprojection capable of consuming refreshed TI/advisory data without artifact rescans.
+
+=== P1 provenance/rebuilder
+
+Build Provenance/Rebuilder remains a major missing provider:
+
+* select exact source revision;
+* reconstruct declared build environment;
+* isolate build;
+* hash output;
+* compare with distributed artifact;
+* report identical, explainable divergence, material divergence, or indeterminate;
+* never infer provenance merely from the presence of a GitHub Actions workflow.
+
+=== P2 storage and hardening
+
+* Evidence-v2 content reuse/deduplication after correctness work stabilizes.
+* Container SBOM and signing/attestation.
+* Pin container base images by digest.
+* Record worker image digest in retained execution provenance.
+* Consider isolated publication credentials; broad `gh auth setup-git` redesign remains deferred until intentionally revisited.
+* Move Deep Scan fully behind the generic Broker once the generic settlement path is mature.
+* Extract Threat Intelligence from catalog lifecycle into fully registered independent providers.
+
+=== Separate workstream
+
+Rift runtime execution remains a separate branch/workstream. Runtime observations may enter Evidence-v2 through registered contracts, but this orchestration refactor does not merge Rift into SigmaScope workers.
+
+== Migration plan
+
+=== Phase 1 - contracts and infrastructure (implemented)
+
+* Add generic durable queue implementation.
+* Add declarative orchestration policy.
+* Add reconciliation workflow and durable work-state publisher.
+* Add four worker toolchain Dockerfiles and GHCR build workflow.
+* Add explicit catalog freeze workflow.
+* Add regression invariants proving reconciliation does not build/publish the client DB.
+* Keep the existing catalog builder authoritative while shadow queue state is observed.
+
+=== Phase 2 - queue consumers (implemented)
+
+* Discovery worker claims `catalog-discovery`.
+* Manifest enrichment worker claims `catalog-enrichment` only after discovery settles.
+* Website scraper claims `catalog-scrape` only after enrichment settles.
+* Source HEAD worker claims `source-head-observation`.
+* Threat Intelligence worker claims `threat-intelligence`.
+* OSV worker claims `osv-advisories` and retains the exact queried NuGet package/version set.
+* Secondary-security worker claims `secondary-security-definitions`, refreshes the content-addressed ClamAV asset, and can retain the previous valid asset on upstream refresh failure.
+* All workers publish `omega.work-result.v1` with the exact digest-pinned Linux worker image; the reconciler alone settles queues.
+* A successful worker publication wakes only the reconciliation workflow. Dependent queue stages can therefore advance immediately without granting workers catalog-freeze/client-publication authority.
+
+=== Phase 3 - cutover (implementation complete; production rollout remains)
+
+* Catalog freeze no longer runs discovery, enrichment, scraping, source HEAD, ThreatFox/Feodo, OSV, or FreshClam.
+* Freeze validates every required lane against the result revision and SHA-256 recorded by the durable queue.
+* Manifest enrichment must consume the settled discovery result; the website scraper must consume the settled enrichment result.
+* Catalog-bound enrichment/scrape/source-HEAD state must identify the current base catalog revision.
+* Freeze executes in the digest-pinned publisher image.
+* `catalog-freeze-v1-*` identity makes unchanged semantic freezes a no-op, so the client database is built at most once for a changed explicit freeze.
+* Replace the scheduled `main` daily catalog launcher with the reconciliation launcher during deployment.
+* Manual `Freeze Omega catalog` becomes the normal out-of-cycle client publication mechanism.
+
+=== Phase 4 - parallel scanner/result merger
+
+==== Phase 4A - immutable parallel result bundles (implemented in shadow mode)
+
+* The frozen SigmaScope pipeline accepts one exact persistent `--queue-key`; `--queue-key` and broker `--analysis-request` execution are mutually exclusive.
+* `sigmascope-parallel-worker.yml` runs one exact artifact/source queue key in the digest-pinned SigmaScope worker image with repository read-only permissions.
+* A worker emits `omega.sigmascope-result-bundle.v1`, bound to the exact starting Evidence-v2 index SHA-256, frozen Definitions/scanner identities, queue target fingerprint and worker-image digest.
+* Result bundles contain only bounded variant-local payloads under `variants/`, `artifacts/` and `derived/`. Worker candidates may not contribute root/global indexes or publish Evidence-v2.
+* `sigmascope-parallel-shadow.yml` may fan out up to eight disjoint exact queue keys and produces only `omega.sigmascope-result-merge-plan.v1` after integrity/base-head/conflict validation.
+* Baseline security rebuilds and global advisory projection remain serialized; shadow planning refuses them.
+* The existing `sigmascope.yml` serialized Evidence-v2 publisher remains authoritative. Phase 4A has no Evidence-v2 mutation/publication authority.
+
+==== Phase 4B - serialized Evidence-v2 merger and equivalence preflight (implemented in shadow mode)
+
+* `sigmascope_result_merger.py` starts from one exact published Evidence-v2 index SHA, rejects stale-base bundles, applies only disjoint variant-local worker payloads, and reconstructs the compact working database instead of trusting worker-generated SQL/global indexes.
+* Scanner-queue settlement remains serialized. The merger centrally reproduces the production artifact -> source-followup queue transition that result-only workers are forbidden to create globally.
+* Global Evidence-v2 indexes, frozen OSV projection, Threat Intelligence projection, Definition provenance, SRL reprojection and intrinsic Evidence validation are rebuilt centrally.
+* The merger also materializes the candidate Deep Scan queue from the merged SRL `analysis-requests.json` plus the previous durable queue, and produces the same bounded public-source follow-up projection used by the serialized worker. Neither side effect is published from the shadow merger.
+* `sigmascope_merge_equivalence.py` compares the merged candidate against a sequential reference built from the same exact queue assignments and frozen worker. The gate ignores execution-only scan row IDs/timestamps but compares affected variant security semantics, scanner-queue semantics, SRL projections, Deep Scan requests and source-followup projection.
+* `sigmascope_parallel_preflight.py` requires intrinsic Evidence validation, serialized semantic equivalence, independent developer audit and Evidence storage audit before a candidate can be labelled `publishable`. The preflight authority is explicitly `preflight-only-no-evidence-publication`.
+* `sigmascope-parallel-shadow.yml` remains manual and read-only. It may fan out result workers, but the merger/equivalence/preflight jobs contain no Evidence-v2 publisher and no `contents: write` authority.
+* Stale-base result sets remain fail-closed; automatic rebasing is deliberately deferred.
+
+==== Git-backed authoritative history migration (implemented before Phase 4C)
+
+* `security-evidence-v2` and `catalog-data` now default to controlled fast-forward Git publication rather than replacing their branch with a new orphan root on every accepted snapshot.
+* The current pre-migration orphan head becomes the genesis parent of the first changed post-migration snapshot; unavailable older history is not fabricated or rewritten.
+* A normal fast-forward push fails closed if another publisher advances the branch while a candidate is being prepared.
+* An identical Git tree is a publication no-op and creates no empty history commit.
+* `legacy-orphan` remains an explicit emergency fallback only; production workflows pass `--history-mode fast-forward` explicitly.
+* Queue/lease/lane-result/Broker/Deep-Scan operational branches remain replaceable state and are not moved into forensic Git history.
+* Git commit/tree identities supplement semantic Evidence/catalog revisions; Git is not security authority. See `docs/platform/GIT-HISTORY.md`.
+
+==== Phase 4C - one-writer Evidence-v2 publication cutover (automatic one-run cutover implemented; production execution remains)
+
+* `sigmascope-parallel-shadow.yml` and `sigmascope-parallel-publish.yml` are reusable as well as independently manual. The standalone publisher still accepts an explicit successful Phase-4B shadow run ID and defaults to authorization-only (`confirm_publish=false`); neither building-block workflow has a schedule.
+* `sigmascope-phase4-migration.yml` is the singular normal operator entry point. It requires explicit acknowledgement, calls reusable `worker-images.yml` to build/publish all four current digest-pinned images, runs the explicit catalog freeze to freeze the current SigmaScope worker/Definitions, and then invokes the locked cutover core. Phase-3 lane state must already satisfy the normal freeze contract; migration does not weaken that release boundary.
+* `sigmascope-phase4-cutover-core.yml` holds `omega-catalog-sigmascope-exclusive` for its entire prerequisite -> shadow -> authorization -> publication -> verification lifetime. Existing serialized SigmaScope publication, Rift Evidence ingestion, and standalone Phase-4C publication therefore cannot advance Evidence between proof and cutover. The image build and catalog/Definitions freeze happen before this lock under their existing independent serialization boundaries.
+* The migration workflow runs a fresh Phase-4B real-corpus shadow/equivalence preflight and passes its immutable result artifacts directly into Phase 4C in the same Actions run. Same-run authorization requires exact `github.run_id` and `github.run_attempt` binding; the normal cutover no longer copies a prior run ID by hand.
+* The read-only authorization job verifies the immutable shadow report hashes from `omega.sigmascope-parallel-preflight.v1`, requires the exact still-current Evidence Git base head, reconstructs the candidate, reruns intrinsic/developer/storage checks, and emits `omega.sigmascope-parallel-publication-authorization.v1`.
+* The tiny writer job alone performs publication. It rechecks the authorization/candidate/deferred-payload hashes and publishes the candidate as the exact fast-forward child of the preflight base using `--expected-parent-sha` plus `--parallel-authorization-report`.
+* Publication order is fixed: Evidence-v2 first, Deep Scan queue second, human source-followup issue reconciliation third. Rejected/stale Evidence therefore cannot be followed by new global side effects.
+* Final migration verification requires Evidence to be the exact authorized immediate child, or an explicitly reported identical-tree no-op with the current tree equal to the authorized candidate. It also verifies the published Deep Scan index SHA-256 against the authorization.
+* A successful run emits `omega.sigmascope-phase4-migration.v1` for 90 days, binding the preflight/authorization revisions, expected parent, resulting Evidence head/index, Deep Scan digest, worker limit and publication/no-op outcome.
+* The existing serialized `sigmascope.yml` worker remains the production fallback until the automatic cutover has run successfully and subsequent real-corpus receipts demonstrate stability.
+* Before first production use, freeze new Definitions so the fallback/specialist frozen publishers also carry the fast-forward history helper and parallel authorization contract.
+* Only after repeated successful real-corpus publications may direct Evidence publication be removed from ordinary artifact/source workers and their steady-state concurrency rise above one.
+
+== Production rollout order
+
+. Deploy this SigmaScope tree.
+. Run `Omega security worker toolchain images` once so `security-worker-images` contains all four digest-pinned images.
+. Run `Omega security services reconciliation`. The first pass leases discovery, source HEAD, Threat Intelligence, OSV, and secondary-security work; enrichment remains pending behind discovery and scraping remains pending behind enrichment.
+. Worker completion wakes reconciliation automatically, so discovery -> enrichment -> scraper can advance without waiting for the hourly schedule. If a wake dispatch is interrupted, rerun reconciliation manually or let the hourly schedule recover it; continue until all seven latest queue items are `completed`.
+. Run `Omega catalog - freeze and publish`. The first changed freeze builds the client database once.
+. Replace the default-branch daily catalog launcher with `docs/examples/main-security-reconcile.yml`. Keep `docs/examples/main-catalog-freeze.yml` as the explicit client publication entry point.
+. Confirm no default-branch legacy catalog-discovery schedule remains after the new reconciler is authoritative.
+. Run `Omega SigmaScope · Phase 4 automatic migration` once with `confirm_migration=true`. It rebuilds/publishes the current worker images, runs the explicit catalog/Definitions freeze, then acquires the global Evidence writer mutex for a fresh real-corpus Phase-4B proof, exact authorization/publication, Evidence/Deep Scan verification, and durable migration receipt. No separate Phase-4 Definitions freeze or shadow run-ID handoff is required.
+. Keep the existing serialized worker fallback and steady-state concurrency limit until subsequent real-corpus publication receipts are clean; then cut ordinary artifact/source scheduling over to the parallel one-writer path and raise its bounded concurrency.
+
+At no point does a collector dispatch the freeze workflow. A ThreatFox, OSV, ClamAV, scrape, or source-observation refresh can therefore happen many times without rebuilding the client database.
+
+== Acceptance criteria
+
+The orchestration refactor is complete when all of the following are true:
+
+* refreshing ThreatFox does not invoke catalog scraping, SigmaScope scanning, or a client DB build;
+* a failed website scrape retries only that work item;
+* a source HEAD change can request source analysis without artifact reanalysis;
+* artifact/source/specialist collectors can run concurrently within explicit limits;
+* all durable work has lease/retry/settlement history;
+* no worker can publish `catalog-latest`;
+* only the freeze workflow can build/publish the Omega marketplace database;
+* freeze of unchanged semantic inputs is a no-op;
+* worker environment identity is retained by digest;
+* Evidence-v2 merge/publication remains serialized and fail-closed;
+* authoritative Evidence/catalog publications form controlled fast-forward Git histories while operational queue/lease branches remain bounded replaceable state;
+* SRL can reproject refreshed intelligence without rescanning immutable artifacts.

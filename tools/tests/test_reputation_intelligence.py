@@ -101,12 +101,15 @@ class ReputationIntelligenceTests(unittest.TestCase):
 
 
 
-    def test_daily_workflow_collects_reputation_before_freeze(self) -> None:
-        text = (ROOT / ".github" / "workflows" / "catalog-builder.yml").read_text(encoding="utf-8")
-        collect = text.index("Collect daily endpoint threat intelligence")
-        freeze = text.index("Freeze daily Definitions and OSV data")
-        self.assertLess(collect, freeze)
-        self.assertIn("--reputation-input catalog/reputation-intelligence.json", text)
+    def test_threat_intelligence_is_collected_outside_freeze_and_consumed_as_settled_input(self) -> None:
+        worker = (ROOT / ".github" / "workflows" / "threat-intelligence-worker.yml").read_text(encoding="utf-8")
+        freeze = (ROOT / ".github" / "workflows" / "catalog-builder.yml").read_text(encoding="utf-8")
+        self.assertIn("collect_reputation_intelligence.py", worker)
+        self.assertIn("ABUSECH_AUTH_KEY", worker)
+        self.assertIn("publish_lane_state.py", worker)
+        self.assertNotIn("collect_reputation_intelligence.py", freeze)
+        self.assertIn("threat-intelligence-state", freeze)
+        self.assertIn("--reputation-input catalog/lane-results/threat-intelligence/reputation-intelligence.json", freeze)
 
 
 if __name__ == "__main__":

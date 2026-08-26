@@ -2,23 +2,21 @@
 """Publish a validated Omega security-evidence v2 tree to a dedicated Git branch.
 
 The publisher is intentionally local/operator driven. It never touches the source
-working tree: a temporary Git repository is created, the evidence snapshot is copied
-into it, and an orphan snapshot commit is force-with-lease pushed to the target branch.
-This keeps evidence history from growing without bound while preserving atomicity:
-index.json already references only files in the same validated snapshot.
+working tree: publication is prepared in a temporary Git repository. Authoritative
+publication defaults to a controlled fast-forward history: the exact current remote head
+is fetched and becomes the parent of the next accepted Evidence snapshot. A concurrent
+remote advance therefore fails closed instead of rewriting history.
 
-By default this command performs preflight only. Pass --push to modify the remote.
+The former orphan/force-with-lease publisher remains available only as an explicit
+``--history-mode legacy-orphan`` emergency fallback. By default this command performs
+preflight only. Pass --push to modify the remote.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
-import shutil
-import subprocess
 import sys
-import tempfile
 from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -27,36 +25,13 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from security_evidence_v2 import MAX_PUBLISH_FILE_BYTES, SCHEMA, sha256_file  # noqa: E402
 
+ORCHESTRATION_DIR = SCRIPT_DIR.parent / "orchestration"
+if str(ORCHESTRATION_DIR) not in sys.path:
+    sys.path.insert(0, str(ORCHESTRATION_DIR))
+from git_snapshot_history import HISTORY_FAST_FORWARD, HISTORY_MODES, publish_snapshot_tree  # noqa: E402
+from sigmascope_parallel_publish_gate import read_json as read_parallel_authorization, verify_authorization as verify_parallel_authorization  # noqa: E402
+
 EXCLUDED_NAMES = {".omega-security-evidence-v2-migration.json"}
-
-
-def run(cmd: list[str], *, cwd: Path | None = None, capture: bool = False, check: bool = True) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        cmd,
-        cwd=str(cwd) if cwd else None,
-        text=True,
-        capture_output=capture,
-        check=check,
-    )
-
-
-def git_root(path: Path) -> Path:
-    result = run(["git", "rev-parse", "--show-toplevel"], cwd=path, capture=True)
-    return Path(result.stdout.strip()).resolve()
-
-
-def remote_url(repo: Path, remote: str) -> str:
-    result = run(["git", "remote", "get-url", remote], cwd=repo, capture=True)
-    url = result.stdout.strip()
-    if not url:
-        raise RuntimeError(f"Git remote {remote!r} has no URL")
-    return url
-
-
-def remote_branch_sha(repo: Path, remote: str, branch: str) -> str:
-    result = run(["git", "ls-remote", "--heads", remote, f"refs/heads/{branch}"], cwd=repo, capture=True)
-    line = result.stdout.strip()
-    return line.split()[0] if line else ""
 
 
 def validate_report(evidence: Path, report_path: Path) -> dict[str, Any]:
@@ -132,17 +107,20 @@ def preflight(evidence: Path) -> dict[str, Any]:
     }
 
 
-def copy_snapshot(evidence: Path, target: Path) -> None:
-    for path in evidence.rglob("*"):
-        if not path.is_file() or path.name in EXCLUDED_NAMES:
-            continue
-        rel = path.relative_to(evidence)
-        if rel.parts and rel.parts[0] == ".staging":
-            continue
-        destination = target / rel
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, destination)
 
+def validate_parallel_authorization(
+    evidence: Path, report_path: Path, *, expected_parent_sha: str | None
+) -> dict[str, Any]:
+    authorization = read_parallel_authorization(report_path.resolve())
+    verify_parallel_authorization(authorization)
+    if sha256_file(evidence.resolve() / "index.json") != str(authorization.get("candidateIndexSha256") or ""):
+        raise RuntimeError("parallel publication authorization does not match candidate index.json")
+    bound_parent = str(authorization.get("expectedParentHead") or "")
+    if not expected_parent_sha:
+        raise RuntimeError("parallel publication authorization requires --expected-parent-sha")
+    if str(expected_parent_sha).lower() != bound_parent.lower():
+        raise RuntimeError("--expected-parent-sha differs from the parallel publication authorization")
+    return authorization
 
 def publish(
     evidence: Path,
@@ -156,6 +134,9 @@ def publish(
     audit_report: Path | None = None,
     strict_audit_warnings: bool = False,
     commit_message: str | None = None,
+    history_mode: str = HISTORY_FAST_FORWARD,
+    expected_parent_sha: str | None = None,
+    parallel_authorization_report: Path | None = None,
 ) -> dict[str, Any]:
     info = preflight(evidence)
     if validation_report is not None and snapshot_validation_report is not None:
@@ -174,34 +155,32 @@ def publish(
         info["audit"] = {"fail": int(counts.get("fail") or 0), "warn": int(counts.get("warn") or 0)}
     elif push and snapshot_validation_report is not None:
         raise RuntimeError("incremental production --push requires --audit-report")
-    repo = git_root(repo.resolve())
-    url = remote_url(repo, remote)
-    old_sha = remote_branch_sha(repo, remote, branch)
-    info.update({"repository": str(repo), "remote": remote, "remoteUrl": url, "branch": branch, "previousHead": old_sha})
-    if not push:
-        info["pushed"] = False
-        return info
-
-    with tempfile.TemporaryDirectory(prefix="omega-security-evidence-v2-publish-") as temp_name:
-        work = Path(temp_name)
-        run(["git", "init", "-q"], cwd=work)
-        run(["git", "checkout", "--orphan", branch], cwd=work)
-        run(["git", "config", "user.name", "Omega Evidence Publisher"], cwd=work)
-        run(["git", "config", "user.email", "omega-evidence@users.noreply.github.com"], cwd=work)
-        run(["git", "config", "core.autocrlf", "false"], cwd=work)
-        run(["git", "remote", "add", remote, url], cwd=work)
-        copy_snapshot(evidence.resolve(), work)
-        run(["git", "add", "--all"], cwd=work)
-        message = commit_message or f"Security evidence v2 snapshot {info['evidenceRevision'] or info['indexSha256'][:12]}"
-        run(["git", "commit", "-q", "-m", message], cwd=work)
-        new_sha = run(["git", "rev-parse", "HEAD"], cwd=work, capture=True).stdout.strip()
-        refspec = f"HEAD:refs/heads/{branch}"
-        if old_sha:
-            run(["git", "push", f"--force-with-lease=refs/heads/{branch}:{old_sha}", remote, refspec], cwd=work)
-        else:
-            run(["git", "push", remote, refspec], cwd=work)
-        info.update({"pushed": True, "newHead": new_sha})
-        return info
+    if parallel_authorization_report is not None:
+        authorization = validate_parallel_authorization(
+            evidence.resolve(), parallel_authorization_report, expected_parent_sha=expected_parent_sha
+        )
+        info["parallelAuthorization"] = {
+            "authorizationRevision": str(authorization.get("authorizationRevision") or ""),
+            "preflightRevision": str(authorization.get("preflightRevision") or ""),
+        }
+    message = commit_message or f"Security evidence v2 snapshot {info['evidenceRevision'] or info['indexSha256'][:12]}"
+    publication = publish_snapshot_tree(
+        evidence.resolve(),
+        repo=repo.resolve(),
+        remote=remote,
+        branch=branch,
+        push=push,
+        author_name="Omega Evidence Publisher",
+        author_email="omega-evidence@users.noreply.github.com",
+        commit_message=message,
+        history_mode=history_mode,
+        excluded_names=EXCLUDED_NAMES,
+        excluded_prefixes=(".staging",),
+        expected_previous_head=expected_parent_sha,
+    )
+    info.update(publication.as_dict())
+    info.update({"repository": str(repo.resolve()), "remote": remote, "branch": branch})
+    return info
 
 
 def main() -> int:
@@ -210,6 +189,12 @@ def main() -> int:
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Omega source Git working tree (default: cwd)")
     parser.add_argument("--remote", default="origin")
     parser.add_argument("--branch", default="security-evidence-v2")
+    parser.add_argument("--history-mode", choices=HISTORY_MODES, default=HISTORY_FAST_FORWARD,
+                        help="Authoritative publication history mode (default: controlled fast-forward)")
+    parser.add_argument("--expected-parent-sha",
+                        help="Require the current remote branch head to equal this exact Git SHA before publication")
+    parser.add_argument("--parallel-authorization-report", type=Path,
+                        help="Phase-4C one-writer authorization bound to this candidate and expected parent")
     parser.add_argument("--push", action="store_true", help="Actually push; without this flag only preflight is performed")
     parser.add_argument("--validation-report", type=Path, help="Successful full v1↔v2 parity report (one-time migration publication)")
     parser.add_argument("--snapshot-validation-report", type=Path, help="Successful intrinsic v2 snapshot validation report (incremental production publication)")
@@ -228,6 +213,9 @@ def main() -> int:
         audit_report=args.audit_report,
         strict_audit_warnings=args.strict_audit_warnings,
         commit_message=args.message,
+        history_mode=args.history_mode,
+        expected_parent_sha=args.expected_parent_sha,
+        parallel_authorization_report=args.parallel_authorization_report,
     )
     print(json.dumps(info, indent=2, ensure_ascii=False))
     if not args.push:

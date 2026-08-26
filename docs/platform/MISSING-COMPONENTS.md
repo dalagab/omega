@@ -43,7 +43,7 @@ This is what eventually permits `source_to_binary_verified` to be evidence-backe
 
 ### 2. Standalone Threat Intelligence — `omega.threat-intelligence`
 
-**Status:** embedded transition. A bounded daily reputation/DNS snapshot already exists, but it is collected as part of the current catalog/security publication workflow rather than as a separately dispatchable component.
+**Status:** first standalone orchestration lane implemented. ThreatFox/Feodo/DNS reputation refresh now runs as independently leased `threat-intelligence` work and publishes a lease-bound result without triggering catalog freeze or client publication. The deeper typed collector/Broker integration described below remains incomplete.
 
 **Owns:** time-dependent external security intelligence.
 
@@ -51,7 +51,7 @@ This is what eventually permits `source_to_binary_verified` to be evidence-backe
 
 Required work:
 
-- extract live DNS/reputation/connectivity collection from the daily builder into an independent reusable workflow/component;
+- [implemented orchestration boundary] keep live DNS/reputation collection out of catalog freeze and refresh it independently;
 - materialize observations with `observedAt`, expiry/TTL, provider/feed provenance and content digest;
 - retain last-known observations without ever equating `unlisted` with `safe`;
 - register active collectors and make them broker-dispatchable only after bounded lookup, rate-limit, licensing and failure semantics are defined;

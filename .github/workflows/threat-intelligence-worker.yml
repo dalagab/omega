@@ -1,0 +1,86 @@
+name: Omega collector · threat intelligence
+
+on:
+  workflow_dispatch:
+    inputs:
+      work_id: {required: true, type: string}
+      claim_token: {required: true, type: string}
+
+permissions:
+  contents: write
+  actions: write
+  packages: read
+
+concurrency:
+  group: omega-worker-threat-intelligence
+  cancel-in-progress: false
+
+jobs:
+  resolve-image:
+    runs-on: ubuntu-latest
+    outputs: {image: "${{ steps.image.outputs.image }}"}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: security-worker-images, path: image-state, persist-credentials: false}
+      - id: image
+        shell: bash
+        run: echo "image=$(jq -r '.images[\"intelligence-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+
+  collect:
+    needs: resolve-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: ${{ needs.resolve-image.outputs.image }}
+      credentials: {username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: sigmascope, persist-credentials: true}
+      - uses: actions/checkout@v6
+        with: {ref: security-work-state, path: catalog/work-state, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout previous threat-intelligence lane when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: threat-intelligence-state, path: catalog/previous-lane, fetch-depth: 1, persist-credentials: false}
+      - name: Validate exact durable lease
+        run: >-
+          python tools/orchestration/worker_claim.py --work-state catalog/work-state --queue-id threat-intelligence --work-id "${{ inputs.work_id }}" --owner omega.worker.threat-intelligence --claim-token "${{ inputs.claim_token }}" --output catalog/work-item.json
+      - name: Collect frozen endpoint threat intelligence
+        env:
+          ABUSECH_AUTH_KEY: ${{ secrets.ABUSECH_AUTH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--evidence-root catalog/security-v2-current --output catalog/reputation-intelligence.json --timeout 20)
+          if [ -f catalog/previous-lane/reputation-intelligence.json ]; then args+=(--previous catalog/previous-lane/reputation-intelligence.json); fi
+          python tools/catalog/collect_reputation_intelligence.py "${args[@]}"
+      - name: Build and publish lease-bound threat-intelligence result
+        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/lane-result
+          cp catalog/reputation-intelligence.json catalog/lane-result/
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          idx=json.load(open('catalog/security-v2-current/index.json'))
+          Path('catalog/lane-result/provenance.json').write_text(json.dumps({
+            'schema':'omega.threat-intelligence-provenance.v1',
+            'evidenceRevision':(idx.get('revisions') or {}).get('evidenceRevision','')
+          },indent=2,sort_keys=True)+'\n')
+          PY
+          revision="$(python -c "import json; print(json.load(open('catalog/reputation-intelligence.json')).get('reputationRevision',''))")"
+          python tools/orchestration/work_result.py build --queue-id threat-intelligence --work-item catalog/work-item.json --root catalog/lane-result --worker-image "${{ needs.resolve-image.outputs.image }}" --file reputation-intelligence.json --file provenance.json --payload-revision "$revision"
+          gh auth setup-git
+          python tools/orchestration/publish_lane_state.py --input catalog/lane-result --repo . --branch threat-intelligence-state --push
+      - name: Wake the reconciler after result publication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: >-
+          gh workflow run security-reconcile.yml
+          --repo "${{ github.repository }}"
+          --ref sigmascope

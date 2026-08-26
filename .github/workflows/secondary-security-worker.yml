@@ -1,0 +1,137 @@
+name: Omega collector · secondary security definitions
+
+on:
+  workflow_dispatch:
+    inputs:
+      work_id: {required: true, type: string}
+      claim_token: {required: true, type: string}
+
+permissions:
+  contents: write
+  actions: write
+  packages: read
+
+concurrency:
+  group: omega-worker-secondary-security
+  cancel-in-progress: false
+
+jobs:
+  resolve-image:
+    runs-on: ubuntu-latest
+    outputs: {image: "${{ steps.image.outputs.image }}"}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: security-worker-images, path: image-state, persist-credentials: false}
+      - id: image
+        shell: bash
+        run: echo "image=$(jq -r '.images[\"sigmascope-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+
+  collect:
+    needs: resolve-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    container:
+      image: ${{ needs.resolve-image.outputs.image }}
+      credentials: {username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: sigmascope, persist-credentials: true}
+      - uses: actions/checkout@v6
+        with: {ref: security-work-state, path: catalog/work-state, persist-credentials: false}
+      - name: Checkout previous frozen Definitions when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: catalog-data, path: catalog/previous-state, fetch-depth: 1, persist-credentials: false}
+      - name: Validate exact durable lease
+        run: >-
+          python tools/orchestration/worker_claim.py --work-state catalog/work-state --queue-id secondary-security-definitions --work-id "${{ inputs.work_id }}" --owner omega.worker.secondary-security --claim-token "${{ inputs.claim_token }}" --output catalog/work-item.json
+      - name: Refresh and freeze the optional ClamAV database asset
+        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/clamav-database catalog/secondary-security-assets catalog/lane-result
+          manifest="catalog/lane-result/secondary-security-asset-manifest.json"
+          status="catalog/lane-result/secondary-security-status.json"
+          set +e
+          freshclam --stdout
+          freshclam_status=$?
+          set -e
+          find /var/lib/clamav -maxdepth 1 -type f \( -name '*.cvd' -o -name '*.cld' \) -exec cp {} catalog/clamav-database/ \; 2>/dev/null || true
+          published=false
+          publish_reason=""
+          if find catalog/clamav-database -maxdepth 1 -type f \( -name '*.cvd' -o -name '*.cld' \) -print -quit | grep -q .; then
+            if python tools/catalog/secondary_security_assets.py build-clamav --database-dir catalog/clamav-database --output-dir catalog/secondary-security-assets --asset-base-url "https://github.com/${{ github.repository }}/releases/download/sigmascope-definitions" --manifest-output "$manifest"; then
+              release_ready=true
+              if ! gh release view sigmascope-definitions --repo "${{ github.repository }}" >/dev/null 2>&1; then
+                if ! gh release create sigmascope-definitions --repo "${{ github.repository }}" --title "Omega frozen secondary-security definitions" --notes "Content-addressed security-definition assets."; then
+                  release_ready=false
+                  publish_reason="release-create-failed"
+                fi
+              fi
+              if [ "$release_ready" = true ]; then
+                if gh release upload sigmascope-definitions catalog/secondary-security-assets/*.zip --repo "${{ github.repository }}" --clobber; then
+                  published=true
+                else
+                  publish_reason="release-upload-failed"
+                fi
+              fi
+            else
+              publish_reason="asset-build-failed"
+            fi
+          else
+            publish_reason="no-fresh-database"
+          fi
+          retained_previous=false
+          if [ "$published" != true ]; then
+            rm -f "$manifest"
+            if [ -f catalog/previous-state/definitions/index.json ] && \
+               python tools/catalog/secondary_security_assets.py retain-previous-clamav --definitions-root catalog/previous-state/definitions --manifest-output "$manifest"; then
+              retained_previous=true
+              echo "::notice::Secondary-security refresh did not publish a new asset ($publish_reason); retained the previous frozen ClamAV asset."
+            else
+              rm -f "$manifest"
+              echo "::warning::Secondary-security refresh produced no usable ClamAV asset ($publish_reason); ClamAV remains optional for this working-state result."
+            fi
+          fi
+          python - <<PY
+          import json
+          from pathlib import Path
+          m=Path('$manifest')
+          doc=json.load(open(m)) if m.is_file() else {}
+          Path('$status').write_text(json.dumps({
+            'schema':'omega.secondary-security-refresh.v1',
+            'freshclamExitCode':$freshclam_status,
+            'publishedNewAsset':str('$published').lower()=='true',
+            'retainedPreviousAsset':str('$retained_previous').lower()=='true',
+            'refreshReason':'$publish_reason',
+            'assetAvailable':bool(doc),
+            'assetRevision':doc.get('revision','')
+          },indent=2,sort_keys=True)+'\n')
+          PY
+      - name: Build and publish lease-bound secondary-security result
+        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--queue-id secondary-security-definitions --work-item catalog/work-item.json --root catalog/lane-result --worker-image "${{ needs.resolve-image.outputs.image }}" --file secondary-security-status.json)
+          if [ -f catalog/lane-result/secondary-security-asset-manifest.json ]; then args+=(--file secondary-security-asset-manifest.json); fi
+          revision="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('catalog/lane-result/secondary-security-asset-manifest.json')
+          print(json.load(open(p)).get('revision','') if p.is_file() else 'secondary-security-none')
+          PY
+          )"
+          args+=(--payload-revision "$revision")
+          python tools/orchestration/work_result.py build "${args[@]}"
+          gh auth setup-git
+          python tools/orchestration/publish_lane_state.py --input catalog/lane-result --repo . --branch secondary-security-state --push
+      - name: Wake the reconciler after result publication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: >-
+          gh workflow run security-reconcile.yml
+          --repo "${{ github.repository }}"
+          --ref sigmascope

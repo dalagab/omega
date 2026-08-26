@@ -1,0 +1,360 @@
+name: Omega SigmaScope · parallel one-writer publication
+
+on:
+  workflow_call:
+    inputs:
+      shadow_run_id:
+        description: Optional successful Phase-4B shadow workflow run ID; omitted when artifacts come from this caller run
+        required: false
+        type: string
+        default: ""
+      use_current_run_artifacts:
+        description: Consume Phase-4B shadow artifacts produced earlier in this same caller run
+        required: false
+        type: boolean
+        default: false
+      confirm_publish:
+        description: Publish the authorized candidate after read-only reconstruction succeeds
+        required: false
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      shadow_run_id:
+        description: Successful Phase-4B shadow workflow run ID to authorize and reproduce
+        required: true
+        type: string
+      use_current_run_artifacts:
+        description: Internal/reusable mode; normally leave false for a standalone manual publication
+        required: false
+        type: boolean
+        default: false
+      confirm_publish:
+        description: Publish the authorized candidate after read-only reconstruction succeeds
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+  packages: read
+
+concurrency:
+  # The automatic Phase-4 migration caller already holds the global Evidence writer mutex
+  # for its entire shadow -> authorize -> publish -> verify run. A unique inner group avoids
+  # recursively waiting on that same mutex. Standalone/manual publication keeps the shared lock.
+  group: ${{ inputs.use_current_run_artifacts && format('omega-sigmascope-phase4c-current-run-{0}', github.run_id) || 'omega-catalog-sigmascope-exclusive' }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
+  OMEGA_SECONDARY_SECURITY_ROOT: catalog/active-state/definitions/secondary-security
+  OMEGA_SECONDARY_SECURITY_CACHE: catalog/secondary-security-runtime
+
+jobs:
+  resolve-images:
+    name: Resolve immutable Phase-4C toolchains
+    runs-on: ubuntu-latest
+    outputs:
+      merge_image: ${{ steps.images.outputs.merge_image }}
+      publisher_image: ${{ steps.images.outputs.publisher_image }}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: security-worker-images, path: image-state, persist-credentials: false}
+      - id: images
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "merge_image=$(jq -r '.images[\"sigmascope-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+          echo "publisher_image=$(jq -r '.images[\"publisher-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+
+  authorize:
+    name: Reconstruct exact shadow candidate and issue one-writer authorization
+    needs: resolve-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+    container:
+      image: ${{ needs.resolve-images.outputs.merge_image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: catalog-data, path: catalog/active-state, fetch-depth: 1, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 2, persist-credentials: false}
+      - name: Download result bundles from this migration run
+        if: inputs.use_current_run_artifacts == true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: omega-sigmascope-result-*
+          path: catalog/shadow-artifacts
+      - name: Download Phase-4B preflight from this migration run
+        if: inputs.use_current_run_artifacts == true
+        uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-merged-candidate-validation
+          path: catalog/shadow-artifacts/omega-sigmascope-merged-candidate-validation
+      - name: Download an explicit successful standalone Phase-4B shadow run
+        if: inputs.use_current_run_artifacts != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHADOW_RUN_ID: ${{ inputs.shadow_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SHADOW_RUN_ID" =~ ^[0-9]+$ ]] || { echo "shadow_run_id must be numeric" >&2; exit 2; }
+          mkdir -p catalog/shadow-artifacts
+          meta="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SHADOW_RUN_ID}")"
+          test "$(jq -r '.name' <<<"$meta")" = "Omega SigmaScope · parallel result-bundle shadow"
+          test "$(jq -r '.head_branch' <<<"$meta")" = "sigmascope"
+          test "$(jq -r '.event' <<<"$meta")" = "workflow_dispatch"
+          test "$(jq -r '.conclusion' <<<"$meta")" = "success"
+          gh run download "$SHADOW_RUN_ID" --repo "$GITHUB_REPOSITORY" --dir catalog/shadow-artifacts
+      - name: Validate immutable Phase-4B artifact set and source-run binding
+        env:
+          SHADOW_RUN_ID: ${{ inputs.shadow_run_id }}
+          USE_CURRENT_RUN: ${{ inputs.use_current_run_artifacts }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          preflight=catalog/shadow-artifacts/omega-sigmascope-merged-candidate-validation/sigmascope-parallel-preflight.json
+          test -f "$preflight"
+          mapfile -t bundles < <(find catalog/shadow-artifacts -mindepth 2 -maxdepth 3 -name bundle.json -printf '%h\n' | sort)
+          test "${#bundles[@]}" -gt 0
+          source_run="$(jq -r '.sourceRun.id' "$preflight")"
+          source_attempt="$(jq -r '.sourceRun.attempt' "$preflight")"
+          if [ "$USE_CURRENT_RUN" = "true" ]; then
+            test "$source_run" = "$GITHUB_RUN_ID" || { echo "current-run preflight run binding mismatch" >&2; exit 3; }
+            test "$source_attempt" = "$GITHUB_RUN_ATTEMPT" || { echo "current-run preflight attempt binding mismatch" >&2; exit 3; }
+          else
+            test "$source_run" = "$SHADOW_RUN_ID" || { echo "standalone preflight run binding mismatch" >&2; exit 3; }
+          fi
+      - name: Fail early if the Phase-4B Evidence Git base is already stale
+        shell: bash
+        run: |
+          set -euo pipefail
+          preflight=catalog/shadow-artifacts/omega-sigmascope-merged-candidate-validation/sigmascope-parallel-preflight.json
+          expected="$(jq -r '.baseEvidenceGitHead' "$preflight")"
+          current="$(git -C catalog/security-v2-current rev-parse HEAD)"
+          test "$expected" = "$current" || { echo "Phase-4B Evidence Git base is stale: expected=$expected current=$current" >&2; exit 3; }
+      - name: Checkout previous Deep Scan state when available
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/deep-scan-current
+          if git ls-remote --exit-code --heads origin deep-scan-state >/dev/null 2>&1; then
+            git fetch --depth=1 origin deep-scan-state
+            git archive FETCH_HEAD | tar -x -C catalog/deep-scan-current
+          fi
+      - name: Materialize current frozen canonical catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/security-input
+          defs_revision="$(jq -r '.definitionsRevision' catalog/active-state/definitions/index.json)"
+          python tools/catalog/catalog_json_store.py materialize \
+            --root catalog/active-state/catalog \
+            --database catalog/security-input/omega-catalog.sqlite \
+            --definitions-revision "$defs_revision"
+      - name: Materialize exact frozen ClamAV definitions when available
+        continue-on-error: true
+        run: >-
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/secondary_security_assets.py" materialize-clamav
+          --definitions-root catalog/active-state/definitions
+          --output "$OMEGA_SECONDARY_SECURITY_CACHE"
+      - name: Reconstruct candidate from exact Phase-4B result bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t bundles < <(find catalog/shadow-artifacts -mindepth 2 -maxdepth 3 -name bundle.json -printf '%h\n' | sort)
+          python tools/security/sigmascope_result_merger.py \
+            --current-evidence catalog/security-v2-current \
+            --base-database catalog/security-input/omega-catalog.sqlite \
+            --definitions-root catalog/active-state/definitions \
+            --candidate-evidence catalog/security-v2-authorized-candidate \
+            --work-dir catalog/security-v2-authorize-work \
+            --report catalog/sigmascope-phase4c-reconstructed-merge.json \
+            --previous-deep-scan-state catalog/deep-scan-current/index.json \
+            --deep-scan-output catalog/security-v2-authorize-work/deep-scan-state \
+            --source-followup-output catalog/security-v2-authorize-work/sigmascope-source-followups.json \
+            "${bundles[@]}"
+      - name: Re-run independent audit and storage gates over reconstructed candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/security_developer_audit.py \
+            --database catalog/security-v2-authorize-work/omega-security-parallel-merge.sqlite \
+            --advisories catalog/active-state/definitions/osv-advisories.json \
+            --json > catalog/sigmascope-phase4c-developer-audit.json
+          python tools/security/evidence_storage_audit.py \
+            --root catalog/security-v2-authorized-candidate \
+            --report catalog/sigmascope-phase4c-storage-audit.json
+      - name: Bind reconstructed candidate to exact successful Phase-4B preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          shadow=catalog/shadow-artifacts/omega-sigmascope-merged-candidate-validation
+          current_head="$(git -C catalog/security-v2-current rev-parse HEAD)"
+          python tools/security/sigmascope_parallel_publish_gate.py authorize \
+            --preflight "$shadow/sigmascope-parallel-preflight.json" \
+            --shadow-merge "$shadow/sigmascope-merge-report.json" \
+            --shadow-equivalence "$shadow/sigmascope-parallel-equivalence.json" \
+            --shadow-candidate-validation "$shadow/security-v2-merged-candidate/validation-report.json" \
+            --shadow-developer-audit "$shadow/sigmascope-parallel-developer-audit.json" \
+            --shadow-storage-audit "$shadow/sigmascope-parallel-storage-audit.json" \
+            --current-evidence catalog/security-v2-current \
+            --current-evidence-git-head "$current_head" \
+            --candidate catalog/security-v2-authorized-candidate \
+            --reconstructed-merge catalog/sigmascope-phase4c-reconstructed-merge.json \
+            --deep-scan-index catalog/security-v2-authorize-work/deep-scan-state/index.json \
+            --source-followups catalog/security-v2-authorize-work/sigmascope-source-followups.json \
+            --output catalog/sigmascope-phase4c-authorization.json
+          cp "$shadow/sigmascope-parallel-developer-audit.json" catalog/sigmascope-phase4b-developer-audit.json
+      - name: Package exact authorized candidate for tiny writer job
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf catalog/security-v2-authorized-candidate.tar.gz -C catalog/security-v2-authorized-candidate .
+          (cd catalog && sha256sum security-v2-authorized-candidate.tar.gz > security-v2-authorized-candidate.tar.gz.sha256)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-phase4c-authorized-candidate
+          path: |
+            catalog/security-v2-authorized-candidate.tar.gz
+            catalog/security-v2-authorized-candidate.tar.gz.sha256
+            catalog/sigmascope-phase4c-authorization.json
+            catalog/sigmascope-phase4c-reconstructed-merge.json
+            catalog/sigmascope-phase4c-developer-audit.json
+            catalog/sigmascope-phase4c-storage-audit.json
+            catalog/sigmascope-phase4b-developer-audit.json
+            catalog/security-v2-authorize-work/deep-scan-state/**
+            catalog/security-v2-authorize-work/sigmascope-source-followups.json
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish authorized Evidence first, then deferred side effects
+    needs: [resolve-images, authorize]
+    if: inputs.confirm_publish == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+      packages: read
+    container:
+      image: ${{ needs.resolve-images.outputs.publisher_image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: "${{ github.sha }}", fetch-depth: 1, persist-credentials: true}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 2, persist-credentials: false}
+      - uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-phase4c-authorized-candidate
+          path: catalog/authorized-publication
+      - name: Rehydrate and verify authorized candidate transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd catalog/authorized-publication
+          sha256sum -c security-v2-authorized-candidate.tar.gz.sha256
+          mkdir -p candidate
+          tar -xzf security-v2-authorized-candidate.tar.gz -C candidate
+      - name: Re-check current Evidence head and authorized deferred payloads
+        id: current
+        shell: bash
+        run: |
+          set -euo pipefail
+          head="$(git -C catalog/security-v2-current rev-parse HEAD)"
+          parent="$(git -C catalog/security-v2-current rev-parse HEAD^ 2>/dev/null || true)"
+          python tools/security/sigmascope_parallel_publish_gate.py check-current \
+            --authorization catalog/authorized-publication/sigmascope-phase4c-authorization.json \
+            --candidate catalog/authorized-publication/candidate \
+            --current-evidence catalog/security-v2-current \
+            --current-head "$head" \
+            --current-parent "$parent" \
+            --deep-scan-index catalog/authorized-publication/security-v2-authorize-work/deep-scan-state/index.json \
+            --source-followups catalog/authorized-publication/security-v2-authorize-work/sigmascope-source-followups.json \
+            --output catalog/authorized-publication/publication-state.json
+          echo "state=$(jq -r '.state' catalog/authorized-publication/publication-state.json)" >> "$GITHUB_OUTPUT"
+      - name: Publish exact authorized Security Evidence v2 child
+        if: steps.current.outputs.state == 'ready-to-publish'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          auth=catalog/authorized-publication/sigmascope-phase4c-authorization.json
+          expected="$(jq -r '.expectedParentHead' "$auth")"
+          preflight="$(jq -r '.preflightRevision' "$auth")"
+          python tools/security/publish_security_evidence_v2.py \
+            --input catalog/authorized-publication/candidate \
+            --repo . \
+            --branch security-evidence-v2 \
+            --snapshot-validation-report catalog/authorized-publication/candidate/validation-report.json \
+            --audit-report catalog/authorized-publication/sigmascope-phase4b-developer-audit.json \
+            --history-mode fast-forward \
+            --expected-parent-sha "$expected" \
+            --parallel-authorization-report "$auth" \
+            --message "Security evidence v2 parallel publication $preflight" \
+            --push | tee catalog/authorized-publication/evidence-history-publication.json
+      - name: Record already-published retry state without rewriting Evidence
+        if: steps.current.outputs.state == 'already-published-immediate-child'
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg state "already-published-immediate-child" \
+            --arg head "$(git -C catalog/security-v2-current rev-parse HEAD)" \
+            '{pushed:false,noOp:true,retryState:$state,newHead:$head}' \
+            > catalog/authorized-publication/evidence-history-publication.json
+      - name: Publish authorized Deep Scan queue only after Evidence acceptance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          python tools/security/publish_deep_scan_state.py \
+            --input catalog/authorized-publication/security-v2-authorize-work/deep-scan-state \
+            --repo . \
+            --branch deep-scan-state \
+            --push
+      - name: Reconcile human source follow-up issues only after Evidence acceptance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/catalog/create_source_followup_issues.py
+          --input catalog/authorized-publication/security-v2-authorize-work/sigmascope-source-followups.json
+          --repository ${{ github.repository }}
+          --max-new 25
+      - name: Wake Deep Scan worker after accepted queue publication
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deep-scan.yml --ref sigmascope
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: omega-sigmascope-phase4c-publication-receipt
+          path: |
+            catalog/authorized-publication/sigmascope-phase4c-authorization.json
+            catalog/authorized-publication/publication-state.json
+            catalog/authorized-publication/evidence-history-publication.json
+          if-no-files-found: warn
+          retention-days: 30

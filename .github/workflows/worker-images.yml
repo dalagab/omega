@@ -1,0 +1,112 @@
+name: Omega security worker toolchain images
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: [sigmascope]
+    paths:
+      - "containers/**"
+      - ".github/workflows/worker-images.yml"
+      - "tools/orchestration/publish_worker_images.py"
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: omega-security-worker-images
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: catalog-worker
+            dockerfile: containers/catalog-worker/Dockerfile
+          - image: sigmascope-worker
+            dockerfile: containers/sigmascope-worker/Dockerfile
+          - image: intelligence-worker
+            dockerfile: containers/intelligence-worker/Dockerfile
+          - image: publisher-worker
+            dockerfile: containers/publisher-worker/Dockerfile
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: true
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: echo "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build immutable toolchain image
+        id: build
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/omega-${{ matrix.image }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$IMAGE:toolchain-v1"
+          docker build --pull --label "org.opencontainers.image.revision=${GITHUB_SHA}" -f "${{ matrix.dockerfile }}" -t "$tag" .
+          docker push "$tag" | tee image-push.log
+          digest="$(awk '/digest: sha256:/{print $2}' image-push.log | tail -1)"
+          test -n "$digest"
+          digest_ref="$IMAGE@$digest"
+          echo "digest_ref=$digest_ref" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$digest_ref" > image-ref.txt
+          echo "### ${{ matrix.image }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '\`'$digest_ref'\`' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: worker-image-digest-${{ matrix.image }}
+          path: image-ref.txt
+          retention-days: 30
+
+  publish-manifest:
+    name: Publish digest-pinned worker image manifest
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: true
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: worker-image-digest-*
+          path: image-digests
+      - name: Build immutable image manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path('image-digests')
+          images={}
+          for name in ('catalog-worker','sigmascope-worker','intelligence-worker','publisher-worker'):
+              matches=list(root.glob(f'worker-image-digest-{name}/image-ref.txt'))
+              if len(matches)!=1:
+                  raise SystemExit(f'missing digest artifact for {name}')
+              images[name]=matches[0].read_text().strip()
+          semantic={'schema':'omega.worker-images.v1','images':images}
+          digest=hashlib.sha256(json.dumps(semantic,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          document={**semantic,'workerImagesRevision':f'worker-images-v1-{digest[:20]}','builtFromCommit':'${{ github.sha }}'}
+          out=Path('catalog/worker-images');out.mkdir(parents=True,exist_ok=True)
+          (out/'index.json').write_text(json.dumps(document,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(document,indent=2,sort_keys=True))
+          PY
+      - name: Publish worker image identity branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          python tools/orchestration/publish_worker_images.py --input catalog/worker-images --repo . --branch security-worker-images --push

@@ -1,0 +1,28 @@
+name: Omega catalog · freeze and publish
+
+on:
+  workflow_call:
+    inputs:
+      allow_source_removal:
+        type: boolean
+        required: false
+        default: false
+  workflow_dispatch:
+    inputs:
+      allow_source_removal:
+        description: "Allow an intentional removal from the previous canonical source registry"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+  packages: read
+
+# Intentionally unscheduled. Collector activity can run many times per day; client publication only happens here.
+jobs:
+  freeze:
+    uses: ./.github/workflows/catalog-builder.yml
+    with:
+      allow_source_removal: ${{ inputs.allow_source_removal || false }}
+    secrets: inherit

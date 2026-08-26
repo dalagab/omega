@@ -1,0 +1,134 @@
+name: Omega SigmaScope · parallel result worker
+
+on:
+  workflow_call:
+    inputs:
+      queue_key:
+        description: Exact persistent SigmaScope scanner-queue key
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      queue_key:
+        description: Exact persistent SigmaScope scanner-queue key
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: omega-sigmascope-parallel-result-${{ inputs.queue_key }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
+  OMEGA_SECONDARY_SECURITY_CACHE: catalog/secondary-security-runtime
+
+jobs:
+  resolve-image:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: security-worker-images, path: image-state, persist-credentials: false}
+      - id: image
+        shell: bash
+        run: echo "image=$(jq -r '.images[\"sigmascope-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+
+  scan:
+    name: Build immutable result bundle for ${{ inputs.queue_key }}
+    needs: resolve-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    container:
+      image: ${{ needs.resolve-image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: "${{ github.sha }}", fetch-depth: 1, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: catalog-data, path: catalog/active-state, fetch-depth: 1, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 1, persist-credentials: false}
+      - name: Verify frozen worker supports exact queue-key result execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/definitions_snapshot.py" verify-worker --definitions-root catalog/active-state/definitions
+          pipeline="$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
+          if ! python "$pipeline" --help 2>&1 | grep -q -- '--queue-key'; then
+            echo "::error::Frozen Definitions worker predates parallel SigmaScope queue-key execution. Freeze a new catalog/Definitions snapshot before running Phase 4 shadow workers."
+            exit 1
+          fi
+          yara --version
+          clamscan --version || true
+      - name: Materialize exact frozen ClamAV definitions
+        continue-on-error: true
+        run: >-
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/secondary_security_assets.py" materialize-clamav
+          --definitions-root catalog/active-state/definitions
+          --output "$OMEGA_SECONDARY_SECURITY_CACHE"
+      - name: Materialize frozen canonical catalog
+        run: >-
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/catalog_json_store.py" materialize
+          --root catalog/active-state/catalog
+          --database catalog/security-input/omega-catalog.sqlite
+          --definitions-revision "$(python -c "import json; print(json.load(open('catalog/active-state/definitions/index.json'))['definitionsRevision'])")"
+      - name: Run exactly one persistent queue item without Evidence publication
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/security-v2-work
+          defs="catalog/active-state/definitions/index.json"
+          pipeline="$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
+          python "$pipeline" \
+            --base-database catalog/security-input/omega-catalog.sqlite \
+            --current-evidence catalog/security-v2-current \
+            --candidate-evidence catalog/security-v2-candidate \
+            --work-dir catalog/security-v2-work \
+            --skip-marketplace \
+            --frozen-advisories catalog/active-state/definitions/osv-advisories.json \
+            --frozen-definitions catalog/active-state/definitions \
+            --catalog-revision "$(python -c "import json; print(json.load(open('$defs'))['catalogRevision'])")" \
+            --definitions-revision "$(python -c "import json; print(json.load(open('$defs'))['definitionsRevision'])")" \
+            --scanner-revision "$(python -c "import json; print(json.load(open('$defs'))['scannerRevision'])")" \
+            --artifact-analysis-revision "$(python -c "import json; print(json.load(open('$defs'))['artifactAnalysisRevision'])")" \
+            --source-analysis-revision "$(python -c "import json; print(json.load(open('$defs'))['sourceAnalysisRevision'])")" \
+            --scanner-bundle-sha256 "$(python -c "import json; print(json.load(open('$defs'))['scannerBundle']['sha256'])")" \
+            --rule-set-revision "$(python -c "import json; print(json.load(open('$defs'))['ruleSetRevision'])")" \
+            --advisory-revision "$(python -c "import json; print(json.load(open('$defs'))['advisoryRevision'])")" \
+            --queue-seed catalog/active-state/scan-queue.json \
+            --queue-key "${{ inputs.queue_key }}" \
+            --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json" \
+            --max-scans 1 \
+            --max-batch-seconds 3000 \
+            --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"
+      - name: Build content-addressed non-authoritative result bundle
+        run: >-
+          python tools/security/sigmascope_result_bundle.py build
+          --current-evidence catalog/security-v2-current
+          --candidate-evidence catalog/security-v2-candidate
+          --work-dir catalog/security-v2-work
+          --definitions-root catalog/active-state/definitions
+          --queue-key "${{ inputs.queue_key }}"
+          --worker-image "${{ needs.resolve-image.outputs.image }}"
+          --output catalog/sigmascope-result-bundle
+      - name: Revalidate result bundle against the exact starting Evidence head
+        run: >-
+          python tools/security/sigmascope_result_bundle.py validate
+          --root catalog/sigmascope-result-bundle
+          --current-evidence catalog/security-v2-current
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-result-${{ inputs.queue_key }}
+          path: catalog/sigmascope-result-bundle
+          if-no-files-found: error
+          retention-days: 30

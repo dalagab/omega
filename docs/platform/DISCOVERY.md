@@ -8,7 +8,7 @@ Its component identity is `omega.discovery`. Collector implementations under tha
 
 Omega Discovery answers **what public facts might exist?** It does not answer **what is the canonical plugin identity?** and it does not answer **is this plugin safe?**
 
-The normal scheduled run is every six hours. The replaceable `catalog-discovery` snapshot is an inbox of provenance-backed candidates for the next canonical catalog reconciliation.
+The durable `catalog-discovery` queue is reconciled on a six-hour cadence. Its lease-bound result is published on `catalog-discovery-work-state`; the compatible replaceable `catalog-discovery` snapshot remains an inbox of provenance-backed typed observations for Analysis Broker/consumer reuse. Neither branch has canonical catalog authority.
 
 ## Collector graph
 

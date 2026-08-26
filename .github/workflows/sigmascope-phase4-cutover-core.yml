@@ -1,0 +1,242 @@
+name: Omega SigmaScope · Phase 4 locked cutover core
+
+on:
+  workflow_call:
+    inputs:
+      confirm_migration:
+        description: Explicit acknowledgement that the locked core may publish an authoritative Security Evidence v2 child
+        required: true
+        type: boolean
+      max_workers:
+        description: Parallel exact queue items to prove and migrate in this cutover run (1-8)
+        required: false
+        type: number
+        default: 4
+# This one run owns the same mutex as every existing Evidence-v2 publisher. Once it starts,
+# the serialized fallback, Rift ingestion and standalone Phase-4C writer cannot advance
+# security-evidence-v2 until the cutover has been verified or failed closed.
+concurrency:
+  group: omega-catalog-sigmascope-exclusive
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+  packages: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  prerequisites:
+    name: Prove prepared automatic-cutover prerequisites
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Require explicit cutover acknowledgement
+        env:
+          CONFIRM_MIGRATION: ${{ inputs.confirm_migration }}
+          MAX_WORKERS: ${{ inputs.max_workers }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CONFIRM_MIGRATION" = "true" || { echo "::error::Set confirm_migration=true to run the authoritative Phase-4 cutover."; exit 2; }
+          [[ "$MAX_WORKERS" =~ ^[0-9]+$ ]] || { echo "::error::max_workers must be an integer from 1 through 8."; exit 2; }
+          test "$MAX_WORKERS" -ge 1 -a "$MAX_WORKERS" -le 8 || { echo "::error::max_workers must be from 1 through 8."; exit 2; }
+      - uses: actions/checkout@v6
+        with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: catalog-data, path: catalog/active-state, fetch-depth: 1, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 2, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-worker-images, path: image-state, fetch-depth: 1, persist-credentials: false}
+      - uses: actions/setup-python@v7
+        with: {python-version: "3.13"}
+      - name: Require all immutable Phase-4 worker images
+        shell: bash
+        run: |
+          set -euo pipefail
+          for image in catalog-worker sigmascope-worker intelligence-worker publisher-worker; do
+            ref="$(jq -r --arg image "$image" '.images[$image] // empty' image-state/index.json)"
+            [[ "$ref" =~ @sha256:[0-9a-f]{64}$ ]] || { echo "::error::security-worker-images is missing a digest-pinned $image image."; exit 3; }
+          done
+      - name: Require newly frozen fast-forward-capable Definitions worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          publisher=catalog/active-state/definitions/worker/tools/security/publish_security_evidence_v2.py
+          history=catalog/active-state/definitions/worker/tools/orchestration/git_snapshot_history.py
+          test -f "$publisher" -a -f "$history" || { echo "::error::Frozen Definitions worker predates the Git-history/Phase-4C cutover. Freeze Definitions first."; exit 4; }
+          grep -q -- '--history-mode' "$publisher"
+          grep -q -- '--expected-parent-sha' "$publisher"
+          grep -q -- '--parallel-authorization-report' "$publisher"
+      - name: Require at least one exact real-corpus assignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/sigmascope_parallel_plan.py \
+            --queue-seed catalog/active-state/scan-queue.json \
+            --evidence-root catalog/security-v2-current \
+            --max-assignments 1 \
+            --output catalog/phase4-migration-prerequisite-plan.json
+          count="$(jq -r '.assignmentCount' catalog/phase4-migration-prerequisite-plan.json)"
+          test "$count" -gt 0 || { echo "::error::No eligible real-corpus artifact/source queue item is currently available for Phase-4 equivalence proof."; exit 5; }
+      - name: Summarize locked migration base
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "### Phase 4 automatic cutover base"
+            echo "- Evidence head: \`$(git -C catalog/security-v2-current rev-parse HEAD)\`"
+            echo "- Definitions: \`$(jq -r '.definitionsRevision' catalog/active-state/definitions/index.json)\`"
+            echo "- Maximum parallel workers: \`${{ inputs.max_workers }}\`"
+            echo "- Global Evidence writer mutex: held for this entire run"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  shadow:
+    name: Fresh Phase-4B real-corpus proof
+    needs: prerequisites
+    uses: ./.github/workflows/sigmascope-parallel-shadow.yml
+    with:
+      max_workers: ${{ inputs.max_workers }}
+    secrets: inherit
+
+  authorize-and-publish:
+    name: Authorize and perform one-writer cutover
+    needs: shadow
+    uses: ./.github/workflows/sigmascope-parallel-publish.yml
+    with:
+      use_current_run_artifacts: true
+      confirm_publish: true
+    secrets: inherit
+
+  verify:
+    name: Verify authoritative child and deferred state
+    needs: authorize-and-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 2, persist-credentials: false}
+      - uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-phase4c-authorized-candidate
+          path: catalog/authorized-publication
+      - uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-phase4c-publication-receipt
+          path: catalog/publication-receipt
+      - name: Rehydrate exact authorized candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd catalog/authorized-publication
+          sha256sum -c security-v2-authorized-candidate.tar.gz.sha256
+          mkdir candidate
+          tar -xzf security-v2-authorized-candidate.tar.gz -C candidate
+      - name: Verify Evidence is the exact authorized immediate child
+        shell: bash
+        run: |
+          set -euo pipefail
+          head="$(git -C catalog/security-v2-current rev-parse HEAD)"
+          parent="$(git -C catalog/security-v2-current rev-parse HEAD^ 2>/dev/null || true)"
+          python tools/security/sigmascope_parallel_publish_gate.py check-current \
+            --authorization catalog/authorized-publication/sigmascope-phase4c-authorization.json \
+            --candidate catalog/authorized-publication/candidate \
+            --current-evidence catalog/security-v2-current \
+            --current-head "$head" \
+            --current-parent "$parent" \
+            --deep-scan-index catalog/authorized-publication/security-v2-authorize-work/deep-scan-state/index.json \
+            --source-followups catalog/authorized-publication/security-v2-authorize-work/sigmascope-source-followups.json \
+            --output catalog/phase4-migration-post-publication-state.json
+          state="$(jq -r '.state' catalog/phase4-migration-post-publication-state.json)"
+          if [ "$state" = "already-published-immediate-child" ]; then
+            exit 0
+          fi
+          if [ "$state" = "ready-to-publish" ]; then
+            receipt=catalog/publication-receipt/evidence-history-publication.json
+            test "$(jq -r '.noOp // false' "$receipt")" = "true" || { echo "::error::Evidence remained on the authorized parent without an explicit identical-tree no-op receipt."; exit 7; }
+            test "$(jq -r '.pushed // false' "$receipt")" = "false" || { echo "::error::A no-op Evidence publication cannot report pushed=true."; exit 7; }
+            current_index="$(sha256sum catalog/security-v2-current/index.json | awk '{print $1}')"
+            candidate_index="$(sha256sum catalog/authorized-publication/candidate/index.json | awk '{print $1}')"
+            test "$current_index" = "$candidate_index" || { echo "::error::No-op publication did not preserve the exact authorized candidate tree."; exit 7; }
+            exit 0
+          fi
+          echo "::error::Unexpected Phase-4 post-publication state: $state"
+          exit 7
+      - name: Verify authorized Deep Scan state was published after Evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf catalog/deep-scan-published
+          mkdir -p catalog/deep-scan-published
+          git fetch --depth=1 origin deep-scan-state
+          git archive FETCH_HEAD | tar -x -C catalog/deep-scan-published
+          expected="$(jq -r '.sideEffects.deepScan.sha256' catalog/authorized-publication/sigmascope-phase4c-authorization.json)"
+          observed="$(sha256sum catalog/deep-scan-published/index.json | awk '{print $1}')"
+          test "$expected" = "$observed" || { echo "::error::Published Deep Scan state does not match the authorized deferred payload."; exit 6; }
+      - name: Build durable automatic-cutover receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=catalog/authorized-publication/sigmascope-phase4c-authorization.json
+          state=catalog/phase4-migration-post-publication-state.json
+          publication=catalog/publication-receipt/evidence-history-publication.json
+          mkdir -p catalog/phase4-migration-receipt
+          publication_state="$(jq -r '.state' "$state")"
+          pushed="$(jq -r '.pushed // false' "$publication")"
+          no_op="$(jq -r '.noOp // false' "$publication")"
+          if [ "$publication_state" = "already-published-immediate-child" ]; then
+            result="published-authorized-immediate-child"
+          elif [ "$publication_state" = "ready-to-publish" ] && [ "$no_op" = "true" ]; then
+            result="authorized-identical-tree-no-op"
+          else
+            echo "::error::Cannot classify final Phase-4 migration state." >&2
+            exit 8
+          fi
+          jq -n \
+            --arg schema "omega.sigmascope-phase4-migration.v1" \
+            --arg status "complete" \
+            --arg result "$result" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg runAttempt "$GITHUB_RUN_ATTEMPT" \
+            --arg preflightRevision "$(jq -r '.preflightRevision' "$auth")" \
+            --arg authorizationRevision "$(jq -r '.authorizationRevision' "$auth")" \
+            --arg expectedParentHead "$(jq -r '.expectedParentHead' "$auth")" \
+            --arg evidenceHead "$(jq -r '.currentHead' "$state")" \
+            --arg evidenceIndexSha256 "$(jq -r '.currentIndexSha256' "$state")" \
+            --arg deepScanSha256 "$(jq -r '.sideEffects.deepScan.sha256' "$auth")" \
+            --arg publicationState "$publication_state" \
+            --argjson maxWorkers "${{ inputs.max_workers }}" \
+            --argjson pushed "$pushed" \
+            --argjson noOp "$no_op" \
+            '{schema:$schema,status:$status,result:$result,sourceRun:{id:$runId,attempt:$runAttempt},maxWorkers:$maxWorkers,preflightRevision:$preflightRevision,authorizationRevision:$authorizationRevision,expectedParentHead:$expectedParentHead,evidenceHead:$evidenceHead,evidenceIndexSha256:$evidenceIndexSha256,deepScanSha256:$deepScanSha256,publicationState:$publicationState,pushed:$pushed,noOp:$noOp,authority:"phase4-automatic-cutover-receipt"}' \
+            > catalog/phase4-migration-receipt/receipt.json
+          {
+            echo "### Phase 4 automatic cutover complete"
+            echo "- Preflight: \`$(jq -r '.preflightRevision' "$auth")\`"
+            echo "- Authorization: \`$(jq -r '.authorizationRevision' "$auth")\`"
+            echo "- Evidence head: \`$(jq -r '.currentHead' "$state")\`"
+            echo "- Result: \`$result\`"
+            echo "- Post-publication state: \`$publication_state\`"
+            echo "- Deep Scan payload: exact authorized hash verified"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-phase4-migration-receipt
+          path: |
+            catalog/phase4-migration-receipt/receipt.json
+            catalog/phase4-migration-post-publication-state.json
+            catalog/publication-receipt/evidence-history-publication.json
+          if-no-files-found: error
+          retention-days: 90

@@ -1,0 +1,152 @@
+{
+  "schema": "omega.orchestration-policy.v1",
+  "version": 3,
+  "queues": [
+    {
+      "queueId": "catalog-discovery",
+      "component": "omega.discovery",
+      "kind": "refresh-catalog-discovery",
+      "cadenceSeconds": 21600,
+      "priority": 300,
+      "subject": {
+        "type": "catalog"
+      },
+      "reason": [
+        "scheduled-discovery-refresh"
+      ],
+      "consumer": {
+        "implemented": true,
+        "leaseOwner": "omega.worker.catalog-discovery",
+        "workflow": "catalog-discovery-worker.yml",
+        "resultBranch": "catalog-discovery-work-state",
+        "leaseSeconds": 3600
+      }
+    },
+    {
+      "queueId": "catalog-enrichment",
+      "component": "omega.catalog",
+      "kind": "refresh-catalog-enrichment",
+      "cadenceSeconds": 43200,
+      "priority": 300,
+      "subject": {
+        "type": "catalog"
+      },
+      "reason": [
+        "scheduled-enrichment-refresh"
+      ],
+      "consumer": {
+        "implemented": true,
+        "leaseOwner": "omega.worker.catalog-enrichment",
+        "workflow": "catalog-enrichment-worker.yml",
+        "resultBranch": "catalog-enrichment-state",
+        "leaseSeconds": 3600
+      },
+      "prerequisites": [
+        "catalog-discovery"
+      ]
+    },
+    {
+      "queueId": "catalog-scrape",
+      "component": "omega.catalog",
+      "kind": "refresh-website-scrape",
+      "cadenceSeconds": 43200,
+      "priority": 290,
+      "subject": {
+        "type": "catalog-websites"
+      },
+      "reason": [
+        "scheduled-website-scrape-refresh"
+      ],
+      "prerequisites": [
+        "catalog-enrichment"
+      ],
+      "consumer": {
+        "implemented": true,
+        "leaseOwner": "omega.worker.catalog-scrape",
+        "workflow": "catalog-scrape-worker.yml",
+        "resultBranch": "catalog-scrape-state",
+        "leaseSeconds": 3600
+      }
+    },
+    {
+      "queueId": "source-head-observation",
+      "component": "omega.sigmascope",
+      "kind": "refresh-source-heads",
+      "cadenceSeconds": 86400,
+      "priority": 350,
+      "subject": {
+        "type": "catalog"
+      },
+      "reason": [
+        "scheduled-source-head-refresh"
+      ],
+      "consumer": {
+        "implemented": true,
+        "leaseOwner": "omega.worker.source-head",
+        "workflow": "source-head-worker.yml",
+        "resultBranch": "source-head-state",
+        "leaseSeconds": 2700
+      }
+    },
+    {
+      "queueId": "threat-intelligence",
+      "component": "omega.threat-intelligence",
+      "kind": "refresh-threat-intelligence",
+      "cadenceSeconds": 14400,
+      "priority": 450,
+      "subject": {
+        "type": "endpoint-inventory"
+      },
+      "reason": [
+        "threat-intelligence-ttl"
+      ],
+      "consumer": {
+        "implemented": true,
+        "leaseOwner": "omega.worker.threat-intelligence",
+        "workflow": "threat-intelligence-worker.yml",
+        "resultBranch": "threat-intelligence-state",
+        "leaseSeconds": 2700
+      }
+    },
+    {
+      "queueId": "osv-advisories",
+      "component": "omega.sigmascope",
+      "kind": "refresh-osv-advisories",
+      "cadenceSeconds": 86400,
+      "priority": 350,
+      "subject": {
+        "type": "dependency-inventory"
+      },
+      "reason": [
+        "advisory-ttl"
+      ],
+      "consumer": {
+        "implemented": true,
+        "leaseOwner": "omega.worker.osv",
+        "workflow": "osv-worker.yml",
+        "resultBranch": "osv-advisory-state",
+        "leaseSeconds": 2700
+      }
+    },
+    {
+      "queueId": "secondary-security-definitions",
+      "component": "omega.sigmascope",
+      "kind": "refresh-secondary-security-definitions",
+      "cadenceSeconds": 86400,
+      "priority": 250,
+      "subject": {
+        "type": "definitions"
+      },
+      "reason": [
+        "secondary-security-ttl"
+      ],
+      "consumer": {
+        "implemented": true,
+        "leaseOwner": "omega.worker.secondary-security",
+        "workflow": "secondary-security-worker.yml",
+        "resultBranch": "secondary-security-state",
+        "leaseSeconds": 5400
+      }
+    }
+  ]
+}

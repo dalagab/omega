@@ -58,6 +58,7 @@ WORKER_BUNDLE_EXTRA_FILES = (
     "security-definitions/capabilities/registry.json",
     "tools/requirements-security.txt",
     "tools/security/authenticode_probe.ps1",
+    "tools/orchestration/git_snapshot_history.py",
 )
 
 SECONDARY_SECURITY_SCHEMA = "omega.secondary-security-definitions.v2"
@@ -834,14 +835,25 @@ def build_snapshot(
         }
         osv_path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    # Preserve the exact package/version query set beside the frozen advisory response.
-    # New dependencies discovered by workers during the day remain explicitly uncovered
-    # until the next Definitions refresh rather than triggering live OSV calls.
-    queried_pairs: list[dict[str, str]] = []
-    if nuget_path.is_file():
-        for name, version in collect_public_advisories.observed_nuget_index(nuget_path, max_packages):
-            queried_pairs.append({"name": name, "version": version})
-    document["queriedPackageVersionPairs"] = queried_pairs
+    # Preserve the exact package/version query set used by the OSV collector. When
+    # advisories are supplied by the independent OSV lane, never rewrite this set from
+    # a newer Evidence-v2 index: doing so would claim advisory coverage that was not
+    # actually queried. Legacy/direct freezer collection still derives the set locally.
+    if advisories_input is None:
+        queried_pairs: list[dict[str, str]] = []
+        if nuget_path.is_file():
+            for name, version in collect_public_advisories.observed_nuget_index(nuget_path, max_packages):
+                queried_pairs.append({"name": name, "version": version})
+        document["queriedPackageVersionPairs"] = queried_pairs
+    elif not isinstance(document.get("queriedPackageVersionPairs"), list):
+        # Backward compatibility for pre-orchestration callers/tests. Production OSV lane
+        # results always carry the exact query set, so the freezer never rebinds a live
+        # independent result to a newer Evidence-v2 dependency inventory.
+        queried_pairs = []
+        if nuget_path.is_file():
+            for name, version in collect_public_advisories.observed_nuget_index(nuget_path, max_packages):
+                queried_pairs.append({"name": name, "version": version})
+        document["queriedPackageVersionPairs"] = queried_pairs
     osv_path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     source_observations_path = output / "source-revisions.json"

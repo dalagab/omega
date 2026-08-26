@@ -1,0 +1,105 @@
+name: Omega collector · website scraper
+
+on:
+  workflow_dispatch:
+    inputs:
+      work_id: {required: true, type: string}
+      claim_token: {required: true, type: string}
+
+permissions:
+  contents: write
+  actions: write
+  packages: read
+
+concurrency:
+  group: omega-worker-catalog-scrape
+  cancel-in-progress: false
+
+jobs:
+  resolve-image:
+    runs-on: ubuntu-latest
+    outputs: {image: "${{ steps.image.outputs.image }}"}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: security-worker-images, path: image-state, persist-credentials: false}
+      - id: image
+        shell: bash
+        run: echo "image=$(jq -r '.images[\"catalog-worker\"]' image-state/index.json)" >> "$GITHUB_OUTPUT"
+
+  collect:
+    needs: resolve-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container:
+      image: ${{ needs.resolve-image.outputs.image }}
+      credentials: {username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: sigmascope, persist-credentials: true}
+      - uses: actions/checkout@v6
+        with: {ref: security-work-state, path: catalog/work-state, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: catalog-data, path: catalog/current-state, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: catalog-enrichment-state, path: catalog/enrichment-lane, persist-credentials: false}
+      - name: Validate exact durable lease and settled enrichment input
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/orchestration/worker_claim.py --work-state catalog/work-state --queue-id catalog-scrape --work-id "${{ inputs.work_id }}" --owner omega.worker.catalog-scrape --claim-token "${{ inputs.claim_token }}" --output catalog/work-item.json
+          PYTHONPATH=tools/orchestration python - <<'PY'
+          import json
+          from pathlib import Path
+          import work_queue, work_result
+          result=work_result.validate_result(Path('catalog/enrichment-lane'), expected_queue_id='catalog-enrichment')
+          queue=work_queue.validate_queue(json.load(open('catalog/work-state/queues/catalog-enrichment.json')))
+          latest=sorted(queue['items'],key=lambda x:(x['createdAtUtc'],x['workId']))[-1]
+          if latest['state']!='completed' or (latest.get('settlement') or {}).get('resultRevision')!=result['resultRevision']:
+              raise SystemExit('website scraper refuses an unsettled enrichment result')
+          Path('catalog/enrichment-result-revision.txt').write_text(result['resultRevision'])
+          PY
+      - name: Materialize previous catalog website cache
+        shell: bash
+        run: |
+          mkdir -p catalog/seed
+          python tools/catalog/catalog_json_store.py materialize --root catalog/current-state/catalog --database catalog/seed/omega-catalog.sqlite
+      - name: Scrape only new or stale public project pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/catalog/scrape_websites_incremental.py
+          --input catalog/enrichment-lane/enriched-sources.json
+          --output catalog/website-enrichment.json
+          --seed-database catalog/seed/omega-catalog.sqlite
+          --max-age-hours 168
+          --concurrency 4
+          --timeout 20
+      - name: Build and publish lease-bound scraper result
+        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/lane-result
+          cp catalog/website-enrichment.json catalog/lane-result/
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          idx=json.load(open('catalog/current-state/catalog/index.json'))
+          enrichment=Path('catalog/enrichment-result-revision.txt').read_text().strip()
+          Path('catalog/lane-result/provenance.json').write_text(json.dumps({
+            'schema':'omega.catalog-scrape-provenance.v1',
+            'baseCatalogRevision':idx.get('catalogRevision',''),
+            'enrichmentResultRevision':enrichment
+          },indent=2,sort_keys=True)+'\n')
+          PY
+          python tools/orchestration/work_result.py build --queue-id catalog-scrape --work-item catalog/work-item.json --root catalog/lane-result --worker-image "${{ needs.resolve-image.outputs.image }}" --file website-enrichment.json --file provenance.json
+          gh auth setup-git
+          python tools/orchestration/publish_lane_state.py --input catalog/lane-result --repo . --branch catalog-scrape-state --push
+      - name: Wake the reconciler after result publication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: >-
+          gh workflow run security-reconcile.yml
+          --repo "${{ github.repository }}"
+          --ref sigmascope
