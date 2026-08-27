@@ -27,9 +27,19 @@ class SigmascopeParallelWorkflowTests(unittest.TestCase):
         self.assertIn("workflow_dispatch:", text)
         self.assertNotIn("schedule:", text)
         self.assertIn("sigmascope_parallel_plan.py", text)
-        self.assertIn("uses: ./.github/workflows/sigmascope-parallel-worker.yml", text)
+        self.assertNotIn("uses: ./.github/workflows/sigmascope-parallel-worker.yml", text)
+        self.assertIn('matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}', text)
+        self.assertIn('image: ${{ needs.resolve-merge-image.outputs.image }}', text)
+        self.assertIn('--queue-key "${{ matrix.queueKey }}"', text)
+        self.assertIn("sigmascope_result_bundle.py build", text)
+        self.assertIn("sigmascope_result_bundle.py validate", text)
         self.assertIn("sigmascope_result_bundle.py plan", text)
         self.assertIn("max-parallel: 8", text)
+        self.assertGreaterEqual(text.count("Install pinned Python security dependencies"), 2)
+        self.assertGreaterEqual(
+            text.count("python -m pip install --disable-pip-version-check -r tools/requirements-security.txt"),
+            2,
+        )
         self.assertNotIn("publish_security_evidence_v2.py", text)
         self.assertNotIn("gh release upload", text)
         self.assertIn("sigmascope_result_merger.py", text)
