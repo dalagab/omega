@@ -152,6 +152,9 @@ jobs:
     permissions:
       contents: read
       packages: read
+    outputs:
+      shadow_count: ${{ steps.shadow-plan.outputs.count }}
+      sigmascope_image: ${{ steps.images.outputs.sigmascope_image }}
     steps:
       - name: Require explicit cutover acknowledgement
         env:
@@ -176,14 +179,21 @@ jobs:
       - name: Install pinned Python security dependencies
         shell: bash
         run: python -m pip install --disable-pip-version-check -r tools/requirements-security.txt
-      - name: Require all immutable Phase-4 worker images
+      - id: images
+        name: Require all immutable Phase-4 worker images
         shell: bash
         run: |
           set -euo pipefail
+          sigmascope_ref=""
           for image in catalog-worker sigmascope-worker intelligence-worker publisher-worker; do
             ref="$(jq -r --arg image "$image" '.images[$image] // empty' image-state/index.json)"
             [[ "$ref" =~ @sha256:[0-9a-f]{64}$ ]] || { echo "::error::security-worker-images is missing a digest-pinned $image image."; exit 3; }
+            if [ "$image" = "sigmascope-worker" ]; then
+              sigmascope_ref="$ref"
+            fi
           done
+          test -n "$sigmascope_ref"
+          echo "sigmascope_image=$sigmascope_ref" >> "$GITHUB_OUTPUT"
       - name: Require newly frozen fast-forward-capable Definitions worker
         shell: bash
         run: |
@@ -194,17 +204,24 @@ jobs:
           grep -q -- '--history-mode' "$publisher"
           grep -q -- '--expected-parent-sha' "$publisher"
           grep -q -- '--parallel-authorization-report' "$publisher"
-      - name: Require at least one exact real-corpus assignment
+      - id: shadow-plan
+        name: Require at least one exact real-corpus assignment
         shell: bash
         run: |
           set -euo pipefail
           python tools/security/sigmascope_parallel_plan.py \
             --queue-seed catalog/active-state/scan-queue.json \
             --evidence-root catalog/security-v2-current \
-            --max-assignments 1 \
-            --output catalog/phase4-migration-prerequisite-plan.json
-          count="$(jq -r '.assignmentCount' catalog/phase4-migration-prerequisite-plan.json)"
+            --max-assignments "${{ inputs.max_workers }}" \
+            --output catalog/sigmascope-parallel-plan.json
+          count="$(jq -r '.assignmentCount' catalog/sigmascope-parallel-plan.json)"
           test "$count" -gt 0 || { echo "::error::No eligible real-corpus artifact/source queue item is currently available for Phase-4 equivalence proof."; exit 5; }
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-parallel-plan
+          path: catalog/sigmascope-parallel-plan.json
+          retention-days: 30
       - name: Summarize locked migration base
         shell: bash
         run: |
@@ -217,20 +234,136 @@ jobs:
             echo "- Global Evidence writer mutex: held by the complete migration workflow"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  shadow:
-    name: Fresh Phase-4B real-corpus proof
+  # Keep Phase-4B inside this top-level workflow. GitHub repeatedly rejected the reusable
+  # shadow expansion before creating any runner jobs; a literal matrix here preserves the
+  # same exact-queue-key proof without another workflow-evaluation boundary.
+  shadow-workers:
+    name: Phase-4B exact result bundle (slot ${{ matrix.slot }})
     needs: prerequisites
-    uses: ./.github/workflows/sigmascope-parallel-shadow.yml
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        slot: [0, 1, 2, 3, 4, 5, 6, 7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
     permissions:
       contents: read
       packages: read
-    with:
-      max_workers: ${{ inputs.max_workers }}
-    secrets: inherit
+    container:
+      image: ${{ needs.prerequisites.outputs.sigmascope_image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-parallel-plan
+          path: catalog/parallel-plan-artifact
+      - id: assignment
+        name: Resolve exact queue key for this static slot
+        shell: bash
+        run: |
+          set -euo pipefail
+          queue_key="$(jq -r --argjson slot "${{ matrix.slot }}" '.assignments[$slot].queueKey // ""' catalog/parallel-plan-artifact/sigmascope-parallel-plan.json)"
+          if [ -z "$queue_key" ]; then
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "Static slot ${{ matrix.slot }} is inactive for this plan."
+            exit 0
+          fi
+          echo "active=true" >> "$GITHUB_OUTPUT"
+          echo "queue_key=$queue_key" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v6
+        if: steps.assignment.outputs.active == 'true'
+        with: {ref: "${{ github.sha }}", fetch-depth: 1, persist-credentials: false}
+      - uses: actions/checkout@v6
+        if: steps.assignment.outputs.active == 'true'
+        with: {ref: catalog-data, path: catalog/active-state, fetch-depth: 1, persist-credentials: false}
+      - uses: actions/checkout@v6
+        if: steps.assignment.outputs.active == 'true'
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 1, persist-credentials: false}
+      - name: Build exact non-authoritative result bundle
+        if: steps.assignment.outputs.active == 'true'
+        run: >-
+          python tools/security/sigmascope_phase4b_inline_worker.py
+          --queue-key "${{ steps.assignment.outputs.queue_key }}"
+          --worker-image "${{ needs.prerequisites.outputs.sigmascope_image }}"
+          --output catalog/sigmascope-result-bundle
+      - uses: actions/upload-artifact@v7
+        if: steps.assignment.outputs.active == 'true'
+        with:
+          name: omega-sigmascope-result-slot-${{ matrix.slot }}
+          path: catalog/sigmascope-result-bundle
+          if-no-files-found: error
+          retention-days: 30
+
+  shadow-merge:
+    name: Validate and prove Phase-4B merged candidate
+    needs: [prerequisites, shadow-workers]
+    if: needs.shadow-workers.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.prerequisites.outputs.sigmascope_image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: catalog-data, path: catalog/active-state, fetch-depth: 1, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout previous Deep Scan state when available
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/deep-scan-current
+          if git ls-remote --exit-code --heads origin deep-scan-state >/dev/null 2>&1; then
+            git fetch --depth=1 origin deep-scan-state
+            git archive FETCH_HEAD | tar -x -C catalog/deep-scan-current
+          fi
+      - uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-parallel-plan
+          path: catalog/parallel-plan-artifact
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: omega-sigmascope-result-*
+          path: catalog/result-bundles
+      - name: Rebuild merged candidate and prove serialized equivalence
+        run: >-
+          python tools/security/sigmascope_phase4b_inline_merge.py
+          --plan catalog/parallel-plan-artifact/sigmascope-parallel-plan.json
+          --bundles-root catalog/result-bundles
+          --source-run-id "${{ github.run_id }}"
+          --source-run-attempt "${{ github.run_attempt }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-merged-candidate-validation
+          path: |
+            catalog/sigmascope-merge-report.json
+            catalog/security-v2-merge-work/merge-plan.json
+            catalog/security-v2-merged-candidate/index.json
+            catalog/security-v2-merged-candidate/validation-report.json
+            catalog/sigmascope-parallel-equivalence.json
+            catalog/sigmascope-parallel-developer-audit.json
+            catalog/sigmascope-parallel-storage-audit.json
+            catalog/sigmascope-parallel-preflight.json
+            catalog/security-v2-merge-work/sigmascope-source-followups.json
+            catalog/security-v2-merge-work/deep-scan-state/index.json
+            catalog/security-v2-serial-source-followups.json
+            catalog/security-v2-serial-deep/index.json
+          if-no-files-found: error
+          retention-days: 30
 
   authorize-and-publish:
     name: Authorize and perform one-writer cutover
-    needs: shadow
+    needs: shadow-merge
     uses: ./.github/workflows/sigmascope-parallel-publish.yml
     permissions:
       contents: write

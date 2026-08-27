@@ -18,6 +18,7 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertIn("uses: ./.github/workflows/worker-images.yml", text)
         self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", text)
         self.assertNotIn("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml", text)
+        self.assertNotIn("uses: ./.github/workflows/sigmascope-parallel-shadow.yml", text)
         self.assertIn("uses: ./.github/workflows/security-reconcile.yml", text)
         self.assertIn("redispatch_active_leases: true", text)
         self.assertIn("group: omega-catalog-sigmascope-exclusive", text)
@@ -26,7 +27,8 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertNotIn("gh workflow run security-reconcile.yml", text)
         self.assertIn("\n  freeze-current-definitions:\n", text)
         self.assertIn("\n  prerequisites:\n", text)
-        self.assertIn("\n  shadow:\n", text)
+        self.assertIn("\n  shadow-workers:\n", text)
+        self.assertIn("\n  shadow-merge:\n", text)
         self.assertIn("\n  authorize-and-publish:\n", text)
         self.assertIn("\n  verify:\n", text)
         self.assertIn("authority_lock_held: true", text)
@@ -40,8 +42,9 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertIn("cancel-in-progress: false", head)
         self.assertIn("queue: max", head)
         self.assertLess(text.index("\n  freeze-current-definitions:\n"), text.index("\n  prerequisites:\n"))
-        self.assertLess(text.index("\n  prerequisites:\n"), text.index("\n  shadow:\n"))
-        self.assertLess(text.index("\n  shadow:\n"), text.index("\n  authorize-and-publish:\n"))
+        self.assertLess(text.index("\n  prerequisites:\n"), text.index("\n  shadow-workers:\n"))
+        self.assertLess(text.index("\n  shadow-workers:\n"), text.index("\n  shadow-merge:\n"))
+        self.assertLess(text.index("\n  shadow-merge:\n"), text.index("\n  authorize-and-publish:\n"))
         self.assertLess(text.index("\n  authorize-and-publish:\n"), text.index("\n  verify:\n"))
 
     def test_prepared_prerequisites_fail_closed_before_real_corpus_shadow(self) -> None:
@@ -62,6 +65,33 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
             text.index("Install pinned Python security dependencies"),
             text.index("Require at least one exact real-corpus assignment"),
         )
+
+    def test_phase4b_proof_is_inlined_with_static_runner_matrix(self) -> None:
+        text = self.read("sigmascope-phase4-migration.yml")
+        workers = text[text.index("\n  shadow-workers:\n") : text.index("\n  shadow-merge:\n")]
+        merge = text[text.index("\n  shadow-merge:\n") : text.index("\n  authorize-and-publish:\n")]
+        self.assertIn("slot: [0, 1, 2, 3, 4, 5, 6, 7]", workers)
+        self.assertNotIn("fromJSON(", workers)
+        self.assertIn('image: ${{ needs.prerequisites.outputs.sigmascope_image }}', workers)
+        self.assertIn("sigmascope_phase4b_inline_worker.py", workers)
+        self.assertIn("omega-sigmascope-result-slot-${{ matrix.slot }}", workers)
+        self.assertIn("sigmascope_phase4b_inline_merge.py", merge)
+        self.assertIn("omega-sigmascope-merged-candidate-validation", merge)
+        self.assertIn("contents: read", workers)
+        self.assertIn("contents: read", merge)
+        self.assertNotIn("contents: write", workers)
+        self.assertNotIn("contents: write", merge)
+
+    def test_inline_phase4b_helpers_retain_zero_publication_authority(self) -> None:
+        for name in ("sigmascope_phase4b_inline_worker.py", "sigmascope_phase4b_inline_merge.py"):
+            text = (common.ROOT / "tools" / "security" / name).read_text(encoding="utf-8")
+            self.assertNotIn("publish_security_evidence_v2.py", text, name)
+            self.assertNotIn("publish_catalog_state.py", text, name)
+            self.assertNotIn("gh release", text, name)
+        merge = (common.ROOT / "tools" / "security" / "sigmascope_phase4b_inline_merge.py").read_text(encoding="utf-8")
+        self.assertIn("candidate-only-no-evidence-publication", merge)
+        self.assertIn("preflight-only-no-evidence-publication", merge)
+        self.assertIn("sigmascope_merge_equivalence.py", merge)
 
     def test_post_publication_verifies_authorized_evidence_and_deep_scan_state(self) -> None:
         text = self.read("sigmascope-phase4-migration.yml")

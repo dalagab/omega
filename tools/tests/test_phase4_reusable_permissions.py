@@ -48,11 +48,6 @@ class Phase4ReusablePermissionTests(unittest.TestCase):
         )
         self.assert_call_permissions(
             "sigmascope-phase4-migration.yml",
-            "sigmascope-parallel-shadow.yml",
-            ("contents: read", "packages: read"),
-        )
-        self.assert_call_permissions(
-            "sigmascope-phase4-migration.yml",
             "sigmascope-parallel-publish.yml",
             ("contents: write", "actions: write", "issues: write", "packages: read"),
         )
@@ -61,10 +56,37 @@ class Phase4ReusablePermissionTests(unittest.TestCase):
             "catalog-client-publish.yml",
             ("contents: write", "packages: read"),
         )
+        migration = read("sigmascope-phase4-migration.yml")
+        self.assertNotIn("uses: ./.github/workflows/sigmascope-parallel-shadow.yml", migration)
         self.assertNotIn(
             "uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml",
-            read("sigmascope-phase4-migration.yml"),
+            migration,
         )
+
+    def test_inlined_phase4b_jobs_are_explicitly_read_only(self) -> None:
+        migration = read("sigmascope-phase4-migration.yml")
+        workers = migration[migration.index("  shadow-workers:\n") : migration.index("  shadow-merge:\n")]
+        merge = migration[migration.index("  shadow-merge:\n") : migration.index("  authorize-and-publish:\n")]
+        for block in (workers, merge):
+            self.assertIn("permissions:", block)
+            self.assertIn("contents: read", block)
+            self.assertIn("packages: read", block)
+            self.assertNotIn("contents: write", block)
+            self.assertNotIn("actions: write", block)
+            self.assertNotIn("issues: write", block)
+
+    def test_standalone_shadow_remains_result_only_and_static(self) -> None:
+        shadow = read("sigmascope-parallel-shadow.yml")
+        self.assertNotIn("uses: ./.github/workflows/sigmascope-parallel-worker.yml", shadow)
+        self.assertNotIn("fromJSON(needs.plan.outputs.matrix)", shadow)
+        workers = shadow[shadow.index("  workers:\n") : shadow.index("  merge-plan:\n")]
+        self.assertIn("runs-on: ubuntu-latest", workers)
+        self.assertIn("permissions:", workers)
+        self.assertIn("contents: read", workers)
+        self.assertIn("packages: read", workers)
+        self.assertIn("slot: [0, 1, 2, 3, 4, 5, 6, 7]", workers)
+        self.assertIn('image: ${{ needs.resolve-merge-image.outputs.image }}', workers)
+        self.assertIn('--queue-key "${{ steps.assignment.outputs.queue_key }}"', workers)
 
     def test_deeper_nested_calls_are_explicit_too(self) -> None:
         self.assert_call_permissions(
@@ -77,17 +99,6 @@ class Phase4ReusablePermissionTests(unittest.TestCase):
             "catalog-client-publish.yml",
             ("contents: write", "packages: read"),
         )
-        shadow = read("sigmascope-parallel-shadow.yml")
-        self.assertNotIn("uses: ./.github/workflows/sigmascope-parallel-worker.yml", shadow)
-        self.assertNotIn("fromJSON(needs.plan.outputs.matrix)", shadow)
-        workers = shadow[shadow.index("  workers:\n") : shadow.index("  merge-plan:\n")]
-        self.assertIn("runs-on: ubuntu-latest", workers)
-        self.assertIn("permissions:", workers)
-        self.assertIn("contents: read", workers)
-        self.assertIn("packages: read", workers)
-        self.assertIn("slot: [0, 1, 2, 3, 4, 5, 6, 7]", workers)
-        self.assertIn('image: ${{ needs.resolve-merge-image.outputs.image }}', workers)
-        self.assertIn('--queue-key "${{ steps.assignment.outputs.queue_key }}"', workers)
 
     def test_parallel_publisher_declares_its_real_maximum_permission_contract(self) -> None:
         text = read("sigmascope-parallel-publish.yml")
