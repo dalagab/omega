@@ -407,11 +407,13 @@ class DiscordNoticeTests(unittest.TestCase):
             self.assertIn("permissions: {}", notify_side)
 
     def test_catalog_notification_merge_preserves_migration_and_v2_guards(self) -> None:
-        workflow = (common.ROOT / ".github" / "workflows" / "catalog-builder.yml").read_text(encoding="utf-8")
-        self.assertIn("id: previous_catalog", workflow)
-        self.assertIn('steps.previous_catalog.outputs.current', workflow)
-        self.assertIn('args+=(--previous-catalog-root catalog/previous-state/catalog)', workflow)
-        self.assertIn("validate_marketplace_catalog.py --root catalog/client-dist --require-v2", workflow)
+        freeze = (common.ROOT / ".github" / "workflows" / "catalog-builder.yml").read_text(encoding="utf-8")
+        customer = (common.ROOT / ".github" / "workflows" / "catalog-client-publish.yml").read_text(encoding="utf-8")
+        self.assertIn("id: previous_catalog", freeze)
+        self.assertIn('steps.previous_catalog.outputs.current', freeze)
+        self.assertIn('args+=(--previous-catalog-root catalog/previous-state/catalog)', freeze)
+        self.assertNotIn("validate_marketplace_catalog.py --root catalog/client-dist --require-v2", freeze)
+        self.assertIn("validate_marketplace_catalog.py --root catalog/client-dist --require-v2", customer)
 
 
     def test_sender_uses_discord_api_user_agent_and_safe_headers(self) -> None:

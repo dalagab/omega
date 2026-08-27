@@ -62,7 +62,7 @@ class WorkflowContractTests(unittest.TestCase):
             "collect_public_advisories.py", "freshclam", "apt-get install", "pip install",
             "compile_marketplace_snapshot.py", "validate_marketplace_catalog.py",
             "client_database_audit.py", "gh release upload catalog-latest",
-            "omega-marketplace.sqlite.zip",
+            "catalog/client-dist",
         ):
             self.assertNotIn(forbidden, text, f"freeze must not perform collector/customer publication work: {forbidden}")
         self.assertNotIn("--allow-legacy-identity", text)
@@ -448,6 +448,7 @@ class WorkflowContractTests(unittest.TestCase):
         enrichment = self.read("catalog-enrichment-worker.yml")
         scraper = self.read("catalog-scrape-worker.yml")
         freeze = self.read("catalog-builder.yml")
+        customer = self.read("catalog-client-publish.yml")
         self.assertIn("Materialize previous catalog cache", enrichment)
         self.assertIn("catalog_json_store.py materialize", enrichment)
         self.assertIn("catalog_json_v1_seed.py", enrichment)
@@ -460,8 +461,10 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn('schema == "omega.catalog-json.v1"', scraper)
         self.assertNotIn("Download previous published marketplace DB for conditional request hints", enrichment + scraper + freeze)
         self.assertNotIn("Download previous published marketplace DB for website cache hints", enrichment + scraper + freeze)
-        self.assertIn("client_database_audit.py", freeze)
-        self.assertIn("storage-audit.json", freeze)
+        self.assertNotIn("client_database_audit.py", freeze)
+        self.assertNotIn("storage-audit.json", freeze)
+        self.assertIn("client_database_audit.py", customer)
+        self.assertIn("storage-audit.json", customer)
 
     def test_catalog_builder_ingests_community_source_metadata_explicitly(self) -> None:
         text = self.read("catalog-builder.yml")
@@ -485,16 +488,21 @@ class WorkflowContractTests(unittest.TestCase):
 
     def test_revision_and_v2_publication_tools_are_separated_by_workflow(self) -> None:
         builder = self.read("catalog-builder.yml")
+        customer = self.read("catalog-client-publish.yml")
         security = self.read("sigmascope.yml")
         self.assertIn("publish_catalog_state.py", builder)
-        self.assertIn("compile_marketplace_snapshot.py", builder)
-        self.assertIn("validate_marketplace_catalog.py", builder)
+        self.assertNotIn("compile_marketplace_snapshot.py", builder)
+        self.assertNotIn("validate_marketplace_catalog.py", builder)
+        self.assertIn("compile_marketplace_snapshot.py", customer)
+        self.assertIn("validate_marketplace_catalog.py", customer)
+        self.assertIn("gh release upload catalog-latest", customer)
         self.assertIn("production_sigmascope_v2_pipeline.py", security)
         self.assertIn("publish_security_evidence_v2.py", security)
         self.assertIn("--history-mode fast-forward", builder)
         self.assertIn("--history-mode fast-forward", security)
         self.assertNotIn("--history-mode legacy-orphan", builder)
         self.assertNotIn("--history-mode legacy-orphan", security)
+        self.assertNotIn("publish_catalog_state.py", customer)
         self.assertNotIn("compile_marketplace_snapshot.py", security)
 
     def test_catalog_and_sigmascope_are_mutually_exclusive(self) -> None:
