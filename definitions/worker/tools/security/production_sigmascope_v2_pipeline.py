@@ -312,6 +312,7 @@ def materialize_current_state(base_database: Path, evidence: Path, work_database
 
     current_entries = _current_variant_entries(evidence) if include_evidence else []
     loaded_variants = 0
+    transport_scan_id_collisions_remapped = 0
     source_analysis_caches_restored = 0
     loaded_datasets: dict[str, int] = {name: 0 for name in SMALL_ANALYSIS_DATASETS}
     cached_source_payloads: list[tuple[dict[str, Any], int]] = []
@@ -319,6 +320,13 @@ def materialize_current_state(base_database: Path, evidence: Path, work_database
         db.row_factory = sqlite3.Row
         _drop_security_state(db)
         active = _active_variant_ids(db)
+
+        # scan_id is a transport identity in Evidence v2, not semantic evidence.
+        # Parallel workers start from one Evidence head and may independently allocate
+        # the same next scan_id. Build deterministic local relational identities only
+        # after all current payloads are known so the combined candidate cannot silently
+        # replace another variant's scan row.
+        materialization_candidates: list[tuple[int, dict[str, Any], dict[str, Any], dict[str, Any], int]] = []
         for entry in current_entries:
             variant_id = int(entry.get("variantId") or 0)
             if variant_id not in active:
@@ -328,10 +336,27 @@ def materialize_current_state(base_database: Path, evidence: Path, work_database
             current = transport_security_row(dict(payload.get("current") or {}))
             if not scan or not current:
                 continue
-            scan_id = int(scan.get("scan_id") or current.get("scan_id") or 0)
-            if scan_id <= 0:
+            transport_scan_id = int(scan.get("scan_id") or current.get("scan_id") or 0)
+            if transport_scan_id <= 0:
                 continue
-            _insert_mapping(db, "plugin_security_scans", scan, replace=True)
+            materialization_candidates.append((variant_id, payload, scan, current, transport_scan_id))
+
+        materialization_candidates.sort(key=lambda item: item[0])
+        next_materialized_scan_id = max((item[4] for item in materialization_candidates), default=0) + 1
+        used_materialized_scan_ids: set[int] = set()
+        for variant_id, payload, scan, current, transport_scan_id in materialization_candidates:
+            scan_id = transport_scan_id
+            if scan_id in used_materialized_scan_ids:
+                while next_materialized_scan_id in used_materialized_scan_ids:
+                    next_materialized_scan_id += 1
+                scan_id = next_materialized_scan_id
+                next_materialized_scan_id += 1
+                transport_scan_id_collisions_remapped += 1
+            used_materialized_scan_ids.add(scan_id)
+
+            scan["scan_id"] = scan_id
+            scan["variant_id"] = variant_id
+            _insert_mapping(db, "plugin_security_scans", scan)
             current["variant_id"] = variant_id
             current["scan_id"] = scan_id
             _insert_mapping(db, "plugin_security_current", current, replace=True)
@@ -374,6 +399,7 @@ def materialize_current_state(base_database: Path, evidence: Path, work_database
         "evidenceInherited": bool(include_evidence),
         "currentVariantsAvailable": len(current_entries),
         "currentVariantsMaterialized": loaded_variants,
+        "transportScanIdCollisionsRemapped": transport_scan_id_collisions_remapped,
         "datasets": loaded_datasets,
         "databaseBytes": work_database.stat().st_size,
         "artifactSourceContractsRebuilt": identity_contracts,

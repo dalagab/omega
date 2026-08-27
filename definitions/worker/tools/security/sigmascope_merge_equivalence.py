@@ -22,6 +22,7 @@ MAX_MISMATCHES = 100
 
 _VOLATILE_KEYS = {
     "generatedAtUtc", "updatedAtUtc", "scannedAtUtc", "scanned_at_utc", "scan_id", "scanId",
+    "currentScanId", "current_scan_id", "comparison_id", "comparisonId",
     "selectedAtUtc", "startedAtUtc", "completedAtUtc", "lastAttemptAtUtc", "requestedAtUtc",
     "attemptId", "artifactAnalysisRepresentativeScanId", "sourceAnalysisRepresentativeScanId",
     "previousIndexSha256", "evidenceRevision", "securityRevision",
