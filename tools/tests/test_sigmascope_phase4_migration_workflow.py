@@ -93,12 +93,13 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertIn("preflight-only-no-evidence-publication", merge)
         self.assertIn("sigmascope_merge_equivalence.py", merge)
 
-    def test_inline_phase4b_worker_takes_catalog_revision_from_frozen_catalog_identity(self) -> None:
-        worker = (common.ROOT / "tools" / "security" / "sigmascope_phase4b_inline_worker.py").read_text(encoding="utf-8")
-        self.assertIn('catalog_index_path = args.catalog_root / "catalog" / "index.json"', worker)
-        self.assertIn('catalog_revision = str(catalog_index.get("catalogRevision") or "")', worker)
-        self.assertIn('"--catalog-revision",\n            catalog_revision,', worker)
-        self.assertNotIn('defs["catalogRevision"]', worker)
+    def test_inline_phase4b_helpers_take_catalog_revision_from_frozen_catalog_identity(self) -> None:
+        for name in ("sigmascope_phase4b_inline_worker.py", "sigmascope_phase4b_inline_merge.py"):
+            helper = (common.ROOT / "tools" / "security" / name).read_text(encoding="utf-8")
+            self.assertIn('catalog_index_path = args.catalog_root / "catalog" / "index.json"', helper, name)
+            self.assertIn('catalog_revision = str(catalog_index.get("catalogRevision") or "")', helper, name)
+            self.assertIn('"--catalog-revision",\n            catalog_revision,', helper, name)
+            self.assertNotIn('defs["catalogRevision"]', helper, name)
 
     def test_post_publication_verifies_authorized_evidence_and_deep_scan_state(self) -> None:
         text = self.read("sigmascope-phase4-migration.yml")
