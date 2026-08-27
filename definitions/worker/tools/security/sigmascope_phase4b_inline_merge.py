@@ -49,7 +49,12 @@ def main() -> int:
 
     definitions_root = args.catalog_root / "definitions"
     defs_path = definitions_root / "index.json"
+    catalog_index_path = args.catalog_root / "catalog" / "index.json"
     defs = load(defs_path)
+    catalog_index = load(catalog_index_path)
+    catalog_revision = str(catalog_index.get("catalogRevision") or "")
+    if not catalog_revision:
+        raise SystemExit("frozen catalog index is missing catalogRevision")
     frozen_worker = Path(os.environ.get("OMEGA_FROZEN_WORKER", definitions_root / "worker"))
     secondary_cache = Path(os.environ.get("OMEGA_SECONDARY_SECURITY_CACHE", "catalog/secondary-security-runtime"))
     pipeline = frozen_worker / "tools/security/production_sigmascope_v2_pipeline.py"
@@ -170,7 +175,7 @@ def main() -> int:
                 "--frozen-definitions",
                 str(definitions_root),
                 "--catalog-revision",
-                str(defs["catalogRevision"]),
+                catalog_revision,
                 "--definitions-revision",
                 str(defs["definitionsRevision"]),
                 "--scanner-revision",
