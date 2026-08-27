@@ -56,6 +56,11 @@ class Phase4ReusablePermissionTests(unittest.TestCase):
             "sigmascope-parallel-publish.yml",
             ("contents: write", "actions: write", "issues: write", "packages: read"),
         )
+        self.assert_call_permissions(
+            "sigmascope-phase4-migration.yml",
+            "catalog-client-publish.yml",
+            ("contents: write", "packages: read"),
+        )
         self.assertNotIn(
             "uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml",
             read("sigmascope-phase4-migration.yml"),
@@ -68,10 +73,18 @@ class Phase4ReusablePermissionTests(unittest.TestCase):
             ("contents: write", "packages: read"),
         )
         self.assert_call_permissions(
-            "sigmascope-parallel-shadow.yml",
-            "sigmascope-parallel-worker.yml",
-            ("contents: read", "packages: read"),
+            "catalog-freeze.yml",
+            "catalog-client-publish.yml",
+            ("contents: write", "packages: read"),
         )
+        shadow = read("sigmascope-parallel-shadow.yml")
+        self.assertNotIn("uses: ./.github/workflows/sigmascope-parallel-worker.yml", shadow)
+        workers = shadow[shadow.index("  workers:") : shadow.index("  merge-plan:")]
+        self.assertIn("runs-on: ubuntu-latest", workers)
+        self.assertIn("permissions:", workers)
+        self.assertIn("contents: read", workers)
+        self.assertIn("packages: read", workers)
+        self.assertIn("matrix.queueKey", workers)
 
     def test_parallel_publisher_declares_its_real_maximum_permission_contract(self) -> None:
         text = read("sigmascope-parallel-publish.yml")

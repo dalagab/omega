@@ -32,6 +32,13 @@ class Phase4AuthorityLockTopologyTests(unittest.TestCase):
         self.assertLess(migration.index("\n  prerequisites:\n"), migration.index("\n  shadow:\n"))
         self.assertLess(migration.index("\n  shadow:\n"), migration.index("\n  authorize-and-publish:\n"))
         self.assertLess(migration.index("\n  authorize-and-publish:\n"), migration.index("\n  verify:\n"))
+        self.assertIn("publish_client: false", migration)
+        self.assertIn("\n  publish-customer-catalog:\n", migration)
+        self.assertLess(migration.index("\n  verify:\n"), migration.index("\n  publish-customer-catalog:\n"))
+        customer = migration[migration.index("\n  publish-customer-catalog:\n") :]
+        self.assertIn("needs: verify", customer)
+        self.assertIn("uses: ./.github/workflows/catalog-client-publish.yml", customer)
+        self.assertIn("authority_lock_held: true", customer)
 
     def test_nested_freeze_never_recursively_acquires_global_authority_lock(self) -> None:
         wrapper = self.read("catalog-freeze.yml")

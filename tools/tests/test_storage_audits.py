@@ -1,6 +1,6 @@
 from __future__ import annotations
 from contextlib import closing
-import sqlite3, tempfile, unittest
+import sqlite3, tempfile, unittest, zipfile
 from pathlib import Path
 
 import common  # noqa: F401
@@ -30,6 +30,28 @@ class StorageAuditTests(unittest.TestCase):
             audit = client_database_audit.audit(out)
             self.assertEqual([], audit["prohibitedTables"])
             self.assertEqual("fresh-allowlist-v1", audit["projectionMode"])
+
+    def test_client_database_audit_reports_previous_table_growth(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            previous = root / "previous.sqlite"
+            current = root / "current.sqlite"
+            bundle = root / "previous.zip"
+            for path, count in ((previous, 1), (current, 3)):
+                with sqlite3.connect(path) as db:
+                    db.execute("CREATE TABLE catalog_meta(key TEXT PRIMARY KEY,value TEXT)")
+                    db.execute("INSERT INTO catalog_meta VALUES('client_projection_mode','fresh-allowlist-v1')")
+                    db.execute("CREATE TABLE sample(id INTEGER PRIMARY KEY,payload TEXT)")
+                    db.executemany("INSERT INTO sample(payload) VALUES(?)", [("payload",)] * count)
+                    db.commit()
+            with zipfile.ZipFile(bundle, "w") as archive:
+                archive.write(previous, "omega-marketplace.sqlite")
+            report = client_database_audit.audit_with_previous(current, bundle)
+            delta = {row["name"]: row for row in report["tableDeltas"]}["sample"]
+            self.assertEqual(1, delta["previousRows"])
+            self.assertEqual(3, delta["rows"])
+            self.assertEqual(2, delta["rowDelta"])
+            self.assertEqual(previous.stat().st_size, report["previousDatabaseBytes"])
 
     def test_evidence_storage_audit_reports_exact_duplicate_bytes_without_deleting(self) -> None:
         with tempfile.TemporaryDirectory() as td:

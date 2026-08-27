@@ -12,6 +12,11 @@ on:
         type: boolean
         required: false
         default: false
+      publish_client:
+        description: Publish the Omega customer database after a changed authoritative freeze
+        type: boolean
+        required: false
+        default: true
   workflow_dispatch:
     inputs:
       allow_source_removal:
@@ -19,12 +24,18 @@ on:
         type: boolean
         required: false
         default: false
+      publish_client:
+        description: "Publish the Omega customer database after a changed authoritative freeze"
+        type: boolean
+        required: false
+        default: true
 
 permissions:
   contents: write
   packages: read
 
-# Intentionally unscheduled. Collector activity can run many times per day; client publication only happens here.
+# Intentionally unscheduled. Authoritative freeze and customer publication are separate jobs so
+# Phase 4 can defer the customer DB until its new Evidence child is verified.
 jobs:
   freeze:
     uses: ./.github/workflows/catalog-builder.yml
@@ -33,5 +44,17 @@ jobs:
       packages: read
     with:
       allow_source_removal: ${{ inputs.allow_source_removal || false }}
+      authority_lock_held: ${{ inputs.authority_lock_held || false }}
+    secrets: inherit
+
+  publish-client:
+    name: Publish Omega customer database from authoritative state
+    needs: freeze
+    if: needs.freeze.outputs.freeze_changed == 'true' && (inputs.publish_client || false)
+    uses: ./.github/workflows/catalog-client-publish.yml
+    permissions:
+      contents: write
+      packages: read
+    with:
       authority_lock_held: ${{ inputs.authority_lock_held || false }}
     secrets: inherit

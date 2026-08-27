@@ -1,0 +1,146 @@
+name: Omega catalog · publish customer database
+
+on:
+  workflow_call:
+    inputs:
+      authority_lock_held:
+        description: Internal only; the caller already owns omega-catalog-sigmascope-exclusive
+        type: boolean
+        required: false
+        default: false
+  workflow_dispatch:
+    inputs:
+      authority_lock_held:
+        description: Internal only; use only when an outer authoritative workflow owns the writer lock
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+  packages: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+concurrency:
+  group: ${{ inputs.authority_lock_held && format('omega-catalog-client-publish-under-authority-{0}', github.run_id) || 'omega-catalog-sigmascope-exclusive' }}
+  cancel-in-progress: false
+  queue: max
+
+# Customer publication is intentionally downstream of authoritative state. It never freezes
+# collectors, Definitions or Evidence; it only projects the already-published branches Omega reads.
+jobs:
+  resolve-publisher-image:
+    name: Resolve immutable customer publisher toolchain
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: security-worker-images
+          path: image-state
+          persist-credentials: false
+      - id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="$(jq -er --arg image "publisher-worker" '.images[$image] // empty' image-state/index.json)"
+          [[ "$ref" =~ ^ghcr\.io/[^@[:space:]]+@sha256:[0-9a-f]{64}$ ]] || { echo "::error::Invalid or missing digest-pinned publisher-worker image reference: $ref"; exit 3; }
+          echo "image=$ref" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Build and publish Omega DB from authoritative branches
+    needs: resolve-publisher-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      packages: read
+    container:
+      image: ${{ needs.resolve-publisher-image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: "${{ github.sha }}", fetch-depth: 1, persist-credentials: false}
+      - name: Checkout authoritative frozen catalog and Definitions
+        uses: actions/checkout@v6
+        with: {ref: catalog-data, path: catalog/active-state, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout authoritative Security Evidence v2
+        uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/security-v2-current, fetch-depth: 1, persist-credentials: false}
+      - name: Validate authoritative catalog state before customer projection
+        run: python tools/catalog/catalog_state.py validate --root catalog/active-state
+      - name: Compile Omega customer database from authoritative state
+        run: >-
+          python tools/catalog/compile_marketplace_snapshot.py
+          --catalog-root catalog/active-state/catalog
+          --definitions-root catalog/active-state/definitions
+          --evidence-root catalog/security-v2-current
+          --output catalog/client-dist
+          --download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-marketplace.sqlite.zip"
+          --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json"
+      - name: Validate exact customer publication
+        run: python tools/catalog/validate_marketplace_catalog.py --root catalog/client-dist --require-v2
+      - name: Audit customer database growth by table
+        env:
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/client-audit
+          gh release download catalog-latest --repo "${{ github.repository }}" --pattern omega-marketplace.sqlite.zip --dir catalog/client-audit || true
+          args=(--database catalog/client-dist/omega-marketplace.sqlite --report catalog/client-dist/storage-audit.json --max-bytes 50331648 --max-growth-ratio 1.20)
+          if [ -f catalog/client-audit/omega-marketplace.sqlite.zip ]; then args+=(--previous-bundle catalog/client-audit/omega-marketplace.sqlite.zip); fi
+          set +e
+          python tools/catalog/client_database_audit.py "${args[@]}"
+          status=$?
+          set -e
+          python - <<'PY'
+          import json, os
+          report = json.load(open('catalog/client-dist/storage-audit.json', encoding='utf-8'))
+          rows = report.get('largestGrowthTables') or []
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as out:
+              out.write('### Omega customer database growth\n\n')
+              out.write(f"- Current database: `{report['databaseBytes']}` bytes\n")
+              out.write(f"- Previous database: `{report.get('previousDatabaseBytes')}` bytes\n")
+              out.write(f"- Overall growth ratio: `{report.get('growthRatio')}`\n\n")
+              out.write('| Table | Rows Δ | Bytes Δ | Current bytes |\n|---|---:|---:|---:|\n')
+              for row in rows[:10]:
+                  out.write(f"| `{row['name']}` | {row['rowDelta']} | {row['byteDelta']} | {row['bytes']} |\n")
+              if not rows:
+                  out.write('| _no positive table growth_ | 0 | 0 | 0 |\n')
+          PY
+          exit "$status"
+      - name: Publish customer database release
+        env:
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view catalog-latest --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create catalog-latest --repo "${{ github.repository }}" --title "Omega marketplace database" --notes "Compiled only from authoritative frozen catalog/Definitions and Security Evidence v2 state."
+          fi
+          gh release upload catalog-latest \
+            catalog/client-dist/omega-marketplace.sqlite.zip \
+            catalog/client-dist/omega-marketplace.sqlite.zip.sha256 \
+            catalog/client-dist/catalog.json \
+            catalog/client-dist/database-build.json \
+            catalog/client-dist/storage-audit.json \
+            --repo "${{ github.repository }}" --clobber
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: omega-customer-database-publication
+          path: |
+            catalog/client-dist/catalog.json
+            catalog/client-dist/database-build.json
+            catalog/client-dist/storage-audit.json
+          if-no-files-found: warn
+          retention-days: 30

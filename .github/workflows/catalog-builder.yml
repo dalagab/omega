@@ -24,6 +24,10 @@ on:
         type: boolean
         required: false
         default: false
+    outputs:
+      freeze_changed:
+        description: Whether the authoritative catalog/Definitions freeze changed semantically
+        value: ${{ jobs.publish.outputs.freeze_changed }}
   workflow_dispatch:
     inputs:
       allow_source_removal:
@@ -102,7 +106,7 @@ jobs:
           python tools/catalog/project_marketplace_catalog.py --self-test
 
   publish:
-    name: Freeze coherent state and build the Omega client DB once
+    name: Freeze coherent authoritative catalog/Definitions state
     needs: [resolve-publisher-image, preflight]
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -276,31 +280,7 @@ jobs:
           python tools/orchestration/catalog_freeze_identity.py "${args[@]}"
           changed="$(python -c "import json; print(str(json.load(open('catalog/state/freeze.json'))['changed']).lower())")"
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
-          if [ "$changed" != true ]; then echo "::notice::Catalog, Definitions, Evidence and publisher semantics are unchanged; client database build is a no-op."; fi
-      - name: Compile Omega marketplace database exactly once for a changed freeze
-        if: steps.freeze_identity.outputs.changed == 'true'
-        run: >-
-          python tools/catalog/compile_marketplace_snapshot.py
-          --catalog-root catalog/state/catalog
-          --definitions-root catalog/state/definitions
-          --evidence-root catalog/security-v2-current
-          --output catalog/client-dist
-          --download-url "https://github.com/${{ github.repository }}/releases/download/catalog-latest/omega-marketplace.sqlite.zip"
-          --evidence-index-url "https://raw.githubusercontent.com/${{ github.repository }}/security-evidence-v2/index.json"
-      - name: Validate exact client publication
-        if: steps.freeze_identity.outputs.changed == 'true'
-        run: python tools/catalog/validate_marketplace_catalog.py --root catalog/client-dist --require-v2
-      - name: Audit fresh client database footprint
-        if: steps.freeze_identity.outputs.changed == 'true'
-        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p catalog/client-audit
-          gh release download catalog-latest --repo "${{ github.repository }}" --pattern omega-marketplace.sqlite.zip --dir catalog/client-audit || true
-          args=(--database catalog/client-dist/omega-marketplace.sqlite --report catalog/client-dist/storage-audit.json --max-bytes 50331648 --max-growth-ratio 1.20)
-          if [ -f catalog/client-audit/omega-marketplace.sqlite.zip ]; then args+=(--previous-bundle catalog/client-audit/omega-marketplace.sqlite.zip); fi
-          python tools/catalog/client_database_audit.py "${args[@]}"
+          if [ "$changed" != true ]; then echo "::notice::Catalog, Definitions, Evidence and publisher semantics are unchanged; authoritative freeze is a no-op."; fi
       - name: Publish changed frozen JSON state atomically
         if: steps.freeze_identity.outputs.changed == 'true'
         env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
@@ -310,16 +290,6 @@ jobs:
           gh auth setup-git
           python tools/catalog/publish_catalog_state.py --input catalog/state --repo . --branch catalog-data --history-mode fast-forward --push \
             | tee catalog/catalog-history-publication.json
-      - name: Publish client database for changed freeze
-        if: steps.freeze_identity.outputs.changed == 'true'
-        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! gh release view catalog-latest --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release create catalog-latest --repo "${{ github.repository }}" --title "Omega marketplace database" --notes "Compiled only from an explicit coherent Omega catalog freeze."
-          fi
-          gh release upload catalog-latest catalog/client-dist/omega-marketplace.sqlite.zip catalog/client-dist/omega-marketplace.sqlite.zip.sha256 catalog/client-dist/catalog.json catalog/client-dist/database-build.json --repo "${{ github.repository }}" --clobber
       - name: Build a sanitised Discord catalog notice
         id: discord_notice
         if: steps.freeze_identity.outputs.changed == 'true'
@@ -352,9 +322,6 @@ jobs:
             catalog/state/scan-queue.json
             catalog/state/source-inventory.json
             catalog/catalog-history-publication.json
-            catalog/client-dist/catalog.json
-            catalog/client-dist/database-build.json
-            catalog/client-dist/storage-audit.json
           retention-days: 30
 
   notify-discord:

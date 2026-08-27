@@ -14,7 +14,7 @@ class WorkflowContractTests(unittest.TestCase):
         for snippet in snippets:
             self.assertIn(snippet, text, f"workflow contract missing: {snippet}")
 
-    def test_catalog_builder_is_explicit_freeze_authority_and_client_compiler(self) -> None:
+    def test_catalog_builder_is_explicit_authoritative_freeze_without_client_publication(self) -> None:
         text = self.read("catalog-builder.yml")
         self.assert_has(
             text,
@@ -51,38 +51,56 @@ class WorkflowContractTests(unittest.TestCase):
             "catalog_state.py assemble",
             "catalog_state.py validate",
             "catalog_freeze_identity.py",
-            "Compile Omega marketplace database exactly once for a changed freeze",
-            "if: steps.freeze_identity.outputs.changed == 'true'",
-            "compile_marketplace_snapshot.py",
-            "validate_marketplace_catalog.py --root catalog/client-dist",
             "Publish changed frozen JSON state atomically",
             "publish_catalog_state.py",
             "--branch catalog-data",
-            "Publish client database for changed freeze",
-            "gh release upload catalog-latest",
-            "omega-marketplace.sqlite.zip",
-            "database-build.json",
-        )
-        self.assertLess(
-            text.index("Validate exact client publication"),
-            text.index("Publish changed frozen JSON state atomically"),
-            "catalog-data must not advance until the exact frozen client DB has compiled and validated locally",
-        )
-        self.assertLess(
-            text.index("Publish changed frozen JSON state atomically"),
-            text.index("Publish client database for changed freeze"),
-            "publish frozen online inputs immediately before the matching client DB",
         )
         self.assertNotIn("  schedule:", text, "freeze is an explicit release boundary")
         for forbidden in (
             "collect_sources.py", "enrich_metadata.py", "scrape_websites_incremental.py",
             "source_revision_observer.py", "collect_reputation_intelligence.py",
             "collect_public_advisories.py", "freshclam", "apt-get install", "pip install",
+            "compile_marketplace_snapshot.py", "validate_marketplace_catalog.py",
+            "client_database_audit.py", "gh release upload catalog-latest",
+            "omega-marketplace.sqlite.zip",
         ):
-            self.assertNotIn(forbidden, text, f"freeze must consume settled state, not run collector {forbidden}")
+            self.assertNotIn(forbidden, text, f"freeze must not perform collector/customer publication work: {forbidden}")
         self.assertNotIn("--allow-legacy-identity", text)
         self.assertNotIn("security-evidence-latest", text)
         self.assertNotIn("omega-security-evidence.sqlite.zip", text)
+
+    def test_customer_database_publication_reads_only_authoritative_branches(self) -> None:
+        text = self.read("catalog-client-publish.yml")
+        self.assert_has(
+            text,
+            "name: Omega catalog · publish customer database",
+            "workflow_call:",
+            "workflow_dispatch:",
+            "ref: catalog-data",
+            "path: catalog/active-state",
+            "ref: security-evidence-v2",
+            "path: catalog/security-v2-current",
+            "catalog_state.py validate --root catalog/active-state",
+            "compile_marketplace_snapshot.py",
+            "--catalog-root catalog/active-state/catalog",
+            "--definitions-root catalog/active-state/definitions",
+            "--evidence-root catalog/security-v2-current",
+            "validate_marketplace_catalog.py --root catalog/client-dist --require-v2",
+            "client_database_audit.py",
+            "largestGrowthTables",
+            "storage-audit.json",
+            "gh release upload catalog-latest",
+            "omega-marketplace.sqlite.zip",
+        )
+        self.assertLess(
+            text.index("Checkout authoritative Security Evidence v2"),
+            text.index("Compile Omega customer database from authoritative state"),
+        )
+        for forbidden in (
+            "freeze_inputs.py", "definitions_snapshot.py build", "scan_queue.py build-seed",
+            "collect_sources.py", "enrich_metadata.py", "scrape_websites_incremental.py",
+        ):
+            self.assertNotIn(forbidden, text, f"customer publisher must not mutate authoritative inputs: {forbidden}")
 
     def test_catalog_publish_installs_security_dependencies_before_definitions_freeze(self) -> None:
         text = self.read("catalog-builder.yml")
