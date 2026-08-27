@@ -13,28 +13,12 @@ import re
 import urllib.parse
 from typing import Iterable
 
+from semantic_registry import service_for_host
+
 SCHEMA = "omega.sigmascope.endpoint-evidence.v2"
 SUMMARY_SCHEMA = "omega.sigmascope.endpoint-summary.v1"
 URL_PATTERN = re.compile(r"https?://[^\s\"'<>\\]+", re.IGNORECASE)
 HOST_LABEL_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$", re.IGNORECASE)
-RECOGNISED_PLATFORM_HOSTS = {
-    "api.github.com": ("GitHub API", "source hosting"),
-    "github.com": ("GitHub", "source hosting"),
-    "raw.githubusercontent.com": ("GitHub raw content", "source hosting"),
-    "objects.githubusercontent.com": ("GitHub release content", "source distribution"),
-    "discord.com": ("Discord", "community messaging"),
-    "discordapp.com": ("Discord", "community messaging"),
-    "cdn.discordapp.com": ("Discord CDN", "community media"),
-    "xivlauncher.net": ("XIVLauncher", "FFXIV launcher infrastructure"),
-    "dalamud.dev": ("Dalamud", "FFXIV plugin infrastructure"),
-    "goatcorp.github.io": ("Goatcorp", "FFXIV plugin infrastructure"),
-    "kamori.goats.dev": ("Kamori", "FFXIV plugin distribution"),
-    "universalis.app": ("Universalis", "FFXIV market data"),
-    "xivapi.com": ("XIVAPI", "FFXIV game data"),
-    "nuget.org": ("NuGet", "package registry"),
-    "api.nuget.org": ("NuGet", "package registry"),
-}
-
 COLLECTION_HOSTS = {
     "webhook.site": "temporary webhook collector",
     "requestbin.com": "temporary request collector",
@@ -134,9 +118,11 @@ def _host_classification(host: str, scheme: str, path: str) -> tuple[str, str, s
         return "telemetry-endpoint", "informational", "error/telemetry service", "Literal endpoint belongs to a known error/telemetry service; static analysis cannot determine payload contents"
     if scheme == "http":
         return "insecure-http", "caution", "unencrypted web traffic", "Literal endpoint uses unencrypted HTTP"
-    if host in RECOGNISED_PLATFORM_HOSTS:
-        name, purpose = RECOGNISED_PLATFORM_HOSTS[host]
-        return "recognised-platform", "informational", purpose, f"Recognised public platform: {name} ({purpose})"
+    service = service_for_host(host)
+    if service.get("serviceRecognition") != "unknown":
+        name = str(service.get("serviceName") or service.get("serviceId") or host)
+        purpose = str(service.get("servicePurpose") or "registered public service")
+        return "recognised-platform", "informational", purpose, f"Recognised public service: {name} ({purpose})"
     if host in COLLECTION_HOSTS:
         purpose = COLLECTION_HOSTS[host]
         return "collection-endpoint", "caution", purpose, f"Literal endpoint uses a {purpose}"
@@ -197,6 +183,8 @@ def endpoint_candidates(text: str, evidence_label: str, *, origin_type: str | No
             continue
         seen.add(url)
         classification, severity, purpose, reason = _host_classification(host, scheme, path)
+        service = service_for_host(host)
+        concrete = classification not in {"source-reference", "documentation-reference", "community-invite", "community-forum", "ffxiv-lodestone-link", "certificate-infrastructure"}
         candidates.append({
             "schema": SCHEMA,
             "url": url,
@@ -206,9 +194,20 @@ def endpoint_candidates(text: str, evidence_label: str, *, origin_type: str | No
             "severity": severity,
             "purpose": purpose,
             "reason": reason,
+            "serviceId": str(service.get("serviceId") or ""),
+            "serviceName": str(service.get("serviceName") or ""),
+            "serviceRecognition": str(service.get("serviceRecognition") or "unknown"),
+            "serviceCategories": list(service.get("serviceCategories") or [])[:32],
+            "serviceCapabilities": list(service.get("serviceCapabilities") or [])[:64],
+            "serviceRegistryRevision": str(service.get("serviceRegistryRevision") or ""),
             "originType": resolved_origin,
             "confidence": resolved_confidence,
-            "concreteDestinationEvidence": classification not in {"source-reference", "documentation-reference", "community-invite", "community-forum", "ffxiv-lodestone-link", "certificate-infrastructure"},
+            # Direction is relative to the plugin. A concrete URL literal is a destination and
+            # therefore describes an outbound role if used; informational/reference literals
+            # are not treated as traffic and remain unknown. Replies do not turn an outbound
+            # client request into a bidirectional role.
+            "trafficDirection": "outbound" if concrete else "unknown",
+            "concreteDestinationEvidence": concrete,
             "evidence": [f"{evidence_label}: {url}"],
         })
     return candidates
@@ -220,20 +219,24 @@ def endpoint_summary(endpoints: Iterable[dict], has_network_capability: bool) ->
     hosts: dict[str, dict] = {}
     classifications: dict[str, int] = {}
     origins: dict[str, int] = {}
+    directions: dict[str, int] = {}
     for item in records:
         classification = str(item.get("classification") or "unrecognised-host")
         origin = str(item.get("originType") or "unknown")
         classifications[classification] = classifications.get(classification, 0) + 1
         origins[origin] = origins.get(origin, 0) + 1
+        direction = str(item.get("trafficDirection") or "unknown")
+        directions[direction] = directions.get(direction, 0) + 1
         host = str(item.get("host") or "")
         if not host:
             continue
-        current = hosts.setdefault(host, {"host": host, "literalCount": 0, "concreteCount": 0, "classifications": set(), "originTypes": set(), "confidence": "Low"})
+        current = hosts.setdefault(host, {"host": host, "literalCount": 0, "concreteCount": 0, "classifications": set(), "originTypes": set(), "trafficDirections": set(), "confidence": "Low"})
         current["literalCount"] += 1
         if bool(item.get("concreteDestinationEvidence")):
             current["concreteCount"] += 1
         current["classifications"].add(classification)
         current["originTypes"].add(origin)
+        current["trafficDirections"].add(direction)
         confidence = str(item.get("confidence") or "Low")
         if CONFIDENCE_RANK.get(confidence, 0) > CONFIDENCE_RANK.get(str(current["confidence"]), 0):
             current["confidence"] = confidence
@@ -243,7 +246,9 @@ def endpoint_summary(endpoints: Iterable[dict], has_network_capability: bool) ->
         compact_hosts.append({
             "host": item["host"], "literalCount": item["literalCount"], "concreteCount": item["concreteCount"],
             "classifications": sorted(item["classifications"], key=str.casefold),
-            "originTypes": sorted(item["originTypes"], key=str.casefold), "confidence": item["confidence"],
+            "originTypes": sorted(item["originTypes"], key=str.casefold),
+            "trafficDirections": sorted(item["trafficDirections"], key=str.casefold),
+            "confidence": item["confidence"],
         })
     return {
         "schema": SUMMARY_SCHEMA,
@@ -254,6 +259,7 @@ def endpoint_summary(endpoints: Iterable[dict], has_network_capability: bool) ->
         "hosts": compact_hosts,
         "classifications": {key: classifications[key] for key in sorted(classifications)},
         "originTypes": {key: origins[key] for key in sorted(origins)},
+        "trafficDirectionCounts": {key: directions[key] for key in sorted(directions)},
         "destinationsUndetermined": bool(has_network_capability and not concrete),
     }
 

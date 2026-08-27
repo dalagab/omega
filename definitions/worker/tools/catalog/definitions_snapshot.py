@@ -43,6 +43,7 @@ import definition_packs  # noqa: E402
 import srl_migration_parity  # noqa: E402
 import sigmascope  # noqa: E402
 import secondary_security_assets  # noqa: E402
+import semantic_registry  # noqa: E402
 import component_registry  # noqa: E402
 import collector_contracts  # noqa: E402
 import execution_topology  # noqa: E402
@@ -56,6 +57,8 @@ WORKER_BUNDLE_DIRS = ("tools/catalog", "tools/security")
 WORKER_BUNDLE_EXTRA_FILES = (
     "sources/source-overrides.json",
     "security-definitions/capabilities/registry.json",
+    "security-definitions/services/registry.json",
+    "security-definitions/semantic-apis/registry.json",
     "tools/requirements-security.txt",
     "tools/security/authenticode_probe.ps1",
     "tools/orchestration/git_snapshot_history.py",
@@ -90,9 +93,15 @@ RULE_SET_FILES = (
     "tools/catalog/public_git_source.py",
     "tools/catalog/source_stability.py",
     "tools/catalog/source_build_intelligence.py",
+    "tools/catalog/source_behavior.py",
+    "tools/catalog/semantic_registry.py",
     "tools/catalog/plugin_profile.py",
     "tools/catalog/capability_registry.py",
+    "tools/catalog/semantic_registry.py",
+    "tools/catalog/source_behavior.py",
     "security-definitions/capabilities/registry.json",
+    "security-definitions/services/registry.json",
+    "security-definitions/semantic-apis/registry.json",
     "tools/requirements-security.txt",
 )
 
@@ -911,6 +920,37 @@ def build_snapshot(
         "categoryCount": len(capability_registry_document.get("categories") or []),
     }
 
+    # Freeze source/API semantic knowledge as first-class Definitions payloads. The same
+    # bytes are also carried inside the immutable worker bundle, so scanner execution and
+    # inspection/audit surfaces point at identical data.
+    semantic_output = output / "semantic"
+    semantic_output.mkdir(parents=True, exist_ok=True)
+    source_service_registry_path = repo_root / "security-definitions/services/registry.json"
+    source_api_registry_path = repo_root / "security-definitions/semantic-apis/registry.json"
+    service_registry_document = semantic_registry.load_service_registry(source_service_registry_path)
+    semantic_api_registry_document = semantic_registry.load_api_registry(source_api_registry_path)
+    service_registry_path = semantic_output / "service-registry.json"
+    semantic_api_registry_path = semantic_output / "api-registry.json"
+    service_registry_path.write_bytes(source_service_registry_path.read_bytes())
+    semantic_api_registry_path.write_bytes(source_api_registry_path.read_bytes())
+    service_registry_descriptor = {
+        "schema": str(service_registry_document.get("schema") or ""),
+        "path": "semantic/service-registry.json",
+        "sha256": sha256_file(service_registry_path),
+        "revision": str(service_registry_document.get("revision") or ""),
+        "version": int(service_registry_document.get("version") or 0),
+        "serviceCount": len(service_registry_document.get("services") or []),
+    }
+    semantic_api_registry_descriptor = {
+        "schema": str(semantic_api_registry_document.get("schema") or ""),
+        "path": "semantic/api-registry.json",
+        "sha256": sha256_file(semantic_api_registry_path),
+        "revision": str(semantic_api_registry_document.get("revision") or ""),
+        "version": int(semantic_api_registry_document.get("version") or 0),
+        "sourceMatcherCount": len(semantic_api_registry_document.get("sourceMatchers") or []),
+        "compiledMatcherCount": len(semantic_api_registry_document.get("compiledMatchers") or []),
+    }
+
     # Freeze platform topology/collector contracts as explicit Definitions payloads.
     # These govern orchestration and Stigma authoring/replay, but are intentionally
     # outside artifact/source analysis revisions so topology changes never imply a
@@ -1004,6 +1044,8 @@ def build_snapshot(
             "matchedEndpointHosts": int((reputation.get("counts") or {}).get("matchedEndpointHosts") or 0),
         },
         "capabilityRegistry": capability_registry_descriptor,
+        "serviceRegistry": service_registry_descriptor,
+        "semanticApiRegistry": semantic_api_registry_descriptor,
         "componentRegistry": component_registry_descriptor,
         "collectorRegistry": collector_registry_descriptor,
         "executionTopology": execution_topology_descriptor,
@@ -1050,6 +1092,30 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
                 errors.append("frozen capability registry capability count mismatch")
         except Exception as exc:
             errors.append(f"frozen capability registry invalid: {type(exc).__name__}: {exc}")
+
+    for descriptor_key, loader, expected_schema, count_field, document_field in (
+        ("serviceRegistry", semantic_registry.load_service_registry, semantic_registry.SERVICE_SCHEMA, "serviceCount", "services"),
+        ("semanticApiRegistry", semantic_registry.load_api_registry, semantic_registry.API_SCHEMA, "sourceMatcherCount", "sourceMatchers"),
+    ):
+        descriptor = index.get(descriptor_key) if isinstance(index.get(descriptor_key), dict) else {}
+        rel = str(descriptor.get("path") or "")
+        path = definitions_root / rel
+        if not rel or not path.is_file():
+            errors.append(f"frozen {descriptor_key} is missing")
+            continue
+        if sha256_file(path) != str(descriptor.get("sha256") or ""):
+            errors.append(f"frozen {descriptor_key} hash mismatch")
+            continue
+        try:
+            document = loader(path)
+            if str(document.get("schema") or "") != expected_schema:
+                errors.append(f"frozen {descriptor_key} schema mismatch")
+            if str(document.get("revision") or "") != str(descriptor.get("revision") or ""):
+                errors.append(f"frozen {descriptor_key} revision mismatch")
+            if len(document.get(document_field) or []) != int(descriptor.get(count_field) or 0):
+                errors.append(f"frozen {descriptor_key} count mismatch")
+        except Exception as exc:
+            errors.append(f"frozen {descriptor_key} invalid: {type(exc).__name__}: {exc}")
 
     for descriptor_key, expected_schema, expected_revision, builder in (
         ("componentRegistry", component_registry.REGISTRY_SCHEMA, component_registry.component_revision(), component_registry.build_registry),
@@ -1205,6 +1271,8 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
         "reputationRevision": str((index.get("reputation") or {}).get("reputationRevision") or ""),
         "secondarySecurityRevision": str(secondary_descriptor.get("revision") or ""),
         "capabilityRegistryRevision": str(capability_descriptor.get("revision") or ""),
+        "serviceRegistryRevision": str((index.get("serviceRegistry") or {}).get("revision") or ""),
+        "semanticApiRegistryRevision": str((index.get("semanticApiRegistry") or {}).get("revision") or ""),
         "executionTopologyRevision": str((index.get("executionTopology") or {}).get("revision") or ""),
         "srlDefinitionPackRevision": str(srl_descriptor.get("definitionPackRevision") or ""),
         "srlRuleSetRevision": str(srl_descriptor.get("ruleSetRevision") or ""),

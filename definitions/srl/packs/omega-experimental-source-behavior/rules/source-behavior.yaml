@@ -1,0 +1,119 @@
+schema: omega.sigmascope.ruleset.v1
+rules:
+  - schema: omega.sigmascope.rule.v1
+    id: source-behavior.market-data-request
+    kind: observation
+    status: experimental
+    requires: [sourceOperations]
+    selectors:
+      request:
+        collection: sourceOperations
+        where:
+          operation: {equals-ci: network.http.request}
+          serviceCapabilities: {contains-ci: ffxiv.market-data}
+    condition: request
+    emit:
+      fact: behavior.market-data.retrieve
+      confidence: high
+      title: FFXIV market data retrieval path observed
+      description: Source contains a concrete HTTP operation tied to a registered service that provides FFXIV market data.
+      category: source-behavior
+
+  - schema: omega.sigmascope.rule.v1
+    id: source-behavior.market-data-drives-purchase
+    kind: observation
+    status: experimental
+    requires: [sourceDataFlow]
+    selectors:
+      flow:
+        collection: sourceDataFlow
+        where:
+          relation: {equals-ci: value-used-by}
+          fromServiceCapabilities: {contains-ci: ffxiv.market-data}
+          toOperation: {equals-ci: game.marketboard.purchase}
+    condition: flow
+    emit:
+      fact: behavior.marketboard.external-data-driven-purchase
+      confidence: high
+      title: External market data can flow into a market-board purchase
+      description: Static source value-flow connects a registered FFXIV market-data response to a market-board purchase primitive.
+      category: source-behavior
+
+  - schema: omega.sigmascope.rule.v1
+    id: source-behavior.navigation-before-market-purchase
+    kind: observation
+    status: experimental
+    requires: [sourceFlowEdges]
+    selectors:
+      flow:
+        collection: sourceFlowEdges
+        where:
+          fromOperation: {equals-ci: game.character.move}
+          toOperation: {equals-ci: game.marketboard.purchase}
+    condition: flow
+    emit:
+      fact: behavior.marketboard.navigation-before-purchase
+      confidence: high
+      title: Character navigation precedes a market-board purchase
+      description: Static source control flow places character movement immediately before a market-board purchase primitive.
+      category: source-behavior
+
+  - schema: omega.sigmascope.rule.v1
+    id: source-behavior.delay-before-market-purchase
+    kind: observation
+    status: experimental
+    requires: [sourceFlowEdges]
+    selectors:
+      flow:
+        collection: sourceFlowEdges
+        where:
+          minimumDelayMs: {gt: 0}
+          toOperation: {equals-ci: game.marketboard.purchase}
+    condition: flow
+    emit:
+      fact: behavior.marketboard.delayed-purchase
+      confidence: high
+      title: Explicit delay precedes a market-board purchase
+      description: Static source control flow retains an explicit minimum delay before a market-board purchase primitive.
+      category: source-behavior
+
+  - schema: omega.sigmascope.rule.v1
+    id: source-behavior.event-triggered-market-purchase
+    kind: observation
+    status: experimental
+    requires: [sourceFlowEdges]
+    selectors:
+      flow:
+        collection: sourceFlowEdges
+        where:
+          relation: {equals-ci: triggers}
+          fromOperation: {starts-with-ci: trigger.}
+          toOperation: {equals-ci: game.marketboard.purchase}
+    condition: flow
+    emit:
+      fact: behavior.marketboard.triggered-purchase
+      confidence: high
+      title: Registered trigger can enter a market-board purchase path
+      description: Static source trigger wiring reaches a handler whose first retained primitive operation is a market-board purchase.
+      category: source-behavior
+
+  - schema: omega.sigmascope.rule.v1
+    id: source-behavior.periodic-market-purchase
+    kind: observation
+    status: experimental
+    requires: [sourceFlowEdges]
+    selectors:
+      flow:
+        collection: sourceFlowEdges
+        where:
+          relation: {equals-ci: triggers}
+          fromOperation: {equals-ci: trigger.periodic}
+          minimumDelayMs: {gt: 0}
+          toOperation: {equals-ci: game.marketboard.purchase}
+    condition: flow
+    emit:
+      fact: behavior.marketboard.periodic-purchase
+      confidence: high
+      title: Periodic source trigger can enter a market-board purchase path
+      description: Static source trigger wiring records a non-zero periodic interval before entering a handler whose first retained primitive operation is a market-board purchase.
+      category: source-behavior

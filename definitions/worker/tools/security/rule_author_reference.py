@@ -88,13 +88,15 @@ SECURITY_COLLECTIONS: dict[str, dict[str, Any]] = {
         "scope": "normalized endpoint observation",
         "fields": {
             "url": "string", "host": "string", "origin": "string", "originType": "string",
-            "classification": "string", "purpose": "string", "confidence": "string",
+            "classification": "string", "purpose": "string", "confidence": "string", "trafficDirection": "string",
+            "serviceId": "string", "serviceName": "string", "serviceRecognition": "string",
+            "serviceCategories": "string[]", "serviceCapabilities": "string[]", "serviceRegistryRevision": "string",
             "concreteDestinationEvidence": "boolean", "evidence": "string[]",
             "resolvedIps": "string[]", "threatIntelMatched": "boolean", "threatIntelActive": "boolean",
             "threatIntelRisk": "string", "threatIntelCategories": "string[]", "threatIntelSources": "string[]",
             "threatIntelIndicatorIds": "string[]", "threatIntelRevision": "string",
         },
-        "notes": "The endpoint observation is immutable plugin evidence. threatIntel* and resolvedIps are deterministic frozen-Definitions enrichment over that retained endpoint. A daily threat-intelligence change can therefore be SRL-reprojected without reopening the plugin artifact.",
+        "notes": "The endpoint observation is immutable plugin evidence. trafficDirection is relative to the plugin: concrete URL destinations are outbound while non-destination/reference literals remain unknown. Replies do not by themselves make a client destination bidirectional. threatIntel* and resolvedIps are deterministic frozen-Definitions enrichment over that retained endpoint.",
     },
     "staticPatternMatches": {
         "dataset": "staticPatternMatches",
@@ -167,6 +169,56 @@ SECURITY_COLLECTIONS: dict[str, dict[str, Any]] = {
             "truncated": "boolean", "sha256": "string", "bytes": "integer", "identityMatched": "boolean",
         },
         "notes": "A workflow is source context, not proof that a published plugin artifact came from that workflow.",
+    },
+    "sourceOperations": {
+        "dataset": "sourceOperations", "source": "source.dependencyIntelligence.sourceBehavior.operations",
+        "scope": "immutable bounded primitive source operation observation",
+        "fields": {
+            "operationId": "string", "origin": "string", "path": "string", "line": "integer", "method": "string",
+            "operation": "string", "symbol": "string", "receiver": "string", "member": "string", "matcherId": "string",
+            "semanticApiRegistryRevision": "string", "awaited": "boolean", "semanticTarget": "string", "trafficDirection": "string",
+            "guardConditionId": "string", "delayMs": "integer", "serviceId": "string", "serviceName": "string",
+            "serviceRecognition": "string", "serviceCategories": "string[]", "serviceCapabilities": "string[]",
+            "serviceRegistryRevision": "string", "upstreamServiceIds": "string[]", "upstreamServiceCapabilities": "string[]",
+            "evidence": "string[]",
+        },
+        "notes": "Primitive static operation only. trafficDirection is Definitions-backed where the API role is known (inbound, outbound, bidirectional, unknown); high-level behavior and cross-operation correlation belong in SRL.",
+    },
+    "sourceFlowEdges": {
+        "dataset": "sourceFlowEdges", "source": "source.dependencyIntelligence.sourceBehavior.flowEdges",
+        "scope": "immutable bounded source control/temporal relationship",
+        "fields": {
+            "edgeId": "string", "origin": "string", "path": "string", "method": "string",
+            "fromOperationId": "string", "toOperationId": "string", "fromOperation": "string", "toOperation": "string",
+            "relation": "string", "minimumDelayMs": "integer", "guardConditionId": "string",
+            "fromServiceCapabilities": "string[]", "toServiceCapabilities": "string[]", "evidence": "string[]",
+        },
+    },
+    "sourceTriggers": {
+        "dataset": "sourceTriggers", "source": "source.dependencyIntelligence.sourceBehavior.triggers",
+        "scope": "immutable bounded source trigger observation",
+        "fields": {
+            "triggerId": "string", "origin": "string", "path": "string", "line": "integer", "method": "string",
+            "kind": "string", "event": "string", "handler": "string", "periodMs": "integer", "evidence": "string[]",
+        },
+    },
+    "sourceConditions": {
+        "dataset": "sourceConditions", "source": "source.dependencyIntelligence.sourceBehavior.conditions",
+        "scope": "immutable bounded redacted source condition observation",
+        "fields": {
+            "conditionId": "string", "origin": "string", "path": "string", "line": "integer", "method": "string",
+            "kind": "string", "normalizedExpression": "string", "expressionSha256": "string", "evidence": "string[]",
+        },
+    },
+    "sourceDataFlow": {
+        "dataset": "sourceDataFlow", "source": "source.dependencyIntelligence.sourceBehavior.dataFlow",
+        "scope": "immutable bounded conservative source value-flow relationship",
+        "fields": {
+            "edgeId": "string", "origin": "string", "path": "string", "method": "string",
+            "fromOperationId": "string", "toOperationId": "string", "fromOperation": "string", "toOperation": "string",
+            "relation": "string", "valueId": "string", "fromServiceCapabilities": "string[]", "evidence": "string[]",
+        },
+        "notes": "Local lexical value-use relation; does not claim full interprocedural C# semantic proof.",
     },
     "sourceAttribution": {
         "dataset": "compact scan report",
