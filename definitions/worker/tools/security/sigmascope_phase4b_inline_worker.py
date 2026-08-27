@@ -25,6 +25,7 @@ def main() -> int:
 
     definitions_root = args.catalog_root / "definitions"
     defs_path = definitions_root / "index.json"
+    catalog_index_path = args.catalog_root / "catalog" / "index.json"
     queue_seed = args.catalog_root / "scan-queue.json"
     frozen_worker = Path(os.environ.get("OMEGA_FROZEN_WORKER", definitions_root / "worker"))
     secondary_cache = Path(os.environ.get("OMEGA_SECONDARY_SECURITY_CACHE", "catalog/secondary-security-runtime"))
@@ -34,11 +35,15 @@ def main() -> int:
     secondary_assets = frozen_worker / "tools/catalog/secondary_security_assets.py"
     source_overrides = frozen_worker / "sources/source-overrides.json"
 
-    for required in (defs_path, queue_seed, pipeline, definitions_snapshot, catalog_store, source_overrides):
+    for required in (defs_path, catalog_index_path, queue_seed, pipeline, definitions_snapshot, catalog_store, source_overrides):
         if not required.exists():
             raise SystemExit(f"missing required Phase-4B input: {required}")
 
     defs = json.loads(defs_path.read_text(encoding="utf-8"))
+    catalog_index = json.loads(catalog_index_path.read_text(encoding="utf-8"))
+    catalog_revision = str(catalog_index.get("catalogRevision") or "")
+    if not catalog_revision:
+        raise SystemExit("frozen catalog index is missing catalogRevision")
     run([sys.executable, str(definitions_snapshot), "verify-worker", "--definitions-root", str(definitions_root)])
     help_result = subprocess.run([sys.executable, str(pipeline), "--help"], check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if "--queue-key" not in help_result.stdout:
@@ -99,7 +104,7 @@ def main() -> int:
             "--frozen-definitions",
             str(definitions_root),
             "--catalog-revision",
-            str(defs["catalogRevision"]),
+            catalog_revision,
             "--definitions-revision",
             str(defs["definitionsRevision"]),
             "--scanner-revision",
