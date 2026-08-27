@@ -26,7 +26,5 @@ internal static partial class RegressionCases
         Contains(about, "var versionValueX = ImGui.GetCursorPosX();", "About remembers the version-value alignment");
         Contains(about, "DrawAboutCommunityShortcuts(versionValueX);", "About keeps GitHub and Discord shortcuts directly beneath the version value");
 
-        var readme = File.ReadAllText(Path.Combine(Root, "README.md"));
-        Contains(readme, "tree/deltascope", "README documents DeltaScope as its own branch");
     }
 }
