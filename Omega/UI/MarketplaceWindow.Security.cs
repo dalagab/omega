@@ -328,7 +328,9 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.TextUnformatted("Version");
         ImGui.SameLine(0f, Ui(10f));
+        var versionValueX = ImGui.GetCursorPosX();
         ImGui.TextColored(new Vector4(0.35f, 0.86f, 0.75f, 1f), BuildInfo.Version);
+        DrawAboutCommunityShortcuts(versionValueX);
 
         ImGui.Spacing();
         ImGui.TextUnformatted("Definitions");

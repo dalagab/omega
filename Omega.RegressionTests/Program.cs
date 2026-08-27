@@ -55,6 +55,7 @@ var tests = new (string Name, Action Body)[]
     ("secondary Omega panels share the main application chrome", TestSecondaryPanelChromeContract),
     ("online catalog descriptor helpers remain strict", TestOnlineCatalogDescriptorHelpers),
     ("search visibility, general settings, and simple security language remain wired", TestSearchDownloadsAndBehaviorSettingsContract),
+    ("About and Settings keep project/community destinations wired", TestCommunityLinksContract),
     ("download popularity normalization and update failure UI remain explicit", TestPopularityAndUpdateFailureUiContract),
     ("runtime manifest overlays preserve exact-version Sigmascope evidence", TestRuntimeOverlaySecurityProjectionContract),
     ("Definitions updates stay pending until applied and About owns identity", TestDefinitionsUpdateUiContract),

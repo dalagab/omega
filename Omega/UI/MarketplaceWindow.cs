@@ -81,6 +81,7 @@ internal enum SettingsSection
 {
     General,
     Repositories,
+    Community,
     Legal,
 }
 

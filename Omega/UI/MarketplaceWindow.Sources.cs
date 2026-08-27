@@ -50,6 +50,9 @@ internal sealed partial class MarketplaceWindow
                 DrawSettingsGeneralTab();
                 ImGui.EndChild();
                 break;
+            case SettingsSection.Community:
+                DrawSettingsCommunityTab();
+                break;
             case SettingsSection.Legal:
                 if (DrawSettingsLegalTab())
                 {
@@ -74,6 +77,9 @@ internal sealed partial class MarketplaceWindow
         ImGui.SameLine(0f, Ui(8f));
         if (DrawRoundedButton("Repositories", "settings-tab-repositories", Ui(142f, 32f), settingsSection == SettingsSection.Repositories))
             settingsSection = SettingsSection.Repositories;
+        ImGui.SameLine(0f, Ui(8f));
+        if (DrawRoundedButton("Community", "settings-tab-community", Ui(128f, 32f), settingsSection == SettingsSection.Community))
+            settingsSection = SettingsSection.Community;
         ImGui.SameLine(0f, Ui(8f));
         if (DrawRoundedButton("Legal", "settings-tab-legal", Ui(104f, 32f), settingsSection == SettingsSection.Legal))
             settingsSection = SettingsSection.Legal;
