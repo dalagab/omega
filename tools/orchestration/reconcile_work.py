@@ -114,11 +114,16 @@ def validate_policy(value: Mapping[str, Any]) -> dict[str, Any]:
             raise ValueError(f"queue {queue_id} priority out of range")
         subject = row.get("subject") if isinstance(row.get("subject"), Mapping) else {}
         reason = row.get("reason") if isinstance(row.get("reason"), list) else [row.get("reason")]
+        revision_inputs = [str(item).strip() for item in (row.get("revisionInputs") or []) if str(item).strip()]
+        unknown_revision_inputs = sorted(set(revision_inputs) - {"catalog"})
+        if unknown_revision_inputs:
+            raise ValueError(f"queue {queue_id} has unknown revisionInputs: {unknown_revision_inputs}")
         queues.append({
             "queueId": queue_id, "component": component, "kind": kind,
             "cadenceSeconds": cadence, "priority": priority, "subject": dict(subject),
             "reason": reason, "consumer": _clean_consumer(row, queue_id),
             "prerequisites": [str(item).strip() for item in (row.get("prerequisites") or []) if str(item).strip()],
+            "revisionInputs": revision_inputs,
         })
     known = {row["queueId"] for row in queues}
     for row in queues:
@@ -143,6 +148,58 @@ def _load_previous_queue(root: Path | None, queue_id: str, component: str, now: 
                 raise ValueError(f"previous queue {queue_id} changed component")
             return queue
     return work_queue.new_queue(queue_id, component, now=now)
+
+
+def _catalog_revision(catalog_root: Path | None, *, required: bool) -> str:
+    if catalog_root is None:
+        if required:
+            raise ValueError("orchestration policy requires catalog revision input but --catalog-root was not provided")
+        return ""
+    index_path = catalog_root / "index.json"
+    if not index_path.is_file():
+        raise ValueError(f"catalog revision input is missing index.json: {index_path}")
+    value = json.loads(index_path.read_text(encoding="utf-8"))
+    revision = str(value.get("catalogRevision") or "") if isinstance(value, Mapping) else ""
+    if not revision:
+        raise ValueError(f"catalog revision input has no catalogRevision: {index_path}")
+    return revision
+
+
+def _latest_item(queue: Mapping[str, Any]) -> dict[str, Any] | None:
+    rows = [dict(item) for item in queue.get("items") or [] if isinstance(item, Mapping)]
+    if not rows:
+        return None
+    rows.sort(key=lambda row: (str(row.get("createdAtUtc") or ""), str(row.get("workId") or "")))
+    return rows[-1]
+
+
+def _required_revision(*, spec: Mapping[str, Any], bucket: str, catalog_revision: str,
+                       processed_queues: Mapping[str, Mapping[str, Any]]) -> str:
+    cadence = {
+        "queueId": str(spec["queueId"]),
+        "bucket": bucket,
+        "seconds": int(spec["cadenceSeconds"]),
+    }
+    revision_inputs: dict[str, str] = {}
+    if "catalog" in (spec.get("revisionInputs") or []):
+        if not catalog_revision:
+            raise ValueError(f"queue {spec['queueId']} requires a catalog revision input")
+        revision_inputs["catalogRevision"] = catalog_revision
+    prerequisites: dict[str, str] = {}
+    for prerequisite in spec.get("prerequisites") or []:
+        dependency = processed_queues.get(str(prerequisite))
+        if dependency is None:
+            raise ValueError(f"queue {spec['queueId']} prerequisite {prerequisite} must appear earlier in policy")
+        latest = _latest_item(dependency)
+        if latest is None:
+            raise ValueError(f"queue {spec['queueId']} prerequisite {prerequisite} has no required revision")
+        prerequisites[str(prerequisite)] = str(latest.get("requiredRevision") or "")
+        if not prerequisites[str(prerequisite)]:
+            raise ValueError(f"queue {spec['queueId']} prerequisite {prerequisite} has no requiredRevision")
+    if not revision_inputs and not prerequisites:
+        return f"cadence-v1-{_sha(cadence)[:20]}"
+    semantic = {"cadence": cadence, "revisionInputs": revision_inputs, "prerequisites": prerequisites}
+    return f"work-inputs-v1-{_sha(semantic)[:20]}"
 
 
 def _leased_item(queue: Mapping[str, Any]) -> dict[str, Any] | None:
@@ -195,8 +252,10 @@ def _settle_lane_result(queue: Mapping[str, Any], spec: Mapping[str, Any], resul
 
 
 def reconcile(*, policy: Mapping[str, Any], previous_root: Path | None, output_root: Path,
-              results_root: Path | None = None, now: str = "") -> dict[str, Any]:
+              results_root: Path | None = None, catalog_root: Path | None = None, now: str = "") -> dict[str, Any]:
     policy_value = validate_policy(policy)
+    needs_catalog = any("catalog" in (spec.get("revisionInputs") or []) for spec in policy_value["queues"])
+    catalog_revision = _catalog_revision(catalog_root, required=needs_catalog)
     at = now or work_queue.utc_now(); at_dt = _parse_utc(at)
     if output_root.exists():
         shutil.rmtree(output_root)
@@ -212,7 +271,9 @@ def reconcile(*, policy: Mapping[str, Any], previous_root: Path | None, output_r
         queue, recovered = work_queue.recover_expired(queue, now=at)
         recovered_total += recovered
         bucket = _bucket(at_dt, spec["cadenceSeconds"])
-        required_revision = f"cadence-v1-{_sha({'queueId': spec['queueId'], 'bucket': bucket, 'seconds': spec['cadenceSeconds']})[:20]}"
+        required_revision = _required_revision(
+            spec=spec, bucket=bucket, catalog_revision=catalog_revision, processed_queues=processed_queues,
+        )
         queue, _item, created = work_queue.enqueue(
             queue,
             kind=spec["kind"],
@@ -261,6 +322,8 @@ def reconcile(*, policy: Mapping[str, Any], previous_root: Path | None, output_r
             "counts": queue["counts"],
             "cadenceSeconds": spec["cadenceSeconds"],
             "currentCadenceBucketUtc": bucket,
+            "revisionInputs": list(spec.get("revisionInputs") or []),
+            "requiredRevision": required_revision,
             "consumerImplemented": bool(consumer.get("implemented")),
             "resultBranch": str(consumer.get("resultBranch") or ""),
             "activeLeaseWorkId": str((active or {}).get("workId") or ""),
@@ -320,6 +383,7 @@ def main() -> int:
     reconcile_parser.add_argument("--policy", type=Path, required=True)
     reconcile_parser.add_argument("--previous-root", type=Path)
     reconcile_parser.add_argument("--results-root", type=Path)
+    reconcile_parser.add_argument("--catalog-root", type=Path)
     reconcile_parser.add_argument("--output", type=Path, required=True)
     reconcile_parser.add_argument("--now", default="")
     validate_parser = sub.add_parser("validate")
@@ -328,6 +392,7 @@ def main() -> int:
     p.add_argument("--policy", type=Path)
     p.add_argument("--previous-root", type=Path)
     p.add_argument("--results-root", type=Path)
+    p.add_argument("--catalog-root", type=Path)
     p.add_argument("--output", type=Path)
     p.add_argument("--now", default="")
     args = p.parse_args()
@@ -343,7 +408,11 @@ def main() -> int:
     previous_root = getattr(args, "previous_root", None)
     previous = previous_root if previous_root and (previous_root / "index.json").is_file() else None
     results_root = getattr(args, "results_root", None)
-    result = reconcile(policy=policy, previous_root=previous, results_root=results_root, output_root=output, now=getattr(args, "now", ""))
+    catalog_root = getattr(args, "catalog_root", None)
+    result = reconcile(
+        policy=policy, previous_root=previous, results_root=results_root, catalog_root=catalog_root,
+        output_root=output, now=getattr(args, "now", ""),
+    )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

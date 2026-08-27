@@ -71,7 +71,8 @@ def _safe_condition(value: str) -> str:
 def _operation(path: str, line: int, method: str, operation: str, symbol: str, *, matcher: str = "",
                receiver: str = "", member: str = "", semantic_api_revision: str = "",
                service: dict[str, Any] | None = None, awaited: bool = False,
-               target: str = "", guard: str = "", delay_ms: int = 0) -> dict[str, Any]:
+               target: str = "", guard: str = "", delay_ms: int = 0,
+               traffic_direction: str = "unknown") -> dict[str, Any]:
     row = {
         "operationId": _id("op", path, line, method, operation, symbol),
         "origin": "source", "path": path, "line": line, "method": method,
@@ -79,6 +80,7 @@ def _operation(path: str, line: int, method: str, operation: str, symbol: str, *
         "matcherId": matcher, "semanticApiRegistryRevision": semantic_api_revision,
         "awaited": bool(awaited), "semanticTarget": target,
         "guardConditionId": guard, "delayMs": int(delay_ms),
+        "trafficDirection": traffic_direction if traffic_direction in {"inbound", "outbound", "bidirectional", "unknown"} else "unknown",
         "serviceId": "", "serviceName": "", "serviceRecognition": "", "serviceRegistryRevision": "",
         "serviceCategories": [], "serviceCapabilities": [],
         "upstreamServiceIds": [], "upstreamServiceCapabilities": [],
@@ -226,6 +228,7 @@ def collect(source_entries: Mapping[str, int], read_file: Callable[[str], bytes]
                     semantic_api_revision=str(matched.get("semanticApiRegistryRevision") or ""),
                     service=service, awaited="await" in line,
                     target=str(attrs.get("semanticTarget") or ""), guard=guard,
+                    traffic_direction=str(attrs.get("trafficDirection") or "unknown"),
                 ))
 
             for current in found:

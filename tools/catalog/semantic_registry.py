@@ -99,6 +99,12 @@ def load_api_registry(path: Path | None = None) -> dict[str, Any]:
             receiver_values = item.get(receiver_field) or []
             if not isinstance(receiver_values, list) or any(not str(value or "").strip() for value in receiver_values):
                 raise ValueError(f"semantic API matcher {matcher_id} has invalid {receiver_field}")
+            attributes = item.get("attributes") or {}
+            if not isinstance(attributes, dict):
+                raise ValueError(f"semantic API matcher {matcher_id} has invalid attributes")
+            traffic_direction = str(attributes.get("trafficDirection") or "")
+            if traffic_direction and traffic_direction not in {"inbound", "outbound", "bidirectional", "unknown"}:
+                raise ValueError(f"semantic API matcher {matcher_id} has invalid trafficDirection")
     return doc
 
 
@@ -193,5 +199,6 @@ def match_compiled_call(declaring_type: str, member: str) -> dict[str, Any] | No
             "matcherId": str(item["id"]),
             "operation": str(item["operation"]),
             "semanticApiRegistryRevision": str(api_registry().get("revision") or ""),
+            "attributes": dict(item.get("attributes") or {}),
         }
     return None
