@@ -29,9 +29,18 @@ class Phase4AuthorityLockTopologyTests(unittest.TestCase):
         self.assertIn("authority_lock_held: true", migration)
         self.assertIn("needs: freeze-current-definitions", migration)
         self.assertLess(migration.index("\n  freeze-current-definitions:\n"), migration.index("\n  prerequisites:\n"))
-        self.assertLess(migration.index("\n  prerequisites:\n"), migration.index("\n  shadow:\n"))
-        self.assertLess(migration.index("\n  shadow:\n"), migration.index("\n  authorize-and-publish:\n"))
+        self.assertIn("\n  shadow-workers:\n", migration)
+        self.assertIn("\n  shadow-merge:\n", migration)
+        self.assertLess(migration.index("\n  prerequisites:\n"), migration.index("\n  shadow-workers:\n"))
+        self.assertLess(migration.index("\n  shadow-workers:\n"), migration.index("\n  shadow-merge:\n"))
+        self.assertLess(migration.index("\n  shadow-merge:\n"), migration.index("\n  authorize-and-publish:\n"))
         self.assertLess(migration.index("\n  authorize-and-publish:\n"), migration.index("\n  verify:\n"))
+        workers = migration[migration.index("\n  shadow-workers:\n") : migration.index("\n  shadow-merge:\n")]
+        merge = migration[migration.index("\n  shadow-merge:\n") : migration.index("\n  authorize-and-publish:\n")]
+        publisher = migration[migration.index("\n  authorize-and-publish:\n") : migration.index("\n  verify:\n")]
+        self.assertIn("needs: prerequisites", workers)
+        self.assertIn("needs: [prerequisites, shadow-workers]", merge)
+        self.assertIn("needs: shadow-merge", publisher)
         self.assertIn("publish_client: false", migration)
         self.assertIn("\n  publish-customer-catalog:\n", migration)
         self.assertLess(migration.index("\n  verify:\n"), migration.index("\n  publish-customer-catalog:\n"))
