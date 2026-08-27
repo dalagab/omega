@@ -23,18 +23,25 @@ class SigmascopeParallelWorkflowTests(unittest.TestCase):
 
     def test_shadow_orchestrator_has_no_schedule_or_publication_authority(self) -> None:
         text = self.read("sigmascope-parallel-shadow.yml")
+        worker = self.read("sigmascope-parallel-worker.yml")
         self.assertIn("workflow_call:", text)
         self.assertIn("workflow_dispatch:", text)
         self.assertNotIn("schedule:", text)
         self.assertIn("sigmascope_parallel_plan.py", text)
-        self.assertNotIn("uses: ./.github/workflows/sigmascope-parallel-worker.yml", text)
-        self.assertIn('matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}', text)
+        self.assertEqual(8, text.count("uses: ./.github/workflows/sigmascope-parallel-worker.yml"))
+        self.assertNotIn("fromJSON(needs.plan.outputs.matrix)", text)
+        self.assertNotIn("strategy:", text)
+        self.assertNotIn("  workers:\n", text)
+        for slot in range(1, 9):
+            self.assertIn(f"queue_{slot}: ${{{{ steps.assignments.outputs.queue_{slot} }}}}", text)
+            self.assertIn(f"queue_key: ${{{{ needs.plan.outputs.queue_{slot} }}}}", text)
         self.assertIn('image: ${{ needs.resolve-merge-image.outputs.image }}', text)
-        self.assertIn('--queue-key "${{ matrix.queueKey }}"', text)
-        self.assertIn("sigmascope_result_bundle.py build", text)
-        self.assertIn("sigmascope_result_bundle.py validate", text)
+        self.assertIn('--queue-key "${{ inputs.queue_key }}"', worker)
+        self.assertIn("sigmascope_result_bundle.py build", worker)
+        self.assertIn("sigmascope_result_bundle.py validate", worker)
         self.assertIn("sigmascope_result_bundle.py plan", text)
-        self.assertIn("max-parallel: 8", text)
+        self.assertIn('test "${#bundles[@]}" -eq "$expected"', text)
+        self.assertIn("needs: [plan, merge-plan, resolve-merge-image]", text)
         self.assertGreaterEqual(text.count("Install pinned Python security dependencies"), 2)
         self.assertGreaterEqual(
             text.count("python -m pip install --disable-pip-version-check -r tools/requirements-security.txt"),

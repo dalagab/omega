@@ -78,13 +78,23 @@ class Phase4ReusablePermissionTests(unittest.TestCase):
             ("contents: write", "packages: read"),
         )
         shadow = read("sigmascope-parallel-shadow.yml")
-        self.assertNotIn("uses: ./.github/workflows/sigmascope-parallel-worker.yml", shadow)
-        workers = shadow[shadow.index("  workers:") : shadow.index("  merge-plan:")]
-        self.assertIn("runs-on: ubuntu-latest", workers)
-        self.assertIn("permissions:", workers)
-        self.assertIn("contents: read", workers)
-        self.assertIn("packages: read", workers)
-        self.assertIn("matrix.queueKey", workers)
+        marker = "uses: ./.github/workflows/sigmascope-parallel-worker.yml"
+        self.assertEqual(8, shadow.count(marker))
+        self.assertNotIn("fromJSON(needs.plan.outputs.matrix)", shadow)
+        self.assertNotIn("strategy:", shadow)
+        self.assertNotIn("  workers:\n", shadow)
+        for slot in range(1, 9):
+            start = shadow.index(f"  worker-{slot}:\n")
+            if slot < 8:
+                end = shadow.index(f"  worker-{slot + 1}:\n", start)
+            else:
+                end = shadow.index("  merge-plan:\n", start)
+            block = shadow[start:end]
+            self.assertIn(marker, block)
+            self.assertIn("permissions:", block)
+            self.assertIn("contents: read", block)
+            self.assertIn("packages: read", block)
+            self.assertIn(f"queue_key: ${{{{ needs.plan.outputs.queue_{slot} }}}}", block)
 
     def test_parallel_publisher_declares_its_real_maximum_permission_contract(self) -> None:
         text = read("sigmascope-parallel-publish.yml")
