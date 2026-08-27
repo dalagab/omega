@@ -606,6 +606,94 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 self.assertEqual(dep, ("nuget-resolved", "Example.Package", "1.2.3"))
                 self.assertEqual(db.execute("SELECT scan_id FROM plugin_security_current WHERE variant_id=?", (variant_id,)).fetchone()[0], 9001)
 
+    def test_materialization_remaps_colliding_transport_scan_ids_without_losing_variant_evidence(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-transport-scan-id-collision-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            evidence = root / "evidence"
+            migrate(database, evidence, reset=True)
+
+            plugin_index_path = evidence / "indexes" / "plugins.json"
+            plugin_index = json.loads(plugin_index_path.read_text(encoding="utf-8"))
+            first_entry = next(item for item in plugin_index["currentVariants"] if int(item["variantId"]) == variant_id)
+            first_path = evidence / str(first_entry["variantPath"])
+            first_payload = json.loads(first_path.read_text(encoding="utf-8"))
+
+            with closing(sqlite3.connect(database)) as db:
+                db.row_factory = sqlite3.Row
+                second = db.execute(
+                    """SELECT v.variant_id,v.plugin_id,v.source_id
+                         FROM plugin_variants v JOIN plugins p ON p.plugin_id=v.plugin_id
+                        WHERE v.active=1 AND p.active=1 AND v.variant_id<>?
+                        ORDER BY v.variant_id LIMIT 1""",
+                    (variant_id,),
+                ).fetchone()
+            self.assertIsNotNone(second)
+            second_variant_id = int(second["variant_id"])
+
+            # Reproduce the parallel-worker shape: two independently completed
+            # variants both carry the same next transport scan_id. The comparison
+            # table is deliberately present because its UNIQUE(scan_id) constraint
+            # exposed the live Phase-4B collision instead of silently replacing data.
+            comparison = {"source_available": 1}
+            first_payload.setdefault("derived", {})["sourceArtifactComparison"] = dict(comparison)
+            first_path.write_text(json.dumps(first_payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+
+            second_payload = json.loads(json.dumps(first_payload))
+            second_payload["variantId"] = second_variant_id
+            second_payload["scan"]["scan_id"] = 9001
+            second_payload["scan"]["variant_id"] = second_variant_id
+            second_payload["scan"]["plugin_id"] = int(second["plugin_id"])
+            second_payload["scan"]["source_id"] = int(second["source_id"])
+            second_payload["current"]["scan_id"] = 9001
+            second_payload["current"]["variant_id"] = second_variant_id
+            second_payload.setdefault("derived", {})["sourceArtifactComparison"] = dict(comparison)
+            second_rel = Path("variants") / "collision-fixture" / f"{second_variant_id}.json"
+            second_path = evidence / second_rel
+            second_path.parent.mkdir(parents=True, exist_ok=True)
+            second_path.write_text(json.dumps(second_payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+
+            second_entry = dict(first_entry)
+            second_entry["variantId"] = second_variant_id
+            second_entry["pluginId"] = int(second["plugin_id"])
+            second_entry["variantPath"] = second_rel.as_posix()
+            plugin_index["currentVariants"].append(second_entry)
+            plugin_index["currentVariants"].sort(key=lambda item: int(item.get("variantId") or 0))
+            plugin_index_path.write_text(json.dumps(plugin_index, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+
+            base = root / "base.sqlite"
+            shutil.copy2(database, base)
+            with closing(sqlite3.connect(base)) as db:
+                sigmascope.ensure_schema(db)
+                db.execute("PRAGMA foreign_keys=OFF")
+                for row in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchall():
+                    db.execute(f'DELETE FROM "{row[0]}"')
+                db.execute("PRAGMA foreign_keys=ON")
+                db.commit()
+
+            work = root / "work.sqlite"
+            report = materialize_current_state(base, evidence, work)
+            self.assertEqual(2, report["currentVariantsMaterialized"])
+            self.assertEqual(1, report["transportScanIdCollisionsRemapped"])
+
+            with closing(sqlite3.connect(work)) as db:
+                current_rows = db.execute(
+                    "SELECT variant_id,scan_id FROM plugin_security_current WHERE variant_id IN (?,?) ORDER BY variant_id",
+                    (variant_id, second_variant_id),
+                ).fetchall()
+                self.assertEqual([(variant_id, 9001), (second_variant_id, 9002)], current_rows)
+                self.assertEqual(2, db.execute("SELECT COUNT(*) FROM plugin_security_scans WHERE scan_id IN (9001,9002)").fetchone()[0])
+                comparison_rows = db.execute(
+                    "SELECT variant_id,scan_id FROM plugin_security_source_artifact_comparisons "
+                    "WHERE variant_id IN (?,?) ORDER BY variant_id",
+                    (variant_id, second_variant_id),
+                ).fetchall()
+                self.assertEqual(current_rows, comparison_rows)
+                finding_scan_ids = [row[0] for row in db.execute(
+                    "SELECT DISTINCT scan_id FROM plugin_security_findings WHERE scan_id IN (9001,9002) ORDER BY scan_id"
+                )]
+                self.assertEqual([9001, 9002], finding_scan_ids)
+
     def test_materialization_repairs_stale_v2_summary_from_normalized_findings(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-stale-summary-repair-") as td:
             root = Path(td)

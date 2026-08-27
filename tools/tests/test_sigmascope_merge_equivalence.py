@@ -58,6 +58,24 @@ class SigmascopeMergeEquivalenceTests(unittest.TestCase):
             self.assertTrue(result["equivalent"], result["mismatches"])
             self.assertEqual([], result["mismatches"])
 
+    def test_normalize_ignores_transport_relational_identities(self) -> None:
+        serial = {
+            "scan_id": 2600, "scanId": 2600,
+            "currentScanId": 2600, "current_scan_id": 2600,
+            "comparison_id": 1349, "comparisonId": 1349,
+            "semantic": "same",
+        }
+        parallel = {
+            "scan_id": 2603, "scanId": 2603,
+            "currentScanId": 2603, "current_scan_id": 2603,
+            "comparison_id": 1352, "comparisonId": 1352,
+            "semantic": "same",
+        }
+        self.assertEqual(
+            sigmascope_merge_equivalence._normalize(serial),
+            sigmascope_merge_equivalence._normalize(parallel),
+        )
+
     def test_equivalence_detects_source_followup_semantic_drift(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-equivalence-drift-") as td:
             root = Path(td)
