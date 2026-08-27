@@ -98,7 +98,7 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
             helper = (common.ROOT / "tools" / "security" / name).read_text(encoding="utf-8")
             self.assertIn('catalog_index_path = args.catalog_root / "catalog" / "index.json"', helper, name)
             self.assertIn('catalog_revision = str(catalog_index.get("catalogRevision") or "")', helper, name)
-            self.assertIn('"--catalog-revision",\n            catalog_revision,', helper, name)
+            self.assertRegex(helper, r'"--catalog-revision",\s+catalog_revision,', name)
             self.assertNotIn('defs["catalogRevision"]', helper, name)
 
     def test_post_publication_verifies_authorized_evidence_and_deep_scan_state(self) -> None:
