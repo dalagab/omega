@@ -51,8 +51,17 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertIn("Require newly frozen fast-forward-capable Definitions worker", text)
         self.assertIn("--parallel-authorization-report", text)
         self.assertIn("Require at least one exact real-corpus assignment", text)
+        self.assertIn("Install pinned Python security dependencies", text)
+        self.assertIn(
+            "python -m pip install --disable-pip-version-check -r tools/requirements-security.txt",
+            text,
+        )
         self.assertIn("sigmascope_parallel_plan.py", text)
         self.assertIn("No eligible real-corpus", text)
+        self.assertLess(
+            text.index("Install pinned Python security dependencies"),
+            text.index("Require at least one exact real-corpus assignment"),
+        )
 
     def test_post_publication_verifies_authorized_evidence_and_deep_scan_state(self) -> None:
         text = self.read("sigmascope-phase4-migration.yml")
