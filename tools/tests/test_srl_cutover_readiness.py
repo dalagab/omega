@@ -231,9 +231,10 @@ class SrlCutoverReadinessTests(unittest.TestCase):
             summary = json.loads(proc.stdout)
             self.assertFalse(summary["activationAuthorized"])
 
-    def test_workflow_is_read_only_and_uses_exact_published_branches(self) -> None:
-        workflow = (ROOT / ".github" / "workflows" / "srl-cutover-readiness.yml").read_text(encoding="utf-8")
-        caller = (ROOT / "docs" / "workflow-callers" / "srl-cutover-readiness-main.yml").read_text(encoding="utf-8")
+    def test_cutover_workflow_is_retired_but_preserved_read_only(self) -> None:
+        self.assertFalse((ROOT / ".github" / "workflows" / "srl-cutover-readiness.yml").exists())
+        workflow = (ROOT / ".github" / "retired-workflows" / "cutover" / "srl-cutover-readiness.yml").read_text(encoding="utf-8")
+        caller = (ROOT / "docs" / "retired-workflow-callers" / "srl-cutover-readiness-main.yml").read_text(encoding="utf-8")
         self.assertIn("contents: read", workflow)
         self.assertNotIn("contents: write", workflow)
         self.assertIn("ref: catalog-data", workflow)

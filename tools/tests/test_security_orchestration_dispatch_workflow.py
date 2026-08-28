@@ -42,8 +42,8 @@ class SecurityOrchestrationDispatchWorkflowTests(unittest.TestCase):
         self.assertIn("for attempt in 1 2 3", text)
         self.assertNotIn('gh workflow run "$workflow"', text)
 
-    def test_security_baseline_reset_wakes_scanner_without_mutating_collector_leases(self):
-        text = (WF / "security-baseline-reset.yml").read_text(encoding="utf-8")
+    def test_parallel_drain_does_not_mutate_collector_leases(self):
+        text = (WF / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
         self.assertIn("group: omega-catalog-sigmascope-exclusive", text)
         self.assertIn("gh workflow run sigmascope-parallel-drain.yml", text)
         self.assertIn("--ref sigmascope", text)

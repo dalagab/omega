@@ -471,18 +471,12 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("--community sources/community-sources.json", text)
         self.assertGreaterEqual(text.count("--community sources/community-sources.json"), 2)
 
-    def test_legacy_compactor_is_manual_and_never_publishes(self) -> None:
-        text = self.read("catalog-compaction.yml")
-        self.assert_has(
-            text,
-            "name: Omega legacy SQLite catalog compactor (disabled)",
-            "workflow_dispatch:",
-            "Legacy compactor compatibility self-tests only",
-            "python tools/catalog/compact_sqlite_catalog.py --self-test",
-            "python tools/catalog/project_marketplace_catalog.py --self-test",
-            "The v1 SQLite evidence release is archival only.",
-        )
-        self.assertNotIn("schedule:", text, "schedule is owned by the thin default-branch launcher")
+    def test_legacy_compactor_is_retired_from_actions(self) -> None:
+        active = common.ROOT / ".github" / "workflows" / "catalog-compaction.yml"
+        retired = common.ROOT / ".github" / "retired-workflows" / "legacy" / "catalog-compaction.yml"
+        self.assertFalse(active.exists())
+        text = retired.read_text(encoding="utf-8")
+        self.assertIn("name: Omega legacy SQLite catalog compactor (disabled)", text)
         self.assertNotIn("gh release upload", text)
         self.assertNotIn("contents: write", text)
 
@@ -508,14 +502,14 @@ class WorkflowContractTests(unittest.TestCase):
     def test_catalog_and_sigmascope_are_mutually_exclusive(self) -> None:
         catalog = self.read("catalog-builder.yml")
         security = self.read("sigmascope.yml")
-        reset = self.read("security-baseline-reset.yml")
+        drain = self.read("sigmascope-parallel-drain.yml")
         shared_group = "omega-catalog-sigmascope-exclusive"
 
-        # Continuous Evidence publication and an explicit security reset share one authority mutex.
+        # Continuous serialized and parallel Evidence publication share one authority mutex.
         self.assertIn(f"group: {shared_group}", security)
-        self.assertIn(f"group: {shared_group}", reset)
-        self.assertIn("cancel-in-progress: false", reset)
-        self.assertIn("queue: max", reset)
+        self.assertIn(f"group: {shared_group}", drain)
+        self.assertIn("cancel-in-progress: false", drain)
+        self.assertIn("queue: max", drain)
 
         # Catalog freeze retains its existing nested-authority escape hatch. The label
         # still contains the historical Phase-4 name but is only an internal group name.
@@ -529,7 +523,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("group: omega-sigmascope", security)
 
     def test_workflows_do_not_embed_large_python_heredocs(self) -> None:
-        for name in ("catalog-builder.yml", "sigmascope.yml", "catalog-compaction.yml"):
+        for name in ("catalog-builder.yml", "sigmascope.yml"):
             self.assertNotIn("python - <<'PY'", self.read(name), f"{name} should call tested Python modules instead of inline Python")
 
     def test_rift_runtime_ingestion_is_broker_bound_and_evidence_only(self) -> None:

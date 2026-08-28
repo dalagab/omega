@@ -38,15 +38,15 @@ class AuthorityConcurrencyQueueTests(unittest.TestCase):
             "sigmascope.yml",
             "catalog-builder.yml",
             "catalog-client-publish.yml",
-            "security-baseline-reset.yml",
+            "sigmascope-parallel-drain.yml",
             "rift-evidence-ingest.yml",
         ):
             self.assertIn(expected, users)
 
-        reset = (WORKFLOWS / "security-baseline-reset.yml").read_text(encoding="utf-8")
-        self.assertIn(f"group: {AUTHORITY_GROUP}", reset)
-        self.assertIn("cancel-in-progress: false", reset)
-        self.assertIn("queue: max", reset)
+        drain = (WORKFLOWS / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
+        self.assertIn(f"group: {AUTHORITY_GROUP}", drain)
+        self.assertIn("cancel-in-progress: false", drain)
+        self.assertIn("queue: max", drain)
 
 
 if __name__ == "__main__":
