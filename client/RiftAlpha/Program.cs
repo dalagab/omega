@@ -136,23 +136,35 @@ internal static class Program
         var assembly = className.Replace("Scenario", "Alpha");
         var manifest = new AlphaManifest { Schema="omega.alpha.test.v1", Id=id, Title=id, Description="New local Alpha candidate.", Status="draft", Project=assembly+".csproj", AssemblyName=assembly, EntryAssembly=assembly+".dll", Mode="sandbox-runtime", SafetyClass="sandbox-local-runtime", Engines=["rift","srl"], Tags=["candidate"] };
         File.WriteAllText(Path.Combine(folder, "alpha.json"), JsonSerializer.Serialize(manifest, JsonDefaults.Pretty));
-        File.WriteAllText(Path.Combine(folder, assembly + ".csproj"), $"""<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><AssemblyName>{assembly}</AssemblyName></PropertyGroup>
-  <ItemGroup><ProjectReference Include="../../sdk/Omega.Alpha.Sdk/Omega.Alpha.Sdk.csproj" /></ItemGroup>
-</Project>
-""");
-        File.WriteAllText(Path.Combine(folder, className + ".cs"), $"""using Omega.Alpha;
+        var projectText = string.Join(Environment.NewLine,
+            "<Project Sdk=\"Microsoft.NET.Sdk\">",
+            "  <PropertyGroup>",
+            "    <TargetFramework>net10.0</TargetFramework>",
+            "    <Nullable>enable</Nullable>",
+            "    <ImplicitUsings>enable</ImplicitUsings>",
+            $"    <AssemblyName>{assembly}</AssemblyName>",
+            "  </PropertyGroup>",
+            "  <ItemGroup>",
+            "    <ProjectReference Include=\"../../sdk/Omega.Alpha.Sdk/Omega.Alpha.Sdk.csproj\" />",
+            "  </ItemGroup>",
+            "</Project>",
+            "");
+        File.WriteAllText(Path.Combine(folder, assembly + ".csproj"), projectText);
 
-[AlphaTest("{id}")]
-public sealed class {className} : IAlphaScenario
-{{
-    public void Execute(IAlphaContext context)
-    {{
-        AlphaGuard.RequireRiftAlphaSandbox();
-        context.Report.Note("scenario.start", "Implement bounded offensive behavior here.");
-    }}
-}}
-""");
+        var sourceText = string.Join(Environment.NewLine,
+            "using Omega.Alpha;",
+            "",
+            $"[AlphaTest(\"{id}\")]",
+            $"public sealed class {className} : IAlphaScenario",
+            "{",
+            "    public void Execute(IAlphaContext context)",
+            "    {",
+            "        AlphaGuard.RequireRiftAlphaSandbox();",
+            "        context.Report.Note(\"scenario.start\", \"Implement bounded offensive behavior here.\");",
+            "    }",
+            "}",
+            "");
+        File.WriteAllText(Path.Combine(folder, className + ".cs"), sourceText);
         Console.WriteLine(folder);
         Console.WriteLine("Next: rift-alpha validate " + folder);
         AlphaRegistryWriter.Build(root);

@@ -5,6 +5,9 @@ ROOT=Path(__file__).resolve().parents[1]
 CLIENT=ROOT/'client/RiftAlpha'
 errors=[]
 all_text='\n'.join(p.read_text(encoding='utf-8',errors='replace') for p in CLIENT.glob('*.cs'))
+program=(CLIENT/'Program.cs').read_text(encoding='utf-8',errors='replace')
+if '$\"\"\"<Project' in program or '$\"\"\"using Omega.Alpha;' in program:
+    errors.append('Alpha scaffold generator contains an invalid multiline interpolated raw-string opener')
 project=(CLIENT/'RiftAlpha.csproj').read_text(encoding='utf-8')
 for forbidden in ('using Dalamud','PluginLoader','IDalamudPlugin','InterdimensionalRift.Host','--plugin','plugin.dll','PackageReference Include="Dalamud','ProjectReference Include="../InterdimensionalRift'):
     if forbidden in all_text or forbidden in project: errors.append(f'Rift Alpha client contains forbidden normal-plugin surface: {forbidden}')

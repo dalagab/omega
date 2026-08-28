@@ -81,6 +81,9 @@ public static class AlphaSafeProbes
 
     private static void ReadOnlyRegistry()
     {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("The registry sentinel is Windows-only; Rift Alpha runtime normally executes inside Linux/WSL.");
+
         using var key = Registry.CurrentUser.OpenSubKey(@"Software\OmegaAlpha\Sentinel", writable: false);
         GC.KeepAlive(key);
     }
