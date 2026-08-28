@@ -30,12 +30,6 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawSettingsCommunityTab()
     {
-        ImGui.TextUnformatted("Community");
-        ImGui.TextWrapped("Open the source for Omega and its companion security tools, or join the project community.");
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
         ImGui.TextDisabled("Project branches");
         ImGui.Spacing();
         DrawCommunityLinkRow(
