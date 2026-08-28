@@ -1,0 +1,74 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for synthetic game ui interaction. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AddonWatcher.dll:AddonWatcher.Internal.AddonWatcherBase.SelectYesnoOnSetupDetour+0x6e: callvirt AddonWatcher.SelectYesnoSetupDelegate.Invoke",
+      "il:AddonWatcher.dll:AddonWatcher.Internal.AddonWatcherBase.SelectStringOnSetupDetour+0x96: callvirt AddonWatcher.SelectStringSetupDelegate.Invoke",
+      "il:AddonWatcher.dll:AddonWatcher.Internal.AddonWatcherBase.SelectYesNoEventDetour+0x5d: callvirt AddonWatcher.ReceiveSelectYesnoDelegate.Invoke",
+      "il:AddonWatcher.dll:AddonWatcher.Internal.AddonWatcherBase.SelectYesNoEventDetour+0x9e: callvirt AddonWatcher.ReceiveSelectYesnoDelegate.Invoke"
+    ],
+    "rule_id": "automation.game.ui.synthetic_click",
+    "severity": "caution",
+    "title": "Synthetic game UI interaction"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Accountant.GameData.dll: SigScanner",
+      "metadata:Accountant.GameData.dll: Dalamud.Hooking",
+      "metadata:Accountant.GameData.dll: HookFromAddress",
+      "il:Accountant.GameData.dll:Accountant.SeFunctions.SeAddressBase..ctor+0xa: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "il:Accountant.GameData.dll:Accountant.SeFunctions.SeAddressBase..ctor+0x3d: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+      "il:Accountant.GameData.dll:Accountant.SeFunctions.SeFunctionBase`1..ctor+0xf: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+      "il:Accountant.GameData.dll:Accountant.SeFunctions.SeFunctionBase`1..ctor+0x10: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:Accountant.GameData.dll:Accountant.SeFunctions.SeFunctionBase`1..ctor+0x43: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Accountant.GameData.dll: System.Diagnostics.Process",
+      "il:Accountant.GameData.dll:Accountant.SeFunctions.SeAddressBase..ctor+0x42: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:Accountant.GameData.dll:Accountant.SeFunctions.SeFunctionBase`1..ctor+0x14: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:Accountant.GameData.dll:Accountant.SeFunctions.SeFunctionBase`1..ctor+0x48: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "artifact:Accountant.GameData.dll: System.Diagnostics.Process",
+      "metadata:AddonWatcher.dll: System.Diagnostics.Process",
+      "il:AddonWatcher.dll:AddonWatcher.SeFunctions.SeFunctionBase`1..ctor+0x14: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:AddonWatcher.dll:AddonWatcher.SeFunctions.SeFunctionBase`1..ctor+0x48: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Accountant.dll: WriteAllText",
+      "metadata:Accountant.dll: Directory.CreateDirectory",
+      "metadata:Accountant.dll: File.Delete",
+      "il:Accountant.dll:Accountant.Util.FreeCompanyStorage.Save+0x13: call System.IO.File.WriteAllText: WriteAllText",
+      "il:Accountant.dll:Accountant.Manager.DemolitionManager.Save+0x134: call System.IO.File.WriteAllText: WriteAllText",
+      "il:Accountant.dll:Accountant.Timers.TimersBase`2.CreateFolder+0x15: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Accountant.dll:Accountant.Timers.TimersBase`2.Save+0x58: call System.IO.File.WriteAllText: WriteAllText",
+      "il:Accountant.dll:Accountant.Timers.TimersBase`2.DeleteFile+0x53: call System.IO.File.Delete: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
