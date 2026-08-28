@@ -1,0 +1,677 @@
+name: Omega SigmaScope · production parallel queue drain
+
+on:
+  workflow_call:
+    inputs:
+      workers:
+        description: Parallel scanner workers for each production wave
+        type: number
+        required: false
+        default: 4
+      items_per_worker:
+        description: Exact persistent queue keys processed sequentially by each worker
+        type: number
+        required: false
+        default: 10
+      wave:
+        description: Drain-wave ordinal used for progress and customer publication cadence
+        type: number
+        required: false
+        default: 1
+      publish_client_every:
+        description: Republish Omega customer DB every N successful parallel waves
+        type: number
+        required: false
+        default: 5
+  workflow_dispatch:
+    inputs:
+      workers:
+        description: Parallel scanner workers for each production wave (1-8)
+        type: number
+        required: false
+        default: 4
+      items_per_worker:
+        description: Exact queue keys per worker for each wave (1-16; total max 64)
+        type: number
+        required: false
+        default: 10
+      wave:
+        description: Initial wave ordinal
+        type: number
+        required: false
+        default: 1
+      publish_client_every:
+        description: Republish Omega customer DB every N waves
+        type: number
+        required: false
+        default: 5
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+  packages: read
+
+concurrency:
+  group: omega-catalog-sigmascope-exclusive
+  cancel-in-progress: false
+  queue: max
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  resolve-images:
+    name: Resolve immutable production worker images
+    runs-on: ubuntu-latest
+    outputs:
+      scan_image: ${{ steps.images.outputs.scan_image }}
+      publisher_image: ${{ steps.images.outputs.publisher_image }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: security-worker-images
+          path: image-state
+          persist-credentials: false
+      - id: images
+        shell: bash
+        run: |
+          set -euo pipefail
+          scan_ref="$(jq -er --arg image "sigmascope-worker" '.images[$image] // empty' image-state/index.json)"
+          publisher_ref="$(jq -er --arg image "publisher-worker" '.images[$image] // empty' image-state/index.json)"
+          for ref in "$scan_ref" "$publisher_ref"; do
+            [[ "$ref" =~ ^ghcr\.io/[^@[:space:]]+@sha256:[0-9a-f]{64}$ ]] || {
+              echo "::error::Invalid or missing digest-pinned production image: $ref"
+              exit 3
+            }
+          done
+          echo "scan_image=$scan_ref" >> "$GITHUB_OUTPUT"
+          echo "publisher_image=$publisher_ref" >> "$GITHUB_OUTPUT"
+
+  plan:
+    name: Select one disjoint coverage-first production wave
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      assignment_count: ${{ steps.plan.outputs.assignment_count }}
+      base_head: ${{ steps.plan.outputs.base_head }}
+      dev_sha: ${{ steps.plan.outputs.dev_sha }}
+      serial_fallback: ${{ steps.plan.outputs.serial_fallback }}
+      blocked_reason: ${{ steps.plan.outputs.blocked_reason }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: sigmascope
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/active-state
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 1
+          persist-credentials: false
+      - id: plan
+        env:
+          WORKERS: ${{ inputs.workers || 4 }}
+          ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 10 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/sigmascope_parallel_drain_plan.py \
+            --queue-seed catalog/active-state/scan-queue.json \
+            --evidence-root catalog/security-v2-current \
+            --workers "$WORKERS" \
+            --items-per-worker "$ITEMS_PER_WORKER" \
+            --output catalog/sigmascope-drain-plan.json
+          echo "matrix=$(jq -c '.matrix' catalog/sigmascope-drain-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "assignment_count=$(jq -r '.assignmentCount' catalog/sigmascope-drain-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "serial_fallback=$(jq -r '.serialFallbackRequired' catalog/sigmascope-drain-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "blocked_reason=$(jq -r '.blockedReason' catalog/sigmascope-drain-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "base_head=$(git -C catalog/security-v2-current rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "dev_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Summarize production wave
+        shell: bash
+        run: |
+          {
+            echo "### SigmaScope production drain wave ${{ inputs.wave || 1 }}"
+            echo
+            echo "- Assignments: \`$(jq -r '.assignmentCount' catalog/sigmascope-drain-plan.json)\`"
+            echo "- Active workers: \`$(jq -r '.activeWorkerCount' catalog/sigmascope-drain-plan.json)\`"
+            echo "- Capacity: \`$(jq -r '.capacity' catalog/sigmascope-drain-plan.json)\`"
+            echo "- Baseline rebuild: \`$(jq -r '.baselineSecurityRebuild' catalog/sigmascope-drain-plan.json)\`"
+            echo "- Selection policy: \`$(jq -r '.selectionPolicy' catalog/sigmascope-drain-plan.json)\`"
+            echo "- Blocked reason: \`$(jq -r '.blockedReason' catalog/sigmascope-drain-plan.json)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-drain-plan
+          path: catalog/sigmascope-drain-plan.json
+          if-no-files-found: error
+          retention-days: 7
+
+  workers:
+    name: Scan slot ${{ matrix.slot }} (${{ matrix.assignmentCount }} exact queue keys)
+    needs: [resolve-images, plan]
+    if: needs.plan.outputs.assignment_count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.resolve-images.outputs.scan_image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
+      OMEGA_SECONDARY_SECURITY_CACHE: catalog/secondary-security-runtime
+      QUEUE_KEYS_JSON: ${{ toJSON(matrix.queueKeys) }}
+      BASE_EVIDENCE_HEAD: ${{ needs.plan.outputs.base_head }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.dev_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/active-state
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Bind worker to exact planned Evidence and frozen worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="$(git -C catalog/security-v2-current rev-parse HEAD)"
+          test "$current" = "$BASE_EVIDENCE_HEAD" || {
+            echo "::error::Evidence moved after drain planning: planned=$BASE_EVIDENCE_HEAD current=$current"
+            exit 3
+          }
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/definitions_snapshot.py" \
+            verify-worker --definitions-root catalog/active-state/definitions
+          pipeline="$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
+          python "$pipeline" --help 2>&1 | grep -q -- '--queue-key' || {
+            echo "::error::Frozen Definitions worker lacks exact queue-key execution."
+            exit 4
+          }
+          yara --version
+          clamscan --version || true
+
+      - name: Materialize frozen secondary-security assets when available
+        continue-on-error: true
+        run: >-
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/secondary_security_assets.py" materialize-clamav
+          --definitions-root catalog/active-state/definitions
+          --output "$OMEGA_SECONDARY_SECURITY_CACHE"
+
+      - name: Materialize frozen canonical catalog once for this worker slot
+        shell: bash
+        run: |
+          set -euo pipefail
+          definitions_revision="$(jq -r '.definitionsRevision' catalog/active-state/definitions/index.json)"
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/catalog_json_store.py" materialize \
+            --root catalog/active-state/catalog \
+            --database catalog/security-input/omega-catalog.sqlite \
+            --definitions-revision "$definitions_revision"
+
+      - name: Process exact queue keys sequentially from the common Evidence base
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKER_IMAGE: ${{ needs.resolve-images.outputs.scan_image }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/slot-result-bundles catalog/slot-work
+          python - <<'PY' > catalog/slot-work/queue-keys.txt
+          import json, os
+          keys = json.loads(os.environ["QUEUE_KEYS_JSON"])
+          if not isinstance(keys, list) or not keys:
+              raise SystemExit("worker slot has no queue keys")
+          if len(keys) > 16 or len(keys) != len(set(keys)):
+              raise SystemExit("worker slot queue-key set is invalid")
+          for key in keys:
+              text = str(key)
+              if not text or "\n" in text or "\r" in text:
+                  raise SystemExit("unsafe queue key")
+              print(text)
+          PY
+
+          defs=catalog/active-state/definitions/index.json
+          catalog_index=catalog/active-state/catalog/index.json
+          pipeline="$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
+          ordinal=0
+          while IFS= read -r queue_key; do
+            ordinal=$((ordinal + 1))
+            key_root="catalog/slot-work/key-$(printf '%02d' "$ordinal")"
+            candidate="$key_root/candidate"
+            work="$key_root/work"
+            bundle="catalog/slot-result-bundles/key-$(printf '%02d' "$ordinal")"
+            rm -rf "$key_root" "$bundle"
+            mkdir -p "$key_root"
+
+            python "$pipeline" \
+              --base-database catalog/security-input/omega-catalog.sqlite \
+              --current-evidence catalog/security-v2-current \
+              --candidate-evidence "$candidate" \
+              --work-dir "$work" \
+              --skip-marketplace \
+              --frozen-advisories catalog/active-state/definitions/osv-advisories.json \
+              --frozen-definitions catalog/active-state/definitions \
+              --catalog-revision "$(jq -r '.catalogRevision' "$catalog_index")" \
+              --definitions-revision "$(jq -r '.definitionsRevision' "$defs")" \
+              --scanner-revision "$(jq -r '.scannerRevision' "$defs")" \
+              --artifact-analysis-revision "$(jq -r '.artifactAnalysisRevision' "$defs")" \
+              --source-analysis-revision "$(jq -r '.sourceAnalysisRevision' "$defs")" \
+              --scanner-bundle-sha256 "$(jq -r '.scannerBundle.sha256' "$defs")" \
+              --rule-set-revision "$(jq -r '.ruleSetRevision' "$defs")" \
+              --advisory-revision "$(jq -r '.advisoryRevision' "$defs")" \
+              --queue-seed catalog/active-state/scan-queue.json \
+              --queue-key "$queue_key" \
+              --evidence-index-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/security-evidence-v2/index.json" \
+              --max-scans 1 \
+              --max-batch-seconds 3000 \
+              --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"
+
+            python tools/security/sigmascope_result_bundle.py build \
+              --current-evidence catalog/security-v2-current \
+              --candidate-evidence "$candidate" \
+              --work-dir "$work" \
+              --definitions-root catalog/active-state/definitions \
+              --queue-key "$queue_key" \
+              --worker-image "$WORKER_IMAGE" \
+              --output "$bundle"
+
+            python tools/security/sigmascope_result_bundle.py validate \
+              --root "$bundle" \
+              --current-evidence catalog/security-v2-current
+          done < catalog/slot-work/queue-keys.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-drain-${{ github.run_id }}-slot-${{ matrix.slot }}
+          path: catalog/slot-result-bundles
+          if-no-files-found: error
+          retention-days: 7
+
+  merge:
+    name: Merge and validate one production Evidence candidate
+    needs: [resolve-images, plan, workers]
+    if: needs.plan.outputs.assignment_count != '0' && needs.workers.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+    container:
+      image: ${{ needs.resolve-images.outputs.scan_image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    outputs:
+      next_mode: ${{ steps.next.outputs.next_mode }}
+      publish_client: ${{ steps.next.outputs.publish_client }}
+      successful: ${{ steps.next.outputs.successful }}
+      failed: ${{ steps.next.outputs.failed }}
+    env:
+      OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
+      OMEGA_SECONDARY_SECURITY_CACHE: catalog/secondary-security-runtime
+      BASE_EVIDENCE_HEAD: ${{ needs.plan.outputs.base_head }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.dev_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/active-state
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: omega-sigmascope-drain-${{ github.run_id }}-slot-*
+          path: catalog/drain-worker-artifacts
+
+      - name: Re-check exact Evidence base and result-bundle cardinality
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="$(git -C catalog/security-v2-current rev-parse HEAD)"
+          test "$current" = "$BASE_EVIDENCE_HEAD" || {
+            echo "::error::Evidence moved before merge: planned=$BASE_EVIDENCE_HEAD current=$current"
+            exit 3
+          }
+          mapfile -t bundles < <(find catalog/drain-worker-artifacts -name bundle.json -printf '%h\n' | sort)
+          expected="${{ needs.plan.outputs.assignment_count }}"
+          test "${#bundles[@]}" -eq "$expected" || {
+            echo "::error::Expected $expected result bundles, found ${#bundles[@]}"
+            exit 4
+          }
+
+      - name: Checkout previous Deep Scan state when available
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/deep-scan-current
+          if git ls-remote --exit-code --heads origin deep-scan-state >/dev/null 2>&1; then
+            git fetch --depth=1 origin deep-scan-state
+            git archive FETCH_HEAD | tar -x -C catalog/deep-scan-current
+          fi
+
+      - name: Materialize frozen canonical catalog and secondary-security assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          definitions_revision="$(jq -r '.definitionsRevision' catalog/active-state/definitions/index.json)"
+          python tools/catalog/catalog_json_store.py materialize \
+            --root catalog/active-state/catalog \
+            --database catalog/security-input/omega-catalog.sqlite \
+            --definitions-revision "$definitions_revision"
+          python "$OMEGA_FROZEN_WORKER/tools/catalog/secondary_security_assets.py" materialize-clamav \
+            --definitions-root catalog/active-state/definitions \
+            --output "$OMEGA_SECONDARY_SECURITY_CACHE" || true
+
+      - name: Merge all disjoint exact-key result bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t bundles < <(find catalog/drain-worker-artifacts -name bundle.json -printf '%h\n' | sort)
+          python tools/security/sigmascope_result_merger.py \
+            --current-evidence catalog/security-v2-current \
+            --base-database catalog/security-input/omega-catalog.sqlite \
+            --definitions-root catalog/active-state/definitions \
+            --queue-seed catalog/active-state/scan-queue.json \
+            --candidate-evidence catalog/security-v2-drain-candidate \
+            --work-dir catalog/security-v2-drain-work \
+            --report catalog/sigmascope-drain-merge-report.json \
+            --previous-deep-scan-state catalog/deep-scan-current/index.json \
+            --deep-scan-output catalog/security-v2-drain-work/deep-scan-state \
+            --source-followup-output catalog/security-v2-drain-work/sigmascope-source-followups.json \
+            "${bundles[@]}"
+
+      - name: Apply independent Evidence audit and storage gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/security_developer_audit.py \
+            --database catalog/security-v2-drain-work/omega-security-parallel-merge.sqlite \
+            --advisories catalog/active-state/definitions/osv-advisories.json \
+            --json > catalog/sigmascope-drain-developer-audit.json
+          python tools/security/evidence_storage_audit.py \
+            --root catalog/security-v2-drain-candidate \
+            --report catalog/sigmascope-drain-storage-audit.json
+
+      - id: next
+        name: Plan from merged candidate and decide whether to continue
+        env:
+          WORKERS: ${{ inputs.workers || 4 }}
+          ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 10 }}
+          WAVE: ${{ inputs.wave || 1 }}
+          PUBLISH_CLIENT_EVERY: ${{ inputs.publish_client_every || 5 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/sigmascope_parallel_drain_plan.py \
+            --queue-seed catalog/active-state/scan-queue.json \
+            --evidence-root catalog/security-v2-drain-candidate \
+            --workers "$WORKERS" \
+            --items-per-worker "$ITEMS_PER_WORKER" \
+            --output catalog/sigmascope-drain-post-plan.json
+
+          assignments="$(jq -r '.assignmentCount' catalog/sigmascope-drain-post-plan.json)"
+          serial="$(jq -r '.serialFallbackRequired' catalog/sigmascope-drain-post-plan.json)"
+          if [ "$assignments" -gt 0 ]; then
+            next_mode=parallel
+          elif [ "$serial" = "true" ]; then
+            next_mode=serial
+          else
+            next_mode=done
+          fi
+
+          cadence="$PUBLISH_CLIENT_EVERY"
+          if [ "$cadence" -lt 1 ]; then cadence=1; fi
+          if [ "$next_mode" != "parallel" ] || [ $((WAVE % cadence)) -eq 0 ]; then
+            publish_client=true
+          else
+            publish_client=false
+          fi
+
+          successful="$(jq -r '.successfulVariantIds | length' catalog/sigmascope-drain-merge-report.json)"
+          selected="$(jq -r '.variantIds | length' catalog/sigmascope-drain-merge-report.json)"
+          failed=$((selected - successful))
+          echo "next_mode=$next_mode" >> "$GITHUB_OUTPUT"
+          echo "publish_client=$publish_client" >> "$GITHUB_OUTPUT"
+          echo "successful=$successful" >> "$GITHUB_OUTPUT"
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+
+      - name: Package exact candidate and deferred side effects for one writer
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf catalog/drain-publication
+          mkdir -p catalog/drain-publication
+          tar -czf catalog/drain-publication/candidate.tar.gz -C catalog/security-v2-drain-candidate .
+          (cd catalog/drain-publication && sha256sum candidate.tar.gz > candidate.tar.gz.sha256)
+          cp catalog/sigmascope-drain-merge-report.json catalog/drain-publication/merge-report.json
+          cp catalog/sigmascope-drain-developer-audit.json catalog/drain-publication/developer-audit.json
+          cp catalog/sigmascope-drain-storage-audit.json catalog/drain-publication/storage-audit.json
+          cp catalog/sigmascope-drain-post-plan.json catalog/drain-publication/post-plan.json
+          cp catalog/security-v2-drain-work/sigmascope-source-followups.json \
+            catalog/drain-publication/source-followups.json
+          if [ -d catalog/security-v2-drain-work/deep-scan-state ]; then
+            cp -a catalog/security-v2-drain-work/deep-scan-state catalog/drain-publication/deep-scan-state
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-drain-publication
+          path: catalog/drain-publication
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: One-writer publish merged Evidence and deferred security state
+    needs: [resolve-images, plan, merge]
+    if: needs.merge.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      issues: write
+      packages: read
+    container:
+      image: ${{ needs.resolve-images.outputs.publisher_image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    outputs:
+      next_mode: ${{ needs.merge.outputs.next_mode }}
+      publish_client: ${{ needs.merge.outputs.publish_client }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.dev_sha }}
+          fetch-depth: 1
+          persist-credentials: true
+      - uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/active-state
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-drain-publication
+          path: catalog/drain-publication
+
+      - name: Rehydrate exact candidate and re-check parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd catalog/drain-publication && sha256sum -c candidate.tar.gz.sha256)
+          mkdir -p catalog/drain-publication/candidate
+          tar -xzf catalog/drain-publication/candidate.tar.gz -C catalog/drain-publication/candidate
+          current="$(git -C catalog/security-v2-current rev-parse HEAD)"
+          expected="${{ needs.plan.outputs.base_head }}"
+          test "$current" = "$expected" || {
+            echo "::error::Evidence moved before one-writer publication: expected=$expected current=$current"
+            exit 3
+          }
+
+      - name: Publish exact validated Security Evidence v2 child
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          python tools/security/publish_security_evidence_v2.py \
+            --input catalog/drain-publication/candidate \
+            --repo . \
+            --branch security-evidence-v2 \
+            --history-mode fast-forward \
+            --expected-parent-sha "${{ needs.plan.outputs.base_head }}" \
+            --snapshot-validation-report catalog/drain-publication/candidate/validation-report.json \
+            --audit-report catalog/drain-publication/developer-audit.json \
+            --message "SigmaScope production parallel drain wave ${{ inputs.wave || 1 }}" \
+            --push
+
+      - name: Publish Deep Scan state derived from newly-authoritative Evidence
+        if: ${{ hashFiles('catalog/drain-publication/deep-scan-state/index.json') != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/security/publish_deep_scan_state.py
+          --input catalog/drain-publication/deep-scan-state
+          --repo .
+          --branch deep-scan-state
+          --push
+
+      - name: Reconcile source follow-up issues after Evidence publication
+        if: ${{ hashFiles('catalog/drain-publication/source-followups.json') != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python catalog/active-state/definitions/worker/tools/catalog/create_source_followup_issues.py
+          --input catalog/drain-publication/source-followups.json
+          --repository "${{ github.repository }}"
+          --max-new 25
+
+      - name: Publish wave summary
+        shell: bash
+        run: |
+          {
+            echo "### SigmaScope production parallel wave published"
+            echo
+            echo "- Successful exact items: \`${{ needs.merge.outputs.successful }}\`"
+            echo "- Failed / retained for retry: \`${{ needs.merge.outputs.failed }}\`"
+            echo "- Next mode: \`${{ needs.merge.outputs.next_mode }}\`"
+            echo "- Customer DB refresh this wave: \`${{ needs.merge.outputs.publish_client }}\`"
+            echo "- Published parent: \`${{ needs.plan.outputs.base_head }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish-client:
+    name: Periodic customer DB projection
+    needs: publish
+    if: needs.publish.outputs.publish_client == 'true'
+    uses: ./.github/workflows/catalog-client-publish.yml
+    with:
+      authority_lock_held: true
+    secrets: inherit
+
+  continue:
+    name: Continue until no immediately eligible primary work remains
+    needs: [plan, publish, publish-client]
+    if: >-
+      always() &&
+      needs.publish.result == 'success' &&
+      (needs.publish-client.result == 'success' || needs.publish-client.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch the next bounded authority owner
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_MODE: ${{ needs.publish.outputs.next_mode }}
+          WORKERS: ${{ inputs.workers || 4 }}
+          ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 10 }}
+          PUBLISH_CLIENT_EVERY: ${{ inputs.publish_client_every || 5 }}
+          WAVE: ${{ inputs.wave || 1 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$NEXT_MODE" = "parallel" ]; then
+            next_wave=$((WAVE + 1))
+            gh workflow run sigmascope-parallel-drain.yml \
+              --repo "$GITHUB_REPOSITORY" \
+              --ref sigmascope \
+              -f workers="$WORKERS" \
+              -f items_per_worker="$ITEMS_PER_WORKER" \
+              -f wave="$next_wave" \
+              -f publish_client_every="$PUBLISH_CLIENT_EVERY"
+            echo "Queued production parallel drain wave $next_wave."
+          elif [ "$NEXT_MODE" = "serial" ]; then
+            gh workflow run sigmascope.yml --repo "$GITHUB_REPOSITORY" --ref sigmascope
+            echo "Queued bounded serialized worker for global/non-variant work."
+          else
+            echo "No immediately eligible SigmaScope work remains; drain is quiescent."
+          fi
+
+  idle-or-serial-fallback:
+    name: Handle an empty parallel plan
+    needs: plan
+    if: needs.plan.outputs.assignment_count == '0'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Stop cleanly or hand global work to the serialized worker
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERIAL_FALLBACK: ${{ needs.plan.outputs.serial_fallback }}
+          BLOCKED_REASON: ${{ needs.plan.outputs.blocked_reason }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$SERIAL_FALLBACK" = "true" ]; then
+            gh workflow run sigmascope.yml --repo "$GITHUB_REPOSITORY" --ref sigmascope
+            echo "Parallel drain yielded to serialized SigmaScope: $BLOCKED_REASON"
+          else
+            echo "No immediately eligible SigmaScope work remains."
+          fi

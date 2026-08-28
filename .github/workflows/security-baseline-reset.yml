@@ -188,18 +188,24 @@ jobs:
     secrets: inherit
 
   wake-scanner:
-    name: Queue normal SigmaScope refill
+    name: Queue production parallel SigmaScope refill
     needs: publish-client
     runs-on: ubuntu-latest
     permissions:
       actions: write
       contents: read
     steps:
-      - name: Dispatch normal bounded SigmaScope worker
+      - name: Dispatch production parallel queue drain
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          gh workflow run sigmascope.yml             --repo "${{ github.repository }}"             --ref sigmascope
-          echo "Queued normal SigmaScope refill. It will start after this authority lock is released."
+          gh workflow run sigmascope-parallel-drain.yml \
+            --repo "${{ github.repository }}" \
+            --ref sigmascope \
+            -f workers=4 \
+            -f items_per_worker=10 \
+            -f wave=1 \
+            -f publish_client_every=5
+          echo "Queued production parallel SigmaScope drain. It will start after this authority lock is released."

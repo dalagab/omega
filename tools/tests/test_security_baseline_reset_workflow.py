@@ -27,7 +27,9 @@ class SecurityBaselineResetWorkflowTests(unittest.TestCase):
             "publish_catalog_state.py",
             "catalog-client-publish.yml",
             "authority_lock_held: true",
-            "gh workflow run sigmascope.yml",
+            "gh workflow run sigmascope-parallel-drain.yml",
+            "-f workers=4",
+            "-f items_per_worker=10",
         ):
             self.assertIn(required, workflow)
 

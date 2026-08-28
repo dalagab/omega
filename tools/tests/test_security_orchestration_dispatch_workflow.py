@@ -45,7 +45,7 @@ class SecurityOrchestrationDispatchWorkflowTests(unittest.TestCase):
     def test_security_baseline_reset_wakes_scanner_without_mutating_collector_leases(self):
         text = (WF / "security-baseline-reset.yml").read_text(encoding="utf-8")
         self.assertIn("group: omega-catalog-sigmascope-exclusive", text)
-        self.assertIn("gh workflow run sigmascope.yml", text)
+        self.assertIn("gh workflow run sigmascope-parallel-drain.yml", text)
         self.assertIn("--ref sigmascope", text)
         self.assertNotIn("gh workflow run security-orchestration-dispatch.yml", text)
         self.assertNotIn("gh workflow run security-reconcile.yml", text)

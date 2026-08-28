@@ -181,8 +181,12 @@ def build(*, current: Path, candidate: Path, work_dir: Path, definitions: Path, 
     if str(base_revisions.get("catalogIdentityEpoch") or "") != str(candidate_revisions.get("catalogIdentityEpoch") or ""):
         raise ValueError("parallel bundle cannot cross a catalog identity epoch")
     report = _read(work_dir / "production-sigmascope-v2-report.json")
-    if bool((report.get("materialized") or {}).get("baselineSecurityRebuild")):
-        raise ValueError("parallel bundle is disabled during baseline security rebuilds")
+
+    # Baseline rebuilds use the same exact-key/result-only contract as steady-state
+    # scanning. Phase 4 used to forbid them here because commissioning required a
+    # serialized reference scan; that migration-only restriction no longer applies.
+    # The real safety boundaries remain the exact Evidence base, identity epoch,
+    # frozen Definitions identity and exact requested queue key.
     selected = [row for row in ((report.get("queue") or {}).get("selectedItems") or []) if isinstance(row, dict)]
     if len(selected) != 1 or str(selected[0].get("queueKey") or "") != queue_key:
         raise ValueError("pipeline report is not bound to exactly the requested queue key")
