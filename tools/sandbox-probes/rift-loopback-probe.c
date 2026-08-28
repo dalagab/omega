@@ -86,7 +86,10 @@ static void discover_and_probe(const char* proc_file, int family, bool* seen_por
     if (stream == NULL) return;
 
     char line[512];
-    (void)fgets(line, sizeof(line), stream);
+    if (fgets(line, sizeof(line), stream) == NULL) {
+        fclose(stream);
+        return;
+    }
     while (fgets(line, sizeof(line), stream) != NULL) {
         char local_address[80] = {0};
         char state[8] = {0};

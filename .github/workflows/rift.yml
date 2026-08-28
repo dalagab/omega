@@ -159,20 +159,26 @@ jobs:
         run: |
           set +e
           results="$RUNNER_TEMP/rift-results"
-          python3 ./tools/check-rift-source-contract.py
-          python3 ./tools/test-headless-cimgui-builder.py
-          python3 ./tools/test-rift-artifact-tools.py
-          python3 ./tools/test-rift-game-data-fixture-tools.py
-          python3 ./tools/test-rift-evidence-tools.py
-          python3 ./tools/test-rift-observer-tools.py
-          python3 ./tools/test-rift-runtime-collector.py
-          bash ./tools/test-rift-loopback-probe.sh
-          python3 ./tools/test-rift-component-scanner.py
-          rc=$?
-          if [[ $rc -ne 0 ]]; then
-            printf '{"schema_version":"rift.workflow.v1","phase":"source-contract","outcome":"failed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
-            exit "$rc"
-          fi
+          run_source_check() {
+            "$@"
+            rc=$?
+            if [[ $rc -ne 0 ]]; then
+              printf '{"schema_version":"rift.workflow.v1","phase":"source-contract","outcome":"failed","exit_code":%d,"failed_check":"%s"}\n' \
+                "$rc" "$1" > "$results/workflow-status.json"
+              exit "$rc"
+            fi
+          }
+
+          run_source_check python3 ./tools/check-rift-source-contract.py
+          run_source_check python3 ./tools/test-headless-cimgui-builder.py
+          run_source_check python3 ./tools/test-rift-artifact-tools.py
+          run_source_check python3 ./tools/test-rift-game-data-fixture-tools.py
+          run_source_check python3 ./tools/test-rift-evidence-tools.py
+          run_source_check python3 ./tools/test-rift-observer-tools.py
+          run_source_check python3 ./tools/test-rift-runtime-collector.py
+          run_source_check bash ./tools/test-rift-loopback-probe.sh
+          run_source_check python3 ./tools/test-rift-component-scanner.py
+
           dotnet test ./tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
             --configuration Release \
             -p:HooksDir="$RIFT_HOOKS"
