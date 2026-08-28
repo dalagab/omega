@@ -252,13 +252,9 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        var statuses = catalog.GetRepositoryStatuses(currentApi)
-            .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
-        var divergentSources = catalog.Variants
-            .Where(v => v.SecurityFindings.Any(f =>
-                f.RuleId.Equals("artifact.cross-source-hash-mismatch", StringComparison.OrdinalIgnoreCase)))
-            .Select(v => NormalizeUrl(v.SourceUrl))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        EnsureInstallCandidateContext(currentApi);
+        var statuses = installCandidateRepositoryStatuses;
+        var divergentSources = installCandidateDivergentSources;
         return catalog.GetMainVariants(internalName, currentApi)
             .Where(v =>
                 v.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out _) &&

@@ -47,7 +47,6 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        RefreshCollectionsIfNeeded();
         var mainProjection = catalog.GetMainProjection(currentApi);
         var mainPlugins = mainProjection.Plugins;
         var discoverPluginCount = MarketplaceCatalogRules.CountUniquePlugins(mainProjection.Variants);
@@ -127,7 +126,6 @@ internal sealed partial class MarketplaceWindow
     private void OpenSettings()
     {
         RefreshDalamudRepositoryAwareness();
-        InvalidateSourceCaches();
         settingsOpen = true;
         requestSettingsPopup = true;
     }

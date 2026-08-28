@@ -87,29 +87,31 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawSettingsRepositoriesTab(int currentApi)
     {
-        DrawSourcesHeader(currentApi);
+        var statuses = catalog.GetRepositoryInventoryStatuses(currentApi)
+            .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
+        var dalamudRepositories = repositoryBridge.GetConfiguredRepositories();
+
+        DrawSourcesHeader(statuses, dalamudRepositories);
         if (addSourceOpen)
             DrawAddSourceTools();
 
-        var shownSources = GetVisibleSourceRows(currentApi);
-        var statuses = catalog.GetRepositoryInventoryStatuses(currentApi)
-            .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
+        var shownSources = GetVisibleSourceRows(currentApi, statuses, dalamudRepositories);
         var unmanaged = sourceSection == SourceManagerSection.DalamudConfigured
             ? shownSources.Where(x => !catalog.IsSourceInDefinitions(x.Url)).ToArray()
             : Array.Empty<RepositorySource>();
-        DrawSourcesTable(shownSources, statuses, unmanaged.Length > 0);
+        DrawSourcesTable(shownSources, statuses, unmanaged.Length > 0, dalamudRepositories);
         if (unmanaged.Length > 0)
             DrawUnmanagedSourceSubmissionFooter(unmanaged);
     }
 
-    private void DrawSourcesHeader(int currentApi)
+    private void DrawSourcesHeader(
+        IReadOnlyDictionary<string, RepositoryCatalogStatus> statuses,
+        IReadOnlyList<DalamudRepositoryRegistration> dalamudRepositories)
     {
-        var statuses = catalog.GetRepositoryInventoryStatuses(currentApi)
-            .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
         var curatedCount = configuration.Repositories
             .Where(x => x.IsCurated)
             .Count(x => IsRepositoryVisibleInSettings(x.Url, statuses));
-        var dalamudCount = repositoryBridge.GetConfiguredRepositories()
+        var dalamudCount = dalamudRepositories
             .Count(x => IsRepositoryVisibleInSettings(x.Url, statuses));
 
         ImGui.TextDisabled("Plugin sources");
@@ -145,14 +147,14 @@ internal sealed partial class MarketplaceWindow
                (status.PluginCount > 0 || status.HighestKnownApiLevel > 0);
     }
 
-    private RepositorySource[] GetVisibleSourceRows(int currentApi)
+    private RepositorySource[] GetVisibleSourceRows(
+        int currentApi,
+        IReadOnlyDictionary<string, RepositoryCatalogStatus> statuses,
+        IReadOnlyList<DalamudRepositoryRegistration> dalamudRepositories)
     {
-        var statuses = catalog.GetRepositoryInventoryStatuses(currentApi)
-            .ToDictionary(x => NormalizeUrl(x.SourceUrl), StringComparer.OrdinalIgnoreCase);
-
         if (sourceSection == SourceManagerSection.DalamudConfigured)
         {
-            return repositoryBridge.GetConfiguredRepositories()
+            return dalamudRepositories
                 .Where(registration => IsRepositoryVisibleInSettings(registration.Url, statuses))
                 .Select(registration =>
                 {
@@ -202,7 +204,8 @@ internal sealed partial class MarketplaceWindow
     private void DrawSourcesTable(
         IReadOnlyList<RepositorySource> shownSources,
         IReadOnlyDictionary<string, RepositoryCatalogStatus> statuses,
-        bool reserveSubmissionFooter)
+        bool reserveSubmissionFooter,
+        IReadOnlyList<DalamudRepositoryRegistration> dalamudRepositorySnapshot)
     {
         ImGui.Spacing();
         var footerReserve = reserveSubmissionFooter ? Ui(66f) : 0f;
@@ -226,7 +229,7 @@ internal sealed partial class MarketplaceWindow
         if (isDalamudView)
             ImGui.TableSetupColumn("Action", ImGuiTableColumnFlags.WidthFixed, Ui(82f));
         ImGui.TableHeadersRow();
-        var dalamudRepositories = repositoryBridge.GetConfiguredRepositories()
+        var dalamudRepositories = dalamudRepositorySnapshot
             .ToDictionary(x => NormalizeUrl(x.Url), StringComparer.OrdinalIgnoreCase);
         var installedUsage = isDalamudView
             ? repositoryBridge.GetInstalledPluginUsageByRepository()

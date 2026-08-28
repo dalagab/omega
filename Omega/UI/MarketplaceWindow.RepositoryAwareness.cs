@@ -14,6 +14,9 @@ internal sealed partial class MarketplaceWindow
     private string repositoryRiskDismissedFingerprint = string.Empty;
     private RepositoryRiskNotice[] repositoryRiskNotices = [];
     private RepositoryRiskNotice[] repositoryRiskAllNotices = [];
+    private long repositoryRiskCatalogRevision = -1;
+    private int repositoryRiskInstalledSignature;
+    private int repositoryRiskSourceStateRevision = -1;
     private Task<RepositoryRemediationResult>? repositoryRemediationTask;
 
     private sealed record RepositoryRiskNotice(
@@ -53,7 +56,18 @@ internal sealed partial class MarketplaceWindow
         if (!catalog.HasLoaded || repositoryRiskPopupOpen || requestRepositoryRiskPopup)
             return;
 
-        repositoryRiskAllNotices = BuildRepositoryRiskNotices(installed.Values);
+        var installedSignature = GetInstalledSignature(installed);
+        var revision = catalog.Revision;
+        if (repositoryRiskCatalogRevision != revision ||
+            repositoryRiskInstalledSignature != installedSignature ||
+            repositoryRiskSourceStateRevision != sourceStateRevision)
+        {
+            repositoryRiskAllNotices = BuildRepositoryRiskNotices(installed.Values);
+            repositoryRiskCatalogRevision = revision;
+            repositoryRiskInstalledSignature = installedSignature;
+            repositoryRiskSourceStateRevision = sourceStateRevision;
+        }
+
         var risky = repositoryRiskAllNotices
             .Where(x => x.EnabledInDalamud || x.UsedByInstalledPlugin)
             .ToArray();
