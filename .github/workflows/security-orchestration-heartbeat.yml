@@ -1,0 +1,30 @@
+name: Omega security services · collector heartbeat
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+# This default-branch controller never performs collection or writes security/catalog
+# state itself. It only wakes the branch-local SigmaScope reconciler, which decides
+# whether any durable collector work is actually due.
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  wake-reconciliation:
+    name: Wake SigmaScope collector reconciliation
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Dispatch reconcile to SigmaScope
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run security-orchestration-dispatch.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref sigmascope \
+            -f mode=reconcile
