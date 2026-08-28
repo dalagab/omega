@@ -111,6 +111,53 @@ class SigmascopeMergeEquivalenceTests(unittest.TestCase):
         self.assertIn("items[1].ruleId", paths)
         self.assertLessEqual(len(paths), sigmascope_merge_equivalence.MAX_DIFFERENCE_PATHS)
 
+    def test_missing_assigned_variant_is_explicit_absence_not_file_error(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-equivalence-missing-") as td:
+            root = Path(td)
+            variant_id = 5017
+            self.assertEqual(
+                {"variantId": variant_id, "present": False},
+                sigmascope_merge_equivalence._variant_semantic(root, variant_id),
+            )
+
+    def test_present_and_absent_variant_states_are_semantically_different(self) -> None:
+        serial = {"variantId": 5017, "present": False}
+        parallel = {
+            "variantId": 5017,
+            "present": True,
+            "artifactSha256": "a" * 64,
+        }
+        mismatches: list[dict[str, object]] = []
+        sigmascope_merge_equivalence._append_mismatch(
+            mismatches, "variant:5017", serial, parallel
+        )
+        self.assertEqual(["variant:5017"], [item["area"] for item in mismatches])
+        differences = mismatches[0]["differences"]
+        self.assertIsInstance(differences, list)
+        paths = [item["path"] for item in differences]
+        self.assertIn("present", paths)
+
+    def test_equivalence_accepts_requested_variant_absent_from_both_valid_snapshots(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-equivalence-both-absent-") as td:
+            root = Path(td)
+            helper = production_tests.ProductionSecurityV2PipelineTests(
+                methodName="test_bounded_batch_report_aggregates_multiple_queue_invocations"
+            )
+            database, variant_id, _plugin_id = helper.make_catalog_with_security(root)
+            serial = root / "serial"
+            migrate(database, serial, reset=True)
+            parallel = root / "parallel"
+            shutil.copytree(serial, parallel)
+            missing_variant_id = variant_id + 1_000_000
+            result = sigmascope_merge_equivalence.compare(
+                parallel_evidence=parallel,
+                serial_evidence=serial,
+                variant_ids=[missing_variant_id],
+                output=root / "report.json",
+            )
+            self.assertTrue(result["equivalent"], result["mismatches"])
+            self.assertEqual([], result["mismatches"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -73,7 +73,12 @@ def _variant_path(root: Path, variant_id: int) -> Path:
 
 
 def _variant_semantic(root: Path, variant_id: int) -> dict[str, Any]:
-    payload = _read(_variant_path(root, variant_id))
+    path = _variant_path(root, variant_id)
+    if not path.is_file():
+        # An exact queue assignment does not guarantee that a current variant
+        # descriptor exists after the attempt (for example a failed first scan).
+        return {"variantId": variant_id, "present": False}
+    payload = _read(path)
     analysis = payload.get("analysis") if isinstance(payload.get("analysis"), dict) else {}
     current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
     observations = payload.get("observations") if isinstance(payload.get("observations"), dict) else {}
@@ -95,6 +100,7 @@ def _variant_semantic(root: Path, variant_id: int) -> dict[str, Any]:
     }
     return {
         "variantId": variant_id,
+        "present": True,
         "artifactSha256": str(analysis.get("artifactSha256") or current.get("artifact_sha256") or ""),
         "analysisRecordCount": int(analysis.get("recordCount") or 0),
         "current": _normalize(current),
