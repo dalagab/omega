@@ -10,15 +10,37 @@ on:
         type: string
         required: false
         default: ""
+      workers:
+        description: "Production parallel drain workers when internal_names is empty (1-8)"
+        type: number
+        required: false
+        default: 4
+      items_per_worker:
+        description: "Exact queue items per production worker (1-16; total max 64)"
+        type: number
+        required: false
+        default: 10
 
 permissions:
   contents: write
   issues: write
   actions: write
+  packages: read
 
 jobs:
-  call-security-branch:
+  production-parallel-drain:
+    if: ${{ (inputs.internal_names || '') == '' }}
+    uses: dalagab/omega/.github/workflows/sigmascope-parallel-drain.yml@sigmascope
+    with:
+      workers: ${{ inputs.workers || 4 }}
+      items_per_worker: ${{ inputs.items_per_worker || 10 }}
+      wave: 1
+      publish_client_every: 5
+    secrets: inherit
+
+  bounded-developer-run:
+    if: ${{ (inputs.internal_names || '') != '' }}
     uses: dalagab/omega/.github/workflows/sigmascope.yml@sigmascope
     with:
-      internal_names: ${{ inputs.internal_names || '' }}
+      internal_names: ${{ inputs.internal_names }}
     secrets: inherit
