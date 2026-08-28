@@ -1,3 +1,14 @@
+## [Unreleased]
+
+## [0.10.0] - 2026-08-28
+
+- Combines the Community/About project links for Omega, SigmaScope, DeltaScope, Rift, and Discord into the client.
+- Streamlines Settings > Community so project links start immediately and the Talk to us section sits higher.
+- Adopts the Omega Marketplace emblem as the canonical Dalamud listing, in-game/minimized, About/application, and title-screen icon.
+- Carries forward the first-open and Settings performance work that caches catalog-wide install/security projection data and reflected Dalamud repository state.
+- Keeps the source-manager UI behavior intact while making its regression guard resilient to the cached repository-snapshot argument added by the performance pass.
+- Promotes the combined client line to Omega 0.10.0.
+
 ## 0.9.69 - 2026-08-22
 
 - Makes Library > Collections folder tiles narrower and more naturally proportioned.
