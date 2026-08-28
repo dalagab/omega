@@ -508,24 +508,20 @@ class WorkflowContractTests(unittest.TestCase):
     def test_catalog_and_sigmascope_are_mutually_exclusive(self) -> None:
         catalog = self.read("catalog-builder.yml")
         security = self.read("sigmascope.yml")
-        migration = self.read("sigmascope-phase4-migration.yml")
+        reset = self.read("security-baseline-reset.yml")
         shared_group = "omega-catalog-sigmascope-exclusive"
 
-        # The continuous Evidence writer and the one-time migration share one authority mutex.
+        # Continuous Evidence publication and an explicit security reset share one authority mutex.
         self.assertIn(f"group: {shared_group}", security)
-        migration_head = migration[: migration.index("\npermissions:\n")]
-        self.assertIn(f"group: {shared_group}", migration_head)
-        self.assertIn("cancel-in-progress: false", migration_head)
-        self.assertIn("queue: max", migration_head)
+        self.assertIn(f"group: {shared_group}", reset)
+        self.assertIn("cancel-in-progress: false", reset)
+        self.assertIn("queue: max", reset)
 
-        # Standalone catalog freeze still owns the same mutex. During Phase 4 the complete
-        # migration already owns it, so the nested builder uses its run-local group.
+        # Catalog freeze retains its existing nested-authority escape hatch. The label
+        # still contains the historical Phase-4 name but is only an internal group name.
         self.assertIn("inputs.authority_lock_held", catalog)
         self.assertIn("omega-catalog-freeze-under-phase4-", catalog)
         self.assertIn(f"|| '{shared_group}'", catalog)
-        self.assertIn("uses: ./.github/workflows/catalog-freeze.yml", migration)
-        self.assertIn("authority_lock_held: true", migration)
-        self.assertNotIn("uses: ./.github/workflows/sigmascope-phase4-cutover-core.yml", migration)
 
         self.assertIn("cancel-in-progress: false", catalog)
         self.assertIn("cancel-in-progress: false", security)

@@ -1,0 +1,205 @@
+name: Omega SigmaScope · reset security baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_reset:
+        description: "I understand this replaces current plugin Security Evidence and scan progress with a fresh zero-result baseline"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: write
+  packages: read
+
+concurrency:
+  group: omega-catalog-sigmascope-exclusive
+  cancel-in-progress: false
+  queue: max
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  reset:
+    name: Reset derived plugin security authority only
+    if: inputs.confirm_reset == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      previous_evidence_head: ${{ steps.previous.outputs.sha }}
+      queue_count: ${{ steps.queue.outputs.count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Checkout current frozen catalog, Definitions and source inventory
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/active-state
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Checkout current Security Evidence for archival parent identity
+        uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-previous
+          fetch-depth: 1
+          persist-credentials: false
+
+      - id: previous
+        name: Record exact previous Security Evidence head
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="$(git -C catalog/security-v2-previous rev-parse HEAD)"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Previous Evidence head remains recoverable as the parent of the reset publication: $sha"
+
+      - uses: actions/setup-python@v7
+        with: {python-version: "3.13"}
+
+      - name: Install pinned security dependencies
+        run: python -m pip install --disable-pip-version-check -r tools/requirements-security.txt
+
+      - name: Materialize current catalog into a disposable reset database
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/security-reset
+          definitions_revision="$(jq -r '.definitionsRevision' catalog/active-state/definitions/index.json)"
+          python tools/catalog/catalog_json_store.py materialize             --root catalog/active-state/catalog             --database catalog/security-reset/omega-catalog.sqlite             --definitions-revision "$definitions_revision"
+
+      - name: Build validated zero-result Security Evidence v2 and empty Deep Scan state
+        run: >-
+          python tools/security/reset_security_baseline.py
+          --database catalog/security-reset/omega-catalog.sqlite
+          --evidence-output catalog/security-v2-reset
+          --deep-scan-output catalog/deep-scan-reset
+          --receipt catalog/security-reset/reset-receipt.json
+          --previous-evidence-head "${{ steps.previous.outputs.sha }}"
+
+      - name: Run independent developer audit over the empty security projection
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/security_developer_audit.py             --database catalog/security-reset/omega-catalog.sqlite             --advisories catalog/active-state/definitions/osv-advisories.json             --json > catalog/security-reset/security-developer-audit.json
+
+      - name: Build a fresh immutable SigmaScope queue from current catalog and Definitions
+        run: >-
+          python tools/catalog/scan_queue.py build-seed
+          --catalog-root catalog/active-state/catalog
+          --definitions-root catalog/active-state/definitions
+          --evidence-root catalog/security-v2-reset
+          --output catalog/security-reset/scan-queue.json
+
+      - id: queue
+        name: Require a real fresh baseline queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.schema == "omega.sigmascope.queue-seed.v2"' catalog/security-reset/scan-queue.json >/dev/null
+          jq -e '.baselineSecurityRebuild == true' catalog/security-reset/scan-queue.json >/dev/null
+          count="$(jq -r '.counts.queued // 0' catalog/security-reset/scan-queue.json)"
+          test "$count" -gt 0
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "Fresh first-scan queue contains $count work item(s)."
+
+      - name: Reassemble catalog-data with identical catalog/Definitions and only the fresh queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/catalog/catalog_state.py assemble             --catalog catalog/active-state/catalog             --definitions catalog/active-state/definitions             --queue-seed catalog/security-reset/scan-queue.json             --source-inventory catalog/active-state/source-inventory.json             --output catalog/security-reset/catalog-state
+          python tools/catalog/catalog_state.py validate --root catalog/security-reset/catalog-state
+          cmp catalog/active-state/catalog/index.json catalog/security-reset/catalog-state/catalog/index.json
+          cmp catalog/active-state/definitions/index.json catalog/security-reset/catalog-state/definitions/index.json
+          cmp catalog/active-state/source-inventory.json catalog/security-reset/catalog-state/source-inventory.json
+
+      - name: Configure authenticated Git publication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh auth setup-git
+
+      - name: Publish fresh Security Evidence v2 as a fast-forward child of the archived head
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/security/publish_security_evidence_v2.py
+          --input catalog/security-v2-reset
+          --repo .
+          --branch security-evidence-v2
+          --history-mode fast-forward
+          --expected-parent-sha "${{ steps.previous.outputs.sha }}"
+          --snapshot-validation-report catalog/security-v2-reset/validation-report.json
+          --audit-report catalog/security-reset/security-developer-audit.json
+          --message "Reset Security Evidence v2 to fresh current-catalog baseline"
+          --push
+
+      - name: Publish empty Deep Scan state
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/security/publish_deep_scan_state.py
+          --input catalog/deep-scan-reset
+          --repo .
+          --branch deep-scan-state
+          --push
+
+      - name: Publish catalog-data with unchanged catalog/Definitions and fresh scan queue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python tools/catalog/publish_catalog_state.py
+          --input catalog/security-reset/catalog-state
+          --repo .
+          --branch catalog-data
+          --history-mode fast-forward
+          --push
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: omega-security-baseline-reset
+          path: |
+            catalog/security-reset/reset-receipt.json
+            catalog/security-reset/security-developer-audit.json
+            catalog/security-reset/scan-queue.json
+            catalog/security-v2-reset/index.json
+            catalog/security-v2-reset/validation-report.json
+            catalog/deep-scan-reset/index.json
+            catalog/security-reset/catalog-state/index.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  publish-client:
+    name: Publish customer DB with security coverage reset
+    needs: reset
+    uses: ./.github/workflows/catalog-client-publish.yml
+    with:
+      authority_lock_held: true
+    secrets: inherit
+
+  wake-scanner:
+    name: Queue normal SigmaScope refill
+    needs: publish-client
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch normal bounded SigmaScope worker
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run sigmascope.yml             --repo "${{ github.repository }}"             --ref sigmascope
+          echo "Queued normal SigmaScope refill. It will start after this authority lock is released."

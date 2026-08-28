@@ -31,22 +31,24 @@ class AuthorityConcurrencyQueueTests(unittest.TestCase):
                 self.assertIn(
                     "queue: max",
                     block,
-                    f"{path.name}: authoritative work must preserve the pending writer queue",
+                    f"{path.name}: default queue:single can evict an existing pending authority writer",
                 )
 
+        self.assertGreaterEqual(len(users), 5)
         for expected in (
             "sigmascope.yml",
             "catalog-builder.yml",
-            "catalog-client-publish.yml",
-            "security-baseline-reset.yml",
+            "sigmascope-phase4-migration.yml",
+            "sigmascope-parallel-publish.yml",
             "rift-evidence-ingest.yml",
         ):
             self.assertIn(expected, users)
 
-        reset = (WORKFLOWS / "security-baseline-reset.yml").read_text(encoding="utf-8")
-        self.assertIn(f"group: {AUTHORITY_GROUP}", reset)
-        self.assertIn("cancel-in-progress: false", reset)
-        self.assertIn("queue: max", reset)
+        migration = (WORKFLOWS / "sigmascope-phase4-migration.yml").read_text(encoding="utf-8")
+        head = migration[: migration.index("\npermissions:\n")]
+        self.assertIn(f"group: {AUTHORITY_GROUP}", head)
+        self.assertIn("cancel-in-progress: false", head)
+        self.assertIn("queue: max", head)
 
 
 if __name__ == "__main__":
