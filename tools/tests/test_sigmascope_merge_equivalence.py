@@ -92,6 +92,25 @@ class SigmascopeMergeEquivalenceTests(unittest.TestCase):
             self.assertFalse(result["equivalent"])
             self.assertIn("source-followups", [item["area"] for item in result["mismatches"]])
 
+    def test_mismatch_report_contains_bounded_field_level_difference_paths(self) -> None:
+        serial = {
+            "current": {"status": "complete", "source": {"commit": "a" * 40}},
+            "items": [{"ruleId": "one"}, {"ruleId": "two"}],
+        }
+        parallel = {
+            "current": {"status": "complete", "source": {"commit": "b" * 40}},
+            "items": [{"ruleId": "one"}, {"ruleId": "three"}],
+        }
+        mismatches: list[dict[str, object]] = []
+        sigmascope_merge_equivalence._append_mismatch(mismatches, "variant:1", serial, parallel)
+        self.assertEqual(1, len(mismatches))
+        differences = mismatches[0]["differences"]
+        self.assertIsInstance(differences, list)
+        paths = [item["path"] for item in differences]
+        self.assertIn("current.source.commit", paths)
+        self.assertIn("items[1].ruleId", paths)
+        self.assertLessEqual(len(paths), sigmascope_merge_equivalence.MAX_DIFFERENCE_PATHS)
+
 
 if __name__ == "__main__":
     unittest.main()

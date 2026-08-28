@@ -77,6 +77,8 @@ class SigmascopePhase4MigrationWorkflowTests(unittest.TestCase):
         self.assertIn("omega-sigmascope-result-slot-${{ matrix.slot }}", workers)
         self.assertIn("sigmascope_phase4b_inline_merge.py", merge)
         self.assertIn("omega-sigmascope-merged-candidate-validation", merge)
+        self.assertIn("if: always()", merge)
+        self.assertIn("if-no-files-found: warn", merge)
         self.assertIn("contents: read", workers)
         self.assertIn("contents: read", merge)
         self.assertNotIn("contents: write", workers)
