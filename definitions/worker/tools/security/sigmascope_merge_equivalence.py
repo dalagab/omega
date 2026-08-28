@@ -19,6 +19,7 @@ from security_evidence_v2 import validate_snapshot
 
 SCHEMA = "omega.sigmascope-parallel-equivalence.v1"
 MAX_MISMATCHES = 100
+MAX_DIFFERENCE_PATHS = 64
 
 _VOLATILE_KEYS = {
     "generatedAtUtc", "updatedAtUtc", "scannedAtUtc", "scanned_at_utc", "scan_id", "scanId",
@@ -154,6 +155,56 @@ def _optional_json(path: Path | None) -> dict[str, Any]:
     return _normalize(_read(path))
 
 
+def _difference_paths(expected: Any, actual: Any, *, prefix: str = "") -> list[dict[str, Any]]:
+    """Return bounded structural diagnostics without weakening semantic comparison."""
+    result: list[dict[str, Any]] = []
+
+    def visit(left: Any, right: Any, path: str) -> None:
+        if len(result) >= MAX_DIFFERENCE_PATHS or _canonical(left) == _canonical(right):
+            return
+        if isinstance(left, dict) and isinstance(right, dict):
+            for key in sorted(set(left) | set(right)):
+                if len(result) >= MAX_DIFFERENCE_PATHS:
+                    return
+                child = f"{path}.{key}" if path else str(key)
+                if key not in left:
+                    result.append({"path": child, "kind": "parallel-only"})
+                elif key not in right:
+                    result.append({"path": child, "kind": "serial-only"})
+                else:
+                    visit(left[key], right[key], child)
+            return
+        if isinstance(left, list) and isinstance(right, list):
+            if len(left) != len(right):
+                result.append({
+                    "path": path or "$",
+                    "kind": "list-length",
+                    "serial": len(left),
+                    "parallel": len(right),
+                })
+                return
+            for index, (left_item, right_item) in enumerate(zip(left, right)):
+                visit(left_item, right_item, f"{path}[{index}]")
+                if len(result) >= MAX_DIFFERENCE_PATHS:
+                    return
+            return
+        item: dict[str, Any] = {
+            "path": path or "$",
+            "kind": "value",
+            "serialDigest": _digest(left),
+            "parallelDigest": _digest(right),
+        }
+        if isinstance(left, (str, int, float, bool, type(None))) and isinstance(
+            right, (str, int, float, bool, type(None))
+        ):
+            item["serial"] = left if not isinstance(left, str) or len(left) <= 256 else left[:253] + "..."
+            item["parallel"] = right if not isinstance(right, str) or len(right) <= 256 else right[:253] + "..."
+        result.append(item)
+
+    visit(expected, actual, prefix)
+    return result
+
+
 def _append_mismatch(mismatches: list[dict[str, Any]], area: str, expected: Any, actual: Any) -> None:
     if len(mismatches) >= MAX_MISMATCHES:
         return
@@ -161,6 +212,7 @@ def _append_mismatch(mismatches: list[dict[str, Any]], area: str, expected: Any,
         "area": area,
         "serialDigest": _digest(expected),
         "parallelDigest": _digest(actual),
+        "differences": _difference_paths(expected, actual),
     })
 
 
@@ -227,7 +279,16 @@ def main() -> int:
         parallel_deep_scan=args.parallel_deep_scan, serial_deep_scan=args.serial_deep_scan,
         parallel_source_followups=args.parallel_source_followups, serial_source_followups=args.serial_source_followups,
     )
-    print(json.dumps({"equivalent": report["equivalent"], "mismatchCount": len(report["mismatches"]), "equivalenceRevision": report["equivalenceRevision"]}, sort_keys=True))
+    print(json.dumps({
+        "equivalent": report["equivalent"],
+        "mismatchCount": len(report["mismatches"]),
+        "mismatchAreas": [item["area"] for item in report["mismatches"]],
+        "differencePaths": {
+            item["area"]: [entry["path"] for entry in item.get("differences") or []]
+            for item in report["mismatches"]
+        },
+        "equivalenceRevision": report["equivalenceRevision"],
+    }, sort_keys=True))
     return 0 if report["equivalent"] else 2
 
 
