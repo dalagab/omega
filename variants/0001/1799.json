@@ -1,0 +1,2349 @@
+{
+  "analysis": {
+    "analysisId": "3ae1b59dc6644ffca49779218c79999803b4e0641058b1f9e60bff2d0184806f",
+    "artifactSha256": "7a3b57586fcca1dea737ee7cab447fbeb7494dcf1fac1f6a978084b88d4fe900",
+    "path": "artifacts/7a/7a3b57586fcca1dea737ee7cab447fbeb7494dcf1fac1f6a978084b88d4fe900/analyses/3ae1b59dc6644ffca49779218c79999803b4e0641058b1f9e60bff2d0184806f",
+    "recordCount": 5742
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "7a3b57586fcca1dea737ee7cab447fbeb7494dcf1fac1f6a978084b88d4fe900",
+    "artifact_url": "https://github.com/NiGuangOwO/DalamudPlugins/raw/main/plugins/AetheryteLinkInChat/API13/latest.zip",
+    "assembly_version": "7.3.0.0",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.teleport",
+        "confidence": "very-high",
+        "evidence": [
+          "il:AetheryteLinkInChat.dll:Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleportInternal+0xba: call FFXIVClientStructs.FFXIV.Client.Game.UI.Telepo.Teleport",
+          "il:AetheryteLinkInChat.dll:Divination.AetheryteLinkInChat.Teleporter.TeleportToQueuedAetheryte+0x3e: call Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleport",
+          "il:AetheryteLinkInChat.dll:<TeleportToAetheryte>d__14.MoveNext+0x76: call Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleport"
+        ],
+        "indirect": false,
+        "label": "Teleport/travel control",
+        "reachable": true,
+        "reason": "Invokes teleport or travel-control functionality."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Endpoint: github.com",
+      "Endpoint: xivapi.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Teleport/travel control"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:Dalamud.Divination.Common.dll: System.Diagnostics.Process",
+          "metadata:Dalamud.Divination.Common.dll: Process.Start",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Input.Win32Api.GetGameWindowHandle+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Input.Win32Api.GetGameWindowHandle+0x1a: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Command.DirectoryCommands.OnAppDataCommand+0x5: call System.Diagnostics.Process.Start: System.Diagnostics.Process",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Command.DirectoryCommands.OnAppDataCommand+0x5: call System.Diagnostics.Process.Start: Process.Start",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Command.DirectoryCommands.OnXivLauncherAppDataCommand+0x5: call System.Diagnostics.Process.Start: System.Diagnostics.Process",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Command.DirectoryCommands.OnXivLauncherAppDataCommand+0x5: call System.Diagnostics.Process.Start: Process.Start"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:Dalamud.Divination.Common.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Dalamud.Divination.Common.dll: SigScanner",
+          "artifact:Dalamud.Divination.Common.dll: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:Dalamud.Divination.Common.dll: s://xivapi.com/i/",
+          "artifact:Dalamud.Divination.Common.dll: p://",
+          "artifact:Dalamud.Divination.Common.dll: s://xivapi.com/",
+          "artifact:Dalamud.Divination.Common.dll: s://xivapi.com/character/search?name="
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for teleport/travel control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:AetheryteLinkInChat.dll:Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleportInternal+0xba: call FFXIVClientStructs.FFXIV.Client.Game.UI.Telepo.Teleport",
+          "il:AetheryteLinkInChat.dll:Divination.AetheryteLinkInChat.Teleporter.TeleportToQueuedAetheryte+0x3e: call Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleport",
+          "il:AetheryteLinkInChat.dll:<TeleportToAetheryte>d__14.MoveNext+0x76: call Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleport"
+        ],
+        "ruleId": "automation.game.character.teleport",
+        "severity": "caution",
+        "title": "Teleport/travel control"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:Dalamud.Divination.Common.dll: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.XivApi.XivApiClient..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Voiceroid2Proxy.Voiceroid2ProxyClient..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Ui.TextureManager..ctor+0x17: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Discord.DiscordWebhookClient..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Definition.RemoteDefinitionProvider`1..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:<GetAsync>d__3.MoveNext+0x73: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:<GetCharacterAsync>d__4.MoveNext+0x71: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: XIVAPI (FFXIV game data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Dalamud.Divination.Common.dll: https://xivapi.com/character/search"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.ee25f9c890c8",
+        "severity": "informational",
+        "title": "Endpoint: xivapi.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: XIVAPI (FFXIV game data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Dalamud.Divination.Common.dll: https://xivapi.com/"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.aea70ba1177d",
+        "severity": "informational",
+        "title": "Endpoint: xivapi.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:AetheryteLinkInChat.dll: https://github.com/NiGuangOwO/Divination.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.ab6dd021cf75",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Dalamud.Divination.Common.dll: https://github.com/horoscope-dev/Dalamud.Divination.Common"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.90ea5b664162",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: XIVAPI (FFXIV game data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Dalamud.Divination.Common.dll: https://xivapi.com/i/"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.39f5b1456df4",
+        "severity": "informational",
+        "title": "Endpoint: xivapi.com"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Dalamud.Divination.Common.dll: FileStream",
+          "metadata:Dalamud.Divination.Common.dll: Directory.CreateDirectory",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Definition.LocalDefinitionProvider`1..ctor+0x25: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:Dalamud.Divination.Common.dll:<LoadIconTextureFromXivApi>d__10.MoveNext+0x119: newobj System.IO.FileStream..ctor: FileStream",
+          "artifact:Dalamud.Divination.Common.dll: FileStream"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 7,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 137074,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "7.3.0.0",
+        "artifactBytes": 137074,
+        "artifactSha256": "7a3b57586fcca1dea737ee7cab447fbeb7494dcf1fac1f6a978084b88d4fe900",
+        "catalogAssemblyVersion": "7.3.0.0",
+        "manifestInternalName": "AetheryteLinkInChat",
+        "manifestPath": "AetheryteLinkInChat.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/NiGuangOwO/DalamudPlugins/main/plugins/AetheryteLinkInChat/API13/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.teleport",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Teleport/travel control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.teleport",
+            "label": "Teleport/travel control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 12,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Endpoint: github.com",
+        "Endpoint: xivapi.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Teleport/travel control"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.teleport",
+        "game.memory.read",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 1,
+        "informational": 7
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 43,
+          "exactVersionObservedCount": 42,
+          "families": {
+            "managed-assembly": 38,
+            "native": 1,
+            "nuget": 4
+          },
+          "fingerprint": "1bfae1495f181f47e2341f31230765c648e25d35d10b7d4b1bc1c97f38705273",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 4
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "FindWindowEx",
+              "library": "user32.dll",
+              "managedName": "FindWindowEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowThreadProcessId",
+              "library": "user32.dll",
+              "managedName": "GetWindowThreadProcessId",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "SendMessage",
+              "library": "user32.dll",
+              "managedName": "SendMessage",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "ToUnicode",
+              "library": "user32.dll",
+              "managedName": "ToUnicode",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 3,
+            "observed": 36,
+            "required": 4
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 39,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 4,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 3,
+            "observed": 36,
+            "optional": 0,
+            "required": 4,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 43
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 5,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/NiGuangOwO/Divination.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/horoscope-dev/Dalamud.Divination.Common"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/character/search"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/i/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/NiGuangOwO/DalamudPlugins/raw/main/plugins/AetheryteLinkInChat/API13/latest.zip",
+        "internalName": "AetheryteLinkInChat",
+        "manifestVersion": "7.3.0.0",
+        "observationId": 2899,
+        "observationKey": "manifest-849d87aec31e520caa55250aa9cc",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1799
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 3,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 6,
+        "uncompressedBytes": 257937
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-b834a50b229bdb51",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-1799",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-00d3779972d349d9fc97",
+        "variantId": 1799,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-28T18:02:15Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "7a3b57586fcca1dea737ee7cab447fbeb7494dcf1fac1f6a978084b88d4fe900",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/NiGuangOwO/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 69,
+    "scanned_at_utc": "2026-08-28T18:02:15Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1799
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "7a3b57586fcca1dea737ee7cab447fbeb7494dcf1fac1f6a978084b88d4fe900",
+      "current_assembly_version": "7.3.0.0",
+      "current_scan_id": 69,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-28T18:02:16Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 1799
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 32,
+      "artifact_only_count": 32,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:aetherytelinkinchat",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "AetheryteLinkInChat",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "7.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:aetherytelinkinchat.ipcmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "AetheryteLinkInChat.IpcModel",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.6"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.divination.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Divination.Common",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.0.6681.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.csharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.CSharp",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.typeconverter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.TypeConverter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.filesystem.watcher",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.FileSystem.Watcher",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "13.1.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.25"
+          ]
+        },
+        {
+          "componentKey": "nuget:gitversion.msbuild",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "GitVersion.MsBuild",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "6.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.collections.immutable",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "9.0.2"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-28T18:02:16Z",
+      "comparison_id": 62,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 69,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 1799,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1799/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1799/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 41371,
+          "encoding": "json",
+          "path": "derived/variants/0001/1799/dependency-resolutions.json",
+          "recordDigest": "19e90c19c2504befd635e9d8df7f47b2b0632e1cc35d766b5a3da98257464ec8",
+          "records": 43,
+          "sha256": "0551e54e3e20cb472df4bd791776073168cc4d871037b65e5c88bc372f1454fc"
+        }
+      ],
+      "recordDigest": "19e90c19c2504befd635e9d8df7f47b2b0632e1cc35d766b5a3da98257464ec8",
+      "records": 43
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1799/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "0b69364edf7fc6490b18fe50ff965669c6285176bbde15fdfd08ed82b8f03a16",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "8f3876582ae6a026181576c89a382d47b9d967d72add41cebeae4bc703e0c917",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "4361edfa4d29cf42259065b31dacc07ec235c533a5186ed4f65ea7ca662b2ad1",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "ff7b63ee7c7a479c2167cce7784c73e0b37be87c926ae607920e9bad3149aa2e",
+        "records": 43,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "818bcc088deee82912019f5771bb07291bb677c593f66a52e113fca8a514abb6",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "fcefbc150e069cda1d88753c56980ecb37fa40592f184fdf0337046f28398f21",
+        "records": 4178,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "77397791789462205c3d98285087e60d933f103217d1e1e7d8e589c67636988a",
+        "records": 97,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "5dbbe649cc803d1d0e2a63dfb838610517e74c33c9da0a0812ed2efd3d9818fa",
+        "records": 1337,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "abb5178d6fc5b00bc7aa30deb5d6be86642b124d5f18c19525243fd4d7fd6363",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "94ecd65ecef0b71ef38e665611ac03d959003b5e996dd55b0a6c92169018a31a",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "761c52a1e74702236b0798dc9689bafa77396b75dc94fb7d73df1e704bc65843",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "73903e72bf812388d3facfd4514afedb36f1f9f22cc2300f93e8c16dcf04fe70",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "4c95d68696878718ee5a7b4b57a49670064761179cde1b4591f28dd8855a2db2",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "1957146d9dbff4b2f0838f9004a8f1fb385cc5abb16419a01ca7480f928b7850",
+        "records": 29,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-a4c84d1638ae91e2ae5752f8520a3298ea0f0cd58dc6be4bc6e0824c48890439",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Divination.AetheryteLinkInChat",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "AetheryteLinkInChat",
+    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "plugin_id": 673
+  },
+  "pluginId": 673,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "当聊天栏出现地图坐标时,在末尾添加传送到最近的以太之光,可以联动Lifestream插件实现自动跨服传送.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1042,
+      "summary": "更便捷的暴民狩猎传送插件.",
+      "webEnriched": true
+    },
+    "projectRepository": "",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "f3cff4f527bb07f428d8c9d5e758ae99066a308ef1b491cad6619f565fbff250",
+        "records": 1
+      },
+      "behaviorConsistency": {
+        "recordDigest": "209cd8c9afee73ec150ce7fc094b9af5dc14a3509d5be9b2745b34c4918e23e0",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "b53526c00c472f727c7587a915aee0c9db1d6b52706f2c096117c1e598541de1",
+        "records": 12
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "4507c8383db3fa321908e1d56a01ddc9ca672af6312b1fb4e60cf51ea0ff1223",
+        "records": 13
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "7a3b57586fcca1dea737ee7cab447fbeb7494dcf1fac1f6a978084b88d4fe900",
+    "artifact_url": "https://github.com/NiGuangOwO/DalamudPlugins/raw/main/plugins/AetheryteLinkInChat/API13/latest.zip",
+    "assembly_version": "7.3.0.0",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Endpoint: github.com",
+      "Endpoint: xivapi.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Teleport/travel control"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 7,
+    "plugin_id": 673,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 137074,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "7.3.0.0",
+        "artifactBytes": 137074,
+        "artifactSha256": "7a3b57586fcca1dea737ee7cab447fbeb7494dcf1fac1f6a978084b88d4fe900",
+        "catalogAssemblyVersion": "7.3.0.0",
+        "manifestInternalName": "AetheryteLinkInChat",
+        "manifestPath": "AetheryteLinkInChat.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/NiGuangOwO/DalamudPlugins/main/plugins/AetheryteLinkInChat/API13/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.teleport",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Teleport/travel control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.teleport",
+            "label": "Teleport/travel control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 12,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Endpoint: github.com",
+        "Endpoint: xivapi.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Teleport/travel control"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.teleport",
+        "game.memory.read",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 1,
+        "informational": 7
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 43,
+          "exactVersionObservedCount": 42,
+          "families": {
+            "managed-assembly": 38,
+            "native": 1,
+            "nuget": 4
+          },
+          "fingerprint": "1bfae1495f181f47e2341f31230765c648e25d35d10b7d4b1bc1c97f38705273",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 4
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "FindWindowEx",
+              "library": "user32.dll",
+              "managedName": "FindWindowEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowThreadProcessId",
+              "library": "user32.dll",
+              "managedName": "GetWindowThreadProcessId",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "SendMessage",
+              "library": "user32.dll",
+              "managedName": "SendMessage",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "ToUnicode",
+              "library": "user32.dll",
+              "managedName": "ToUnicode",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 3,
+            "observed": 36,
+            "required": 4
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 39,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 4,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 3,
+            "observed": 36,
+            "optional": 0,
+            "required": 4,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 43
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 5,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/NiGuangOwO/Divination.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/horoscope-dev/Dalamud.Divination.Common"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/character/search"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/i/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/NiGuangOwO/DalamudPlugins/raw/main/plugins/AetheryteLinkInChat/API13/latest.zip",
+        "internalName": "AetheryteLinkInChat",
+        "manifestVersion": "7.3.0.0",
+        "observationId": 2899,
+        "observationKey": "manifest-849d87aec31e520caa55250aa9cc",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1799
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 3,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 6,
+        "uncompressedBytes": 257937
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-b834a50b229bdb51",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-1799",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-00d3779972d349d9fc97",
+        "variantId": 1799,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-28T18:02:15Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "7a3b57586fcca1dea737ee7cab447fbeb7494dcf1fac1f6a978084b88d4fe900",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/NiGuangOwO/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 69,
+    "scanned_at_utc": "2026-08-28T18:02:15Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 502,
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1799
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "3f6e2a58f836783b9f0d982c82ac6912d538b092371602482dfc1d8e5c4bdc63",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"0b54324bc699e116074d88290c6be216d78ec7dcbafcaa59c09aef733a47e820\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-08-28T09:17:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-28T09:17:18Z",
+    "name": "yourShika/AetheryteRepo",
+    "plugin_count": 41,
+    "provider": "yourShika/AetheryteRepo",
+    "source_id": 502,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/yourShika/AetheryteRepo/main/cache/niguangowo-dalamudplugins.json"
+  },
+  "sourceId": 502,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "7.3.0.0",
+    "author": "Asteria Nocturna",
+    "authors_json": [
+      "Asteria Nocturna"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 13,
+    "description": "从游戏聊天信息的地图链接，中显示一个传送链接到最近的以太之光的链接。输入 /alic 来配置插件。",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/NiGuangOwO/DalamudPlugins/raw/main/plugins/AetheryteLinkInChat/API13/latest.zip",
+    "download_link_testing": "",
+    "download_link_update": "https://github.com/NiGuangOwO/DalamudPlugins/raw/main/plugins/AetheryteLinkInChat/API13/latest.zip",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-27T16:48:27Z",
+    "last_update": 1787832130,
+    "minimum_dalamud_version": null,
+    "name": "Divination.AetheryteLinkInChat (API13)",
+    "plugin_id": 673,
+    "punchline": "快速传送以进行怪物狩猎和寻宝！",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "7.3.0.0",
+      "Author": "Asteria Nocturna",
+      "DalamudApiLevel": 13,
+      "Description": "从游戏聊天信息的地图链接，中显示一个传送链接到最近的以太之光的链接。输入 /alic 来配置插件。",
+      "DownloadCount": 0,
+      "DownloadLinkInstall": "https://github.com/NiGuangOwO/DalamudPlugins/raw/main/plugins/AetheryteLinkInChat/API13/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/NiGuangOwO/DalamudPlugins/raw/main/plugins/AetheryteLinkInChat/API13/latest.zip",
+      "InternalName": "AetheryteLinkInChat",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": "1787832130",
+      "Name": "Divination.AetheryteLinkInChat (API13)",
+      "Punchline": "快速传送以进行怪物狩猎和寻宝！",
+      "Tags": [
+        "teleporter"
+      ],
+      "_SourceId": "niguangowo-dalamudplugins",
+      "_SourceName": "NiGuangOwO / DalamudPlugins",
+      "_SourceUrl": "https://raw.githubusercontent.com/NiGuangOwO/DalamudPlugins/main/pluginmaster.json"
+    },
+    "repo_url": "",
+    "source_entry_key": "aetherytelinkinchat|7.3.0.0|13|0|1",
+    "source_id": 502,
+    "tags_json": [
+      "teleporter"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 1799
+  },
+  "variantId": 1799
+}
