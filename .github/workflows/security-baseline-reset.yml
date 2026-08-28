@@ -1,0 +1,36 @@
+name: Omega SigmaScope · reset security baseline
+
+# Default-branch registration copy.
+# The authoritative implementation lives at this same path on branch `sigmascope`.
+#
+# In GitHub Actions:
+#   Run workflow -> Branch: sigmascope
+#   confirm_reset: true
+#
+# The main copy fails closed if someone accidentally runs it on main.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_reset:
+        description: "I understand this replaces current plugin Security Evidence and scan progress with a fresh zero-result baseline"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  registration-only:
+    name: Select the sigmascope branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Stop accidental main-branch reset
+        shell: bash
+        run: |
+          echo "::error::This main-branch file only registers the Security Baseline Reset in the Actions UI."
+          echo "::error::Run this workflow again and select Branch = sigmascope in the Run workflow dialog."
+          echo "::error::The sigmascope-branch version performs the validated security-only reset."
+          exit 2
