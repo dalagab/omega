@@ -1,0 +1,135 @@
+= Omega Alpha Offensive-Security SDK and Registry
+:toc:
+
+== Decision
+
+Alpha becomes a first-class calibration lane with a *fixed* branch topology:
+
+* `alpha` -- protected source corpus: SDK, self-describing test manifests, generated registry, downloadable Rift Alpha client and shared local boundary source.
+* `rift` -- production Rift isolation runtime and the contracts used to ingest/compare trusted Alpha run evidence.
+* `sigmascope` -- one Alpha calibration scanner adapter; no per-test workflows.
+* `security-alpha-evidence` -- durable Alpha-only result state.
+* `deltascope` -- read-only consumer; Alpha state is hidden unless Operations enables `Show ALPHA`.
+
+There is never a branch or workflow per test.
+
+== Why the corpus belongs on one `alpha` branch
+
+The test corpus intentionally contains alarming strings and sandbox-only probes. Keeping it on a dedicated branch has useful properties:
+
+* normal product branches do not accumulate hundreds of synthetic plugin projects;
+* branch protection can require review of any new active probe;
+* release/catalog jobs can categorically exclude the branch;
+* a single commit SHA binds an entire calibration run to an exact corpus revision;
+* contributors can add one `tests/<name>/alpha.json` folder without touching workflow topology or hand-editing the generated registry.
+
+The branch is a corpus, not a feed. It MUST NOT be included in Omega discovery, PluginMaster, or normal plugin releases.
+
+== Registry contract
+
+Each test folder owns an `omega.alpha.test.v1` `alpha.json` manifest with a stable `alpha.*` id, project/entry identity, execution engines, safety class, status and expected independent detector outputs. `registry/registry.json` (`omega.alpha.registry.v1`) is generated from those manifests and validation fails if it is stale.
+
+Expected detector IDs are assertions about calibration, not findings. A plugin cannot promote itself into Alpha or inject a trusted finding by embedding an SDK attribute or an `ALPHA:` string.
+
+== SDK contract
+
+`Omega.Alpha.Sdk` defines the executable Alpha ABI without importing Dalamud or Rift's production plugin loader. It exposes:
+
+* `IAlphaScenario` as the only executable workload contract understood by Rift Alpha;
+* `IAlphaContext` / `IAlphaReporter` for `ALPHA:` attempt, observation and note events;
+* calibration metadata attributes and an explicit Rift Alpha sandbox guard;
+* fixed harmless helper probes with no caller-supplied command, host, path, registry write or native target.
+
+The SDK does not make candidate code trusted. A candidate can contain additional researcher-authored logic, so the local runner treats the entire scenario assembly as untrusted and executes it only inside Bubblewrap + cgroup + seccomp isolation.
+
+Static-only fixtures keep suspicious detector vocabulary as inert data in the fixture itself so one fixture does not accidentally inherit every marker from a common SDK assembly.
+
+
+== Local Rift Alpha binary
+
+Production `interdimensional-rift` remains the real-plugin runtime. It is not exposed as a general local executor. The `alpha` branch builds a separate logical binary, `RiftAlpha.exe` / `rift-alpha`, whose project graph contains the Alpha SDK but no Dalamud `PluginLoader`.
+
+On Windows the executable is a controller that delegates to its bundled Linux build through WSL2. Linux/WSL applies the shared Alpha seccomp policy, isolated network/user/process namespaces, and a bounded systemd cgroup. Runtime requests use `omega.rift.alpha-execution-request.v1`; local evidence uses `omega.rift.alpha-run.v1` with `authority=local-alpha` and `published=false`.
+
+The client supports `new`, `validate`, `build`, `run`, `inspect`, `list` and generated-registry rebuilds. A `static-only` manifest is rejected by `run`, so plugin-shaped detector fixtures can never be accidentally executed by the local Alpha host.
+
+The `alpha-client-build.yml` workflow watches the client, shared Alpha SDK and shared Rift boundary source. Successful pushes to `alpha` publish a rolling `rift-alpha-client-edge` prerelease containing the Windows controller, Linux/WSL worker and seccomp policy.
+
+== Finding namespace
+
+The independent engine emits its normal production identifier, for example:
+
+`compound.credential-network`
+
+The Alpha result adapter retains that identifier and exposes it as:
+
+`ALPHA:compound.credential-network`
+
+The result has:
+
+[source,json]
+----
+{
+  "schema": "omega.alpha.scan-result.v1",
+  "lane": "alpha",
+  "synthetic": true,
+  "authority": "calibration-only",
+  "testId": "alpha.compound.credential-network",
+  "registryRevision": "alpha-registry-v1-...",
+  "findings": [
+    {
+      "id": "ALPHA:compound.credential-network",
+      "productionFindingId": "compound.credential-network",
+      "expected": true
+    }
+  ]
+}
+----
+
+If an expected production detector does not fire, Alpha records a calibration check such as `ALPHA:compound.credential-network:MISSING`. It MUST NOT invent a security finding to make the test pass.
+
+== Evidence separation
+
+Alpha results do not enter production Security Evidence v2. Store them on the fixed `security-alpha-evidence` branch using the same immutable-result principles: exact test id, corpus commit, registry revision, engine revisions, artifact digest, run id and result hashes.
+
+This prevents Alpha subjects from changing production severity, client projections, Stigma-1 authority or normal incident counts.
+
+== One orchestration workflow
+
+The final Alpha suite has one string input: `test_id` (plus optional `engine=all|sigmascope|rift`). The prepare job checks out `alpha`, validates the registry, resolves the test, builds a non-installable DLL-only subject and uploads a run-bound artifact.
+
+The same run then calls the relevant reusable components:
+
+. SigmaScope Alpha adapter for static analysis, with publication disabled.
+. Rift for sandbox-runtime entries.
+. Alpha result adapter to namespace and compare observed vs expected outcomes.
+. Alpha-state publisher to `security-alpha-evidence`.
+
+The registry determines what runs; adding the 501st test changes only the corpus and registry, not Actions workflow count.
+
+== DeltaScope Operations
+
+Operations remains read-only. Add a browser-local `Show ALPHA` checkbox, default OFF.
+
+When OFF:
+
+* Alpha Actions runs are omitted from the normal Operations event list;
+* `security-alpha-evidence` is not fetched;
+* normal production finding/incident counts are unchanged.
+
+When ON:
+
+* Alpha workflow runs receive `lane=alpha` / `isAlpha=true`;
+* a separate `Alpha calibration` panel reads `security-alpha-evidence/index.json`;
+* rows show `ALPHA:` IDs, test id, corpus revision, expected/observed/missing status and links to the workflow run;
+* Alpha rows never merge into production Incidents or Findings.
+
+== Initial corpus
+
+The accompanying corpus prototype includes:
+
+* `alpha.compound.credential-network` -> expects `compound.credential-network`;
+* `alpha.compound.network-execute` -> expects `compound.network-execute`;
+* `alpha.runtime.sentinels` -> Rift-only sandbox-local runtime sentinel suite.
+
+The two static expected IDs are existing reviewed SigmaScope compound rules, so Alpha measures the production detector rather than a test-only substitute.

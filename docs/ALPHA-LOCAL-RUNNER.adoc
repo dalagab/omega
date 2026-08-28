@@ -1,0 +1,62 @@
+= Rift Alpha local runner
+
+Rift's production host remains a controlled service for real plugin execution. Local developer execution is intentionally exposed only through the separate *Rift Alpha* workload host distributed from the `alpha` branch.
+
+== Binary separation
+
+The production `interdimensional-rift` executable contains the real Dalamud plugin loader and is not turned into a general local runner.
+
+The downloadable `RiftAlpha.exe`/`rift-alpha` executable contains only the `Omega.Alpha.Sdk` `IAlphaScenario` workload contract. It has no Dalamud plugin loader and no `--plugin` or arbitrary plugin-location ingress.
+
+Runtime Alpha scenarios use `omega.rift.alpha-execution-request.v1`. Production plugin runs continue to use `omega.rift.execution-request.v1`. The two request domains are not interchangeable.
+
+== Local boundary
+
+On Windows, `RiftAlpha.exe` is a controller. It builds the selected Alpha scenario and delegates execution to its bundled Linux build under WSL2. On Linux/WSL, the worker requires:
+
+* Bubblewrap user, process, IPC, UTS and network isolation;
+* a cgroup-v2-backed systemd user scope with explicit memory/task/CPU limits;
+* the shared Rift Alpha seccomp filter;
+* an empty writable `/tmp` and work directory;
+* a read-only scenario build mount;
+* a single writable result mount.
+
+The scenario host refuses to execute unless `RIFT_ALPHA_EXECUTOR=rift-alpha-bubblewrap-v1` is stamped by the supervisor.
+
+== Evidence ownership
+
+A local run emits `omega.rift.alpha-run.v1`. It contains a hash-bound Alpha execution request, the scenario SHA-256, offensive `ALPHA:` events, Rift boundary metadata, and a dedicated defensive section.
+
+Local runs are always:
+
+[source,json]
+----
+{
+  "lane": "alpha",
+  "authority": "local-alpha",
+  "published": false
+}
+----
+
+They can be opened by tooling and compared with SigmaScope/SRL/Stigma-1 results, but they cannot become production Security Evidence merely because a researcher produced the file locally.
+
+Trusted CI may later consume the same Alpha run contract, independently execute the defensive systems, and publish the resulting calibration record to the separate Alpha evidence lane.
+
+== Adding and testing an Alpha
+
+The `alpha` branch owns self-describing test folders. Each folder contains `alpha.json`, its project and source. `registry/registry.json` is generated from these manifests.
+
+A contributor can use:
+
+[source,text]
+----
+RiftAlpha.exe new alpha.example.my-test --corpus <alpha-checkout>
+RiftAlpha.exe validate <folder> --corpus <alpha-checkout>
+RiftAlpha.exe run <folder> --corpus <alpha-checkout>
+----
+
+`static-only` Alpha artifacts are deliberately non-executable. Rift Alpha refuses them; they are input for SigmaScope/SRL instead.
+
+== Client publishing
+
+The `alpha` branch owns `.github/workflows/alpha-client-build.yml`. It rebuilds the Windows controller, Linux/WSL worker and seccomp policy whenever the client source, shared Alpha SDK, shared Rift boundary source, schemas, or build workflow changes. Successful pushes update the rolling `rift-alpha-client-edge` prerelease.

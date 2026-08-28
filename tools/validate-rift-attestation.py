@@ -10,6 +10,7 @@ from pathlib import Path
 p=argparse.ArgumentParser()
 p.add_argument('report', type=Path)
 p.add_argument('attestation', type=Path)
+p.add_argument('--request', type=Path, help='optional omega.rift.execution-request.v1 JSON that v2 must bind')
 a=p.parse_args()
 
 report_bytes=a.report.read_bytes()
@@ -21,7 +22,7 @@ except Exception as exc:
 
 if report.get('schema_version') != 'rift.runtime-observation.v2':
     raise SystemExit('attestation validation requires rift.runtime-observation.v2 report')
-if att.get('schema_version') != 'rift.supervisor-attestation.v1':
+if att.get('schema_version') not in {'rift.supervisor-attestation.v1','rift.supervisor-attestation.v2'}:
     raise SystemExit(f"unexpected attestation schema: {att.get('schema_version')!r}")
 if att.get('producer') != 'interdimensional-rift-supervisor':
     raise SystemExit('unexpected supervisor attestation producer')
@@ -37,6 +38,28 @@ for field in ('runtime_report_sha256','artifact_tree_sha256','entry_sha256'):
 actual_report_sha=hashlib.sha256(report_bytes).hexdigest()
 if att.get('runtime_report_sha256') != actual_report_sha:
     raise SystemExit('runtime report hash does not match trusted supervisor attestation')
+
+if att.get('schema_version') == 'rift.supervisor-attestation.v2':
+    binding=att.get('omega_request')
+    if not isinstance(binding,dict):
+        raise SystemExit('v2 supervisor attestation missing omega_request binding')
+    if not isinstance(binding.get('request_id'),str) or not binding['request_id']:
+        raise SystemExit('invalid supervisor attestation omega_request.request_id')
+    if not isinstance(binding.get('variant_id'),int) or isinstance(binding.get('variant_id'),bool) or binding['variant_id'] <= 0:
+        raise SystemExit('invalid supervisor attestation omega_request.variant_id')
+    if not isinstance(binding.get('artifact_sha256'),str) or not hex64.fullmatch(binding['artifact_sha256']):
+        raise SystemExit('invalid supervisor attestation omega_request.artifact_sha256')
+    if a.request is not None:
+        request=json.loads(a.request.read_text(encoding='utf-8'))
+        expected={
+            'request_id': str(request.get('requestId') or ''),
+            'variant_id': int(request.get('variantId') or 0),
+            'artifact_sha256': str(request.get('artifactSha256') or '').lower(),
+        }
+        if binding != expected:
+            raise SystemExit(f'Rift supervisor request binding mismatch: expected={expected!r} attested={binding!r}')
+elif a.request is not None:
+    raise SystemExit('a broker request requires rift.supervisor-attestation.v2')
 
 if att.get('exercise_profile') not in {'post-init-safe-v1','none'}:
     raise SystemExit('invalid supervisor attestation exercise_profile')

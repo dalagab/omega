@@ -136,6 +136,12 @@ require(Path("schemas/rift-runtime-observation-v2.schema.json"), '"exercise"', "
 require(Path("schemas/rift-runtime-observation-v2.schema.json"), '"phase"', "runtime v2 schema carries phase attribution")
 require(Path("schemas/rift-supervisor-v3.schema.json"), "rift.supervisor.v3", "supervisor JSON schema")
 require(Path("schemas/rift-supervisor-attestation-v1.schema.json"), "rift.supervisor-attestation.v1", "trusted supervisor success attestation JSON schema")
+require(Path("schemas/rift-supervisor-attestation-v2.schema.json"), "rift.supervisor-attestation.v2", "broker-bound trusted supervisor success attestation JSON schema")
+require(Path("schemas/rift-execution-request-v1.schema.json"), "omega.rift.execution-request.v1", "shared Rift execution request JSON schema")
+require(Path("schemas/rift-scan-result-v1.schema.json"), "omega.rift.scan-result.v1", "shared Rift workflow result JSON schema")
+require(Path("schemas/rift-alpha-execution-request-v1.schema.json"), "omega.rift.alpha-execution-request.v1", "dedicated local Alpha execution request JSON schema")
+require(Path("schemas/rift-alpha-run-v1.schema.json"), "omega.rift.alpha-run.v1", "dedicated local Alpha run evidence JSON schema")
+require(Path("docs/ALPHA-LOCAL-RUNNER.adoc"), "separate *Rift Alpha*", "local Alpha binary separation documentation")
 require(Path("tools/validate-rift-attestation.py"), "runtime_report_sha256", "trusted supervisor success attestation validator")
 require(Path("docs/RUNTIME-OBSERVATION-SCHEMA.adoc"), "rift.runtime-observation.v2", "runtime schema documentation")
 
@@ -281,6 +287,10 @@ require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "PostInitSafeProf
 require(Path("tests/InterdimensionalRift.Tests/SmokeTest.cs"), "DisabledExerciseProfile_PreservesStartupOnlyBehavior", "exercise-disable regression")
 require(Path("tools/summarize-rift-coverage.py"), "observed_exercise_operations", "coverage projection includes exercised callbacks")
 require(Path("tools/summarize-rift-coverage.py"), "observed_registrations", "coverage projection includes registrations")
+require(Path("tools/run-rift-bwrap.sh"), "--request-id", "supervisor accepts broker request identity")
+require(Path("tools/run-rift-bwrap.sh"), "--artifact-sha256", "supervisor accepts broker artifact identity")
+require(Path("tools/run-rift-bwrap.sh"), "rift.supervisor-attestation.v2", "supervisor emits request-bound attestation v2")
+require(Path("tools/run-rift-bwrap.sh"), "omega_request", "supervisor attestation binds Omega request")
 require(Path("tools/run-rift-bwrap.sh"), "--exercise-profile", "supervisor exposes exercise profile")
 require(Path("tools/run-rift-bwrap.sh"), "RIFT_EXERCISE_PROFILE", "supervisor stamps exercise profile provenance")
 require(Path("tools/run-rift-bwrap.sh"), "RIFT_FRAMEWORK_TICKS", "supervisor stamps framework tick provenance")
@@ -335,6 +345,8 @@ require(Path("InterdimensionalRift/Host/BootstrapTrace.cs"), "RIFT_BOOTSTRAP_TRA
 require(Path("tools/run-rift-bwrap.sh"), "RIFT_BOOTSTRAP_TRACE", "qualified runner enables bounded bootstrap diagnostics")
 require(Path("InterdimensionalRift/Runtime/SandboxConfigurationFactory.cs"), "IPluginConfiguration", "sandbox configuration factory discovers plugin-owned config type")
 require(Path("InterdimensionalRift/Runtime/SandboxConfigurationFactory.cs"), "SeedRequiredCollections", "sandbox configuration seed avoids empty required collections")
+require(Path("tools/scan-rift-components.py"), "omega.rift.component-security.v1", "component scanner projects SigmaScope-compatible component evidence")
+require(Path("tools/scan-rift-components.py"), "\"records\": records", "component scanner retains neutral Omega record projection")
 require(Path("tools/collect-rift-runtime.py"), "omega.collector.rift.runtime", "Rift projects runtime evidence into Omega collector contract")
 require(Path("schemas/omega-collector-rift-runtime-v1.schema.json"), "omega.collector.rift.runtime.v1", "Omega Rift runtime collector schema")
 
@@ -345,5 +357,14 @@ for workflow in (
 ):
     require(Path(workflow), "--exercise-profile post-init-safe-v1", f"{workflow} opts into post-init safe exercise")
     require(Path(workflow), "--framework-ticks 3", f"{workflow} pins deterministic framework tick count")
+
+require(Path(".github/workflows/rift-runtime.yml"), "workflow_call", "Rift is reusable by other workloads")
+require(Path(".github/workflows/rift-runtime.yml"), "entry_model", "reusable Rift exposes ingress selection")
+require(Path(".github/workflows/rift-runtime.yml"), "component", "reusable Rift supports component ingress")
+require(Path(".github/workflows/rift-runtime.yml"), "location", "reusable Rift supports explicit-location ingress")
+require(Path(".github/workflows/rift-runtime.yml"), "rift-runtime-results", "reusable Rift emits canonical result artifact")
+require(Path(".github/workflows/rift-runtime.yml"), "rift-request.json", "reusable Rift emits canonical request file")
+require(Path(".github/workflows/rift-runtime.yml"), "runtime-report.json", "reusable Rift emits canonical runtime report")
+require(Path(".github/workflows/rift-runtime.yml"), "supervisor-attestation.json", "reusable Rift emits canonical supervisor attestation")
 
 print(f"Rift source-contract checks: {len(checks)}/{len(checks)} passed")

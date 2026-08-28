@@ -139,6 +139,36 @@ with tempfile.TemporaryDirectory() as td_raw:
     attestation_path.write_text(json.dumps(attestation), encoding="utf-8")
     run(str(validator), str(report_path), str(attestation_path))
 
+    # Production ingestion requires v2 to bind the exact broker/orchestrator request.
+    request_path = td / "rift-request.json"
+    request = {
+        "schema": "omega.rift.execution-request.v1",
+        "requestId": "rift-v42-test",
+        "variantId": 42,
+        "artifactSha256": "5" * 64,
+        "artifactUrl": "https://example.invalid/plugin.zip",
+        "profile": "rift-runtime-v1",
+        "authority": "analysis-broker",
+    }
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+    v2_attestation = dict(attestation)
+    v2_attestation["schema_version"] = "rift.supervisor-attestation.v2"
+    v2_attestation["omega_request"] = {
+        "request_id": request["requestId"],
+        "variant_id": request["variantId"],
+        "artifact_sha256": request["artifactSha256"],
+    }
+    attestation_path.write_text(json.dumps(v2_attestation), encoding="utf-8")
+    run(str(validator), str(report_path), str(attestation_path), "--request", str(request_path))
+
+    wrong_request = dict(request)
+    wrong_request["artifactSha256"] = "6" * 64
+    request_path.write_text(json.dumps(wrong_request), encoding="utf-8")
+    failed = run(str(validator), str(report_path), str(attestation_path), "--request", str(request_path), check=False)
+    assert failed.returncode != 0
+    assert "request binding mismatch" in (failed.stdout + failed.stderr)
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+
     # Same provenance, different report bytes: must fail exact-byte binding.
     report_path.write_bytes(report_bytes + b" \n")
     failed = run(str(validator), str(report_path), str(attestation_path), check=False)

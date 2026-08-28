@@ -1,0 +1,500 @@
+name: Rift reusable runtime scan
+
+on:
+  workflow_call:
+    inputs:
+      entry_model:
+        description: component resolves the current Evidence-v2 variant; location uses the supplied HTTPS artifact URL
+        required: false
+        type: string
+        default: component
+      variant_id:
+        description: Current Security Evidence v2 variant ID
+        required: true
+        type: string
+      plugin_location:
+        description: HTTPS plugin artifact location when entry_model=location
+        required: false
+        type: string
+        default: ""
+      artifact_sha256:
+        description: Exact downloaded artifact SHA-256 when entry_model=location
+        required: false
+        type: string
+        default: ""
+      plugin_entry:
+        description: Optional relative plugin DLL path when package discovery is ambiguous
+        required: false
+        type: string
+        default: ""
+      profile:
+        description: Rift execution profile recorded in the shared request
+        required: false
+        type: string
+        default: rift-runtime-v1
+    outputs:
+      run_id:
+        description: GitHub Actions run containing the canonical result artifact
+        value: ${{ jobs.scan.outputs.run_id }}
+      request_id:
+        description: Canonical Rift request identifier
+        value: ${{ jobs.scan.outputs.request_id }}
+      variant_id:
+        description: Canonical current Evidence-v2 variant ID
+        value: ${{ jobs.scan.outputs.variant_id }}
+      result_artifact:
+        description: Canonical result artifact name
+        value: ${{ jobs.scan.outputs.result_artifact }}
+      outcome:
+        description: Canonical Rift result outcome
+        value: ${{ jobs.scan.outputs.outcome }}
+      runtime_reported:
+        description: true when runtime-report.json and supervisor-attestation.json were emitted
+        value: ${{ jobs.scan.outputs.runtime_reported }}
+  workflow_dispatch:
+    inputs:
+      entry_model:
+        description: How to resolve the plugin input
+        required: true
+        type: choice
+        default: component
+        options:
+          - component
+          - location
+      variant_id:
+        description: Current Security Evidence v2 variant ID
+        required: true
+        type: string
+      plugin_location:
+        description: HTTPS plugin artifact location when entry_model=location
+        required: false
+        type: string
+        default: ""
+      artifact_sha256:
+        description: Exact downloaded artifact SHA-256 when entry_model=location
+        required: false
+        type: string
+        default: ""
+      plugin_entry:
+        description: Optional relative plugin DLL path when package discovery is ambiguous
+        required: false
+        type: string
+        default: ""
+      profile:
+        description: Rift execution profile
+        required: false
+        type: string
+        default: rift-runtime-v1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rift-runtime-${{ inputs.variant_id }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: Rift · ${{ inputs.entry_model }} · variant ${{ inputs.variant_id }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      run_id: ${{ steps.final.outputs.run_id }}
+      request_id: ${{ steps.final.outputs.request_id }}
+      variant_id: ${{ steps.final.outputs.variant_id }}
+      result_artifact: ${{ steps.final.outputs.result_artifact }}
+      outcome: ${{ steps.final.outputs.outcome }}
+      runtime_reported: ${{ steps.final.outputs.runtime_reported }}
+    steps:
+      - name: Check out Rift runtime
+        uses: actions/checkout@v6
+        with:
+          repository: dalagab/omega
+          ref: rift
+          path: rift
+          persist-credentials: false
+
+      - name: Initialize canonical result directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/rift-runtime-results"
+          printf '%s\n' '{"schema_version":"rift.workflow.v1","phase":"request","outcome":"pending"}' \
+            > "$RUNNER_TEMP/rift-runtime-results/workflow-status.json"
+
+      - name: Validate ingress selection
+        shell: bash
+        env:
+          ENTRY_MODEL: ${{ inputs.entry_model }}
+          VARIANT_ID: ${{ inputs.variant_id }}
+          PLUGIN_LOCATION: ${{ inputs.plugin_location }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$ENTRY_MODEL" == component || "$ENTRY_MODEL" == location ]] || {
+            echo "entry_model must be component or location" >&2; exit 2;
+          }
+          [[ "$VARIANT_ID" =~ ^[1-9][0-9]*$ ]] || {
+            echo "variant_id must be a positive integer" >&2; exit 2;
+          }
+          if [[ "$ENTRY_MODEL" == location ]]; then
+            [[ "$PLUGIN_LOCATION" == https://* ]] || { echo "location ingress requires an HTTPS plugin_location" >&2; exit 2; }
+            [[ "$ARTIFACT_SHA256" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "location ingress requires artifact_sha256" >&2; exit 2; }
+          else
+            [[ -z "$PLUGIN_LOCATION" && -z "$ARTIFACT_SHA256" ]] || {
+              echo "component ingress resolves location/SHA from current Evidence-v2; explicit location fields must be empty" >&2; exit 2;
+            }
+          fi
+
+      - name: Check out SigmaScope request tooling
+        uses: actions/checkout@v6
+        with:
+          repository: dalagab/omega
+          ref: sigmascope
+          path: omega-sigmascope
+          persist-credentials: false
+
+      - name: Check out current Security Evidence v2
+        uses: actions/checkout@v6
+        with:
+          repository: dalagab/omega
+          ref: security-evidence-v2
+          path: omega-evidence
+          persist-credentials: false
+
+      - name: Build component-selected broker request
+        if: inputs.entry_model == 'component'
+        shell: bash
+        env:
+          VARIANT_ID: ${{ inputs.variant_id }}
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          set -euo pipefail
+          python3 omega-sigmascope/tools/security/rift_execution_request.py \
+            --evidence omega-evidence \
+            --variant-id "$VARIANT_ID" \
+            --profile "$PROFILE" \
+            --output "$RUNNER_TEMP/rift-runtime-results/rift-request.json"
+          python3 rift/tools/prepare-rift-request.py validate \
+            --request "$RUNNER_TEMP/rift-runtime-results/rift-request.json" \
+            --output "$RUNNER_TEMP/rift-runtime-results/rift-request.canonical.json"
+          mv "$RUNNER_TEMP/rift-runtime-results/rift-request.canonical.json" \
+            "$RUNNER_TEMP/rift-runtime-results/rift-request.json"
+
+      - name: Build explicit-location request
+        if: inputs.entry_model == 'location'
+        shell: bash
+        env:
+          VARIANT_ID: ${{ inputs.variant_id }}
+          PLUGIN_LOCATION: ${{ inputs.plugin_location }}
+          ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          set -euo pipefail
+          artifact_sha=$(printf '%s' "$ARTIFACT_SHA256" | tr '[:upper:]' '[:lower:]')
+
+          # Location ingress changes acquisition, not canonical plugin identity.
+          # Resolve the current variant first so Evidence-v2 ingestion cannot be
+          # fed a URL override for a different artifact.
+          python3 omega-sigmascope/tools/security/rift_execution_request.py             --evidence omega-evidence             --variant-id "$VARIANT_ID"             --profile "$PROFILE"             --output "$RUNNER_TEMP/current-variant-request.json"
+          python3 - "$RUNNER_TEMP/current-variant-request.json" "$artifact_sha" <<'PY'
+          import json, pathlib, sys
+          current=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          supplied=sys.argv[2]
+          expected=str(current.get('artifactSha256') or '').lower()
+          if supplied != expected:
+              raise SystemExit(
+                  f'location artifact SHA-256 does not match current variant '
+                  f'{current.get("variantId")}: supplied={supplied} current={expected}'
+              )
+          PY
+
+          python3 rift/tools/prepare-rift-request.py location             --variant-id "$VARIANT_ID"             --artifact-url "$PLUGIN_LOCATION"             --artifact-sha256 "$artifact_sha"             --profile "$PROFILE"             --output "$RUNNER_TEMP/rift-runtime-results/rift-request.json"
+
+          # Preserve catalog/evidence revision provenance from the broker-resolved
+          # current variant while retaining the explicit acquisition URL.
+          python3 - "$RUNNER_TEMP/current-variant-request.json" "$RUNNER_TEMP/rift-runtime-results/rift-request.json" <<'PY'
+          import json, pathlib, sys
+          base_path, request_path = map(pathlib.Path, sys.argv[1:])
+          base=json.loads(base_path.read_text(encoding='utf-8'))
+          request=json.loads(request_path.read_text(encoding='utf-8'))
+          for key in ('evidenceRevision','catalogRevision','definitionsRevision'):
+              if key in base:
+                  request[key]=base[key]
+          request_path.write_text(
+              json.dumps(request, ensure_ascii=False, sort_keys=True, indent=2)+'\n',
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Read canonical request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/rift-runtime-results/rift-request.json" "$GITHUB_OUTPUT" <<'PY'
+          import json, pathlib, sys
+          request=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          with open(sys.argv[2], 'a', encoding='utf-8') as out:
+              for key, value in (
+                  ('request_id', request['requestId']),
+                  ('variant_id', request['variantId']),
+                  ('artifact_sha256', request['artifactSha256']),
+                  ('artifact_url', request['artifactUrl']),
+              ):
+                  print(f'{key}={value}', file=out)
+          PY
+          printf '%s\n' '{"schema_version":"rift.workflow.v1","phase":"request","outcome":"resolved"}' \
+            > "$RUNNER_TEMP/rift-runtime-results/workflow-status.json"
+
+      - name: Download exact requested plugin artifact
+        shell: bash
+        env:
+          ARTIFACT_URL: ${{ steps.request.outputs.artifact_url }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 \
+            "$ARTIFACT_URL" -o "$RUNNER_TEMP/rift-input.bin"
+          echo "$(sha256sum "$RUNNER_TEMP/rift-input.bin" | awk '{print $1}')  rift-input.bin" \
+            > "$RUNNER_TEMP/rift-runtime-results/download.sha256"
+
+      - name: Safely stage requested plugin artifact
+        id: stage
+        shell: bash
+        env:
+          PLUGIN_ENTRY: ${{ inputs.plugin_entry }}
+        run: |
+          set -euo pipefail
+          python3 rift/tools/stage-rift-request.py \
+            --request "$RUNNER_TEMP/rift-runtime-results/rift-request.json" \
+            --download "$RUNNER_TEMP/rift-input.bin" \
+            --artifact-dir "$RUNNER_TEMP/rift-artifact" \
+            --plugin-entry "$PLUGIN_ENTRY" \
+            --output "$RUNNER_TEMP/rift-runtime-results/staged-artifact.json"
+          python3 - "$RUNNER_TEMP/rift-runtime-results/staged-artifact.json" "$GITHUB_OUTPUT" <<'PY'
+          import json, pathlib, sys
+          staged=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          with open(sys.argv[2], 'a', encoding='utf-8') as out:
+              print(f"plugin={staged['pluginEntry']}", file=out)
+              print(f"artifact={staged['artifactDir']}", file=out)
+          PY
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install host boundary dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bubblewrap libcap2-bin libseccomp-dev gcc pkg-config strace unzip
+
+      - name: Enable and verify hostile-code boundary
+        shell: bash
+        working-directory: rift
+        run: |
+          set -euo pipefail
+          sudo bash ./tools/enable-userns-github.sh
+          bash ./tools/verify-bwrap.sh
+          bash ./tools/verify-rift-cgroup.sh
+
+      - name: Download stable Dalamud runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          hooks="$RUNNER_TEMP/dalamud-hooks"
+          mkdir -p "$hooks"
+          curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 \
+            'https://goatcorp.github.io/dalamud-distrib/latest.zip' \
+            -o "$RUNNER_TEMP/dalamud.zip"
+          unzip -q "$RUNNER_TEMP/dalamud.zip" -d "$hooks"
+          test -s "$hooks/Dalamud.dll"
+          echo "RIFT_HOOKS=$hooks" >> "$GITHUB_ENV"
+
+      - name: Build and test Rift runtime
+        shell: bash
+        working-directory: rift
+        run: |
+          set -euo pipefail
+          python3 ./tools/check-rift-source-contract.py
+          python3 ./tools/test-rift-request-tools.py
+          python3 ./tools/test-headless-cimgui-builder.py
+          python3 ./tools/test-rift-artifact-tools.py
+          python3 ./tools/test-rift-game-data-fixture-tools.py
+          python3 ./tools/test-rift-evidence-tools.py
+          python3 ./tools/test-rift-observer-tools.py
+          python3 ./tools/test-rift-runtime-collector.py
+          bash ./tools/test-rift-loopback-probe.sh
+          python3 ./tools/test-rift-component-scanner.py
+          dotnet test ./tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
+            --configuration Release -p:HooksDir="$RIFT_HOOKS"
+          dotnet publish ./InterdimensionalRift/InterdimensionalRift.csproj \
+            --configuration Release --runtime linux-x64 --self-contained true \
+            -p:HooksDir="$RIFT_HOOKS" --output "$RUNNER_TEMP/rift-runtime"
+          test -x "$RUNNER_TEMP/rift-runtime/interdimensional-rift"
+
+      - name: Build versioned seccomp policy
+        shell: bash
+        working-directory: rift
+        run: |
+          set -euo pipefail
+          policy=$(bash ./tools/build-rift-seccomp.sh "$RUNNER_TEMP/rift-seccomp.bpf")
+          test -s "$policy"
+          echo "RIFT_SECCOMP=$policy" >> "$GITHUB_ENV"
+
+      - name: Execute requested plugin inside Rift
+        id: rift
+        shell: bash
+        working-directory: rift
+        env:
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+          VARIANT_ID: ${{ steps.request.outputs.variant_id }}
+          REQUEST_ARTIFACT_SHA256: ${{ steps.request.outputs.artifact_sha256 }}
+          STAGED_PLUGIN: ${{ steps.stage.outputs.plugin }}
+          STAGED_ARTIFACT: ${{ steps.stage.outputs.artifact }}
+        run: |
+          set +e
+          results="$RUNNER_TEMP/rift-runtime-results"
+          bash ./tools/run-rift-bwrap.sh \
+            --runtime-dir "$RUNNER_TEMP/rift-runtime" \
+            --contract-dir "$RIFT_HOOKS" \
+            --contract-track release \
+            --request-id "$REQUEST_ID" \
+            --variant-id "$VARIANT_ID" \
+            --artifact-sha256 "$REQUEST_ARTIFACT_SHA256" \
+            --exercise-profile post-init-safe-v1 \
+            --framework-ticks 3 \
+            --plugin "$STAGED_PLUGIN" \
+            --artifact-dir "$STAGED_ARTIFACT" \
+            --seccomp-policy "$RIFT_SECCOMP" \
+            --out "$results/runtime-report.json" \
+            --observer-out "$results/outer-observer.json" \
+            --init-timeout 15 \
+            --wall-timeout 30 \
+            --memory-max 768M \
+            --tasks-max 64 \
+            --cpu-quota 100%
+          rc=$?
+          echo "$rc" > "$results/rift-exit-code.txt"
+          generated="$results/runtime-report.supervisor-attestation.json"
+          if [[ -s "$generated" ]]; then cp "$generated" "$results/supervisor-attestation.json"; fi
+          printf '{"schema_version":"rift.workflow.v1","phase":"execution","outcome":"completed","exit_code":%d}\n' "$rc" \
+            > "$results/workflow-status.json"
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Scan bundled components
+        if: always() && steps.stage.outcome == 'success'
+        shell: bash
+        working-directory: rift
+        env:
+          STAGED_ARTIFACT: ${{ steps.stage.outputs.artifact }}
+        run: |
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-runtime-results"
+          args=(--artifact-dir "$STAGED_ARTIFACT" --out "$results/component-security.json")
+          if [[ -s "$results/runtime-report.json" ]]; then args+=(--runtime-report "$results/runtime-report.json"); fi
+          python3 ./tools/scan-rift-components.py "${args[@]}"
+
+      - name: Project Rift runtime collection
+        if: always() && steps.rift.outcome != 'skipped'
+        shell: bash
+        working-directory: rift
+        run: |
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-runtime-results"
+          args=(--report "$results/runtime-report.json" --out "$results/collector-runtime.json")
+          [[ -s "$results/outer-observer.json" ]] && args+=(--observer "$results/outer-observer.json")
+          [[ -s "$results/component-security.json" ]] && args+=(--component-security "$results/component-security.json")
+          python3 ./tools/collect-rift-runtime.py "${args[@]}"
+
+      - name: Validate request-bound runtime evidence
+        if: always() && steps.rift.outcome != 'skipped'
+        shell: bash
+        working-directory: rift
+        run: |
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-runtime-results"
+          python3 ./tools/validate-rift-report.py "$results/runtime-report.json" --mode runtime-ok
+          python3 ./tools/validate-rift-observer.py "$results/outer-observer.json" --require-active
+          python3 ./tools/validate-rift-attestation.py \
+            "$results/runtime-report.json" "$results/supervisor-attestation.json" \
+            --request "$results/rift-request.json"
+
+      - name: Build canonical Rift result envelope
+        id: final
+        if: always()
+        shell: bash
+        working-directory: rift
+        env:
+          ENTRY_MODEL: ${{ inputs.entry_model }}
+          INPUT_VARIANT_ID: ${{ inputs.variant_id }}
+        run: |
+          set -euo pipefail
+          results="$RUNNER_TEMP/rift-runtime-results"
+          request="$results/rift-request.json"
+          if [[ ! -s "$request" ]]; then
+            echo "request_id=" >> "$GITHUB_OUTPUT"
+            echo "variant_id=$INPUT_VARIANT_ID" >> "$GITHUB_OUTPUT"
+            echo "run_id=${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+            echo "result_artifact=rift-runtime-results" >> "$GITHUB_OUTPUT"
+            echo "outcome=request-failed" >> "$GITHUB_OUTPUT"
+            echo "runtime_reported=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          rc=$(cat "$results/rift-exit-code.txt" 2>/dev/null || echo 98)
+          python3 ./tools/build-rift-result.py \
+            --request "$request" \
+            --results-dir "$results" \
+            --entry-model "$ENTRY_MODEL" \
+            --run-id '${{ github.run_id }}' \
+            --run-attempt '${{ github.run_attempt }}' \
+            --exit-code "$rc" \
+            --output "$results/rift-result.json"
+          python3 - "$results/rift-result.json" "$GITHUB_OUTPUT" <<'PY'
+          import json, pathlib, sys
+          result=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          with open(sys.argv[2], 'a', encoding='utf-8') as out:
+              print(f"run_id={result['github']['runId']}", file=out)
+              print(f"request_id={result['requestId']}", file=out)
+              print(f"variant_id={result['variantId']}", file=out)
+              print(f"result_artifact={result['resultArtifact']}", file=out)
+              print(f"outcome={result['outcome']}", file=out)
+              print(f"runtime_reported={str(result['runtimeReported']).lower()}", file=out)
+          PY
+
+      - name: Upload canonical Rift result
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rift-runtime-results
+          path: ${{ runner.temp }}/rift-runtime-results
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Summarize caller contract
+        if: always()
+        shell: bash
+        env:
+          ENTRY_MODEL: ${{ inputs.entry_model }}
+        run: |
+          {
+            echo '## Rift reusable runtime result'
+            echo
+            echo "- Entry model: \`$ENTRY_MODEL\`"
+            echo "- Variant: \`${{ steps.final.outputs.variant_id }}\`"
+            echo "- Request: \`${{ steps.final.outputs.request_id }}\`"
+            echo "- Outcome: \`${{ steps.final.outputs.outcome }}\`"
+            echo "- Runtime report emitted: \`${{ steps.final.outputs.runtime_reported }}\`"
+            echo "- Result artifact: \`rift-runtime-results\`"
+            echo "- Retrieval run ID: \`${{ github.run_id }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce runtime result after preserving canonical artifact
+        if: always() && steps.final.outputs.outcome != 'completed'
+        shell: bash
+        run: |
+          echo "Rift did not complete successfully; canonical result/status was preserved." >&2
+          exit 1

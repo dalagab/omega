@@ -96,7 +96,28 @@ for path in sorted(item for item in args.artifact_dir.rglob("*") if item.is_file
         item["clamav"] = external([clamav, "--no-summary"], path, 1)
     components.append(item)
 
+# Keep Rift's detailed component inventory while projecting the neutral record
+# shape consumed by Omega Security Evidence v2.  The projection intentionally
+# says only that the component was observed; static vocabulary remains evidence,
+# not a safety/severity verdict.
+records = [
+    {
+        "component": item["path"],
+        "version": "",
+        "kind": item["kind"],
+        "status": "observed",
+        "advisoryId": "",
+        "advisoryUrl": "",
+        "fixedVersion": "",
+        "sha256": item["sha256"],
+        "observedLoaded": item["observed_loaded"],
+        "staticSignals": item["static_signals"],
+    }
+    for item in components
+]
+
 report = {
+    "schema": "omega.rift.component-security.v1",
     "schema_version": "rift.component-security.v1",
     "producer": "interdimensional-rift-component-scanner",
     "artifact_tree_sha256": (json.loads(args.runtime_report.read_text(encoding="utf-8")).get("execution", {}).get("artifact_tree_sha256") if args.runtime_report else None),
@@ -105,6 +126,7 @@ report = {
         "yara": "active" if yara else "not_requested" if not args.yara_rules else "unavailable",
         "clamav": "active" if clamav else "not_requested" if not args.clamav else "unavailable",
     },
+    "records": records,
     "components": components,
 }
 args.out.parent.mkdir(parents=True, exist_ok=True)

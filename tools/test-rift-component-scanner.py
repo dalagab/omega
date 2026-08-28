@@ -16,7 +16,13 @@ with tempfile.TemporaryDirectory() as raw:
     (artifact / "Probe.dll").write_bytes(b"MZ....BSJB....Assembly.Load....Process.Start")
     output = directory / "report.json"
     subprocess.run([sys.executable, str(scanner), "--artifact-dir", str(artifact), "--out", str(output)], check=True)
-    component = json.loads(output.read_text())["components"][0]
+    report = json.loads(output.read_text())
+    assert report["schema"] == "omega.rift.component-security.v1"
+    component = report["components"][0]
     assert component["kind"] == "managed-pe"
     assert set(component["static_signals"]) == {"managed.dynamic-load", "process.execution"}
+    record = report["records"][0]
+    assert record["component"] == "Probe.dll"
+    assert record["status"] == "observed"
+    assert set(record["staticSignals"]) == {"managed.dynamic-load", "process.execution"}
 print("Rift component scanner self-test: PASS")

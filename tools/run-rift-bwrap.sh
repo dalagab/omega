@@ -11,6 +11,7 @@ Usage:
     --runtime-dir <self-contained-rift-publish-dir> \
     --contract-dir <frozen-trusted-dalamud-runtime-dir> \
     [--contract-track unknown] \
+    [--request-id <broker-request-id> --variant-id <id> --artifact-sha256 <sha256>] \
     --plugin <entry-plugin.dll> \
     --artifact-dir <exact-staged-artifact-dir> \
     [--seed-config-dir <explicit-read-only-plugin-config>] \
@@ -50,6 +51,9 @@ tmpfs_work_bytes=67108864
 boundary_profile=rift-linux-bwrap-v3
 contract_mode=real-dalamud-contract-failfast
 contract_track=unknown
+request_id=''
+variant_id=''
+request_artifact_sha256=''
 exercise_profile=post-init-safe-v1
 ui_profile=none
 network_profile=isolated-v1
@@ -62,6 +66,9 @@ while [[ $# -gt 0 ]]; do
     --runtime-dir) runtime_dir=${2:-}; shift 2 ;;
     --contract-dir) contract_dir=${2:-}; shift 2 ;;
     --contract-track) contract_track=${2:-}; shift 2 ;;
+    --request-id) request_id=${2:-}; shift 2 ;;
+    --variant-id) variant_id=${2:-}; shift 2 ;;
+    --artifact-sha256) request_artifact_sha256=${2:-}; shift 2 ;;
     --plugin) plugin=${2:-}; shift 2 ;;
     --artifact-dir) artifact_dir=${2:-}; shift 2 ;;
     --seed-config-dir) seed_config_dir=${2:-}; shift 2 ;;
@@ -100,6 +107,24 @@ done
 [[ "$memory_max" =~ ^[0-9]+([KMGTP])?$ ]] || { echo "error: invalid --memory-max" >&2; exit 2; }
 [[ "$tasks_max" =~ ^[0-9]+$ && "$tasks_max" -gt 0 ]] || { echo "error: invalid --tasks-max" >&2; exit 2; }
 [[ "$cpu_quota" =~ ^[0-9]+%$ ]] || { echo "error: invalid --cpu-quota" >&2; exit 2; }
+
+request_binding_count=0
+[[ -n "$request_id" ]] && request_binding_count=$((request_binding_count + 1))
+[[ -n "$variant_id" ]] && request_binding_count=$((request_binding_count + 1))
+[[ -n "$request_artifact_sha256" ]] && request_binding_count=$((request_binding_count + 1))
+if [[ "$request_binding_count" -ne 0 && "$request_binding_count" -ne 3 ]]; then
+  echo "error: --request-id, --variant-id, and --artifact-sha256 must be supplied together" >&2
+  exit 2
+fi
+if [[ "$request_binding_count" -eq 3 ]]; then
+  [[ "$variant_id" =~ ^[1-9][0-9]*$ ]] || { echo "error: invalid --variant-id" >&2; exit 2; }
+  [[ "$request_artifact_sha256" =~ ^[0-9a-f]{64}$ ]] || { echo "error: invalid --artifact-sha256" >&2; exit 2; }
+  python3 - "$request_id" <<'PY_REQUEST_ID'
+import re, sys
+if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{0,159}', sys.argv[1]):
+    raise SystemExit('error: invalid --request-id')
+PY_REQUEST_ID
+fi
 
 for command in systemd-run systemctl sudo timeout sha256sum realpath python3 "$CC"; do
   command -v "$command" >/dev/null 2>&1 || { echo "error: $command is required" >&2; exit 2; }
@@ -484,6 +509,20 @@ mv "$tmp_report" "$out"
 # small trusted-supervisor sidecar outside the hostile cgroup so downstream tools
 # can correlate immutable input identity, boundary controls, and the exact report.
 report_sha=$(sha256sum "$out" | awk '{print $1}')
+attestation_schema='rift.supervisor-attestation.v1'
+omega_request_json='null'
+if [[ "$request_binding_count" -eq 3 ]]; then
+  attestation_schema='rift.supervisor-attestation.v2'
+  omega_request_json=$(python3 - "$request_id" "$variant_id" "$request_artifact_sha256" <<'PY_OMEGA_REQUEST'
+import json, sys
+print(json.dumps({
+    "request_id": sys.argv[1],
+    "variant_id": int(sys.argv[2]),
+    "artifact_sha256": sys.argv[3],
+}, separators=(',', ':')))
+PY_OMEGA_REQUEST
+)
+fi
 if [[ "$out" == *.json ]]; then
   attestation_out="${out%.json}.supervisor-attestation.json"
 else
@@ -491,10 +530,11 @@ else
 fi
 cat > "$attestation_out" <<JSON
 {
-  "schema_version": "rift.supervisor-attestation.v1",
+  "schema_version": "$attestation_schema",
   "producer": "interdimensional-rift-supervisor",
   "outcome": "runtime_report_emitted",
   "runtime_report_sha256": "$report_sha",
+  "omega_request": $omega_request_json,
   "artifact_tree_sha256": "$artifact_sha",
   "artifact_tree_hash_algorithm": "$artifact_hash_algorithm",
   "entry_sha256": "$plugin_sha",

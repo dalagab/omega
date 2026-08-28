@@ -30,14 +30,16 @@ do. It is an inspection tool, not a claim that a plugin is safe.
 | `tests/InterdimensionalRift.Tests/` | Host and fixture unit/integration regressions. |
 | `schemas/` | Versioned schemas for runtime observations, attestations, coverage, and collector output. |
 | `docs/` | Boundary, evidence, and operating-profile documentation. |
-| `.github/workflows/rift.yml` | Omega production-artifact scan; use this when Rift is integrated at the root of the Omega repository. |
+| `.github/workflows/rift.yml` | Omega production-artifact self-scan; retained as the existing dedicated Omega lane. |
+| `.github/workflows/rift-runtime.yml` | Reusable/dispatchable Rift component with two ingress models and one canonical result artifact. |
 | `.github/workflows/rift-alpha.yml` | Manual Alpha fixture review. |
 | `.github/workflows/rift-canary.yml` | Manual Canary fixture review. |
 
-There is intentionally **no fixed workflow for a third-party plugin** in this
-repository. Alpha and Canary are the only selectable review fixtures. Production
-plugin acquisition belongs to the Omega catalog workflow, where the exact manifest
-entry and artifact hash are the ground truth.
+Rift now exposes a generic **reusable runtime workflow** rather than adding a
+fixed workflow per third-party plugin. Alpha and Canary remain calibration fixtures;
+`.github/workflows/rift-runtime.yml` is the production integration point for other
+workloads and explicit plugin locations. Every production request is bound to a
+current Security Evidence v2 variant and an exact artifact SHA-256.
 
 ## Evidence Rift can produce
 
@@ -79,6 +81,19 @@ The GitHub Actions workflows install their own Linux dependencies. The helper
 `tools/enable-userns-github.sh` is intended for ephemeral GitHub Ubuntu runners;
 do not use it as a generic host-hardening bypass.
 
+### Container image policy
+
+A custom Rift container image is **not required for the production integration**.
+The security boundary depends on host cgroup v2, `systemd-run`, user namespaces,
+Bubblewrap, seccomp, and an outer observer. The repository `Dockerfile` is useful as
+a development/runtime image, but it must not be treated as the hostile-code
+boundary and should not replace the host supervisor.
+
+If startup cost later justifies a published image, publish it only as a
+digest-pinned **Rift toolchain image** (SDK/runtime plus `bwrap`, seccomp tooling,
+`strace`, and build dependencies) and keep the actual sandbox/cgroup supervisor on
+a compatible host. Do not make a container-only execution path authoritative.
+
 ## Quick start
 
 Fetch the trusted Dalamud API contract, then run the source and fixture checks:
@@ -99,6 +114,75 @@ dotnet test tests/InterdimensionalRift.Tests/InterdimensionalRift.Tests.csproj \
 Use GitHub's **Run workflow** control for Alpha or Canary when you want the
 full Linux qualification path. They are manual on purpose.
 
+## Reusable deployment contract: two ingress models, one exit
+
+`.github/workflows/rift-runtime.yml` can be called by another workflow or started
+manually. It supports exactly two ingress models:
+
+1. **`component`** — the caller supplies a current `variant_id`. Rift checks out the
+   current Security Evidence v2 snapshot and uses SigmaScope's broker request tool
+   to resolve the exact artifact URL and SHA-256.
+2. **`location`** — the caller supplies `variant_id`, an HTTPS `plugin_location`,
+   and the exact `artifact_sha256`. This is an acquisition override, not an identity
+   override: the variant ID is retained so the result can use the same Evidence-v2
+   ingestion/storage lane. `plugin_entry` can be supplied when a package contains
+   more than one plausible Dalamud entry DLL.
+
+Both ingress paths normalize to `omega.rift.execution-request.v1`. The trusted
+supervisor binds successful production execution to that request in
+`rift.supervisor-attestation.v2`.
+
+The one workflow exit is an Actions artifact named **`rift-runtime-results`**. It
+contains the filenames already consumed by SigmaScope's Rift Evidence-v2 adapter:
+
+- `rift-request.json`
+- `runtime-report.json`
+- `supervisor-attestation.json`
+- `component-security.json` when component inventory completed
+- `rift-result.json` (`omega.rift.scan-result.v1`) as the poll/retrieval envelope
+- supplemental observer, collector, staging, hash, and workflow-status evidence
+
+The reusable workflow returns `run_id`, `request_id`, `variant_id`,
+`result_artifact`, `outcome`, and `runtime_reported`. A later workflow can therefore
+retrieve the exact result by GitHub run ID and artifact name, while successful
+production results can be imported durably into the normal Security Evidence v2
+snapshot by the existing SigmaScope ingestion workflow.
+
+Example caller:
+
+```yaml
+jobs:
+  rift:
+    uses: dalagab/omega/.github/workflows/rift-runtime.yml@rift
+    with:
+      entry_model: component
+      variant_id: "1234"
+
+  ingest:
+    needs: rift
+    if: needs.rift.outputs.runtime_reported == 'true'
+    uses: dalagab/omega/.github/workflows/rift-evidence-ingest.yml@sigmascope
+    with:
+      rift_run_id: ${{ needs.rift.outputs.run_id }}
+      artifact_name: ${{ needs.rift.outputs.result_artifact }}
+      variant_id: ${{ needs.rift.outputs.variant_id }}
+```
+
+The explicit-location form changes only the Rift call inputs; the result and ingest
+jobs are unchanged. Location ingress is deliberately checked against the current
+variant's artifact SHA-256 before execution, so an acquisition override cannot silently
+become a different Evidence-v2 subject.
+
+### Workflow-callable vs. broker-dispatchable
+
+This makes Rift directly selectable/callable by other GitHub workloads. It does **not**
+pretend that the Analysis Broker can dispatch Rift yet. The current SigmaScope component
+registry still owns that higher-level decision and must only mark `omega.rift` as
+`brokerDispatchable` after its dispatcher has a Rift-specific claim adapter that can map
+a broker subject to `variant_id`, invoke this workflow, ingest `rift-runtime-results`,
+and settle the durable claim. Keeping that registration separate prevents the registry
+from advertising a launch path that cannot complete its broker lifecycle.
+
 ## Publish this folder
 
 Upload the **contents** of this `rift-upload` folder as the root of a Git
@@ -115,9 +199,10 @@ git remote add origin <your-git-url>
 git push -u origin main
 ```
 
-Before enabling `.github/workflows/rift.yml`, integrate this repository at the
-root of the Omega repository or adapt its explicit Omega release-acquisition
-contract. Alpha and Canary do not acquire any external third-party plugin.
+`.github/workflows/rift.yml` remains the dedicated Omega self-scan.
+`.github/workflows/rift-runtime.yml` is the reusable integration point for other
+workloads; it acquires only the exact request-bound artifact. Alpha and Canary do
+not acquire external third-party plugins.
 
 ## Running an artifact safely
 
@@ -180,8 +265,9 @@ executables/libraries, and read-only/nonexistent sentinels.
    `tools/run-rift-bwrap.sh` with fixed resource/time limits.
 8. Add a small contract checker that asserts the fixture remains inert outside Rift
    and that its expected markers are present. Add a unit test for its expected
-   evidence. Do not add a new fixed third-party workflow; use the existing Alpha
-   and Canary workflows for baseline qualification.
+   evidence. Do not add a new fixed per-plugin workflow; use Alpha/Canary for
+   baseline qualification and the reusable `rift-runtime.yml` lane for requested
+   production artifacts.
 
 For resource-boundary testing, reuse the existing `RiftMemoryPressure`,
 `RiftTaskPressure`, `RiftTmpfsPressure`, and `RiftHangTree` fixtures. Keep them
@@ -204,3 +290,12 @@ non-distributable and run them only on a disposable Linux qualification host.
 - `docs/OUTER-OBSERVER.adoc` — outer-observer evidence model.
 - `docs/RUNTIME-OBSERVATION-SCHEMA.adoc` — runtime observation format.
 - `docs/INTERDIMENSIONAL-RIFT-HARDENING.adoc` — Bubblewrap hardening constraints.
+
+
+## Alpha offensive-security calibration SDK
+
+The scalable Alpha model is documented in `docs/ALPHA-SDK-REGISTRY.adoc`. New adversarial calibration subjects belong in one protected `alpha` corpus branch and a selectable registry, not in one branch/workflow per fixture. Alpha findings are namespaced `ALPHA:` and retained only in separate `security-alpha-evidence`; DeltaScope Operations may opt in to that lane with a `Show ALPHA` display flag.
+### Local Alpha execution
+
+Local offensive-security execution is intentionally provided by a **separate Rift Alpha binary**, not by the production Rift plugin host. The Alpha binary understands only `Omega.Alpha.Sdk/IAlphaScenario/v1`, uses the dedicated `omega.rift.alpha-execution-request.v1` request domain, and cannot execute normal Dalamud plugins. Windows uses a controller plus the bundled Linux/WSL build; Linux/WSL applies Bubblewrap, cgroup limits and the shared Alpha seccomp policy. See `docs/ALPHA-LOCAL-RUNNER.adoc`.
+
