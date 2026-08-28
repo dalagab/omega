@@ -1,0 +1,146 @@
+name: Rift Alpha client — build and publish edge
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [alpha]
+    paths:
+      - 'client/RiftAlpha/**'
+      - 'sdk/Omega.Alpha.Sdk/**'
+      - 'shared/rift-boundary/**'
+      - 'tools/check_alpha_client_contract.py'
+      - 'tools/check_alpha_source.py'
+      - 'schemas/omega-alpha-*.json'
+      - '.github/workflows/alpha-client-build.yml'
+  push:
+    branches: [alpha]
+    paths:
+      - 'client/RiftAlpha/**'
+      - 'sdk/Omega.Alpha.Sdk/**'
+      - 'shared/rift-boundary/**'
+      - 'tools/check_alpha_client_contract.py'
+      - 'tools/check_alpha_source.py'
+      - 'schemas/omega-alpha-*.json'
+      - '.github/workflows/alpha-client-build.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rift-alpha-client-edge
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Validate Alpha source and client boundary
+        run: |
+          python3 tools/alpha_registry.py validate
+          python3 tools/check_alpha_source.py
+          python3 tools/check_alpha_client_contract.py
+
+      - name: Install Alpha boundary build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libseccomp-dev gcc pkg-config zip
+
+      - name: Build shared Alpha SDK, client, and seccomp policy
+        run: |
+          dotnet build sdk/Omega.Alpha.Sdk/Omega.Alpha.Sdk.csproj --configuration Release --nologo
+          dotnet build client/RiftAlpha/RiftAlpha.csproj --configuration Release --nologo
+          dotnet build tests/AlphaRuntimeSentinels/AlphaRuntimeSentinels.csproj --configuration Release --nologo
+          bash shared/rift-boundary/build-alpha-seccomp.sh "$RUNNER_TEMP/rift-alpha-seccomp.bpf"
+          test -s "$RUNNER_TEMP/rift-alpha-seccomp.bpf"
+
+      - name: Publish Windows controller
+        run: |
+          dotnet publish client/RiftAlpha/RiftAlpha.csproj \
+            --configuration Release --runtime win-x64 --self-contained true \
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=None -p:DebugSymbols=false \
+            --output "$RUNNER_TEMP/win-x64"
+          test -s "$RUNNER_TEMP/win-x64/rift-alpha.exe"
+
+      - name: Publish Linux/WSL worker
+        run: |
+          dotnet publish client/RiftAlpha/RiftAlpha.csproj \
+            --configuration Release --runtime linux-x64 --self-contained true \
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=None -p:DebugSymbols=false \
+            --output "$RUNNER_TEMP/linux-x64"
+          test -x "$RUNNER_TEMP/linux-x64/rift-alpha"
+          "$RUNNER_TEMP/linux-x64/rift-alpha" --help
+          "$RUNNER_TEMP/linux-x64/rift-alpha" list --corpus "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/linux-x64/rift-alpha" validate alpha.runtime.sentinels --corpus "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/linux-x64/rift-alpha" registry build --corpus "$GITHUB_WORKSPACE"
+          git diff --exit-code -- registry/registry.json
+
+      - name: Package downloadable client
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$RUNNER_TEMP/RiftAlphaClient"
+          mkdir -p "$bundle/linux-x64"
+          cp "$RUNNER_TEMP/win-x64/rift-alpha.exe" "$bundle/RiftAlpha.exe"
+          cp "$RUNNER_TEMP/linux-x64/rift-alpha" "$bundle/linux-x64/rift-alpha"
+          cp "$RUNNER_TEMP/rift-alpha-seccomp.bpf" "$bundle/linux-x64/rift-alpha-seccomp.bpf"
+          chmod 0755 "$bundle/linux-x64/rift-alpha"
+          cat > "$bundle/README.txt" <<'TXT'
+          Rift Alpha is the local offensive-security scenario runner for Omega.
+          It cannot execute normal Dalamud plugins: the client contains only the Omega.Alpha.Sdk IAlphaScenario loader.
+
+          Windows: run RiftAlpha.exe doctor first. Runtime execution uses WSL2 and a bundled Linux worker.
+          Linux: run ./linux-x64/rift-alpha doctor.
+
+          Runtime prerequisites inside Linux/WSL: bubblewrap, systemd user scopes, cgroup v2, and .NET 10 SDK for building Alpha scenarios.
+          Clone/check out the repository's alpha branch to get the scenario corpus.
+          TXT
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          bundle=Path(os.environ['RUNNER_TEMP'])/'RiftAlphaClient'
+          (bundle/'build.json').write_text(json.dumps({
+            'schema':'omega.rift-alpha.client-build.v1',
+            'commit':os.environ['GITHUB_SHA'],
+            'runId':os.environ['GITHUB_RUN_ID'],
+            'channel':'edge'
+          },indent=2)+'\n')
+          PY
+          (cd "$RUNNER_TEMP" && zip -qr RiftAlphaClient-windows-x64.zip RiftAlphaClient)
+          sha256sum "$RUNNER_TEMP/RiftAlphaClient-windows-x64.zip" > "$RUNNER_TEMP/RiftAlphaClient-windows-x64.zip.sha256"
+          echo "zip=$RUNNER_TEMP/RiftAlphaClient-windows-x64.zip" >> "$GITHUB_OUTPUT"
+          echo "sha=$RUNNER_TEMP/RiftAlphaClient-windows-x64.zip.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: rift-alpha-client-edge
+          path: |
+            ${{ steps.package.outputs.zip }}
+            ${{ steps.package.outputs.sha }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish rolling edge release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/alpha'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=rift-alpha-client-edge
+          git tag -f "$tag" "$GITHUB_SHA"
+          git push origin "refs/tags/$tag" --force
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --title 'Rift Alpha Client — edge' --notes "Automated Alpha client build from alpha@$GITHUB_SHA. Local results are calibration-only and are not production Security Evidence."
+          else
+            gh release create "$tag" --title 'Rift Alpha Client — edge' --notes "Automated Alpha client build from alpha@$GITHUB_SHA. Local results are calibration-only and are not production Security Evidence." --prerelease
+          fi
+          gh release upload "$tag" '${{ steps.package.outputs.zip }}' '${{ steps.package.outputs.sha }}' --clobber
