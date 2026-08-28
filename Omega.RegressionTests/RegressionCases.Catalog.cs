@@ -321,9 +321,15 @@ internal static partial class RegressionCases
         Contains(ui, "settings-tab-repositories", "Repositories is a fixed top-level Settings tab");
         Contains(ui, "ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse", "Settings modal itself does not scroll its close control out of view");
         False(ui.Contains("[Curated (", StringComparison.Ordinal), "selected Curated tab must not use decorative brackets");
-        var addTools = ui.IndexOf("DrawAddSourceTools();", StringComparison.Ordinal);
-        var sourceTable = ui.IndexOf("DrawSourcesTable(shownSources, statuses, unmanaged.Length > 0);", StringComparison.Ordinal);
-        True(addTools >= 0 && sourceTable > addTools, "add-source tools render above the scrolling source table");
+        var repositoriesTab = ui.IndexOf("private void DrawSettingsRepositoriesTab", StringComparison.Ordinal);
+        var addTools = repositoriesTab >= 0
+            ? ui.IndexOf("DrawAddSourceTools();", repositoriesTab, StringComparison.Ordinal)
+            : -1;
+        var sourceTable = repositoriesTab >= 0
+            ? ui.IndexOf("DrawSourcesTable(shownSources", repositoriesTab, StringComparison.Ordinal)
+            : -1;
+        True(repositoriesTab >= 0 && addTools > repositoriesTab && sourceTable > addTools,
+            "add-source tools render above the scrolling source table");
         False(ui.Contains("selectedSourceIndex", StringComparison.Ordinal), "removed selection-list index state must not return after source table migration");
 
         var health = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "RepositoryHealthRules.cs"));
