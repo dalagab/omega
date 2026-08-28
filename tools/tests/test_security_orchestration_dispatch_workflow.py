@@ -42,13 +42,14 @@ class SecurityOrchestrationDispatchWorkflowTests(unittest.TestCase):
         self.assertIn("for attempt in 1 2 3", text)
         self.assertNotIn('gh workflow run "$workflow"', text)
 
-    def test_migration_recovery_wake_uses_router(self):
-        text = (WF / "sigmascope-phase4-migration.yml").read_text(encoding="utf-8")
-        self.assertIn("gh workflow run security-orchestration-dispatch.yml", text)
-        self.assertIn("-f mode=reconcile", text)
-        self.assertIn("redispatch_active_leases: true", text)
+    def test_security_baseline_reset_wakes_scanner_without_mutating_collector_leases(self):
+        text = (WF / "security-baseline-reset.yml").read_text(encoding="utf-8")
         self.assertIn("group: omega-catalog-sigmascope-exclusive", text)
+        self.assertIn("gh workflow run sigmascope.yml", text)
+        self.assertIn("--ref sigmascope", text)
+        self.assertNotIn("gh workflow run security-orchestration-dispatch.yml", text)
         self.assertNotIn("gh workflow run security-reconcile.yml", text)
+        self.assertNotIn("redispatch_active_leases: true", text)
 
 
 if __name__ == "__main__":
