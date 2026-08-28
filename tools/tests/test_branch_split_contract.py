@@ -8,10 +8,21 @@ class BranchSplitContractTests(unittest.TestCase):
         self.assertFalse((common.ROOT / "Omega.sln").exists())
 
     def test_reusable_workflows_checkout_sigmascope_branch(self) -> None:
-        for name in ("catalog-builder.yml", "sigmascope.yml", "source-submissions.yml", "catalog-compaction.yml"):
+        for name in ("catalog-builder.yml", "sigmascope.yml", "source-submissions.yml"):
             text = (common.ROOT / ".github" / "workflows" / name).read_text(encoding="utf-8")
             self.assertIn("workflow_call:", text, name)
             self.assertIn("ref: sigmascope", text, name)
+
+        self.assertFalse((common.ROOT / ".github" / "workflows" / "catalog-compaction.yml").exists())
+        self.assertTrue(
+            (
+                common.ROOT
+                / ".github"
+                / "retired-workflows"
+                / "legacy"
+                / "catalog-compaction.yml"
+            ).is_file()
+        )
         self.assertFalse((common.ROOT / ".github" / "workflows" / "deltascope.yml").exists())
         self.assertFalse((common.ROOT / "tools" / "security" / "deltascope.py").exists())
 

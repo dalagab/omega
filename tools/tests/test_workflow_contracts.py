@@ -341,10 +341,21 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("apt-get install -y --no-install-recommends yara", text)
         self.assertLess(text.index("Install YARA compile-check dependency"), text.index("Run security-services Python regression suite"))
 
-        compaction = self.read("catalog-compaction.yml")
-        self.assertIn("Install YARA compile-check dependency", compaction)
-        self.assertIn("apt-get install -y --no-install-recommends yara", compaction)
-        self.assertLess(compaction.index("Install YARA compile-check dependency"), compaction.index("Run repository Python regression suite"))
+        # The legacy compactor is archived and is no longer an executable Actions
+        # workload, so active toolchain coverage belongs to regression-tests.yml and
+        # the digest-pinned production publisher image.
+        self.assertFalse(
+            (common.ROOT / ".github" / "workflows" / "catalog-compaction.yml").exists()
+        )
+        self.assertTrue(
+            (
+                common.ROOT
+                / ".github"
+                / "retired-workflows"
+                / "legacy"
+                / "catalog-compaction.yml"
+            ).is_file()
+        )
 
         # Catalog freeze no longer installs the compiler at runtime; it executes in
         # the digest-pinned publisher image and verifies the baked toolchain.
