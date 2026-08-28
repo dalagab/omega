@@ -39,7 +39,6 @@ int main(int argc, char **argv) {
         "ptrace",
         "mount", "umount2", "pivot_root",
         "setns", "unshare",
-        "clone3",
         "reboot", "kexec_load", "kexec_file_load",
         "swapon", "swapoff",
         "keyctl", "add_key", "request_key",
@@ -54,6 +53,20 @@ int main(int argc, char **argv) {
 
     for (const char **p = deny; *p; ++p) {
         if (deny_name(ctx, *p) < 0) {
+            seccomp_release(ctx);
+            return 1;
+        }
+    }
+
+    // clone3 takes a pointer to struct clone_args, so classic seccomp BPF cannot
+    // safely inspect its namespace flags. Report it as unavailable instead of
+    // EPERM: glibc/CoreCLR can then fall back to clone(), whose flags are directly
+    // filterable below. This keeps normal thread creation working without making
+    // clone3 available to hostile code.
+    int clone3_nr = seccomp_syscall_resolve_name("clone3");
+    if (clone3_nr != __NR_SCMP_ERROR) {
+        if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), clone3_nr, 0) < 0) {
+            fprintf(stderr, "failed adding clone3 compatibility rule\n");
             seccomp_release(ctx);
             return 1;
         }

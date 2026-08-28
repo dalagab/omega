@@ -31,23 +31,32 @@ pids_events="$cgroup_dir/pids.events"
 oom_before=$(read_event "$memory_events" oom_kill)
 pids_before=$(read_event "$pids_events" max)
 
+# GNU timeout returns 137 both when it has to SIGKILL a command after the wall
+# deadline and when the command itself exits via SIGKILL. Track the deadline
+# independently so an immediate runtime failure is not mislabeled wall_timeout.
 set +e
-/usr/bin/timeout --signal=TERM --kill-after=2s "${seconds}s" "$@"
+/usr/bin/timeout --signal=TERM --kill-after=2s "${seconds}s" "$@" &
+timeout_pid=$!
+(
+  sleep "$seconds"
+  if kill -0 "$timeout_pid" >/dev/null 2>&1; then
+    : > "$marker"
+  fi
+) &
+deadline_witness_pid=$!
+
+wait "$timeout_pid"
 rc=$?
+kill "$deadline_witness_pid" >/dev/null 2>&1 || true
+wait "$deadline_witness_pid" >/dev/null 2>&1 || true
 set -e
 
 oom_after=$(read_event "$memory_events" oom_kill)
 pids_after=$(read_event "$pids_events" max)
 
 timed_out=0
-if [[ $rc -eq 124 || $rc -eq 137 ]]; then
-  # rc=137 can also mean a cgroup OOM kill; only stamp the timeout marker when
-  # GNU timeout itself reached the deadline. If oom_kill increased, resource
-  # classification takes precedence.
-  if (( oom_after <= oom_before )); then
-    : > "$marker"
-    timed_out=1
-  fi
+if [[ $rc -eq 124 || -e "$marker" ]]; then
+  timed_out=1
 fi
 
 cat > "$status_file" <<STATUS
