@@ -1,0 +1,3046 @@
+{
+  "analysis": {
+    "analysisId": "f2da832bf86e650afa1d355d6300b049eb582c404f9b18c863fb1e8abb6c6d3d",
+    "artifactSha256": "8cfb2ffed3d9ac822a77b5e86800a44e25b4afcdd353380ad5a88e136f88b179",
+    "path": "artifacts/8c/8cfb2ffed3d9ac822a77b5e86800a44e25b4afcdd353380ad5a88e136f88b179/analyses/f2da832bf86e650afa1d355d6300b049eb582c404f9b18c863fb1e8abb6c6d3d",
+    "recordCount": 15163
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "8cfb2ffed3d9ac822a77b5e86800a44e25b4afcdd353380ad5a88e136f88b179",
+    "artifact_url": "https://kamori.goats.dev/Plugin/Download/CustomResolution2782?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+    "assembly_version": "1.1.4.0",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
+    "capabilities_json": [
+      "Dynamic code loading",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "Process memory access"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "memory",
+        "description": "References APIs used to open another process or read/write its memory.",
+        "evidence": [
+          "metadata:FloppyUtils.dll: ReadProcessMemory",
+          "il:FloppyUtils.dll:FloppyUtils.Ptrs.Ptr`1.TryRead+0x34: call TerraFX.Interop.Windows.Windows.ReadProcessMemory: ReadProcessMemory",
+          "artifact:FloppyUtils.dll: ReadProcessMemory"
+        ],
+        "ruleId": "memory.process",
+        "severity": "high",
+        "title": "Cross-process memory access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "artifact:SharpDX.dll: CreateProcess",
+          "metadata:FloppyUtils.dll: System.Diagnostics.Process",
+          "il:FloppyUtils.dll:FloppyUtils.FService.TryInit+0x1c: callvirt System.Diagnostics.ProcessModule.get_FileName: System.Diagnostics.Process",
+          "il:FloppyUtils.dll:FloppyUtils.MappedModuleCache.GetAt+0xa9: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:FloppyUtils.dll:FloppyUtils.MappedModuleCache.GetAt+0xae: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+          "il:FloppyUtils.dll:FloppyUtils.Ptrs.Ptr`1.TryRead+0xc: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:FloppyUtils.dll:FloppyUtils.Ptrs.Ptr`1.TryRead+0x11: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+          "il:FloppyUtils.dll:<>c__DisplayClass9_0.<GetAt>b__0+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:SharpDX.dll: DllImportAttribute",
+          "metadata:SharpDX.dll: GetProcAddress",
+          "il:SharpDX.dll:SharpDX.Utilities.GetProcAddress+0x2: call SharpDX.Utilities.GetProcAddress_ -> kernel32!GetProcAddress: GetProcAddress",
+          "artifact:SharpDX.dll: GetProcAddress",
+          "metadata:FloppyUtils.dll: GetProcAddress",
+          "metadata:FloppyUtils.dll: DllImportAttribute",
+          "il:FloppyUtils.dll:FloppyUtils.Graphics.ComPeeler.BelongsInReShadeDll+0xf0: call TerraFX.Interop.Windows.Windows.GetProcAddress: GetProcAddress",
+          "il:FloppyUtils.dll:FloppyUtils.Graphics.ComPeeler.BelongsInReShadeDll+0x10a: call TerraFX.Interop.Windows.Windows.GetProcAddress: GetProcAddress"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:FloppyUtils.dll: SigScanner",
+          "metadata:FloppyUtils.dll: Dalamud.Hooking",
+          "metadata:FloppyUtils.dll: HookFromAddress",
+          "il:FloppyUtils.dll:FloppyUtils.FService.TryInit+0x12: call FloppyUtils.FService.get_SigScanner: SigScanner",
+          "il:FloppyUtils.dll:FloppyUtils.FService.TryInit+0x17: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+          "il:FloppyUtils.dll:FloppyUtils.MidFuncCallback..ctor+0x312: newobj Dalamud.Hooking.AsmHook..ctor: Dalamud.Hooking",
+          "il:FloppyUtils.dll:FloppyUtils.MidFuncCallback.get_Address+0x6: callvirt Dalamud.Hooking.AsmHook.get_Address: Dalamud.Hooking",
+          "il:FloppyUtils.dll:FloppyUtils.MidFuncCallback.get_IsEnabled+0x6: callvirt Dalamud.Hooking.AsmHook.get_IsEnabled: Dalamud.Hooking"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:FloppyUtils.dll: s://git.0x0a.de/0x0ade/DP-FloppyUtils.git"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:FloppyUtils.dll: AssemblyLoadContext",
+          "metadata:FloppyUtils.dll: Reflection.Emit",
+          "il:FloppyUtils.dll:FloppyUtils.DalamudInternalServiceHelper.get_ALC+0xf: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+          "il:FloppyUtils.dll:FloppyUtils.DalamudInternalServiceHelper.get_ALC+0x18: call System.Runtime.Loader.AssemblyLoadContext.get_Default: AssemblyLoadContext",
+          "il:FloppyUtils.dll:FloppyUtils.FastReflectionHelper.CreateGetterDelegate+0xde: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+          "il:FloppyUtils.dll:FloppyUtils.FastReflectionHelper.CreateGetterDelegate+0xe4: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+          "il:FloppyUtils.dll:FloppyUtils.FastReflectionHelper.CreateGetterDelegate+0xf0: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+          "il:FloppyUtils.dll:FloppyUtils.FastReflectionHelper.CreateGetterDelegate+0x125: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "il:SharpDX.dll:SharpDX.IO.NativeFile.ReadAllBytes+0x8: newobj SharpDX.IO.NativeFileStream..ctor: FileStream",
+          "il:SharpDX.dll:SharpDX.IO.NativeFile.ReadAllText+0x8: newobj SharpDX.IO.NativeFileStream..ctor: FileStream",
+          "il:SharpDX.dll:SharpDX.IO.NativeFileStream..ctor+0x34: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+          "il:SharpDX.dll:SharpDX.IO.NativeFileStream.Flush+0x12: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+          "il:SharpDX.dll:SharpDX.IO.NativeFileStream.Seek+0x16: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+          "il:SharpDX.dll:SharpDX.IO.NativeFileStream.SetLength+0x16: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+          "il:SharpDX.dll:SharpDX.IO.NativeFileStream.SetLength+0x33: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+          "il:SharpDX.dll:SharpDX.IO.NativeFileStream.Read+0x2f: call SharpDX.IO.NativeFileStream.Read: FileStream"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 405271,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.1.4.0",
+        "artifactBytes": 405271,
+        "artifactSha256": "8cfb2ffed3d9ac822a77b5e86800a44e25b4afcdd353380ad5a88e136f88b179",
+        "catalogAssemblyVersion": "1.1.4.0",
+        "manifestInternalName": "CustomResolution2782",
+        "manifestPath": "CustomResolution2782.json",
+        "manifestRepositoryUrl": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/edf2e6ff596ecaff0e7620061f1121bc59897526/stable/CustomResolution2782/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "git.0x0a.de",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "gitea.0x0a.de",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "git.0x0a.de",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "gitea.0x0a.de",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Dynamic code loading",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "Process memory access"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "memory.process",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 1,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 96,
+          "exactVersionObservedCount": 91,
+          "families": {
+            "managed-assembly": 77,
+            "native": 5,
+            "nuget": 14
+          },
+          "fingerprint": "3377bad53072776bf009c36605fa79f43bf6f796766a76b51c550e623f24eb80",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 24,
+            "platformLibrary": 14
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCompile",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCompile_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCompile2",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCompile2_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCompileFromFile",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCompileFromFile_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCompressShaders",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCompressShaders_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCreateBlob",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCreateBlob_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCreateFunctionLinkingGraph",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCreateFunctionLinkingGraph_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCreateLinker",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCreateLinker_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DDecompressShaders",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DDecompressShaders_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DDisassemble",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DDisassemble_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DDisassembleRegion",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DDisassembleRegion_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetBlobPart",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetBlobPart_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetDebugInfo",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetDebugInfo_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetInputAndOutputSignatureBlob",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetInputAndOutputSignatureBlob_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetInputSignatureBlob",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetInputSignatureBlob_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetOutputSignatureBlob",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetOutputSignatureBlob_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetTraceInstructionOffsets",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetTraceInstructionOffsets_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DLoadModule",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DLoadModule_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DPreprocess",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DPreprocess_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DReadFileToBlob",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DReadFileToBlob_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DReflect",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DReflect_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DReflectLibrary",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DReflectLibrary_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DSetBlobPart",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DSetBlobPart_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DStripShader",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DStripShader_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DWriteBlobToFile",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DWriteBlobToFile_",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 5,
+            "observed": 77,
+            "required": 14
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 82,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 14,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 5,
+            "observed": 77,
+            "optional": 0,
+            "required": 14,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 96
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 4,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "git.0x0a.de",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "gitea.0x0a.de",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 4,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "git.0x0a.de",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://git.0x0a.de/0x0ade/DP-CustomResolution.git"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "git.0x0a.de",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://git.0x0a.de/0x0ade/DP-FloppyUtils.git"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "gitea.0x0a.de",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/goatcorp/Dalamud/pull/2726"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://kamori.goats.dev/Plugin/Download/CustomResolution2782?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+        "internalName": "CustomResolution2782",
+        "manifestVersion": "1.1.4.0",
+        "observationId": 656,
+        "observationKey": "manifest-f346075bef5627abf0ae8144fb01",
+        "repositoryUrl": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 332
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 5,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 10,
+        "uncompressedBytes": 894549
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-fa6c85c4d3c844ee",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-332",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-4531ce036c0c074cffea",
+        "variantId": 332,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-29T11:24:54Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "8cfb2ffed3d9ac822a77b5e86800a44e25b4afcdd353380ad5a88e136f88b179",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+          "https://github.com/goatcorp/PluginDistD17",
+          "https://kamori.goats.dev/Plugin/Download/CustomResolution2782",
+          "https://github.com/goatcorp/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 5902,
+    "scanned_at_utc": "2026-08-29T11:24:54Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 332
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "8cfb2ffed3d9ac822a77b5e86800a44e25b4afcdd353380ad5a88e136f88b179",
+      "current_assembly_version": "1.1.4.0",
+      "current_scan_id": 5902,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-29T11:24:57Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 332
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 59,
+      "artifact_only_count": 59,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:customresolution2782",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "CustomResolution2782",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.1.4.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.50.0.8050"
+          ]
+        },
+        {
+          "componentKey": "assembly:floppyutils",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "FloppyUtils",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:floppyutils.sourcegen",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "FloppyUtils.SourceGen",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:goatcorp.reloaded.hooks",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "goatcorp.Reloaded.Hooks",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:iced",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Iced",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.17.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.codeanalysis",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.CodeAnalysis",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "5.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.codeanalysis.csharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.CodeAnalysis.CSharp",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "5.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:reloaded.hooks.definitions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Reloaded.Hooks.Definitions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.14.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.d3dcompiler",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX.D3DCompiler",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.debug",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Debug",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.fileversioninfo",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.FileVersionInfo",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.globalization",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Globalization",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.ilgeneration",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.lightweight",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.Lightweight",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.metadata",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Metadata",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.resources.resourcemanager",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Resources.ResourceManager",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.compilerservices.unsafe",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.loader",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Loader",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:terrafx.interop.windows",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "TerraFX.Interop.Windows",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.26100.5"
+          ]
+        },
+        {
+          "componentKey": "native:d3dcompiler_47",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "d3dcompiler_47.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ntdll",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ntdll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ole32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ole32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:microsoft.codeanalysis.common",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.CodeAnalysis.Common",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "5.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.codeanalysis.csharp",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.CodeAnalysis.CSharp",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "5.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx.d3dcompiler",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX.D3DCompiler",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.buffers",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Buffers",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.6.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.collections.immutable",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "9.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.memory",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.6.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.numerics.vectors",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.6.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.metadata",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Metadata",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "9.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.compilerservices.unsafe",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "6.1.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.text.encoding.codepages",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Text.Encoding.CodePages",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "8.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading.tasks.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading.Tasks.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.6.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-29T11:24:57Z",
+      "comparison_id": 628,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 5902,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 332,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0000/332/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0000/332/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 92261,
+          "encoding": "json",
+          "path": "derived/variants/0000/332/dependency-resolutions.json",
+          "recordDigest": "5689c417b01ee7b2db66e7249860cf03f45f1ba966a2a86ce10b354cbe258344",
+          "records": 96,
+          "sha256": "d9c6873ae94dcf44104d3aa25ead8ed262c6c7d06ccc3ee02405c6fb4fcad5ca"
+        }
+      ],
+      "recordDigest": "5689c417b01ee7b2db66e7249860cf03f45f1ba966a2a86ce10b354cbe258344",
+      "records": 96
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0000/332/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "3be03fae8fef620fba79c2a4f31e8a28bc3bc4880272a99379e080f2564a8e7c",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "3394078f0a09b81d52c812c233f93deb64388f9596d0bbfa597a5f20930845d3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "511ed51f15ac0136eee16e95f3b5e48890fa02fe8c32cd58edac53cdf504418f",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "eb2b87f322c3cfa080ed0f228088038b1e051cf6e5e9bd079ebd273dd73e8f95",
+        "records": 96,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "733cd1ce1b1232dddfe2e40c081571fc24c3e9546dc6c8cf89d774b58edefd1e",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "1710f47407ce9b46b84f59cf84077542d86107cac32ae627acd8a797bae82a9e",
+        "records": 11415,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "b063ad29b66b1f181fca3173236f59c54f1895fb4b1c7bdf56219b0974ec751e",
+        "records": 484,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "cb5e7249b0d346a1a2a9707fc14d62ae91c21f4c4fe79044146f547aa4b65991",
+        "records": 2901,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "670128425d02b8caebc85454a8e0fab937486e436d21889ed927974dbdbb94a5",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "db89d72fcf75eea0640a2c9e778712c7d491d3eca641418ee569256f418eb1f2",
+        "records": 38,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "4bf2de6787945c980abff1dbf698dba5fc5205fce13608464f85a97329d1780b",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "50a2b11ee59878bad79933e008fda3c17eeae3141ea655ef78abc0095ad5d9c3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "19df904cf7080323642f5c2c1ff788ead16648e89d84d68187b60f25de480f71",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "2c76287ba5154b6410d403ef303ed880052a9f106fcca550b76bd769a8e8aa5f",
+        "records": 185,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-abab3c44c28e899fdc86a7a672a0cb001f920f90ddd3b5433986801127a35b66",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "CustomResolution",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "CustomResolution2782",
+    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "plugin_id": 332
+  },
+  "pluginId": 332,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "DP-CustomResolution - XIV plogon - Enforces a custom resolution for the game, similar to NVIDIA DSR.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1075,
+      "summary": "Enforces a custom resolution for the game, similar to NVIDIA DSR.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "DP-CustomResolution - XIV plogon - Enforces a custom resolution for the game, similar to NVIDIA DSR.",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "website",
+          "label": "Website",
+          "url": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution"
+        },
+        {
+          "kind": "docs",
+          "label": "Documentation",
+          "url": "https://forgejo.org/docs/latest/"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "0x0ade/DP-CustomResolution: XIV plogon - Enforces a custom resolution for the game, similar to NVIDIA DSR. - Forgejo: Beyond coding. We Forge.",
+      "url": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "885173ea07884011c636bc3bf9f4d81fea68dbef0323ca76b787c9039fee9008",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "cca8cdd58e89d12ff61b95d9a09610e90cf6377c62d5a52ed8f3afc67f72bbfb",
+        "records": 8
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "cb6e351e152bbacb09eda448a44cd9d1d87744d04b55a55842ce19b1f1e629e2",
+        "records": 7
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "8cfb2ffed3d9ac822a77b5e86800a44e25b4afcdd353380ad5a88e136f88b179",
+    "artifact_url": "https://kamori.goats.dev/Plugin/Download/CustomResolution2782?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+    "assembly_version": "1.1.4.0",
+    "capabilities_json": [
+      "Dynamic code loading",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "Process memory access"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 1,
+    "plugin_id": 332,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 405271,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.1.4.0",
+        "artifactBytes": 405271,
+        "artifactSha256": "8cfb2ffed3d9ac822a77b5e86800a44e25b4afcdd353380ad5a88e136f88b179",
+        "catalogAssemblyVersion": "1.1.4.0",
+        "manifestInternalName": "CustomResolution2782",
+        "manifestPath": "CustomResolution2782.json",
+        "manifestRepositoryUrl": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/edf2e6ff596ecaff0e7620061f1121bc59897526/stable/CustomResolution2782/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "git.0x0a.de",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "gitea.0x0a.de",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "git.0x0a.de",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "gitea.0x0a.de",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Dynamic code loading",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "Process memory access"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "memory.process",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 1,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 96,
+          "exactVersionObservedCount": 91,
+          "families": {
+            "managed-assembly": 77,
+            "native": 5,
+            "nuget": 14
+          },
+          "fingerprint": "3377bad53072776bf009c36605fa79f43bf6f796766a76b51c550e623f24eb80",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 24,
+            "platformLibrary": 14
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCompile",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCompile_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCompile2",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCompile2_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCompileFromFile",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCompileFromFile_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCompressShaders",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCompressShaders_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCreateBlob",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCreateBlob_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCreateFunctionLinkingGraph",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCreateFunctionLinkingGraph_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCreateLinker",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCreateLinker_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DDecompressShaders",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DDecompressShaders_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DDisassemble",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DDisassemble_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DDisassembleRegion",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DDisassembleRegion_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetBlobPart",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetBlobPart_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetDebugInfo",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetDebugInfo_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetInputAndOutputSignatureBlob",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetInputAndOutputSignatureBlob_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetInputSignatureBlob",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetInputSignatureBlob_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetOutputSignatureBlob",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetOutputSignatureBlob_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DGetTraceInstructionOffsets",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DGetTraceInstructionOffsets_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DLoadModule",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DLoadModule_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DPreprocess",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DPreprocess_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DReadFileToBlob",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DReadFileToBlob_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DReflect",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DReflect_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DReflectLibrary",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DReflectLibrary_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DSetBlobPart",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DSetBlobPart_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DStripShader",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DStripShader_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.D3DCompiler.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DWriteBlobToFile",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DWriteBlobToFile_",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 5,
+            "observed": 77,
+            "required": 14
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 82,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 14,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 5,
+            "observed": 77,
+            "optional": 0,
+            "required": 14,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 96
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 4,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "git.0x0a.de",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "gitea.0x0a.de",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 4,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "git.0x0a.de",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://git.0x0a.de/0x0ade/DP-CustomResolution.git"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "git.0x0a.de",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://git.0x0a.de/0x0ade/DP-FloppyUtils.git"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "gitea.0x0a.de",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/goatcorp/Dalamud/pull/2726"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://kamori.goats.dev/Plugin/Download/CustomResolution2782?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+        "internalName": "CustomResolution2782",
+        "manifestVersion": "1.1.4.0",
+        "observationId": 656,
+        "observationKey": "manifest-f346075bef5627abf0ae8144fb01",
+        "repositoryUrl": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 332
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 5,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 10,
+        "uncompressedBytes": 894549
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-fa6c85c4d3c844ee",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-332",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-4531ce036c0c074cffea",
+        "variantId": 332,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-29T11:24:54Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "8cfb2ffed3d9ac822a77b5e86800a44e25b4afcdd353380ad5a88e136f88b179",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+          "https://github.com/goatcorp/PluginDistD17",
+          "https://kamori.goats.dev/Plugin/Download/CustomResolution2782",
+          "https://github.com/goatcorp/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 5902,
+    "scanned_at_utc": "2026-08-29T11:24:54Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1,
+    "source_repository": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 332
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "c0d6c48db6218456add08f49bbf699fe844fc000c4f0917c57bf8638b9912862",
+    "curated_id": "dalamud-official",
+    "description": "Official Dalamud plugin repository.",
+    "discovered_by": "curated-sources.json",
+    "enabled_by_default": 1,
+    "etag": "",
+    "highest_api": 15,
+    "integrate_with_dalamud": 1,
+    "is_official": 1,
+    "kind": "aggregator",
+    "last_checked_utc": "2026-08-28T09:17:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-28T09:17:18Z",
+    "name": "Dalamud official",
+    "plugin_count": 488,
+    "provider": "Dalamud official",
+    "source_id": 1,
+    "source_repo_url": "",
+    "url": "https://kamori.goats.dev/Plugin/PluginMaster"
+  },
+  "sourceId": 1,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.1.4.0",
+    "author": "0x0ade",
+    "authors_json": [
+      "0x0ade"
+    ],
+    "category_tags_json": [],
+    "changelog": "- API15 compat\n- Fix compatibility with some Linux environments\n- Fix performance regression, mostly noticeable on Linux",
+    "dalamud_api_level": 15,
+    "description": "Basic plugin that allows you to specify a custom resolution.",
+    "dip17_channel": "testing-live",
+    "download_count": 14707,
+    "download_link_install": "https://kamori.goats.dev/Plugin/Download/CustomResolution2782?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+    "download_link_testing": "https://kamori.goats.dev/Plugin/Download/CustomResolution2782?isUpdate=False&isTesting=True&branch=api9&isDip17=True",
+    "download_link_update": "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api9/plugins/CustomResolution2782/latest.zip",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 1,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "last_update": 1777769896,
+    "minimum_dalamud_version": null,
+    "name": "CustomResolution",
+    "plugin_id": 332,
+    "punchline": "Enforces a custom resolution for the game, similar to NVIDIA DSR.",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.1.4.0",
+      "Author": "0x0ade",
+      "CategoryTags": null,
+      "Changelog": "- API15 compat\n- Fix compatibility with some Linux environments\n- Fix performance regression, mostly noticeable on Linux",
+      "DalamudApiLevel": 15,
+      "Description": "Basic plugin that allows you to specify a custom resolution.",
+      "DownloadCount": 14707,
+      "DownloadLinkInstall": "https://kamori.goats.dev/Plugin/Download/CustomResolution2782?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+      "DownloadLinkTesting": "https://kamori.goats.dev/Plugin/Download/CustomResolution2782?isUpdate=False&isTesting=True&branch=api9&isDip17=True",
+      "DownloadLinkUpdate": "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api9/plugins/CustomResolution2782/latest.zip",
+      "FeedbackMessage": null,
+      "FeedbackWebhook": null,
+      "IconUrl": null,
+      "ImageUrls": null,
+      "InternalName": "CustomResolution2782",
+      "IsHide": true,
+      "IsTestingExclusive": false,
+      "LastUpdate": 1777769896,
+      "LoadPriority": 0,
+      "Name": "CustomResolution",
+      "Punchline": "Enforces a custom resolution for the game, similar to NVIDIA DSR.",
+      "RepoUrl": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+      "Tags": [
+        "dsr",
+        "resolution",
+        "dpi",
+        "scale",
+        "scaling"
+      ],
+      "TestingAssemblyVersion": "1.1.6.0",
+      "TestingChangelog": "Since last testing:\n- Fix game freezing on exit with async interface.\nSince last stable:\n- Low-level change: Use new Dalamud API15 interface for async plugins.",
+      "TestingDalamudApiLevel": 15,
+      "_Dip17Channel": "testing-live",
+      "_isDip17Plugin": true
+    },
+    "repo_url": "https://gitea.0x0a.de/0x0ade/DP-CustomResolution",
+    "source_entry_key": "customresolution2782|1.1.4.0|15|15|320",
+    "source_id": 1,
+    "tags_json": [
+      "dsr",
+      "resolution",
+      "dpi",
+      "scale",
+      "scaling"
+    ],
+    "testing_assembly_version": "1.1.6.0",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 332
+  },
+  "variantId": 332
+}
