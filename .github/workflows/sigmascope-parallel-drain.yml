@@ -233,7 +233,7 @@ jobs:
             --database catalog/security-input/omega-catalog.sqlite \
             --definitions-revision "$definitions_revision"
 
-      - name: Process exact queue keys sequentially from the common Evidence base
+      - name: Process exact queue keys in one frozen Evidence hydration
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WORKER_IMAGE: ${{ needs.resolve-images.outputs.scan_image }}
@@ -258,52 +258,50 @@ jobs:
           defs=catalog/active-state/definitions/index.json
           catalog_index=catalog/active-state/catalog/index.json
           pipeline="$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
-          ordinal=0
-          while IFS= read -r queue_key; do
-            ordinal=$((ordinal + 1))
-            key_root="catalog/slot-work/key-$(printf '%02d' "$ordinal")"
-            candidate="$key_root/candidate"
-            work="$key_root/work"
-            bundle="catalog/slot-result-bundles/key-$(printf '%02d' "$ordinal")"
-            rm -rf "$key_root" "$bundle"
-            mkdir -p "$key_root"
+          candidate=catalog/slot-work/candidate
+          work=catalog/slot-work/work
+          rm -rf "$candidate" "$work" catalog/slot-result-bundles catalog/slot-work/bundle-reports
+          mkdir -p catalog/slot-result-bundles
 
-            python "$pipeline" \
-              --base-database catalog/security-input/omega-catalog.sqlite \
-              --current-evidence catalog/security-v2-current \
-              --candidate-evidence "$candidate" \
-              --work-dir "$work" \
-              --skip-marketplace \
-              --frozen-advisories catalog/active-state/definitions/osv-advisories.json \
-              --frozen-definitions catalog/active-state/definitions \
-              --catalog-revision "$(jq -r '.catalogRevision' "$catalog_index")" \
-              --definitions-revision "$(jq -r '.definitionsRevision' "$defs")" \
-              --scanner-revision "$(jq -r '.scannerRevision' "$defs")" \
-              --artifact-analysis-revision "$(jq -r '.artifactAnalysisRevision' "$defs")" \
-              --source-analysis-revision "$(jq -r '.sourceAnalysisRevision' "$defs")" \
-              --scanner-bundle-sha256 "$(jq -r '.scannerBundle.sha256' "$defs")" \
-              --rule-set-revision "$(jq -r '.ruleSetRevision' "$defs")" \
-              --advisory-revision "$(jq -r '.advisoryRevision' "$defs")" \
-              --queue-seed catalog/active-state/scan-queue.json \
-              --queue-key "$queue_key" \
-              --evidence-index-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/security-evidence-v2/index.json" \
-              --max-scans 1 \
-              --max-batch-seconds 3000 \
-              --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"
+          # Keep scanner/pipeline authority frozen, but constrain its ordinary select_next
+          # scheduler to this planner-owned slot. This shares one Evidence materialization
+          # across every exact key instead of rebuilding the full snapshot once per key.
+          python tools/security/sigmascope_worker_batch.py run \
+            --pipeline "$pipeline" \
+            --queue-keys-file catalog/slot-work/queue-keys.txt \
+            -- \
+            --base-database catalog/security-input/omega-catalog.sqlite \
+            --current-evidence catalog/security-v2-current \
+            --candidate-evidence "$candidate" \
+            --work-dir "$work" \
+            --skip-marketplace \
+            --frozen-advisories catalog/active-state/definitions/osv-advisories.json \
+            --frozen-definitions catalog/active-state/definitions \
+            --catalog-revision "$(jq -r '.catalogRevision' "$catalog_index")" \
+            --definitions-revision "$(jq -r '.definitionsRevision' "$defs")" \
+            --scanner-revision "$(jq -r '.scannerRevision' "$defs")" \
+            --artifact-analysis-revision "$(jq -r '.artifactAnalysisRevision' "$defs")" \
+            --source-analysis-revision "$(jq -r '.sourceAnalysisRevision' "$defs")" \
+            --scanner-bundle-sha256 "$(jq -r '.scannerBundle.sha256' "$defs")" \
+            --rule-set-revision "$(jq -r '.ruleSetRevision' "$defs")" \
+            --advisory-revision "$(jq -r '.advisoryRevision' "$defs")" \
+            --queue-seed catalog/active-state/scan-queue.json \
+            --evidence-index-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/security-evidence-v2/index.json" \
+            --max-batch-seconds 3000 \
+            --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"
 
-            python tools/security/sigmascope_result_bundle.py build \
-              --current-evidence catalog/security-v2-current \
-              --candidate-evidence "$candidate" \
-              --work-dir "$work" \
-              --definitions-root catalog/active-state/definitions \
-              --queue-key "$queue_key" \
-              --worker-image "$WORKER_IMAGE" \
-              --output "$bundle"
-
-            python tools/security/sigmascope_result_bundle.py validate \
-              --root "$bundle" \
-              --current-evidence catalog/security-v2-current
-          done < catalog/slot-work/queue-keys.txt
+          # The merger contract remains one immutable result bundle per exact queue key.
+          # Split only the report view; each bundle extracts its own variant-local delta
+          # from the common batch candidate and remains bound to the original Evidence head.
+          python tools/security/sigmascope_worker_batch.py bundles \
+            --current-evidence catalog/security-v2-current \
+            --candidate-evidence "$candidate" \
+            --work-dir "$work" \
+            --definitions-root catalog/active-state/definitions \
+            --queue-keys-file catalog/slot-work/queue-keys.txt \
+            --worker-image "$WORKER_IMAGE" \
+            --output-root catalog/slot-result-bundles \
+            --split-work-root catalog/slot-work/bundle-reports
 
       - uses: actions/upload-artifact@v7
         with:
@@ -635,6 +633,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          other_active="$(
+            gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow sigmascope-parallel-drain.yml \
+              --limit 100 \
+              --json databaseId,status | \
+            jq --arg current "$GITHUB_RUN_ID" '[.[] | select(((.databaseId | tostring) != $current) and (.status != "completed"))] | length'
+          )"
+          if [ "$other_active" -gt 0 ]; then
+            echo "Another active parallel drain already owns successor dispatch; not queuing a duplicate chain."
+            exit 0
+          fi
+
           if [ "$NEXT_MODE" = "parallel" ]; then
             next_wave=$((WAVE + 1))
             gh workflow run sigmascope-parallel-drain.yml \
@@ -669,6 +680,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          other_active="$(
+            gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow sigmascope-parallel-drain.yml \
+              --limit 100 \
+              --json databaseId,status | \
+            jq --arg current "$GITHUB_RUN_ID" '[.[] | select(((.databaseId | tostring) != $current) and (.status != "completed"))] | length'
+          )"
+          if [ "$other_active" -gt 0 ]; then
+            echo "Another active parallel drain already owns successor dispatch; skipping serialized fallback dispatch."
+            exit 0
+          fi
+
           if [ "$SERIAL_FALLBACK" = "true" ]; then
             gh workflow run sigmascope.yml --repo "$GITHUB_REPOSITORY" --ref sigmascope
             echo "Parallel drain yielded to serialized SigmaScope: $BLOCKED_REASON"
