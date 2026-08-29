@@ -1,0 +1,98 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:BlackBox.dll: Dalamud.Hooking",
+      "metadata:BlackBox.dll: HookFromAddress",
+      "il:BlackBox.dll:BlackBox.BlackBox..ctor+0x137: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:BlackBox.dll: Dalamud.Hooking",
+      "artifact:BlackBox.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:BlackBox.dll: HttpListener",
+      "il:BlackBox.dll:BlackBox.BlackBox.RunServer+0xc: call System.Net.HttpListener.Start: HttpListener",
+      "il:BlackBox.dll:BlackBox.BlackBox.RunServer+0x21: call System.Net.HttpListener.GetContext: HttpListener",
+      "il:BlackBox.dll:BlackBox.BlackBox.ProcessRequest+0x1: callvirt System.Net.HttpListenerContext.get_Request: HttpListener",
+      "il:BlackBox.dll:BlackBox.BlackBox.ProcessRequest+0x6: callvirt System.Net.HttpListenerRequest.get_HttpMethod: HttpListener",
+      "il:BlackBox.dll:BlackBox.BlackBox.ProcessRequest+0x18: callvirt System.Net.HttpListenerContext.get_Request: HttpListener",
+      "il:BlackBox.dll:BlackBox.BlackBox.ProcessRequest+0x1d: callvirt System.Net.HttpListenerRequest.get_Url: HttpListener",
+      "il:BlackBox.dll:BlackBox.BlackBox.ProcessRequest+0x84: callvirt System.Net.HttpListenerContext.get_Response: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:BlackBox.dll: System.Diagnostics.Process",
+      "metadata:BlackBox.dll: ProcessStartInfo",
+      "metadata:BlackBox.dll: ShellExecute",
+      "metadata:BlackBox.dll: Process.Start",
+      "il:BlackBox.dll:BlackBox.BlackBox.SendNotificationIfUnfocused+0x15: newobj System.Diagnostics.Process..ctor: System.Diagnostics.Process",
+      "il:BlackBox.dll:BlackBox.BlackBox.SendNotificationIfUnfocused+0x1b: callvirt System.Diagnostics.Process.get_StartInfo: System.Diagnostics.Process",
+      "il:BlackBox.dll:BlackBox.BlackBox.SendNotificationIfUnfocused+0x25: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:BlackBox.dll:BlackBox.BlackBox.SendNotificationIfUnfocused+0x25: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BlackBox.dll: https://github.com/bees-xiv/bees-build"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.44196c298216",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BlackBox.dll: https://universalis.app/api/v2/tax-rates"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.82ebfb3d072f",
+    "severity": "informational",
+    "title": "Endpoint: universalis.app"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:BlackBox.dll: System.Net.Http.HttpClient",
+      "il:BlackBox.dll:<GetTaxRates>d__58.MoveNext+0x27: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:BlackBox.dll:<GetTaxRates>d__58.MoveNext+0x2d: call System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
