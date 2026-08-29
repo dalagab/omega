@@ -1,0 +1,65 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:CraftingList.dll:CraftingList.Utility.Module.FireRaw+0x15: callvirt AtkUnitBase_FireCallbackDelegate.Invoke",
+      "il:CraftingList.dll:CraftingList.Utility.Module.ClickList+0x23: callvirt ListCallbackDelegate.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:CraftingList.dll: Dalamud.Hooking",
+      "metadata:CraftingList.dll: SigScanner",
+      "metadata:CraftingList.dll: HookFromAddress",
+      "il:CraftingList.dll:CraftingList.CraftingList.InitializeSingletons+0x8: call CraftingList.Utility.Service.get_SigScanner: SigScanner",
+      "il:CraftingList.dll:CraftingList.CraftingList.InitializeSingletons+0x1c: call CraftingList.Utility.Service.get_SigScanner: SigScanner",
+      "il:CraftingList.dll:CraftingList.Utility.ChatManager..ctor+0x28: call CraftingList.Utility.Service.get_SigScanner: SigScanner",
+      "il:CraftingList.dll:CraftingList.Utility.ChatManager..ctor+0x32: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "il:CraftingList.dll:CraftingList.Utility.Module.Initialize+0x0: call CraftingList.Utility.Service.get_SigScanner: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:CraftingList.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:CraftingList.dll: System.Diagnostics.Process",
+      "metadata:CraftingList.dll: ProcessStartInfo",
+      "metadata:CraftingList.dll: ShellExecute",
+      "metadata:CraftingList.dll: Process.Start",
+      "il:CraftingList.dll:CraftingList.PluginUI.DrawSettingsWindow+0xeb: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:CraftingList.dll:CraftingList.PluginUI.DrawSettingsWindow+0xeb: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:CraftingList.dll:CraftingList.PluginUI.DrawSettingsWindow+0xf2: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:CraftingList.dll:CraftingList.PluginUI.DrawSettingsWindow+0xf2: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  }
+]
