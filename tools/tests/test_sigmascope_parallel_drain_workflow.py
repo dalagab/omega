@@ -10,13 +10,16 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         for required in (
             "group: omega-catalog-sigmascope-exclusive", "queue: max", "default: 4", "default: 10",
             "sigmascope_parallel_drain_plan.py", "strategy:", "fail-fast: false", "QUEUE_KEYS_JSON",
-            '--queue-key "$queue_key"', "sigmascope_result_bundle.py build", "sigmascope_result_merger.py",
+            "sigmascope_worker_batch.py run", "--queue-keys-file catalog/slot-work/queue-keys.txt",
+            "sigmascope_worker_batch.py bundles", "sigmascope_result_merger.py",
             "--queue-seed catalog/active-state/scan-queue.json", "security_developer_audit.py",
             "evidence_storage_audit.py", "publish_security_evidence_v2.py", "--expected-parent-sha",
             "publish_deep_scan_state.py", "catalog-client-publish.yml", "authority_lock_held: true",
             "gh workflow run sigmascope-parallel-drain.yml",
         ):
             self.assertIn(required, text)
+        self.assertNotIn('--queue-key "$queue_key"', text)
+        self.assertNotIn("while IFS= read -r queue_key; do", text)
         self.assertNotIn("sigmascope_merge_equivalence.py", text)
         self.assertNotIn("confirm_migration", text)
         self.assertNotIn("shadow_run_id", text)
