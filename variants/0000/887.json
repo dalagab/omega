@@ -1,0 +1,3319 @@
+{
+  "analysis": {
+    "analysisId": "65e9eb3ff920519ed20e1dac591b5254520883bd64927fe0e7fd86f6b8cac639",
+    "artifactSha256": "92f9278f22ba46df9e4fbb796df6df95ba8a5bb4769f819faea1015c691c87a3",
+    "path": "artifacts/92/92f9278f22ba46df9e4fbb796df6df95ba8a5bb4769f819faea1015c691c87a3/analyses/65e9eb3ff920519ed20e1dac591b5254520883bd64927fe0e7fd86f6b8cac639",
+    "recordCount": 2434
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "92f9278f22ba46df9e4fbb796df6df95ba8a5bb4769f819faea1015c691c87a3",
+    "artifact_url": "https://github.com/Bluefissure/DalamudPlugins/raw/Bluefissure/plugins/HousingPos/latest.zip",
+    "assembly_version": "1.3.2.0",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: api.4c43.work",
+      "Endpoint: github.com",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access",
+      "Raw sockets"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "memory",
+        "description": "References APIs used to open another process or read/write its memory.",
+        "evidence": [
+          "metadata:HousingPos.dll: ReadProcessMemory",
+          "metadata:HousingPos.dll: WriteProcessMemory",
+          "il:HousingPos.dll:HousingPos.Memory.Read+0x25: call HousingPos.Memory.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+          "il:HousingPos.dll:HousingPos.Memory.Read+0x27: call HousingPos.Memory.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+          "il:HousingPos.dll:HousingPos.Memory.Write+0x11: call HousingPos.Memory.WriteProcessMemory -> kernel32.dll!WriteProcessMemory: WriteProcessMemory",
+          "artifact:HousingPos.dll: ReadProcessMemory",
+          "artifact:HousingPos.dll: WriteProcessMemory"
+        ],
+        "ruleId": "memory.process",
+        "severity": "high",
+        "title": "Cross-process memory access"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:HousingPos.dll: System.Diagnostics.Process",
+          "il:HousingPos.dll:HousingPos.Memory.Read+0x16: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:HousingPos.dll:HousingPos.Memory.Read+0x1b: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+          "il:HousingPos.dll:HousingPos.Memory.Read+0x18: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:HousingPos.dll:HousingPos.Memory.Read+0x1d: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+          "il:HousingPos.dll:HousingPos.Memory.Write+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:HousingPos.dll:HousingPos.Memory.Write+0x5: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+          "il:HousingPos.dll:HousingPos.Win32Clipboard.CopyTextToClipboard+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "artifact:HousingPos.deps.json: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:HousingPos.dll: https://api.4c43.work/ffxiv"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.783bbfd2f247",
+        "severity": "caution",
+        "title": "Endpoint: api.4c43.work"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:HousingPos.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:HousingPos.dll: SigScanner",
+          "metadata:HousingPos.dll: Dalamud.Hooking",
+          "metadata:HousingPos.dll: HookFromAddress",
+          "il:HousingPos.dll:HousingPos.HousingPos.Initialize+0xb: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+          "il:HousingPos.dll:HousingPos.HousingPos.Initialize+0x44: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "artifact:HousingPos.dll: Dalamud.Hooking",
+          "artifact:HousingPos.dll: SigScanner",
+          "artifact:HousingPos.dll: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "artifact:HousingPos.deps.json: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:HousingPos.dll: System.Net.Http.HttpClient",
+          "il:HousingPos.dll:<GetItems>d__4.MoveNext+0x11: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:HousingPos.dll:<GetItems>d__4.MoveNext+0x31: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+          "il:HousingPos.dll:<GetMap>d__3.MoveNext+0x11: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:HousingPos.dll:<GetMap>d__3.MoveNext+0x26: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+          "il:HousingPos.dll:<Post>d__2.MoveNext+0x4b: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:HousingPos.dll:<Post>d__2.MoveNext+0xc1: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:HousingPos.json: https://github.com/Bluefissure/HousingPos"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.c2005e06d6ef",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      }
+    ],
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 2,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 50651,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.3.2.0",
+        "artifactBytes": 50651,
+        "artifactSha256": "92f9278f22ba46df9e4fbb796df6df95ba8a5bb4769f819faea1015c691c87a3",
+        "catalogAssemblyVersion": "1.3.2.0",
+        "manifestInternalName": "HousingPos",
+        "manifestPath": "HousingPos.json",
+        "manifestRepositoryUrl": "https://github.com/Bluefissure/HousingPos",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/Bluefissure/DalamudPlugins/Bluefissure/plugins/HousingPos/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "api.4c43.work",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "api.4c43.work",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 11,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 11,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: api.4c43.work",
+        "Endpoint: github.com",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access",
+        "Raw sockets"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "game.memory.read",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "network.socket",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 2,
+        "informational": 2
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 101,
+          "exactVersionObservedCount": 99,
+          "families": {
+            "managed-assembly": 14,
+            "native": 2,
+            "nuget": 85
+          },
+          "fingerprint": "4eb4f980f351ae9a5ccbf46e3167c5e85caafc150af2958188ffc41e433505cc",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 10
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalAlloc",
+              "library": "kernel32.dll",
+              "managedName": "GlobalAlloc",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalFree",
+              "library": "kernel32.dll",
+              "managedName": "GlobalFree",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalLock",
+              "library": "kernel32.dll",
+              "managedName": "GlobalLock",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalUnlock",
+              "library": "kernel32.dll",
+              "managedName": "GlobalUnlock",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "ReadProcessMemory",
+              "library": "kernel32.dll",
+              "managedName": "ReadProcessMemory",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "WriteProcessMemory",
+              "library": "kernel32.dll",
+              "managedName": "WriteProcessMemory",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "CloseClipboard",
+              "library": "user32.dll",
+              "managedName": "CloseClipboard",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "EmptyClipboard",
+              "library": "user32.dll",
+              "managedName": "EmptyClipboard",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "OpenClipboard",
+              "library": "user32.dll",
+              "managedName": "OpenClipboard",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "SetClipboardData",
+              "library": "user32.dll",
+              "managedName": "SetClipboardData",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 15,
+            "required": 85
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 16,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 85,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 15,
+            "optional": 0,
+            "required": 85,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 101
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "api.4c43.work",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 2,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "api.4c43.work",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://api.4c43.work/ffxiv"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Bluefissure/HousingPos"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Bluefissure/DalamudPlugins/raw/Bluefissure/plugins/HousingPos/latest.zip",
+        "internalName": "HousingPos",
+        "manifestVersion": "1.3.2.0",
+        "observationId": 1597,
+        "observationKey": "manifest-4e4a6075a3b0917f5dee61341449",
+        "repositoryUrl": "https://github.com/Bluefissure/HousingPos",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 887
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 5,
+        "uncompressedBytes": 145204
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-c2f7c152c3ee28c5",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-887",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-d7387e72d3c453403333",
+        "variantId": 887,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-29T18:04:25Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "92f9278f22ba46df9e4fbb796df6df95ba8a5bb4769f819faea1015c691c87a3",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Bluefissure/HousingPos",
+          "https://github.com/Bluefissure/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Bluefissure/HousingPos",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 19312,
+    "scanned_at_utc": "2026-08-29T18:04:25Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Bluefissure/HousingPos",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 887
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "92f9278f22ba46df9e4fbb796df6df95ba8a5bb4769f819faea1015c691c87a3",
+      "current_assembly_version": "1.3.2.0",
+      "current_scan_id": 19312,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-29T18:04:26Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 887
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 101,
+      "artifact_only_count": 101,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "11.0.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:housingpos",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "HousingPos",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.3.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:imgui.net",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "ImGui.NET",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.82.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "5.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "12.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "11.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:indexrange",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "IndexRange",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.netcore.platforms",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.NETCore.Platforms",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.netcore.targets",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.NETCore.Targets",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.1.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.win32.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Win32.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.win32.systemevents",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Win32.SystemEvents",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.6.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:netstandard.library",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NETStandard.Library",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.6.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:newtonsoft.json",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "12.0.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.debian.8-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.fedora.23-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.fedora.23-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.fedora.24-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.fedora.24-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.io.compression",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.IO.Compression",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.net.http",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.Net.Http",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.security.cryptography.apple",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.Security.Cryptography.Apple",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.opensuse.13.2-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.opensuse.13.2-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.opensuse.42.1-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.opensuse.42.1-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.osx.10.10-x64.runtime.native.system.security.cryptography.apple",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography.Apple",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.osx.10.10-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.rhel.7-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.rhel.7-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.ubuntu.14.04-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.ubuntu.14.04-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.ubuntu.16.04-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.ubuntu.16.04-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.ubuntu.16.10-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.ubuntu.16.10-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx.mathematics",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX.Mathematics",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.appcontext",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.AppContext",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.buffers",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Buffers",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.4.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.collections",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.collections.concurrent",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.componentmodel.annotations",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.ComponentModel.Annotations",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.7.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.console",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.data.datasetextensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Data.DataSetExtensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.5.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.debug",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.Debug",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.diagnosticsource",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.DiagnosticSource",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.tools",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.Tools",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.tracing",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.Tracing",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.drawing.common",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Drawing.Common",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.6.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.globalization",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Globalization",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.globalization.calendars",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Globalization.Calendars",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.globalization.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Globalization.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.compression",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.compression.zipfile",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.Compression.ZipFile",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.filesystem",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.FileSystem",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.filesystem.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.FileSystem.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.linq",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.linq.expressions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.memory",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.5.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.net.http",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.net.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.net.sockets",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Net.Sockets",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.numerics.vectors",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.4.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.objectmodel",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.emit",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Emit",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.emit.ilgeneration",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.emit.lightweight",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Emit.Lightweight",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.typeextensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.TypeExtensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.resources.resourcemanager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Resources.ResourceManager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.compilerservices.unsafe",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.5.2"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.handles",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.Handles",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.interopservices",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.interopservices.runtimeinformation",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.InteropServices.RuntimeInformation",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.numerics",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.Numerics",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.algorithms",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Algorithms",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.cng",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Cng",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.csp",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Csp",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.encoding",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Encoding",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.x509certificates",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.X509Certificates",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.text.encoding",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Text.Encoding",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.text.encoding.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.text.regularexpressions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading.tasks",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading.Tasks",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading.tasks.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading.Tasks.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading.timer",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading.Timer",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.xml.readerwriter",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Xml.ReaderWriter",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.xml.xdocument",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Xml.XDocument",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-29T18:04:26Z",
+      "comparison_id": 1139,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 19312,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 887,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 2150,
+          "encoding": "json",
+          "path": "derived/variants/0000/887/advisory-matches.json",
+          "recordDigest": "50e4416712b8e1ea2cde83b82f9a730202da6b1e741298726006bde20b1741e4",
+          "records": 4,
+          "sha256": "cbb3c1bcc277b4c2ea93e5b36652379180ed896ac60ecee428b02dd211cf102e"
+        }
+      ],
+      "recordDigest": "50e4416712b8e1ea2cde83b82f9a730202da6b1e741298726006bde20b1741e4",
+      "records": 4
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0000/887/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 98827,
+          "encoding": "json",
+          "path": "derived/variants/0000/887/dependency-resolutions.json",
+          "recordDigest": "a5aa1fa732f755e10e1d52631b458f1dd7cba2243c58127d8f5d10d59fa9afa2",
+          "records": 101,
+          "sha256": "969d14bcab63f89a35cf64311cdcfed9b1b5da54ca331b29a9094058a4b41d5b"
+        }
+      ],
+      "recordDigest": "a5aa1fa732f755e10e1d52631b458f1dd7cba2243c58127d8f5d10d59fa9afa2",
+      "records": 101
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0000/887/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "3d8720e6a7dbaacd390d0d0a6f6891b7e8ed7a636e1fdbd7555b2825f81c6094",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "0ea36b02444ff23259bd89ad2ebc74225c65313ff4a7e2f8ccd449c5d69bc346",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "0fe4d39cb35316dc6e47b6da125f58ed3c53ac6bea415305020e520cece6233f",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "2819d6f670952223700d5142c3ef336b97754d3f652a204e879af655e8d1de3c",
+        "records": 101,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "758cb154cc43a01caa98bdfbe7777664d63a2d5323dfc52b399cb02b467df900",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "b76f733196eb93e6ce2b2476b61b46fd77f5eb2115a4ec25e72cee6f473a5766",
+        "records": 1739,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "30b8038caa34a6e8beef709d9b9a03baceaa2af043e855c09ea05e28e8d67400",
+        "records": 75,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "a33c40ecba73f3b7a6b678b92f41a198c64c313ec7c1b6dd38eafeeebed10933",
+        "records": 439,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "4ffe18deb2e475c7d614878a68a2af6de93a987b30e897aa974079a1bc1ca960",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "2f799cb29b88149cdccfe867654313397ff12dbdc6a4449eb9fb3dcc470f2e48",
+        "records": 10,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "51676029cc51eac332b3f2b7006d1c305e1f9d2f400417be40e747f77da2072c",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "7dda33c49e0e388de5035ff55240d874e2955d389e200ed652a54a7fb1849983",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "34a2f8645a5a5cab9be31fb733b1434b0017099c8eadc506b4f536fe0ec8dc4e",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "4d1f8e613b314d9d0b5f1258237e91d8d88b7439cff36b15a34b0e1e89c86afd",
+        "records": 35,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-948862ad4967bc0e6f66cdecae6034c834b93b6f7bcd22fcae08cbdb3a566677",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "HousingPos",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "HousingPos",
+    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "plugin_id": 665
+  },
+  "pluginId": 665,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "A xivlauncher plugin to save/load positions of the housing furnitures.",
+      "images": [
+        "https://i.loli.net/2021/01/18/GS6HkexFmKjJn5v.png"
+      ],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 10994,
+      "summary": "A housing tool",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Bluefissure/HousingPos",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "A xivlauncher plugin to save/load positions of the housing furnitures.",
+      "homepage": "",
+      "images": [
+        "https://i.loli.net/2021/01/18/GS6HkexFmKjJn5v.png"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/Bluefissure/HousingPos"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# HousingPos\n[![CN doc](https://img.shields.io/badge/doc-%E4%B8%AD%E6%96%87-brightgreen)](https://github.com/Bluefissure/HousingPos/blob/master/README_CN.md)\n\nHousingPos is a Dalamud plugin that reads and saves FF14 housing furniture position presets. It can save the current housing furniture placement presets and apply them later.\n\n![quicker_27a98420-c717-4735-b3d6-5c331655c59d.png](https://i.loli.net/2021/01/18/GS6HkexFmKjJn5v.png)\n\n## Installation\n\nPlease refer to [this page](https://github.com/Bluefissure/DalamudPlugins/tree/Bluefissure).\n\nUse `/xhouse` in the game to open the config panel.\n\n## Instructions\n\nPlease clear the furniture list before entering the room. The furniture list will be automatically read after opening the `Housing-Indoor Furnishings` page.\n\nBDTH: After enabling it, it will integrate with [BDTHPlugin](https://github.com/LeonBlade/BDTHPlugin). Clicking on the set button will automatically invoke the BDTH placement command.\n\n### Import/Export Of The Whole House\n\nCopy：Copy the furniture list to the clipboard. At the same time, you will be prompted: Copied ? items to your clipboard. For purchasing furniture only, please use `Import` / `Export` to save the preset.\n\nExport：Export the furniture position preset to the clipboard. Hint：Exported ? items to your clipboard.\n\nImport：Import the furniture position preset from the clipboard. Hint：Imported ? items to your clipboard.  \n\n### Create/Export Group Of Furnitures\n\nGroup：\n- Click the `group` button to enter the group mode. Furniture can be added to the group. The first furniture will be used as a benchmark, and the rest will be calculated by relative coordinates.    \n- After selection, click the `grouping` button to exit the group mode. The grouped furniture will be added to the data of the first furniture. At this time, the furniture combination can be exported by using `Single Export`.\n- Check `Single Export` to export a furniture or group separately.  \n- For application grouping, you need to manually change the coordinates of the benchmark furniture at **XYZR** *(consistent with BDTH coordinates)*, and then the rest of the furniture in the group will automatically calculate the updated coordinates.  \n### Draw on screen\n\nDraw on screen：Draw items on screen.  \n\n### Export and Import with Cloud\n\nCloud Upload / Cloud Download：\n- Just like The Whole House's Import / Export,You can change the Server Address in the interface that appears after clicking `Cloud Upload`.If you want, you can set up [the Back End](https://github.com/lclichen/BackendForHousingPos) yourself.\n\n- [IMEPlugin](https://github.com/Bluefissure/IMEPlugin) is recommended for Chinese input.\n\n- Optional input contents: Tags (You can `Add Custom Tags`), Uploader (`Anonymous` optional).\n\n## FAQs\n\n- Can I use it to steal others' housing presets?\n\n  No, you can only read the furniture list of the house **which you can decorate**.",
+      "title": "HousingPos",
+      "url": "https://github.com/Bluefissure/HousingPos"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "bee01e1828885e0f1ab7f38eeb4f14f6727b60a63572127c2d135292de3d9d58",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "84dac9429250079dbaa5bc0a85615faba1736648ff57eb46a2e278ee849fd75c",
+        "records": 11
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "5d331e085a091c796ddd71ea031017a2e78f8fbaaf0a474c295072dfb8aa0d09",
+        "records": 11
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "92f9278f22ba46df9e4fbb796df6df95ba8a5bb4769f819faea1015c691c87a3",
+    "artifact_url": "https://github.com/Bluefissure/DalamudPlugins/raw/Bluefissure/plugins/HousingPos/latest.zip",
+    "assembly_version": "1.3.2.0",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: api.4c43.work",
+      "Endpoint: github.com",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access",
+      "Raw sockets"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 2,
+    "plugin_id": 665,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 50651,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.3.2.0",
+        "artifactBytes": 50651,
+        "artifactSha256": "92f9278f22ba46df9e4fbb796df6df95ba8a5bb4769f819faea1015c691c87a3",
+        "catalogAssemblyVersion": "1.3.2.0",
+        "manifestInternalName": "HousingPos",
+        "manifestPath": "HousingPos.json",
+        "manifestRepositoryUrl": "https://github.com/Bluefissure/HousingPos",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/Bluefissure/DalamudPlugins/Bluefissure/plugins/HousingPos/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "api.4c43.work",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "api.4c43.work",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 11,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 11,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: api.4c43.work",
+        "Endpoint: github.com",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access",
+        "Raw sockets"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "game.memory.read",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "network.socket",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 2,
+        "informational": 2
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 101,
+          "exactVersionObservedCount": 99,
+          "families": {
+            "managed-assembly": 14,
+            "native": 2,
+            "nuget": 85
+          },
+          "fingerprint": "4eb4f980f351ae9a5ccbf46e3167c5e85caafc150af2958188ffc41e433505cc",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 10
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalAlloc",
+              "library": "kernel32.dll",
+              "managedName": "GlobalAlloc",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalFree",
+              "library": "kernel32.dll",
+              "managedName": "GlobalFree",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalLock",
+              "library": "kernel32.dll",
+              "managedName": "GlobalLock",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalUnlock",
+              "library": "kernel32.dll",
+              "managedName": "GlobalUnlock",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "ReadProcessMemory",
+              "library": "kernel32.dll",
+              "managedName": "ReadProcessMemory",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "WriteProcessMemory",
+              "library": "kernel32.dll",
+              "managedName": "WriteProcessMemory",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "CloseClipboard",
+              "library": "user32.dll",
+              "managedName": "CloseClipboard",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "EmptyClipboard",
+              "library": "user32.dll",
+              "managedName": "EmptyClipboard",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "OpenClipboard",
+              "library": "user32.dll",
+              "managedName": "OpenClipboard",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "HousingPos.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "SetClipboardData",
+              "library": "user32.dll",
+              "managedName": "SetClipboardData",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 15,
+            "required": 85
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 16,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 85,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 15,
+            "optional": 0,
+            "required": 85,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 101
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "api.4c43.work",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 2,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "api.4c43.work",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://api.4c43.work/ffxiv"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Bluefissure/HousingPos"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Bluefissure/DalamudPlugins/raw/Bluefissure/plugins/HousingPos/latest.zip",
+        "internalName": "HousingPos",
+        "manifestVersion": "1.3.2.0",
+        "observationId": 1597,
+        "observationKey": "manifest-4e4a6075a3b0917f5dee61341449",
+        "repositoryUrl": "https://github.com/Bluefissure/HousingPos",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 887
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 5,
+        "uncompressedBytes": 145204
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-c2f7c152c3ee28c5",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-887",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-d7387e72d3c453403333",
+        "variantId": 887,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-29T18:04:25Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "92f9278f22ba46df9e4fbb796df6df95ba8a5bb4769f819faea1015c691c87a3",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Bluefissure/HousingPos",
+          "https://github.com/Bluefissure/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Bluefissure/HousingPos",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 19312,
+    "scanned_at_utc": "2026-08-29T18:04:25Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 34,
+    "source_repository": "https://github.com/Bluefissure/HousingPos",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 887
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "c71ccee5fb7c0a64dc931c8126d3906ebe3d5e8da844b4b90fbff171e8502946",
+    "curated_id": "williamw1979-ffxiv",
+    "description": "Community mirror/aggregate that overlaps the primary Puni.sh catalog; enabled so Omega can expose explicit source choice without repeated startup downloads.",
+    "discovered_by": "curated-sources.json",
+    "enabled_by_default": 1,
+    "etag": "\"06c073a7bde093282c62c2259cd20b4d8960c88c413a80d37fa85be8998f95d6\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "aggregator",
+    "last_checked_utc": "2026-08-28T09:17:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-28T09:17:18Z",
+    "name": "WilliamW1979 FFXIV mirror",
+    "plugin_count": 112,
+    "provider": "WilliamW1979 FFXIV mirror",
+    "source_id": 34,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/WilliamW1979/FFXIV/main/repository.json"
+  },
+  "sourceId": 34,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.3.2.0",
+    "author": "Bluefissure",
+    "authors_json": [
+      "Bluefissure"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 11,
+    "description": "Automatically save/load the positions of housing furnitures.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/Bluefissure/DalamudPlugins/raw/Bluefissure/plugins/HousingPos/latest.zip",
+    "download_link_testing": "https://github.com/Bluefissure/DalamudPlugins/raw/Bluefissure/plugins/HousingPos/latest.zip",
+    "download_link_update": "https://github.com/Bluefissure/DalamudPlugins/raw/Bluefissure/plugins/HousingPos/latest.zip",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-28T06:13:16Z",
+    "last_update": 1733107895,
+    "minimum_dalamud_version": null,
+    "name": "HousingPos",
+    "plugin_id": 665,
+    "punchline": "A housing tool",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.3.2.0",
+      "Author": "Bluefissure",
+      "CanUnloadAsync": false,
+      "DalamudApiLevel": 11,
+      "Description": "Automatically save/load the positions of housing furnitures.",
+      "DownloadCount": 0,
+      "DownloadLinkInstall": "https://github.com/Bluefissure/DalamudPlugins/raw/Bluefissure/plugins/HousingPos/latest.zip",
+      "DownloadLinkTesting": "https://github.com/Bluefissure/DalamudPlugins/raw/Bluefissure/plugins/HousingPos/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/Bluefissure/DalamudPlugins/raw/Bluefissure/plugins/HousingPos/latest.zip",
+      "InternalName": "HousingPos",
+      "IsHide": "False",
+      "IsTestingExclusive": "False",
+      "LastUpdate": "1733107895",
+      "LoadPriority": 0,
+      "LoadRequiredState": 0,
+      "LoadSync": false,
+      "Name": "HousingPos",
+      "Punchline": "A housing tool",
+      "RepoUrl": "https://github.com/Bluefissure/HousingPos",
+      "SourceRepo": "https://github.com/Bluefissure/DalamudPlugins/raw/Bluefissure/pluginmaster.json",
+      "Tags": [
+        "bluefissure",
+        "housing"
+      ]
+    },
+    "repo_url": "https://github.com/Bluefissure/HousingPos",
+    "source_entry_key": "housingpos|1.3.2.0|11|0|81",
+    "source_id": 34,
+    "tags_json": [
+      "bluefissure",
+      "housing"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 887
+  },
+  "variantId": 887
+}
