@@ -1,0 +1,3729 @@
+{
+  "analysis": {
+    "analysisId": "f062f53ba1095d3560cb60711a4494d93845f62b83421d48382762829c98bee7",
+    "artifactSha256": "582252a7be08aa167d71bd6fc1f8efef1d058be1676d04174912adb80e5367d8",
+    "path": "artifacts/58/582252a7be08aa167d71bd6fc1f8efef1d058be1676d04174912adb80e5367d8/analyses/f062f53ba1095d3560cb60711a4494d93845f62b83421d48382762829c98bee7",
+    "recordCount": 25856
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "582252a7be08aa167d71bd6fc1f8efef1d058be1676d04174912adb80e5367d8",
+    "artifact_url": "https://github.com/awgil/ffxiv_plugin_distribution/raw/master/plugins/BossMod/latest.zip",
+    "assembly_version": "0.0.0.77",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.camera.control",
+        "confidence": "very-high",
+        "evidence": [
+          "il:BossMod.dll:BossMod.Camera..ctor+0x28: call BossMod.Camera.set__getMatrixSingleton",
+          "il:BossMod.dll:BossMod.Camera.Update+0x1b: call BossMod.Camera.set_ViewProj",
+          "il:BossMod.dll:BossMod.Camera.Update+0x2f: call BossMod.Camera.set_Proj",
+          "il:BossMod.dll:BossMod.Camera.Update+0x4b: call BossMod.Camera.set_View",
+          "il:BossMod.dll:BossMod.Camera.Update+0x5c: call BossMod.Camera.set_CameraWorld",
+          "il:BossMod.dll:BossMod.Camera.Update+0x8d: call BossMod.Camera.set_CameraAzimuth",
+          "il:BossMod.dll:BossMod.Camera.Update+0xab: call BossMod.Camera.set_CameraAltitude",
+          "il:BossMod.dll:BossMod.Camera.Update+0xbf: call BossMod.Camera.set_ViewportSize"
+        ],
+        "indirect": false,
+        "label": "Camera control",
+        "reachable": true,
+        "reason": "References camera-mutating functionality."
+      },
+      {
+        "automationLevel": "full-gameplay-automation",
+        "capabilityId": "game.character.execute_action",
+        "confidence": "high",
+        "evidence": [
+          "il:BossMod.dll:BossMod.ActionManagerEx.UseAction+0x1c: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "indirect": false,
+        "label": "Character action execution",
+        "reachable": false,
+        "reason": "Invokes game action-execution APIs that can perform combat, crafting, gathering, or other character actions."
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.interact",
+        "confidence": "high",
+        "evidence": [
+          "il:BossMod.dll:BossMod.DebugObjects.ObjectContextMenu+0x2f: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "indirect": false,
+        "label": "World/NPC interaction control",
+        "reachable": false,
+        "reason": "Invokes an interaction mechanism capable of activating an NPC, object, or other world target."
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "very-high",
+        "evidence": [
+          "il:BossMod.dll:BossMod.DebugObjects.ObjectContextMenu+0x12: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target",
+          "il:BossMod.dll:BossMod.MainDebugWindow.DrawTargets+0x1be: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": true,
+        "reason": "References a target-setting API rather than only reading the current target."
+      }
+    ],
+    "automation_level": "full-gameplay-automation",
+    "capabilities_json": [
+      "Camera control",
+      "Character action execution",
+      "Character target control",
+      "Dynamic code loading",
+      "Endpoint: github.com",
+      "Endpoint: puni.sh",
+      "Endpoint: raw.githubusercontent.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "Raw sockets",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 10,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:BossMod.dll:BossMod.ActionManagerEx.UseAction+0x1c: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "ruleId": "automation.game.character.execute_action",
+        "severity": "high",
+        "title": "Character action execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:BossMod.dll: System.Diagnostics.Process",
+          "il:BossMod.dll:BossMod.DebugCollision.DrawObjectShape+0x1f8: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+          "il:BossMod.dll:BossMod.DebugCollision.Report+0x290: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+          "artifact:BossMod.dll: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "artifact:BossMod.deps.json: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BossMod.dll: https://puni.sh/api/repository/veyn"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.9e08800326ee",
+        "severity": "caution",
+        "title": "Endpoint: puni.sh"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:BossMod.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:BossMod.dll: Dalamud.Hooking",
+          "metadata:BossMod.dll: SigScanner",
+          "metadata:BossMod.dll: HookFromAddress",
+          "il:BossMod.dll:BossMod.DebugAddon.Draw+0x2c0: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:BossMod.dll:BossMod.DebugAddon.Draw+0x3a6: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:BossMod.dll:BossMod.DebugCollision..ctor+0x1d: call BossMod.Service.get_SigScanner: SigScanner",
+          "il:BossMod.dll:BossMod.DebugCollision..ctor+0x28: callvirt Dalamud.Game.ISigScanner.GetStaticAddressFromSig: SigScanner",
+          "il:BossMod.dll:BossMod.DebugCollision.DrawObjectShape+0x1ee: call BossMod.Service.get_SigScanner: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:BossMod.dll: E:\\sources\\ff14\\BossMod\\BossMod\\obj\\x64\\Release\\BossMod.pdb",
+          "artifact:BossMod.dll: s://puni.sh/api/repository/veyn"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "artifact:BossMod.deps.json: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:BossMod.dll:BossMod.DebugObjects.ObjectContextMenu+0x12: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target",
+          "il:BossMod.dll:BossMod.MainDebugWindow.DrawTargets+0x1be: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:BossMod.dll:BossMod.DebugObjects.ObjectContextMenu+0x2f: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "ruleId": "automation.game.character.interact",
+        "severity": "caution",
+        "title": "World/NPC interaction control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for camera control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:BossMod.dll:BossMod.Camera..ctor+0x28: call BossMod.Camera.set__getMatrixSingleton",
+          "il:BossMod.dll:BossMod.Camera.Update+0x1b: call BossMod.Camera.set_ViewProj",
+          "il:BossMod.dll:BossMod.Camera.Update+0x2f: call BossMod.Camera.set_Proj",
+          "il:BossMod.dll:BossMod.Camera.Update+0x4b: call BossMod.Camera.set_View"
+        ],
+        "ruleId": "automation.game.camera.control",
+        "severity": "caution",
+        "title": "Camera control"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:BossMod.json: https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image2.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.e3e36bbfb2b2",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:BossMod.json: https://github.com/awgil/ffxiv_bossmod"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.9a63fbe234dc",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BossMod.dll: https://raw.githubusercontent.com/awgil/<redacted>/master/pluginmaster.json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.980b20287b80",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:BossMod.json: https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image3.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.8336689e9e10",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:BossMod.json: https://raw.githubusercontent.com/awgil/ffxiv_bossmod/<redacted>/Data/icon.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.54ea8dceb3de",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:BossMod.json: https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image1.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.0e6fdefe3f25",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:BossMod.dll: FileStream",
+          "metadata:BossMod.dll: WriteAllText",
+          "il:BossMod.dll:BossMod.ConfigRoot.SaveToFile+0x9d: call System.IO.File.WriteAllText: WriteAllText",
+          "il:BossMod.dll:BossMod.ReplayRecorder..ctor+0x98: newobj System.IO.FileStream..ctor: FileStream",
+          "artifact:BossMod.dll: WriteAllText",
+          "artifact:BossMod.dll: FileStream"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 7,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 1308232,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.0.0.122",
+        "artifactBytes": 1308232,
+        "artifactSha256": "582252a7be08aa167d71bd6fc1f8efef1d058be1676d04174912adb80e5367d8",
+        "catalogAssemblyVersion": "0.0.0.77",
+        "manifestInternalName": "BossMod",
+        "manifestPath": "BossMod.json",
+        "manifestRepositoryUrl": "https://github.com/awgil/ffxiv_bossmod",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/awgil/ffxiv_plugin_distribution/master/plugins/BossMod/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": false
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.camera.control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Camera control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.camera.control",
+            "label": "Camera control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "puni.sh",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "puni.sh",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 12,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Camera control",
+        "Character action execution",
+        "Character target control",
+        "Dynamic code loading",
+        "Endpoint: github.com",
+        "Endpoint: puni.sh",
+        "Endpoint: raw.githubusercontent.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "Raw sockets",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.camera.control",
+        "game.character.execute_action",
+        "game.character.interact",
+        "game.character.target",
+        "game.memory.read",
+        "native.interop",
+        "network.socket",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 10,
+        "critical": 0,
+        "high": 1,
+        "informational": 7
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 97,
+          "exactVersionObservedCount": 94,
+          "families": {
+            "managed-assembly": 18,
+            "native": 3,
+            "nuget": 76
+          },
+          "fingerprint": "663ef39692268c6742e0c4d7d5bd38394649789da9deb0c8a87b8f26801d0ccd",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 11
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "CloseHandle",
+              "library": "kernel32.dll",
+              "managedName": "CloseHandle",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "NtQueryInformationProcess",
+              "library": "ntdll.dll",
+              "managedName": "NtQueryInformationProcess",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "NtQueryObject",
+              "library": "ntdll.dll",
+              "managedName": "NtQueryObject",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "EnumWindows",
+              "library": "user32.dll",
+              "managedName": "EnumWindows",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetActiveWindow",
+              "library": "user32.dll",
+              "managedName": "GetActiveWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetForegroundWindow",
+              "library": "user32.dll",
+              "managedName": "GetForegroundWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetKeyState",
+              "library": "user32.dll",
+              "managedName": "GetKeyState",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowTextLengthW",
+              "library": "user32.dll",
+              "managedName": "GetWindowTextLengthW",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowTextW",
+              "library": "user32.dll",
+              "managedName": "GetWindowTextW",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "IsIconic",
+              "library": "user32.dll",
+              "managedName": "IsIconic",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "PostMessageW",
+              "library": "user32.dll",
+              "managedName": "PostMessageW",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 20,
+            "required": 76
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 21,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 76,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 20,
+            "optional": 0,
+            "required": 76,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 97
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 7,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "puni.sh",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 5,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 5,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 7,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/awgil/ffxiv_bossmod"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "puni.sh",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://puni.sh/api/repository/veyn"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/<redacted>/master/pluginmaster.json"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/<redacted>/Data/icon.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image1.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image2.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image3.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/awgil/ffxiv_plugin_distribution/raw/master/plugins/BossMod/latest.zip",
+        "internalName": "BossMod",
+        "manifestVersion": "0.0.0.77",
+        "observationId": 2401,
+        "observationKey": "manifest-a25878dd4e5057efb5f1a0ae45e6",
+        "repositoryUrl": "https://github.com/awgil/ffxiv_bossmod",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1521
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 4,
+        "uncompressedBytes": 3641870
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-580a7ffd248af767",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-1521",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-200ca22096446585ff89",
+        "variantId": 1521,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-29T02:03:32Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "582252a7be08aa167d71bd6fc1f8efef1d058be1676d04174912adb80e5367d8",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/awgil/ffxiv_bossmod",
+          "https://github.com/awgil/ffxiv_plugin_distribution"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/awgil/ffxiv_bossmod",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 2313,
+    "scanned_at_utc": "2026-08-29T02:03:32Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/awgil/ffxiv_bossmod",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1521
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "582252a7be08aa167d71bd6fc1f8efef1d058be1676d04174912adb80e5367d8",
+      "current_assembly_version": "0.0.0.77",
+      "current_scan_id": 2313,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-29T02:03:36Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 1521
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 97,
+      "artifact_only_count": 97,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:bossmod",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "BossMod",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.0.0.122"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.12"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.2997"
+          ]
+        },
+        {
+          "componentKey": "assembly:imgui.net",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "ImGui.NET",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.82.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "3.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.mathematics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX.Mathematics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression.brotli",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression.Brotli",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ntdll",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ntdll.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.1.12"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.netcore.platforms",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.NETCore.Platforms",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.1.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.netcore.targets",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.NETCore.Targets",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.1.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.win32.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Win32.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:netstandard.library",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NETStandard.Library",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.6.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.debian.8-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.fedora.23-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.fedora.23-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.fedora.24-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.fedora.24-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.io.compression",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.IO.Compression",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.net.http",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.Net.Http",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.security.cryptography.apple",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.Security.Cryptography.Apple",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.opensuse.13.2-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.opensuse.13.2-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.opensuse.42.1-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.opensuse.42.1-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.osx.10.10-x64.runtime.native.system.security.cryptography.apple",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography.Apple",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.osx.10.10-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.rhel.7-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.rhel.7-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.ubuntu.14.04-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.ubuntu.14.04-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.ubuntu.16.04-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.ubuntu.16.04-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.ubuntu.16.10-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.ubuntu.16.10-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx.mathematics",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX.Mathematics",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.appcontext",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.AppContext",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.buffers",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Buffers",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.collections",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.collections.concurrent",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.console",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.debug",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.Debug",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.diagnosticsource",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.DiagnosticSource",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.tools",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.Tools",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.tracing",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.Tracing",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.globalization",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Globalization",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.globalization.calendars",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Globalization.Calendars",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.globalization.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Globalization.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.compression",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.compression.zipfile",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.Compression.ZipFile",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.filesystem",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.FileSystem",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.filesystem.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.FileSystem.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.linq",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.linq.expressions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.net.http",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.net.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.net.sockets",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Net.Sockets",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.objectmodel",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.emit",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Emit",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.emit.ilgeneration",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.emit.lightweight",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Emit.Lightweight",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.typeextensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.TypeExtensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.resources.resourcemanager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Resources.ResourceManager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.handles",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.Handles",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.interopservices",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.interopservices.runtimeinformation",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.InteropServices.RuntimeInformation",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.numerics",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.Numerics",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.algorithms",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Algorithms",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.cng",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Cng",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.csp",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Csp",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.encoding",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Encoding",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.x509certificates",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.X509Certificates",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.text.encoding",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Text.Encoding",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.text.encoding.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.text.regularexpressions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading.tasks",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading.Tasks",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading.tasks.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading.Tasks.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading.timer",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading.Timer",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.xml.readerwriter",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Xml.ReaderWriter",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.xml.xdocument",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Xml.XDocument",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-29T02:03:36Z",
+      "comparison_id": 403,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 2313,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 1521,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 1079,
+          "encoding": "json",
+          "path": "derived/variants/0001/1521/advisory-matches.json",
+          "recordDigest": "caea0e2375a455faec6dd936fdb5a6f2ac5adea876d2f98aaf60ab429272eb24",
+          "records": 2,
+          "sha256": "d3274a71540dd14bdf8cf9262cad7a0dc0f72e17103342e0a6ed18fbc92b21c3"
+        }
+      ],
+      "recordDigest": "caea0e2375a455faec6dd936fdb5a6f2ac5adea876d2f98aaf60ab429272eb24",
+      "records": 2
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1521/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 94621,
+          "encoding": "json",
+          "path": "derived/variants/0001/1521/dependency-resolutions.json",
+          "recordDigest": "b4df41e2eef7dd70cee9c8b4dbe613cc93094813660c450fab8eaa4344d36de1",
+          "records": 97,
+          "sha256": "a03f6406254f29761e33eb25a225a2176172092bd635b3c3305a37d55ea729f8"
+        }
+      ],
+      "recordDigest": "b4df41e2eef7dd70cee9c8b4dbe613cc93094813660c450fab8eaa4344d36de1",
+      "records": 97
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1521/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "17224d2dab3c5b41c4a38428514320251f747eae5cd82125ec982d6c73201482",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "6484121e037769a02bfff69c98c38409e6bde40b8482de3b6fcce374efc2eb6c",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "87d6e84b52b56e80cb1bc2dab809508a55e1367470387650e4e935f045bcb05e",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "48ae1be5ea538db2854d9336746e2ded2451e80d37e911780d5651dc57bb36d0",
+        "records": 97,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "89117574978bdae9b83562542b711fe87bc147dfe09a4eb92b310e126e7e1e3f",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "7f59343bbeab94101c6db26b3fc6be6884c6421fad26286129e40a8ada69e1ef",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "3972cc6cceb48385c1fc643daedc34ac3b22c1014526f39c61bd64fb1995ab33",
+        "records": 4395,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "3cb9b46846d1ba3929361acded02c009be37aeb489d38b804504d90049d1b8d6",
+        "records": 1265,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "ce0a4f1a7b5c93964f56ca02d9d8b46c0c507d9a3ac384fb01011f0f066531d9",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "1a450544444dc2c687989f78733030d04ac84ff23d38b5c84382caf96cf4c48b",
+        "records": 11,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "69a9f3a7c523cae3855b7861fd02bbf870e38d7f46404ddd8eb9613f391bd92f",
+        "records": 7,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "1d672b92d087f638984b9631fab34c73a6639bb99fe6bd196b12777741a17149",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "fbc3331a1ce174c9432b36c2b0e7818135a42bc7853cb02edf3a0a4c06f0236a",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "a1f4809a060f2f9e2a504cdf5056e75967c5b70cfd4bc949f31139e4baff1f50",
+        "records": 41,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-ace5fbf2c553af0371763be86f2b31c459dbcbb1a15644f9c22d400d027d45e3",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Boss Mod",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "BossMod",
+    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "plugin_id": 530
+  },
+  "pluginId": 530,
+  "presentation": {
+    "images": [
+      {
+        "kind": "screenshot",
+        "source": "manifest",
+        "url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image1.png"
+      },
+      {
+        "kind": "screenshot",
+        "source": "manifest",
+        "url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image2.png"
+      },
+      {
+        "kind": "screenshot",
+        "source": "manifest",
+        "url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image3.png"
+      }
+    ],
+    "plugin": {
+      "description": "A bunch of utilities to simplify bosses. Currently supports endwalker content.",
+      "images": [
+        "https://s3.puni.sh/media/plugin/30/image-4mbxiq5k4pl.png",
+        "https://s3.puni.sh/media/plugin/30/image-nc231jzj2gb.png",
+        "https://s3.puni.sh/media/plugin/30/image-3nufuhgwbhl.png",
+        "https://raw.githubusercontent.com/LICENSE",
+        "https://raw.githubusercontent.com/Data/radar.png"
+      ],
+      "nsfw": false,
+      "official": false,
+      "richCard": true,
+      "richnessScore": 51092,
+      "summary": "Don't fail at raid mechanics anymore",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/awgil/ffxiv_bossmod",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "BossMod FFXIV dalamud plugin",
+      "homepage": "",
+      "images": [
+        "https://raw.githubusercontent.com/LICENSE",
+        "https://raw.githubusercontent.com/Data/radar.png",
+        "https://raw.githubusercontent.com/Data/autorotation_config.png",
+        "https://raw.githubusercontent.com/Data/cd_planner.png",
+        "https://raw.githubusercontent.com/Data/ai.png"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/awgil/ffxiv_bossmod"
+        },
+        {
+          "kind": "discord",
+          "label": "Join Discord",
+          "url": "https://discord.gg/Zzrcc8kmvy"
+        },
+        {
+          "kind": "docs",
+          "label": "Documentation",
+          "url": "https://github.com/awgil/ffxiv_bossmod/wiki/Using-Presets"
+        },
+        {
+          "kind": "issues",
+          "label": "Issues",
+          "url": "https://github.com/awgil/ffxiv_bossmod/issues/new/choose"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# Boss Mod\n\n<img align=\"right\" width=\"150\" height=\"150\" src=\"/Data/icon.png\">\n\nBoss Mod (vbm) is a Dalamud plugin for FFXIV that provides boss fight radar, auto-rotation, cooldown planning, and AI. All of the its modules can be toggled individually. Support for it can be found in the [Puni.sh Discord server](https://discord.gg/Zzrcc8kmvy).\n\n_Licensed under the terms of the ![BSD 3-Clause License](/LICENSE)_\n\n# Radar\n\n<img align=\"right\" height=\"200\" src=\"/Data/radar.png\">\n\nThe radar is the main part of the plugin and the primary reason for its existence. It provides an on-screen window that contains area mini-map that shows player positions, boss position(s), various imminent AoEs, and other mechanics. This is useful because you don't have to remember what ability names mean and you can see exactly whether you're getting clipped by incoming AoE or not.\n\nThe radar module also provides the next mechanic(s) in text form, as well as hints for how to resolve the current mechanic from the perspective of the group and the player.\n   \n# Autorotation\n\n<img align=\"right\" height=\"300\" src=\"/Data/autorotation_config.png\">\n\nFor supported classes, the Autorotation module will execute a fully optimal rotation to the best of its ability. Individual job support is listed in the plugin. A small guide on using this can be found [here](https://github.com/awgil/ffxiv_bossmod/wiki/Using-Presets). The features include:\n\n- Movement skills are not executed during parts of fight that require precise positioning\n- oGCDs are queued to next free oGCD slot so GCDs are not delayed\n- Preventing movement while casting that allows perfect slidecasting\n- Ground-targeted abilities, are cast immediately and are queued properly\n- Abilities select the \"best\" target automatically\n\n# Cooldown Planner\n\n<img align=\"right\" height=\"200\" src=\"/Data/cd_planner.png\">\n\nThe CD Planner allows you to turn your autorotation configuration into a plan for a specific boss fight. For instance, during a boss fight, you can automatically cast a raid-wide mitigation ability right before the boss casts an AoE. \n\nAll of the options from autorotations are supported in a CD planner, which include \"tracks\" for using role-based abilities, limit break, cooldowns, and more. These are all configured on a per-boss basis. A small guide on using this can be found [here](https://github.com/awgil/ffxiv_bossmod/wiki/Using-the-CD-Planner:-Basic-Tutorial).\n\n\nFor an advanced version of the CD Planner with extended functionality and enhanced capabilities, please refer to the comprehensive guide available [here](https://github.com/awgil/ffxiv_bossmod/wiki/Using-the-CD-Planner:-Advanced-Plan-Making-using-Replays).\n\n# AI\n\n<img align=\"right\" height=\"250\" src=\"/Data/ai.png\">\n\nVBM's AI module was created to automate movement during boss fights. With the help of other plugins, entine dungeons can be completely automated, provided a module exist for each boss. \n\nThe AI will move your character based on safe zones determined by a boss's module, which are also displayed on the radar. It also tries to keep you within range of the enemies you are attacking while you're in combat with them.\n\nAn example of a plugin that utilizies VBM's AI module is [AutoDuty](https://github.com/ffxivcode/AutoDuty), which is supported in the same [Discord server](https://discord.gg/Zzrcc8kmvy) that VBM is supported in.\n\n<br />\n<hr />\n\n# Installation\n\nAdd `https://puni.sh/api/repository/veyn` to your plugin repositories and then search for `Boss Mod` in the Plugin Installer to install Boss Mod.\n\nSettings can be accessed via the Plugin Installer or using the chat command `/vbm`.\n\n# Getting help\n\nWhen you've found a bug or think you have some issue with the plugin, please do the following:\n\n1. Ask in [Discord](https://discord.gg/Zzrcc8kmvy): it might be a known issue or people might be able to help you quickly\n2. Gather extra information to aid in investigating the issue:\n   1. Set log level to \"Debug\" (type `/xldev`, select \"Dalamud\" -> \"Set log level\" -> \"Debug\")\n   2. Start replay recording (type `/vbm r` and hit \"Start Recording\")\n   3. Reproduce the issue\n   4. Stop replay recording (hit \"Stop Recording\")\n   5. Find the logs (typically at `C:\\Users\\username\\AppData\\Roaming\\XIVLauncher\\dalamud.log`)\n   6. Find the replay (typically at `C:\\Users\\username\\AppData\\Roaming\\XIVLauncher\\pluginConfigs\\BossMod\\replays`)\n3. Create a [new issue](https://github.com/awgil/ffxiv_bossmod/issues/new/choose) on GitHub, provide a detailed description of the problem (including steps to reproduce the issue), and attach the logs and replay \n\n**Do NOT** create GitHub issues to request new modules, ask questions, etc. <br/>\nOur channel (`ffxiv-bossmod`) on the [Puni.sh Discord server](https://discord.gg/Zzrcc8kmvy) is much more convenient for these kinds of things.\n\n**Do** create GitHub issues for very concrete bugs (if you have replays, logs, or an easy way to reproduce what is obviously a problem) or very specific feature requests (please discuss in Discord first to understand whether there's any interest in it).\n\n# Contributing\n\nOne of the best ways to contribute to Boss Mod is by making modules for boss fights. If you are looking for which bosses don't have modules, you can look in the `/BossMod/Modules` folder of the repository. To make modules, it's suggested to follow the [Making a Module](https://github.com/awgil/ffxiv_bossmod/wiki/Making-a-Module) guide on the repo's wiki, as well as the [Making a Module: What kind of attacks exist?](https://github.com/awgil/ffxiv_bossmod/wiki/Making-a-Module:-What-kind-of-attacks-exist%3F) wiki entry. There are quite a few people in the Discord server who know how to make modules, so feel free to ask for help there.",
+      "title": "ffxiv_bossmod",
+      "url": "https://github.com/awgil/ffxiv_bossmod"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "a890d873e0532cf48f40acd4e560e249a9903ba01f234b7401112f31ebcb44f1",
+        "records": 4
+      },
+      "behaviorConsistency": {
+        "recordDigest": "1fccb3d5cda16b7ab869ad2f759adbf107422d5767122a45b49f78eadb1020aa",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "6c6e56e0e653fab0a52fa96df87040cf1a9957a4ede772da4636b44cbdf797ad",
+        "records": 12
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "c815cd84b08de0addf43bcf953f7c4f996b4b848a81e42f92a65ceb9565d3426",
+        "records": 18
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "582252a7be08aa167d71bd6fc1f8efef1d058be1676d04174912adb80e5367d8",
+    "artifact_url": "https://github.com/awgil/ffxiv_plugin_distribution/raw/master/plugins/BossMod/latest.zip",
+    "assembly_version": "0.0.0.77",
+    "capabilities_json": [
+      "Camera control",
+      "Character action execution",
+      "Character target control",
+      "Dynamic code loading",
+      "Endpoint: github.com",
+      "Endpoint: puni.sh",
+      "Endpoint: raw.githubusercontent.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "Raw sockets",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 10,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 7,
+    "plugin_id": 530,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 1308232,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.0.0.122",
+        "artifactBytes": 1308232,
+        "artifactSha256": "582252a7be08aa167d71bd6fc1f8efef1d058be1676d04174912adb80e5367d8",
+        "catalogAssemblyVersion": "0.0.0.77",
+        "manifestInternalName": "BossMod",
+        "manifestPath": "BossMod.json",
+        "manifestRepositoryUrl": "https://github.com/awgil/ffxiv_bossmod",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/awgil/ffxiv_plugin_distribution/master/plugins/BossMod/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": false
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.camera.control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Camera control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.camera.control",
+            "label": "Camera control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "puni.sh",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "puni.sh",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 12,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Camera control",
+        "Character action execution",
+        "Character target control",
+        "Dynamic code loading",
+        "Endpoint: github.com",
+        "Endpoint: puni.sh",
+        "Endpoint: raw.githubusercontent.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "Raw sockets",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.camera.control",
+        "game.character.execute_action",
+        "game.character.interact",
+        "game.character.target",
+        "game.memory.read",
+        "native.interop",
+        "network.socket",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 10,
+        "critical": 0,
+        "high": 1,
+        "informational": 7
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 97,
+          "exactVersionObservedCount": 94,
+          "families": {
+            "managed-assembly": 18,
+            "native": 3,
+            "nuget": 76
+          },
+          "fingerprint": "663ef39692268c6742e0c4d7d5bd38394649789da9deb0c8a87b8f26801d0ccd",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 11
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "CloseHandle",
+              "library": "kernel32.dll",
+              "managedName": "CloseHandle",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "NtQueryInformationProcess",
+              "library": "ntdll.dll",
+              "managedName": "NtQueryInformationProcess",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "NtQueryObject",
+              "library": "ntdll.dll",
+              "managedName": "NtQueryObject",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "EnumWindows",
+              "library": "user32.dll",
+              "managedName": "EnumWindows",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetActiveWindow",
+              "library": "user32.dll",
+              "managedName": "GetActiveWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetForegroundWindow",
+              "library": "user32.dll",
+              "managedName": "GetForegroundWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetKeyState",
+              "library": "user32.dll",
+              "managedName": "GetKeyState",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowTextLengthW",
+              "library": "user32.dll",
+              "managedName": "GetWindowTextLengthW",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowTextW",
+              "library": "user32.dll",
+              "managedName": "GetWindowTextW",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "IsIconic",
+              "library": "user32.dll",
+              "managedName": "IsIconic",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "BossMod.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "PostMessageW",
+              "library": "user32.dll",
+              "managedName": "PostMessageW",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 20,
+            "required": 76
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 21,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 76,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 20,
+            "optional": 0,
+            "required": 76,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 97
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 7,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "puni.sh",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 5,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 5,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 7,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/awgil/ffxiv_bossmod"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "puni.sh",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://puni.sh/api/repository/veyn"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/<redacted>/master/pluginmaster.json"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/<redacted>/Data/icon.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image1.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image2.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image3.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/awgil/ffxiv_plugin_distribution/raw/master/plugins/BossMod/latest.zip",
+        "internalName": "BossMod",
+        "manifestVersion": "0.0.0.77",
+        "observationId": 2401,
+        "observationKey": "manifest-a25878dd4e5057efb5f1a0ae45e6",
+        "repositoryUrl": "https://github.com/awgil/ffxiv_bossmod",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1521
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 4,
+        "uncompressedBytes": 3641870
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-580a7ffd248af767",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-1521",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-200ca22096446585ff89",
+        "variantId": 1521,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-29T02:03:32Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "582252a7be08aa167d71bd6fc1f8efef1d058be1676d04174912adb80e5367d8",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/awgil/ffxiv_bossmod",
+          "https://github.com/awgil/ffxiv_plugin_distribution"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/awgil/ffxiv_bossmod",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 2313,
+    "scanned_at_utc": "2026-08-29T02:03:32Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 398,
+    "source_repository": "https://github.com/awgil/ffxiv_bossmod",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1521
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "968b65fe4d70a438e70ea85cf9484fa6d7b848e83d2bebaa7370b5edefa35d85",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"9dfe8cad7b1b1a4ad221eec544aee178d643d6b0ecfac177641415d60fa76002\"",
+    "highest_api": 7,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-08-28T09:17:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-28T09:17:18Z",
+    "name": "stephenneale/DalamudRepoCollection",
+    "plugin_count": 173,
+    "provider": "stephenneale/DalamudRepoCollection",
+    "source_id": 398,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/stephenneale/DalamudRepoCollection/main/ffxiv_custom_repo.json"
+  },
+  "sourceId": 398,
+  "variant": {
+    "active": 1,
+    "applicable_version": "2022.11.09.0000.0000",
+    "assembly_version": "0.0.0.77",
+    "author": "veyn",
+    "authors_json": [
+      "veyn"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 7,
+    "description": "A bunch of utilities to simplify bosses. Currently supports endwalker content. ***very early alpha, use at your own risk***\n (https://raw.githubusercontent.com/awgil/ffxiv_plugin_distribution/master/pluginmaster.json)",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/awgil/ffxiv_plugin_distribution/raw/master/plugins/BossMod/latest.zip",
+    "download_link_testing": "https://github.com/awgil/ffxiv_plugin_distribution/raw/master/plugins/BossMod/latest.zip",
+    "download_link_update": "https://github.com/awgil/ffxiv_plugin_distribution/raw/master/plugins/BossMod/latest.zip",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "icon_url": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/f4efcb5dc279d21ee16185d5a9f2d09a3a2bc58b/Data/icon.png",
+    "image_urls_json": [
+      "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image1.png",
+      "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image2.png",
+      "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image3.png"
+    ],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-20T06:02:54Z",
+    "last_update": 1670955787,
+    "minimum_dalamud_version": null,
+    "name": "Boss Mod [Aku API 7]",
+    "plugin_id": 530,
+    "punchline": "Don't fail at raid mechanics anymore",
+    "raw_manifest_json": {
+      "ApplicableVersion": "2022.11.09.0000.0000",
+      "AssemblyVersion": "0.0.0.77",
+      "Author": "veyn",
+      "DalamudApiLevel": 7,
+      "Description": "A bunch of utilities to simplify bosses. Currently supports endwalker content. ***very early alpha, use at your own risk***\n (https://raw.githubusercontent.com/awgil/ffxiv_plugin_distribution/master/pluginmaster.json)",
+      "DownloadCount": 0,
+      "DownloadLinkInstall": "https://github.com/awgil/ffxiv_plugin_distribution/raw/master/plugins/BossMod/latest.zip",
+      "DownloadLinkTesting": "https://github.com/awgil/ffxiv_plugin_distribution/raw/master/plugins/BossMod/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/awgil/ffxiv_plugin_distribution/raw/master/plugins/BossMod/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/f4efcb5dc279d21ee16185d5a9f2d09a3a2bc58b/Data/icon.png",
+      "ImageUrls": [
+        "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image1.png",
+        "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image2.png",
+        "https://raw.githubusercontent.com/awgil/ffxiv_bossmod/master/Data/image3.png"
+      ],
+      "InternalName": "BossMod",
+      "IsHide": "False",
+      "IsTestingExclusive": "False",
+      "LastUpdate": "1670955787",
+      "LoadPriority": 0,
+      "Name": "Boss Mod [Aku API 7]",
+      "Punchline": "Don't fail at raid mechanics anymore",
+      "RepoUrl": "https://github.com/awgil/ffxiv_bossmod"
+    },
+    "repo_url": "https://github.com/awgil/ffxiv_bossmod",
+    "source_entry_key": "bossmod|0.0.0.77|7|0|21",
+    "source_id": 398,
+    "tags_json": [],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 1521
+  },
+  "variantId": 1521
+}
