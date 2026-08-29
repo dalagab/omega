@@ -1,0 +1,176 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "artifact:TextCopy.dll: powershell.exe"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:TextCopy.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DaCoblyn.dll: https://ko-fi.com/thatismunn"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6d5c141b0b4f",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DaCoblyn.dll: https://translate.argosopentech.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8697aac3b280",
+    "severity": "caution",
+    "title": "Endpoint: translate.argosopentech.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:DaCoblyn.dll: System.Diagnostics.Process",
+      "metadata:DaCoblyn.dll: ProcessStartInfo",
+      "metadata:DaCoblyn.dll: ShellExecute",
+      "metadata:DaCoblyn.dll: Process.Start",
+      "il:DaCoblyn.dll:DaCoblyn.Windows.ConfigWindow.Draw+0xa8: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:DaCoblyn.dll:DaCoblyn.Windows.ConfigWindow.Draw+0xa8: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:DaCoblyn.dll:DaCoblyn.Windows.ConfigWindow.Draw+0xb3: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:DaCoblyn.dll:DaCoblyn.Windows.ConfigWindow.Draw+0xb3: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:DaCoblyn.dll: TextCopy.ClipboardService",
+      "il:DaCoblyn.dll:DaCoblyn.Windows.TranslateWindow.Draw+0x2f7: call TextCopy.ClipboardService.SetText: TextCopy.ClipboardService",
+      "il:DaCoblyn.dll:DaCoblyn.Windows.TranslateWindow.Draw+0x313: call TextCopy.ClipboardService.SetText: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.Clipboard.GetTextAsync+0x1: call TextCopy.ClipboardService.GetTextAsync: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.Clipboard.GetText+0x0: call TextCopy.ClipboardService.GetText: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.Clipboard.SetTextAsync+0x2: call TextCopy.ClipboardService.SetTextAsync: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.Clipboard.SetText+0x1: call TextCopy.ClipboardService.SetText: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.ClipboardService..cctor+0x1c: call TextCopy.ClipboardService.CreateAsyncGet: TextCopy.ClipboardService"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:TextCopy.dll: WriteAllText",
+      "metadata:TextCopy.dll: File.Delete",
+      "il:TextCopy.dll:LinuxClipboard.SetText+0x8: call System.IO.File.WriteAllText: WriteAllText",
+      "il:TextCopy.dll:LinuxClipboard.InnerSetText+0x38: call System.IO.File.Delete: File.Delete",
+      "il:TextCopy.dll:LinuxClipboard.GetText+0x16: call System.IO.File.Delete: File.Delete",
+      "il:TextCopy.dll:<GetTextAsync>d__6.MoveNext+0x96: call System.IO.File.Delete: File.Delete",
+      "il:TextCopy.dll:<SetTextAsync>d__2.MoveNext+0x27: call System.IO.File.WriteAllTextAsync: WriteAllText",
+      "artifact:TextCopy.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TextCopy.dll: https://github.com/CopyText/TextCopy.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3ad2cdf49525",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DaCoblyn.json: https://github.com/thatismunn/xiv-coblyn"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a08e18ab25e2",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DaCoblyn.json: https://raw.githubusercontent.com/thatismunn/xiv-coblyn/main/coblyn.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c3d2a918cf0e",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:DaCoblyn.dll: System.Net.Http.HttpClient",
+      "il:DaCoblyn.dll:DaCoblyn.Windows.TranslateWindow..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:DaCoblyn.dll:DaCoblyn.Events.SpoofingChatEvents..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:DaCoblyn.dll:DaCoblyn.Command.TranslateCommand..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:DaCoblyn.dll:<CheckConnectionToTranslator>d__43.MoveNext+0x14: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:DaCoblyn.dll:<GenerateFormContent>d__9.MoveNext+0x31: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient",
+      "il:DaCoblyn.dll:<GetLanguageSupported>d__12.MoveNext+0x30: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
