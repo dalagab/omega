@@ -13,7 +13,8 @@ import os
 import re
 from pathlib import Path, PurePosixPath
 import time
-from typing import Any, Callable
+import threading
+from typing import Any, Callable, Iterable
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -130,6 +131,7 @@ class RemoteEvidenceSource:
         self.max_file_bytes = max(1024 * 1024, int(max_file_bytes))
         self.timeout = max(1.0, float(timeout))
         self._urlopen = urlopen or urllib.request.urlopen
+        self._cache_lock = threading.RLock()
         self.revision = "bootstrap"
         self.cache_root.mkdir(parents=True, exist_ok=True)
 
@@ -227,31 +229,52 @@ class RemoteEvidenceSource:
         relative = _safe_relative(relative)
         is_root = relative == "index.json"
         cache_path = self._cache_path(relative, root=is_root)
-        if cache_path.is_file() and not refresh:
-            data = cache_path.read_bytes()
-            if not expected_sha256 or _sha256_bytes(data) == expected_sha256.lower():
+        if not refresh:
+            with self._cache_lock:
                 try:
-                    os.utime(cache_path, None)
+                    cached = cache_path.read_bytes()
                 except OSError:
-                    pass
-                return data
-            cache_path.unlink(missing_ok=True)
+                    cached = None
+                if cached is not None:
+                    if not expected_sha256 or _sha256_bytes(cached) == expected_sha256.lower():
+                        try:
+                            os.utime(cache_path, None)
+                        except OSError:
+                            pass
+                        return cached
+                    try:
+                        cache_path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
 
         try:
             data = self._download(relative)
         except Exception:
             # Root checks are allowed to fall back to the last successfully fetched root
             # so a transient GitHub outage does not make an already-open read-only view unusable.
-            if is_root and cache_path.is_file():
-                return cache_path.read_bytes()
+            if is_root:
+                with self._cache_lock:
+                    try:
+                        return cache_path.read_bytes()
+                    except OSError:
+                        pass
             raise
         if expected_sha256 and _sha256_bytes(data) != expected_sha256.lower():
             raise ValueError(f"remote Security Evidence v2 SHA-256 mismatch for {relative}")
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        temp = cache_path.with_suffix(cache_path.suffix + ".tmp")
-        temp.write_bytes(data)
-        temp.replace(cache_path)
-        self._prune_cache(protected=cache_path)
+        with self._cache_lock:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            temp = cache_path.with_name(
+                f"{cache_path.name}.{os.getpid()}.{threading.get_ident()}.tmp"
+            )
+            try:
+                temp.write_bytes(data)
+                temp.replace(cache_path)
+            finally:
+                try:
+                    temp.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            self._prune_cache(protected=cache_path)
         return data
 
     def read_json(self, relative: str, *, expected_sha256: str = "", refresh: bool = False) -> Any:
@@ -261,27 +284,53 @@ class RemoteEvidenceSource:
         """Read directly from the mutable tracking branch, bypassing snapshot caches."""
         return json.loads(self._download(relative, tracking=True).decode("utf-8"))
 
-    def _prune_cache(self, protected: Path | None = None) -> None:
-        files = [path for path in self.cache_root.rglob("*") if path.is_file()]
-        total = sum(path.stat().st_size for path in files)
-        if total <= self.cache_limit_bytes:
-            return
-        for path in sorted(files, key=lambda item: item.stat().st_mtime):
-            if protected is not None and path == protected:
+    def _cache_entries(self) -> list[tuple[Path, int, float]]:
+        """Return a race-tolerant snapshot of cache files.
+
+        Cache maintenance can overlap concurrent HTTP reads/writes.  On Windows in
+        particular, a path returned by ``rglob`` may disappear before ``stat``.
+        Missing or temporarily inaccessible cache entries are maintenance noise, not
+        Evidence-v2 integrity failures, so skip them and let the next snapshot account
+        for the current filesystem state.
+        """
+        entries: list[tuple[Path, int, float]] = []
+        for path in self.cache_root.rglob("*"):
+            try:
+                if path.name.endswith(".tmp") or not path.is_file():
+                    continue
+                stat = path.stat()
+            except OSError:
                 continue
-            size = path.stat().st_size
-            path.unlink(missing_ok=True)
-            total -= size
+            entries.append((path, int(stat.st_size), float(stat.st_mtime)))
+        return entries
+
+    def _prune_cache(self, protected: Path | None = None) -> None:
+        with self._cache_lock:
+            entries = self._cache_entries()
+            total = sum(size for _path, size, _mtime in entries)
             if total <= self.cache_limit_bytes:
-                break
+                return
+            for path, size, _mtime in sorted(entries, key=lambda item: item[2]):
+                if protected is not None and path == protected:
+                    continue
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    # Another process or Windows file locking may win this race.
+                    # Keep the accounted bytes and continue with the next candidate.
+                    continue
+                total -= size
+                if total <= self.cache_limit_bytes:
+                    break
 
     def cache_status(self) -> dict[str, Any]:
-        files = [path for path in self.cache_root.rglob("*") if path.is_file()]
-        return {
-            "cacheDirectory": str(self.cache_dir),
-            "cacheBytes": sum(path.stat().st_size for path in files),
-            "cacheLimitBytes": self.cache_limit_bytes,
-        }
+        with self._cache_lock:
+            entries = self._cache_entries()
+            return {
+                "cacheDirectory": str(self.cache_dir),
+                "cacheBytes": sum(size for _path, size, _mtime in entries),
+                "cacheLimitBytes": self.cache_limit_bytes,
+            }
 
 
 class V2SigmascopeInspector:
@@ -1176,7 +1225,7 @@ class V2SigmascopeInspector:
         rows: list[dict[str, Any]] = []
         for variant_id in self.entries:
             identity = self._entry_identity(variant_id, require_current=bool(severity or status or known_risk))
-            haystack = " ".join(str(identity.get(key) or "") for key in ("internal_name", "canonical_name", "name", "author", "source_name", "source_url")).casefold()
+            haystack = " ".join(str(identity.get(key) or "") for key in ("internal_name", "canonical_name", "name", "author", "source_name", "source_url", "source_repository")).casefold()
             if needle and needle not in haystack:
                 continue
             if severity and str(identity.get("highest_severity") or "none").casefold() != severity.casefold():
@@ -1246,6 +1295,212 @@ class V2SigmascopeInspector:
                 break
         rows.sort(key=lambda row: (str(row.get("occurredAtUtc") or ""), SEVERITY_RANK.get(str(row.get("severity") or "none").casefold(), 0), str(row.get("findingId") or "")), reverse=True)
         return rows[:limit]
+
+
+    def rule_match_fanout(self, rule_ids: Iterable[str], *, limit: int = 40, max_candidates: int = 80) -> dict[str, Any]:
+        """Explicitly acquire a bounded cross-variant view for one finding/rule identity.
+
+        This may load current variant descriptors from the configured Evidence-v2 source and is
+        therefore intentionally called only from an explicit investigator action. Merely opening
+        finding lineage never invokes it.
+        """
+        requested = {str(item or "").strip() for item in rule_ids if str(item or "").strip()}
+        aliases = set(requested)
+        for item in list(requested):
+            if item.startswith("primitive."):
+                aliases.add(item[len("primitive."):])
+            elif item and "." in item:
+                aliases.add(f"primitive.{item}")
+        limit = min(max(1, int(limit or 40)), 100)
+        max_candidates = min(max(limit, int(max_candidates or 80)), 200)
+        candidates: list[tuple[str, int, dict[str, Any], dict[str, Any]]] = []
+        for variant_id, entry in self.current_entries.items():
+            summary = dict(entry.get("summary") or {})
+            count_keys = ("informational_count", "caution_count", "high_count", "critical_count")
+            has_count_summary = any(key in summary for key in count_keys)
+            if has_count_summary and sum(int(summary.get(key) or 0) for key in count_keys) <= 0:
+                continue
+            candidates.append((str(summary.get("scanned_at_utc") or ""), int(variant_id), summary, dict(entry)))
+        candidates.sort(key=lambda row: (row[0], row[1]), reverse=True)
+
+        def flatten(value: Any) -> list[str]:
+            values: list[str] = []
+            if isinstance(value, dict):
+                for key in sorted(value):
+                    values.extend(flatten(value.get(key)))
+            elif isinstance(value, list):
+                for item in value:
+                    values.extend(flatten(item))
+            elif value is not None:
+                text = str(value).strip()
+                if text:
+                    values.append(text)
+            return values
+
+        def pattern_key(text: str) -> str:
+            value = str(text or "").strip()
+            parts = value.split(":")
+            if len(parts) >= 2 and parts[0].casefold() in {"metadata", "il", "source", "artifact"}:
+                return ":".join(parts[:2])
+            return value[:120]
+
+        rows: list[dict[str, Any]] = []
+        pattern_variants: dict[str, set[int]] = {}
+        pattern_samples: dict[str, str] = {}
+        inspected = 0
+        for _scanned, variant_id, summary, entry in candidates[:max_candidates]:
+            inspected += 1
+            try:
+                payload = self._payload(variant_id)
+            except Exception:
+                continue
+            current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
+            findings = current.get("findings_json") if isinstance(current.get("findings_json"), list) else []
+            matches = [
+                item for item in findings if isinstance(item, dict) and (
+                    str(item.get("ruleId") or item.get("rule_id") or "") in aliases or
+                    str(item.get("findingId") or item.get("finding_id") or "") in aliases
+                )
+            ]
+            if not matches:
+                continue
+            identity = self._identity(payload)
+            evidence_values: list[str] = []
+            for match in matches:
+                evidence_values.extend(flatten(match.get("evidence") or match.get("evidence_json") or []))
+            patterns = sorted({pattern_key(item) for item in evidence_values if pattern_key(item)})[:12]
+            for pattern in patterns:
+                pattern_variants.setdefault(pattern, set()).add(variant_id)
+                pattern_samples.setdefault(pattern, next((item for item in evidence_values if pattern_key(item) == pattern), pattern))
+            primary = matches[0]
+            rows.append({
+                "variantId": variant_id,
+                "scanId": int(current.get("scan_id") or entry.get("scanId") or 0),
+                "plugin": str(identity.get("canonical_name") or identity.get("name") or identity.get("internal_name") or ""),
+                "internalName": str(identity.get("internal_name") or ""),
+                "version": str(identity.get("assembly_version") or ""),
+                "scannedAtUtc": str(current.get("scanned_at_utc") or summary.get("scanned_at_utc") or ""),
+                "severity": str(primary.get("severity") or "none").casefold(),
+                "title": str(primary.get("title") or primary.get("findingId") or primary.get("ruleId") or "Security finding"),
+                "ruleId": str(primary.get("ruleId") or primary.get("rule_id") or ""),
+                "findingId": str(primary.get("findingId") or primary.get("finding_id") or ""),
+                "evidencePatterns": patterns,
+                "evidencePreview": evidence_values[:6],
+                "readOnly": True,
+            })
+            if len(rows) >= limit:
+                break
+        patterns = sorted(({
+            "pattern": pattern,
+            "variants": len(variant_ids),
+            "sample": pattern_samples.get(pattern, pattern),
+        } for pattern, variant_ids in pattern_variants.items()), key=lambda item: (-int(item["variants"]), str(item["pattern"])))[:20]
+        return {
+            "schema": "omega.deltascope.rule-fanout.v1",
+            "readOnly": True,
+            "mutationAuthority": "none",
+            "explicitAcquisition": True,
+            "ruleIds": sorted(requested),
+            "aliases": sorted(aliases),
+            "matches": rows,
+            "patterns": patterns,
+            "searchedVariants": inspected,
+            "candidateVariants": len(candidates),
+            "bounded": inspected < len(candidates) or len(rows) >= limit,
+            "note": "This fan-out is an explicitly acquired bounded view over current Evidence-v2 variants; it is not loaded by page navigation.",
+        }
+
+    def evidence_value_fanout(self, value: str, *, rule_ids: Iterable[str] = (), limit: int = 40, max_candidates: int = 80) -> dict[str, Any]:
+        """Explicit bounded search for other current variants carrying the same finding evidence value.
+
+        This is intentionally an investigator action because it may acquire current variant descriptors.
+        It searches retained finding evidence only; it does not infer equality from similar strings or names.
+        """
+        needle = str(value or "").strip()
+        if not needle:
+            raise ValueError("evidence value is required")
+        requested_rules = {str(item or "").strip() for item in rule_ids if str(item or "").strip()}
+        limit = min(max(1, int(limit or 40)), 100)
+        max_candidates = min(max(limit, int(max_candidates or 80)), 200)
+
+        def flatten(item: Any) -> list[str]:
+            rows: list[str] = []
+            if isinstance(item, dict):
+                for key in sorted(item):
+                    rows.extend(flatten(item.get(key)))
+            elif isinstance(item, list):
+                for child in item:
+                    rows.extend(flatten(child))
+            elif item is not None:
+                text = str(item).strip()
+                if text:
+                    rows.append(text)
+            return rows
+
+        candidates: list[tuple[str, int, dict[str, Any], dict[str, Any]]] = []
+        for variant_id, entry in self.current_entries.items():
+            summary = dict(entry.get("summary") or {})
+            candidates.append((str(summary.get("scanned_at_utc") or ""), int(variant_id), summary, dict(entry)))
+        candidates.sort(key=lambda row: (row[0], row[1]), reverse=True)
+        matches: list[dict[str, Any]] = []
+        inspected = 0
+        needle_cf = needle.casefold()
+        for _scanned, variant_id, summary, entry in candidates[:max_candidates]:
+            inspected += 1
+            try:
+                payload = self._payload(variant_id)
+            except Exception:
+                continue
+            current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
+            findings = current.get("findings_json") if isinstance(current.get("findings_json"), list) else []
+            hit_rows: list[dict[str, Any]] = []
+            hit_values: list[str] = []
+            for finding in findings:
+                if not isinstance(finding, dict):
+                    continue
+                rid = str(finding.get("ruleId") or finding.get("rule_id") or "")
+                fid = str(finding.get("findingId") or finding.get("finding_id") or "")
+                if requested_rules and rid not in requested_rules and fid not in requested_rules:
+                    continue
+                values = flatten(finding.get("evidence") or finding.get("evidence_json") or [])
+                exact = [item for item in values if item.casefold() == needle_cf]
+                contained = [item for item in values if needle_cf in item.casefold() or item.casefold() in needle_cf]
+                selected = exact or contained
+                if not selected:
+                    continue
+                hit_rows.append(finding)
+                hit_values.extend(selected[:4])
+            if not hit_rows:
+                continue
+            identity = self._identity(payload)
+            matches.append({
+                "variantId": variant_id,
+                "scanId": int(current.get("scan_id") or entry.get("scanId") or 0),
+                "plugin": str(identity.get("canonical_name") or identity.get("name") or identity.get("internal_name") or ""),
+                "internalName": str(identity.get("internal_name") or ""),
+                "version": str(identity.get("assembly_version") or ""),
+                "scannedAtUtc": str(current.get("scanned_at_utc") or summary.get("scanned_at_utc") or ""),
+                "findingCount": len(hit_rows),
+                "ruleIds": sorted({str(row.get("ruleId") or row.get("rule_id") or "") for row in hit_rows if str(row.get("ruleId") or row.get("rule_id") or "")}),
+                "evidencePreview": list(dict.fromkeys(hit_values))[:6],
+                "matchSemantics": "exact" if any(item.casefold() == needle_cf for item in hit_values) else "contained",
+                "readOnly": True,
+            })
+            if len(matches) >= limit:
+                break
+        return {
+            "schema": "omega.deltascope.evidence-value-fanout.v1",
+            "readOnly": True,
+            "mutationAuthority": "none",
+            "explicitAcquisition": True,
+            "value": needle,
+            "ruleIds": sorted(requested_rules),
+            "matches": matches,
+            "searchedVariants": inspected,
+            "candidateVariants": len(candidates),
+            "bounded": inspected < len(candidates) or len(matches) >= limit,
+            "note": "Explicit bounded search over retained current finding evidence. Similar-looking values are not treated as equal evidence.",
+        }
 
     def _detail_from_payload(self, payload: dict[str, Any], *, snapshot_kind: str = "current") -> dict[str, Any]:
         derived = payload.get("derived") or {}
@@ -1769,6 +2024,26 @@ class V2SigmascopeInspector:
             rows.append(identity)
         return rows
 
+    def _collector_result_rows(self, descriptor: dict[str, Any], collection: str, limit: int) -> list[dict[str, Any]]:
+        """Load one retained external collector collection after checking its declared identity."""
+        result_path = str(descriptor.get("resultPath") or "")
+        if not result_path:
+            return []
+        result = self.source.read_json(_safe_relative(result_path))
+        if not isinstance(result, dict) or str(result.get("schema") or "") != "omega.collector-result.v1":
+            raise ValueError("collector result has an unsupported schema")
+        if str(result.get("resultRevision") or "") != str(descriptor.get("resultRevision") or ""):
+            raise ValueError("collector result revision does not match the observation contract")
+        result_collections = result.get("collections") if isinstance(result.get("collections"), dict) else {}
+        payload = result_collections.get(collection) if isinstance(result_collections.get(collection), dict) else {}
+        rows = [dict(row) for row in (payload.get("rows") or []) if isinstance(row, dict)]
+        if int(payload.get("records") or 0) != int(descriptor.get("records") or 0):
+            raise ValueError("collector result record count does not match the observation contract")
+        expected_digest = str(descriptor.get("recordDigest") or "")
+        if expected_digest and _record_digest(rows) != expected_digest:
+            raise ValueError("collector result record digest does not match the observation contract")
+        return rows[:max(0, int(limit))]
+
     def workbench_observation_rows(self, variant_id: int, *, per_collection_limit: int = 40) -> dict[str, list[dict[str, Any]]]:
         """Load bounded retained observations lazily for one DeltaScope investigation case."""
         payload = self._payload(variant_id)
@@ -1778,9 +2053,20 @@ class V2SigmascopeInspector:
         contract = payload.get("observations") if isinstance(payload.get("observations"), dict) else {}
         collections = contract.get("collections") if isinstance(contract.get("collections"), dict) else {}
         result: dict[str, list[dict[str, Any]]] = {}
-        for collection in observation_projection.COLLECTIONS:
+        known_collections = list(observation_projection.COLLECTIONS)
+        declared_collections = known_collections + sorted(name for name in collections if name not in observation_projection.COLLECTIONS)
+        for collection in declared_collections:
             descriptor = collections.get(collection) if isinstance(collections.get(collection), dict) else {}
             backing = str(descriptor.get("backingDataset") or "")
+            if backing == "collector-result":
+                try:
+                    result[collection] = self._collector_result_rows(descriptor, collection, per_collection_limit)
+                    continue
+                except (KeyError, ValueError, FileNotFoundError):
+                    # External collector results are context-only. A malformed or unavailable
+                    # result must not become an implied negative observation.
+                    result[collection] = []
+                    continue
             if backing and backing not in {"compact-report"}:
                 try:
                     result[collection] = self._dataset_limited(payload, backing, per_collection_limit)

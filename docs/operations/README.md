@@ -8,8 +8,8 @@ The Operations perspective answers whether the Omega security platform is collec
 - **Pipelines** — recent GitHub Actions workflow history.
 - **Collectors** — collector-specific health, recent step outcomes and data/coverage metrics.
 - **Scan Queue** — pending, retry and completed analysis work.
-- **Evidence** — current publication and raw retained state.
-- **Definitions & Gates** — frozen security inputs and authority boundaries.
+- **Evidence** — current publication health, evidence identity and how the acquisition backlog affects coverage. Raw tables remain in the Security Researcher → Data workspace.
+- **Definitions & Gates** — the frozen interpretation set, Stigma-1 production state and explicit authority boundaries.
 - **Reports** — derived coverage/readiness summaries.
 - **Documentation** — operational and architecture reference.
 
@@ -35,3 +35,7 @@ A gated state means a production authority is intentionally disabled or waiting 
 4. Check the current evidence revision and last-known-good status.
 5. Inspect queue/retry state.
 6. Fix the source of the failure; do not weaken hash, provenance or validation checks just to make publication continue.
+
+## GitHub Workflow Center
+
+Use **Operations → GitHub Workflows** for workflow inventory, selected-workflow acquisition, guided `workflow_dispatch`, run/job/step/artifact/log inspection and explicitly confirmed cancel/rerun controls. Navigation reads the local snapshot only; see [GitHub Workflow Center](GITHUB-WORKFLOW-CENTER.md).

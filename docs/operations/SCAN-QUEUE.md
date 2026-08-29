@@ -1,6 +1,6 @@
 # SigmaScope scan queue causality
 
-DeltaScope's **Operations → Scan Queue** page explains the already-published SigmaScope queue. It is an inspection surface only: it cannot enqueue work, change priority, run a scan, alter Evidence-v2, or authorize publication.
+DeltaScope's **Operations → Scan Queue** page displays the complete already-published SigmaScope queue in deterministic order. Row **#1** is the next selected item when DeltaScope recognizes the published ordering policy. Selecting a row opens an inspector explaining its plugin/version, lane, priority, attempts, current scan and every published queue reason. It is an inspection surface only: it cannot enqueue work, change priority, run a scan, alter Evidence-v2, or authorize publication.
 
 ## Why scanning can appear to start at A again
 
@@ -35,6 +35,14 @@ The DeltaScope page displays this flag and identity epoch explicitly so operator
 - `baseline_scan` — the catalog identity epoch changed.
 
 Queue reasons describe **why work is due**, not a security verdict on the plugin.
+
+## Ruleset changes are not artifact-scan reasons by themselves
+
+A new Definitions or Stigma-1 ruleset revision changes **interpretation**, not the plugin bytes. Omega should first replay/reproject the retained typed observations against the new frozen ruleset. If those observations satisfy the new rule contract, no plugin artifact scan is needed.
+
+Additional acquisition becomes queue-worthy only when a separate invalidation applies or replay proves that required evidence is missing. The queue reason `srl_observation_missing` is the important boundary: it means an active rule requires an observation collection that is not retained at the required producer revision, so bounded targeted/deep acquisition is justified.
+
+Similarly, `advisory_changed` normally means re-evaluating retained dependency evidence, while `source_*` reasons advance the separate source-attribution stream rather than reopening the shipped artifact. DeltaScope labels these work classes explicitly in the queue inspector.
 
 ## Authority boundary
 

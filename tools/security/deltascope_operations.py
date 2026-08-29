@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""Bounded, read-only operational status projection for DeltaScope.
+"""Bounded GitHub Actions status and explicitly confirmed dispatch support for DeltaScope.
 
-The module reads public GitHub Actions metadata only. It never starts, cancels, retries,
-or mutates workflows. A short in-memory cache keeps the dashboard useful without turning
-DeltaScope into a GitHub polling service.
+Public status remains the default. Optional authenticated workflow access can be remembered
+locally by DeltaScope (Windows uses current-user DPAPI; other platforms use a user-only 0600
+credential file) or supplied by the process environment. The token is never returned to the
+browser. Starting a workflow is limited to ``workflow_dispatch`` and requires explicit confirmation.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import datetime as dt
+import hashlib
 import json
 import os
 import threading
@@ -15,13 +19,19 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
+
+import yaml
 from typing import Any, Callable, Iterable, Mapping
 
 SCHEMA = "omega.deltascope.operations.v1"
 DEFAULT_REPOSITORY = "dalagab/omega"
 DEFAULT_TTL_SECONDS = 60
+GITHUB_CREDENTIAL_SCHEMA = "omega.deltascope.github-credential.v1"
+DEFAULT_GITHUB_CREDENTIAL_ROOT = Path(".omega") / "deltascope" / "github" / "v1"
 MAX_RUNS = 50
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+MAX_WORKFLOW_DEFINITION_BYTES = 512 * 1024
 MAX_JOB_LOG_BYTES = 2 * 1024 * 1024
 MAX_WORKFLOW_HISTORY = 8
 RUNNING_STATES = {"queued", "in_progress", "requested", "waiting", "pending"}
@@ -38,6 +48,158 @@ EXPECTED_COMPONENTS: tuple[tuple[str, str], ...] = (
     ("source-intake", "Source intake"),
 )
 
+
+
+def default_github_credential_root() -> Path:
+    override = os.environ.get("OMEGA_DELTASCOPE_GITHUB_CREDENTIAL_HOME")
+    if override:
+        return Path(override).expanduser().resolve()
+    return (Path.home() / DEFAULT_GITHUB_CREDENTIAL_ROOT).resolve()
+
+
+def _credential_file_name(repository: str) -> str:
+    digest = hashlib.sha256(repository.encode("utf-8")).hexdigest()[:16]
+    return f"credential-{digest}.json"
+
+
+def _protect_token(raw: bytes) -> tuple[str, bytes]:
+    """Protect a remembered token for the current local user where the OS supports it."""
+    if os.name != "nt":
+        return "filesystem-mode-0600", raw
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class DATA_BLOB(ctypes.Structure):
+            _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_byte))]
+
+        source = ctypes.create_string_buffer(raw)
+        source_blob = DATA_BLOB(len(raw), ctypes.cast(source, ctypes.POINTER(ctypes.c_byte)))
+        output_blob = DATA_BLOB()
+        crypt32 = ctypes.windll.crypt32
+        kernel32 = ctypes.windll.kernel32
+        if not crypt32.CryptProtectData(ctypes.byref(source_blob), "Omega DeltaScope GitHub access", None, None, None, 0, ctypes.byref(output_blob)):
+            raise OSError(ctypes.get_last_error(), "CryptProtectData failed")
+        try:
+            protected = ctypes.string_at(output_blob.pbData, output_blob.cbData)
+        finally:
+            kernel32.LocalFree(output_blob.pbData)
+        return "windows-dpapi-current-user", protected
+    except Exception as exc:
+        raise RuntimeError(f"Windows could not protect the remembered GitHub credential: {exc}") from exc
+
+
+def _unprotect_token(protection: str, raw: bytes) -> bytes:
+    if protection == "filesystem-mode-0600":
+        if os.name == "nt":
+            raise ValueError("plaintext filesystem GitHub credentials are not accepted on Windows")
+        return raw
+    if protection != "windows-dpapi-current-user" or os.name != "nt":
+        raise ValueError("remembered GitHub credential uses an unsupported protection mode")
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class DATA_BLOB(ctypes.Structure):
+            _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_byte))]
+
+        source = ctypes.create_string_buffer(raw)
+        source_blob = DATA_BLOB(len(raw), ctypes.cast(source, ctypes.POINTER(ctypes.c_byte)))
+        output_blob = DATA_BLOB()
+        crypt32 = ctypes.windll.crypt32
+        kernel32 = ctypes.windll.kernel32
+        if not crypt32.CryptUnprotectData(ctypes.byref(source_blob), None, None, None, None, 0, ctypes.byref(output_blob)):
+            raise OSError(ctypes.get_last_error(), "CryptUnprotectData failed")
+        try:
+            return ctypes.string_at(output_blob.pbData, output_blob.cbData)
+        finally:
+            kernel32.LocalFree(output_blob.pbData)
+    except Exception as exc:
+        raise RuntimeError(f"Windows could not unlock the remembered GitHub credential: {exc}") from exc
+
+
+class LocalGitHubCredentialStore:
+    """Small local credential store used only to remember optional GitHub workflow access."""
+
+    def __init__(self, repository: str, root: Path | None = None) -> None:
+        self.repository = repository
+        self.root = (root or default_github_credential_root()).expanduser().resolve()
+        self.path = self.root / _credential_file_name(repository)
+
+    def _ensure_root(self) -> None:
+        self.root.mkdir(parents=True, exist_ok=True)
+        if self.root.is_symlink():
+            raise ValueError("DeltaScope GitHub credential root may not be a symlink")
+        try:
+            os.chmod(self.root, 0o700)
+        except OSError:
+            pass
+
+    def load(self) -> str:
+        if not self.path.exists():
+            return ""
+        if self.path.is_symlink() or not self.path.is_file():
+            raise ValueError("DeltaScope GitHub credential file must be a regular file")
+        document = json.loads(self.path.read_text(encoding="utf-8"))
+        if not isinstance(document, Mapping) or document.get("schema") != GITHUB_CREDENTIAL_SCHEMA:
+            raise ValueError("DeltaScope GitHub credential file has an invalid schema")
+        if str(document.get("repository") or "") != self.repository:
+            raise ValueError("DeltaScope GitHub credential does not belong to this repository")
+        protection = str(document.get("protection") or "")
+        try:
+            protected = base64.b64decode(str(document.get("token") or ""), validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise ValueError("DeltaScope GitHub credential payload is invalid") from exc
+        token = _unprotect_token(protection, protected).decode("utf-8")
+        if not token or len(token) > 4096 or any(ch.isspace() for ch in token):
+            raise ValueError("remembered GitHub token format is invalid")
+        return token
+
+    def save(self, token: str) -> None:
+        token = str(token or "").strip()
+        if not token:
+            self.clear()
+            return
+        self._ensure_root()
+        protection, protected = _protect_token(token.encode("utf-8"))
+        document = {
+            "schema": GITHUB_CREDENTIAL_SCHEMA,
+            "repository": self.repository,
+            "protection": protection,
+            "token": base64.b64encode(protected).decode("ascii"),
+        }
+        data = (json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
+        tmp = self.path.with_name(f".{self.path.name}.{os.getpid()}.tmp")
+        try:
+            with tmp.open("wb") as handle:
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+            try:
+                os.chmod(tmp, 0o600)
+            except OSError:
+                pass
+            os.replace(tmp, self.path)
+            try:
+                os.chmod(self.path, 0o600)
+            except OSError:
+                pass
+        finally:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    def clear(self) -> None:
+        if self.path.is_symlink():
+            raise ValueError("DeltaScope GitHub credential file may not be a symlink")
+        self.path.unlink(missing_ok=True)
+
+    def descriptor(self) -> dict[str, Any]:
+        return {
+            "rememberSupported": True,
+            "credentialProtection": "windows-dpapi-current-user" if os.name == "nt" else "filesystem-mode-0600",
+        }
 
 def _utc_now() -> str:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -165,7 +327,12 @@ def project_runs(repository: str, runs: list[Mapping[str, Any]], *, fetched_at_u
 
 
 class GitHubOperationsClient:
-    """Small fail-soft GitHub Actions reader with a process-local TTL cache."""
+    """Fail-soft GitHub Actions acquisition snapshot for the local DeltaScope client.
+
+    Network acquisition is explicit. Once a payload has been acquired it remains the
+    process-local snapshot until a caller requests refresh=True (or credentials change).
+    Normal page reads therefore never age out into surprise GitHub requests.
+    """
 
     def __init__(
         self,
@@ -174,13 +341,29 @@ class GitHubOperationsClient:
         ttl_seconds: int = DEFAULT_TTL_SECONDS,
         token: str | None = None,
         opener: Callable[..., Any] | None = None,
+        credential_store: LocalGitHubCredentialStore | None = None,
     ) -> None:
         repository = str(repository or DEFAULT_REPOSITORY).strip()
         if not repository or repository.count("/") != 1 or any(ch not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_." for ch in repository.replace("/", "")):
             raise ValueError("GitHub repository must use owner/name syntax")
         self.repository = repository
         self.ttl_seconds = max(10, min(900, int(ttl_seconds or DEFAULT_TTL_SECONDS)))
-        self.token = token if token is not None else (os.environ.get("OMEGA_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or "")
+        self.credential_store = credential_store or LocalGitHubCredentialStore(repository)
+        self._credential_error = ""
+        environment_token = os.environ.get("OMEGA_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
+        remembered_token = ""
+        if token is None and not environment_token:
+            try:
+                remembered_token = self.credential_store.load()
+            except (OSError, ValueError, RuntimeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+                self._credential_error = str(exc)
+        self.token = str(token if token is not None else environment_token or remembered_token).strip()
+        self._token_source = (
+            "session" if token is not None and self.token
+            else "environment" if token is None and environment_token
+            else "remembered" if token is None and remembered_token
+            else "none"
+        )
         self._opener = opener or urllib.request.urlopen
         self._lock = threading.RLock()
         self._cached_at = 0.0
@@ -207,6 +390,239 @@ class GitHubOperationsClient:
         if not isinstance(payload, Mapping):
             raise RuntimeError("GitHub Actions response was not an object")
         return payload
+
+    def _request(self, url: str, *, method: str = "GET", body: Mapping[str, Any] | None = None, timeout: float = 10.0) -> tuple[int, Mapping[str, Any]]:
+        encoded = json.dumps(body, separators=(",", ":")).encode("utf-8") if body is not None else None
+        headers = self._headers()
+        if encoded is not None:
+            headers["Content-Type"] = "application/json"
+        request = urllib.request.Request(url, data=encoded, headers=headers, method=method)
+        with self._opener(request, timeout=timeout) as response:
+            status = int(getattr(response, "status", None) or getattr(response, "getcode", lambda: 200)() or 200)
+            raw = response.read(MAX_RESPONSE_BYTES + 1)
+        if len(raw) > MAX_RESPONSE_BYTES:
+            raise RuntimeError("GitHub response exceeded the DeltaScope safety bound")
+        if not raw:
+            return status, {}
+        payload = json.loads(raw.decode("utf-8"))
+        return status, payload if isinstance(payload, Mapping) else {}
+
+    def configure_token(self, token: object, *, remember: bool = True) -> dict[str, Any]:
+        value = str(token or "").strip()
+        if value and (len(value) < 20 or len(value) > 4096 or any(ch.isspace() for ch in value)):
+            raise ValueError("GitHub token format is invalid")
+        if value and remember:
+            self.credential_store.save(value)
+        elif not value:
+            self.credential_store.clear()
+        with self._lock:
+            self.token = value
+            self._token_source = "remembered" if value and remember else "session" if value else "none"
+            self._credential_error = ""
+            self._cache = None
+            self._cached_at = 0.0
+            self._workflow_cache.clear()
+        return self.access_status()
+
+    def configure_session_token(self, token: object) -> dict[str, Any]:
+        """Backward-compatible process-only configuration used by older callers/tests."""
+        return self.configure_token(token, remember=False)
+
+    def access_status(self) -> dict[str, Any]:
+        persistence = (
+            "local-credential" if self._token_source == "remembered"
+            else "process-environment" if self._token_source == "environment"
+            else "process-memory-only" if self._token_source == "session"
+            else "none"
+        )
+        return {
+            "schema": "omega.deltascope.github-access.v1",
+            "repository": self.repository,
+            "tokenConfigured": bool(self.token),
+            "tokenPersistence": persistence,
+            "tokenSource": self._token_source,
+            "statusMode": "authenticated" if self.token else "public",
+            "dispatchAvailable": bool(self.token),
+            "dispatchConfirmation": "DISPATCH",
+            "credentialError": self._credential_error,
+            **self.credential_store.descriptor(),
+        }
+
+    def workflows(self, *, refresh: bool = False) -> dict[str, Any]:
+        cache_key = ("workflows",)
+        now = time.monotonic()
+        with self._lock:
+            cached = self._workflow_cache.get(cache_key)
+            if not refresh:
+                if cached:
+                    return dict(cached[1])
+                return {
+                    "schema": "omega.deltascope.github-workflows.v1", "available": False,
+                    "repository": self.repository, "workflows": [], "fetchedAtUtc": "",
+                    "snapshotLoaded": False, "cachePolicy": "explicit-refresh",
+                    "error": "GitHub workflow snapshot has not been acquired yet", **self.access_status(),
+                }
+        url = f"https://api.github.com/repos/{urllib.parse.quote(self.repository, safe='/')}/actions/workflows?per_page=100"
+        try:
+            payload = self._request_json(url)
+            rows = payload.get("workflows") if isinstance(payload.get("workflows"), list) else []
+            workflows = [{
+                "id": int(row.get("id") or 0), "name": str(row.get("name") or "Workflow"),
+                "path": str(row.get("path") or ""), "state": str(row.get("state") or "unknown"),
+                "url": self._safe_github_url(row.get("html_url")),
+            } for row in rows if isinstance(row, Mapping) and int(row.get("id") or 0) > 0]
+            result = {"schema": "omega.deltascope.github-workflows.v1", "available": True, "repository": self.repository, "workflows": workflows, "fetchedAtUtc": _utc_now(), **self.access_status()}
+        except (OSError, ValueError, RuntimeError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
+            result = {"schema": "omega.deltascope.github-workflows.v1", "available": False, "repository": self.repository, "workflows": [], "fetchedAtUtc": _utc_now(), "error": str(exc), **self.access_status()}
+        with self._lock:
+            self._workflow_cache[cache_key] = (now, dict(result))
+        return result
+
+    def workflow_dispatch_form(self, workflow_id: object, ref: object, *, refresh: bool = False) -> dict[str, Any]:
+        """Project a workflow_dispatch declaration into a bounded client-side form schema."""
+        try:
+            workflow_number = int(workflow_id)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("workflow_id must be a GitHub workflow ID") from exc
+        if workflow_number <= 0:
+            raise ValueError("workflow_id must be positive")
+        branch = str(ref or "").strip()
+        if not branch or len(branch) > 255 or any(ch in branch for ch in "\r\n"):
+            raise ValueError("ref must be a branch or tag name")
+
+        cache_key = ("workflow-form", workflow_number, branch)
+        now = time.monotonic()
+        with self._lock:
+            cached = self._workflow_cache.get(cache_key)
+            if not refresh and cached:
+                return dict(cached[1])
+
+        workflow_payload = self.workflows(refresh=refresh)
+        rows = workflow_payload.get("workflows") if isinstance(workflow_payload.get("workflows"), list) else []
+        workflow = next((row for row in rows if isinstance(row, Mapping) and int(row.get("id") or 0) == workflow_number), None)
+        if workflow is None:
+            raise ValueError("workflow is not present in the current GitHub workflow inventory")
+        path = str(workflow.get("path") or "").strip()
+        if not path.startswith(".github/workflows/") or not path.casefold().endswith((".yml", ".yaml")):
+            raise ValueError("workflow path is outside .github/workflows")
+
+        url = (
+            f"https://api.github.com/repos/{urllib.parse.quote(self.repository, safe='/')}"
+            f"/contents/{urllib.parse.quote(path, safe='/')}?ref={urllib.parse.quote(branch, safe='')}"
+        )
+        try:
+            source_payload = self._request_json(url)
+            if str(source_payload.get("encoding") or "").casefold() != "base64":
+                raise RuntimeError("GitHub workflow source was not returned as base64")
+            encoded = "".join(str(source_payload.get("content") or "").split())
+            try:
+                source = base64.b64decode(encoded, validate=True)
+            except (binascii.Error, ValueError) as exc:
+                raise RuntimeError("GitHub workflow source was not valid base64") from exc
+            if len(source) > MAX_WORKFLOW_DEFINITION_BYTES:
+                raise RuntimeError("GitHub workflow definition exceeded the DeltaScope safety bound")
+            document = yaml.safe_load(source.decode("utf-8")) or {}
+            if not isinstance(document, Mapping):
+                raise RuntimeError("GitHub workflow definition was not a YAML object")
+
+            # PyYAML 1.1 resolves the unquoted key `on` to True. Accept both forms
+            # without changing the loader globally.
+            triggers = document.get("on") if "on" in document else document.get(True)
+            dispatch_config: Mapping[str, Any] = {}
+            dispatchable = False
+            if isinstance(triggers, str):
+                dispatchable = triggers == "workflow_dispatch"
+            elif isinstance(triggers, list):
+                dispatchable = "workflow_dispatch" in [str(item) for item in triggers]
+            elif isinstance(triggers, Mapping) and "workflow_dispatch" in triggers:
+                dispatchable = True
+                candidate = triggers.get("workflow_dispatch")
+                dispatch_config = candidate if isinstance(candidate, Mapping) else {}
+
+            raw_inputs = dispatch_config.get("inputs") if isinstance(dispatch_config.get("inputs"), Mapping) else {}
+            form_inputs: list[dict[str, Any]] = []
+            for name, raw_config in list(raw_inputs.items())[:25]:
+                input_name = str(name).strip()
+                if not input_name:
+                    continue
+                config = raw_config if isinstance(raw_config, Mapping) else {}
+                input_type = str(config.get("type") or "string").strip().casefold()
+                if input_type not in {"boolean", "choice", "environment", "number", "string"}:
+                    input_type = "string"
+                default = config.get("default")
+                options = config.get("options") if isinstance(config.get("options"), list) else []
+                form_inputs.append({
+                    "name": input_name[:128],
+                    "description": str(config.get("description") or "")[:1000],
+                    "required": config.get("required") is True or str(config.get("required") or "").casefold() == "true",
+                    "type": input_type,
+                    "default": "" if default is None else str(default),
+                    "options": [str(option)[:4096] for option in options[:100]],
+                })
+            result = {
+                "schema": "omega.deltascope.workflow-dispatch-form.v1",
+                "available": True,
+                "dispatchable": dispatchable,
+                "repository": self.repository,
+                "workflowId": workflow_number,
+                "workflowName": str(workflow.get("name") or "Workflow"),
+                "path": path,
+                "ref": branch,
+                "inputs": form_inputs if dispatchable else [],
+                "readOnly": True,
+                "mutationAuthority": "none",
+                "fetchedAtUtc": _utc_now(),
+            }
+        except (OSError, UnicodeDecodeError, ValueError, RuntimeError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, yaml.YAMLError) as exc:
+            result = {
+                "schema": "omega.deltascope.workflow-dispatch-form.v1",
+                "available": False,
+                "dispatchable": False,
+                "repository": self.repository,
+                "workflowId": workflow_number,
+                "workflowName": str(workflow.get("name") or "Workflow"),
+                "path": path,
+                "ref": branch,
+                "inputs": [],
+                "readOnly": True,
+                "mutationAuthority": "none",
+                "fetchedAtUtc": _utc_now(),
+                "error": str(exc),
+            }
+        with self._lock:
+            self._workflow_cache[cache_key] = (now, dict(result))
+        return result
+
+    def dispatch_workflow(self, workflow_id: object, ref: object, inputs: object, confirmation: object) -> dict[str, Any]:
+        if str(confirmation or "") != "DISPATCH":
+            raise ValueError("type DISPATCH to confirm starting a GitHub workflow")
+        if not self.token:
+            raise ValueError("connect a GitHub token before starting a workflow")
+        try:
+            workflow_number = int(workflow_id)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("workflow_id must be a GitHub workflow ID") from exc
+        if workflow_number <= 0:
+            raise ValueError("workflow_id must be positive")
+        branch = str(ref or "").strip()
+        if not branch or len(branch) > 255 or any(ch in branch for ch in "\r\n"):
+            raise ValueError("ref must be a branch or tag name")
+        raw_inputs = inputs if isinstance(inputs, Mapping) else {}
+        if len(raw_inputs) > 25:
+            raise ValueError("GitHub workflow dispatch accepts at most 25 inputs")
+        safe_inputs: dict[str, str] = {}
+        for key, value in raw_inputs.items():
+            name = str(key).strip()
+            text = str(value)
+            if not name or len(name) > 128 or len(text) > 4096:
+                raise ValueError("workflow input names and values must be bounded")
+            safe_inputs[name] = text
+        url = f"https://api.github.com/repos/{urllib.parse.quote(self.repository, safe='/')}/actions/workflows/{workflow_number}/dispatches"
+        status, payload = self._request(url, method="POST", body={"ref": branch, "inputs": safe_inputs})
+        with self._lock:
+            self._cache = None
+            self._workflow_cache.clear()
+        return {"schema": "omega.deltascope.workflow-dispatch.v1", "accepted": status in {200, 201, 204}, "status": status, "repository": self.repository, "workflowId": workflow_number, "ref": branch, "runUrl": self._safe_github_url(payload.get("html_url")), "readOnly": False, "mutationAuthority": "github-workflow-dispatch"}
 
     def _request_runs(self) -> list[Mapping[str, Any]]:
         url = f"https://api.github.com/repos/{urllib.parse.quote(self.repository, safe='/')}/actions/runs?per_page={MAX_RUNS}"
@@ -293,8 +709,16 @@ class GitHubOperationsClient:
         now = time.monotonic()
         with self._lock:
             cached = self._workflow_cache.get(key)
-            if not refresh and cached and now - cached[0] < max(self.ttl_seconds, 180):
-                return dict(cached[1])
+            if not refresh:
+                if cached:
+                    return dict(cached[1])
+                return {
+                    "schema": "omega.deltascope.workflow-history.v1", "available": False,
+                    "readOnly": True, "mutationAuthority": "none", "workflowFile": workflow_file,
+                    "repository": self.repository, "fetchedAtUtc": "", "runs": [],
+                    "snapshotLoaded": False, "cachePolicy": "explicit-refresh",
+                    "error": "GitHub runner-history snapshot has not been acquired yet",
+                }
 
         runs_out: list[dict[str, Any]] = []
         try:
@@ -379,8 +803,17 @@ class GitHubOperationsClient:
     def status(self, *, refresh: bool = False) -> dict[str, Any]:
         now = time.monotonic()
         with self._lock:
-            if not refresh and self._cache is not None and now - self._cached_at < self.ttl_seconds:
-                return dict(self._cache)
+            if not refresh:
+                if self._cache is not None:
+                    return dict(self._cache)
+                return {
+                    "schema": SCHEMA, "available": False, "readOnly": True,
+                    "mutationAuthority": "none", "source": "github-actions-public-api",
+                    "repository": self.repository, "fetchedAtUtc": "", "actionsRunning": 0,
+                    "recentFailureCount": 0, "components": [], "events": [],
+                    "snapshotLoaded": False, "cachePolicy": "explicit-refresh",
+                    "error": "GitHub Actions snapshot has not been acquired yet",
+                }
         try:
             payload = project_runs(self.repository, self._request_runs())
         except (OSError, ValueError, RuntimeError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
@@ -402,6 +835,58 @@ class GitHubOperationsClient:
             self._cache = dict(payload)
             self._cached_at = now
         return payload
+
+
+    def snapshot_status(self) -> dict[str, Any]:
+        """Describe the already-acquired GitHub snapshot without performing I/O."""
+        with self._lock:
+            payload = dict(self._cache or {})
+            workflow_keys = list(self._workflow_cache)
+        history_count = sum(1 for key in workflow_keys if key and key[0] not in {"workflows", "workflow-form"})
+        form_count = sum(1 for key in workflow_keys if key and key[0] == "workflow-form")
+        return {
+            "schema": "omega.deltascope.github-acquisition-state.v1",
+            "sourceId": "github-actions",
+            "label": "GitHub Actions",
+            "loaded": bool(payload),
+            "fetchedAtUtc": str(payload.get("fetchedAtUtc") or ""),
+            "cachePolicy": "explicit-refresh",
+            "navigationRefresh": False,
+            "workflowHistorySnapshots": history_count,
+            "workflowFormSnapshots": form_count,
+            **self.access_status(),
+        }
+
+    def refresh_snapshot(
+        self,
+        workflow_contracts: Mapping[str, Iterable[str]] | None = None,
+        *,
+        history_limit: int = 8,
+    ) -> dict[str, Any]:
+        """Acquire the operational GitHub snapshot independently from page navigation."""
+        # Explicit acquisition replaces the previous derived caches as one user action.
+        with self._lock:
+            self._cache = None
+            self._cached_at = 0.0
+            self._workflow_cache.clear()
+        operations = self.status(refresh=True)
+        workflows = self.workflows(refresh=True)
+        histories: dict[str, dict[str, Any]] = {}
+        for workflow_file, job_names in sorted((workflow_contracts or {}).items()):
+            names = {str(name).strip() for name in (job_names or []) if str(name).strip()}
+            histories[str(workflow_file)] = self.workflow_history(
+                str(workflow_file), limit=history_limit, include_logs=True,
+                log_job_names=names or None, log_run_limit=4, refresh=True,
+            )
+        return {
+            "schema": "omega.deltascope.github-acquisition-refresh.v1",
+            "sourceId": "github-actions",
+            "refreshed": True,
+            "operations": operations,
+            "workflows": workflows,
+            "workflowHistories": histories,
+            "snapshot": self.snapshot_status(),
+        }
 
 
 def merge_component_registry(payload: Mapping[str, Any], registry: Mapping[str, Any] | None) -> dict[str, Any]:

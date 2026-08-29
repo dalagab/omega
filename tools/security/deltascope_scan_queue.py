@@ -33,6 +33,50 @@ REASON_EXPLANATIONS: dict[str, tuple[str, str]] = {
 }
 
 
+ARTIFACT_SCAN_REASONS = {
+    "manual", "baseline_scan", "new_variant", "artifact_url_changed",
+    "artifact_version_changed", "artifact_analysis_changed",
+}
+SOURCE_FOLLOWUP_REASONS = {
+    "source_followup", "source_candidates_changed", "source_candidate_observed",
+    "source_observation_changed", "source_analysis_changed", "source_unresolved",
+}
+
+
+def _operational_action(primary: str, work_type: str) -> tuple[str, bool | None, str]:
+    """Explain the operational work without turning a queue reason into a verdict."""
+    if primary == "srl_observation_missing":
+        return (
+            "Targeted / deep evidence acquisition", True if work_type == "artifact" else None,
+            "A rule replay cannot be satisfied from retained observations at the required producer revision, so additional bounded evidence acquisition is justified. The producer/work type determines whether that means reopening the plugin artifact.",
+        )
+    if primary == "advisory_changed":
+        return (
+            "Re-evaluate retained dependency evidence", False,
+            "Frozen advisory intelligence changed. Existing dependency evidence can normally be reprojected without reopening the plugin artifact.",
+        )
+    if primary in SOURCE_FOLLOWUP_REASONS or work_type == "source":
+        return (
+            "Source attribution / source follow-up", False,
+            "This work advances the separately retained source-evidence stream; it does not imply the shipped plugin artifact needs another scan.",
+        )
+    if primary == "failed_retry":
+        artifact = work_type == "artifact"
+        return (
+            "Retry artifact scan" if artifact else "Retry incomplete queue work", artifact,
+            "A prior attempt did not complete. The retry preserves the original work boundary rather than creating a new security conclusion.",
+        )
+    if primary in ARTIFACT_SCAN_REASONS or work_type == "artifact":
+        return (
+            "Artifact scan / re-analysis", True,
+            "The queued work needs SigmaScope to inspect the installable artifact under the current artifact-analysis contract.",
+        )
+    return (
+        "Queued security work", None,
+        "The published queue contains this work item, but DeltaScope does not classify it as an artifact scan or retained-evidence reprojection.",
+    )
+
+
 def _state(item: Mapping[str, Any]) -> str:
     return str(item.get("state") or "pending").strip().lower()
 
@@ -83,6 +127,12 @@ def _item_projection(item: Mapping[str, Any], *, exact_order: bool) -> dict[str,
     lane = _lane(item) if exact_order else -1
     reasons = [str(value) for value in (item.get("reasons") or []) if str(value)]
     primary = str(item.get("primaryReason") or (reasons[0] if reasons else ""))
+    work_type = str(item.get("workType") or "")
+    action, requires_artifact_scan, action_explanation = _operational_action(primary, work_type)
+    reason_details = []
+    for reason in reasons or ([primary] if primary else []):
+        label, explanation = REASON_EXPLANATIONS.get(reason, (reason.replace("_", " ").title(), "Published SigmaScope queue reason."))
+        reason_details.append({"reason": reason, "label": label, "explanation": explanation})
     return {
         "queueKey": str(item.get("queueKey") or ""),
         "variantId": int(item.get("variantId") or 0),
@@ -91,7 +141,7 @@ def _item_projection(item: Mapping[str, Any], *, exact_order: bool) -> dict[str,
         "name": str(item.get("name") or item.get("internalName") or ""),
         "sourceName": str(item.get("sourceName") or ""),
         "assemblyVersion": str(item.get("assemblyVersion") or ""),
-        "workType": str(item.get("workType") or ""),
+        "workType": work_type,
         "state": _state(item),
         "priority": int(item.get("priority") or 0),
         "attemptCount": int(item.get("attemptCount") or 0),
@@ -100,13 +150,17 @@ def _item_projection(item: Mapping[str, Any], *, exact_order: bool) -> dict[str,
         "currentScannedAtUtc": str(item.get("currentScannedAtUtc") or ""),
         "primaryReason": primary,
         "reasons": reasons,
+        "reasonDetails": reason_details,
+        "operationalAction": action,
+        "operationalExplanation": action_explanation,
+        "requiresArtifactScan": requires_artifact_scan,
         "lane": lane,
         "laneId": {0: "first-coverage", 1: "first-coverage-retry", 2: "covered-refresh"}.get(lane, "unknown"),
         "laneLabel": {0: "First coverage", 1: "First-coverage retry", 2: "Covered refresh / follow-up"}.get(lane, "Published order only"),
     }
 
 
-def project_scan_queue(queue_state: Mapping[str, Any] | None, *, current_variants: int = 0, next_limit: int = 24) -> dict[str, Any]:
+def project_scan_queue(queue_state: Mapping[str, Any] | None, *, current_variants: int = 0, next_limit: int | None = None) -> dict[str, Any]:
     queue = queue_state if isinstance(queue_state, Mapping) else {}
     raw_items = queue.get("items") if isinstance(queue.get("items"), Mapping) else {}
     items = [value for value in raw_items.values() if isinstance(value, Mapping)]
@@ -173,7 +227,14 @@ def project_scan_queue(queue_state: Mapping[str, Any] | None, *, current_variant
     if not baseline:
         notes.append("baselineSecurityRebuild=false: the published queue does not describe a catalog identity reset.")
 
-    limit = max(1, min(MAX_NEXT_ITEMS, int(next_limit or 24)))
+    projected_queue = [_item_projection(item, exact_order=exact_order) for item in ordered]
+    for rank, row in enumerate(projected_queue, start=1):
+        row["rank"] = rank if exact_order else 0
+        row["isNext"] = bool(exact_order and rank == 1)
+    if next_limit is None:
+        preview_limit = min(MAX_NEXT_ITEMS, len(projected_queue))
+    else:
+        preview_limit = max(1, min(MAX_NEXT_ITEMS, int(next_limit or 1)))
     recent = [row for row in (queue.get("recentCompleted") or []) if isinstance(row, Mapping)][-MAX_RECENT_ITEMS:]
     recent.reverse()
 
@@ -215,6 +276,11 @@ def project_scan_queue(queue_state: Mapping[str, Any] | None, *, current_variant
             {"lane": 2, "id": "covered-refresh", "label": "3 · Covered refresh / follow-up", "count": covered, "description": "Artifact re-analysis, source follow-up and advisory work for variants that already have current coverage."},
         ] if exact_order else [],
         "reasons": reason_rows,
-        "nextItems": [_item_projection(item, exact_order=exact_order) for item in ordered[:limit]],
+        "queueItems": projected_queue,
+        "nextItems": projected_queue[:preview_limit],
+        "rulesetScanBoundary": {
+            "rulesetChangeRequiresArtifactScan": False,
+            "explanation": "A Definitions/ruleset revision change is an interpretation/reprojection event, not an artifact-scan reason by itself. Additional acquisition becomes queue-worthy only when retained evidence cannot satisfy the active rule contract (for example srl_observation_missing) or another artifact/source invalidation reason applies.",
+        },
         "recentCompleted": [_item_projection(item, exact_order=False) for item in recent],
     }

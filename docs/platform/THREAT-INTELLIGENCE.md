@@ -15,9 +15,23 @@ The collector stores:
 - exact host/IP/URL matches between observed plugin endpoints and the frozen indicators;
 - a content-derived `reputationRevision`.
 
-DeltaScope exposes this as **Security Researcher → Threat Intelligence**. The primary table is a full **current endpoint inventory**, not only a bad-endpoint list: every currently observed host/URL is shown with its frozen DNS resolution, feed-match state, risk when a feed actually matches it, and the current plugin variants that reference it.
+DeltaScope exposes this as **Security Researcher → Threat Intelligence**. The page is ordered as an intelligence briefing rather than a feed browser:
 
-An endpoint labelled **UNLISTED** means only that the bounded active feed set has no match for it. It must never be interpreted as `safe`, `clean`, or reputable. DNS failures and retained prior resolutions are shown separately.
+1. **corpus × feed intersection** — indicators that touch endpoints present in current plugin evidence;
+2. **endpoint research queue** — exact hits, shared-infrastructure adjacency, newly observed endpoints, unlisted/unrecognised infrastructure and DNS attention;
+3. **feed health/lifecycle** — collector outcome, timestamp/freshness provenance and inactive retained indicators;
+4. **full frozen feed data** — reference-only and collapsed by default.
+
+An endpoint labelled **UNLISTED** means only that the bounded active feed set has no match for it. It must never be interpreted as `safe`, `clean`, or reputable. DeltaScope further splits unlisted endpoints into recognised/categorised context and **unlisted & unrecognised** research leads. Loopback/private/special-use endpoints are hidden by default but remain available through an explicit filter.
+
+### Exact IOC hit versus shared infrastructure
+
+DeltaScope distinguishes an exact endpoint identity hit from a hostname that merely resolved to a listed IP:
+
+- **exact host/domain/IP/URL identity** — promoted as a feed intersection and linked directly to the affected current plugin variants;
+- **resolved-IP adjacency** — displayed as **shared infrastructure**, because CDN/cloud/shared-hosting DNS overlap is not proof that the hostname itself is the malicious indicator.
+
+This distinction changes only the investigator presentation. It does **not** rewrite the immutable frozen reputation snapshot or silently mutate the Stigma-1/SRL policy input.
 
 ## Default and optional feeds
 
@@ -36,6 +50,16 @@ A rule must not make an arbitrary live DNS lookup while evaluating a plugin. Ins
 If DNS lookup temporarily fails, Omega may retain the prior frozen resolution for that same observed host and records the resolution status. This prevents a transient resolver outage from silently erasing all reputation context.
 
 DNS is evidence context, not ownership attribution. Shared/CDN IPs can serve many unrelated domains, so a feed match must be interpreted using the actual indicator/feed semantics and plugin endpoint context.
+
+## Research pivots and lifecycle
+
+Every corpus-intersecting indicator exposes its affected current plugin variants. DeltaScope can pivot **indicator → Findings** by pre-filling the Findings inbox endpoint filter; endpoint findings can show `FEED MATCH` or `FEED ADJACENCY` context once the frozen threat snapshot is loaded.
+
+Endpoint first/last-observed timestamps are shown when the published relationship index contains them. A **New this week** filter is therefore publication-backed only when those timestamps exist; DeltaScope does not fabricate historical first-seen dates.
+
+Feed freshness is separate from collector success. `COMPLETE` means the collector completed; it does not by itself prove the feed is recent. DeltaScope prefers a feed-specific timestamp when published and otherwise labels a snapshot-level timestamp as such. Inactive indicators are retained as lifecycle/reference context, but `inactive` is not presented as an upstream retraction unless the frozen payload carries an explicit retirement/retraction timestamp.
+
+The page also presents a bounded ATT&CK **research lens** over the already-loaded newest-finding window. Those mappings are behavioral analogues for pivoting, not claims that a plugin is maliciously executing an ATT&CK technique.
 
 ## How SRL uses it
 

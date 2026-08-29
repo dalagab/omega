@@ -59,6 +59,50 @@ class DeltaScopeScanQueueTests(unittest.TestCase):
         self.assertEqual("unknown-policy", result["mode"])
         self.assertEqual([], result["lanes"])
 
+
+    def test_complete_queue_is_projected_with_rank_and_next_marker(self):
+        result = deltascope_scan_queue.project_scan_queue(self.queue())
+        self.assertEqual(4, len(result["queueItems"]))
+        self.assertEqual([1, 2, 3, 4], [row["rank"] for row in result["queueItems"]])
+        self.assertTrue(result["queueItems"][0]["isNext"])
+        self.assertFalse(any(row["isNext"] for row in result["queueItems"][1:]))
+
+    def test_complete_queue_is_not_truncated_to_preview_limit(self):
+        queue = self.queue()
+        queue["items"] = {
+            str(i): {
+                "queueKey": str(i), "variantId": i + 1, "workType": "artifact",
+                "internalName": f"Plugin{i:03d}", "priority": 900, "state": "pending",
+                "currentScanId": 0, "currentScannedAtUtc": "", "attemptCount": 0,
+                "primaryReason": "new_variant", "reasons": ["new_variant"],
+            }
+            for i in range(55)
+        }
+        result = deltascope_scan_queue.project_scan_queue(queue)
+        self.assertEqual(55, len(result["queueItems"]))
+        self.assertEqual(deltascope_scan_queue.MAX_NEXT_ITEMS, len(result["nextItems"]))
+        self.assertEqual(55, result["queueItems"][-1]["rank"])
+
+    def test_ruleset_change_is_not_an_artifact_scan_reason_by_itself(self):
+        result = deltascope_scan_queue.project_scan_queue(self.queue())
+        self.assertFalse(result["rulesetScanBoundary"]["rulesetChangeRequiresArtifactScan"])
+        self.assertIn("not an artifact-scan reason", result["rulesetScanBoundary"]["explanation"])
+
+    def test_operational_work_class_distinguishes_deep_source_and_reprojection(self):
+        queue = self.queue()
+        queue["items"] = {
+            "deep": {"queueKey": "deep", "variantId": 1, "workType": "artifact", "internalName": "Deep", "priority": 1000, "state": "pending", "currentScanId": 9, "currentScannedAtUtc": "2026-08-20T00:00:00Z", "primaryReason": "srl_observation_missing", "reasons": ["srl_observation_missing"]},
+            "advisory": {"queueKey": "advisory", "variantId": 2, "workType": "artifact", "internalName": "Advisory", "priority": 900, "state": "pending", "currentScanId": 8, "currentScannedAtUtc": "2026-08-20T00:00:00Z", "primaryReason": "advisory_changed", "reasons": ["advisory_changed"]},
+            "source": {"queueKey": "source", "variantId": 3, "workType": "source", "internalName": "Source", "priority": 800, "state": "pending", "currentScanId": 7, "currentScannedAtUtc": "2026-08-20T00:00:00Z", "primaryReason": "source_followup", "reasons": ["source_followup"]},
+        }
+        rows = {row["queueKey"]: row for row in deltascope_scan_queue.project_scan_queue(queue)["queueItems"]}
+        self.assertTrue(rows["deep"]["requiresArtifactScan"])
+        self.assertIn("deep", rows["deep"]["operationalAction"].lower())
+        self.assertFalse(rows["advisory"]["requiresArtifactScan"])
+        self.assertIn("retained dependency evidence", rows["advisory"]["operationalAction"].lower())
+        self.assertFalse(rows["source"]["requiresArtifactScan"])
+        self.assertIn("source", rows["source"]["operationalAction"].lower())
+
     def test_projection_has_no_authority(self):
         result = deltascope_scan_queue.project_scan_queue(self.queue())
         self.assertTrue(result["readOnly"])

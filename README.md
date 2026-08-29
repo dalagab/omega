@@ -1,10 +1,20 @@
 # DeltaScope
 
-**DeltaScope 4.21.8** is the local, read-only investigation and SRL authoring client for Omega security evidence.
+**DeltaScope 4.21.12** is the local, read-only investigation and SRL authoring client for Omega security evidence.
 
 This source tree is intentionally independent from the SigmaScope scanner/security-services source tree. DeltaScope consumes published, versioned data contracts and Security Evidence v2 over HTTPS, verifies frozen resource hashes, caches last-known-good revisions, and never downloads or executes SigmaScope worker code.
 
 ## Run
+
+The preferred packaged desktop entry point is the Go shell:
+
+```text
+DeltaScope.exe
+```
+
+From a source checkout, build it on Windows with `desktop\build.ps1` or run `deltascope-desktop.cmd`. The normal `DeltaScope.exe` is a quiet GUI-subsystem application: Python probes, environment setup, WebView host, and backend processes run without separate console windows and write diagnostics to the desktop log. `DeltaScope-console.exe` is built alongside it for explicit developer/CLI diagnostics. The shell owns the dedicated app window, loopback front door, Python process lifecycle, and shell-side universal downloader. On Windows it prefers a native pywebview/WebView2 window (with Chromium app mode and the normal browser as fallbacks), so the desktop client has DeltaScope application chrome rather than an Edge app-window identity. See `docs/platform/DESKTOP-SHELL.md`.
+
+The independent Python launcher remains supported for development and headless use:
 
 ```bash
 python deltascope.py

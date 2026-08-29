@@ -38,6 +38,29 @@ The Overview summarizes:
 
 Older versions remain available as archive history but do not inflate current HIGH/CRITICAL totals.
 
+## Resolution workflow
+
+The developer landing page is resolution-first. It treats each observed capability as something the developer should deliberately understand and respond to rather than merely navigate past.
+
+The flow is:
+
+1. **Understand** — inspect the canonical capability, related finding/rule context and retained evidence.
+2. **Decide** — choose whether the behavior is legitimate and should be explained, should be changed in code, or should be disputed with reproducible evidence.
+3. **Act** — write the explanation or make the code change.
+4. **Verify** — publish `.omega/plugin.yaml` or a new artifact and wait for the normal acquisition/scan path to observe the change.
+
+The per-capability editor on the landing page and the full **Omega Profile** builder share the same browser-local draft. Writing an explanation in either place updates the other. The draft has no security authority: it never changes findings, severity, queue state, Definitions or published Evidence-v2.
+
+### Marketplace preview
+
+**As users see you** previews the public-facing plugin presentation using the current independent security result plus developer-authored context. It shows the plugin/version, scan/index time, finding count and capability explanations. The preview updates while explanations are drafted so the developer can see the trust/context value of explaining expected behavior.
+
+Developer explanations add context for users. They do **not** remove the independent severity badge or finding count.
+
+### Suggest phrasing
+
+DeltaScope can generate a deterministic starter explanation from the observed capability and known destinations. It does not claim the wording came from peer plugins unless a future acquired explanation index can actually support that statement.
+
 ## Security Review
 
 Security Review explains each current finding in developer-oriented language:
@@ -139,3 +162,13 @@ Manifest tags/category tags and profile tags help discovery. Use them to describ
 4. Improve source/build provenance if Omega cannot associate the right source.
 5. Add or correct `.omega/plugin.yaml` if the behavior is expected but unexplained.
 6. If the detector itself is incorrect, open a support/GitHub issue with the plugin version, artifact identity, finding/rule ID and why the evidence is a false positive.
+
+## Behaviors and matched evidence
+
+**Behaviors** is the plugin-centric view of what Omega actually observed. It complements the origin-oriented Network, Code & native, and Supply chain views by grouping the retained rows underneath the capability/finding they support.
+
+For example, a hard-coded external-path behavior should place the retained path string first, followed by the IL callsite or metadata location and the linked rule. Endpoint behaviors place the URL/host first; native/import behaviors place the library or target symbol first. Source lines are shown only when a source mapping is actually retained; artifact-only evidence is labelled accordingly.
+
+The capability summary on Overview remains a compact summary. **View evidence** opens Behaviors. A capability that is known from collection metadata or a compact capability summary but has no published row-level callsite stays visible with an explicit no-specific-row state.
+
+When a researcher arrives from a corpus Intelligence pivot, DeltaScope preserves that context in a banner and can filter Behaviors to the originating signal. This navigation context is local/read-only and never changes the independent finding, severity, scanner evidence, or developer profile.

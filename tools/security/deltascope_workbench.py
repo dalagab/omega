@@ -38,6 +38,9 @@ TIMELINE_COLLECTIONS = (
     "staticPatternMatches", "networkEndpoints", "nativeImports", "dependencies",
     "ipcIntegrations", "binaryClassifications", "sourceFiles", "secondarySecurity",
     "sourceAttribution", "sourceProvenance", "artifactIdentity", "manifestObservation",
+    "sourceBuildProjects", "sourceBuildEdges", "sourceBuildInputs", "sourceBuildEnvironment",
+    "sourceDependencyDeclarations", "sourceReleaseWorkflows", "binarySignatureTrust",
+    "elfBinaryStructure", "machOBinaryStructure",
 )
 
 
@@ -107,12 +110,19 @@ def _incident(row: dict[str, Any]) -> dict[str, Any] | None:
     return {
         "schema": INCIDENT_SCHEMA,
         "incidentId": _stable_id("incident", identity),
+        "scanId": _int(row.get("scan_id")),
         "readOnly": True,
         "mutationAuthority": "none",
         "asset": _asset(row),
         "priority": priority,
         "severity": RANK_SEVERITY[effective_rank],
         "findingCount": _finding_count(row),
+        "findingCounts": {
+            "critical": _int(row.get("critical_count")),
+            "high": _int(row.get("high_count")),
+            "caution": _int(row.get("caution_count")),
+            "informational": _int(row.get("informational_count")),
+        },
         "advisoryCount": advisories,
         "advisoryHighestSeverity": advisory_severity,
         "analysisStatus": status or "unscanned",
@@ -263,6 +273,24 @@ def _observation_label(collection: str, row: Mapping[str, Any]) -> str:
         return f"Binary classified: {row.get('path') or row.get('name') or row.get('classification') or 'binary'}"
     if collection == "sourceFiles":
         return f"Source file retained: {row.get('path') or 'source file'}"
+    if collection == "sourceBuildProjects":
+        return f"Source build project observed: {row.get('path') or row.get('name') or 'project'}"
+    if collection == "sourceBuildEdges":
+        return f"Source build relationship observed: {row.get('from') or row.get('project') or row.get('source') or 'build edge'}"
+    if collection == "sourceBuildInputs":
+        return f"Source build input observed: {row.get('path') or row.get('name') or 'input'}"
+    if collection == "sourceBuildEnvironment":
+        return "Source build environment recorded"
+    if collection == "sourceDependencyDeclarations":
+        return f"Source dependency declared: {row.get('name') or row.get('package') or row.get('id') or 'dependency'}"
+    if collection == "sourceReleaseWorkflows":
+        return f"Source release workflow observed: {row.get('path') or row.get('name') or 'workflow'}"
+    if collection == "binarySignatureTrust":
+        return f"Binary signature observation: {row.get('path') or row.get('publisher') or row.get('validationStatus') or 'signature'}"
+    if collection == "elfBinaryStructure":
+        return f"ELF binary structure observed: {row.get('path') or row.get('architecture') or 'ELF binary'}"
+    if collection == "machOBinaryStructure":
+        return f"Mach-O binary structure observed: {row.get('path') or row.get('architecture') or 'Mach-O binary'}"
     if collection == "sourceAttribution":
         return "Source attribution evidence recorded"
     if collection == "sourceProvenance":
@@ -349,7 +377,12 @@ def project_incident_case(
 
     observation_counts: dict[str, int] = {}
     emitted_observations = 0
-    for collection in TIMELINE_COLLECTIONS:
+    collection_order = list(TIMELINE_COLLECTIONS)
+    collection_order.extend(sorted(
+        str(collection) for collection in (observation_rows or {})
+        if str(collection) not in TIMELINE_COLLECTIONS
+    ))
+    for collection in collection_order:
         rows = [dict(item) for item in (observation_rows or {}).get(collection, []) if isinstance(item, Mapping)]
         rows.sort(key=lambda item: hashlib.sha256(_canonical(item)).hexdigest())
         observation_counts[collection] = len(rows)
@@ -513,6 +546,8 @@ def _catalog_item(kind: str, item: Mapping[str, Any]) -> dict[str, Any]:
             "origins": list(item.get("origins") or []),
             "pluginCount": _int(item.get("pluginCount")),
             "observations": _int(item.get("observations")),
+            "firstSeenUtc": str(item.get("firstSeenUtc") or item.get("firstObservedAtUtc") or ""),
+            "lastSeenUtc": str(item.get("lastSeenUtc") or item.get("lastObservedAtUtc") or ""),
         }
     if kind == "component":
         return {
@@ -1514,6 +1549,22 @@ def project_system_status(
         "queue": dict(context.get("queue") or {}) if isinstance(context.get("queue"), Mapping) else {},
         "checks": checks,
         "publication": dict(evidence.get("publication") or {}) if isinstance(evidence.get("publication"), Mapping) else {},
+        "evidenceCounts": dict(evidence.get("counts") or {}) if isinstance(evidence.get("counts"), Mapping) else {},
+        "definitionProvenance": {
+            "available": bool(provenance_meta.get("available")),
+            "provenanceRevision": str(provenance_meta.get("provenanceRevision") or ""),
+            "definitionsRevision": str(provenance_meta.get("definitionsRevision") or defs.get("definitionsRevision") or ""),
+            "ruleSetRevision": str(provenance_meta.get("ruleSetRevision") or srl.get("ruleSetRevision") or ""),
+            "activeRuleCount": int(provenance_meta.get("activeRuleCount") or srl.get("activeRuleCount") or 0),
+            "packCount": int(provenance_meta.get("packCount") or srl.get("packCount") or 0),
+        },
+        "ruleProjections": {
+            "available": bool(projections.get("available")),
+            "productionRuleEvaluationEnabled": bool(projections.get("productionRuleEvaluationEnabled")),
+            "productionWriteBack": bool(projections.get("productionWriteBack")),
+            "queueMutationAuthorized": bool(projections.get("queueMutationAuthorized")),
+            "counts": dict(projections.get("counts") or {}) if isinstance(projections.get("counts"), Mapping) else {},
+        },
     }
     return {
         "schema": SYSTEM_STATUS_SCHEMA,

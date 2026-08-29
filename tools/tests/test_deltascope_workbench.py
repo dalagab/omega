@@ -1,16 +1,114 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+import tempfile
 import threading
 import unittest
 import urllib.request
+from pathlib import Path
 
 import deltascope_workbench as workbench
+import deltascope_rift_reports
 import developer_view
+from evidence_v2_inspector import V2SigmascopeInspector
 
 
 class DeltaScopeWorkbenchTests(unittest.TestCase):
+    def test_developer_view_exposes_retained_scraped_omega_context(self):
+        source = Path(developer_view.__file__).read_text(encoding="utf-8")
+        self.assertIn("Scraped Omega context", source)
+        self.assertIn("Declared IPC integrations", source)
+        self.assertIn("Exact retained profile record", source)
+        self.assertIn("never proves safety or changes independent findings", source)
+
+    def test_collector_result_rows_require_the_declared_revision_and_digest(self):
+        rows = [{"path": "plugin.dll", "signaturePresent": True}]
+        row_hash = hashlib.sha256(json.dumps(rows[0], sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+        digest = hashlib.sha256(f"{row_hash}\n".encode("ascii")).hexdigest()
+        result = {
+            "schema": "omega.collector-result.v1", "resultRevision": "collector-result-v1-test",
+            "collections": {"binarySignatureTrust": {"records": 1, "rows": rows}},
+        }
+
+        class Source:
+            def read_json(self, path):
+                self.path = path
+                return result
+
+        inspector = object.__new__(V2SigmascopeInspector)
+        inspector.source = Source()
+        descriptor = {"resultPath": "derived/collector-result.json", "resultRevision": "collector-result-v1-test", "records": 1, "recordDigest": digest}
+        self.assertEqual(rows, inspector._collector_result_rows(descriptor, "binarySignatureTrust", 40))
+        descriptor["recordDigest"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "digest"):
+            inspector._collector_result_rows(descriptor, "binarySignatureTrust", 40)
+
+    def test_rift_runtime_report_projects_a_sorted_neutral_timeline(self):
+        report = {
+            "schema_version": "rift.runtime-observation.v2", "producer": "rift", "producer_version": "test",
+            "ran_at": "2026-08-25T10:00:00Z", "execution": {"exercise_profile": "bounded"},
+            "plugin": {"internal_name": "Example.Plugin", "load_outcome": "ok"},
+            "exercise": {"registrations_exercised": 1, "registrations_unexercised": 2},
+            "observations": [
+                {"id": "later", "kind": "service_access", "ts_offset_ms": 40, "phase": "startup", "component": "IClientState", "operation": "get_IsLoggedIn"},
+                {"id": "first", "kind": "event", "ts_offset_ms": 5, "phase": "post-init", "message": "ready"},
+            ],
+            "summary": {"total_observations": 2, "by_kind": {"event": 1, "service_access": 1}},
+        }
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / "rift.json"
+            path.write_text(json.dumps(report), encoding="utf-8")
+            projection = deltascope_rift_reports.project_review([path])
+        self.assertTrue(projection["readOnly"])
+        self.assertEqual("none", projection["mutationAuthority"])
+        self.assertEqual(1, projection["reviewableCount"])
+        self.assertEqual([5, 40], [event["offsetMs"] for event in projection["reports"][0]["timeline"]])
+        self.assertNotIn("severity", projection["reports"][0])
+
+    def test_rift_report_store_is_snapshot_driven_and_accepts_local_import(self):
+        report = {
+            "schema_version": "rift.runtime-observation.v2", "ran_at": "2026-08-26T20:00:00Z",
+            "plugin": {"internal_name": "Imported.Plugin"}, "execution": {}, "exercise": {},
+            "observations": [{"kind": "event", "ts_offset_ms": 2, "message": "ready"}],
+            "summary": {"total_observations": 1},
+        }
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / "configured.json"
+            path.write_text(json.dumps(report), encoding="utf-8")
+            store = deltascope_rift_reports.RiftReportStore([path])
+            path.unlink()
+            first = store.snapshot()
+            self.assertEqual(1, first["reportCount"])
+            self.assertFalse(first["navigationRefresh"])
+            imported = store.import_text("uploaded.json", json.dumps(dict(report, ran_at="2026-08-26T21:00:00Z")))
+            second = store.snapshot()
+            self.assertEqual("local-upload", imported["acquiredFrom"])
+            self.assertEqual(2, second["reportCount"])
+            self.assertEqual(1, second["sessionImportCount"])
+            store.reload_configured()
+            self.assertEqual(1, store.snapshot()["reportCount"])
+
+    def test_plugin_github_link_resolves_to_existing_internal_name_contract(self):
+        class FakeInspector:
+            def list_plugins(self, **kwargs):
+                self.query = kwargs["q"]
+                return [
+                    {"variant_id": 10, "internal_name": "Example.Plugin", "canonical_name": "Example",
+                     "repo_url": "https://github.com/example/plugin.git"},
+                    {"variant_id": 11, "internal_name": "Other.Plugin", "canonical_name": "Other",
+                     "repo_url": "https://github.com/other/plugin"},
+                ]
+        inspector = FakeInspector()
+        result = developer_view.resolve_catalog_plugin_link(inspector, "https://github.com/example/plugin/releases/tag/v1.0.0")
+        self.assertTrue(result["matched"])
+        self.assertEqual(["Example.Plugin"], result["internalNames"])
+        self.assertEqual("internal_names", result["dispatchContract"])
+        self.assertEqual("example/plugin", inspector.query)
+        with self.assertRaisesRegex(ValueError, "GitHub"):
+            developer_view.resolve_catalog_plugin_link(inspector, "https://example.invalid/plugin")
+
     def row(self, **updates):
         row = {
             "plugin_id": 1,
@@ -56,6 +154,8 @@ class DeltaScopeWorkbenchTests(unittest.TestCase):
         self.assertEqual(first["incidentId"], second["incidentId"])
         self.assertEqual("review", first["priority"])
         self.assertEqual(2, first["findingCount"])
+        self.assertEqual(20, first["scanId"])
+        self.assertEqual({"critical": 0, "high": 2, "caution": 0, "informational": 0}, first["findingCounts"])
         self.assertIn("elevated-findings", [reason["code"] for reason in first["reasons"]])
         self.assertEqual("none", first["mutationAuthority"])
 
@@ -185,6 +285,21 @@ class DeltaScopeWorkbenchTests(unittest.TestCase):
         a = workbench.project_asset_journey(detail, {"networkEndpoints": [{"host": "a"}, {"host": "b"}]})
         b = workbench.project_asset_journey(detail, {"networkEndpoints": [{"host": "b"}, {"host": "a"}]})
         self.assertEqual(a["journeyProjectionId"], b["journeyProjectionId"])
+
+    def test_incident_case_includes_new_or_external_collector_observations(self):
+        result = workbench.project_incident_case(
+            self.detail(),
+            {
+                "binarySignatureTrust": [{"path": "plugin.dll", "publisher": "Example Publisher"}],
+                "futureCollectorObservation": [{"name": "future evidence"}],
+            },
+        )
+        labels = [item["label"] for item in result["timeline"]["events"] if item["eventType"] == "observation"]
+        collections = [item["collection"] for item in result["timeline"]["events"] if item["eventType"] == "observation"]
+        self.assertIn("Binary signature observation: plugin.dll", labels)
+        self.assertIn("futureCollectorObservation observation recorded", labels)
+        self.assertIn("binarySignatureTrust", collections)
+        self.assertIn("futureCollectorObservation", collections)
 
     def test_incident_case_composes_findings_observations_intelligence_and_reprojection(self):
         projection_state = {
