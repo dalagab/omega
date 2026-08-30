@@ -1,0 +1,2298 @@
+{
+  "analysis": {
+    "analysisId": "e53e8b272f57d528777adba9b2edb954ab92e275d8a87d43d725a5ccafa178b7",
+    "artifactSha256": "da4489910ce39df18741d36017b3abd9a07ddc822f2d794d0e43858c66e5c9d0",
+    "path": "artifacts/da/da4489910ce39df18741d36017b3abd9a07ddc822f2d794d0e43858c66e5c9d0/analyses/e53e8b272f57d528777adba9b2edb954ab92e275d8a87d43d725a5ccafa178b7",
+    "recordCount": 23329
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "da4489910ce39df18741d36017b3abd9a07ddc822f2d794d0e43858c66e5c9d0",
+    "artifact_url": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip",
+    "assembly_version": "1.0.8.6",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "full-gameplay-automation",
+        "capabilityId": "game.character.execute_action",
+        "confidence": "high",
+        "evidence": [
+          "il:Lemegeton.dll:Lemegeton.Core.FoodSelector.Cycle+0x159: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "indirect": false,
+        "label": "Character action execution",
+        "reachable": false,
+        "reason": "Invokes game action-execution APIs that can perform combat, crafting, gathering, or other character actions."
+      }
+    ],
+    "automation_level": "full-gameplay-automation",
+    "capabilities_json": [
+      "Character action execution",
+      "Download/execute potential",
+      "Endpoint: discord.gg",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Network access",
+      "Process execution",
+      "Shell/PowerShell"
+    ],
+    "caution_count": 3,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "process",
+        "description": "Contains indicators for invoking command shells or PowerShell.",
+        "evidence": [
+          "artifact:Lemegeton.dll: powershell.exe"
+        ],
+        "ruleId": "shell.powershell",
+        "severity": "high",
+        "title": "Shell or PowerShell invocation"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:Lemegeton.dll:Lemegeton.Core.FoodSelector.Cycle+0x159: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "ruleId": "automation.game.character.execute_action",
+        "severity": "high",
+        "title": "Character action execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:Lemegeton.dll: System.Diagnostics.Process",
+          "metadata:Lemegeton.dll: ProcessStartInfo",
+          "metadata:Lemegeton.dll: ShellExecute",
+          "metadata:Lemegeton.dll: Process.Start",
+          "il:Lemegeton.dll:Lemegeton.Plugin.TextToSpeech+0x126: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:Lemegeton.dll:Lemegeton.Plugin.TextToSpeech+0x126: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:Lemegeton.dll:Lemegeton.Plugin.TextToSpeech+0x131: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:Lemegeton.dll:Lemegeton.Plugin.TextToSpeech+0x131: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Lemegeton.dll: Dalamud.Hooking",
+          "metadata:Lemegeton.dll: SigScanner",
+          "metadata:Lemegeton.dll: HookFromAddress",
+          "il:Lemegeton.dll:Lemegeton.Core.GameNetwork..ctor+0x24: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:Lemegeton.dll:Lemegeton.Core.SigLocator..ctor+0x1a: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+          "il:Lemegeton.dll:Lemegeton.Core.SigLocator.ScanText+0xf: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+          "il:Lemegeton.dll:Lemegeton.Core.SigLocator.ScanData+0xf: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanData: SigScanner",
+          "il:Lemegeton.dll:Lemegeton.Core.SigLocator.ScanModule+0xf: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanModule: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:Lemegeton.dll: s://github.com/paissaheavyindustries/Lemegeton.git",
+          "artifact:Lemegeton.dll: s://raw.githubusercontent.com/paissaheavyindustries/Resources/main/Blueprint/blueprint.xml",
+          "artifact:Lemegeton.dll: s://discord.gg/6f9MY55",
+          "artifact:Lemegeton.dll: s://github.com/paissaheavyindustries/Lemegeton"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:Lemegeton.dll: System.Net.Http.HttpClient",
+          "il:Lemegeton.dll:Lemegeton.Core.NetworkDecoder.GetBlueprintFromURI+0x29: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Lemegeton.dll:Lemegeton.Core.NetworkDecoder.GetBlueprintFromURI+0x4d: callvirt System.Net.Http.HttpClient.Send: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Lemegeton.dll: https://raw.githubusercontent.com/paissaheavyindustries/Resources/main/Blueprint/blueprint.xml"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.baa414e5fd31",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Lemegeton.dll: https://github.com/paissaheavyindustries/Lemegeton.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.81692313c467",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Lemegeton.dll: https://github.com/paissaheavyindustries/Lemegeton"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.759c023edf45",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Lemegeton.json: https://github.com/paissaheavyindustries/Lemegeton"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.4084d1ae85a2",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Lemegeton.json: https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.358296814806",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Lemegeton.json: https://raw.githubusercontent.com/paissaheavyindustries/Dalamud-Repo/main/icons/lemegeton.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.1c524fc46c4e",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Lemegeton.dll: https://discord.gg/6f9MY55"
+        ],
+        "ruleId": "network.endpoint.community-invite.31447ccde661",
+        "severity": "informational",
+        "title": "Community invite: Discord"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Lemegeton.dll: FileStream",
+          "metadata:Lemegeton.dll: WriteAllText",
+          "metadata:Lemegeton.dll: File.Delete",
+          "metadata:Lemegeton.dll: Directory.CreateDirectory",
+          "il:Lemegeton.dll:Lemegeton.Plugin.BackupConfig+0x33: call System.IO.File.WriteAllText: WriteAllText",
+          "il:Lemegeton.dll:Lemegeton.Plugin.<GeneratePackage>b__158_0+0x244: newobj System.IO.FileStream..ctor: FileStream",
+          "il:Lemegeton.dll:Lemegeton.Plugin.<GeneratePackage>b__158_0+0x300: call System.IO.File.Delete: File.Delete",
+          "il:Lemegeton.dll:Lemegeton.Plugin.<GeneratePackage>b__158_0+0x324: call System.IO.File.Delete: File.Delete"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 9,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 421340,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.8.6",
+        "artifactBytes": 421340,
+        "artifactSha256": "da4489910ce39df18741d36017b3abd9a07ddc822f2d794d0e43858c66e5c9d0",
+        "catalogAssemblyVersion": "1.0.8.6",
+        "manifestInternalName": "Lemegeton",
+        "manifestPath": "Lemegeton.json",
+        "manifestRepositoryUrl": "https://github.com/paissaheavyindustries/Lemegeton",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/626897015/761a2036-064e-4aef-b629-f47889eb92b5?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-08-30T20%3A19%3A05Z&rscd=attachment%3B+filename%3DLemegeton_1_0_8_6.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-08-30T19%3A18%3A36Z&ske=2026-08-30T20%3A19%3A05Z&sks=b&skv=2018-11-09&sig=mpjq75LknhEBYkHEoQEvtWK8P2fRD1YuHJ2rJ5TUW3U%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODExODAxNywibmJmIjoxNzg4MTE3NzE3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.gZ0dwb3Hd7ddRaMJKw5c_YgQLdlWxIaS8skPTHZOxMc&response-content-disposition=attachment%3B%20filename%3DLemegeton_1_0_8_6.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": false
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "shell.powershell",
+            "label": "Shell or PowerShell invocation",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 12,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Download/execute potential",
+        "Endpoint: discord.gg",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Network access",
+        "Process execution",
+        "Shell/PowerShell"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.memory.read",
+        "network.http",
+        "network.outbound",
+        "process.execute",
+        "process.inspect",
+        "shell.powershell"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 3,
+        "critical": 0,
+        "high": 3,
+        "informational": 9
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 28,
+          "exactVersionObservedCount": 28,
+          "families": {
+            "managed-assembly": 28
+          },
+          "fingerprint": "e2997b984dad99f7d77077f599550e4886ac2e30ce56c262c9d33b8af96f9f3f",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 27
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 28,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 27,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 28
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 6,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "community-invite"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "discord.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 4,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 7,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "community-invite",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "discord.gg",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "community invite",
+            "url": "https://discord.gg/6f9MY55"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/paissaheavyindustries/Lemegeton"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/paissaheavyindustries/Lemegeton"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/paissaheavyindustries/Lemegeton.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/paissaheavyindustries/Dalamud-Repo/main/icons/lemegeton.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/paissaheavyindustries/Resources/main/Blueprint/blueprint.xml"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip",
+        "internalName": "Lemegeton",
+        "manifestVersion": "1.0.8.6",
+        "observationId": 7109,
+        "observationKey": "manifest-62aa5cc6a5a91e2b10f328eaa5d3",
+        "repositoryUrl": "https://github.com/paissaheavyindustries/Lemegeton",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 4318
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 2,
+        "uncompressedBytes": 1158184
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-282c5d628cfece76",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-4318",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-9f44f151a4ea04d50595",
+        "variantId": 4318,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-30T19:21:57Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "da4489910ce39df18741d36017b3abd9a07ddc822f2d794d0e43858c66e5c9d0",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/paissaheavyindustries/Lemegeton",
+          "https://release-assets.githubusercontent.com/github-production-release-asset/626897015/761a2036-064e-4aef-b629-f47889eb92b5"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/paissaheavyindustries/Lemegeton",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 26768,
+    "scanned_at_utc": "2026-08-30T19:21:57Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/paissaheavyindustries/Lemegeton",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 4318
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "da4489910ce39df18741d36017b3abd9a07ddc822f2d794d0e43858c66e5c9d0",
+      "current_assembly_version": "1.0.8.6",
+      "current_scan_id": 26768,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-30T19:22:00Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 4318
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 28,
+      "artifact_only_count": 28,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.2.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.51.0.8543"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lemegeton",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Lemegeton",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.typeconverter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.TypeConverter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.stacktrace",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.StackTrace",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression.zipfile",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression.ZipFile",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.readerwriter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.ReaderWriter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xmlserializer",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XmlSerializer",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-30T19:22:00Z",
+      "comparison_id": 1370,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 26768,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 4318,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0004/4318/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0004/4318/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 26661,
+          "encoding": "json",
+          "path": "derived/variants/0004/4318/dependency-resolutions.json",
+          "recordDigest": "6621767686f89e01256e83ccab8d1cd4695832c0caeafc92f1a50b47b091caf3",
+          "records": 28,
+          "sha256": "94c296a322405f9ae4a36e37388f4a39ce4b05fbe44c054d24170b8e3c22b902"
+        }
+      ],
+      "recordDigest": "6621767686f89e01256e83ccab8d1cd4695832c0caeafc92f1a50b47b091caf3",
+      "records": 28
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0004/4318/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "0224dec120bfbd7a5d2a2b0c20d12e69d2dce3797a01a813a3c77319edac9499",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "6cd6a5bc00c50e66a0b1084bc32a3de680b0c34630bfdc9f5efbaeca7cd91b4f",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "1fa3b29b11475d2e343deb00d8e9b59c615bd7f181a8cad57dbbb33158cb6ee5",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "3af1ef83cbd6dcd7d7d6cbcbba283de6d29ce9681710f8a77efcaf5f7599a208",
+        "records": 28,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "732313c50b99c1a56af9b6966305b2092f0599d9588a0bd85e006c845c6df7ed",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "bd36d3ae6f4762c6ccb6744023b75212bfbbaa9e38e497c318c759272c3d5bb1",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "b74c72db502df74f1c982f73a3823d0dbc3be0a1ae9dc481b238fb43f1fe8e4e",
+        "records": 2021,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "3cf286ab5fa4d014b56a960ea5ceaaac975d1daac076f919007909f32fbc2c2e",
+        "records": 1127,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "95a7a7ddb253bc7e18d3fec9d9b7fc9473d8fc41323818a78d3d77009af11ea7",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "ac4ac6a93ed0029d7382f9c8a4f4b61f2e9d1d5fe8824e7b05ce11ade488fce2",
+        "records": 7,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "adbf14615d9b00afa3fe875f4aedad2f73577aaac43cc0169d986124a0b1b769",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "94cea276eabda19ffe0aa7a0476486020b3f5fc44806d7dbaa3e39f68041f299",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "2e8861bb2ae326d1627278591acc6ede1dd958fb8e86c98c3ee18e6c6b61a8bd",
+        "records": 95,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "nativeImports",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-f4db0cca311b05bc936c9826b88a5b1fe858bdb12b0ad4150f8b5d522532b387",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Lemegeton",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "Lemegeton",
+    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "plugin_id": 634
+  },
+  "pluginId": 634,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Your ultimate ingame companion; spells and enchantments to make your gameplay experience a little more magical.\n\nPlugin from https://raw.githubusercontent.com/paissaheavyindustries/Dalamud-Repo/main/repo.json",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1420,
+      "summary": "Your ultimate ingame companion; spells and enchantments to make your gameplay experience a little more magical.\n\nPlugin from https://raw.githubusercontent.com/paissaheavyindustries/Dalamud-Repo/main/repo.json",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/paissaheavyindustries/Lemegeton",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "Lemegeton is a Dalamud plugin which is geared to be your ultimate ingame companion. With a wide variety of helpful features for all kinds of content, from day to day usage to ultimate raiding, you'll never want to queue into an instance or leave home without it!",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/paissaheavyindustries/Lemegeton"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "## Lemegeton in a nutshell\n\nLemegeton is a Dalamud plugin which is geared to being your ultimate Final Fantasy XIV raiding and ingame companion. With a wide variety of helpful features for all kinds of content, you'll never want to queue into an instance or leave home without it! Lemegeton does not have triggers or callouts, but it's meant to complement the feature set of Triggernometry, Cactbot, et al with a variety of exciting features and functionality.\n\nThe plugin is nearly standalone and does not require ACT, Telesto, or anything else to operate aside from Dalamud, which you already have anyway because who isn't using Quicklauncher? It's very easy to set up and manage, and requires no configuration out of the box - aside from you simply turning on the things you want to use for yourself. While some features may be a little more questionable than others, you are not required to use or activate anything you wouldn't want to; if you don't use those features, there is no risk to you.\n\nCurrent features include but are not limited to:\n\n- UWU / Weapon's Refrain: Titan jail automarker\n- DSR / Dragonsong's Reprise: Wroth Flames automarker\n- TOP / The Omega Protocol: P1 Program Loop automarker\n- TOP / The Omega Protocol: P1 Pantokrator automarker\n- TOP / The Omega Protocol: P3 Transition automarker\n- TOP / The Omega Protocol: P5 Delta/Sigma/Omega automarkers\n- TOP / The Omega Protocol: Draw tether, boss monitor, etc..\n- and so much more, not just automarkers - join the Discord!\n\n## Contribute\n\nLemegeton also has a Wiki, containing useful information and documentation if you would like to read more about the project, or contribute to it:\n\nhttps://github.com/paissaheavyindustries/Lemegeton/wiki\n\nContributions are certainly welcome, and you can read more about how you can participate on the Discord!\n\n## Installing\n\nThe only thing Lemegeton needs is Dalamud, and that comes with the Quicklauncher you should already be using. If you're not, be sure to install it first and then never look back at the original launcher:\n\nhttps://github.com/goatcorp/FFXIVQuickLauncher\n\nIf you're all set up with Quicklauncher, head on over to my Dalamud repository and follow the instructions on how to add it to Dalamud:\n\nhttps://github.com/paissaheavyindustries/Dalamud-Repo\n\n## Discord\n\nLemegeton also has a publicly available Discord server for announcements, suggestions, and questions related to the plugin. Feel free to join at:\n\nhttps://discord.gg/6f9MY55",
+      "title": "Lemegeton",
+      "url": "https://github.com/paissaheavyindustries/Lemegeton"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "6bcd910313f831973b6067b0190ff9623c33ca04f96ebf9d7ba872e819463946",
+        "records": 1
+      },
+      "behaviorConsistency": {
+        "recordDigest": "41fb2bad674b9c4065b3f973569be2f2f50437898098b3da196f8afb522857dd",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "23a08b549c8be987cf580df84689a9626ea891cf357b46e96e7b6e3b20b0d388",
+        "records": 12
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "64eabfff16a246b94e40dec5fb445469ce5369a07bbded5c4817c77829c4e3df",
+        "records": 15
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "da4489910ce39df18741d36017b3abd9a07ddc822f2d794d0e43858c66e5c9d0",
+    "artifact_url": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip",
+    "assembly_version": "1.0.8.6",
+    "capabilities_json": [
+      "Character action execution",
+      "Download/execute potential",
+      "Endpoint: discord.gg",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Network access",
+      "Process execution",
+      "Shell/PowerShell"
+    ],
+    "caution_count": 3,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 9,
+    "plugin_id": 634,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 421340,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.8.6",
+        "artifactBytes": 421340,
+        "artifactSha256": "da4489910ce39df18741d36017b3abd9a07ddc822f2d794d0e43858c66e5c9d0",
+        "catalogAssemblyVersion": "1.0.8.6",
+        "manifestInternalName": "Lemegeton",
+        "manifestPath": "Lemegeton.json",
+        "manifestRepositoryUrl": "https://github.com/paissaheavyindustries/Lemegeton",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/626897015/761a2036-064e-4aef-b629-f47889eb92b5?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-08-30T20%3A19%3A05Z&rscd=attachment%3B+filename%3DLemegeton_1_0_8_6.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-08-30T19%3A18%3A36Z&ske=2026-08-30T20%3A19%3A05Z&sks=b&skv=2018-11-09&sig=mpjq75LknhEBYkHEoQEvtWK8P2fRD1YuHJ2rJ5TUW3U%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODExODAxNywibmJmIjoxNzg4MTE3NzE3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.gZ0dwb3Hd7ddRaMJKw5c_YgQLdlWxIaS8skPTHZOxMc&response-content-disposition=attachment%3B%20filename%3DLemegeton_1_0_8_6.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": false
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "shell.powershell",
+            "label": "Shell or PowerShell invocation",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 12,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Download/execute potential",
+        "Endpoint: discord.gg",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Network access",
+        "Process execution",
+        "Shell/PowerShell"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.memory.read",
+        "network.http",
+        "network.outbound",
+        "process.execute",
+        "process.inspect",
+        "shell.powershell"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 3,
+        "critical": 0,
+        "high": 3,
+        "informational": 9
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 28,
+          "exactVersionObservedCount": 28,
+          "families": {
+            "managed-assembly": 28
+          },
+          "fingerprint": "e2997b984dad99f7d77077f599550e4886ac2e30ce56c262c9d33b8af96f9f3f",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 27
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 28,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 27,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 28
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 6,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "community-invite"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "discord.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 4,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 7,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "community-invite",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "discord.gg",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "community invite",
+            "url": "https://discord.gg/6f9MY55"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/paissaheavyindustries/Lemegeton"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/paissaheavyindustries/Lemegeton"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/paissaheavyindustries/Lemegeton.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/paissaheavyindustries/Dalamud-Repo/main/icons/lemegeton.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/paissaheavyindustries/Resources/main/Blueprint/blueprint.xml"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip",
+        "internalName": "Lemegeton",
+        "manifestVersion": "1.0.8.6",
+        "observationId": 7109,
+        "observationKey": "manifest-62aa5cc6a5a91e2b10f328eaa5d3",
+        "repositoryUrl": "https://github.com/paissaheavyindustries/Lemegeton",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 4318
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 2,
+        "uncompressedBytes": 1158184
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-282c5d628cfece76",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-4318",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-9f44f151a4ea04d50595",
+        "variantId": 4318,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-30T19:21:57Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "da4489910ce39df18741d36017b3abd9a07ddc822f2d794d0e43858c66e5c9d0",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/paissaheavyindustries/Lemegeton",
+          "https://release-assets.githubusercontent.com/github-production-release-asset/626897015/761a2036-064e-4aef-b629-f47889eb92b5"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/paissaheavyindustries/Lemegeton",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 26768,
+    "scanned_at_utc": "2026-08-30T19:21:57Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 734,
+    "source_repository": "https://github.com/paissaheavyindustries/Lemegeton",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 4318
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "aa8af62fc1cd173f14b2c851182461c4dbdbeadb2b004b4e71cf9564796d7dd8",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"b2e99865ad22ce65022e5caab146fba46f59db6174d6c31865720caf86aa5570\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-08-28T09:17:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-28T09:17:18Z",
+    "name": "Valgrifer/MergeDalamudRepo",
+    "plugin_count": 139,
+    "provider": "Valgrifer/MergeDalamudRepo",
+    "source_id": 734,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/Valgrifer/MergeDalamudRepo/master/repo.json"
+  },
+  "sourceId": 734,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.0.8.6",
+    "author": "Paissa Heavy Industries",
+    "authors_json": [
+      "Paissa Heavy Industries"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "Your ultimate ingame companion; spells and enchantments to make your gameplay experience a little more magical.\n\nPlugin from https://raw.githubusercontent.com/paissaheavyindustries/Dalamud-Repo/main/repo.json",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip",
+    "download_link_testing": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip",
+    "download_link_update": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip",
+    "first_seen_utc": "2026-08-27T07:37:29Z",
+    "icon_url": "https://raw.githubusercontent.com/paissaheavyindustries/Dalamud-Repo/main/icons/lemegeton.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "Lemegeton",
+    "plugin_id": 634,
+    "punchline": "",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.0.8.6",
+      "Author": "Paissa Heavy Industries",
+      "DalamudApiLevel": 15,
+      "Description": "Your ultimate ingame companion; spells and enchantments to make your gameplay experience a little more magical.\n\nPlugin from https://raw.githubusercontent.com/paissaheavyindustries/Dalamud-Repo/main/repo.json",
+      "DownloadCount": 0,
+      "DownloadLinkInstall": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip",
+      "DownloadLinkTesting": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip",
+      "DownloadLinkUpdate": "https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip",
+      "IconUrl": "https://raw.githubusercontent.com/paissaheavyindustries/Dalamud-Repo/main/icons/lemegeton.png",
+      "InternalName": "Lemegeton",
+      "IsHide": "False",
+      "IsTestingExclusive": "False",
+      "LastUpdated": 0,
+      "Name": "Lemegeton",
+      "RepoUrl": "https://github.com/paissaheavyindustries/Lemegeton",
+      "Tags": [
+        "meow"
+      ],
+      "originRepository": "https://raw.githubusercontent.com/paissaheavyindustries/Dalamud-Repo/main/repo.json"
+    },
+    "repo_url": "https://github.com/paissaheavyindustries/Lemegeton",
+    "source_entry_key": "lemegeton|1.0.8.6|15|0|65",
+    "source_id": 734,
+    "tags_json": [
+      "meow"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 4318
+  },
+  "variantId": 4318
+}
