@@ -1,0 +1,1707 @@
+{
+  "analysis": {
+    "analysisId": "d023523524bbb9cf1c2052ad7d3dfd0f24d70d2b6f7122bee80818f4a20db066",
+    "artifactSha256": "b248bdcdf80026ae2d9edbe51ea6b0f266773e12d85b8aaec19a49d6af599785",
+    "path": "artifacts/b2/b248bdcdf80026ae2d9edbe51ea6b0f266773e12d85b8aaec19a49d6af599785/analyses/d023523524bbb9cf1c2052ad7d3dfd0f24d70d2b6f7122bee80818f4a20db066",
+    "recordCount": 2431
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "b248bdcdf80026ae2d9edbe51ea6b0f266773e12d85b8aaec19a49d6af599785",
+    "artifact_url": "https://github.com/tssailzz8/MyPlugins/raw/main/plugins/Lock/latest.zip",
+    "assembly_version": "1.0.2.9",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "very-high",
+        "evidence": [
+          "il:Lock.dll:Lock.Plugin.SelectTarget+0xa9: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_FocusTarget"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": true,
+        "reason": "References a target-setting API rather than only reading the current target."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "high",
+        "evidence": [
+          "il:ClickLib.dll:ClickLib.Bases.ClickBase`1.FireCallback+0x1b: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:ClickLib.dll:ClickLib.Bases.ClickBase`1.FireNullCallback+0xb: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": false,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.synthetic_click",
+        "confidence": "high",
+        "evidence": [
+          "il:ClickLib.dll:ClickLib.Bases.ClickBase`2.InvokeReceiveEvent+0x18: callvirt ClickLib.Bases.ReceiveEventDelegate.Invoke"
+        ],
+        "indirect": false,
+        "label": "Synthetic game UI interaction",
+        "reachable": false,
+        "reason": "Invokes code associated with synthetic clicks or selection dialogs."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Character target control",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Synthetic game UI interaction"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Lock.dll: SigScanner",
+          "metadata:Lock.dll: Dalamud.Hooking",
+          "metadata:Lock.dll: HookFromAddress",
+          "il:Lock.dll:Lock.Plugin..ctor+0xeb: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+          "il:Lock.dll:Lock.Plugin..ctor+0x105: callvirt Dalamud.Game.ISigScanner.GetStaticAddressFromSig: SigScanner",
+          "il:Lock.dll:Lock.Plugin..ctor+0x11e: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+          "il:Lock.dll:Lock.Plugin..ctor+0x134: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+          "il:Lock.dll:Lock.Plugin..ctor+0x146: callvirt Dalamud.Game.ISigScanner.GetStaticAddressFromSig: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for synthetic game ui interaction. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:ClickLib.dll:ClickLib.Bases.ClickBase`2.InvokeReceiveEvent+0x18: callvirt ClickLib.Bases.ReceiveEventDelegate.Invoke"
+        ],
+        "ruleId": "automation.game.ui.synthetic_click",
+        "severity": "caution",
+        "title": "Synthetic game UI interaction"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:ClickLib.dll:ClickLib.Bases.ClickBase`1.FireCallback+0x1b: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:ClickLib.dll:ClickLib.Bases.ClickBase`1.FireNullCallback+0xb: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:Lock.dll:Lock.Plugin.SelectTarget+0xa9: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_FocusTarget"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 0,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 65010,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.2.9",
+        "artifactBytes": 65010,
+        "artifactSha256": "b248bdcdf80026ae2d9edbe51ea6b0f266773e12d85b8aaec19a49d6af599785",
+        "catalogAssemblyVersion": "1.0.2.9",
+        "manifestInternalName": "Lock",
+        "manifestPath": "Lock.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/tssailzz8/MyPlugins/main/plugins/Lock/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.synthetic_click",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Synthetic game UI interaction",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.synthetic_click",
+            "label": "Synthetic game UI interaction",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 6,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 6,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Synthetic game UI interaction"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "game.ui.synthetic_click"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 0
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 28,
+          "exactVersionObservedCount": 28,
+          "families": {
+            "managed-assembly": 22,
+            "nuget": 6
+          },
+          "fingerprint": "106dec13e0ad1278ca78c0b7c92f6ea6fdca066499453a4466aa8b8a45fe5e95",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 2,
+            "observed": 20,
+            "required": 6
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 22,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 6,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 2,
+            "observed": 20,
+            "optional": 0,
+            "required": 6,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 28
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": false,
+          "hostCount": 1,
+          "hosts": [
+            {
+              "classifications": [
+                "source-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 2,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Caraxi/SimpleTweaksPlugin/blob/main/Utility/Common.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source-code reference",
+            "url": "https://github.com/tssailzz8/MyPlugins/raw/master/plugins/Lock/2-%E5%9B%BE%E7%89%87.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/tssailzz8/MyPlugins/raw/main/plugins/Lock/latest.zip",
+        "internalName": "Lock",
+        "manifestVersion": "1.0.2.9",
+        "observationId": 2708,
+        "observationKey": "manifest-52608833ecf2a32d37eb8d261613",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1683
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 2,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 8,
+        "uncompressedBytes": 170375
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-b524c8d73ae72678",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-1683",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-b6e5fbd68a17ac8a9e0f",
+        "variantId": 1683,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-30T20:33:42Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "b248bdcdf80026ae2d9edbe51ea6b0f266773e12d85b8aaec19a49d6af599785",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/tssailzz8/MyPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 29122,
+    "scanned_at_utc": "2026-08-30T20:33:42Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1683
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "b248bdcdf80026ae2d9edbe51ea6b0f266773e12d85b8aaec19a49d6af599785",
+      "current_assembly_version": "1.0.2.9",
+      "current_scan_id": 29122,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-30T20:33:42Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 1683
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 22,
+      "artifact_only_count": 22,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:clicklib",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "ClickLib",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.2.0.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.22"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.3507"
+          ]
+        },
+        {
+          "componentKey": "assembly:imgui.net",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "ImGui.NET",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.82.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lock",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Lock",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "3.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:reloaded.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Reloaded.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.1.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:ilrepack",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "ILRepack",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.0.18"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.csharp",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.CSharp",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.7.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.dotnet.upgradeassistant.extensions.default.analyzers",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.DotNet.UpgradeAssistant.Extensions.Default.Analyzers",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "0.3.242703"
+          ]
+        },
+        {
+          "componentKey": "nuget:reloaded.memory",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Reloaded.Memory",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "7.1.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.data.datasetextensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Data.DataSetExtensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.5.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.numerics.vectors",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.5.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-30T20:33:42Z",
+      "comparison_id": 1435,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 29122,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 1683,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1683/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1683/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 26161,
+          "encoding": "json",
+          "path": "derived/variants/0001/1683/dependency-resolutions.json",
+          "recordDigest": "7a93d54e3000095c7123a113621fe86a4d115f3a307d7093b45f0262a6a51ba8",
+          "records": 28,
+          "sha256": "a1c8452a630b0a0fb6c241293e98ce8b8e86dd119d3e59db90f1e266777dce05"
+        }
+      ],
+      "recordDigest": "7a93d54e3000095c7123a113621fe86a4d115f3a307d7093b45f0262a6a51ba8",
+      "records": 28
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1683/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "840c9b0f85523ae1ebac7731d722a0335ea8c15815eec54876d1f397ab180840",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "5ee34ef840a081115f590458542a52df4e97a1429b41dfc87e7f126cc440e520",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "7ef8eefe3dd5d89066c0024a6172609522a35c0242ef88bd8d7d2c889b32ea76",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "e07a31caf7afa2d155f0baac42c3a0a578b04464c61452db8c35de05a8b15013",
+        "records": 28,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "aac3040036c9f0b4da0241150aaa68b29525e76cde029bf1dce43b72c5847da9",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "b9eca653eb69dfe5b6dfff76f7c4932abd3c27103ecc0eaae500d55d3cdeb227",
+        "records": 1483,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "08d91a607d819cabfb655d4475989b8b7441535042d831951ffda8d086d8799e",
+        "records": 208,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "3d5f93cd394b4bf5f6075b027f4e3b9a9f43aec5259c733c54057a363d4dae69",
+        "records": 637,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "2ff76470dc612d9c6ef82d159e310a6043bb3fbd0a1e0806e5b29a306a6a178b",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "fcaa9e0b89db4ec575b60b24a0ecd2720ce6933dfa0136bb1fd4b1d30a94122c",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "c6056df875846d968d4237dac6c346e38cc6b4dfe9ac38dc111cde481044fee4",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "dbf3e7d113dfe11330bf68d4f6ead2940afe76aa8aeb359fd6ff97234275ad4b",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "6eedc69c611459e8375b15686fc198dac4909fc27c45ef30ada80cd101b8f2b7",
+        "records": 49,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "nativeImports",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-a2a357ba923a6550dc902a799afe99a4e119fc4e3e89708484f8119e6b294e86",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Lock",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "Lock",
+    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "plugin_id": 639
+  },
+  "pluginId": 639,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "锁定BOSS /LockBOSS change 1 靠近水晶切换1号线路\n\nPlugin from https://raw.githubusercontent.com/tssailzz8/MyPlugins/master/pluginmaster.json",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 230,
+      "summary": "锁定",
+      "webEnriched": false
+    },
+    "projectRepository": "",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "d13ce5d572c5928092e9181464898a81ae282c3c64e5bbe75870005bae733f42",
+        "records": 3
+      },
+      "behaviorConsistency": {
+        "recordDigest": "64774ac1dcc552dc18e63a14aed526e80f99b5444df8cf98539363f342447419",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "a1053aa86c40bef2fa742f1978496e8b7639a3d7d5b38d2002d0fc6202fbf3b4",
+        "records": 6
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "e4aa80dda3621b98fcd554773742d97389330b7f06f72654d168445c8d9e2600",
+        "records": 5
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "b248bdcdf80026ae2d9edbe51ea6b0f266773e12d85b8aaec19a49d6af599785",
+    "artifact_url": "https://github.com/tssailzz8/MyPlugins/raw/main/plugins/Lock/latest.zip",
+    "assembly_version": "1.0.2.9",
+    "capabilities_json": [
+      "Character target control",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Synthetic game UI interaction"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 0,
+    "plugin_id": 639,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 65010,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.2.9",
+        "artifactBytes": 65010,
+        "artifactSha256": "b248bdcdf80026ae2d9edbe51ea6b0f266773e12d85b8aaec19a49d6af599785",
+        "catalogAssemblyVersion": "1.0.2.9",
+        "manifestInternalName": "Lock",
+        "manifestPath": "Lock.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/tssailzz8/MyPlugins/main/plugins/Lock/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.synthetic_click",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Synthetic game UI interaction",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.synthetic_click",
+            "label": "Synthetic game UI interaction",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 6,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 6,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Synthetic game UI interaction"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "game.ui.synthetic_click"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 0
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 28,
+          "exactVersionObservedCount": 28,
+          "families": {
+            "managed-assembly": 22,
+            "nuget": 6
+          },
+          "fingerprint": "106dec13e0ad1278ca78c0b7c92f6ea6fdca066499453a4466aa8b8a45fe5e95",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 2,
+            "observed": 20,
+            "required": 6
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 22,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 6,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 2,
+            "observed": 20,
+            "optional": 0,
+            "required": 6,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 28
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": false,
+          "hostCount": 1,
+          "hosts": [
+            {
+              "classifications": [
+                "source-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 2,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Caraxi/SimpleTweaksPlugin/blob/main/Utility/Common.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source-code reference",
+            "url": "https://github.com/tssailzz8/MyPlugins/raw/master/plugins/Lock/2-%E5%9B%BE%E7%89%87.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/tssailzz8/MyPlugins/raw/main/plugins/Lock/latest.zip",
+        "internalName": "Lock",
+        "manifestVersion": "1.0.2.9",
+        "observationId": 2708,
+        "observationKey": "manifest-52608833ecf2a32d37eb8d261613",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1683
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 2,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 8,
+        "uncompressedBytes": 170375
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-b524c8d73ae72678",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-1683",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-b6e5fbd68a17ac8a9e0f",
+        "variantId": 1683,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-30T20:33:42Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "b248bdcdf80026ae2d9edbe51ea6b0f266773e12d85b8aaec19a49d6af599785",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/tssailzz8/MyPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 29122,
+    "scanned_at_utc": "2026-08-30T20:33:42Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 366,
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1683
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "d141e191984621d06bf158774a183b3d98fa74bb86208a1c72700a73e35e2c2c",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"aef42498da88523c30304514fd7dc1e6c38479aaf9b5e473717c71e683816a46\"",
+    "highest_api": 9,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-08-28T09:17:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-28T09:17:18Z",
+    "name": "tssailzz8/MyPlugins",
+    "plugin_count": 9,
+    "provider": "tssailzz8/MyPlugins",
+    "source_id": 366,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/tssailzz8/MyPlugins/main/pluginmaster.json"
+  },
+  "sourceId": 366,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.0.2.9",
+    "author": "",
+    "authors_json": [],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 9,
+    "description": "锁定BOSS /LockBOSS change 1 靠近水晶切换1号线路",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/tssailzz8/MyPlugins/raw/main/plugins/Lock/latest.zip",
+    "download_link_testing": "https://github.com/tssailzz8/MyPlugins/raw/main/plugins/Lock/latest.zip",
+    "download_link_update": "https://github.com/tssailzz8/MyPlugins/raw/main/plugins/Lock/latest.zip",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "icon_url": "https://github.com/tssailzz8/MyPlugins/raw/master/plugins/Lock/2-%E5%9B%BE%E7%89%87.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-20T06:02:54Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "Lock",
+    "plugin_id": 639,
+    "punchline": "锁定",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.0.2.9",
+      "Author": "",
+      "DalamudApiLevel": 9,
+      "Description": "锁定BOSS /LockBOSS change 1 靠近水晶切换1号线路",
+      "DownloadCount": 0,
+      "DownloadLinkInstall": "https://github.com/tssailzz8/MyPlugins/raw/main/plugins/Lock/latest.zip",
+      "DownloadLinkTesting": "https://github.com/tssailzz8/MyPlugins/raw/main/plugins/Lock/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/tssailzz8/MyPlugins/raw/main/plugins/Lock/latest.zip",
+      "IconUrl": "https://github.com/tssailzz8/MyPlugins/raw/master/plugins/Lock/2-%E5%9B%BE%E7%89%87.png",
+      "ImageUrls": [],
+      "InternalName": "Lock",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdated": "1709811444",
+      "Name": "Lock",
+      "Punchline": "锁定",
+      "RepoUrl": ""
+    },
+    "repo_url": "",
+    "source_entry_key": "lock|1.0.2.9|9|0|7",
+    "source_id": 366,
+    "tags_json": [],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 1683
+  },
+  "variantId": 1683
+}
