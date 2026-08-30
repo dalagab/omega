@@ -562,6 +562,7 @@ def variant_index_summary(
     provenance = report_source.get("provenance") if isinstance(report_source.get("provenance"), dict) else {}
     attribution = report_source.get("attribution") if isinstance(report_source.get("attribution"), dict) else {}
     scan_provenance = report.get("scanProvenance") if isinstance(report.get("scanProvenance"), dict) else {}
+    coverage = variant_coverage_summary(payload)
     lifecycle = payload.get("lifecycle") if isinstance(payload.get("lifecycle"), dict) else {}
     if lifecycle_contract_version is None:
         lifecycle_contract_version = (
@@ -613,6 +614,13 @@ def variant_index_summary(
         "rule_set_revision": str(scan_provenance.get("ruleSetRevision") or ""),
         "scan_queue_reason": str(scan_provenance.get("primaryReason") or ""),
         "scan_queue_seed_revision": str(scan_provenance.get("queueSeedRevision") or ""),
+        "coverage_status": str(coverage.get("status") or "unknown"),
+        "artifact_coverage_status": str(coverage.get("artifact") or "unknown"),
+        "source_analysis_status": str(coverage.get("source") or "unknown"),
+        "secondary_security_status": str(coverage.get("secondarySecurity") or "unknown"),
+        "native_analysis_status": str(coverage.get("nativeAnalysis") or "unknown"),
+        "runtime_analysis_status": str(coverage.get("runtimeAnalysis") or "not-requested"),
+        "coverage_limitations": list(coverage.get("limitations") or [])[:8],
     }
     if lifecycle_contract_version == 1:
         summary.update({
@@ -621,6 +629,70 @@ def variant_index_summary(
             "lifecycle_terminal": bool(lifecycle.get("terminal")),
         })
     return summary
+
+
+def variant_coverage_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    """Project honest high-level coverage without treating missing execution as clean."""
+    current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
+    report = current.get("report_json") if isinstance(current.get("report_json"), dict) else {}
+    status = str(current.get("status") or "unscanned").casefold()
+    artifact = "complete" if status == "complete" else ("failed" if status == "failed" or current.get("error") or report.get("error") else "pending")
+
+    source = report.get("source") if isinstance(report.get("source"), dict) else {}
+    source_available = bool(current.get("source_available")) or bool(source)
+    source_revision = str(report.get("sourceAnalysisRevision") or (report.get("scanProvenance") or {}).get("sourceAnalysisRevision") or "")
+    if not source_available:
+        source_state = "unavailable"
+    elif source.get("error"):
+        source_state = "failed"
+    elif source_revision:
+        source_state = "complete"
+    else:
+        source_state = "partial"
+
+    secondary = report.get("secondarySecurity") if isinstance(report.get("secondarySecurity"), dict) else {}
+    engines = [row for row in secondary.get("engines") or [] if isinstance(row, dict)]
+    engine_states = {str(row.get("status") or "unavailable").casefold() for row in engines}
+    if not engines:
+        secondary_state = "unavailable"
+    elif "failed" in engine_states:
+        secondary_state = "failed"
+    elif engine_states and engine_states <= {"complete", "disabled"} and "complete" in engine_states:
+        secondary_state = "complete"
+    elif engine_states <= {"disabled", "unavailable"}:
+        secondary_state = "unavailable"
+    else:
+        secondary_state = "partial"
+
+    dependency = report.get("dependencyIntelligence") if isinstance(report.get("dependencyIntelligence"), dict) else {}
+    binaries = [row for row in dependency.get("binaryClassifications") or [] if isinstance(row, dict)]
+    native_applicable = any(str(row.get("kind") or "").startswith("native-") for row in binaries)
+    native_state = "not-applicable" if not native_applicable else "partial"
+    derived = payload.get("derivedEvidence") if isinstance(payload.get("derivedEvidence"), dict) else {}
+    if native_applicable and any(key in derived for key in ("binarySignatureTrust", "elfBinaryStructure", "machOBinaryStructure")):
+        native_state = "complete"
+
+    limitations: list[str] = []
+    for label, value in (("Artifact", artifact), ("Source", source_state), ("Secondary security", secondary_state), ("Native analysis", native_state)):
+        if value in {"failed", "partial", "unavailable", "pending"}:
+            limitations.append(f"{label}: {value}")
+    if artifact == "failed" or source_state == "failed" or secondary_state == "failed":
+        overall = "failed"
+    elif artifact != "complete":
+        overall = "pending"
+    elif limitations:
+        overall = "covered-with-limitations"
+    else:
+        overall = "complete"
+    return {
+        "status": overall,
+        "artifact": artifact,
+        "source": source_state,
+        "secondarySecurity": secondary_state,
+        "nativeAnalysis": native_state,
+        "runtimeAnalysis": "not-requested",
+        "limitations": limitations,
+    }
 
 
 def normalize_row(row: sqlite3.Row | dict[str, Any], *, exclude: Iterable[str] = ()) -> dict[str, Any]:
@@ -1177,6 +1249,21 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                     errors.append("scannerQueue payload has an unsupported schema")
             except Exception as exc:
                 errors.append(f"scannerQueue unreadable: {type(exc).__name__}: {exc}")
+
+    indexes = index.get("indexes") if isinstance(index.get("indexes"), dict) else {}
+    security_systems = indexes.get("securitySystems") if isinstance(indexes.get("securitySystems"), dict) else {}
+    if security_systems:
+        errors.extend(f"securitySystems: {item}" for item in verify_file_entry(root, security_systems, max_bytes=MAX_PUBLISH_FILE_BYTES))
+        try:
+            systems_doc = read_json_file(root, str(security_systems.get("path") or ""))
+            if systems_doc.get("schema") != "omega.security-system-state.v1":
+                errors.append("securitySystems index has an unsupported schema")
+            if str(systems_doc.get("stateRevision") or "") != str(security_systems.get("stateRevision") or ""):
+                errors.append("securitySystems state revision mismatch")
+            if not bool((systems_doc.get("policy") or {}).get("noFindingDoesNotImplyCovered")):
+                errors.append("securitySystems weakens the no-finding coverage boundary")
+        except Exception as exc:
+            errors.append(f"securitySystems unreadable: {type(exc).__name__}: {exc}")
 
     # Phase-10 rule projections are a non-authoritative sidecar for findings/replay.
     # They may carry tightly-scoped Stigma-1 deep-scan evidence-acquisition requests,

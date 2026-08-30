@@ -81,6 +81,7 @@ from security_evidence_v2 import (  # noqa: E402
     variant_index_summary,
     validate_snapshot,
 )
+import security_system_state  # noqa: E402
 
 PIPELINE_SCHEMA = "omega.security-evidence.production-v2.v1"
 SNAPSHOT_VALIDATION_SCHEMA = "omega.security-evidence.snapshot-validation.v2"
@@ -1228,6 +1229,8 @@ def rebuild_candidate_indexes(
         },
     }
     # Atomic candidate pointer is always the final evidence write.
+    write_json(candidate / "index.json", root)
+    root.setdefault("indexes", {})["securitySystems"] = security_system_state.materialize(candidate)
     write_json(candidate / "index.json", root)
     return root
 
