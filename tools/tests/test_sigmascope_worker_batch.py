@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -10,7 +12,13 @@ SECURITY = ROOT / "tools" / "security"
 if str(SECURITY) not in sys.path:
     sys.path.insert(0, str(SECURITY))
 
-from sigmascope_worker_batch import load_queue_keys, planned_selector, run_frozen_pipeline, split_report_for_key
+from sigmascope_worker_batch import (
+    load_queue_keys,
+    planned_selector,
+    prepare_frozen_transport_view,
+    run_frozen_pipeline,
+    split_report_for_key,
+)
 
 
 class SigmaScopeWorkerBatchTests(unittest.TestCase):
@@ -69,6 +77,61 @@ class SigmaScopeWorkerBatchTests(unittest.TestCase):
             self.assertEqual(
                 ["variant-3", "variant-1"],
                 [item["queueKey"] for item in report["queue"]["selectedItems"]],
+            )
+
+    def test_frozen_transport_view_repairs_only_derived_plugin_summaries(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-sigmascope-transport-compat-") as td:
+            root = Path(td)
+            current = root / "current"
+            variant_path = current / "variants" / "0000" / "1.json"
+            variant_path.parent.mkdir(parents=True, exist_ok=True)
+            variant_path.write_text(
+                json.dumps({"variantId": 1, "lifecycle": {"schema": "omega.security-evidence.variant-lifecycle.v1"}}),
+                encoding="utf-8",
+            )
+            plugins_path = current / "indexes" / "plugins.json"
+            plugins_path.parent.mkdir(parents=True, exist_ok=True)
+            plugins = {
+                "schema": "omega.security-evidence.plugins-index.v2",
+                "lifecycleContractVersion": 1,
+                "currentVariants": [{
+                    "variantId": 1,
+                    "variantPath": "variants/0000/1.json",
+                    "summary": {"coverage_status": "complete", "variant_id": 1},
+                }],
+                "terminalVariants": [],
+                "historicalSnapshots": [],
+            }
+            plugins_path.write_text(json.dumps(plugins, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            root_index = {
+                "schema": "omega.security-evidence.v2",
+                "indexes": {"plugins": {
+                    "path": "indexes/plugins.json",
+                    "bytes": plugins_path.stat().st_size,
+                    "sha256": hashlib.sha256(plugins_path.read_bytes()).hexdigest(),
+                }},
+            }
+            (current / "index.json").write_text(
+                json.dumps(root_index, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+            )
+
+            def frozen_summary(payload, *, lifecycle_contract_version=None):
+                self.assertEqual(1, lifecycle_contract_version)
+                return {"variant_id": int(payload.get("variantId") or 0)}
+
+            view, changed = prepare_frozen_transport_view(current, root / "compat", frozen_summary)
+            self.assertEqual(1, changed)
+            self.assertEqual({"coverage_status": "complete", "variant_id": 1}, plugins["currentVariants"][0]["summary"])
+            original = json.loads(plugins_path.read_text(encoding="utf-8"))
+            self.assertEqual({"coverage_status": "complete", "variant_id": 1}, original["currentVariants"][0]["summary"])
+            compat_plugins = json.loads((view / "indexes" / "plugins.json").read_text(encoding="utf-8"))
+            self.assertEqual({"variant_id": 1}, compat_plugins["currentVariants"][0]["summary"])
+            compat_root = json.loads((view / "index.json").read_text(encoding="utf-8"))
+            descriptor = compat_root["indexes"]["plugins"]
+            self.assertEqual((view / "indexes" / "plugins.json").stat().st_size, descriptor["bytes"])
+            self.assertEqual(
+                hashlib.sha256((view / "indexes" / "plugins.json").read_bytes()).hexdigest(),
+                descriptor["sha256"],
             )
 
     def test_split_report_retains_only_one_exact_result(self) -> None:
