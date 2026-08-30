@@ -1,0 +1,102 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnSerializing+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnSerialized+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnDeserializing+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnDeserialized+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Newtonsoft.Json.dll: Reflection.Emit",
+      "metadata:Newtonsoft.Json.dll: Assembly.Load",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x12: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x1d: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateParameterizedConstructor+0x2f: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateMethodCall+0x3c: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.GenerateCreateMethodCallIL+0x8: callvirt System.Reflection.Emit.ILGenerator.DefineLabel: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.GenerateCreateMethodCallIL+0x15: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Mono.Cecil.Mdb.dll: C:\\sources\\cecil\\symbols\\mdb\\obj\\Release\\netstandard2.0\\Mono.Cecil.Mdb.pdb",
+      "artifact:Mono.Cecil.Rocks.dll: C:\\sources\\cecil\\rocks\\obj\\Release\\netstandard2.0\\Mono.Cecil.Rocks.pdb",
+      "artifact:Mono.Cecil.Pdb.dll: C:\\sources\\cecil\\symbols\\pdb\\obj\\Release\\netstandard2.0\\Mono.Cecil.Pdb.pdb",
+      "artifact:Mono.Cecil.dll: C:\\sources\\cecil\\obj\\Release\\netstandard2.0\\Mono.Cecil.pdb"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:ItemVendorLocation.dll: SigScanner",
+      "metadata:ItemVendorLocation.dll: Dalamud.Hooking",
+      "metadata:ItemVendorLocation.dll: HookFromAddress",
+      "il:ItemVendorLocation.dll:ItemVendorLocation.XIVCommon.Functions.Tooltips.Tooltips..ctor+0x6: call ItemVendorLocation.Service.get_SigScanner: SigScanner",
+      "il:ItemVendorLocation.dll:ItemVendorLocation.XIVCommon.Functions.Tooltips.Tooltips..ctor+0x12: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:ItemVendorLocation.dll:ItemVendorLocation.XIVCommon.Functions.Tooltips.Tooltips..ctor+0x2d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:ItemVendorLocation.dll: Dalamud.Hooking",
+      "artifact:ItemVendorLocation.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Mono.Cecil.Pdb.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Newtonsoft.Json.dll: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlDocumentWrapper.CreateProcessingInstruction+0x8: callvirt System.Xml.XmlDocument.CreateProcessingInstruction: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlNodeConverter.CreateInstruction+0xf2: callvirt Newtonsoft.Json.Converters.IXmlDocument.CreateProcessingInstruction: CreateProcess",
+      "artifact:Newtonsoft.Json.dll: CreateProcess"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:CheapLoc.dll: WriteAllText",
+      "il:CheapLoc.dll:CheapLoc.Loc.ExportLocalizableForAssembly+0x382: call System.IO.File.WriteAllText: WriteAllText",
+      "il:CheapLoc.dll:CheapLoc.Loc.ExportLocalizableForAssembly+0x3a9: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:CheapLoc.dll: WriteAllText",
+      "metadata:Mono.Cecil.Mdb.dll: FileStream",
+      "metadata:Mono.Cecil.Mdb.dll: File.Delete",
+      "il:Mono.Cecil.Mdb.dll:Mono.CompilerServices.SymbolWriter.MonoSymbolFile.ReadSymbolFile+0x3: newobj System.IO.FileStream..ctor: FileStream",
+      "il:Mono.Cecil.Mdb.dll:Mono.CompilerServices.SymbolWriter.SourceFileEntry.WriteData+0x43: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
