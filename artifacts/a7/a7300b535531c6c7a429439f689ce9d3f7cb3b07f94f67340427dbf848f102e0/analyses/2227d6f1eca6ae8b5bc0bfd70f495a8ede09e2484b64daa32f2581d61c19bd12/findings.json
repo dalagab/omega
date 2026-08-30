@@ -1,0 +1,537 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Clipper2Lib.dll:Clipper2Lib.ClipperOffset.OffsetPoint+0xa4: callvirt DeltaCallback64.Invoke",
+      "il:Clipper2Lib.dll:Clipper2Lib.ClipperOffset.OffsetOpenPath+0x2c: callvirt DeltaCallback64.Invoke",
+      "il:Clipper2Lib.dll:Clipper2Lib.ClipperOffset.OffsetOpenPath+0x12a: callvirt DeltaCallback64.Invoke",
+      "il:Clipper2Lib.dll:Clipper2Lib.ClipperOffset.DoGroupOffset+0x190: callvirt DeltaCallback64.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:KodakkuAssist.dll: AssemblyLoadContext",
+      "artifact:KodakkuAssist.dll: AssemblyLoadContext",
+      "metadata:Microsoft.CodeAnalysis.dll: Reflection.Emit",
+      "metadata:Microsoft.CodeAnalysis.dll: AssemblyLoadContext",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.CodeAnalysis.AnalyzerAssemblyLoader..ctor+0x68: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.CodeAnalysis.AnalyzerAssemblyLoader.IsHostAssembly+0x1: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.CodeAnalysis.AnalyzerAssemblyLoader.IsHostAssembly+0x11: call System.Runtime.Loader.AssemblyLoadContext.get_Default: AssemblyLoadContext",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.CodeAnalysis.AnalyzerAssemblyLoader.UnloadAll+0x49: callvirt System.Runtime.Loader.AssemblyLoadContext.Unload: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:H.Pipes.dll: s://github.com/HavenDV/H.Pipes",
+      "artifact:H.Pipes.dll: \\\\.\\pipe\\",
+      "artifact:KodakkuAssist.dll: \\\\II\\\\I1331133",
+      "artifact:KodakkuAssist.dll: V:\\#",
+      "artifact:KodakkuAssist.dll: T:/$",
+      "artifact:KodakkuAssist.dll: U:/#eB",
+      "artifact:KodakkuAssist.dll: p://www.hanyi.com.cn/Please visit http://hanyi.com.cn/law.php for license information.http://hanyi.com.cn/law.phpHYZhengYuan65W(c",
+      "artifact:KodakkuAssist.dll: p://hanyi.com.cn/law.php"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:KodakkuAssist.dll: SigScanner",
+      "metadata:KodakkuAssist.dll: Dalamud.Hooking",
+      "metadata:KodakkuAssist.dll: HookFromAddress",
+      "artifact:KodakkuAssist.dll: Dalamud.Hooking",
+      "artifact:KodakkuAssist.dll: SigScanner",
+      "artifact:KodakkuAssist.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:KodakkuAssist.dll: HttpListener",
+      "artifact:KodakkuAssist.dll: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:KodakkuAssist.dll: DllImportAttribute",
+      "metadata:Microsoft.CodeAnalysis.CSharp.dll: DllImportAttribute",
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: DllImportAttribute",
+      "metadata:Microsoft.CodeAnalysis.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.CodeAnalysis.dll: DllImportAttribute",
+      "metadata:Microsoft.CodeAnalysis.dll: LoadLibrary",
+      "metadata:Microsoft.CodeAnalysis.dll: GetProcAddress",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.DiaSymReader.SymUnmanagedFactory.TryLoadFromAlternativePath+0x20: call Microsoft.DiaSymReader.SymUnmanagedFactory.LoadLibrary -> kernel32!LoadLibrary: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MQTTnet.dll: http://www.digicert.com/CPS0",
+      "artifact:MQTTnet.Server.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net8.0\\System.Speech.dll: http://www.w3.org/XML/1998/namespace"
+    ],
+    "rule_id": "network.endpoint.insecure-http.2a69784840b2",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KodakkuAssist.dll: http://hanyi.com.cn/law.phpHYZhengYuan65W(c"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3370bc96f9f3",
+    "severity": "caution",
+    "title": "Endpoint: hanyi.com.cn"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Speech.dll: http://www.w3.org/2001/06/grammar",
+      "artifact:runtimes\\win\\lib\\net8.0\\System.Speech.dll: http://www.w3.org/2001/06/grammar"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3861589e4c33",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KodakkuAssist.dll: http://www.hanyi.com.cn/Please"
+    ],
+    "rule_id": "network.endpoint.insecure-http.47fff4169e62",
+    "severity": "caution",
+    "title": "Endpoint: www.hanyi.com.cn"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net8.0\\System.Speech.dll: http://schemas.microsoft.com/Speech/2003/03/PromptEngine"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5113737f1bc2",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EdgeTTS.dll: http://www.w3.org/2001/mstts",
+      "artifact:Module\\TTS\\EdgeTTS.dll: http://www.w3.org/2001/mstts"
+    ],
+    "rule_id": "network.endpoint.insecure-http.570425e44f2f",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EdgeTTS.dll: http://www.w3.org/2001/10/synthesis",
+      "artifact:Module\\TTS\\EdgeTTS.dll: http://www.w3.org/2001/10/synthesis",
+      "artifact:runtimes\\win\\lib\\net8.0\\System.Speech.dll: http://www.w3.org/2001/10/synthesis"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5bae5a1630d5",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net8.0\\System.Speech.dll: http://schemas.microsoft.com/Speech/2002/06/SRGSExtensions"
+    ],
+    "rule_id": "network.endpoint.insecure-http.628eef02954c",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.CodeAnalysis.dll: http://www.microsoft.com0/",
+      "artifact:NuGet.Versioning.dll: http://www.microsoft.com0/",
+      "artifact:System.IO.Hashing.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MQTTnet.dll: http://ocsp.digicert.com0o/",
+      "artifact:MQTTnet.Server.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MQTTnet.dll: http://ocsp.digicert.com0c/",
+      "artifact:MQTTnet.Server.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net8.0\\System.Speech.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: http://json.schemastore.org/sarif-2.1.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e8b4a5cbf22e",
+    "severity": "caution",
+    "title": "Endpoint: json.schemastore.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: http://json.schemastore.org/sarif-1.0.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fa0c83d25376",
+    "severity": "caution",
+    "title": "Endpoint: json.schemastore.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KodakkuAssist.dll: http://hanyi.com.cn/law.php"
+    ],
+    "rule_id": "network.endpoint.insecure-http.faed5395f172",
+    "severity": "caution",
+    "title": "Endpoint: hanyi.com.cn"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EdgeTTS.dll: https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list",
+      "artifact:Module\\TTS\\EdgeTTS.dll: https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.66dd7f7519ac",
+    "severity": "caution",
+    "title": "Endpoint: speech.platform.bing.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://msdn.microsoft.com/query/roslyn.query"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ce13eaccbf59",
+    "severity": "caution",
+    "title": "Endpoint: msdn.microsoft.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:EdgeTTS.dll: System.Net.Sockets",
+      "metadata:EdgeTTS.dll: Socket.Connect",
+      "il:EdgeTTS.dll:EdgeTTS.Network.EdgeTTSWebSocket.IsConnectionResetError+0x16: callvirt System.Net.Sockets.SocketException.get_SocketErrorCode: System.Net.Sockets",
+      "il:EdgeTTS.dll:EdgeTTS.Network.EdgeTTSWebSocket.IsConnectionResetError+0x2d: callvirt System.Net.Sockets.SocketException.get_SocketErrorCode: System.Net.Sockets",
+      "il:EdgeTTS.dll:<CreateWebSocketAsync>d__5.MoveNext+0x80: call System.Net.WebSockets.SystemClientWebSocket.ConnectAsync: Socket.Connect",
+      "artifact:EdgeTTS.dll: System.Net.Sockets",
+      "metadata:KodakkuAssist.dll: System.Net.Sockets",
+      "artifact:KodakkuAssist.dll: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:KodakkuAssist.dll: System.Diagnostics.Process",
+      "metadata:KodakkuAssist.dll: ProcessStartInfo",
+      "metadata:KodakkuAssist.dll: ShellExecute",
+      "metadata:KodakkuAssist.dll: Process.Start",
+      "artifact:KodakkuAssist.dll: System.Diagnostics.Process",
+      "artifact:KodakkuAssist.dll: ProcessStartInfo",
+      "artifact:KodakkuAssist.dll: ShellExecute",
+      "artifact:SharpDX.Direct3D11.dll: CreateProcess"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "artifact:NAudio.Core.dll: RegistryKey",
+      "metadata:NAudio.WinMM.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.WinMM.dll: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x2e: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:EdgeTTS.dll: Directory.CreateDirectory",
+      "metadata:EdgeTTS.dll: WriteAllText",
+      "metadata:EdgeTTS.dll: WriteAllBytes",
+      "il:EdgeTTS.dll:EdgeTTS.EdgeTTSEngine.ReloadVoicesData+0x43: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:EdgeTTS.dll:EdgeTTS.EdgeTTSEngine.ReloadVoicesData+0x4b: call System.IO.File.WriteAllText: WriteAllText",
+      "il:EdgeTTS.dll:<GetOrCreateAudioFileAsync>d__21.MoveNext+0xc2: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:EdgeTTS.dll:<GetOrCreateAudioFileAsync>d__21.MoveNext+0x17a: call System.IO.File.WriteAllBytesAsync: WriteAllBytes",
+      "artifact:EdgeTTS.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KodakkuAssist.json: https://raw.githubusercontent.com/Karlin-Z/DalamudPlugins/main/plugins/KodakkuAssist/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2b1bd766f0be",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MQTTnet.dll: https://github.com/dotnet/MQTTnet",
+      "artifact:MQTTnet.Server.dll: https://github.com/dotnet/MQTTnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2b2976c29680",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NuGet.Versioning.dll: https://github.com/NuGet/NuGet.Client"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2d5a96ab88a8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/67592"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2f1b858ecd88",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn",
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.351354630292",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/csharplang/issues/7009"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7324b599ad11",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MQTTnet.dll: https://github.com/dotnet/MQTTnet.git",
+      "artifact:MQTTnet.Server.dll: https://github.com/dotnet/MQTTnet.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.84cfaec8d281",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/csharplang/issues/7009N"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.998cc3a3e5d9",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.IO.Hashing.dll: https://github.com/dotnet/runtime",
+      "artifact:System.Management.dll: https://github.com/dotnet/runtime",
+      "artifact:System.Speech.dll: https://github.com/dotnet/runtime",
+      "artifact:runtimes\\win\\lib\\net8.0\\System.Management.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Wasapi.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.WinForms.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn/issues/70609X"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b1b1e52b473e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/63440"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cb6335723c68",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Clipper2Lib.dll: https://github.com/AngusJohnson/Clipper2"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d2f41f3be5a6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:H.Formatters.dll: https://github.com/HavenDV/H.Pipes",
+      "artifact:H.Formatters.System.Text.Json.dll: https://github.com/HavenDV/H.Pipes",
+      "artifact:H.Pipes.dll: https://github.com/HavenDV/H.Pipes"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e8e3cc2a2de6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/70609"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f0697fe68c5e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:KodakkuAssist.dll: System.Net.Http.HttpClient",
+      "artifact:Microsoft.CodeAnalysis.dll: WebRequest",
+      "artifact:runtimes\\win\\lib\\net8.0\\System.Management.dll: WebRequest",
+      "artifact:runtimes\\win\\lib\\net8.0\\System.Management.dll: HttpWebRequest",
+      "metadata:runtimes\\win\\lib\\net8.0\\System.Speech.dll: WebRequest",
+      "metadata:runtimes\\win\\lib\\net8.0\\System.Speech.dll: DownloadData",
+      "il:runtimes\\win\\lib\\net8.0\\System.Speech.dll:System.Speech.Internal.ResourceLoader.LoadFile+0x63: call System.Speech.Internal.ResourceLoader.DownloadData: DownloadData",
+      "il:runtimes\\win\\lib\\net8.0\\System.Speech.dll:System.Speech.Internal.ResourceLoader.DownloadData+0x1: call System.Net.WebRequest.Create: WebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
