@@ -87,6 +87,8 @@ class WorkflowContractTests(unittest.TestCase):
             "--evidence-root catalog/security-v2-current",
             "validate_marketplace_catalog.py --root catalog/client-dist --require-v2",
             "client_database_audit.py",
+            "--max-bytes 100663296",
+            "--max-growth-ratio 1.20",
             "largestGrowthTables",
             "storage-audit.json",
             "gh release upload catalog-latest",
