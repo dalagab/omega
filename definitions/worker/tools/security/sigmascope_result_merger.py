@@ -52,8 +52,10 @@ from production_sigmascope_v2_pipeline import (  # noqa: E402
 from security_evidence_v2 import sha256_file, validate_snapshot  # noqa: E402
 
 SCHEMA = "omega.sigmascope-result-merge.v1"
-MAX_BUNDLES = 8
-MAX_VARIANTS = 8
+# Production drain waves are bounded to 64 exact persistent queue items. The default
+# coordinator wave remains 4 workers x 10 items = 40 result bundles.
+MAX_BUNDLES = 64
+MAX_VARIANTS = 64
 
 
 def _utc_now() -> str:
@@ -162,9 +164,28 @@ def _current_rows(database: Path) -> dict[int, dict[str, Any]]:
         return {int(row["variant_id"]): dict(row) for row in db.execute("SELECT * FROM plugin_security_current")}
 
 
-def _merge_queue(current_evidence: Path, bundle_docs: list[dict[str, Any]], current_rows: dict[int, dict[str, Any]]) -> tuple[dict[str, Any], list[str]]:
+def _merge_queue(
+    current_evidence: Path,
+    bundle_docs: list[dict[str, Any]],
+    current_rows: dict[int, dict[str, Any]],
+    *,
+    queue_seed: Path | None = None,
+) -> tuple[dict[str, Any], list[str]]:
     path = current_evidence / "scanner-queue.json"
     state = _read(path) if path.is_file() else {"schema": scan_queue.STATE_SCHEMA, "items": {}, "recentCompleted": []}
+
+    # A catalog/Definitions freeze may publish a newer immutable seed between drain waves.
+    # Synchronize before overlaying exact worker settlements so new work is never dropped.
+    if queue_seed is not None:
+        seed = _read(queue_seed)
+        if seed.get("schema") != scan_queue.SEED_SCHEMA:
+            raise ValueError("parallel merge received an unsupported queue seed")
+        seed_epoch = str(seed.get("catalogIdentityEpoch") or "")
+        previous_epoch = str(state.get("catalogIdentityEpoch") or "")
+        if seed_epoch and previous_epoch and seed_epoch != previous_epoch:
+            state = {}
+        state = scan_queue.sync_state(seed, state)
+
     contexts = [doc["work"].get("queueContextAfter") or {} for doc in bundle_docs]
     if contexts:
         first = contexts[0]
@@ -320,8 +341,9 @@ def _refresh_frozen_advisories(database: Path, work_dir: Path, definitions: Path
 
 
 def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bundle_roots: list[Path],
-          candidate: Path, work_dir: Path, report: Path, previous_deep_scan_state: Path | None = None,
-          deep_scan_output: Path | None = None, source_followup_output: Path | None = None) -> dict[str, Any]:
+          candidate: Path, work_dir: Path, report: Path, queue_seed: Path | None = None,
+          previous_deep_scan_state: Path | None = None, deep_scan_output: Path | None = None,
+          source_followup_output: Path | None = None) -> dict[str, Any]:
     current_evidence = current_evidence.resolve(); base_database = base_database.resolve(); definitions = definitions.resolve()
     candidate = candidate.resolve(); work_dir = work_dir.resolve(); report = report.resolve()
     if not bundle_roots or len(bundle_roots) > MAX_BUNDLES:
@@ -377,7 +399,7 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
         "maxScans": len(docs),
         "catalogDataRevision": str(queue_context.get("catalogRevision") or base_revisions.get("catalogDataRevision") or ""),
         "catalogIdentityEpoch": str(queue_context.get("catalogIdentityEpoch") or base_revisions.get("catalogIdentityEpoch") or ""),
-        "baselineSecurityRebuild": False,
+        "baselineSecurityRebuild": bool(queue_context.get("baselineSecurityRebuild")),
         "definitionsRevision": str(definitions_index.get("definitionsRevision") or ""),
         "advisoryRevision": str(definitions_index.get("advisoryRevision") or ""),
         "scannerRevision": str(definitions_index.get("scannerRevision") or ""),
@@ -397,7 +419,9 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
         root_index.setdefault("source", {})["reputationRevision"] = str(threat_intelligence.get("reputationRevision") or "")
         write_json(candidate / "index.json", root_index)
 
-    queue_state, dynamic_source_followups = _merge_queue(current_evidence, docs, _current_rows(work_database))
+    queue_state, dynamic_source_followups = _merge_queue(
+        current_evidence, docs, _current_rows(work_database), queue_seed=queue_seed
+    )
     queue_path = candidate / "scanner-queue.json"
     scan_queue.write_json(queue_path, queue_state)
     root_index["scannerQueue"] = {
@@ -466,6 +490,7 @@ def main() -> int:
     parser.add_argument("--candidate-evidence", required=True, type=Path)
     parser.add_argument("--work-dir", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
+    parser.add_argument("--queue-seed", type=Path)
     parser.add_argument("--previous-deep-scan-state", type=Path)
     parser.add_argument("--deep-scan-output", type=Path)
     parser.add_argument("--source-followup-output", type=Path)
@@ -474,8 +499,8 @@ def main() -> int:
     result = merge(
         current_evidence=args.current_evidence, base_database=args.base_database, definitions=args.definitions_root,
         bundle_roots=args.bundles, candidate=args.candidate_evidence, work_dir=args.work_dir, report=args.report,
-        previous_deep_scan_state=args.previous_deep_scan_state, deep_scan_output=args.deep_scan_output,
-        source_followup_output=args.source_followup_output,
+        queue_seed=args.queue_seed, previous_deep_scan_state=args.previous_deep_scan_state,
+        deep_scan_output=args.deep_scan_output, source_followup_output=args.source_followup_output,
     )
     print(json.dumps({
         "schema": result["schema"], "mergeRevision": result["mergeRevision"],

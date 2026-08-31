@@ -4,7 +4,7 @@
     "canonical_name": "M.O.G.T.O.M.E.",
     "first_seen_utc": "2026-08-26T03:31:07Z",
     "internal_name": "MOGTOME",
-    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "last_seen_utc": "2026-08-31T18:30:09Z",
     "plugin_id": 1312
   },
   "presentation": {
@@ -13,8 +13,8 @@
     "nsfw": 0,
     "official": 0,
     "plugin_id": 1312,
-    "preferred_variant_id": 5273,
-    "presentation_variant_id": 5273,
+    "preferred_variant_id": 5319,
+    "presentation_variant_id": 5319,
     "rich_card": 0,
     "richness_score": 1255,
     "summary": "Automated duty farming and mogtome acquisition.",
@@ -28,7 +28,7 @@
     "name": "M.O.G.T.O.M.E.",
     "plugin_id": 1312,
     "punchline": "Automated duty farming and mogtome acquisition.",
-    "tags": "automation duty farming other praetorium tomes",
+    "tags": "automation duty farming praetorium tomes",
     "website_text": " # M.O.G.T.O.M.E.\n\n---\n\n**Help fund my AI overlords' coffee addiction so they can keep generating more plugins instead of taking over the world**\n\n[☕ Support development on Ko-fi](https://ko-fi.com/mcvaxius)\n\n[XA and I have created some Plugins and Guides here at -> aethertek.io](https://aethertek.io/)\n### Repo URL:\n```\nhttps://aethertek.io/x.json\n```\n\n---\n\n**Management Of Grand Tome Operations & Management Engine**\n\nA Dalamud plugin for automated duty farming and tome acquisition in FFXIV.\n\n---\n\n## Overview\n\nMOGTOME automates farming of The Praetorium (99 runs) and The Porta Decumana (until daily reset) for efficient tome acquisition. Converted from the G.O.O.N. SND script to a native Dalamud plugin.\n\n### Features\n\n- ✅ **Automated Duty Queueing**: Automatically queues for Praetorium (1-99) and Decumana (100+)\n- ✅ **Daily Reset Detection**: Auto-resets counters at 7 AM UTC (3 AM EST / 12 AM PST)\n- ✅ **Repair Management**: Self-repair with dark matter or NPC repair automation\n- ✅ **Food Management**: Auto-consume food when buff expires\n- ✅ **Combat Integration**: Select one of BMR, VBM, Rotation Solver Reborn, or Wrath Combo\n- ✅ **Filtered Statistics**: Unsynced testing runs stay out of stats unless you explicitly opt in\n- ✅ **Persistent Run Counters**: Duty counters and summary stats save against the active account after login and duty completion\n- ✅ **Stuck Detection**: Auto-recovery from stuck states\n- ✅ **Boss Mechanics**: Tank mitigation, potion usage, limit breaks\n- ✅ **Per-Character Configuration**: Separate settings for each character\n- ✅ **ADS-primary setup wizard**: Per-account guided setup with an explicit AutoDuty alternative\n- ⚠️ **Experimental Praetorium first-room opener**: Optional ADS-only local terminal sequence with immediate ADS fallback\n\n---\n\n## Requirements\n\n### Required Plugins\n- **Selected duty backend** - **ADS is the primary backend**, or AutoDuty plus the selected Praetorium path as the alternative\n- **Selected combat provider** - BMR, VBM, Rotation Solver Reborn, or Wrath Combo\n- **vnavmesh** - Navigation and pathfinding\n- **XA Slave** - Provides `/xa skipcutscenes on` startup control\n- **YesAlready** - Auto-confirm dialogs\n### Optional Plugins\n- **ADS (AI Duty Solver)** - Optional in AutoDuty mode; enables `/mog inn` delegation\n- **Lifestream** and **TextAdvance** - Optional; neither is required for MOGTOME setup\n\n### Game Configuration (MANDATORY)\n- **NOT in controller mode** (causes chat spam)\n- **Duty Finder**: Unrestricted Party + Level Sync enabled\n- **XA Slave**: Installed and loaded. MOGTOME runs `/xa skipcutscenes on` before each manual start\n- **AutoDuty**: \"Leave Duty\" disabled OR \"Only when duty complete\"\n- **YesAlready**: Configured for repair, exit, sealed area dialogs\n\nSee [how-to-import-plugins.md](how-to-import-plugins.md) for detailed setup instructions.\n\n---\n\n## Installation\n\n### Development Version\n\n1. Clone this repository\n2. Open `MOGTOME.sln` in Visual Studio 2022 or JetBrains Rider\n3. Build the solution (Debug or Release)\n4. Add the DLL path to Dalamud Dev Plugin Locations:\n   - `/xlsettings` → Experimental → Dev Plugin Locations\n   - Add: `D:\\temp\\MOGTOME\\MOGTOME\\bin\\x64\\Debug\\MOGTOME.dll`\n5. Enable in `/xlplugins` → Dev Tools → Installed Dev Plugins\n\n### Release Version\n\n*Once published to official Dalamud repository:*\n\n1. `/xlplugins` → Search for \"MOGTOME\"\n2. Click Install\n3. Enable the plugin\n\n---\n\n## Usage\n\n### Starting the Bot\n\n1. Ensure you're outside a duty\n2. Open MOGTOME: `/mogtome`\n3. Click **Start** button\n4. MOGTOME sends `/xa skipcutscenes on`, then queues, runs duties, repairs, and consumes food automatically\n\n### Configuration\n\n1. Open config: `/mogtome config`\n2. Complete the per-account **Setup Wizard**. It guides backend, combat provider, required checks, party setup, optional settings, and review.\n3. Configure any remaining duty counter, repair threshold, food, and potion settings.\n4. Settings save automatically. The wizard is advisory and does not block Start or install/configure other plugins.\n\n### Experimental first-room skip\n\nIn **Advanced**, `Experimental first room skip` is off by default and is active only with ADS in The Praetorium. Each participating party client must enable it locally; no party synchronization is performed.\n\n- Tanks move through the opening pull, use the mapped AoE and invulnerability, then use Magitek Terminal `2012811`.\n- Non-tanks wait one second, then move to that terminal.\n- MOGTOME retries the terminal until the local player descends, for up to ten seconds total. On success or any unavailable action, missing target/terminal, movement failure, or timeout, it stops only MOGTOME's vnavmesh movement and immediately hands the duty to ADS.\n\nThis sequence is experimental and has not been live-duty validated by this implementation pass.\n\n### Commands\n\n- `/mogtome` - Open status window\n- `/mog config` - Open configuration window\n- `/mog start` - Start the bot\n- `/mog stop` - Stop the bot\n- `/mog inn` - Delegate inn entry to ADS with `/ads enterinn`\n- `/mog status` - Print current status\n\n---\n\n## How It Works\n\n1. **Queue Phase**: Queues for The Praetorium (runs 1-99) or The Porta Decumana (runs 100+)\n2. **Duty Phase**: ADS is the primary selected duty backend; AutoDuty remains an alternative. The selected combat provider handles combat.\n3. **Boss Mechanics**: Automatic tank mitigation, potion usage, limit breaks\n4. **Completion**: Calculates completion time, leaves duty, increments counter\n5. **Maintenance**: Auto-repair when threshold reached, auto-consume food when buff expires\n6. **Daily Reset**: Auto-resets counter at 7 AM UTC\n\n---\n\n## Recommended Party Composition\n\n### Standard (Balanced)\n- WAR + SCH + 2 DPS\n\n### Fast Clears (9:50-10:00)\n- GNB + 3 MCH\n\n### Notes\n- GNB has best survivability with automation\n- MCH has highest DPS for level 50 content\n- SCH > SGE for healer DPS\n\n---\n\n## Known Issues\n\n1. **AutoDuty Path Corruption**: Use 1 client per Dalamud folder\n2. **Movement Type Change**: Game sometimes switches Legacy ↔ Standard\n3. **Job Change Issues**: `/xlkill` and restart client if issues occur\n4. **YesAlready Disabled**: Ensure YesAlready is enabled before starting\n\n---\n\n## Development\n\n### Project Structure\n\n```\nMOGTOME/\n├── MOGTOME/\n│   ├── Models/          # Data models\n│   ├── Services/        # Core services\n│   ├── Windows/         # UI windows\n│   ├── IPC/            # Plugin IPC integrations\n│   ├── Configuration.cs\n│   └── Plugin.cs\n├── PROJECT_GAMEPLAN.md  # Detailed project plan\n├── CHANGELOG.md         # Version history\n└── README.md           # This file\n```\n\n### Building\n\n```bash\ndotnet build -c Debug   # Debug build\ndotnet build -c Release # Release build\n```\n\n### Contributing\n\nSee [PROJECT_GAMEPLAN.md](PROJECT_GAMEPLAN.md) for detailed technical documentation and implementation phases.\n\n---\n\n## Credits\n\n- **Original Script**: G.O.O.N. (Generally Ordered Optimized Navigation) by dhogGPT\n- **Inspiration**: @Akasha, @Ritsuko for ideas and code\n- **Dependencies**: Selected duty backend, vnavmesh, XA Slave, YesAlready, and selected combat provider\n\n---\n\n## License\n\nThis project is licensed under the same terms as the Dalamud Plugin Template.\n\n---\n\n## Support\n\nFor issues, bugs, or feature requests:\n1. Check CHANGELOG.md for recent changes\n2. Review PROJECT_GAMEPLAN.md for technical details\n3. Check Dalamud log: `/xllog`\n4. Report issues with full error logs\n\n---\n\n**Happy tome farming!** 🎮"
   },
   "variants": [
@@ -212,7 +212,7 @@
         }
       ],
       "variant": {
-        "active": 1,
+        "active": 0,
         "applicable_version": "any",
         "assembly_version": "0.2.0.10",
         "author": "DhogGPT",
@@ -245,6 +245,141 @@
         "testing_assembly_version": null,
         "testing_dalamud_api_level": null,
         "variant_id": 5273
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 5319
+        },
+        {
+          "kind": "tag",
+          "tag": "duty",
+          "variant_id": 5319
+        },
+        {
+          "kind": "tag",
+          "tag": "farming",
+          "variant_id": 5319
+        },
+        {
+          "kind": "tag",
+          "tag": "praetorium",
+          "variant_id": 5319
+        },
+        {
+          "kind": "tag",
+          "tag": "tomes",
+          "variant_id": 5319
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.2.0.16",
+        "author": "DhogGPT",
+        "authors_json": "[\"DhogGPT\"]",
+        "category_tags_json": "[]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "M.O.G.T.O.M.E. automates duty farming (Praetorium/Porta Decumana) with party coordination, repair, food, potions, rotation management, and stuck detection. Use /mogtome or /mog to open. M.O.G.T.O.M.E. = Management Of Grand Tome Operations & Management Engine",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/McVaxius/MOGTOME/releases/download/v0.2.0.16/latest.zip",
+        "download_link_testing": "https://github.com/McVaxius/MOGTOME/releases/latest/download/latest.zip",
+        "download_link_update": "https://github.com/McVaxius/MOGTOME/releases/download/v0.2.0.16/latest.zip",
+        "first_seen_utc": "2026-08-31T18:30:09Z",
+        "icon_url": "https://raw.githubusercontent.com/McVaxius/MOGTOME/master/MOGTOME/images/icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-31T18:30:09Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "M.O.G.T.O.M.E.",
+        "plugin_id": 1312,
+        "punchline": "Automated duty farming and mogtome acquisition.",
+        "raw_manifest_json": "{\"Author\":\"DhogGPT\",\"Name\":\"M.O.G.T.O.M.E.\",\"Punchline\":\"Automated duty farming and mogtome acquisition.\",\"Description\":\"M.O.G.T.O.M.E. automates duty farming (Praetorium/Porta Decumana) with party coordination, repair, food, potions, rotation management, and stuck detection. Use /mogtome or /mog to open. M.O.G.T.O.M.E. = Management Of Grand Tome Operations & Management Engine\",\"InternalName\":\"MOGTOME\",\"ApplicableVersion\":\"any\",\"Tags\":[\"automation\",\"duty\",\"farming\",\"praetorium\",\"tomes\"],\"RepoUrl\":\"https://github.com/McVaxius/MOGTOME\",\"AssemblyVersion\":\"0.2.0.16\",\"DalamudApiLevel\":15,\"IconUrl\":\"https://raw.githubusercontent.com/McVaxius/MOGTOME/master/MOGTOME/images/icon.png\",\"DownloadLinkInstall\":\"https://github.com/McVaxius/MOGTOME/releases/download/v0.2.0.16/latest.zip\",\"DownloadLinkUpdate\":\"https://github.com/McVaxius/MOGTOME/releases/download/v0.2.0.16/latest.zip\",\"DownloadLinkTesting\":\"https://github.com/McVaxius/MOGTOME/releases/latest/download/latest.zip\",\"IsHide\":false,\"IsTestingExclusive\":false,\"LoadPriority\":0}",
+        "repo_url": "https://github.com/McVaxius/MOGTOME",
+        "source_entry_key": "mogtome|0.2.0.16|15|0|0",
+        "source_id": 838,
+        "tags_json": "[\"automation\",\"duty\",\"farming\",\"praetorium\",\"tomes\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 5319
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "other",
+          "variant_id": 5624
+        },
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 5624
+        },
+        {
+          "kind": "tag",
+          "tag": "duty",
+          "variant_id": 5624
+        },
+        {
+          "kind": "tag",
+          "tag": "farming",
+          "variant_id": 5624
+        },
+        {
+          "kind": "tag",
+          "tag": "praetorium",
+          "variant_id": 5624
+        },
+        {
+          "kind": "tag",
+          "tag": "tomes",
+          "variant_id": 5624
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.2.0.16",
+        "author": "DhogGPT",
+        "authors_json": "[\"DhogGPT\"]",
+        "category_tags_json": "[\"other\"]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "M.O.G.T.O.M.E. automates duty farming (Praetorium/Porta Decumana) with party coordination, repair, food, potions, rotation management, and stuck detection. Use /mogtome or /mog to open. M.O.G.T.O.M.E. = Management Of Grand Tome Operations & Management Engine",
+        "dip17_channel": "",
+        "download_count": 3866,
+        "download_link_install": "https://github.com/McVaxius/MOGTOME/releases/download/v0.2.0.16/latest.zip",
+        "download_link_testing": "",
+        "download_link_update": "https://github.com/McVaxius/MOGTOME/releases/download/v0.2.0.16/latest.zip",
+        "first_seen_utc": "2026-08-31T18:30:09Z",
+        "icon_url": "https://raw.githubusercontent.com/McVaxius/MOGTOME/master/MOGTOME/images/icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-08-31T18:30:09Z",
+        "last_update": 1787916485,
+        "minimum_dalamud_version": null,
+        "name": "M.O.G.T.O.M.E.",
+        "plugin_id": 1312,
+        "punchline": "Automated duty farming and mogtome acquisition.",
+        "raw_manifest_json": "{\"Author\":\"DhogGPT\",\"Name\":\"M.O.G.T.O.M.E.\",\"Punchline\":\"Automated duty farming and mogtome acquisition.\",\"Description\":\"M.O.G.T.O.M.E. automates duty farming (Praetorium/Porta Decumana) with party coordination, repair, food, potions, rotation management, and stuck detection. Use /mogtome or /mog to open. M.O.G.T.O.M.E. = Management Of Grand Tome Operations & Management Engine\",\"Changelog\":\"\",\"Tags\":[\"automation\",\"duty\",\"farming\",\"praetorium\",\"tomes\"],\"CategoryTags\":[\"other\"],\"IsHide\":false,\"InternalName\":\"MOGTOME\",\"AssemblyVersion\":\"0.2.0.16\",\"IsTestingExclusive\":false,\"RepoUrl\":\"https://github.com/McVaxius/MOGTOME\",\"ApplicableVersion\":\"any\",\"DalamudApiLevel\":15,\"DownloadCount\":3866,\"LastUpdate\":1787916485,\"DownloadLinkInstall\":\"https://github.com/McVaxius/MOGTOME/releases/download/v0.2.0.16/latest.zip\",\"DownloadLinkUpdate\":\"https://github.com/McVaxius/MOGTOME/releases/download/v0.2.0.16/latest.zip\",\"SupportsProfiles\":true,\"IconUrl\":\"https://raw.githubusercontent.com/McVaxius/MOGTOME/master/MOGTOME/images/icon.png\",\"_SourceId\":\"mcvaxius-thedumpsterfire\",\"_SourceName\":\"McVaxius / TheDumpsterFire\",\"_SourceUrl\":\"https://raw.githubusercontent.com/McVaxius/TheDumpsterFire/master/repo.json\",\"_Category\":\"automation\"}",
+        "repo_url": "https://github.com/McVaxius/MOGTOME",
+        "source_entry_key": "mogtome|0.2.0.16|15|0|72",
+        "source_id": 691,
+        "tags_json": "[\"automation\",\"duty\",\"farming\",\"praetorium\",\"tomes\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 5624
       }
     }
   ]

@@ -34,6 +34,7 @@ from security_evidence_v2 import iter_variant_entries  # noqa: E402
 from artifact_source_model import BASIS_DEFAULT_BRANCH  # noqa: E402
 from source_resolution import public_repository_url, source_candidate_records  # noqa: E402
 import definition_packs  # noqa: E402
+import plugin_coverage_policy as plugin_coverage  # noqa: E402
 import rule_reprojection  # noqa: E402
 
 SEED_SCHEMA = "omega.sigmascope.queue-seed.v2"
@@ -82,38 +83,18 @@ REASON_CONTRACTS = {
 
 RETRY_DELAYS_MINUTES = (60, 240, 720, 1440, 2880, 5760)
 
-# Coverage-first queue policy: establish at least one artifact-backed result for as many
-# active variants as possible before spending worker time revisiting already-covered
-# variants. Reason priorities still order work within each lane.
-SELECTION_POLICY = "coverage-first-v1"
+# Plugin-first coverage keeps at least one representative artifact scan in front of
+# secondary variants and enrichment work. The helper remains separate from evidence
+# authority: source provenance only schedules work and never becomes a trust verdict.
+SELECTION_POLICY = plugin_coverage.SELECTION_POLICY
 
 
-def _selection_lane(item: dict[str, Any]) -> int:
-    """Return the deterministic coverage lane for a mutable queue item.
-
-    0 = never-attempted artifact work for a variant with no published current scan
-    1 = retry of artifact work for a still-uncovered variant
-    2 = all already-covered work (artifact re-analysis, source follow-up, advisory)
-    """
-    work_type = str(item.get("workType") or "")
-    current_scan_id = int(item.get("currentScanId") or 0)
-    current_scanned_at = str(item.get("currentScannedAtUtc") or "").strip()
-    uncovered_artifact = work_type == "artifact" and current_scan_id <= 0 and not current_scanned_at
-    if not uncovered_artifact:
-        return 2
-    return 0 if int(item.get("attemptCount") or 0) <= 0 else 1
+def _selection_lane(item: dict[str, Any], covered_plugin_ids: set[int] | None = None) -> int:
+    return plugin_coverage.selection_lane(item, covered_plugin_ids)
 
 
-def _selection_sort_key(item: dict[str, Any]) -> tuple[Any, ...]:
-    return (
-        _selection_lane(item),
-        -int(item.get("priority") or 0),
-        str(item.get("currentScannedAtUtc") or ""),
-        str(item.get("internalName") or "").casefold(),
-        str(item.get("sourceName") or "").casefold(),
-        int(item.get("variantId") or 0),
-        str(item.get("workType") or ""),
-    )
+def _selection_sort_key(item: dict[str, Any], covered_plugin_ids: set[int] | None = None) -> tuple[Any, ...]:
+    return plugin_coverage.selection_sort_key(item, covered_plugin_ids)
 
 
 def utc_now(now: dt.datetime | None = None) -> str:
@@ -223,6 +204,7 @@ def catalog_variants(catalog_root: Path) -> list[dict[str, Any]]:
                 "internalName": str(plugin.get("internal_name") or ""),
                 "name": str(variant.get("name") or plugin.get("canonical_name") or plugin.get("internal_name") or ""),
                 "sourceName": str(source.get("name") or ""),
+                "sourcePriorityClass": plugin_coverage.source_priority_class(source),
                 "assemblyVersion": version,
                 "artifactChannel": channel,
                 "artifactUrl": artifact_url,
@@ -446,6 +428,8 @@ def _queue_item(
         "internalName": str(variant.get("internalName") or ""),
         "name": str(variant.get("name") or ""),
         "sourceName": str(variant.get("sourceName") or ""),
+        "sourcePriorityClass": str(variant.get("sourcePriorityClass") or "discovered"),
+        "pluginHasCurrentScan": bool(variant.get("pluginHasCurrentScan")),
         "assemblyVersion": str(variant.get("assemblyVersion") or ""),
         "artifactChannel": str(variant.get("artifactChannel") or ""),
         "artifactUrl": str(variant.get("artifactUrl") or ""),
@@ -513,6 +497,8 @@ def _source_queue_item(
         "internalName": str(variant.get("internalName") or ""),
         "name": str(variant.get("name") or ""),
         "sourceName": str(variant.get("sourceName") or ""),
+        "sourcePriorityClass": str(variant.get("sourcePriorityClass") or "discovered"),
+        "pluginHasCurrentScan": bool(variant.get("pluginHasCurrentScan")),
         "assemblyVersion": str(variant.get("assemblyVersion") or ""),
         "artifactChannel": str(variant.get("artifactChannel") or ""),
         "artifactUrl": str(variant.get("artifactUrl") or ""),
@@ -606,6 +592,8 @@ def enqueue_source_followup(
         "internalName": str(artifact_item.get("internalName") or ""),
         "name": str(artifact_item.get("name") or ""),
         "sourceName": str(artifact_item.get("sourceName") or ""),
+        "sourcePriorityClass": str(artifact_item.get("sourcePriorityClass") or "discovered"),
+        "pluginHasCurrentScan": True,
         "assemblyVersion": str(artifact_item.get("assemblyVersion") or ""),
         "artifactChannel": str(artifact_item.get("artifactChannel") or ""),
         "artifactUrl": str(artifact_item.get("artifactUrl") or ""),
@@ -737,6 +725,13 @@ def build_seed(
     observations = source_observations(definitions_root)
     baseline_security_rebuild = bool(catalog_identity_epoch and previous_evidence_identity_epoch != catalog_identity_epoch)
     current = {} if baseline_security_rebuild else evidence_current(evidence_root)
+    variants = catalog_variants(catalog_root)
+    published_covered_plugin_ids = {
+        int(variant.get("pluginId") or 0)
+        for variant in variants
+        if int(variant.get("pluginId") or 0) > 0
+        and plugin_coverage.current_has_artifact_coverage(current.get(int(variant.get("variantId") or 0)))
+    }
     srl_plan = _srl_reprojection_plan(definitions_root, evidence_root, definitions_index) if not baseline_security_rebuild else {
         "schema": rule_reprojection.PLAN_SCHEMA,
         "ruleSetRevision": str(((definitions_index.get("srlDefinitionPacks") or {}) if isinstance(definitions_index.get("srlDefinitionPacks"), dict) else {}).get("ruleSetRevision") or ""),
@@ -746,7 +741,9 @@ def build_seed(
     srl_requests = {int(item.get("variantId") or 0): dict(item) for item in srl_plan.get("reanalysisRequests") or [] if isinstance(item, dict) and int(item.get("variantId") or 0) > 0}
     items: list[dict[str, Any]] = []
     counts = {reason: 0 for reason in REASON_PRIORITIES}
-    for variant in catalog_variants(catalog_root):
+    for base_variant in variants:
+        variant = dict(base_variant)
+        variant["pluginHasCurrentScan"] = int(variant.get("pluginId") or 0) in published_covered_plugin_ids
         current_row = current.get(int(variant["variantId"]))
         reasons = ["baseline_scan"] if baseline_security_rebuild else due_reasons(
             variant,
@@ -810,7 +807,7 @@ def build_seed(
             generated_at=generated,
         ))
         counts["advisory_changed"] = counts.get("advisory_changed", 0) + 1
-    items.sort(key=_selection_sort_key)
+    items.sort(key=lambda item: _selection_sort_key(item, published_covered_plugin_ids))
     semantic = {
         "schema": SEED_SCHEMA,
         "catalogRevision": catalog_revision,
@@ -836,7 +833,7 @@ def build_seed(
         "items": [
             {
                 key: item[key]
-                for key in ("queueKey", "workType", "targetFingerprint", "variantId", "assemblyVersion", "artifactUrl", "artifactAnalysisRevision", "sourceAnalysisRevision", "ruleSetRevision", "srlRuleSetRevision", "requiredObservationCollections", "srlReanalysisReasons", "observedSourceCommit", "reasons", "priority")
+                for key in ("queueKey", "workType", "targetFingerprint", "variantId", "pluginId", "sourceId", "sourcePriorityClass", "pluginHasCurrentScan", "artifactChannel", "assemblyVersion", "artifactUrl", "artifactAnalysisRevision", "sourceAnalysisRevision", "ruleSetRevision", "srlRuleSetRevision", "requiredObservationCollections", "srlReanalysisReasons", "observedSourceCommit", "reasons", "priority")
                 if key in item
             }
             for item in items
@@ -1096,7 +1093,8 @@ def select_next(state: dict[str, Any], *, now: dt.datetime | None = None) -> dic
         eligible.append(item)
     if not eligible:
         return None
-    eligible.sort(key=_selection_sort_key)
+    covered_plugin_ids = plugin_coverage.covered_plugin_ids((state.get("items") or {}).values())
+    eligible.sort(key=lambda item: _selection_sort_key(item, covered_plugin_ids))
     return _select_item(state, eligible[0], now_dt=now_dt)
 
 
@@ -1160,7 +1158,10 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
     due_by_reason: dict[str, int] = {}
     uncovered_variant_ids: set[int] = set()
     uncovered_retry_variant_ids: set[int] = set()
+    uncovered_plugin_ids: set[int] = set()
+    uncovered_retry_plugin_ids: set[int] = set()
     covered_work_pending = 0
+    covered_plugin_ids = plugin_coverage.covered_plugin_ids((state.get("items") or {}).values())
     for item in (state.get("items") or {}).values():
         if not isinstance(item, dict):
             continue
@@ -1169,12 +1170,18 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
         if status != "complete":
             reason = str(item.get("primaryReason") or "")
             due_by_reason[reason] = due_by_reason.get(reason, 0) + 1
-            lane = _selection_lane(item)
             variant_id = int(item.get("variantId") or 0)
-            if lane in (0, 1) and variant_id > 0:
+            plugin_id = int(item.get("pluginId") or 0)
+            variant_uncovered = plugin_coverage.artifact_is_uncovered(item)
+            if variant_uncovered and variant_id > 0:
                 uncovered_variant_ids.add(variant_id)
-                if lane == 1:
+                if int(item.get("attemptCount") or 0) > 0:
                     uncovered_retry_variant_ids.add(variant_id)
+            lane = _selection_lane(item, covered_plugin_ids)
+            if lane in (0, 1) and plugin_id > 0:
+                uncovered_plugin_ids.add(plugin_id)
+                if lane == 1:
+                    uncovered_retry_plugin_ids.add(plugin_id)
             elif lane == 2:
                 covered_work_pending += 1
     return {
@@ -1197,6 +1204,8 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
         "selectionPolicy": str(state.get("selectionPolicy") or SELECTION_POLICY),
         "unscannedVariantsPending": len(uncovered_variant_ids),
         "unscannedRetryVariants": len(uncovered_retry_variant_ids),
+        "unscannedPluginsPending": len(uncovered_plugin_ids),
+        "unscannedRetryPlugins": len(uncovered_retry_plugin_ids),
         "coveredWorkPending": covered_work_pending,
         "total": sum(counts.values()),
     }
