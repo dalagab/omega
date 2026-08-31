@@ -94,6 +94,7 @@ class OrchestrationContractTests(unittest.TestCase):
         self.assertIn("freeze_inputs.py", freeze)
         self.assertIn("catalog_freeze_identity.py", freeze)
         self.assertIn("publisher-worker", freeze)
+        self.assertIn("PYTHONPATH: .:tools/tests:tools/catalog", freeze)
         for forbidden in (
             "collect_reputation_intelligence.py", "collect_public_advisories.py", "freshclam",
             "source_revision_observer.py", "enrich_metadata.py", "scrape_websites_incremental.py",
