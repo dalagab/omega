@@ -39,6 +39,39 @@ jobs:
         continue-on-error: true
         uses: actions/checkout@v6
         with: {ref: security-work-state, path: catalog/previous-work-state, fetch-depth: 1, persist-credentials: false}
+      - name: Ensure append-only RoboScope operations branch exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin security-operations >/dev/null 2>&1; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          worktree="$(mktemp -d)"
+          cleanup() { git worktree remove --force "$worktree" >/dev/null 2>&1 || true; rm -rf "$worktree"; }
+          trap cleanup EXIT
+          git worktree add --detach "$worktree" HEAD >/dev/null
+          git -C "$worktree" switch --orphan security-operations
+          git -C "$worktree" rm -rf . >/dev/null 2>&1 || true
+          cat > "$worktree/README.md" <<'EOF'
+          # Omega security operations
+
+          Append-only RoboScope operator intent. This branch is not security evidence or catalog authority.
+          EOF
+          mkdir -p "$worktree/requests/scans" "$worktree/requests/sources"
+          touch "$worktree/requests/scans/.gitkeep" "$worktree/requests/sources/.gitkeep"
+          git -C "$worktree" add README.md requests/scans/.gitkeep requests/sources/.gitkeep
+          git -C "$worktree" commit -m "Initialize RoboScope security operations state"
+          if ! git -C "$worktree" push origin HEAD:refs/heads/security-operations; then
+            git ls-remote --exit-code --heads origin security-operations >/dev/null 2>&1 || exit 4
+          fi
+      - name: Checkout RoboScope Git operations when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: security-operations, path: catalog/roboscope-operations, fetch-depth: 1, persist-credentials: false}
       - name: Checkout current authoritative catalog identity
         uses: actions/checkout@v6
         with: {ref: catalog-data, path: catalog/current-catalog, fetch-depth: 1, persist-credentials: false}
@@ -79,6 +112,7 @@ jobs:
           --previous-root catalog/previous-work-state
           --results-root catalog/lane-results
           --catalog-root catalog/current-catalog/catalog
+          --operations-root catalog/roboscope-operations
           --output catalog/work-state-next
       - name: Validate complete generated work state
         shell: bash

@@ -72,6 +72,10 @@ jobs:
           path: catalog/current-state
           fetch-depth: 1
           persist-credentials: false
+      - name: Checkout RoboScope Git operations when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: security-operations, path: catalog/roboscope-operations, fetch-depth: 1, persist-credentials: false}
       - name: Validate exact durable lease
         run: >-
           python tools/orchestration/worker_claim.py
@@ -90,6 +94,18 @@ jobs:
           --community sources/community-sources.json
           --canonical-source-index catalog/current-state/catalog/sources/index.json
           --output catalog/discovery-candidates.json
+      - name: Merge append-only RoboScope source requests into discovery candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/operations/roboscope_git_operations.py project-source-candidates \
+            --operations-root catalog/roboscope-operations \
+            --output catalog/roboscope-source-candidates.json
+          python tools/operations/roboscope_git_operations.py merge-source-candidates \
+            --base catalog/discovery-candidates.json \
+            --operator catalog/roboscope-source-candidates.json \
+            --output catalog/discovery-candidates.next.json
+          mv catalog/discovery-candidates.next.json catalog/discovery-candidates.json
       - name: Run typed discovery collectors
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

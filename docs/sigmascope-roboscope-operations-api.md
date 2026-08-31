@@ -1,5 +1,10 @@
 # SigmaScope operations API for RoboScope
 
+> **Superseded for operator mutations.** A standalone API server is not required. RoboScope now
+> writes append-only scan/source intent to the `security-operations` Git branch and SigmaScope
+> projects that intent into its existing queues. See `docs/sigmascope-roboscope-git-operations.md`.
+> This document remains as design history for the earlier HTTP control-plane proposal.
+
 RoboScope already reads published evidence and GitHub Actions state. The UX plan's operator actions require a small authenticated SigmaScope control-plane API; do not expose database writes directly to the client.
 
 ## Authentication and safety

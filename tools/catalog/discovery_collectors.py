@@ -30,6 +30,7 @@ COLLECTOR_WEB = "omega.collector.discovery.web-search"
 COLLECTOR_PROJECT = "omega.collector.discovery.project-page"
 COLLECTOR_TREE = "omega.collector.discovery.repository-tree"
 COLLECTOR_ISSUES = "omega.collector.discovery.issue-hints"
+COLLECTOR_ROBOSCOPE = "omega.collector.discovery.roboscope-operations"
 COLLECTOR_VALIDATOR = "omega.collector.discovery.pluginmaster-validator"
 
 SEARCH_QUERIES = (

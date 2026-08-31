@@ -117,6 +117,21 @@ jobs:
           path: catalog/security-v2-current
           fetch-depth: 1
           persist-credentials: false
+      - name: Checkout RoboScope Git operations when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with: {ref: security-operations, path: catalog/roboscope-operations, fetch-depth: 1, persist-credentials: false}
+      - name: Build run-local RoboScope scan-demand overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/operations/roboscope_git_operations.py build-scan-overlay \
+            --queue-seed catalog/active-state/scan-queue.json \
+            --catalog-root catalog/active-state/catalog \
+            --evidence-root catalog/security-v2-current \
+            --operations-root catalog/roboscope-operations \
+            --output catalog/roboscope-effective-scan-queue.json \
+            --report catalog/roboscope-operations-report.json
       - id: plan
         env:
           WORKERS: ${{ inputs.workers || 4 }}
@@ -125,7 +140,7 @@ jobs:
         run: |
           set -euo pipefail
           python tools/security/sigmascope_parallel_drain_plan.py \
-            --queue-seed catalog/active-state/scan-queue.json \
+            --queue-seed catalog/roboscope-effective-scan-queue.json \
             --evidence-root catalog/security-v2-current \
             --workers "$WORKERS" \
             --items-per-worker "$ITEMS_PER_WORKER" \
@@ -152,7 +167,10 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: omega-sigmascope-drain-plan
-          path: catalog/sigmascope-drain-plan.json
+          path: |
+            catalog/sigmascope-drain-plan.json
+            catalog/roboscope-effective-scan-queue.json
+            catalog/roboscope-operations-report.json
           if-no-files-found: error
           retention-days: 7
 
@@ -197,6 +215,10 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-drain-plan
+          path: catalog/roboscope-plan
       - name: Bind worker to exact planned Evidence and frozen worker
         shell: bash
         run: |
@@ -285,7 +307,7 @@ jobs:
             --scanner-bundle-sha256 "$(jq -r '.scannerBundle.sha256' "$defs")" \
             --rule-set-revision "$(jq -r '.ruleSetRevision' "$defs")" \
             --advisory-revision "$(jq -r '.advisoryRevision' "$defs")" \
-            --queue-seed catalog/active-state/scan-queue.json \
+            --queue-seed catalog/roboscope-plan/roboscope-effective-scan-queue.json \
             --evidence-index-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/security-evidence-v2/index.json" \
             --max-batch-seconds 3000 \
             --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"
@@ -357,6 +379,10 @@ jobs:
           pattern: omega-sigmascope-drain-${{ github.run_id }}-slot-*
           path: catalog/drain-worker-artifacts
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-drain-plan
+          path: catalog/roboscope-plan
       - name: Re-check exact Evidence base and result-bundle cardinality
         shell: bash
         run: |
@@ -405,7 +431,7 @@ jobs:
             --current-evidence catalog/security-v2-current \
             --base-database catalog/security-input/omega-catalog.sqlite \
             --definitions-root catalog/active-state/definitions \
-            --queue-seed catalog/active-state/scan-queue.json \
+            --queue-seed catalog/roboscope-plan/roboscope-effective-scan-queue.json \
             --candidate-evidence catalog/security-v2-drain-candidate \
             --work-dir catalog/security-v2-drain-work \
             --report catalog/sigmascope-drain-merge-report.json \
@@ -437,7 +463,7 @@ jobs:
         run: |
           set -euo pipefail
           python tools/security/sigmascope_parallel_drain_plan.py \
-            --queue-seed catalog/active-state/scan-queue.json \
+            --queue-seed catalog/roboscope-plan/roboscope-effective-scan-queue.json \
             --evidence-root catalog/security-v2-drain-candidate \
             --workers "$WORKERS" \
             --items-per-worker "$ITEMS_PER_WORKER" \

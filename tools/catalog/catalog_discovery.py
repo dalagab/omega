@@ -272,6 +272,7 @@ def discover(
     # first input; canonical project pages, issue hints, optional web search and rotating GitHub
     # repository-tree inspection add candidates without acquiring catalog authority.
     base_sources = [dict(row) for row in candidates.get("sources") or [] if isinstance(row, dict)]
+    operator_repositories = [dict(row) for row in candidates.get("repositoryCandidates") or [] if isinstance(row, dict)]
     project = {"sources": [], "projectLinks": [], "repositoryCandidates": []}
     issue_graph = {"sources": [], "repositoryCandidates": []}
     web = {"enabled": False, "queries": 0, "results": 0, "sources": [], "repositoryCandidates": [], "manifestCandidates": []}
@@ -281,14 +282,15 @@ def discover(
         issue_graph = discovery_collectors.issue_candidates(issues)
         web = discovery_collectors.web_search_candidates(web_search_api_key)
         repositories = _dedupe_repository_rows(
-            list(project.get("repositoryCandidates") or [])
+            operator_repositories
+            + list(project.get("repositoryCandidates") or [])
             + list(issue_graph.get("repositoryCandidates") or [])
             + list(web.get("repositoryCandidates") or [])
         )
         if token and repositories:
             tree = discovery_collectors.repository_tree_candidates(repositories, token)
     else:
-        repositories = []
+        repositories = _dedupe_repository_rows(operator_repositories)
 
     all_sources = discovery_collectors.dedupe_sources(
         base_sources

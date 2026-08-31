@@ -115,7 +115,7 @@ def validate_policy(value: Mapping[str, Any]) -> dict[str, Any]:
         subject = row.get("subject") if isinstance(row.get("subject"), Mapping) else {}
         reason = row.get("reason") if isinstance(row.get("reason"), list) else [row.get("reason")]
         revision_inputs = [str(item).strip() for item in (row.get("revisionInputs") or []) if str(item).strip()]
-        unknown_revision_inputs = sorted(set(revision_inputs) - {"catalog"})
+        unknown_revision_inputs = sorted(set(revision_inputs) - {"catalog", "operator-sources"})
         if unknown_revision_inputs:
             raise ValueError(f"queue {queue_id} has unknown revisionInputs: {unknown_revision_inputs}")
         queues.append({
@@ -165,6 +165,18 @@ def _catalog_revision(catalog_root: Path | None, *, required: bool) -> str:
     return revision
 
 
+def _operator_sources_revision(operations_root: Path | None) -> str:
+    semantic: list[dict[str, str]] = []
+    root = operations_root / "requests" / "sources" if operations_root is not None else None
+    if root is not None and root.is_dir():
+        paths = sorted(path for path in root.glob("*.json") if path.is_file())
+        if len(paths) > 20_000:
+            raise ValueError("operator source request set exceeds 20000 files")
+        for path in paths:
+            semantic.append({"name": path.name, "sha256": _sha_file(path)})
+    return f"operator-sources-v1-{_sha(semantic)[:20]}"
+
+
 def _latest_item(queue: Mapping[str, Any]) -> dict[str, Any] | None:
     rows = [dict(item) for item in queue.get("items") or [] if isinstance(item, Mapping)]
     if not rows:
@@ -174,7 +186,7 @@ def _latest_item(queue: Mapping[str, Any]) -> dict[str, Any] | None:
 
 
 def _required_revision(*, spec: Mapping[str, Any], bucket: str, catalog_revision: str,
-                       processed_queues: Mapping[str, Mapping[str, Any]]) -> str:
+                       operator_sources_revision: str, processed_queues: Mapping[str, Mapping[str, Any]]) -> str:
     cadence = {
         "queueId": str(spec["queueId"]),
         "bucket": bucket,
@@ -185,6 +197,8 @@ def _required_revision(*, spec: Mapping[str, Any], bucket: str, catalog_revision
         if not catalog_revision:
             raise ValueError(f"queue {spec['queueId']} requires a catalog revision input")
         revision_inputs["catalogRevision"] = catalog_revision
+    if "operator-sources" in (spec.get("revisionInputs") or []):
+        revision_inputs["operatorSourceRevision"] = operator_sources_revision
     prerequisites: dict[str, str] = {}
     for prerequisite in spec.get("prerequisites") or []:
         dependency = processed_queues.get(str(prerequisite))
@@ -252,10 +266,12 @@ def _settle_lane_result(queue: Mapping[str, Any], spec: Mapping[str, Any], resul
 
 
 def reconcile(*, policy: Mapping[str, Any], previous_root: Path | None, output_root: Path,
-              results_root: Path | None = None, catalog_root: Path | None = None, now: str = "") -> dict[str, Any]:
+              results_root: Path | None = None, catalog_root: Path | None = None,
+              operations_root: Path | None = None, now: str = "") -> dict[str, Any]:
     policy_value = validate_policy(policy)
     needs_catalog = any("catalog" in (spec.get("revisionInputs") or []) for spec in policy_value["queues"])
     catalog_revision = _catalog_revision(catalog_root, required=needs_catalog)
+    operator_sources_revision = _operator_sources_revision(operations_root)
     at = now or work_queue.utc_now(); at_dt = _parse_utc(at)
     if output_root.exists():
         shutil.rmtree(output_root)
@@ -272,7 +288,8 @@ def reconcile(*, policy: Mapping[str, Any], previous_root: Path | None, output_r
         recovered_total += recovered
         bucket = _bucket(at_dt, spec["cadenceSeconds"])
         required_revision = _required_revision(
-            spec=spec, bucket=bucket, catalog_revision=catalog_revision, processed_queues=processed_queues,
+            spec=spec, bucket=bucket, catalog_revision=catalog_revision,
+            operator_sources_revision=operator_sources_revision, processed_queues=processed_queues,
         )
         queue, _item, created = work_queue.enqueue(
             queue,
@@ -384,6 +401,7 @@ def main() -> int:
     reconcile_parser.add_argument("--previous-root", type=Path)
     reconcile_parser.add_argument("--results-root", type=Path)
     reconcile_parser.add_argument("--catalog-root", type=Path)
+    reconcile_parser.add_argument("--operations-root", type=Path)
     reconcile_parser.add_argument("--output", type=Path, required=True)
     reconcile_parser.add_argument("--now", default="")
     validate_parser = sub.add_parser("validate")
@@ -393,6 +411,7 @@ def main() -> int:
     p.add_argument("--previous-root", type=Path)
     p.add_argument("--results-root", type=Path)
     p.add_argument("--catalog-root", type=Path)
+    p.add_argument("--operations-root", type=Path)
     p.add_argument("--output", type=Path)
     p.add_argument("--now", default="")
     args = p.parse_args()
@@ -409,9 +428,10 @@ def main() -> int:
     previous = previous_root if previous_root and (previous_root / "index.json").is_file() else None
     results_root = getattr(args, "results_root", None)
     catalog_root = getattr(args, "catalog_root", None)
+    operations_root = getattr(args, "operations_root", None)
     result = reconcile(
         policy=policy, previous_root=previous, results_root=results_root, catalog_root=catalog_root,
-        output_root=output, now=getattr(args, "now", ""),
+        operations_root=operations_root, output_root=output, now=getattr(args, "now", ""),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
