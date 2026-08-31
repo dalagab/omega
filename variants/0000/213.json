@@ -1,0 +1,2882 @@
+{
+  "analysis": {
+    "analysisId": "9dfd1a1e1967e1d363a0a163ede9cff6fb34916c68d5b63827a0ecb6d852bfaa",
+    "artifactSha256": "fc5bc578efb2c64e873d2ba95afac262156c7ba51ad2cd3293f0756f299da6dd",
+    "path": "artifacts/fc/fc5bc578efb2c64e873d2ba95afac262156c7ba51ad2cd3293f0756f299da6dd/analyses/9dfd1a1e1967e1d363a0a163ede9cff6fb34916c68d5b63827a0ecb6d852bfaa",
+    "recordCount": 13645
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "fc5bc578efb2c64e873d2ba95afac262156c7ba51ad2cd3293f0756f299da6dd",
+    "artifact_url": "https://kamori.goats.dev/Plugin/Download/Tf2CriticalHitsPlugin?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+    "assembly_version": "3.7.3.0",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
+    "capabilities_json": [
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "Registry access"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "system",
+        "description": "References Windows Registry APIs.",
+        "evidence": [
+          "artifact:NAudio.Core.dll: RegistryKey"
+        ],
+        "ruleId": "registry.access",
+        "severity": "caution",
+        "title": "Windows Registry access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:KamiLib.dll: System.Diagnostics.Process",
+          "il:KamiLib.dll:KamiLib.Misc.Logging.GetAddressString+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:KamiLib.dll:KamiLib.Misc.Logging.GetAddressString+0x5: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+          "il:KamiLib.dll:KamiLib.Misc.Logging.GetAddressString+0xf: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+          "il:KamiLib.dll:KamiLib.Misc.Logging.GetAddressString+0x1f: callvirt System.Diagnostics.ProcessModule.get_ModuleMemorySize: System.Diagnostics.Process",
+          "artifact:KamiLib.dll: System.Diagnostics.Process",
+          "metadata:Tf2CriticalHitsPlugin.dll: System.Diagnostics.Process",
+          "il:Tf2CriticalHitsPlugin.dll:Tf2CriticalHitsPlugin.Game.SFX.SeFunctionBase`1..ctor+0xd: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:NAudio.Wasapi.dll: DllImportAttribute",
+          "metadata:NAudio.Core.dll: DllImportAttribute",
+          "metadata:NAudio.Core.dll: LoadLibrary",
+          "metadata:NAudio.Core.dll: GetProcAddress",
+          "artifact:NAudio.Core.dll: LoadLibrary",
+          "artifact:NAudio.Core.dll: GetProcAddress"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Tf2CriticalHitsPlugin.dll: SigScanner",
+          "metadata:Tf2CriticalHitsPlugin.dll: Dalamud.Hooking",
+          "metadata:Tf2CriticalHitsPlugin.dll: HookFromAddress",
+          "il:Tf2CriticalHitsPlugin.dll:Tf2CriticalHitsPlugin.Game.SFX.SeFunctionBase`1..ctor+0x8: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+          "il:Tf2CriticalHitsPlugin.dll:Tf2CriticalHitsPlugin.Game.SFX.SeFunctionBase`1..ctor+0x9: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "il:Tf2CriticalHitsPlugin.dll:Tf2CriticalHitsPlugin.Game.SFX.SeFunctionBase`1..ctor+0x3b: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+          "il:Tf2CriticalHitsPlugin.dll:Tf2CriticalHitsPlugin.Game.SFX.SeFunctionBase`1.CreateHook+0x1d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:Tf2CriticalHitsPlugin.dll:Tf2CriticalHitsPlugin.CriticalHits.CriticalHitsModule..ctor+0x23: call Tf2CriticalHitsPlugin.Service.get_SigScanner: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:NAudio.Core.dll: s://github.com/naudio/NAudio",
+          "artifact:NAudio.Core.dll: C:\\Users\\markh\\code\\mygithub\\NAudio\\NAudio.Core\\obj\\Release\\netstandard2.0\\NAudio.Core.pdb"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:NAudio.Core.dll: FileStream",
+          "il:NAudio.Core.dll:NAudio.SoundFont.SoundFont..ctor+0x4: newobj System.IO.FileStream..ctor: FileStream",
+          "il:NAudio.Core.dll:NAudio.Wave.AiffFileWriter..ctor+0x5: newobj System.IO.FileStream..ctor: FileStream",
+          "il:NAudio.Core.dll:NAudio.Wave.WaveFileWriter..ctor+0x5: newobj System.IO.FileStream..ctor: FileStream",
+          "artifact:NAudio.Core.dll: FileStream",
+          "metadata:Tf2CriticalHitsPlugin.dll: Directory.CreateDirectory",
+          "metadata:Tf2CriticalHitsPlugin.dll: File.Delete",
+          "metadata:Tf2CriticalHitsPlugin.dll: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+      "artifactBytes": 334659,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "3.7.3.0",
+        "artifactBytes": 334659,
+        "artifactSha256": "fc5bc578efb2c64e873d2ba95afac262156c7ba51ad2cd3293f0756f299da6dd",
+        "catalogAssemblyVersion": "3.7.3.0",
+        "manifestInternalName": "Tf2CriticalHitsPlugin",
+        "manifestPath": "Tf2CriticalHitsPlugin.json",
+        "manifestRepositoryUrl": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/edf2e6ff596ecaff0e7620061f1121bc59897526/stable/Tf2CriticalHitsPlugin/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.jetbrains.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.jetbrains.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 68,
+          "exactVersionObservedCount": 59,
+          "families": {
+            "managed-assembly": 56,
+            "native": 9,
+            "nuget": 3
+          },
+          "fingerprint": "501f000dbc679e4d6134ecedfd8414ac0a981a709b75f7a2bccd76efb609cfe8",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 22,
+            "platformLibrary": 5
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DirectSoundCreate",
+              "library": "dsound.dll",
+              "managedName": "DirectSoundCreate",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DirectSoundEnumerateA",
+              "library": "dsound.dll",
+              "managedName": "DirectSoundEnumerate",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FreeLibrary",
+              "library": "kernel32.dll",
+              "managedName": "FreeLibrary",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetProcAddress",
+              "library": "kernel32.dll",
+              "managedName": "GetProcAddress",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "LoadLibrary",
+              "library": "kernel32.dll",
+              "managedName": "LoadLibrary",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFTranscodeGetAudioOutputAvailableTypes",
+              "library": "mf.dll",
+              "managedName": "MFTranscodeGetAudioOutputAvailableTypes",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateAttributes",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateAttributes",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMediaType",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMediaType",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMemoryBuffer",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMemoryBuffer",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMFByteStreamOnStream",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMFByteStreamOnStream",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMFByteStreamOnStreamEx",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMFByteStreamOnStreamEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSample",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateSample",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateWaveFormatExFromMFMediaType",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateWaveFormatExFromMFMediaType",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFInitMediaTypeFromWaveFormatEx",
+              "library": "mfplat.dll",
+              "managedName": "MFInitMediaTypeFromWaveFormatEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFShutdown",
+              "library": "mfplat.dll",
+              "managedName": "MFShutdown",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFStartup",
+              "library": "mfplat.dll",
+              "managedName": "MFStartup",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFTEnumEx",
+              "library": "mfplat.dll",
+              "managedName": "MFTEnumEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSinkWriterFromURL",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSinkWriterFromURL",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSourceReaderFromByteStream",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSourceReaderFromByteStream",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSourceReaderFromURL",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSourceReaderFromURL",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "ActivateAudioInterfaceAsync",
+              "library": "Mmdevapi.dll",
+              "managedName": "ActivateAudioInterfaceAsync",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DMOEnum",
+              "library": "msdmo.dll",
+              "managedName": "DMOEnum",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DMOGetName",
+              "library": "msdmo.dll",
+              "managedName": "DMOGetName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 7,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MoFreeMediaType",
+              "library": "msdmo.dll",
+              "managedName": "MoFreeMediaType",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 9,
+            "observed": 56,
+            "required": 3
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 65,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 3,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 9,
+            "observed": 56,
+            "optional": 0,
+            "required": 3,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 68
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 8,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 5,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 5,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "www.jetbrains.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 8,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/JetBrains/JetBrains.Annotations/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/jkchen2/KamiLib"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/naudio/NAudio"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/goatcorp/DalamudPluginsD17/main/testing/live/Tf2CriticalHitsPlugin/images/icon.png"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.jetbrains.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.jetbrains.com/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.jetbrains.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.jetbrains.com/help/resharper/Navigation_and_Search__Structural_Search_and_Replace.html"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://kamori.goats.dev/Plugin/Download/Tf2CriticalHitsPlugin?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+        "internalName": "Tf2CriticalHitsPlugin",
+        "manifestVersion": "3.7.3.0",
+        "observationId": 418,
+        "observationKey": "manifest-3be742055eb019b8303f2e08d414",
+        "repositoryUrl": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 213
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 9,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 12,
+        "uncompressedBytes": 743907
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+        "attemptId": "attempt-v2-f2f7e9d5ec64d5e2",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-7b1abe1b04a69d81",
+        "definitionsRevision": "defs-v1-198d28eed60fa0de",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-213",
+        "queueSeedRevision": "queue-seed-v2-6c770da9969fa38e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "0b0058a403f0a557a720ce9992adb207963a303c9a7d2f51a4cabb5e031974c0",
+        "scannerRevision": "scanner-v1-6d28d3be6f1e0f68",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-31336f91d36df7c8",
+        "targetFingerprint": "artifact-target-v2-c0d38f9e58564932458b",
+        "variantId": 213,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-31T20:30:11Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "fc5bc578efb2c64e873d2ba95afac262156c7ba51ad2cd3293f0756f299da6dd",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+          "https://github.com/goatcorp/PluginDistD17",
+          "https://kamori.goats.dev/Plugin/Download/Tf2CriticalHitsPlugin",
+          "https://github.com/goatcorp/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 68720,
+    "scanned_at_utc": "2026-08-31T20:30:11Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 213
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "fc5bc578efb2c64e873d2ba95afac262156c7ba51ad2cd3293f0756f299da6dd",
+      "current_assembly_version": "3.7.3.0",
+      "current_scan_id": 68720,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-31T20:30:14Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 213
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 42,
+      "artifact_only_count": 42,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.50.0.7966"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:jetbrains.annotations",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "JetBrains.Annotations",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "4242.42.42.42"
+          ]
+        },
+        {
+          "componentKey": "assembly:kamilib",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "KamiLib",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:kamilib.resources",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "KamiLib.resources",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NAudio.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.2.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio.wasapi",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NAudio.Wasapi",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.2.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.stacktrace",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.StackTrace",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression.zipfile",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression.ZipFile",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:tf2criticalhitsplugin",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Tf2CriticalHitsPlugin",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "3.7.3.0"
+          ]
+        },
+        {
+          "componentKey": "native:dsound",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "dsound.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mf",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mf.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mfplat",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mfplat.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mfreadwrite",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mfreadwrite.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mmdevapi",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "Mmdevapi.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:msdmo",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "msdmo.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ole32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ole32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:jetbrains.annotations",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "JetBrains.Annotations",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2022.3.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.2.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.wasapi",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.Wasapi",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.2.1"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-31T20:30:14Z",
+      "comparison_id": 1924,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 68720,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 213,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0000/213/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0000/213/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 64592,
+          "encoding": "json",
+          "path": "derived/variants/0000/213/dependency-resolutions.json",
+          "recordDigest": "34f9b9c4435324d77e1518cadfd71661d9720e83d17aaedd08d428908262a45f",
+          "records": 68,
+          "sha256": "709444b83ab0c2abb1f33151d0fb4c88591bbad1175273671c98b902f4bbe1ca"
+        }
+      ],
+      "recordDigest": "34f9b9c4435324d77e1518cadfd71661d9720e83d17aaedd08d428908262a45f",
+      "records": 68
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0000/213/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "436b7e55accb0abd819fadba538624ce1bed814baaa7a178b841f348868103ef",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "10efea8a996bb30efd6f96c90f70f1926612d10335c166cacea5493d66e56254",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "306d62322ec861ab4ecaf15fc33c5581c8d45bf6857490d530c4cfd334f6517c",
+        "records": 9,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "a83628256263d4b5829920f83e1a5c91bdb38f2f69f55ec12e3f9dd318ccc609",
+        "records": 68,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "16d14969717b94a6ff00113310a62e47a82119c5f1a77489fc8741d85f0b9621",
+        "records": 9,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "13bbb37d116f0ac750334ba17a2fb18528bd6d33a1b5772bd125606bf0e07244",
+        "records": 10538,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "07226caef43cca140abc7a1c68aeb0068b27cc9121467f1df69ada0e4dd7051e",
+        "records": 711,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "22c7376fc45c7e0530d61970c26de1ff3fa7fd090b622e84f814d921323190ac",
+        "records": 2195,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "200027acbf66292dfd7e15dd0d9093617c19171424b4ef2d12a21d57de1bc8fb",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "0a3702f8a34aead59b87572abf5d20ccc9d482fcedf896e567defde2181c032b",
+        "records": 27,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "74e0f9801d017b739f197c8d1bead0d579d6dee732d64f10e98f0812ee182ba8",
+        "records": 8,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "bc1d5e583a9097176fa177f93cb94b8e49ef196c046179465f7528d8b582539f",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "e52b5e71e394bc6b9f2fd5dbee4ccaa4eebc0514955b7a6eeebcf86034f80b0e",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "b48aac431a5960b286d88e860e89fcfb6615dc0ffa13c98963911127d4b7146a",
+        "records": 47,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-e86e4d83ad4742a90825bf23ab8984ecbaec0dfd70a1a3baeef17484dfdf3192",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Hit it, Joe! (Formerly TF2-ish Critical Hits Plugin)",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "Tf2CriticalHitsPlugin",
+    "last_seen_utc": "2026-08-31T18:30:09Z",
+    "plugin_id": 213
+  },
+  "pluginId": 213,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "* Set sounds and flavor text to be played/shown whenever you deal direct or critical damage or heal.\n* Set sounds to be played when a countdown is in progress.\n* Use different configurations by job.\n* Use the game's SFX or your own custom WAV or MP3 files.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1279,
+      "summary": "Configure sounds for critical and direct hits, plus some countdown music.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin"
+        },
+        {
+          "kind": "issues",
+          "label": "Issues",
+          "url": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin/issues/new"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# TF2-ish Critical Hits\n\n(This plugin was originally created by [Berna](https://github.com/Berna-L), but is now maintained by others.)\n\nLove dealing critical hits in Final Fantasy XIV, but you feel there's some... **_oomph_** missing?\n\nWorry no more! With the **TF2-ish Critical Hits** plugins you can (almost) reproduce the experience of dealing Critical\nHits and Mini Crits in the #1 hat simulator, Team Fortress 2!\n\n## Suggestions, bug reports etc.\n\nFor suggestions, bug reports and such, please open\nan [issue](https://github.com/jkchen2/ffxiv-tf2-crit-plugin/issues/new) in this repository or send a message in the\n[plugin's support thread](https://discord.com/channels/581875019861328007/1069307522269319178) in the Dalamud Discord server.",
+      "title": "ffxiv-tf2-crit-plugin",
+      "url": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "4d0e5b7a344d06ae666c37a78ad7ff1b4d2b88bcfbb4c3cf4bdcec329a948983",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "ba1dc035f4c336435ac29b106975e6f9ea23329f02ba89410cb714748f74ff77",
+        "records": 9
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "bbeec4fd99f3f7d56f180ecf2cc23d3da8f2b4dafa57c39466c829bc050b89ce",
+        "records": 6
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "fc5bc578efb2c64e873d2ba95afac262156c7ba51ad2cd3293f0756f299da6dd",
+    "artifact_url": "https://kamori.goats.dev/Plugin/Download/Tf2CriticalHitsPlugin?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+    "assembly_version": "3.7.3.0",
+    "capabilities_json": [
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "Registry access"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "plugin_id": 213,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+      "artifactBytes": 334659,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "3.7.3.0",
+        "artifactBytes": 334659,
+        "artifactSha256": "fc5bc578efb2c64e873d2ba95afac262156c7ba51ad2cd3293f0756f299da6dd",
+        "catalogAssemblyVersion": "3.7.3.0",
+        "manifestInternalName": "Tf2CriticalHitsPlugin",
+        "manifestPath": "Tf2CriticalHitsPlugin.json",
+        "manifestRepositoryUrl": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/edf2e6ff596ecaff0e7620061f1121bc59897526/stable/Tf2CriticalHitsPlugin/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.jetbrains.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.jetbrains.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 68,
+          "exactVersionObservedCount": 59,
+          "families": {
+            "managed-assembly": 56,
+            "native": 9,
+            "nuget": 3
+          },
+          "fingerprint": "501f000dbc679e4d6134ecedfd8414ac0a981a709b75f7a2bccd76efb609cfe8",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 22,
+            "platformLibrary": 5
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DirectSoundCreate",
+              "library": "dsound.dll",
+              "managedName": "DirectSoundCreate",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DirectSoundEnumerateA",
+              "library": "dsound.dll",
+              "managedName": "DirectSoundEnumerate",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FreeLibrary",
+              "library": "kernel32.dll",
+              "managedName": "FreeLibrary",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetProcAddress",
+              "library": "kernel32.dll",
+              "managedName": "GetProcAddress",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "LoadLibrary",
+              "library": "kernel32.dll",
+              "managedName": "LoadLibrary",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFTranscodeGetAudioOutputAvailableTypes",
+              "library": "mf.dll",
+              "managedName": "MFTranscodeGetAudioOutputAvailableTypes",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateAttributes",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateAttributes",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMediaType",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMediaType",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMemoryBuffer",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMemoryBuffer",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMFByteStreamOnStream",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMFByteStreamOnStream",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMFByteStreamOnStreamEx",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMFByteStreamOnStreamEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSample",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateSample",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateWaveFormatExFromMFMediaType",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateWaveFormatExFromMFMediaType",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFInitMediaTypeFromWaveFormatEx",
+              "library": "mfplat.dll",
+              "managedName": "MFInitMediaTypeFromWaveFormatEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFShutdown",
+              "library": "mfplat.dll",
+              "managedName": "MFShutdown",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFStartup",
+              "library": "mfplat.dll",
+              "managedName": "MFStartup",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFTEnumEx",
+              "library": "mfplat.dll",
+              "managedName": "MFTEnumEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSinkWriterFromURL",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSinkWriterFromURL",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSourceReaderFromByteStream",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSourceReaderFromByteStream",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSourceReaderFromURL",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSourceReaderFromURL",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "ActivateAudioInterfaceAsync",
+              "library": "Mmdevapi.dll",
+              "managedName": "ActivateAudioInterfaceAsync",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DMOEnum",
+              "library": "msdmo.dll",
+              "managedName": "DMOEnum",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DMOGetName",
+              "library": "msdmo.dll",
+              "managedName": "DMOGetName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 7,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MoFreeMediaType",
+              "library": "msdmo.dll",
+              "managedName": "MoFreeMediaType",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 9,
+            "observed": 56,
+            "required": 3
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 65,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 3,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 9,
+            "observed": 56,
+            "optional": 0,
+            "required": 3,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 68
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 8,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 5,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 5,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "www.jetbrains.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 8,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/JetBrains/JetBrains.Annotations/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/jkchen2/KamiLib"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/naudio/NAudio"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/goatcorp/DalamudPluginsD17/main/testing/live/Tf2CriticalHitsPlugin/images/icon.png"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.jetbrains.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.jetbrains.com/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.jetbrains.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.jetbrains.com/help/resharper/Navigation_and_Search__Structural_Search_and_Replace.html"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://kamori.goats.dev/Plugin/Download/Tf2CriticalHitsPlugin?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+        "internalName": "Tf2CriticalHitsPlugin",
+        "manifestVersion": "3.7.3.0",
+        "observationId": 418,
+        "observationKey": "manifest-3be742055eb019b8303f2e08d414",
+        "repositoryUrl": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 213
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 9,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 12,
+        "uncompressedBytes": 743907
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+        "attemptId": "attempt-v2-f2f7e9d5ec64d5e2",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-7b1abe1b04a69d81",
+        "definitionsRevision": "defs-v1-198d28eed60fa0de",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-213",
+        "queueSeedRevision": "queue-seed-v2-6c770da9969fa38e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "0b0058a403f0a557a720ce9992adb207963a303c9a7d2f51a4cabb5e031974c0",
+        "scannerRevision": "scanner-v1-6d28d3be6f1e0f68",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-31336f91d36df7c8",
+        "targetFingerprint": "artifact-target-v2-c0d38f9e58564932458b",
+        "variantId": 213,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-31T20:30:11Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "fc5bc578efb2c64e873d2ba95afac262156c7ba51ad2cd3293f0756f299da6dd",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+          "https://github.com/goatcorp/PluginDistD17",
+          "https://kamori.goats.dev/Plugin/Download/Tf2CriticalHitsPlugin",
+          "https://github.com/goatcorp/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 68720,
+    "scanned_at_utc": "2026-08-31T20:30:11Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1,
+    "source_repository": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 213
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "839681a0ec532b39c60fe343d944173f8f2c93f235206750b4d77ca27d834944",
+    "curated_id": "dalamud-official",
+    "description": "Official Dalamud plugin repository.",
+    "discovered_by": "curated-sources.json",
+    "enabled_by_default": 1,
+    "etag": "",
+    "highest_api": 15,
+    "integrate_with_dalamud": 1,
+    "is_official": 1,
+    "kind": "aggregator",
+    "last_checked_utc": "2026-08-31T18:30:09Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-31T18:30:09Z",
+    "name": "Dalamud official",
+    "plugin_count": 488,
+    "provider": "Dalamud official",
+    "source_id": 1,
+    "source_repo_url": "",
+    "url": "https://kamori.goats.dev/Plugin/PluginMaster"
+  },
+  "sourceId": 1,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "3.7.3.0",
+    "author": "Berna, kai, Kiri",
+    "authors_json": [
+      "Berna",
+      "kai",
+      "Kiri"
+    ],
+    "category_tags_json": [],
+    "changelog": "Update for API 15",
+    "dalamud_api_level": 15,
+    "description": "* Set sounds and flavor text to be played/shown whenever you deal direct or critical damage or heal.\n* Set sounds to be played when a countdown is in progress.\n* Use different configurations by job.\n* Use the game's SFX or your own custom WAV or MP3 files.",
+    "dip17_channel": "testing-live",
+    "download_count": 51140,
+    "download_link_install": "https://kamori.goats.dev/Plugin/Download/Tf2CriticalHitsPlugin?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+    "download_link_testing": "https://kamori.goats.dev/Plugin/Download/Tf2CriticalHitsPlugin?isUpdate=False&isTesting=True&branch=api9&isDip17=True",
+    "download_link_update": "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api9/plugins/Tf2CriticalHitsPlugin/latest.zip",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "icon_url": "https://raw.githubusercontent.com/goatcorp/DalamudPluginsD17/main/testing/live/Tf2CriticalHitsPlugin/images/icon.png",
+    "image_urls_json": [],
+    "is_hide": 1,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-31T18:30:09Z",
+    "last_update": 1777543393,
+    "minimum_dalamud_version": null,
+    "name": "Hit it, Joe! (Formerly TF2-ish Critical Hits Plugin)",
+    "plugin_id": 213,
+    "punchline": "Configure sounds for critical and direct hits, plus some countdown music.",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "3.7.3.0",
+      "Author": "Berna, kai, Kiri",
+      "CategoryTags": null,
+      "Changelog": "Update for API 15",
+      "DalamudApiLevel": 15,
+      "Description": "* Set sounds and flavor text to be played/shown whenever you deal direct or critical damage or heal.\n* Set sounds to be played when a countdown is in progress.\n* Use different configurations by job.\n* Use the game's SFX or your own custom WAV or MP3 files.",
+      "DownloadCount": 51140,
+      "DownloadLinkInstall": "https://kamori.goats.dev/Plugin/Download/Tf2CriticalHitsPlugin?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+      "DownloadLinkTesting": "https://kamori.goats.dev/Plugin/Download/Tf2CriticalHitsPlugin?isUpdate=False&isTesting=True&branch=api9&isDip17=True",
+      "DownloadLinkUpdate": "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api9/plugins/Tf2CriticalHitsPlugin/latest.zip",
+      "FeedbackMessage": null,
+      "FeedbackWebhook": null,
+      "IconUrl": "https://raw.githubusercontent.com/goatcorp/DalamudPluginsD17/main/testing/live/Tf2CriticalHitsPlugin/images/icon.png",
+      "ImageUrls": null,
+      "InternalName": "Tf2CriticalHitsPlugin",
+      "IsHide": true,
+      "IsTestingExclusive": false,
+      "LastUpdate": 1777543393,
+      "LoadPriority": 0,
+      "Name": "Hit it, Joe! (Formerly TF2-ish Critical Hits Plugin)",
+      "Punchline": "Configure sounds for critical and direct hits, plus some countdown music.",
+      "RepoUrl": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+      "Tags": [
+        "plugin",
+        "audio"
+      ],
+      "TestingAssemblyVersion": "3.6.0.1",
+      "TestingChangelog": "- Update for 7.11\n- Add sound preloading",
+      "TestingDalamudApiLevel": 11,
+      "_Dip17Channel": "testing-live",
+      "_isDip17Plugin": true
+    },
+    "repo_url": "https://github.com/jkchen2/ffxiv-tf2-crit-plugin",
+    "source_entry_key": "tf2criticalhitsplugin|3.7.3.0|15|11|201",
+    "source_id": 1,
+    "tags_json": [
+      "plugin",
+      "audio"
+    ],
+    "testing_assembly_version": "3.6.0.1",
+    "testing_dalamud_api_level": 11,
+    "variant_id": 213
+  },
+  "variantId": 213
+}

@@ -1,0 +1,562 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Hosting.dll: Assembly.Load",
+      "il:Microsoft.Extensions.Hosting.dll:Microsoft.Extensions.Hosting.HostingHostBuilderExtensions.ApplyDefaultAppConfiguration+0xc1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: s://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Code%20Signing%20PCA%202024.crl0m",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pkiops/certs/Microsoft%20Code%20Signing%20PCA%202024.crt0",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com0",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Debug.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Json.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Hosting.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.UserSecrets.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Binder.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.dll: http://ns.adobe.com/xap/1.0/sType/ResourceEvent"
+    ],
+    "rule_id": "network.endpoint.insecure-http.176cb829538c",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crl.usertrust.com/USERTrustRSACertificationAuthority.crl05"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3b7a15fc0c83",
+    "severity": "caution",
+    "title": "Endpoint: crl.usertrust.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.dll: http://ns.adobe.com/xap/1.0/mm/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5d1a28a44b4d",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crt.sectigo.com/SectigoPublicTimeStampingRootR46.p7c0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.6b75d89ae9ba",
+    "severity": "caution",
+    "title": "Endpoint: crt.sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://ocsp.comodoca.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7af642f7bbc6",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.comodoca.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.dll: http://ns.adobe.com/photoshop/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8536665032d4",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.dll: http://ns.adobe.com/xap/1.0/sType/ResourceRef"
+    ],
+    "rule_id": "network.endpoint.insecure-http.da8a20306de4",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crt.sectigo.com/SectigoPublicCodeSigningRootR46.p7c0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f9f8662c9e9e",
+    "severity": "caution",
+    "title": "Endpoint: crt.sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.json: https://assets.ffxivsonar.com/dalamud/image3.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.010fbfc77c75",
+    "severity": "caution",
+    "title": "Endpoint: assets.ffxivsonar.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.json: https://assets.ffxivsonar.com/dalamud/image1.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.14510d4d1b36",
+    "severity": "caution",
+    "title": "Endpoint: assets.ffxivsonar.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Sonar.dll: https://assets.ffxivsonar.com/bootstrap/Urls.data"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.48801bd45445",
+    "severity": "caution",
+    "title": "Endpoint: assets.ffxivsonar.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.json: https://assets.ffxivsonar.com/dalamud/image5.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.4cf6c875f3ed",
+    "severity": "caution",
+    "title": "Endpoint: assets.ffxivsonar.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.json: https://assets.ffxivsonar.com/dalamud/logo.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.50583dbb3fcb",
+    "severity": "caution",
+    "title": "Endpoint: assets.ffxivsonar.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.json: https://assets.ffxivsonar.com/dalamud/image2.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6b5ea43377e9",
+    "severity": "caution",
+    "title": "Endpoint: assets.ffxivsonar.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.dll: https://na.finalfantasyxiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7152966735f4",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Sonar.dll: https://assets.ffxivsonar.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7a54d525a230",
+    "severity": "caution",
+    "title": "Endpoint: assets.ffxivsonar.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Sonar.dll: https://assets.ffxivsonar.com/data/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7db184a8830f",
+    "severity": "caution",
+    "title": "Endpoint: assets.ffxivsonar.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Sonar.dll: https://api.ffxivsonar.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b1b442c19a66",
+    "severity": "caution",
+    "title": "Endpoint: api.ffxivsonar.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Sonar.dll: https://assets.ffxivsonar.com/images/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b84a631d7c84",
+    "severity": "caution",
+    "title": "Endpoint: assets.ffxivsonar.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.dll: https://eu.finalfantasyxiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.baaecb5fc531",
+    "severity": "caution",
+    "title": "Endpoint: eu.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.dll: https://jp.finalfantasyxiv.com/lodestone"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c6148d379a58",
+    "severity": "caution",
+    "title": "Endpoint: jp.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.json: https://assets.ffxivsonar.com/dalamud/image4.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d3bb53e4b69d",
+    "severity": "caution",
+    "title": "Endpoint: assets.ffxivsonar.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.json: https://news.ffxivsonar.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.db1cfeec6e2b",
+    "severity": "caution",
+    "title": "Endpoint: news.ffxivsonar.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:SonarUtils.dll: System.Net.Sockets",
+      "metadata:SonarUtils.dll: Socket.Connect",
+      "il:SonarUtils.dll:<ConnectCallbackAsync>d__5.MoveNext+0xb1: newobj System.Net.Sockets.NetworkStream..ctor: System.Net.Sockets",
+      "il:SonarUtils.dll:<ConnectWorkerAsync>d__12.MoveNext+0x20: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:SonarUtils.dll:<ConnectWorkerAsync>d__12.MoveNext+0x27: callvirt System.Net.Sockets.Socket.set_NoDelay: System.Net.Sockets",
+      "il:SonarUtils.dll:<ConnectWorkerAsync>d__12.MoveNext+0x54: callvirt System.Net.Sockets.Socket.ConnectAsync: System.Net.Sockets",
+      "il:SonarUtils.dll:<ConnectWorkerAsync>d__12.MoveNext+0x54: callvirt System.Net.Sockets.Socket.ConnectAsync: Socket.Connect",
+      "il:SonarUtils.dll:<ConnectWorkerAsync>d__12.MoveNext+0x170: callvirt System.Net.Sockets.Socket.Dispose: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "il:NAudio.Wasapi.dll:NAudio.Wave.WasapiRecorderBuilder.BuildAsync+0x77: call NAudio.Wave.WasapiRecorder.CreateProcessLoopbackAsync: CreateProcess",
+      "artifact:NAudio.Wasapi.dll: CreateProcess",
+      "metadata:SonarPlugin.dll: System.Diagnostics.Process",
+      "metadata:SonarPlugin.dll: ProcessStartInfo",
+      "metadata:SonarPlugin.dll: ShellExecute",
+      "metadata:SonarPlugin.dll: Process.Start",
+      "il:SonarPlugin.dll:SonarPlugin.Utility.ShellUtils.ShellExecute+0x1: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:SonarPlugin.dll:SonarPlugin.Utility.ShellUtils.ShellExecute+0x1: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:DeviceId.Windows.dll: Microsoft.Win32.Registry",
+      "metadata:DeviceId.Windows.dll: RegistryKey",
+      "il:DeviceId.Windows.dll:DeviceId.Windows.Components.RegistryValueDeviceIdComponent.GetValue+0x19: call Microsoft.Win32.RegistryKey.OpenBaseKey: Microsoft.Win32.Registry",
+      "il:DeviceId.Windows.dll:DeviceId.Windows.Components.RegistryValueDeviceIdComponent.GetValue+0x19: call Microsoft.Win32.RegistryKey.OpenBaseKey: RegistryKey",
+      "il:DeviceId.Windows.dll:DeviceId.Windows.Components.RegistryValueDeviceIdComponent.GetValue+0x26: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:DeviceId.Windows.dll:DeviceId.Windows.Components.RegistryValueDeviceIdComponent.GetValue+0x26: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:DeviceId.Windows.dll:DeviceId.Windows.Components.RegistryValueDeviceIdComponent.GetValue+0x39: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+      "il:DeviceId.Windows.dll:DeviceId.Windows.Components.RegistryValueDeviceIdComponent.GetValue+0x39: callvirt Microsoft.Win32.RegistryKey.GetValue: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:SonarUtils.dll: FileStream",
+      "il:SonarUtils.dll:<GenerateHashesAsync>d__0.MoveNext+0x112: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:SonarUtils.dll: FileStream",
+      "metadata:Microsoft.Extensions.FileProviders.Physical.dll: FileStream",
+      "il:Microsoft.Extensions.FileProviders.Physical.dll:Microsoft.Extensions.FileProviders.Physical.PhysicalFileInfo.CreateReadStream+0x11: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Microsoft.Extensions.FileProviders.Physical.dll: FileStream",
+      "metadata:SonarPlugin.dll: FileStream",
+      "artifact:SonarPlugin.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.dll: https://discord.gg/K7y24Rr"
+    ],
+    "rule_id": "network.endpoint.community-invite.0b2c40be5b60",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.json: https://discord.gg/K7y24Rr"
+    ],
+    "rule_id": "network.endpoint.community-invite.31fad2364560",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SonarPlugin.dll: https://github.com/FFXIV-Sonar/SonarDistrib.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3731a8d4d07c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3b676f6154bf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AG.dll: https://github.com/rreminy/AGLib",
+      "artifact:AG.EnumLocalization.dll: https://github.com/rreminy/AGLib",
+      "artifact:AG.Collections.Generic.dll: https://github.com/rreminy/AGLib",
+      "artifact:AG.Collections.Concurrent.dll: https://github.com/rreminy/AGLib"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4fcc8ca05b2d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DeviceId.Mac.dll: https://github.com/MatthewKing/DeviceId",
+      "artifact:DeviceId.Windows.Wmi.dll: https://github.com/MatthewKing/DeviceId",
+      "artifact:DeviceId.Linux.dll: https://github.com/MatthewKing/DeviceId",
+      "artifact:DeviceId.Windows.dll: https://github.com/MatthewKing/DeviceId"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.553722f1d086",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NonBlocking.dll: https://github.com/VSadov/NonBlocking/issues/20"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8cbec6453a5f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Numerics.Tensors.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ZString.dll: https://github.com/Cysharp/ZString"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a01eed6d28a4",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:InterlockedUtils.dll: https://github.com/rreminy/InterlockedUtils"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a8b70598562a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.Wasapi.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Midi.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.WinMM.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DryIocAttributes.dll: https://github.com/dadhi/DryIoc.git",
+      "artifact:DryIoc.MefAttributedModel.dll: https://github.com/dadhi/DryIoc.git",
+      "artifact:DryIoc.Microsoft.DependencyInjection.dll: https://github.com/dadhi/DryIoc.git",
+      "artifact:DryIoc.dll: https://github.com/dadhi/DryIoc.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b0da13240242",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Primitives.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Logging.Debug.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Hosting.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f2dfd1030921",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: https://github.com/bcgit/bc-csharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.fe92c1786ba7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:AG.dll: WebRequest",
+      "artifact:AG.dll: WebRequest",
+      "metadata:SonarUtils.dll: System.Net.Http.HttpClient",
+      "il:SonarUtils.dll:SonarUtils.HappyHttpUtils.CreateHttpClient+0x13: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:SonarUtils.dll:SonarUtils.HappyHttpUtils.CreateRandomlyHappyClient+0xd: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "artifact:DryIocAttributes.dll: WebRequest",
+      "artifact:Microsoft.Extensions.Hosting.Abstractions.dll: WebRequest",
+      "artifact:Microsoft.Extensions.Hosting.Abstractions.dll: HttpWebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
