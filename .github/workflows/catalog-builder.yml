@@ -86,7 +86,10 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v6
-        with: {ref: "${{ github.sha }}", persist-credentials: false}
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          persist-credentials: false
       - name: Verify frozen publisher toolchain
         run: |
           python -c "import yaml; print('PyYAML', yaml.__version__)"
@@ -120,15 +123,24 @@ jobs:
       freeze_changed: ${{ steps.freeze_identity.outputs.changed }}
     steps:
       - uses: actions/checkout@v6
-        with: {ref: "${{ github.sha }}", fetch-depth: 0, persist-credentials: true}
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: true
       - name: Record security-services source commit
         id: security_source
         shell: bash
         env:
-          SECURITY_SOURCE_SHA: ${{ github.sha }}
+          SECURITY_SOURCE_SHA: ${{ job.workflow_sha }}
         run: |
           set -euo pipefail
           [[ "$SECURITY_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid immutable security-services source SHA: $SECURITY_SOURCE_SHA"; exit 3; }
+          checked_out_sha="$(git rev-parse HEAD)"
+          test "$checked_out_sha" = "$SECURITY_SOURCE_SHA" || {
+            echo "::error::Reusable workflow source mismatch: workflow=$SECURITY_SOURCE_SHA checkout=$checked_out_sha"
+            exit 4
+          }
           echo "sha=$SECURITY_SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - name: Checkout authoritative Security Evidence v2
         uses: actions/checkout@v6
