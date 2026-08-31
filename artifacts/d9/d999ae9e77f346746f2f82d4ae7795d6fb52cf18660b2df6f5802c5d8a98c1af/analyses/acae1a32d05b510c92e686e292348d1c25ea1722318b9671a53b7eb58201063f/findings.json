@@ -1,0 +1,348 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.ML.Core.dll: Assembly.Load",
+      "metadata:Microsoft.ML.Core.dll: Assembly.LoadFrom",
+      "il:Microsoft.ML.Core.dll:Microsoft.ML.ModelLoadContext.EnsureLoaderAssemblyIsRegistered+0x13: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:Microsoft.ML.Core.dll:Microsoft.ML.Runtime.AssemblyLoadingUtils.LoadAssembly+0x3: call System.Reflection.Assembly.LoadFrom: Assembly.Load",
+      "il:Microsoft.ML.Core.dll:Microsoft.ML.Runtime.AssemblyLoadingUtils.LoadAssembly+0x3: call System.Reflection.Assembly.LoadFrom: Assembly.LoadFrom",
+      "metadata:Microsoft.ML.Data.dll: Reflection.Emit",
+      "il:Microsoft.ML.Data.dll:Microsoft.ML.ApiUtils.GeneratePeek+0x52: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.ML.Data.dll:Microsoft.ML.ApiUtils.GeneratePeek+0x59: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Microsoft.ML.Core.dll: s://github.com/dotnet/machinelearning",
+      "artifact:Microsoft.ML.Core.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:Microsoft.ML.Core.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:Microsoft.ML.Core.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.ML.Core.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:Microsoft.ML.Core.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@",
+      "artifact:Microsoft.ML.Core.dll: p://www.microsoft.com0",
+      "artifact:Microsoft.ML.Core.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:NoSolicitingFork.dll: Dalamud.Hooking",
+      "metadata:NoSolicitingFork.dll: HookFromAddress",
+      "il:NoSolicitingFork.dll:NoSoliciting.Filter..ctor+0x46: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:NoSolicitingFork.dll: Dalamud.Hooking",
+      "artifact:NoSolicitingFork.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.ML.Core.dll: DllImportAttribute",
+      "metadata:Microsoft.ML.CpuMath.dll: DllImportAttribute",
+      "metadata:Microsoft.ML.Transforms.dll: DllImportAttribute",
+      "native-pe:runtimes\\win-x64\\native\\LdaNative.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+      "native-pe:runtimes\\win-x64\\native\\LdaNative.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "artifact:runtimes\\win-x64\\native\\LdaNative.dll: LoadLibrary",
+      "artifact:runtimes\\win-x64\\native\\LdaNative.dll: GetProcAddress",
+      "native-pe:runtimes\\win-x86\\native\\LdaNative.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0k/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.40e6221be78d",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0k"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.ML.Core.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.ML.CpuMath.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.ML.Data.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.ML.DataView.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0n/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.eaf7f9f0d685",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0n"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NoSolicitingFork.dll: https://example.invalid/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0f7ed2f3c866",
+    "severity": "caution",
+    "title": "Endpoint: example.invalid"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2fc10d6dbcb0",
+    "severity": "caution",
+    "title": "Endpoint: www.nuget.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5a592d877451",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7f45af35c13",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.be2490e7d948",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.ML.Core.dll: https://www.microsoft.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c2bae08609fa",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Microsoft.ML.Data.dll: System.Diagnostics.Process",
+      "il:Microsoft.ML.Data.dll:Microsoft.ML.Internal.Utilities.TimerScope.Dispose+0xb: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:Microsoft.ML.Data.dll:Microsoft.ML.Internal.Utilities.TimerScope.Dispose+0x10: callvirt System.Diagnostics.Process.get_PeakWorkingSet64: System.Diagnostics.Process",
+      "il:Microsoft.ML.Data.dll:Microsoft.ML.Internal.Utilities.TimerScope.Dispose+0x43: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:Microsoft.ML.Data.dll:Microsoft.ML.Internal.Utilities.TimerScope.Dispose+0x48: callvirt System.Diagnostics.Process.get_PeakVirtualMemorySize64: System.Diagnostics.Process",
+      "metadata:Newtonsoft.Json.dll: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlDocumentWrapper.CreateProcessingInstruction+0x8: callvirt System.Xml.XmlDocument.CreateProcessingInstruction: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlNodeConverter.CreateInstruction+0xe3: callvirt Newtonsoft.Json.Converters.IXmlDocument.CreateProcessingInstruction: CreateProcess"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Microsoft.ML.Core.dll: FileStream",
+      "metadata:Microsoft.ML.Core.dll: Directory.CreateDirectory",
+      "metadata:Microsoft.ML.Core.dll: Directory.Delete",
+      "metadata:Microsoft.ML.Core.dll: File.Delete",
+      "metadata:Microsoft.ML.Core.dll: File.Move",
+      "il:Microsoft.ML.Core.dll:Microsoft.ML.Repository.GetShortTempDir+0x2f: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Microsoft.ML.Core.dll:Microsoft.ML.Repository.Dispose+0x1a: call System.IO.Directory.Delete: Directory.Delete",
+      "il:Microsoft.ML.Core.dll:Microsoft.ML.Repository.GetPath+0x10d: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NoSolicitingFork.dll: https://api.github.com/repos/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.227f351377c0",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NoSolicitingFork.dll: https://github.com/Catphinaud/NoSoliciting"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5c8c17dc04a5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NoSolicitingFork.json: https://github.com/Catphinaud/NoSoliciting"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a3b78c706e71",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.ML.Core.dll: https://github.com/dotnet/machinelearning",
+      "artifact:Microsoft.ML.CpuMath.dll: https://github.com/dotnet/machinelearning",
+      "artifact:Microsoft.ML.Data.dll: https://github.com/dotnet/machinelearning",
+      "artifact:Microsoft.ML.DataView.dll: https://github.com/dotnet/machinelearning"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ce9ed478d1df",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NoSolicitingFork.json: https://raw.githubusercontent.com/Catphinaud/NoSoliciting/refs/heads/master/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.eb7a7e0ac0b9",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Microsoft.ML.Core.dll: WebRequest",
+      "metadata:Microsoft.ML.Core.dll: HttpWebRequest",
+      "il:Microsoft.ML.Core.dll:Microsoft.ML.Internal.Utilities.ResourceManagerUtils.IsRedirectToDefaultPage+0x1: call System.Net.WebRequest.Create: WebRequest",
+      "il:Microsoft.ML.Core.dll:Microsoft.ML.Internal.Utilities.ResourceManagerUtils.IsRedirectToDefaultPage+0x2b: callvirt System.Net.HttpWebRequest.set_AllowAutoRedirect: WebRequest",
+      "il:Microsoft.ML.Core.dll:Microsoft.ML.Internal.Utilities.ResourceManagerUtils.IsRedirectToDefaultPage+0x2b: callvirt System.Net.HttpWebRequest.set_AllowAutoRedirect: HttpWebRequest",
+      "il:Microsoft.ML.Core.dll:Microsoft.ML.Internal.Utilities.ResourceManagerUtils.IsRedirectToDefaultPage+0x31: callvirt System.Net.WebRequest.GetResponse: WebRequest",
+      "artifact:Microsoft.ML.Core.dll: WebRequest",
+      "artifact:Microsoft.ML.Core.dll: HttpWebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes\\linux-arm\\native\\libLdaNative.so",
+      "runtimes\\linux-arm64\\native\\libLdaNative.so",
+      "runtimes\\linux-x64\\native\\libLdaNative.so",
+      "runtimes\\osx-arm64\\native\\libLdaNative.dylib",
+      "runtimes\\osx-x64\\native\\libLdaNative.dylib",
+      "runtimes\\win-x64\\native\\LdaNative.dll",
+      "runtimes\\win-x86\\native\\LdaNative.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
