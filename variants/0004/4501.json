@@ -1,0 +1,3778 @@
+{
+  "analysis": {
+    "analysisId": "e93428bbce7043be6206766cae2217df4fffb1e56533e96bda27e84765412283",
+    "artifactSha256": "cd930eacdbf0b5104b08ddf6c6e514a678d4c01c99b36f3b8fd10096e69f03b4",
+    "path": "artifacts/cd/cd930eacdbf0b5104b08ddf6c6e514a678d4c01c99b36f3b8fd10096e69f03b4/analyses/e93428bbce7043be6206766cae2217df4fffb1e56533e96bda27e84765412283",
+    "recordCount": 23602
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "cd930eacdbf0b5104b08ddf6c6e514a678d4c01c99b36f3b8fd10096e69f03b4",
+    "artifact_url": "https://github.com/Karlin-Z/DalamudPlugins/raw/main/plugins/PvPSelector/latest.zip",
+    "assembly_version": "2.1.9.19",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: github.com",
+      "Endpoint: ocsp.digicert.com0c",
+      "Endpoint: ocsp.digicert.com0h",
+      "Endpoint: ocsp.digicert.com0i",
+      "Endpoint: ocsp.digicert.com0o",
+      "Endpoint: www.digicert.com",
+      "Endpoint: www.microsoft.com0",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Raw sockets",
+      "Registry access"
+    ],
+    "caution_count": 15,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "system",
+        "description": "References Windows Registry APIs.",
+        "evidence": [
+          "metadata:runtimes\\win\\lib\\net10.0\\System.Management.dll: Microsoft.Win32.Registry",
+          "metadata:runtimes\\win\\lib\\net10.0\\System.Management.dll: RegistryKey",
+          "il:runtimes\\win\\lib\\net10.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net10.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+          "il:runtimes\\win\\lib\\net10.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net10.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: RegistryKey",
+          "il:runtimes\\win\\lib\\net10.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net10.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: RegistryKey"
+        ],
+        "ruleId": "registry.access",
+        "severity": "caution",
+        "title": "Windows Registry access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:PvPSelector.dll: System.Diagnostics.Process",
+          "metadata:PvPSelector.dll: ProcessStartInfo",
+          "metadata:PvPSelector.dll: ShellExecute",
+          "metadata:PvPSelector.dll: Process.Start",
+          "il:PvPSelector.dll:PvPSelector.GUI.ImGuiUtils.URLLink+0x67: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:PvPSelector.dll:PvPSelector.GUI.ImGuiUtils.URLLink+0x67: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:PvPSelector.dll:PvPSelector.GUI.ImGuiUtils.URLLink+0x6e: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+          "il:PvPSelector.dll:PvPSelector.GUI.ImGuiUtils.URLLink+0x6e: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "metadata:BouncyCastle.Crypto.dll: System.Net.Sockets",
+          "il:BouncyCastle.Crypto.dll:Org.BouncyCastle.Tls.TlsUtilities.IsTimeout+0x6: callvirt System.Net.Sockets.SocketException.get_SocketErrorCode: System.Net.Sockets",
+          "artifact:BouncyCastle.Crypto.dll: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BouncyCastle.Crypto.dll: https://www.digicert.com/CPS0"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.5a592d877451",
+        "severity": "caution",
+        "title": "Endpoint: www.digicert.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BouncyCastle.Crypto.dll: http://ocsp.digicert.com0c/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.c831a6f811e0",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0c"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BouncyCastle.Crypto.dll: http://ocsp.digicert.com0o/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.b80d4039aa50",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0o"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BouncyCastle.Crypto.dll: http://ocsp.digicert.com0h/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.b425dd2f95b4",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0h"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BouncyCastle.Crypto.dll: http://www.digicert.com/ssl-cps-repository.htm0"
+        ],
+        "ruleId": "network.endpoint.insecure-http.8035531fe0b5",
+        "severity": "caution",
+        "title": "Endpoint: www.digicert.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:System.CodeDom.dll: http://www.microsoft.com0/",
+          "artifact:System.Management.dll: http://www.microsoft.com0/",
+          "artifact:runtimes\\win\\lib\\net10.0\\System.Management.dll: http://www.microsoft.com0/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.7b602439ebe0",
+        "severity": "caution",
+        "title": "Endpoint: www.microsoft.com0"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BouncyCastle.Crypto.dll: http://ocsp.digicert.com0i/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.35686fcd6656",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0i"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BouncyCastle.Crypto.dll: http://www.digicert.com/CPS0"
+        ],
+        "ruleId": "network.endpoint.insecure-http.0bda789b1ee3",
+        "severity": "caution",
+        "title": "Endpoint: www.digicert.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:System.CodeDom.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:System.Management.dll: System.Runtime.InteropServices.DllImport",
+          "artifact:System.Management.dll: LoadLibrary",
+          "metadata:runtimes\\win\\lib\\net10.0\\System.Management.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:runtimes\\win\\lib\\net10.0\\System.Management.dll: DllImportAttribute",
+          "metadata:runtimes\\win\\lib\\net10.0\\System.Management.dll: GetProcAddress",
+          "metadata:runtimes\\win\\lib\\net10.0\\System.Management.dll: LoadLibrary",
+          "il:runtimes\\win\\lib\\net10.0\\System.Management.dll:System.Management.WmiNetUtilsHelper..cctor+0x55: call Kernel32.LoadLibrary: LoadLibrary"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:PvPSelector.dll: SigScanner",
+          "il:PvPSelector.dll:NekoVerifierLib.Ids.GetAID+0x11: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "il:PvPSelector.dll:PvPSelector.PluginAddressResolver.Setup64Bit+0x58: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "il:PvPSelector.dll:PvPSelector.PluginAddressResolver.Setup64Bit+0x8e: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "il:PvPSelector.dll:PvPSelector.PluginAddressResolver.Setup64Bit+0xc4: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "artifact:PvPSelector.dll: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:BouncyCastle.Crypto.dll: s://github.com/novotnyllc/bc-csharp",
+          "artifact:BouncyCastle.Crypto.dll: p://crl3.digicert.com/EVCodeSigningSHA2-g1.crl07",
+          "artifact:BouncyCastle.Crypto.dll: p://crl4.digicert.com/EVCodeSigningSHA2-g1.crl0K",
+          "artifact:BouncyCastle.Crypto.dll: s://www.digicert.com/CPS0",
+          "artifact:BouncyCastle.Crypto.dll: p://ocsp.digicert.com0H",
+          "artifact:BouncyCastle.Crypto.dll: p://cacerts.digicert.com/DigiCertEVCodeSigningCA-SHA2.crt0",
+          "artifact:BouncyCastle.Crypto.dll: p://ocsp.digicert.com0I",
+          "artifact:BouncyCastle.Crypto.dll: p://cacerts.digicert.com/DigiCertHighAssuranceEVRootCA.crt0"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:System.CodeDom.dll: Assembly.Load",
+          "metadata:System.CodeDom.dll: Assembly.LoadFile",
+          "il:System.CodeDom.dll:System.CodeDom.Compiler.CompilerResults.get_CompiledAssembly+0x1d: call System.Reflection.Assembly.LoadFile: Assembly.Load",
+          "il:System.CodeDom.dll:System.CodeDom.Compiler.CompilerResults.get_CompiledAssembly+0x1d: call System.Reflection.Assembly.LoadFile: Assembly.LoadFile",
+          "metadata:runtimes\\win\\lib\\net10.0\\System.Management.dll: Assembly.Load",
+          "il:runtimes\\win\\lib\\net10.0\\System.Management.dll:System.Management.ManagementClassGenerator.InitializeCodeGenerator+0xb5: call System.Reflection.Assembly.Load: Assembly.Load",
+          "il:runtimes\\win\\lib\\net10.0\\System.Management.dll:System.Management.ManagementClassGenerator.InitializeCodeGenerator+0x149: call System.Reflection.Assembly.Load: Assembly.Load"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:PvPSelector.dll: System.Net.Http.HttpClient",
+          "il:PvPSelector.dll:NekoVerifierLib.VerifyClient..ctor+0x24: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+          "il:PvPSelector.dll:NekoVerifierLib.VerifyClient..ctor+0x2b: callvirt System.Net.Http.HttpClientHandler.set_UseProxy: System.Net.Http.HttpClient",
+          "il:PvPSelector.dll:NekoVerifierLib.VerifyClient..ctor+0x33: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:PvPSelector.dll:NekoVerifierLib.VerifyClient..ctor+0x59: callvirt System.Net.Http.HttpClient.set_BaseAddress: System.Net.Http.HttpClient",
+          "il:PvPSelector.dll:<CheckLiveAsync>d__7.MoveNext+0xf9: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient",
+          "il:PvPSelector.dll:<GetLMAsync>d__8.MoveNext+0x10b: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient",
+          "artifact:runtimes\\win\\lib\\net10.0\\System.Management.dll: WebRequest"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:BouncyCastle.Crypto.dll: https://github.com/novotnyllc/bc-csharp"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.c4a544bc295a",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:System.CodeDom.dll: https://github.com/dotnet/dotnet",
+          "artifact:System.Management.dll: https://github.com/dotnet/dotnet",
+          "artifact:runtimes\\win\\lib\\net10.0\\System.Management.dll: https://github.com/dotnet/dotnet"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.c2aa6da77912",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:BouncyCastle.Crypto.dll: FileStream",
+          "artifact:BouncyCastle.Crypto.dll: FileStream",
+          "metadata:PvPSelector.dll: Directory.CreateDirectory",
+          "metadata:PvPSelector.dll: WriteAllText",
+          "il:PvPSelector.dll:PvPSelector.Configuration.Load+0x28: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:PvPSelector.dll:PvPSelector.Model.JobProfiles.SaveToFile+0x28: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:PvPSelector.dll:PvPSelector.Model.JobProfiles.SaveToFile+0x73: call System.IO.File.WriteAllText: WriteAllText",
+          "il:PvPSelector.dll:PvPSelector.Model.HpValueCorrection.HpValueCorrector.SaveToFile+0x28: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 4,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 1869518,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.1.9.19",
+        "artifactBytes": 1869518,
+        "artifactSha256": "cd930eacdbf0b5104b08ddf6c6e514a678d4c01c99b36f3b8fd10096e69f03b4",
+        "catalogAssemblyVersion": "2.1.9.19",
+        "manifestInternalName": "PvPSelector",
+        "manifestPath": "PvPSelector.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/Karlin-Z/DalamudPlugins/main/plugins/PvPSelector/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0c",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0h",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0i",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0o",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.digicert.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0c",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0h",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0i",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0o",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.digicert.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 13,
+          "observedConcreteDestinationCount": 7,
+          "observedDestinationWithoutProfileCount": 7,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 13,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: github.com",
+        "Endpoint: ocsp.digicert.com0c",
+        "Endpoint: ocsp.digicert.com0h",
+        "Endpoint: ocsp.digicert.com0i",
+        "Endpoint: ocsp.digicert.com0o",
+        "Endpoint: www.digicert.com",
+        "Endpoint: www.microsoft.com0",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Raw sockets",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "network.socket",
+        "process.execute",
+        "process.inspect",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 15,
+        "critical": 0,
+        "high": 1,
+        "informational": 4
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 68,
+          "exactVersionObservedCount": 66,
+          "families": {
+            "managed-assembly": 63,
+            "native": 2,
+            "nuget": 3
+          },
+          "fingerprint": "4c6b0debe258330b3f8bf571c9634bad3c5940f4414237be23d6f37e7a250c3d",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 6
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FreeLibrary",
+              "library": "kernel32.dll",
+              "managedName": "<FreeLibrary>g____PInvoke|0_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetProcAddress",
+              "library": "kernel32.dll",
+              "managedName": "<GetProcAddress>g____PInvoke|1_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalLock",
+              "library": "kernel32.dll",
+              "managedName": "<GlobalLock>g____PInvoke|3_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalUnlock",
+              "library": "kernel32.dll",
+              "managedName": "GlobalUnlock",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "LoadLibraryW",
+              "library": "kernel32.dll",
+              "managedName": "<LoadLibrary>g____PInvoke|7_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoGetObjectContext",
+              "library": "ole32.dll",
+              "managedName": "CoGetObjectContext",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 5,
+            "observed": 60,
+            "required": 3
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 65,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 3,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 5,
+            "observed": 60,
+            "optional": 0,
+            "required": 3,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 68
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 10,
+          "destinationsUndetermined": false,
+          "hostCount": 13,
+          "hosts": [
+            {
+              "classifications": [
+                "documentation-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "aka.ms",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "cacerts.digicert.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl.microsoft.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl3.digicert.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl4.digicert.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0c",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0h",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0i",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0o",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "www.digicert.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "literalCount": 8,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 35,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 24913
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "aka.ms",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "documentation/reference link",
+            "url": "https://aka.ms/<redacted>"
+          },
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "aka.ms",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "documentation/reference link",
+            "url": "https://aka.ms/binaryformatter"
+          },
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "aka.ms",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "documentation/reference link",
+            "url": "https://aka.ms/dotnet-warnings/{0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/DigiCertAssuredIDRootCA.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/DigiCertEVCodeSigningCA-SHA2.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/DigiCertHighAssuranceEVRootCA.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/DigiCertSHA2AssuredIDTimestampingCA.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/DigiCertAssuredIDRootCA.crl0P"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/DigiCertHighAssuranceEVRootCA.crl0@"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/EVCodeSigningSHA2-g1.crl07"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/sha2-assured-ts.crl02"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl4.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl4.digicert.com/DigiCertAssuredIDRootCA.crl0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl4.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl4.digicert.com/DigiCertHighAssuranceEVRootCA.crl0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl4.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl4.digicert.com/EVCodeSigningSHA2-g1.crl0K"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl4.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl4.digicert.com/sha2-assured-ts.crl0"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/dotnet/dotnet"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/novotnyllc/bc-csharp"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0c",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0c/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0h",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0h/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0i",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0i/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0o",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0o/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.digicert.com/CPS0"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.digicert.com/ssl-cps-repository.htm0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.digicert.com/CPS0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.microsoft.com0",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.microsoft.com0/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Karlin-Z/DalamudPlugins/raw/main/plugins/PvPSelector/latest.zip",
+        "internalName": "PvPSelector",
+        "manifestVersion": "2.1.9.19",
+        "observationId": 7391,
+        "observationKey": "manifest-ece3a7ed0b4dc087637e15a71561",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 4501
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 5,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 7,
+        "uncompressedBytes": 4098619
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-6130b10e388ef2af",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-4501",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-d2fdf703fa7038cf452c",
+        "variantId": 4501,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-31T11:15:37Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "cd930eacdbf0b5104b08ddf6c6e514a678d4c01c99b36f3b8fd10096e69f03b4",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Karlin-Z/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 52826,
+    "scanned_at_utc": "2026-08-31T11:15:37Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 4501
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "cd930eacdbf0b5104b08ddf6c6e514a678d4c01c99b36f3b8fd10096e69f03b4",
+      "current_assembly_version": "2.1.9.19",
+      "current_scan_id": 52826,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-31T11:15:40Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 4501
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 44,
+      "artifact_only_count": 44,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:bouncycastle.crypto",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "BouncyCastle.Crypto",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.9.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.2.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.51.0.8592"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.registry",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Registry",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:pvpselector",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "PvPSelector",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.1.9.19"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.codedom",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "System.CodeDom",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.nongeneric",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.NonGeneric",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.specialized",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Specialized",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.typeconverter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.TypeConverter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.1.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.parallel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Parallel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.management",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "System.Management",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.objectmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.1.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.1.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.1.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.numerics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Numerics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.10.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.threadpool",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.ThreadPool",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ole32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ole32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:portable.bouncycastle",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Portable.BouncyCastle",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.9.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.codedom",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.CodeDom",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.management",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Management",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.1"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-31T11:15:40Z",
+      "comparison_id": 1938,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 52826,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 4501,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0004/4501/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0004/4501/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 65899,
+          "encoding": "json",
+          "path": "derived/variants/0004/4501/dependency-resolutions.json",
+          "recordDigest": "a1986b8d0d565aeb4be85b12ecbbc8beae8a37a201904d7673ed0f6f50724773",
+          "records": 68,
+          "sha256": "e3db0ddb385725d0a34e09861bde09c073421146f87abb2ca5164106c1985af6"
+        }
+      ],
+      "recordDigest": "a1986b8d0d565aeb4be85b12ecbbc8beae8a37a201904d7673ed0f6f50724773",
+      "records": 68
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0004/4501/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "5a6ba6e982c120b482ca017dee40727362ae15195b96354a2e593ea1d5993579",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "3182d30b9f87c5b1b532e3627ec520492eea1d44a57c98ae2d731c26bd049dfc",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "8bb31d78e347c8d0e3025d462ce5ee150aed6bcbd05d5e0ab2761475260ad3bc",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "2981ce7ee71a7d57ded4f883da967e456680dcf3fee1137030a731e7b4050c86",
+        "records": 68,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "2f13e3c9291f6b5906e151aa8bf7c7efdbc0be80c8acfd98bdf14559a7e8bbe7",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "1fd2f76a9c3ca68e4796b4030b464895f1deb9fd0f11125003ca48a50433e3fe",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "7e612e63a4e3e8869b45e4d3a16ea4c61a58e0faf680fd364b1338e0d948142e",
+        "records": 731,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "b7de959eaaed5bedf675799f7ae33d845c3b1c88c36a21c4e24baf8a19e80444",
+        "records": 2569,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "3e41dae49896d7723c4134b773a51761c47a4d71b75e9ce51290c97e209fa076",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "2e1ff0a91cd30c784ba8485a71158040b488c71d49b567cda6d3ff22bd6132fc",
+        "records": 6,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "a08b8c3adb994baa17fb4c7e56a3e6fd241442d327bced9131bb9d674be0d99b",
+        "records": 35,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "c9b504caa19623824e1159b07d7d83fb2acd319140419a02477010da46ef2cfc",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "919dc42a2097c785931132596f583dc5ca9aac4079fef8c6c48d6effff779b82",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "f16b865f05c90f8dd5aeb8243386fd7c2e55303f7850253417b1ddae78c4312b",
+        "records": 120,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-f5c3af0eb786e0edaa4e71bac923fa910744c0f53e6823337bca473e507f89a8",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "PvPSelector",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "internal_name": "PvPSelector",
+    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "plugin_id": 908
+  },
+  "pluginId": 908,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "A plugin that allows you to select the enemy with the lowest currentHp in your range.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 95,
+      "summary": "PvP helper",
+      "webEnriched": false
+    },
+    "projectRepository": "",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "5d866554b5e578f571c68fadfb08e241a3668649fc551b84c872438915913bc3",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "d6dad138793e30b365f469bce4b652235e01be8b944e7aef8fe543b26a53c09e",
+        "records": 13
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "c5d8e8d6a9a92c7e41606c6646d1cc1ae473514fc4f5d171aa09833a31fb22f0",
+        "records": 20
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "cd930eacdbf0b5104b08ddf6c6e514a678d4c01c99b36f3b8fd10096e69f03b4",
+    "artifact_url": "https://github.com/Karlin-Z/DalamudPlugins/raw/main/plugins/PvPSelector/latest.zip",
+    "assembly_version": "2.1.9.19",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: github.com",
+      "Endpoint: ocsp.digicert.com0c",
+      "Endpoint: ocsp.digicert.com0h",
+      "Endpoint: ocsp.digicert.com0i",
+      "Endpoint: ocsp.digicert.com0o",
+      "Endpoint: www.digicert.com",
+      "Endpoint: www.microsoft.com0",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Raw sockets",
+      "Registry access"
+    ],
+    "caution_count": 15,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 4,
+    "plugin_id": 908,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 1869518,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.1.9.19",
+        "artifactBytes": 1869518,
+        "artifactSha256": "cd930eacdbf0b5104b08ddf6c6e514a678d4c01c99b36f3b8fd10096e69f03b4",
+        "catalogAssemblyVersion": "2.1.9.19",
+        "manifestInternalName": "PvPSelector",
+        "manifestPath": "PvPSelector.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/Karlin-Z/DalamudPlugins/main/plugins/PvPSelector/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0c",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0h",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0i",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0o",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.digicert.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0c",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0h",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0i",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0o",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.digicert.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 13,
+          "observedConcreteDestinationCount": 7,
+          "observedDestinationWithoutProfileCount": 7,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 13,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: github.com",
+        "Endpoint: ocsp.digicert.com0c",
+        "Endpoint: ocsp.digicert.com0h",
+        "Endpoint: ocsp.digicert.com0i",
+        "Endpoint: ocsp.digicert.com0o",
+        "Endpoint: www.digicert.com",
+        "Endpoint: www.microsoft.com0",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Raw sockets",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "network.socket",
+        "process.execute",
+        "process.inspect",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 15,
+        "critical": 0,
+        "high": 1,
+        "informational": 4
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 68,
+          "exactVersionObservedCount": 66,
+          "families": {
+            "managed-assembly": 63,
+            "native": 2,
+            "nuget": 3
+          },
+          "fingerprint": "4c6b0debe258330b3f8bf571c9634bad3c5940f4414237be23d6f37e7a250c3d",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 6
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FreeLibrary",
+              "library": "kernel32.dll",
+              "managedName": "<FreeLibrary>g____PInvoke|0_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetProcAddress",
+              "library": "kernel32.dll",
+              "managedName": "<GetProcAddress>g____PInvoke|1_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalLock",
+              "library": "kernel32.dll",
+              "managedName": "<GlobalLock>g____PInvoke|3_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GlobalUnlock",
+              "library": "kernel32.dll",
+              "managedName": "GlobalUnlock",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "LoadLibraryW",
+              "library": "kernel32.dll",
+              "managedName": "<LoadLibrary>g____PInvoke|7_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win\\lib\\net10.0\\System.Management.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoGetObjectContext",
+              "library": "ole32.dll",
+              "managedName": "CoGetObjectContext",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 5,
+            "observed": 60,
+            "required": 3
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 65,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 3,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 5,
+            "observed": 60,
+            "optional": 0,
+            "required": 3,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 68
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 10,
+          "destinationsUndetermined": false,
+          "hostCount": 13,
+          "hosts": [
+            {
+              "classifications": [
+                "documentation-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "aka.ms",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "cacerts.digicert.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl.microsoft.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl3.digicert.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl4.digicert.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0c",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0h",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0i",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ocsp.digicert.com0o",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http",
+                "unrecognised-host"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "www.digicert.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "literalCount": 8,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 35,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 24913
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "aka.ms",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "documentation/reference link",
+            "url": "https://aka.ms/<redacted>"
+          },
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "aka.ms",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "documentation/reference link",
+            "url": "https://aka.ms/binaryformatter"
+          },
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "aka.ms",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "documentation/reference link",
+            "url": "https://aka.ms/dotnet-warnings/{0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/DigiCertAssuredIDRootCA.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/DigiCertEVCodeSigningCA-SHA2.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/DigiCertHighAssuranceEVRootCA.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "cacerts.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://cacerts.digicert.com/DigiCertSHA2AssuredIDTimestampingCA.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/DigiCertAssuredIDRootCA.crl0P"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/DigiCertHighAssuranceEVRootCA.crl0@"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/EVCodeSigningSHA2-g1.crl07"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl3.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl3.digicert.com/sha2-assured-ts.crl02"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl4.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl4.digicert.com/DigiCertAssuredIDRootCA.crl0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl4.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl4.digicert.com/DigiCertHighAssuranceEVRootCA.crl0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl4.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl4.digicert.com/EVCodeSigningSHA2-g1.crl0K"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl4.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl4.digicert.com/sha2-assured-ts.crl0"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/dotnet/dotnet"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/novotnyllc/bc-csharp"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0c",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0c/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0h",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0h/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0i",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0i/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ocsp.digicert.com0o",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ocsp.digicert.com0o/"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.digicert.com/CPS0"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.digicert.com/ssl-cps-repository.htm0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.digicert.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.digicert.com/CPS0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.microsoft.com0",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.microsoft.com0/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Karlin-Z/DalamudPlugins/raw/main/plugins/PvPSelector/latest.zip",
+        "internalName": "PvPSelector",
+        "manifestVersion": "2.1.9.19",
+        "observationId": 7391,
+        "observationKey": "manifest-ece3a7ed0b4dc087637e15a71561",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 4501
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 5,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 7,
+        "uncompressedBytes": 4098619
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-6130b10e388ef2af",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-4501",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-d2fdf703fa7038cf452c",
+        "variantId": 4501,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-31T11:15:37Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "cd930eacdbf0b5104b08ddf6c6e514a678d4c01c99b36f3b8fd10096e69f03b4",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Karlin-Z/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 52826,
+    "scanned_at_utc": "2026-08-31T11:15:37Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 719,
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 4501
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "74172da5755a905c271faf05da035eede4b58348b013ec3e07172f1aaee3227d",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"6926c345735a05983d695ba01e37a2e82e7f3824021407b1f650eb25b0a93969\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-08-28T09:17:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-28T09:17:18Z",
+    "name": "yourShika/AetheryteRepo",
+    "plugin_count": 3,
+    "provider": "yourShika/AetheryteRepo",
+    "source_id": 719,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/yourShika/AetheryteRepo/main/cache/karlin-z-dalamudplugins.json"
+  },
+  "sourceId": 719,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "2.1.9.19",
+    "author": "Karlin",
+    "authors_json": [
+      "Karlin"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "A plugin that allows you to select the enemy with the lowest currentHp in your range.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/Karlin-Z/DalamudPlugins/raw/main/plugins/PvPSelector/latest.zip",
+    "download_link_testing": "https://github.com/Karlin-Z/DalamudPlugins/raw/main/plugins/PvPSelector/latest.zip",
+    "download_link_update": "https://github.com/Karlin-Z/DalamudPlugins/raw/main/plugins/PvPSelector/latest.zip",
+    "first_seen_utc": "2026-08-27T07:37:29Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-27T07:37:29Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "PvPSelector",
+    "plugin_id": 908,
+    "punchline": "PvP helper",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "2.1.9.19",
+      "Author": "Karlin",
+      "DalamudApiLevel": 15,
+      "Description": "A plugin that allows you to select the enemy with the lowest currentHp in your range.",
+      "DownloadLinkInstall": "https://github.com/Karlin-Z/DalamudPlugins/raw/main/plugins/PvPSelector/latest.zip",
+      "DownloadLinkTesting": "https://github.com/Karlin-Z/DalamudPlugins/raw/main/plugins/PvPSelector/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/Karlin-Z/DalamudPlugins/raw/main/plugins/PvPSelector/latest.zip",
+      "InternalName": "PvPSelector",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LoadPriority": 0,
+      "LoadRequiredState": 0,
+      "LoadSync": false,
+      "Name": "PvPSelector",
+      "Punchline": "PvP helper",
+      "RepoUrl": "",
+      "Tags": [
+        "PvP",
+        "Auto",
+        "Karlin"
+      ],
+      "_SourceId": "karlin-z-dalamudplugins",
+      "_SourceName": "Karlin-Z / DalamudPlugins",
+      "_SourceUrl": "https://raw.githubusercontent.com/Karlin-Z/DalamudPlugins/main/pluginmaster.json"
+    },
+    "repo_url": "",
+    "source_entry_key": "pvpselector|2.1.9.19|15|0|0",
+    "source_id": 719,
+    "tags_json": [
+      "PvP",
+      "Auto",
+      "Karlin"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 4501
+  },
+  "variantId": 4501
+}

@@ -1,0 +1,2052 @@
+{
+  "analysis": {
+    "analysisId": "63cb1ee24f399afa887e3e2f7fd6d365b4fd2c7d4ae9e319d7a9270b9fc0d433",
+    "artifactSha256": "fa184e761decd0addf490cb714dd3a731acadcdf5b8ae94e250296dd86e12314",
+    "path": "artifacts/fa/fa184e761decd0addf490cb714dd3a731acadcdf5b8ae94e250296dd86e12314/analyses/63cb1ee24f399afa887e3e2f7fd6d365b4fd2c7d4ae9e319d7a9270b9fc0d433",
+    "recordCount": 10421
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "fa184e761decd0addf490cb714dd3a731acadcdf5b8ae94e250296dd86e12314",
+    "artifact_url": "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended/releases/download/plugins-api13/QoLBar-2.3.3.8.zip",
+    "assembly_version": "2.3.3.8",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "full-gameplay-automation",
+        "capabilityId": "game.character.execute_action",
+        "confidence": "very-high",
+        "evidence": [
+          "il:QoLBar.dll:QoLBar.Game.UseItem+0x48: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "indirect": false,
+        "label": "Character action execution",
+        "reachable": true,
+        "reason": "Invokes game action-execution APIs that can perform combat, crafting, gathering, or other character actions."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.inventory_control",
+        "confidence": "very-high",
+        "evidence": [
+          "il:QoLBar.dll:QoLBar.Game.UseItem+0x7b: call FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInventoryContext.UseItem"
+        ],
+        "indirect": false,
+        "label": "Inventory UI/control",
+        "reachable": true,
+        "reason": "Invokes inventory-mutating or inventory-action functionality."
+      }
+    ],
+    "automation_level": "full-gameplay-automation",
+    "capabilities_json": [
+      "Character action execution",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Inventory UI/control",
+      "Native/PInvoke",
+      "Process execution"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:QoLBar.dll:QoLBar.Game.UseItem+0x48: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "ruleId": "automation.game.character.execute_action",
+        "severity": "high",
+        "title": "Character action execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:QoLBar.dll: System.Diagnostics.Process",
+          "metadata:QoLBar.dll: ProcessStartInfo",
+          "metadata:QoLBar.dll: ShellExecute",
+          "metadata:QoLBar.dll: Process.Start",
+          "il:QoLBar.dll:QoLBar.IconBrowserUI.Draw+0x1d7: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:QoLBar.dll:QoLBar.IconBrowserUI.Draw+0x1d7: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:QoLBar.dll:QoLBar.IconBrowserUI.Draw+0x1e7: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:QoLBar.dll:QoLBar.IconBrowserUI.Draw+0x1e7: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:QoLBar.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:QoLBar.dll: SigScanner",
+          "metadata:QoLBar.dll: Dalamud.Hooking",
+          "il:QoLBar.dll:QoLBar.Game.Initialize+0x4b: call Dalamud.DalamudApi.get_SigScanner: SigScanner",
+          "il:QoLBar.dll:QoLBar.Game.Initialize+0x55: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+          "il:QoLBar.dll:QoLBar.Game.Initialize+0x62: call Dalamud.DalamudApi.get_SigScanner: SigScanner",
+          "il:QoLBar.dll:QoLBar.Game.Initialize+0x6c: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+          "artifact:QoLBar.dll: Dalamud.Hooking",
+          "artifact:QoLBar.dll: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:QoLBar.dll: s://github.com/UnknownX7/QoLBar.git"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for inventory ui/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:QoLBar.dll:QoLBar.Game.UseItem+0x7b: call FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInventoryContext.UseItem"
+        ],
+        "ruleId": "automation.game.ui.inventory_control",
+        "severity": "caution",
+        "title": "Inventory UI/control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:QoLBar.dll: FileStream",
+          "metadata:QoLBar.dll: WriteAllText",
+          "il:QoLBar.dll:QoLBar.Configuration.SaveIconCache+0x33: call System.IO.File.WriteAllText: WriteAllText",
+          "artifact:QoLBar.dll: WriteAllText",
+          "artifact:QoLBar.dll: FileStream"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 134668,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.3.3.8",
+        "artifactBytes": 134668,
+        "artifactSha256": "fa184e761decd0addf490cb714dd3a731acadcdf5b8ae94e250296dd86e12314",
+        "catalogAssemblyVersion": "2.3.3.8",
+        "manifestInternalName": "QoLBar",
+        "manifestPath": "QoLBar.json",
+        "manifestRepositoryUrl": "https://github.com/cycleapple/QoLBar/tree/api13-tw",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1315119149/048f3b4d-60e7-4b41-b31a-1953cd50e8b4?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-08-31T12%3A18%3A07Z&rscd=attachment%3B+filename%3DQoLBar-2.3.3.8.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-08-31T11%3A17%3A54Z&ske=2026-08-31T12%3A18%3A07Z&sks=b&skv=2018-11-09&sig=Ab2G%2FbitmEdPPfLWYSijP3YgTFUP8%2B%2F%2FTY1%2FlvCF5Kg%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODE3NTQwNywibmJmIjoxNzg4MTc1MTA3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.seS-cGv8n4zIWi3u7NDPe7YubS03cV6jssMYtrJWCZk&response-content-disposition=attachment%3B%20filename%3DQoLBar-2.3.3.8.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.inventory_control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Inventory UI/control",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.inventory_control",
+            "label": "Inventory UI/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 10,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 10,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Inventory UI/control",
+        "Native/PInvoke",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.memory.read",
+        "game.ui.inventory_control",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 1,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 22,
+          "exactVersionObservedCount": 21,
+          "families": {
+            "managed-assembly": 19,
+            "native": 1,
+            "nuget": 2
+          },
+          "fingerprint": "bdf716e7975361251cdc7e75061a01192cf2a0bca8544a57cf20ef740fdb2ff2",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 3
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "QoLBar.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetForegroundWindow",
+              "library": "user32.dll",
+              "managedName": "GetForegroundWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "QoLBar.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetKeyboardState",
+              "library": "user32.dll",
+              "managedName": "GetKeyboardState",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "QoLBar.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowThreadProcessId",
+              "library": "user32.dll",
+              "managedName": "GetWindowThreadProcessId",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 19,
+            "required": 2
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 20,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 2,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 19,
+            "optional": 0,
+            "required": 2,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 22
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 3,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/UnknownX7/QoLBar.git"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source-code reference",
+            "url": "https://github.com/cycleapple/QoLBar/tree/api13-tw"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/main/stable/QoLBar/images/icon.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended/releases/download/plugins-api13/QoLBar-2.3.3.8.zip",
+        "internalName": "QoLBar",
+        "manifestVersion": "2.3.3.8",
+        "observationId": 2221,
+        "observationKey": "manifest-39253fd33fd44f939a6846b06695",
+        "repositoryUrl": "https://github.com/cycleapple/QoLBar/tree/api13-tw",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1332
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 3,
+        "uncompressedBytes": 250922
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-c3aeade6affdfce6",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-1332",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-d407b0d54d54346f78bf",
+        "variantId": 1332,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-31T11:18:27Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "fa184e761decd0addf490cb714dd3a731acadcdf5b8ae94e250296dd86e12314",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/cycleapple/QoLBar",
+          "https://release-assets.githubusercontent.com/github-production-release-asset/1315119149/048f3b4d-60e7-4b41-b31a-1953cd50e8b4",
+          "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/cycleapple/QoLBar/tree/api13-tw",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 52828,
+    "scanned_at_utc": "2026-08-31T11:18:27Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/cycleapple/QoLBar/tree/api13-tw",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1332
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "fa184e761decd0addf490cb714dd3a731acadcdf5b8ae94e250296dd86e12314",
+      "current_assembly_version": "2.3.3.8",
+      "current_scan_id": 52828,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-31T11:18:28Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 1332
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 22,
+      "artifact_only_count": 22,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.6"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.0.6717.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.csharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.CSharp",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:qolbar",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "QoLBar",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.3.3.8"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "13.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.25"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-31T11:18:28Z",
+      "comparison_id": 1939,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 52828,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 1332,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1332/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1332/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 20694,
+          "encoding": "json",
+          "path": "derived/variants/0001/1332/dependency-resolutions.json",
+          "recordDigest": "5eae80529da1d886e53e85e96131d552c3dcbad6ab4114f50126a1bed9880c3b",
+          "records": 22,
+          "sha256": "18d7fe4516a1a66056dee70fa895face7b1ee8e66ff9319c5b2cdb4816f92b1f"
+        }
+      ],
+      "recordDigest": "5eae80529da1d886e53e85e96131d552c3dcbad6ab4114f50126a1bed9880c3b",
+      "records": 22
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1332/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "ee323f9b7b32e7d98b4b7c7836efcfba11c38926503e4d257492f35046e8402c",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "e8f8bb27da2f863cc3946fa3139b2e6ff899e33f21e9dda692b6c1bc884cc9ee",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "8b048a613771abcde0b7a32d26b669cdc68f028ee46e29123902492378e4899a",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "bbb3da7d5a69310ad622262be4ca0bfb6ba40314c4f3d434e391431a7db8426d",
+        "records": 22,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "960c38093a3e9d3cce413c4d5037f7b3bb50ed478eb0d219e585a26bb1544835",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "807e0a0bce9e3b6c332f1ba68dcf145bdde0f81a701629320fff6217da032b70",
+        "records": 6427,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "eabed6b2f95b24d2ceeb51f095f28670e0d444abefbc7630da70b832dd4380c3",
+        "records": 2910,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "b79aae676e1c3e4f60436efc3226d2e443a03da627c298482380fd05cc8949cb",
+        "records": 985,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "093e13db2c0a890ce5ad0d0d6506ec5a32e221a37188a3738c87bbe74cc71764",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "a50ae0b9a0754bc6269183f3f56633fb3723a04bb4b0e261209fdfb4fdf9acb7",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "a9cf447b45cf9d2a7fe4f6b1970bb5d17108e03e1d238bbbd3e0619b9405af51",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "0d6cc0273c7e55ab1e0074f8ee7582d63b8801d10af1ac56542944df15366e55",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "00a62f0d246a398c89e419264e31f0f26073e79ef63980a1eadf3e9f55325b91",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "b6d7adfa9e3175a5a683fb5c43660c7ebb34c4c7dd310e4d5c47c0a2562b71a2",
+        "records": 39,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-695c9de08c7c25100c23143b0f9d2ead969f5a5b8b3487e809a5416ca4d4c506",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "QoL Bar",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "QoLBar",
+    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "plugin_id": 86
+  },
+  "pluginId": 86,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "A plugin designed to provide a simple, customizable and always available interface for chat commands\nor other plugins to alleviate the need for using macros and hotbar space to achieve similar results.\n\nThe plugin should initially appear as a small box on the bottom center of the game window.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1190,
+      "summary": "Customizable ImGui hotbars",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/cycleapple/QoLBar/tree/api13-tw",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "A XIVLauncher plugin.",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/cycleapple/QoLBar"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# QoL Bar\nA [XIVLauncher](https://github.com/goatcorp/FFXIVQuickLauncher) plugin for creating custom menus for commands, similar to hotbars and macros.\n\n## Getting Started\nUpon first installing through `/xlplugins`, you will be greeted by a blank bar at the bottom of your screen, and the Demo Bar, which will showcase the various features that can be utilized. This bar will be updated over time to showcase any new features and may be freely deleted at any point, as it can be recreated by right clicking the `Import` button on the plugin config.\n\n- Terminology\n  - Bar: These are the custom menus that contain shortcuts, and are similar to hotbars\n  - Shortcut: These are the buttons on a bar, and are similar to macros\n  - Category: This is a shortcut that creates a popup containing more shortcuts\n  - Spacer: This is a shortcut that has no function and exists specifically for information or to align other shortcuts\n  - Pie: A bar brought up as a radial menu by holding a hotkey\n- Navigation\n  - Left click: Executes shortcuts or moves unlocked bars\n  - Right click: Opens the configuration for the hovered shortcut or bar (the surrounding background)\n  - Shift + Right click: Adds a new shortcut to the hovered bar or category\n  - Double or Control + Left Click: Can be used on various options such as sliders to input custom amounts\n\nYou can edit the shortcuts on the Demo Bar in order to see how they function.\n\n## Advanced Features\nAll of the following information is available through tooltips on the corresponding buttons or configuration inputs or in an example on the Demo Bar, but will be explained here in more detail.\n\n### Tooltips\nTo add a tooltip to a shortcut, put `##` at the end of its name to use the following text as a tooltip, e.g. `Plugins##Opens the plugin installer`.\n\n### Icons\nTo use an icon from the game, use `::#` as the shortcut's name, where # is the icon's ID, e.g. `::1`. These can also utilize tooltips in the same manner as above.\n\n### Icon Arguments\nIcons can have modifiers (`::x#`) which will change the way they display, these are detailed in the `Name` input tooltip when editing a shortcut with an icon. The most common use case is adding the glossy frame that the hotbar applies to all icons, i.e. `::f2914`.\n\n### Icon Browser\nThis plugin comes with a built-in browser for finding various icons, it can be accessed through the magnifying glass in the corner when editing / adding shortcuts, or through `/qolicons`. Clicking on these icons will copy their ID in the format `::#`, so that you can paste them into the name of shortcuts. Additionally, opening a shortcut's configuration while this menu is open will automatically change it to use the last clicked icon.\n\n### Custom Icons\nTo use a custom icon, follow the instructions on the Icon Browser's `Custom` tab.\n\n### Shortcut Mode\nThe mode of a shortcut can be changed so that the command is executed differently. `Incremental` will change it so that the shortcut executes the first line on the first press, the second line on the second press, and so on. `Random` will cause the shortcut to execute a random line each time instead. Categories may also have their mode changed and will no longer open a popup upon being pressed. Instead they will act like a shortcut using a different mode, except using the shortcuts contained within instead of lines.\n\n### Bar Dock / Alignment\nThe dock and alignment of a bar will determine the side of the game window that the bar will position itself relative to. If you want to place a bar outside of the game, you can do so by using the `Undocked` option. This will let you drag the bar out of the game window (assuming the Dalamud option is enabled) and will change the position to be relative to the top left corner of your monitor.\n\n### Pies\nBy adding a hotkey to a bar, you can bring it up as a pie. Note that a bar can be hidden through `/qolvisible` and its hotkey will still work.\n\n### Condition Sets\nBy adding a condition set to a bar through the plugin config's `Bar Manager` tab, it will automatically hide or reveal depending on the current game state. These can be created through the `Condition Sets` tab.\n\n### Running Macros\nTo run a macro from a shortcut, use `//m#` in the command, where # is the slot of the macro, e.g. `//m99`. In order to use the shared tab of macros you need to add 100 to the slot, e.g. `//m100`.\n\n### Custom Macros\n`//m` also supports not specifying a macro slot in order to run the following commands through its own macro system.\n\nE.g.\n```\n//m\n/macrolock\n/wait 1\n/echo Macro finished\n//m\n```\nwill function identically to having a macro with those commands in individual slot #0 and just using `//m0`.\n\n### Comments\nShortcuts support comments if you would like to add notes inside of the command, i.e. `// This is a comment`.\n\n### Exporting / Importing\nYou can share a bar or shortcut by pressing the `Export` button when editing it, this will copy a block of text that you can send to another person. In order to use this block of text, simply copy it and press the `Import` button on the plugin config's `Bar Manager` tab to import the text as a bar. You may also use the `Import` button when adding a new shortcut to import all shortcuts inside of the text into a preexisting bar or category.\n\n## FAQ\n> I'm completely lost and don't understand how to make my own bars or shortcuts\n\nBe sure to play around with the Demo Bar for a bit before trying to create your own bar. Additionally, create the bar without trying to utilize advanced features, i.e. just edit the `Name` and `Command` of shortcuts. After the bar contains all of the basic functions you want it to have, then you can start changing the way it looks, or adding advanced features. If you absolutely cannot solve how to do something, feel free to ask in the Dalamud Discord for assistance.\n\n\n> /wait doesn't appear to work!\n\nShortcuts do not have the ability to wait or use any other macro specific command. You will need to run a macro (or use the custom macro feature) with the shortcut instead.\n\n\n> Where can I find bars / shortcuts that other people have made?\n\nThe Dalamud Discord has a plugin preset channel that contains various presets that people have created.\n\n\n> Where is my config located?\n\n`%AppData%\\XIVLauncher\\pluginConfigs\\QoLBar.json`\n\n\n> How can I suggest a feature?\n\nPing me on the Dalamud Discord or [create an issue](https://github.com/UnknownX7/QoLBar/issues/new).\n\n\n> X isn't working!\n\nSee above.",
+      "title": "QoLBar",
+      "url": "https://github.com/cycleapple/QoLBar/tree/api13-tw"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "8c8c9552576ceaaa63c198fdd61bb87fad2dbc3a66cc96a5fbf200f3f28c0d94",
+        "records": 2
+      },
+      "behaviorConsistency": {
+        "recordDigest": "f9f3ff022eb7aa4f6aae3c905de4678f30c0e98a78f9a5f3c8218b083d61491f",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "84a4ad77d38b53292e9e0fd474a6fc75536f7f6f51d28a754241dbbf73be1420",
+        "records": 10
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "925a0a66a4a7516ee264f67ea7d1e8b95d447cbc84d63c4abb64ff733a493d3e",
+        "records": 7
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "fa184e761decd0addf490cb714dd3a731acadcdf5b8ae94e250296dd86e12314",
+    "artifact_url": "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended/releases/download/plugins-api13/QoLBar-2.3.3.8.zip",
+    "assembly_version": "2.3.3.8",
+    "capabilities_json": [
+      "Character action execution",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Inventory UI/control",
+      "Native/PInvoke",
+      "Process execution"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 1,
+    "plugin_id": 86,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 134668,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.3.3.8",
+        "artifactBytes": 134668,
+        "artifactSha256": "fa184e761decd0addf490cb714dd3a731acadcdf5b8ae94e250296dd86e12314",
+        "catalogAssemblyVersion": "2.3.3.8",
+        "manifestInternalName": "QoLBar",
+        "manifestPath": "QoLBar.json",
+        "manifestRepositoryUrl": "https://github.com/cycleapple/QoLBar/tree/api13-tw",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1315119149/048f3b4d-60e7-4b41-b31a-1953cd50e8b4?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-08-31T12%3A18%3A07Z&rscd=attachment%3B+filename%3DQoLBar-2.3.3.8.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-08-31T11%3A17%3A54Z&ske=2026-08-31T12%3A18%3A07Z&sks=b&skv=2018-11-09&sig=Ab2G%2FbitmEdPPfLWYSijP3YgTFUP8%2B%2F%2FTY1%2FlvCF5Kg%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODE3NTQwNywibmJmIjoxNzg4MTc1MTA3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.seS-cGv8n4zIWi3u7NDPe7YubS03cV6jssMYtrJWCZk&response-content-disposition=attachment%3B%20filename%3DQoLBar-2.3.3.8.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.inventory_control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Inventory UI/control",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.inventory_control",
+            "label": "Inventory UI/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 10,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 10,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Inventory UI/control",
+        "Native/PInvoke",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.memory.read",
+        "game.ui.inventory_control",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 1,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 22,
+          "exactVersionObservedCount": 21,
+          "families": {
+            "managed-assembly": 19,
+            "native": 1,
+            "nuget": 2
+          },
+          "fingerprint": "bdf716e7975361251cdc7e75061a01192cf2a0bca8544a57cf20ef740fdb2ff2",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 3
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "QoLBar.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetForegroundWindow",
+              "library": "user32.dll",
+              "managedName": "GetForegroundWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "QoLBar.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetKeyboardState",
+              "library": "user32.dll",
+              "managedName": "GetKeyboardState",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "QoLBar.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowThreadProcessId",
+              "library": "user32.dll",
+              "managedName": "GetWindowThreadProcessId",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 19,
+            "required": 2
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 20,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 2,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 19,
+            "optional": 0,
+            "required": 2,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 22
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 3,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/UnknownX7/QoLBar.git"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source-code reference",
+            "url": "https://github.com/cycleapple/QoLBar/tree/api13-tw"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/main/stable/QoLBar/images/icon.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended/releases/download/plugins-api13/QoLBar-2.3.3.8.zip",
+        "internalName": "QoLBar",
+        "manifestVersion": "2.3.3.8",
+        "observationId": 2221,
+        "observationKey": "manifest-39253fd33fd44f939a6846b06695",
+        "repositoryUrl": "https://github.com/cycleapple/QoLBar/tree/api13-tw",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1332
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 3,
+        "uncompressedBytes": 250922
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-c3aeade6affdfce6",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-1332",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-d407b0d54d54346f78bf",
+        "variantId": 1332,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-31T11:18:27Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "fa184e761decd0addf490cb714dd3a731acadcdf5b8ae94e250296dd86e12314",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/cycleapple/QoLBar",
+          "https://release-assets.githubusercontent.com/github-production-release-asset/1315119149/048f3b4d-60e7-4b41-b31a-1953cd50e8b4",
+          "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/cycleapple/QoLBar/tree/api13-tw",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 52828,
+    "scanned_at_utc": "2026-08-31T11:18:27Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 52,
+    "source_repository": "https://github.com/cycleapple/QoLBar/tree/api13-tw",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1332
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "fccfa012afdb632b3805ff011ce724e60bcbb330995c7e38d6010becec8cbee6",
+    "curated_id": "cycleapple-dalamudplugins-tw-api13-extended-repo-json",
+    "description": "Repository index discovered in the user-provided Dalamud source batches (repo.json).",
+    "discovered_by": "curated-sources.json",
+    "enabled_by_default": 1,
+    "etag": "\"c34a295447774dbe66f604ffb08efe613e8e1808394acb3532ecff6c41037b1b\"",
+    "highest_api": 13,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "aggregator",
+    "last_checked_utc": "2026-08-28T09:17:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-28T09:17:18Z",
+    "name": "cycleapple/DalamudPlugins-TW-API13-Extended",
+    "plugin_count": 111,
+    "provider": "cycleapple/DalamudPlugins-TW-API13-Extended",
+    "source_id": 52,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/cycleapple/DalamudPlugins-TW-API13-Extended/HEAD/repo.json"
+  },
+  "sourceId": 52,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "2.3.3.8",
+    "author": "UnknownX",
+    "authors_json": [
+      "UnknownX"
+    ],
+    "category_tags_json": [
+      "UI",
+      "utility"
+    ],
+    "changelog": "",
+    "dalamud_api_level": 13,
+    "description": "提供簡潔、可自訂且隨時可用的聊天指令與插件快捷介面，減少巨集及快捷列欄位的占用。已修正台服 API13 字型資產不相容問題。",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended/releases/download/plugins-api13/QoLBar-2.3.3.8.zip",
+    "download_link_testing": "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended/releases/download/plugins-api13/QoLBar-2.3.3.8.zip",
+    "download_link_update": "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended/releases/download/plugins-api13/QoLBar-2.3.3.8.zip",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "icon_url": "https://raw.githubusercontent.com/cycleapple/DalamudPlugins-TW-API13-Extended/main/icons/QoLBar.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-25T20:59:09Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "QoL Bar",
+    "plugin_id": 86,
+    "punchline": "可自訂的 ImGui 快捷列。",
+    "raw_manifest_json": {
+      "AcceptsFeedback": false,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "2.3.3.8",
+      "Author": "UnknownX",
+      "CanUnloadAsync": false,
+      "CategoryTags": [
+        "UI",
+        "utility"
+      ],
+      "DalamudApiLevel": 13,
+      "Description": "提供簡潔、可自訂且隨時可用的聊天指令與插件快捷介面，減少巨集及快捷列欄位的占用。已修正台服 API13 字型資產不相容問題。",
+      "DownloadLinkInstall": "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended/releases/download/plugins-api13/QoLBar-2.3.3.8.zip",
+      "DownloadLinkTesting": "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended/releases/download/plugins-api13/QoLBar-2.3.3.8.zip",
+      "DownloadLinkUpdate": "https://github.com/cycleapple/DalamudPlugins-TW-API13-Extended/releases/download/plugins-api13/QoLBar-2.3.3.8.zip",
+      "IconUrl": "https://raw.githubusercontent.com/cycleapple/DalamudPlugins-TW-API13-Extended/main/icons/QoLBar.png",
+      "InternalName": "QoLBar",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LoadPriority": 0,
+      "LoadRequiredState": 0,
+      "LoadSync": false,
+      "Name": "QoL Bar",
+      "Punchline": "可自訂的 ImGui 快捷列。",
+      "RepoUrl": "https://github.com/cycleapple/QoLBar/tree/api13-tw",
+      "TestingAssemblyVersion": "2.3.3.8",
+      "TestingDalamudApiLevel": 13
+    },
+    "repo_url": "https://github.com/cycleapple/QoLBar/tree/api13-tw",
+    "source_entry_key": "qolbar|2.3.3.8|13|13|59",
+    "source_id": 52,
+    "tags_json": [],
+    "testing_assembly_version": "2.3.3.8",
+    "testing_dalamud_api_level": 13,
+    "variant_id": 1332
+  },
+  "variantId": 1332
+}
