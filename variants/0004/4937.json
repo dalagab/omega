@@ -1,0 +1,3383 @@
+{
+  "analysis": {
+    "analysisId": "944125d8aca9b70476a3ebe981c72bb93d97e36ce1abd0dcd0458d21cfd151d3",
+    "artifactSha256": "18835545eb86a29bd12d37255a36b7521b43a7a6ff66ebe002833428fca93e1e",
+    "path": "artifacts/18/18835545eb86a29bd12d37255a36b7521b43a7a6ff66ebe002833428fca93e1e/analyses/944125d8aca9b70476a3ebe981c72bb93d97e36ce1abd0dcd0458d21cfd151d3",
+    "recordCount": 24783
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "18835545eb86a29bd12d37255a36b7521b43a7a6ff66ebe002833428fca93e1e",
+    "artifact_url": "https://github.com/devoreofox/Silkstring/releases/latest/download/Silkstring.zip",
+    "assembly_version": "2.0.1.0",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "high",
+        "evidence": [
+          "il:ECommons.dll:ECommons.DalamudServices.Legacy.LegacyHelpers.SetTarget+0x2: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": false,
+        "reason": "References a target-setting API rather than only reading the current target."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "high",
+        "evidence": [
+          "il:ECommons.dll:ECommons.Hooks.ActionEffect.ProcessActionEffectDetour+0xdc: callvirt ActionEffectCallback.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxCreateDetour+0x45: callvirt ActorVfxCreateCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxDtorDetour+0x1f: callvirt ActorVfxDtorCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.SendAction.SendActionDetour+0x13: callvirt SendActionCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxCreateDetour+0x4d: callvirt StaticVfxCreateCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxRunDetour+0x21: callvirt StaticVfxRunCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxDtorDetour+0x1f: callvirt StaticVfxDtorCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Automation.Callback.AtkUnitBase_FireCallbackDetour+0x1d: callvirt FireCallback.Invoke"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": false,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Character target control",
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: crypto.nightmarexiv.org",
+      "Endpoint: discord.nightmarexiv.org",
+      "Endpoint: donate.nightmarexiv.org",
+      "Endpoint: explore.nightmarexiv.org",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: subscribe.nightmarexiv.org",
+      "Endpoint: www.patreon.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access"
+    ],
+    "caution_count": 13,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "memory",
+        "description": "References APIs used to open another process or read/write its memory.",
+        "evidence": [
+          "metadata:ECommons.dll: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x23: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x47: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x147: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "artifact:ECommons.dll: VirtualProtectEx"
+        ],
+        "ruleId": "memory.process",
+        "severity": "high",
+        "title": "Cross-process memory access"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:ECommons.dll: System.Diagnostics.Process",
+          "metadata:ECommons.dll: ProcessStartInfo",
+          "metadata:ECommons.dll: ShellExecute",
+          "metadata:ECommons.dll: Process.Start",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x2: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x7: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x1d: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x22: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.cc91d234fb3b",
+        "severity": "caution",
+        "title": "Endpoint: discord.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.b5dad10c192a",
+        "severity": "caution",
+        "title": "Endpoint: donate.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://subscribe.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.ac38247bd18a",
+        "severity": "caution",
+        "title": "Endpoint: subscribe.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.9d3ce8792d14",
+        "severity": "caution",
+        "title": "Endpoint: explore.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.8785017a999f",
+        "severity": "caution",
+        "title": "Endpoint: crypto.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://www.patreon.com/NightmareXIV"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.3641efc8bfda",
+        "severity": "caution",
+        "title": "Endpoint: www.patreon.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:ECommons.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Silkstring.dll: Dalamud.Hooking",
+          "metadata:Silkstring.dll: HookFromAddress",
+          "il:Silkstring.dll:Silkstring.Services.ChatInterceptor..ctor+0x4b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "artifact:Silkstring.dll: Dalamud.Hooking",
+          "artifact:Silkstring.dll: HookFromAddress",
+          "metadata:ECommons.dll: Dalamud.Hooking",
+          "metadata:ECommons.dll: SigScanner",
+          "metadata:ECommons.dll: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:Silkstring.dll: s://github.com/devoreofox/Silkstring",
+          "artifact:ECommons.dll: s://github.com/NightmareXIV/ECommons",
+          "artifact:ECommons.dll: /home/runner/work/ECommons/ECommons/repo/ECommons/obj/x64/Release/ECommons.pdb",
+          "artifact:ECommons.dll: s://www.patreon.com/NightmareXIV",
+          "artifact:ECommons.dll: s://subscribe.nightmarexiv.org",
+          "artifact:ECommons.dll: s://donate.nightmarexiv.org",
+          "artifact:ECommons.dll: s://crypto.nightmarexiv.org/",
+          "artifact:ECommons.dll: s://discord.nightmarexiv.org"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:ECommons.dll: AssemblyLoadContext",
+          "metadata:ECommons.dll: Assembly.Load",
+          "il:ECommons.dll:ECommons.Reflection.ReflectionHelper.GetTypeFromRuntimeAssembly+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+          "artifact:ECommons.dll: AssemblyLoadContext"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:ECommons.dll:ECommons.Hooks.ActionEffect.ProcessActionEffectDetour+0xdc: callvirt ActionEffectCallback.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxCreateDetour+0x45: callvirt ActorVfxCreateCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxDtorDetour+0x1f: callvirt ActorVfxDtorCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.SendAction.SendActionDetour+0x13: callvirt SendActionCallbackDelegate.Invoke"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:ECommons.dll:ECommons.DalamudServices.Legacy.LegacyHelpers.SetTarget+0x2: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:ECommons.dll: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.Opcodes.OpcodeUpdater.DownloadOpcodes+0x21: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.Networking.HttpClientProxyHelper.ApplyProxySettings+0x69: callvirt System.Net.Http.HttpClientHandler.set_Proxy: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x7: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x15: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass1_0.<DownloadOpcodes>b__0+0x3e: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0x2: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0xf: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.e6cb42e4f3a8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Silkstring.dll: https://github.com/devoreofox/Silkstring"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.76c400ff139c",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Silkstring/Silkstring.json: https://raw.githubusercontent.com/devoreofox/Silkstring/main/Silkstring/images/icon.png",
+          "artifact:Silkstring.json: https://raw.githubusercontent.com/devoreofox/Silkstring/main/Silkstring/images/icon.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.4838cea8dff4",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.3f89bd8dde4d",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:ECommons.dll: FileStream",
+          "metadata:ECommons.dll: WriteAllText",
+          "metadata:ECommons.dll: File.Move",
+          "metadata:ECommons.dll: WriteAllBytes",
+          "metadata:ECommons.dll: Directory.CreateDirectory",
+          "il:ECommons.dll:ECommons.LanguageHelpers.Localization.Save+0x39: call System.IO.File.WriteAllText: WriteAllText",
+          "il:ECommons.dll:ECommons.Configuration.DefaultSerializationFactory.WriteFile+0x6f: call System.IO.File.Move: File.Move",
+          "il:ECommons.dll:ECommons.Configuration.DefaultSerializationFactory.WriteFile+0x90: call System.IO.File.WriteAllText: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
+        "category": "privacy",
+        "description": "References APIs that can read or modify clipboard contents.",
+        "evidence": [
+          "artifact:ECommons.dll: System.Windows.Forms.Clipboard"
+        ],
+        "ruleId": "clipboard",
+        "severity": "informational",
+        "title": "Clipboard access"
+      }
+    ],
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 7,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 1234102,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.0.1.0",
+        "artifactBytes": 1234102,
+        "artifactSha256": "18835545eb86a29bd12d37255a36b7521b43a7a6ff66ebe002833428fca93e1e",
+        "catalogAssemblyVersion": "2.0.1.0",
+        "manifestInternalName": "Silkstring",
+        "manifestPath": "Silkstring/Silkstring.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1232354605/a3ab1616-23d3-42f5-ae39-912aab80d1db?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-08-31T17%3A43%3A57Z&rscd=attachment%3B+filename%3DSilkstring.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-08-31T16%3A43%3A57Z&ske=2026-08-31T17%3A43%3A57Z&sks=b&skv=2018-11-09&sig=NCByzfvHjE1ZDnGf8mw8clxJaeG5cdql7twbKlHiCUM%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODE5NjIwMywibmJmIjoxNzg4MTk1OTAzLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.5cLXY_30aJ3N-FvE8FHsZ8jcHLgzn9xUbd1q-YeYleo&response-content-disposition=attachment%3B%20filename%3DSilkstring.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 8,
+          "observedDestinationWithoutProfileCount": 8,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 15,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: crypto.nightmarexiv.org",
+        "Endpoint: discord.nightmarexiv.org",
+        "Endpoint: donate.nightmarexiv.org",
+        "Endpoint: explore.nightmarexiv.org",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: subscribe.nightmarexiv.org",
+        "Endpoint: www.patreon.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "privacy.clipboard",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 13,
+        "critical": 0,
+        "high": 2,
+        "informational": 7
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 75,
+          "exactVersionObservedCount": 73,
+          "families": {
+            "managed-assembly": 71,
+            "native": 2,
+            "nuget": 2
+          },
+          "fingerprint": "c613cc932277382d220be397febe9d45b7317661b00492ca5cebbf894db4728b",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 7,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayBack",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayBack",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayFront",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayFront",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igClosePopupToLevel",
+              "library": "cimgui",
+              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igFindWindowDisplayIndex",
+              "library": "cimgui",
+              "managedName": "igFindWindowDisplayIndex",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igGetCurrentWindow",
+              "library": "cimgui",
+              "managedName": "igGetCurrentWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetOpenFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetOpenFileName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetSaveFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetSaveFileName",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 4,
+            "observed": 69,
+            "required": 2
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 73,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 2,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 4,
+            "observed": 69,
+            "optional": 0,
+            "required": 2,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 75
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 10,
+          "destinationsUndetermined": false,
+          "hostCount": 8,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 10,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 5774
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "crypto.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://crypto.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "discord.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://discord.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "donate.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://donate.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "explore.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://explore.nightmarexiv.org/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/NightmareXIV/ECommons"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Ottermandias/Penumbra.Api"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/devoreofox/Silkstring"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/devoreofox/Silkstring/main/Silkstring/images/icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "subscribe.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://subscribe.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.patreon.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.patreon.com/NightmareXIV"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/devoreofox/Silkstring/releases/latest/download/Silkstring.zip",
+        "internalName": "Silkstring",
+        "manifestVersion": "2.0.1.0",
+        "observationId": 8096,
+        "observationKey": "manifest-a5980e66d6af64955f605122b7e6",
+        "repositoryUrl": "https://github.com/devoreofox/Silkstring",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 4937
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 4,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 10,
+        "uncompressedBytes": 1914454
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-b04d06992d6d12d2",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-4937",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-b4e09aead946b9fb2943",
+        "variantId": 4937,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-31T17:05:02Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "18835545eb86a29bd12d37255a36b7521b43a7a6ff66ebe002833428fca93e1e",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/devoreofox/Silkstring",
+          "https://release-assets.githubusercontent.com/github-production-release-asset/1232354605/a3ab1616-23d3-42f5-ae39-912aab80d1db"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/devoreofox/Silkstring",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 64384,
+    "scanned_at_utc": "2026-08-31T17:05:02Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/devoreofox/Silkstring",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 4937
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "18835545eb86a29bd12d37255a36b7521b43a7a6ff66ebe002833428fca93e1e",
+      "current_assembly_version": "2.0.1.0",
+      "current_scan_id": 64384,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-08-31T17:05:05Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 4937
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 46,
+      "artifact_only_count": 46,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.2",
+            "15.0.0.5",
+            "15.0.3.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Common",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamudtextedit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "DalamudTextEdit",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.0.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ecommons",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "ECommons",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.2.0.18"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.50.1.8109",
+            "7.55.1.8875"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.csharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.CSharp",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.visualbasic.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.VisualBasic.Core",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:penumbra.api",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Penumbra.Api",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "5.15.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:silkstring",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Silkstring",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.0.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.console",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.stacktrace",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.StackTrace",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.pipes",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Pipes",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.mail",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Mail",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.webproxy",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebProxy",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices.javascript",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices.JavaScript",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.intrinsics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Intrinsics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.loader",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Loader",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:terrafx.interop.windows",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "TerraFX.Interop.Windows",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.26100.5"
+          ]
+        },
+        {
+          "componentKey": "native:cimgui",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "cimgui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:comdlg32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "Comdlg32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:ecommons",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "ECommons",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.2.0.18"
+          ]
+        },
+        {
+          "componentKey": "nuget:penumbra.api",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Penumbra.Api",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "5.15.1"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-08-31T17:05:05Z",
+      "comparison_id": 2145,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 64384,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 4937,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0004/4937/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0004/4937/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 70935,
+          "encoding": "json",
+          "path": "derived/variants/0004/4937/dependency-resolutions.json",
+          "recordDigest": "cb059c5f609ca5ccaef89a9b75daba1c4950375b1839cbf0db8e83d79c84e95f",
+          "records": 75,
+          "sha256": "d12fbda92d4c13099f5dbad7bb2f2c4bf116bcbf459c5af92464756301d18f46"
+        }
+      ],
+      "recordDigest": "cb059c5f609ca5ccaef89a9b75daba1c4950375b1839cbf0db8e83d79c84e95f",
+      "records": 75
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0004/4937/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "67eb972f50e8f872586ea6a3b12a5b811a5b7261c1fed483c9bedc9a351f575f",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "b4da8e3b1c155febe77f05086da1d765050c467f47a90f89d3b26fa2a209ac05",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "e73f90f9a68b3393b70b20cc457771d53db02dc07b8512aea261a5d9cf632f36",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "873f00c9a1cac8077a7f42e85b41431bb803d972f9a940d0388b38d9e4f8ee13",
+        "records": 75,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "7d94e8b11b8e1e0a76561fe9c6eb393248d42f3c21c353d0b2e0b6d2eaea9a87",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "20cddb2b1ed0779795b05800d4d14cd8707f29a1c77a62f72c602770a42e4b60",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "f6ae8c3ded1303caced87d5e7157ffbde60efdde613c0940c278a178770e24f2",
+        "records": 715,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "fb6be797899cabad794ac03192a23599f4f4f336c3b583abcd97a60faac94182",
+        "records": 3749,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "a491f0ec6bf25535c21536663de529a2fe1edcf1d7133b4ba0356fc9f7407402",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "8bd4ad8b99d5bbbdac12055dbb2437f96b60c712a59f4635d128b63e49262096",
+        "records": 7,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "e5643dab3f705e0153c086ab644ea4a19ffaf2bcca88d42182d98a85bcc69203",
+        "records": 10,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "c0ff8357ea3581af0fa49941eda85253e8f540adc84074b0882e97ebf44a2b32",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "1e45ec0558ae0f9dd6a28475d7b81a7eaa4de5c06559e52d48e71c6a778647ef",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "5c37737d4366b9d95e7fec3402b09ebeca3bb435c10001429a05dd2ecfa87afb",
+        "records": 147,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-e78fb991c24b1fab3aa45124f34911b13c4a766510cf2b9de4dc498d5950ad83",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Silkstring",
+    "first_seen_utc": "2026-08-22T09:49:09Z",
+    "internal_name": "Silkstring",
+    "last_seen_utc": "2026-08-28T09:17:18Z",
+    "plugin_id": 1157
+  },
+  "pluginId": 1157,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Silkstring lets you create custom command aliases that expand into one or more chat commands, executed in order. Use /silkstring to open the settings window.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1220,
+      "summary": "Define custom command aliases that execute multiple commands in sequence.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/devoreofox/Silkstring",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "A command alias plugin for FFXIV Dalamud",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/devoreofox/Silkstring"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# Silkstring\n\nA Dalamud plugin for FFXIV that lets you define custom command aliases. Each alias expands into one or more lines that run in sequence: chat commands, chat messages, or a mix of both.\n\n## Features\n\n- Define custom aliases through an in-game GUI\n- Run multiple lines per alias, in order, with a configurable delay between them\n- Mix game commands and chat messages in a single alias\n- Leave notes in an alias with `#` comment lines\n- Insert live game state with variables such as `{character}` and `{job}`\n- Define your own variables and change them on the fly from inside an alias\n- Give an alias several triggers using a `|` separator\n- Organize aliases into collapsible folders with drag and drop\n- Set a friendly display name for an alias, separate from its trigger\n- Filter aliases by name, and import, export, or clone them\n- Enable or disable an alias without deleting it\n- Built-in help window with a live command tester\n- Syntax highlighting in the multiline editor, with customizable colors\n- Run commands only when a condition is true with `if` / `else if` / `else` blocks\n- Hold an alias until a condition is met with `:until`, and stop running aliases with `/silkstring cancel`\n- Cycle detection warns you if aliases would trigger each other in a loop\n\n## Installation\n\n1. Open XIVLauncher settings\n2. Navigate to **Dalamud**, then **Custom Plugin Repositories**\n3. Add the following URL:\n```\nhttps://raw.githubusercontent.com/devoreofox/Silkstring/main/repo.json\n```\n4. Open `/xlplugins` in-game and search for **Silkstring**\n\n## Usage\n\nType `/silkstring` to open the alias manager, or `/silkstring help` (or the info icon in the title bar) to open the help window. Use `/silkstring changelog` (or the scroll icon in the title bar) to view release notes; the changelog also appears automatically the first time you launch a new version.\n\nThe manager is a split panel: the list of aliases and folders is on the left, and the editor for the selected alias is on the right.\n\n### Creating and editing aliases\n\nThe buttons along the bottom of the left panel let you:\n\n- **New Alias** (plus icon): create a new alias and name it\n- **Import from Clipboard**: paste an alias that was exported elsewhere\n- **Clone Alias**: duplicate the selected alias\n- **New Folder**: create a folder to group aliases\n- **Delete**: remove the selected alias (hold **Shift + Ctrl** to enable the button)\n\nSelect an alias on the left to edit it on the right. The editor has a checkbox to enable or disable the alias, a field for its trigger, and the list of lines it runs.\n\n- Click **+** to add a line\n- Hold **Shift + Ctrl** and click the trash icon to remove a line\n- Changes are saved automatically\n\nRight-click an alias for more options: **Rename** (sets a display name), **Clear Display Name**, and **Export to Clipboard**. Right-click a folder to **Rename** or **Delete** it. Deleting a folder keeps its aliases and moves them back to the unsorted list.\n\n### Triggers\n\nA trigger is what you type in chat to fire the alias. Triggers are defined without a leading slash but typed with one. For example, an alias with the trigger `hello` is fired by typing `/hello`.\n\nYou can give one alias several triggers by separating them with a pipe:\n```\nmew|meow|mreow\n```\nTyping any of `/mew`, `/meow`, or `/mreow` fires the same alias.\n\nTriggers cannot contain spaces, and should not collide with built-in game or Dalamud commands.\n\n### Commands and chat messages\n\nEach line of an alias is sent exactly as written:\n\n- A line that starts with `/` runs as a game command\n- A line that does not start with `/` is sent as a chat message to whatever channel you currently have active (say, party, free company, and so on)\n\n```\n/say Hello!\n/emote waves\ngood luck, everyone!\n```\nThis runs `/say Hello!`, then `/emote waves`, then sends \"good luck, everyone!\" to your current channel.\n\n### Comments\n\nAny line that starts with `#` is a comment. It is left out when the alias runs and shown in its own color in the editor, so you can label an alias or leave yourself notes:\n\n```\n# heal the party if anyone is hurt\nif ({hpp} < 50) {\n    /ac Medica II\n}\n```\n\nOnly whole lines are comments. A `#` partway through a line is treated as normal text, so `/say I'm #1!` still sends as written. You can change the comment color in the settings.\n\n### Variables\n\nVariables let you insert live game values into a line using curly brace syntax. They are case-insensitive and resolved at the moment the alias fires, so they always reflect your current state. If a value cannot be read (for example when you are not logged in) the variable is left as written rather than blanked out.\n\n```\n/say I am {character}, a level {level} {job} from {world}!\n```\n\nSilkstring includes variables for your character, job, HP and MP, combat state, target, currency, emote and pose state, the time and date, and more, and the list keeps growing. For the full, always-current list with live values, open the Variables tab of the help window (`/silkstring help`). The command tester at the top of that window shows resolved output as you type.\n\nThe time variables come in two flavors: `{time}` (like 3:45 PM) is for showing the time, while `{time24}` (like 15:45), `{date}`, `{hour}`, and `{minute}` are made for comparing, so you can gate lines by the clock (see Conditionals below). There is also `{daypart}`, which is simply morning, afternoon, evening, or night, and `{utc}` and `{utcdate}` for UTC (server) time.\n\nYou can also define your own variables with `/silkstring variables` and use them just like the built-in ones (see User Variables below).\n\n### Parameters\n\nAliases can take arguments. Anything typed after the trigger becomes a numbered argument (starting at `0`) that you insert with curly braces:\n\n```\nAlias \"greet\" line: /wave {0}\nType in chat: /greet Friend\nRuns: /wave Friend\n```\n\nWrap a value in quotes to keep multiple words as a single argument: `/greet \"Jane Doe\"` makes `{0}` equal `Jane Doe`.\n\nYou can also pull ranges of arguments. Range ends are exclusive, the same as C# ranges:\n\n| Token | Meaning |\n| --- | --- |\n| `{0}`, `{1}`, ... | a single argument by position (starts at 0) |\n| `{n..}` | argument n through the end |\n| `{..n}` | the start up to (not including) argument n |\n| `{n..m}` | argument n up to (not including) argument m |\n| `{*}` | all arguments |\n\nIf you reference an argument that was not supplied, it is left as written (e.g. `{3}` stays `{3}`).\n\n### Conditionals\n\nAliases can run commands only when a condition is true, using `if` blocks with braces:\n\n```\nif ({hpp} < 50) {\n    /ac Cure\n}\nelse {\n    /say all good\n}\n```\n\nEverything inside the braces after `if (...)` runs only when the condition holds. Add an `else { }` block for the other case, or chain several checks with `else if (...)`, which runs the first branch whose condition is true:\n\n```\nif ({hpp} < 25) {\n    /ac Benediction\n}\nelse if ({hpp} < 50) {\n    /ac Cure\n}\nelse {\n    /say all good\n}\n```\n\nBlocks can hold multiple lines and can be nested inside each other. Indent with Tab and remove indentation with Shift + Tab to keep nested blocks readable.\n\nA condition compares values with `==`, `!=`, `<`, `>`, `<=`, `>=`, and you can combine comparisons with `&&` (and) and `||` (or). Either side can be a variable, a parameter, or plain text, so conditions can react to game state or to what you typed:\n\n```\nif ({incombat} && {hpp} < 50) {\nif ({job} == WHM || {job} == SCH) {\nif ({0} == on) {\nif ({time24} >= 17:00 || {time24} <= 05:00) {\n```\n\nThat last line reacts to the clock: because `{time24}` and `{date}` are written with leading zeros (like 09:00 and 2026-07-09), they sort in the right order and can be compared with `<`, `>`, `<=`, and `>=`. This is why `{time24}` is the one to compare against, while `{time}` (like 3:45 PM) is just for showing.\n\nText comparisons are case-insensitive, and numbers compare as numbers. The editor colors a brace or condition red when it is not valid, marks the line, and lists any open block or condition it cannot understand above the editor.\n\nYou can stop the rest of an alias early with a `:return` line, which is handy as a guard near the top:\n\n```\nif ({incombat}) {\n    :return\n}\n/wave\ngood luck, everyone!\n```\n\nYou can also pause between lines with `:wait`, followed by a number of seconds:\n\n```\n/ac Raise\n:wait 2\n/say Up you get!\n```\n\nThe wait accepts decimals (`:wait 1.5`) and can take its duration from a variable or parameter (`:wait {0}`). Waits are capped at 60 seconds, and a `:wait` inside a condition only pauses when that branch actually runs. Like the other control lines, `:wait` is never sent to chat, and the editor warns you if a duration is invalid.\n\nYou can also hold an alias in place until a condition becomes true with `:until`, then let it carry on:\n\n```\n/sit\n:until {emoting} == false\n/say Up you get!\n```\n\n`:until` pauses at that line until the condition is true, for example waiting until an emote or pose ends. If the condition never comes true, it gives up after a timeout you can set in the settings and then continues. Add `-unsafe` to wait with no time limit, such as `:until {emoting} == false -unsafe`, but unsafe waits have to be turned on in the settings first. You can stop any running alias at any time with `/silkstring cancel`.\n\n### User Variables\n\nAlongside the built-in variables, you can define your own. Open the Variables window with `/silkstring variables`, type a name, and give it a value. Names can use letters, numbers, and underscores, and cannot reuse a built-in variable name. You can also give each one an optional description, which appears next to it in the Variables tab of the help window.\n\nYour variables work just like the built-in ones: insert them anywhere with `{name}`, and they appear in the Variables tab of the help window.\n\nYou can change a variable from inside an alias with `:set`:\n\n```\n:set mode raid\n:set greeting hi {0}\n```\n\nThe value is resolved when the line runs, so it can include other variables and parameters, and the result is saved automatically and kept between sessions. A `:set` only affects a variable you have already created. If it names one that does not exist, nothing happens and the alias editor warns you.\n\nBecause conditions treat `true` and `false` the same way as the built-in switches, a variable makes a handy on/off flag. Toggle it in one alias with `:set burst true` (or `false`), and check it in another:\n\n```\nif ({burst}) {\n    /say bursting\n}\n```\n\n### Folders\n\nCreate a folder with the **New Folder** button, then drag aliases into or out of it. Folders can be collapsed, renamed, and deleted from their right-click menu.\n\n### The editor\n\nAliases are edited in a single multiline text box that highlights your syntax as you type: commands, keywords, variables, parameters, quoted text, and option flags each get their own color, and anything malformed (a bad `:wait`, an unclosed block, an unknown `:set` name, or a broken condition) is shown in red and marked on the line. It shows line numbers, which you can turn off in the settings. Tab indents the current lines and Shift + Tab removes indentation, so you can format blocks quickly.\n\n### Settings\n\nOpen settings with the cog icon in the Silkstring title bar, or the cog next to Silkstring in `/xlplugins`. You can set the delay between lines in milliseconds (0 to 1000, default 100), set how long an `:until` waits before giving up, allow unsafe waits that have no time limit, toggle line numbers in the editor, and open the Colors section to recolor the editor and interface to your taste.\n\n## Notes\n\n- Lines starting with `/` run as game commands; lines without a `/` are sent to your active chat channel\n- Existing aliases are migrated automatically on update, and a backup of your previous configuration is saved beside it before any changes are made\n- The following names cannot be used as triggers: `silkstring`, `xlplugins`, `xlsettings`, `xldclose`, `xldev`\n- Aliases do not work inside macros by design\n\n## License\n\nAGPL-3.0-or-later\n\n## Attribution\n\nSilkstring is free software under the AGPL-3.0, and attribution is required. If you fork it, redistribute it, or reuse its code, you must keep the existing copyright and license notices in place and credit the original author (Oreo / devoreofox) with a visible link back to this repository (https://github.com/devoreofox/Silkstring). Please do not remove or hide that attribution.",
+      "title": "Silkstring",
+      "url": "https://github.com/devoreofox/Silkstring"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "84742bc800ee2757c71139989d9c0af55b0e22a7ac5915e1d9df8aebae31c56d",
+        "records": 2
+      },
+      "behaviorConsistency": {
+        "recordDigest": "426f03d383304dd67ce83a6c316f15904418caf9df6137549ad00b29eb7426b8",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "8d20c1b9da6cdfee93b7e52fb1e40c8b00f42f9ff050724fbcd5461f58661a6c",
+        "records": 15
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "267c7b0314315beb67cbafcc17c2863a6228d8e13ebdbda4a6c40f177cb233e0",
+        "records": 22
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "18835545eb86a29bd12d37255a36b7521b43a7a6ff66ebe002833428fca93e1e",
+    "artifact_url": "https://github.com/devoreofox/Silkstring/releases/latest/download/Silkstring.zip",
+    "assembly_version": "2.0.1.0",
+    "capabilities_json": [
+      "Character target control",
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: crypto.nightmarexiv.org",
+      "Endpoint: discord.nightmarexiv.org",
+      "Endpoint: donate.nightmarexiv.org",
+      "Endpoint: explore.nightmarexiv.org",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: subscribe.nightmarexiv.org",
+      "Endpoint: www.patreon.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access"
+    ],
+    "caution_count": 13,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 7,
+    "plugin_id": 1157,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+      "artifactBytes": 1234102,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.0.1.0",
+        "artifactBytes": 1234102,
+        "artifactSha256": "18835545eb86a29bd12d37255a36b7521b43a7a6ff66ebe002833428fca93e1e",
+        "catalogAssemblyVersion": "2.0.1.0",
+        "manifestInternalName": "Silkstring",
+        "manifestPath": "Silkstring/Silkstring.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1232354605/a3ab1616-23d3-42f5-ae39-912aab80d1db?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-08-31T17%3A43%3A57Z&rscd=attachment%3B+filename%3DSilkstring.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-08-31T16%3A43%3A57Z&ske=2026-08-31T17%3A43%3A57Z&sks=b&skv=2018-11-09&sig=NCByzfvHjE1ZDnGf8mw8clxJaeG5cdql7twbKlHiCUM%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODE5NjIwMywibmJmIjoxNzg4MTk1OTAzLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.5cLXY_30aJ3N-FvE8FHsZ8jcHLgzn9xUbd1q-YeYleo&response-content-disposition=attachment%3B%20filename%3DSilkstring.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 8,
+          "observedDestinationWithoutProfileCount": 8,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 15,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: crypto.nightmarexiv.org",
+        "Endpoint: discord.nightmarexiv.org",
+        "Endpoint: donate.nightmarexiv.org",
+        "Endpoint: explore.nightmarexiv.org",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: subscribe.nightmarexiv.org",
+        "Endpoint: www.patreon.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "privacy.clipboard",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 13,
+        "critical": 0,
+        "high": 2,
+        "informational": 7
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 75,
+          "exactVersionObservedCount": 73,
+          "families": {
+            "managed-assembly": 71,
+            "native": 2,
+            "nuget": 2
+          },
+          "fingerprint": "c613cc932277382d220be397febe9d45b7317661b00492ca5cebbf894db4728b",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 7,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayBack",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayBack",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayFront",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayFront",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igClosePopupToLevel",
+              "library": "cimgui",
+              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igFindWindowDisplayIndex",
+              "library": "cimgui",
+              "managedName": "igFindWindowDisplayIndex",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igGetCurrentWindow",
+              "library": "cimgui",
+              "managedName": "igGetCurrentWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetOpenFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetOpenFileName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetSaveFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetSaveFileName",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 4,
+            "observed": 69,
+            "required": 2
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 73,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 2,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 4,
+            "observed": 69,
+            "optional": 0,
+            "required": 2,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 75
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 10,
+          "destinationsUndetermined": false,
+          "hostCount": 8,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 10,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 5774
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "crypto.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://crypto.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "discord.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://discord.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "donate.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://donate.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "explore.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://explore.nightmarexiv.org/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/NightmareXIV/ECommons"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Ottermandias/Penumbra.Api"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/devoreofox/Silkstring"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/devoreofox/Silkstring/main/Silkstring/images/icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "subscribe.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://subscribe.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.patreon.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.patreon.com/NightmareXIV"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/devoreofox/Silkstring/releases/latest/download/Silkstring.zip",
+        "internalName": "Silkstring",
+        "manifestVersion": "2.0.1.0",
+        "observationId": 8096,
+        "observationKey": "manifest-a5980e66d6af64955f605122b7e6",
+        "repositoryUrl": "https://github.com/devoreofox/Silkstring",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 4937
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 4,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 10,
+        "uncompressedBytes": 1914454
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-957aa820a6915dff",
+        "attemptId": "attempt-v2-b04d06992d6d12d2",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ec187e366e707586",
+        "definitionsRevision": "defs-v1-ae0f31fe8120cbeb",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "baseline_scan",
+        "queueKey": "variant-4937",
+        "queueSeedRevision": "queue-seed-v2-c2305bce409d1712",
+        "reasons": [
+          "baseline_scan"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "8076ff639f26e1d3de1ef13596557785a5bc0a61003814f090862b81b117c000",
+        "scannerRevision": "scanner-v1-f38c93805589bb3d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-8734f91581075dba",
+        "targetFingerprint": "artifact-target-v2-b4e09aead946b9fb2943",
+        "variantId": 4937,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-31T17:05:02Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "18835545eb86a29bd12d37255a36b7521b43a7a6ff66ebe002833428fca93e1e",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/devoreofox/Silkstring",
+          "https://release-assets.githubusercontent.com/github-production-release-asset/1232354605/a3ab1616-23d3-42f5-ae39-912aab80d1db"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/devoreofox/Silkstring",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 64384,
+    "scanned_at_utc": "2026-08-31T17:05:02Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 752,
+    "source_repository": "https://github.com/devoreofox/Silkstring",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 4937
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "6180a2379fc4b91975d554b88c0642475c1af112d97111f837415469bbf6e2d4",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"3ebb5a51880d6e9cd93994ab0b6733d5c9322f2730d5dc0387c2aa51a2fefd8d\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-08-28T09:17:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-28T09:17:18Z",
+    "name": "devoreofox/Silkstring",
+    "plugin_count": 1,
+    "provider": "devoreofox/Silkstring",
+    "source_id": 752,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/devoreofox/Silkstring/main/repo.json"
+  },
+  "sourceId": 752,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "2.0.1.0",
+    "author": "Oreo",
+    "authors_json": [
+      "Oreo"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "Silkstring lets you create custom command aliases that expand into one or more chat commands, executed in order. Use /silkstring to open the settings window.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/devoreofox/Silkstring/releases/latest/download/Silkstring.zip",
+    "download_link_testing": "https://github.com/devoreofox/Silkstring/releases/latest/download/Silkstring.zip",
+    "download_link_update": "https://github.com/devoreofox/Silkstring/releases/latest/download/Silkstring.zip",
+    "first_seen_utc": "2026-08-27T19:51:49Z",
+    "icon_url": "https://raw.githubusercontent.com/devoreofox/Silkstring/main/Silkstring/images/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-27T19:51:49Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "Silkstring",
+    "plugin_id": 1157,
+    "punchline": "Define custom command aliases that execute multiple commands in sequence.",
+    "raw_manifest_json": {
+      "AssemblyVersion": "2.0.1.0",
+      "Author": "Oreo",
+      "DalamudApiLevel": 15,
+      "Description": "Silkstring lets you create custom command aliases that expand into one or more chat commands, executed in order. Use /silkstring to open the settings window.",
+      "DownloadLinkInstall": "https://github.com/devoreofox/Silkstring/releases/latest/download/Silkstring.zip",
+      "DownloadLinkTesting": "https://github.com/devoreofox/Silkstring/releases/latest/download/Silkstring.zip",
+      "DownloadLinkUpdate": "https://github.com/devoreofox/Silkstring/releases/latest/download/Silkstring.zip",
+      "IconUrl": "https://raw.githubusercontent.com/devoreofox/Silkstring/main/Silkstring/images/icon.png",
+      "InternalName": "Silkstring",
+      "Name": "Silkstring",
+      "Punchline": "Define custom command aliases that execute multiple commands in sequence.",
+      "RepoUrl": "https://github.com/devoreofox/Silkstring",
+      "Tags": [
+        "commands",
+        "alias",
+        "utility"
+      ],
+      "Version": "2.0.1.0"
+    },
+    "repo_url": "https://github.com/devoreofox/Silkstring",
+    "source_entry_key": "silkstring|2.0.1.0|15|0|0",
+    "source_id": 752,
+    "tags_json": [
+      "commands",
+      "alias",
+      "utility"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 4937
+  },
+  "variantId": 4937
+}
