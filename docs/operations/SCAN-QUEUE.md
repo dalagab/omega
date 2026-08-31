@@ -4,13 +4,19 @@ DeltaScope's **Operations → Scan Queue** page explains the already-published S
 
 ## Why scanning can appear to start at A again
 
-SigmaScope currently uses the deterministic `coverage-first-v1` selection policy. Pending work is divided into three lanes:
+SigmaScope uses the deterministic `plugin-coverage-first-v2` selection policy. Its first goal is not exhaustive variant coverage: it is to establish at least one current artifact-backed security result for every active plugin that has an obtainable artifact.
 
-1. **First coverage** — an active artifact variant has no published current scan and has not yet been attempted.
-2. **First-coverage retry** — artifact work was attempted, but that active variant is still uncovered.
-3. **Covered refresh / follow-up** — the variant already has current artifact coverage and needs re-analysis, source follow-up, advisory refresh, or another bounded revisit.
+Pending work is divided into three lanes:
 
-Lane 1 is exhausted before lane 2, and both are exhausted before lane 3. Reason priority orders work *within* a lane. When two items have the same lane and priority, the queue uses stable deterministic tie-breakers including the current scan timestamp and then plugin `InternalName`. A large new first-coverage wave can therefore visibly return to names beginning with **A** even though older Security Evidence still exists.
+1. **Plugin first coverage** — an artifact candidate belongs to a plugin for which no current variant has a published artifact scan and that candidate has not yet been attempted.
+2. **Plugin first-coverage retry/fallback** — that plugin is still uncovered after an attempted candidate; another eligible sibling variant may therefore become its representative.
+3. **Covered refresh / depth** — secondary variants for already-covered plugins, artifact re-analysis, source follow-up, advisory refresh, and other bounded revisits.
+
+Within the first two lanes, source provenance is a scheduling preference: **official** sources first, then **curated/known** sources, then other **discovered** sources. Stable artifacts are preferred over testing artifacts. These classes are not security verdicts and do not imply that an official or curated plugin is safe.
+
+As soon as one artifact variant completes successfully, that plugin is considered represented for queue ordering and its remaining variants move behind still-uncovered plugins. A future catalog seed also carries whether a sibling variant already has published current coverage, so a newly discovered secondary variant cannot accidentally make an already-covered plugin look uncovered.
+
+Lane 1 is exhausted before lane 2, and both are exhausted before lane 3. Reason priority and stable deterministic tie-breakers order work inside those constraints. A large first-coverage wave can still visibly revisit earlier names, but it should no longer spend multiple baseline slots on the same plugin while another active plugin remains wholly unrepresented.
 
 This is different from a baseline security rebuild.
 
