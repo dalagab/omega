@@ -1,0 +1,308 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:protobuf-net.dll: Reflection.Emit",
+      "il:protobuf-net.dll:ProtoBuf.Meta.RuntimeTypeModel.EnableAutoCompile+0x22: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:protobuf-net.dll:ProtoBuf.Meta.RuntimeTypeModel.EnableAutoCompile+0x29: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:protobuf-net.dll:ProtoBuf.Meta.RuntimeTypeModel.EnableAutoCompile+0x35: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:protobuf-net.dll:ProtoBuf.Meta.RuntimeTypeModel.EnableAutoCompile+0x42: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:protobuf-net.dll:ProtoBuf.Meta.RuntimeTypeModel.EnableAutoCompile+0x4d: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:protobuf-net.dll:ProtoBuf.Meta.RuntimeTypeModel.EnableAutoCompile+0x58: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:protobuf-net.dll:ProtoBuf.Meta.RuntimeTypeModel.Override+0xa2: callvirt System.Reflection.Emit.TypeBuilder.DefineMethod: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:XivIpc.dll: /etc/group",
+      "artifact:MessagePack.dll: s://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: /home/runner/work/MessagePack-CSharp/MessagePack-CSharp/obj/src/MessagePack/Release/net9.0/MessagePack.pdb",
+      "artifact:MasterOfPuppets.dll: s://github.com/zunetrix/MasterOfPuppets.git",
+      "artifact:MasterOfPuppets.dll: s://discord.gg/BTsHyBzGsN",
+      "artifact:MasterOfPuppets.dll: s://v2.xivapi.com/api/asset/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:MasterOfPuppets.dll: SigScanner",
+      "metadata:MasterOfPuppets.dll: Dalamud.Hooking",
+      "metadata:MasterOfPuppets.dll: HookFromAddress",
+      "il:MasterOfPuppets.dll:MasterOfPuppets.Chat..cctor+0x7: call MasterOfPuppets.DalamudApi.get_SigScanner: SigScanner",
+      "il:MasterOfPuppets.dll:MasterOfPuppets.Chat..cctor+0x13: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:MasterOfPuppets.dll:MasterOfPuppets.Chat..cctor+0x25: call MasterOfPuppets.DalamudApi.get_SigScanner: SigScanner",
+      "il:MasterOfPuppets.dll:MasterOfPuppets.Chat..cctor+0x31: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:MasterOfPuppets.dll:MasterOfPuppets.GameFunctions..cctor+0x14: call MasterOfPuppets.DalamudApi.get_SigScanner: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:XivIpc.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:XivIpc.dll: DllImportAttribute",
+      "il:XivIpc.dll:XivIpc.Messaging.LinuxBrokerInterop..cctor+0x16: newobj System.Runtime.InteropServices.DllImportResolver..ctor: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Memory.Data.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Primitives.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.NET.StringTools.dll: http://www.microsoft.com0/",
+      "artifact:System.Memory.Data.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MasterOfPuppets.dll: https://v2.xivapi.com/api/asset/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0543bcb42a31",
+    "severity": "caution",
+    "title": "Endpoint: v2.xivapi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:protobuf-net.Core.dll: https://stackoverflow.com/q/2152978/23354"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.276522ffc865",
+    "severity": "caution",
+    "title": "Endpoint: stackoverflow.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:protobuf-net.Core.dll: https://protobuf-net.github.io/protobuf-net/contract_first"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8c1980609ffe",
+    "severity": "caution",
+    "title": "Endpoint: protobuf-net.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MasterOfPuppets.json: https://i.imgur.com/uFq8py7.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b606f5f88263",
+    "severity": "caution",
+    "title": "Endpoint: i.imgur.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:protobuf-net.Core.dll: https://stackoverflow.com/q/11564914/23354"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cb0f497faf1a",
+    "severity": "caution",
+    "title": "Endpoint: stackoverflow.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:XivIpc.dll: System.Net.Sockets",
+      "metadata:XivIpc.dll: Socket.Connect",
+      "il:XivIpc.dll:XivIpc.Messaging.LinuxBrokerInterop.GetRawFd+0x1: callvirt System.Net.Sockets.Socket.get_Handle: System.Net.Sockets",
+      "il:XivIpc.dll:XivIpc.Messaging.UnixSidecarProcessManager.CanConnect+0xe: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:XivIpc.dll:XivIpc.Messaging.UnixSidecarProcessManager.CanConnect+0x1a: callvirt System.Net.Sockets.Socket.set_ReceiveTimeout: System.Net.Sockets",
+      "il:XivIpc.dll:XivIpc.Messaging.UnixSidecarProcessManager.CanConnect+0x25: callvirt System.Net.Sockets.Socket.set_SendTimeout: System.Net.Sockets",
+      "il:XivIpc.dll:XivIpc.Messaging.UnixSidecarProcessManager.CanConnect+0x2c: newobj System.Net.Sockets.UnixDomainSocketEndPoint..ctor: System.Net.Sockets",
+      "il:XivIpc.dll:XivIpc.Messaging.UnixSidecarProcessManager.CanConnect+0x31: callvirt System.Net.Sockets.Socket.Connect: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:XivIpc.dll: System.Diagnostics.Process",
+      "metadata:XivIpc.dll: ProcessStartInfo",
+      "metadata:XivIpc.dll: Process.Start",
+      "metadata:XivIpc.dll: ShellExecute",
+      "il:XivIpc.dll:XivIpc.Messaging.BrokerStateSnapshot.TryTerminate+0x2d: call System.Diagnostics.Process.GetProcessById: System.Diagnostics.Process",
+      "il:XivIpc.dll:XivIpc.Messaging.BrokerStateSnapshot.TryTerminate+0x34: callvirt System.Diagnostics.Process.get_HasExited: System.Diagnostics.Process",
+      "il:XivIpc.dll:XivIpc.Messaging.BrokerStateSnapshot.TryTerminate+0x41: callvirt System.Diagnostics.Process.Kill: System.Diagnostics.Process",
+      "il:XivIpc.dll:XivIpc.Messaging.BrokerStateSnapshot.TryTerminate+0x4f: callvirt System.Diagnostics.Process.WaitForExit: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:XivIpc.dll: FileStream",
+      "metadata:XivIpc.dll: Directory.CreateDirectory",
+      "metadata:XivIpc.dll: File.Move",
+      "metadata:XivIpc.dll: WriteAllText",
+      "metadata:XivIpc.dll: File.Delete",
+      "metadata:XivIpc.dll: Directory.Delete",
+      "il:XivIpc.dll:XivIpc.Messaging.BrokeredChannelJournal.Create+0x27: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:XivIpc.dll:XivIpc.Messaging.BrokeredChannelJournal.Create+0x37: call XivIpc.Messaging.BrokeredChannelJournal.OpenFileStream: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MasterOfPuppets.dll: https://discord.gg/BTsHyBzGsN"
+    ],
+    "rule_id": "network.endpoint.community-invite.f0a125fc6738",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3b676f6154bf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KTrie.dll: https://github.com/kpol/trie"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3bc0a89436e7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MasterOfPuppets.json: https://github.com/zunetrix/MasterOfPuppets"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.68dfbde69171",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:protobuf-net.dll: https://github.com/protobuf-net/protobuf-net",
+      "artifact:protobuf-net.Core.dll: https://github.com/protobuf-net/protobuf-net"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.810c99f036fe",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Primitives.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/runtime",
+      "artifact:System.Memory.Data.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Logging.Abstractions.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MasterOfPuppets.dll: https://github.com/zunetrix/MasterOfPuppets.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c281ebebf8ca",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivIpc.dll: https://github.com/pffxivtools/<redacted>/releases/latest/download/XivIpc.NativeHost-linux-x64.tar.gz"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e9a2c712f0ae",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f2dfd1030921",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:XivIpc.dll: System.Net.Http.HttpClient",
+      "il:XivIpc.dll:XivIpc.Messaging.UnixSidecarProcessManager.DownloadNativeHostArchive+0xb: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:XivIpc.dll:XivIpc.Messaging.UnixSidecarProcessManager..cctor+0xc: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:XivIpc.dll:XivIpc.Messaging.UnixSidecarProcessManager..cctor+0x1a: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
