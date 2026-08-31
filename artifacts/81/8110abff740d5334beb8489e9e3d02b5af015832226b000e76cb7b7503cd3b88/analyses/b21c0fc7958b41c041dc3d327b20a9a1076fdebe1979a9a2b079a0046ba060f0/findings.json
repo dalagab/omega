@@ -1,0 +1,174 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for mouse input injection. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:SeletRollItem.dll:SeletRollItem.MouseDo.SendMouse+0x48: call SeletRollItem.MouseDo.QfuY36JHbn -> user32.dll!mouse_event"
+    ],
+    "rule_id": "automation.input.mouse.inject",
+    "severity": "high",
+    "title": "Mouse input injection"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:SeletRollItem.dll: Reflection.Emit",
+      "il:SeletRollItem.dll:SKAjI8fjixwA1DIiT0b.HgXqckfqa1AJnPGftYJ.KHGfvgA0NT+0x591: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:SeletRollItem.dll:SKAjI8fjixwA1DIiT0b.HgXqckfqa1AJnPGftYJ.KHGfvgA0NT+0x59a: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:SeletRollItem.dll:SKAjI8fjixwA1DIiT0b.HgXqckfqa1AJnPGftYJ.KHGfvgA0NT+0x5cc: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:SeletRollItem.dll:SKAjI8fjixwA1DIiT0b.HgXqckfqa1AJnPGftYJ.KHGfvgA0NT+0x5dd: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:SeletRollItem.dll:SKAjI8fjixwA1DIiT0b.HgXqckfqa1AJnPGftYJ.KHGfvgA0NT+0x5ee: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:SeletRollItem.dll:SKAjI8fjixwA1DIiT0b.HgXqckfqa1AJnPGftYJ.KHGfvgA0NT+0x5ff: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:SeletRollItem.dll:SKAjI8fjixwA1DIiT0b.HgXqckfqa1AJnPGftYJ.KHGfvgA0NT+0x612: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:SeletRollItem.dll: e:///",
+      "artifact:runtimes/win/lib/net7.0/System.Management.dll: s://github.com/dotnet/runtime",
+      "artifact:runtimes/win/lib/net7.0/System.Management.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:runtimes/win/lib/net7.0/System.Management.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:runtimes/win/lib/net7.0/System.Management.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:runtimes/win/lib/net7.0/System.Management.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:runtimes/win/lib/net7.0/System.Management.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@",
+      "artifact:runtimes/win/lib/net7.0/System.Management.dll: p://www.microsoft.com0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:SeletRollItem.dll: SigScanner",
+      "metadata:SeletRollItem.dll: Dalamud.Hooking",
+      "metadata:SeletRollItem.dll: HookFromAddress",
+      "il:SeletRollItem.dll:SeletRollItem.KeySelf..ctor+0x12: call SeletRollItem.DalamudApi.get_SigScanner: SigScanner",
+      "il:SeletRollItem.dll:SeletRollItem.KeySelf..ctor+0x2e: call SeletRollItem.DalamudApi.get_SigScanner: SigScanner",
+      "il:SeletRollItem.dll:SeletRollItem.KeySelf..ctor+0x74: call SeletRollItem.DalamudApi.get_SigScanner: SigScanner",
+      "il:SeletRollItem.dll:SeletRollItem.SeletRollItem..ctor+0xae: call SeletRollItem.DalamudApi.get_SigScanner: SigScanner",
+      "il:SeletRollItem.dll:SeletRollItem.SeletRollItem..ctor+0xda: call SeletRollItem.DalamudApi.get_SigScanner: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:SeletRollItem.dll: DllImportAttribute",
+      "metadata:System.Management.dll: System.Runtime.InteropServices.DllImport",
+      "artifact:System.Management.dll: LoadLibrary",
+      "metadata:runtimes/win/lib/net7.0/System.Management.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:runtimes/win/lib/net7.0/System.Management.dll: DllImportAttribute",
+      "metadata:runtimes/win/lib/net7.0/System.Management.dll: GetProcAddress",
+      "metadata:runtimes/win/lib/net7.0/System.Management.dll: LoadLibrary",
+      "il:runtimes/win/lib/net7.0/System.Management.dll:System.Management.WmiNetUtilsHelper..cctor+0x56: call Kernel32.LoadLibrary: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Management.dll: http://www.microsoft.com0/",
+      "artifact:runtimes/win/lib/net7.0/System.Management.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:SeletRollItem.dll: System.Diagnostics.Process",
+      "artifact:SeletRollItem.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:runtimes/win/lib/net7.0/System.Management.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes/win/lib/net7.0/System.Management.dll: RegistryKey",
+      "il:runtimes/win/lib/net7.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net7.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes/win/lib/net7.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net7.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: RegistryKey",
+      "il:runtimes/win/lib/net7.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net7.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:SeletRollItem.dll: FileStream",
+      "il:SeletRollItem.dll:SKAjI8fjixwA1DIiT0b.HgXqckfqa1AJnPGftYJ.JGkfylKyIw+0xb: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:SeletRollItem.dll: FileStream",
+      "metadata:runtimes/win/lib/net7.0/System.Management.dll: FileStream",
+      "il:runtimes/win/lib/net7.0/System.Management.dll:System.Management.ManagementClassGenerator.GenerateCode+0x37: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:runtimes/win/lib/net7.0/System.Management.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Management.dll: https://github.com/dotnet/runtime",
+      "artifact:runtimes/win/lib/net7.0/System.Management.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ExposedObject.dll: https://github.com/skolima/ExposedObject.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.adc54a83585b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:SeletRollItem.dll: System.Net.Http.HttpClient",
+      "il:SeletRollItem.dll:noQCfdhEZ6ShPreUiYg.nSABNChkko3LHpbW6p3..ctor+0x1a: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
