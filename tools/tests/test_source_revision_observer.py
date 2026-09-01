@@ -10,6 +10,7 @@ from unittest.mock import patch
 import common
 import public_git_source
 import source_revision_observer
+import source_resolution
 
 
 class SourceRevisionObserverTests(unittest.TestCase):
@@ -50,8 +51,35 @@ class SourceRevisionObserverTests(unittest.TestCase):
             repositories = source_revision_observer.catalog_repositories(root)
             self.assertEqual(["https://github.com/example/plugin"], repositories)
 
+
+    def test_non_git_download_endpoints_are_classified_without_git_observation(self) -> None:
+        cases = [
+            ("catalog-source", "https://aetherment.sevii.dev/plugin/install", "endpoint"),
+            ("catalog-source", "https://aonyx.ffxiv.wang/Plugin/Download/PixelPerfect", "endpoint"),
+            ("artifact-stable", "https://downloads.example.invalid/plugin/latest", "artifact"),
+            ("catalog-source", "https://repo.example.invalid/pluginmaster.json", "manifest"),
+        ]
+        records = source_resolution.source_location_records((origin, url) for origin, url, _ in cases)
+        self.assertEqual([kind for _, _, kind in cases], [record["kind"] for record in records])
+        self.assertFalse(any(record.get("repository") for record in records))
+
+    def test_known_forge_and_explicit_repo_metadata_remain_repository_candidates(self) -> None:
+        self.assertEqual(
+            "https://gitlab.com/example/plugin",
+            source_resolution.classify_source_location("https://gitlab.com/example/plugin", origin="catalog-source")["repository"],
+        )
+        self.assertEqual(
+            "https://forge.example.invalid/team/plugin",
+            source_resolution.classify_source_location("https://forge.example.invalid/team/plugin", origin="repo-url")["repository"],
+        )
+
     def test_observe_emits_stable_machine_revision_and_failure_rows(self) -> None:
-        with patch("source_revision_observer.catalog_repositories", return_value=[
+        with patch("source_revision_observer.catalog_source_locations", return_value=[
+                 {"url": "https://github.com/example/a", "kind": "repository", "repository": "https://github.com/example/a", "origins": ["repo-url"], "refHints": []},
+                 {"url": "https://github.com/example/b", "kind": "repository", "repository": "https://github.com/example/b", "origins": ["repo-url"], "refHints": []},
+                 {"url": "https://downloads.example/plugin.zip", "kind": "artifact", "repository": "", "origins": ["artifact-stable"], "refHints": []},
+             ]), \
+             patch("source_revision_observer.catalog_repositories", return_value=[
                  "https://github.com/example/a", "https://github.com/example/b"]), \
              patch("source_revision_observer.observe_remote_head", side_effect=[
                  {"defaultRef": "refs/heads/main", "commitSha": "1" * 40},
@@ -61,6 +89,10 @@ class SourceRevisionObserverTests(unittest.TestCase):
         self.assertEqual(2, first["counts"]["repositories"])
         self.assertEqual(1, first["counts"]["observed"])
         self.assertEqual(1, first["counts"]["failed"])
+        self.assertEqual(3, first["counts"]["locations"])
+        self.assertEqual(1, first["coverage"]["headObserved"])
+        self.assertEqual(1, first["coverage"]["repositoryVerified"])
+        self.assertEqual(1, first["coverage"]["sourceKnown"])
         self.assertTrue(first["revision"].startswith("source-observations-v1-"))
         self.assertEqual("observed", first["repositories"][0]["status"])
         self.assertEqual("failed", first["repositories"][1]["status"])

@@ -1,9 +1,10 @@
-"""Resolve stable public source-repository identities and Git ref hints from catalog metadata.
+"""Resolve and classify public source locations from catalog metadata.
 
 PluginMaster entries frequently omit ``RepoUrl`` even when their package URL points
-at a GitHub release, raw file, tagged tree, or archive.  This module derives
-canonical repository identities plus bounded provenance hints; it never fetches or
-executes source code itself.
+at a GitHub release, raw file, tagged tree, or archive. This module derives stable
+repository identities where the URL structure actually supports that conclusion and
+keeps manifests, artifacts, endpoints and ordinary websites as distinct locations.
+It never fetches or executes source code itself.
 """
 from __future__ import annotations
 
@@ -11,6 +12,23 @@ import hashlib
 from pathlib import PurePosixPath
 import urllib.parse
 from typing import Iterable
+
+KNOWN_FORGE_HOSTS = {
+    "bitbucket.org",
+    "codeberg.org",
+    "git.sr.ht",
+    "gitlab.com",
+    "www.bitbucket.org",
+    "www.codeberg.org",
+    "www.gitlab.com",
+}
+ARTIFACT_SUFFIXES = (
+    ".7z", ".dll", ".exe", ".gz", ".nupkg", ".rar", ".tar", ".tar.gz", ".tgz", ".xz", ".zip",
+)
+MANIFEST_SUFFIXES = (".json", ".json5", ".yaml", ".yml")
+NON_REPOSITORY_PATH_MARKERS = {
+    "api", "download", "downloads", "install", "installer", "package", "packages", "pluginmaster",
+}
 
 
 def github_repository_url(value: str) -> str:
@@ -77,47 +95,132 @@ def github_ref_hint(value: str) -> str:
     return ref
 
 
-def public_repository_url(value: str) -> str:
-    """Return a stable public HTTPS Git repository candidate from metadata.
-
-    GitHub forms are canonicalised first. Other public Git hosts retain their
-    host and repository path, allowing Sigmascope's constrained smart-Git
-    fallback to handle GitLab, Gitea, Forgejo, Bitbucket, and self-hosted hosts.
-    Artifact and manifest URLs are deliberately excluded for non-GitHub hosts.
-    """
-    github = github_repository_url(value)
-    if github:
-        return github
+def _safe_https(value: str) -> tuple[urllib.parse.SplitResult | None, str]:
+    raw = str(value or "").strip()
+    if not raw:
+        return None, ""
     try:
-        parsed = urllib.parse.urlsplit(str(value or "").strip())
+        parsed = urllib.parse.urlsplit(raw)
     except ValueError:
-        return ""
+        return None, raw
     if parsed.scheme.lower() != "https" or not parsed.hostname or parsed.username or parsed.password:
-        return ""
+        return None, raw
+    return parsed, raw
+
+
+def _generic_repository_url(parsed: urllib.parse.SplitResult, *, origin: str) -> str:
     path = parsed.path.rstrip("/")
-    parts = PurePosixPath(path).parts
-    if len(parts) < 2 or path.lower().endswith((".zip", ".json", ".dll", ".exe", ".nupkg")):
+    parts = [part for part in PurePosixPath(path).parts if part != "/"]
+    if len(parts) < 2:
         return ""
-    if path.endswith(".git"):
+    lower_path = path.casefold()
+    lower_parts = {urllib.parse.unquote(part).casefold() for part in parts}
+    if lower_path.endswith(MANIFEST_SUFFIXES + ARTIFACT_SUFFIXES):
+        return ""
+    if lower_parts & NON_REPOSITORY_PATH_MARKERS:
+        return ""
+    if lower_path.endswith(("/releases", "/issues", "/pulls", "/wiki")):
+        return ""
+    explicit_git = path.casefold().endswith(".git")
+    host = (parsed.hostname or "").casefold()
+    known_forge = host in KNOWN_FORGE_HOSTS or host.startswith("git.")
+    explicit_metadata = str(origin or "").casefold() in {"repo-url", "catalog-source", "metadata"}
+    if not (explicit_git or known_forge or explicit_metadata):
+        return ""
+    if explicit_git:
         path = path[:-4]
-    if not path or path.casefold().endswith(("/releases", "/issues", "/pulls", "/wiki")):
-        return ""
-    authority = parsed.hostname.lower() if parsed.port in {None, 443} else f"{parsed.hostname.lower()}:{parsed.port}"
+    authority = host if parsed.port in {None, 443} else f"{host}:{parsed.port}"
     return urllib.parse.urlunsplit(("https", authority, path, "", ""))
 
 
-def source_candidate_records(values: Iterable[tuple[str, str]]) -> list[dict[str, object]]:
-    """Return deduplicated source candidates with discovery/ref provenance.
+def classify_source_location(value: str, *, origin: str = "metadata") -> dict[str, str]:
+    """Classify a catalog location without promoting ordinary endpoints to Git repos."""
+    parsed, raw = _safe_https(value)
+    result = {"url": raw, "kind": "unresolved", "repository": "", "refHint": ""}
+    if not raw:
+        return result
+    github = github_repository_url(raw)
+    if github:
+        result.update({"kind": "repository", "repository": github, "refHint": github_ref_hint(raw)})
+        return result
+    if parsed is None:
+        return result
 
-    ``values`` is an ordered sequence of ``(origin, url)`` pairs. Multiple pieces
-    of metadata resolving to the same repository are intentionally merged so a
-    RepoUrl and artifact URL agreeing on the same origin becomes explicit evidence.
-    """
+    path = urllib.parse.unquote(parsed.path or "")
+    lower_path = path.casefold()
+    parts = [part.casefold() for part in path.split("/") if part]
+    final = parts[-1] if parts else ""
+    if lower_path.endswith(MANIFEST_SUFFIXES) or final in {"pluginmaster", "pluginmaster.json", "repo.json", "manifest.json"}:
+        result["kind"] = "manifest"
+        return result
+    if lower_path.endswith(ARTIFACT_SUFFIXES):
+        result["kind"] = "artifact"
+        return result
+    if set(parts) & NON_REPOSITORY_PATH_MARKERS:
+        result["kind"] = "artifact" if str(origin or "").casefold().startswith("artifact-") else "endpoint"
+        return result
+
+    repository = _generic_repository_url(parsed, origin=origin)
+    if repository:
+        result.update({"kind": "repository", "repository": repository})
+        return result
+
+    if str(origin or "").casefold().startswith("artifact-"):
+        result["kind"] = "artifact"
+    elif path in {"", "/"}:
+        result["kind"] = "website"
+    else:
+        result["kind"] = "endpoint"
+    return result
+
+
+def public_repository_url(value: str) -> str:
+    """Return a stable public HTTPS Git repository candidate from explicit metadata."""
+    return classify_source_location(value, origin="metadata")["repository"]
+
+
+def source_location_records(values: Iterable[tuple[str, str]]) -> list[dict[str, object]]:
+    """Return deduplicated location records while retaining non-repository evidence."""
     records: list[dict[str, object]] = []
-    by_repository: dict[str, dict[str, object]] = {}
+    by_url: dict[str, dict[str, object]] = {}
+    kind_rank = {"unresolved": 0, "website": 1, "endpoint": 2, "artifact": 3, "manifest": 4, "repository": 5}
     for origin, raw in values:
         raw = str(raw or "").strip()
-        candidate = public_repository_url(raw)
+        if not raw:
+            continue
+        classified = classify_source_location(raw, origin=origin)
+        key = raw.casefold()
+        record = by_url.get(key)
+        if record is None:
+            record = {
+                "url": raw,
+                "kind": classified["kind"],
+                "repository": classified["repository"],
+                "refHints": [classified["refHint"]] if classified["refHint"] else [],
+                "origins": [origin] if origin else [],
+            }
+            by_url[key] = record
+            records.append(record)
+            continue
+        origins = record.get("origins")
+        if isinstance(origins, list) and origin and origin not in origins:
+            origins.append(origin)
+        hints = record.get("refHints")
+        if isinstance(hints, list) and classified["refHint"] and classified["refHint"] not in hints:
+            hints.append(classified["refHint"])
+        if kind_rank.get(classified["kind"], 0) > kind_rank.get(str(record.get("kind") or ""), 0):
+            record["kind"] = classified["kind"]
+            record["repository"] = classified["repository"]
+    return records
+
+
+def source_candidate_records(values: Iterable[tuple[str, str]]) -> list[dict[str, object]]:
+    records: list[dict[str, object]] = []
+    by_repository: dict[str, dict[str, object]] = {}
+    for location in source_location_records(values):
+        if location.get("kind") != "repository":
+            continue
+        candidate = str(location.get("repository") or "")
         if not candidate:
             continue
         key = candidate.casefold()
@@ -129,13 +232,15 @@ def source_candidate_records(values: Iterable[tuple[str, str]]) -> list[dict[str
         origins = record["origins"]
         urls = record["urls"]
         hints = record["refHints"]
-        if isinstance(origins, list) and origin and origin not in origins:
-            origins.append(origin)
+        for origin in location.get("origins") or []:
+            if isinstance(origins, list) and origin and origin not in origins:
+                origins.append(origin)
+        raw = str(location.get("url") or "")
         if isinstance(urls, list) and raw and raw not in urls:
             urls.append(raw)
-        hint = github_ref_hint(raw)
-        if isinstance(hints, list) and hint and hint not in hints:
-            hints.append(hint)
+        for hint in location.get("refHints") or []:
+            if isinstance(hints, list) and hint and hint not in hints:
+                hints.append(hint)
     return records
 
 
