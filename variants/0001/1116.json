@@ -1,0 +1,2617 @@
+{
+  "analysis": {
+    "analysisId": "e6097472bd2b60965d316441253f00a3a34e639a962a003dc56fb3c6aa49169c",
+    "artifactSha256": "a2351472272cc21bac0b123c485a64a0c4172c1bb0af32b6cf1c23d7b1a98396",
+    "path": "artifacts/a2/a2351472272cc21bac0b123c485a64a0c4172c1bb0af32b6cf1c23d7b1a98396/analyses/e6097472bd2b60965d316441253f00a3a34e639a962a003dc56fb3c6aa49169c",
+    "recordCount": 11700
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "a2351472272cc21bac0b123c485a64a0c4172c1bb0af32b6cf1c23d7b1a98396",
+    "artifact_url": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip",
+    "assembly_version": "1.0.8.0",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "high",
+        "evidence": [
+          "il:TargetPyon.dll:TargetPyon.MainWindow.DrawObjectss+0x2f1: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+          "il:TargetPyon.dll:TargetPyon.Extensions.GameObjectEx.SetAsTarget+0xb: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+          "il:TargetPyon.dll:TargetPyon.Extensions.GameObjectEx.SetAsFocusTarget+0xb: callvirt Dalamud.Plugin.Services.ITargetManager.set_FocusTarget"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": false,
+        "reason": "References a target-setting API rather than only reading the current target."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Character target control",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Registry access"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "system",
+        "description": "References Windows Registry APIs.",
+        "evidence": [
+          "artifact:NAudio.Core.dll: RegistryKey"
+        ],
+        "ruleId": "registry.access",
+        "severity": "caution",
+        "title": "Windows Registry access"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:TargetPyon.dll: DllImportAttribute",
+          "metadata:NAudio.Core.dll: DllImportAttribute",
+          "metadata:NAudio.Core.dll: LoadLibrary",
+          "metadata:NAudio.Core.dll: GetProcAddress",
+          "artifact:NAudio.Core.dll: LoadLibrary",
+          "artifact:NAudio.Core.dll: GetProcAddress",
+          "metadata:NAudio.Wasapi.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:TargetPyon.dll: SigScanner",
+          "metadata:TargetPyon.dll: Dalamud.Hooking",
+          "artifact:TargetPyon.dll: Dalamud.Hooking",
+          "artifact:TargetPyon.dll: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:NAudio.Core.dll: s://github.com/naudio/NAudio",
+          "artifact:NAudio.Core.dll: C:\\Users\\markh\\code\\mygithub\\NAudio\\NAudio.Core\\obj\\Release\\netstandard2.0\\NAudio.Core.pdb",
+          "artifact:NAudio.dll: s://github.com/naudio/NAudio",
+          "artifact:NAudio.dll: C:\\Users\\markh\\code\\mygithub\\NAudio\\NAudio\\obj\\Release\\net6.0-windows\\NAudio.pdb"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:TargetPyon.dll:TargetPyon.MainWindow.DrawObjectss+0x2f1: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+          "il:TargetPyon.dll:TargetPyon.Extensions.GameObjectEx.SetAsTarget+0xb: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+          "il:TargetPyon.dll:TargetPyon.Extensions.GameObjectEx.SetAsFocusTarget+0xb: callvirt Dalamud.Plugin.Services.ITargetManager.set_FocusTarget"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:TargetPyon.dll: File.Delete",
+          "il:TargetPyon.dll:TargetPyon.AudioManager.SetAudioFile+0xe: call System.IO.File.Delete: File.Delete",
+          "metadata:NAudio.Core.dll: FileStream",
+          "il:NAudio.Core.dll:NAudio.SoundFont.SoundFont..ctor+0x4: newobj System.IO.FileStream..ctor: FileStream",
+          "il:NAudio.Core.dll:NAudio.Wave.AiffFileWriter..ctor+0x5: newobj System.IO.FileStream..ctor: FileStream",
+          "il:NAudio.Core.dll:NAudio.Wave.WaveFileWriter..ctor+0x5: newobj System.IO.FileStream..ctor: FileStream",
+          "artifact:NAudio.Core.dll: FileStream",
+          "metadata:NAudio.dll: FileStream"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+      "artifactBytes": 230895,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.8.0",
+        "artifactBytes": 230895,
+        "artifactSha256": "a2351472272cc21bac0b123c485a64a0c4172c1bb0af32b6cf1c23d7b1a98396",
+        "catalogAssemblyVersion": "1.0.8.0",
+        "manifestInternalName": "",
+        "manifestPath": "",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/priprii/FFXIVPlugins/main/bin/TargetPyon.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "tomestone.gg",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "tomestone.gg",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.target",
+        "game.memory.read",
+        "native.interop",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 44,
+          "exactVersionObservedCount": 34,
+          "families": {
+            "managed-assembly": 27,
+            "native": 10,
+            "nuget": 7
+          },
+          "fingerprint": "46bb9615a082d47393ff0d7bc25b4b62715174cec1d34cc4def41b5cf8700871",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 22,
+            "platformLibrary": 8
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DirectSoundCreate",
+              "library": "dsound.dll",
+              "managedName": "DirectSoundCreate",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DirectSoundEnumerateA",
+              "library": "dsound.dll",
+              "managedName": "DirectSoundEnumerate",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FreeLibrary",
+              "library": "kernel32.dll",
+              "managedName": "FreeLibrary",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetProcAddress",
+              "library": "kernel32.dll",
+              "managedName": "GetProcAddress",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "LoadLibrary",
+              "library": "kernel32.dll",
+              "managedName": "LoadLibrary",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFTranscodeGetAudioOutputAvailableTypes",
+              "library": "mf.dll",
+              "managedName": "MFTranscodeGetAudioOutputAvailableTypes",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateAttributes",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateAttributes",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMediaType",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMediaType",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMemoryBuffer",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMemoryBuffer",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMFByteStreamOnStream",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMFByteStreamOnStream",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMFByteStreamOnStreamEx",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMFByteStreamOnStreamEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSample",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateSample",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateWaveFormatExFromMFMediaType",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateWaveFormatExFromMFMediaType",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFInitMediaTypeFromWaveFormatEx",
+              "library": "mfplat.dll",
+              "managedName": "MFInitMediaTypeFromWaveFormatEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFShutdown",
+              "library": "mfplat.dll",
+              "managedName": "MFShutdown",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFStartup",
+              "library": "mfplat.dll",
+              "managedName": "MFStartup",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFTEnumEx",
+              "library": "mfplat.dll",
+              "managedName": "MFTEnumEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSinkWriterFromURL",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSinkWriterFromURL",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSourceReaderFromByteStream",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSourceReaderFromByteStream",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSourceReaderFromURL",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSourceReaderFromURL",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "ActivateAudioInterfaceAsync",
+              "library": "Mmdevapi.dll",
+              "managedName": "ActivateAudioInterfaceAsync",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DMOEnum",
+              "library": "msdmo.dll",
+              "managedName": "DMOEnum",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DMOGetName",
+              "library": "msdmo.dll",
+              "managedName": "DMOGetName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 7,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MoFreeMediaType",
+              "library": "msdmo.dll",
+              "managedName": "MoFreeMediaType",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 4,
+            "observed": 33,
+            "required": 7
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 37,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 7,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 4,
+            "observed": 33,
+            "optional": 0,
+            "required": 7,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 44
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 3,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "tomestone.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 4,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/naudio/NAudio"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/priprii/FFXIVPlugins"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source-code reference",
+            "url": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "tomestone.gg",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://tomestone.gg/character-name/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip",
+        "internalName": "TargetPyon",
+        "manifestVersion": "1.0.8.0",
+        "observationId": 1915,
+        "observationKey": "manifest-67314c81dc39c063da6f01b57796",
+        "repositoryUrl": "https://github.com/priprii/FFXIVPlugins",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1116
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 4,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 6,
+        "uncompressedBytes": 521583
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+        "attemptId": "attempt-v2-2ac633bbee189255",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-7b1abe1b04a69d81",
+        "definitionsRevision": "defs-v1-198d28eed60fa0de",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-1116",
+        "queueSeedRevision": "queue-seed-v2-6c770da9969fa38e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "0b0058a403f0a557a720ce9992adb207963a303c9a7d2f51a4cabb5e031974c0",
+        "scannerRevision": "scanner-v1-6d28d3be6f1e0f68",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-31336f91d36df7c8",
+        "targetFingerprint": "artifact-target-v2-f7aad25470d1f527fbe2",
+        "variantId": 1116,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-01T04:27:19Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "a2351472272cc21bac0b123c485a64a0c4172c1bb0af32b6cf1c23d7b1a98396",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/priprii/FFXIVPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/priprii/FFXIVPlugins",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 82615,
+    "scanned_at_utc": "2026-09-01T04:27:19Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/priprii/FFXIVPlugins",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1116
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "a2351472272cc21bac0b123c485a64a0c4172c1bb0af32b6cf1c23d7b1a98396",
+      "current_assembly_version": "1.0.8.0",
+      "current_scan_id": 82615,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-01T04:27:21Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 1116
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 35,
+      "artifact_only_count": 35,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.50.0.7951"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "NAudio",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.2.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NAudio.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.2.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio.wasapi",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NAudio.Wasapi",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.2.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio.winmm",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "NAudio.WinMM",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.2.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:targetpyon",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "TargetPyon",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.0.8.0"
+          ]
+        },
+        {
+          "componentKey": "native:dsound",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "dsound.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mf",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mf.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mfplat",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mfplat.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mfreadwrite",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mfreadwrite.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mmdevapi",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "Mmdevapi.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:msdmo",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "msdmo.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ole32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ole32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:naudio",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.2.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.asio",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.Asio",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.2.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.2.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.midi",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.Midi",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.2.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.wasapi",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.Wasapi",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.2.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.winforms",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.WinForms",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.2.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.winmm",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.WinMM",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.2.1"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-01T04:27:21Z",
+      "comparison_id": 2135,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 82615,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 1116,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1116/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1116/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 41453,
+          "encoding": "json",
+          "path": "derived/variants/0001/1116/dependency-resolutions.json",
+          "recordDigest": "a42403ed107c24a8ced852791ccad15f215345ba36e06753cb9c8329613630aa",
+          "records": 44,
+          "sha256": "9ddc7a2182972993da5fcfadbd88329025cefa0e7d60720cf814ac64dca240a0"
+        }
+      ],
+      "recordDigest": "a42403ed107c24a8ced852791ccad15f215345ba36e06753cb9c8329613630aa",
+      "records": 44
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1116/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "629f43b51c4d7eb832d8958d6a9eac3cfd23d93589aa17af2e4bacacb479b249",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "86674e0cc5f4dc7122d6b4261cba5a19f98a8dc9ca652e0fec393a33fca334dc",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "649e83f89a444e46d02a27fd155eaefe861e465e55d72f05c033ca8e9ab7b876",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "35f0fcc26ff3d5dafb7a6ba3657ac5888d8ef83ca4237c574bfe097dbf3d18cb",
+        "records": 44,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "709560d952c14028431f71e77f8c5241ba8f8f9a17e23cd415d5fa5e66847c0c",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "d293fe36fe449353a9ec5b42e5a2bcea5425a84ff31681a86ef4817e1eb40321",
+        "records": 9532,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "2fcbb73c9baf387a4c9886c0f60d13d62ad8cc33f1bfaf54c06801d2696258ee",
+        "records": 534,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "777df66545e3493a0b19057bf6cc92ec384e70373572f06aa0d00ea2643824ae",
+        "records": 1502,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "9232eeafb3533230af03019c9fac916526e9221b8bb8a6ebc6553e2872c6084f",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "55f1b0520f8c2410554200bd8d0bb6b8ecc23144d65b78411d6407578d34a444",
+        "records": 30,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "bf01875a38dd0e74a6a81624ee6ea527f8f36ec74b8add671311ce8474542c62",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "90a5f54d23a29c80d58325f40db2d56ee589ae265d98144f5d21830bc180b7dc",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "f1e662a1b028a589fc56319e872d190ac367b8ba08338513aa499d8499b5e9ca",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "76399e05b6c37df1602adca56fa092e284c88533a736e4919771352061edc0b1",
+        "records": 21,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-78df8ca17d58ca2bca48a46ab27a0fc8940b967f07dfc940c05455e48ecbaff4",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "TargetPyon",
+    "first_seen_utc": "2026-08-20T00:07:32Z",
+    "internal_name": "TargetPyon",
+    "last_seen_utc": "2026-08-31T18:30:09Z",
+    "plugin_id": 744
+  },
+  "pluginId": 744,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Track who is targeting you in an overlay list.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 942,
+      "summary": "Track who is targeting you in an overlay list.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/priprii/FFXIVPlugins",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/priprii/FFXIVPlugins"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "*A collection of plugins maintained by Pyon*\n\n> [!NOTE]\n> These plugins are primarily developed for the PonPon cwls.\n\n## Installation\n\nAdd the following to Dalamud Settings > Experimental > Custom Plugin Repositories\n\n`https://raw.githubusercontent.com/priprii/FFXIVPlugins/main/repo.json`\n\nThen search `pyon` in your plugins list to find all the pyon plugins available.\n\n## Plugins\n\n### KtisisPyon\n\nA tool for assisting with Gposing, adapted from [Ktisis](https://github.com/ktisis-tools/Ktisis)v0.3 with additional features:\n\n> [!NOTE]\n> Click a feature to display preview/info.\n> \n> I am currently moving most of these features to Ktisis\n> \n> Features prefixed with [Ktisis] are now (or soon) available in Ktisis\n\n<details><summary>[Ktisis] MCDF import (Mare Appearance)</summary><video src=\"https://github.com/user-attachments/assets/3e9fb3a2-0280-4d57-974f-88e4f8db865d\"/></details>\n<details><summary>[Ktisis] Selective bone import with descendants</summary><video src=\"https://github.com/user-attachments/assets/8bbaecf2-dd27-4010-a0f4-7b249b4fc3b5\"/></details>\n<details><summary>[Ktisis] Selective bone import for facial expressions</summary><video src=\"https://github.com/user-attachments/assets/c6fd895b-9ecb-4a7d-bfc0-cc787f8c2a5e\"/></details>\n<details><summary>[Ktisis] Face/Body import options</summary><p><i>Face/Body import options are now in Ktisis v0.3.2, but they're currently buggy so KtisisPyon will continue to implement it differently.</i></p><video src=\"https://github.com/user-attachments/assets/71cb7439-7a05-4e9d-a64c-16a5b77f87e5\"/></details>\n<details><summary>[Ktisis] Import/export lights</summary><video src=\"https://github.com/user-attachments/assets/b46153f1-9aba-4cae-9455-61f4c1edee19\"/></details>\n<details><summary>[Ktisis] Pose flipping</summary><p><i>You can also assign a keybind for flipping pose in the Input settings.</i></p><video src=\"https://github.com/user-attachments/assets/c0abbc44-11d1-44f5-b3a4-75f05469d2e1\"/></details>\n<details><summary>Hi-res image output</summary><video src=\"https://github.com/user-attachments/assets/a0327b78-5944-4b85-89b9-98e2049a6ed9\"/></details>\n<details><summary>[Ktisis] Toggle visibility of actor/light objects</summary><p><i>My cursor too shy for video, you toggle visibility with the icon to the left of the actor/light name. :3 The context menu is alternative way too.</i></p><video src=\"https://github.com/user-attachments/assets/e624210e-8f83-4773-8d1d-4be6ac824211\"/></details>\n<details><summary>Toggle default visibility of groups/bones in overlay with Pose entity</summary><p><i>When you toggle overlay visibility with the 'Pose' entity, any group/bone you choose to hide will not be made visible. You can still make them visible by specifically toggling their visibility, useful for bones that you rarely or never touch.</i></p><video src=\"https://github.com/user-attachments/assets/d76fee6a-e46f-456d-8eac-63cc3ecb11d5\"/></details>\n<details><summary>[Removed] Skelomae/Nofflebone bone groups</summary><p><i>In addition to IVCS, groups for Skelomae/Nofflebones have been added so you can assign group colours, or hide them with the above visibility feature.</i></p></details>\n<details><summary>Camera options (work camera move speed/sensitivity)</summary><video src=\"https://github.com/user-attachments/assets/47a637c6-29d4-4aa2-a4ef-df407d9f5af8\"/></details>\n<details><summary>[Removed] Gizmo scaling & customization</summary><video src=\"https://github.com/user-attachments/assets/bb714c4f-31d8-4ae3-aa08-0259ab75aecb\"/></details>\n<details><summary>Overlay customization & bug fixes</summary><video src=\"https://github.com/user-attachments/assets/0e8743f4-4fff-44b3-a1a9-173dad6de985\"/></details>\n<details><summary>[Ktisis] Adjust how overlay displays depending on active state of actors</summary><video src=\"https://github.com/user-attachments/assets/871af91f-922f-4701-b960-0e2ff872486a\"/></details>\n\n### PartyPyon\n\nAutomatically re-create Party Finder listings. *(To mitigate abuse from bots: This plugin is only for verified venue owners, contact me on Discord for key)*\n\n### PartyRangePyon (Outdated)\n\nDisplay the distance from party members in the party list.\n\n*Note: This plugin is currently outdated, the functionality of this plugin will soon be moved to TargetPyon.*\n\n### PvPyon (Outdated)\n\nDisplay names of enemy players in PvP, optionally limited to your friends so you can murder them if you queue in separate parties.\n\n*Note: This plugin is currently outdated, the functionality of this plugin will soon be moved to TargetPyon.*\n\n### PyonCam\n\nCustom camera profiles, similar to [Cammy](https://github.com/UnknownX7/Cammy) with additional features:\n- 'Camera Orbit' functionality with TargetPyon\n- 1st person PoV\n\n### PyonPix\n\nSpawn screens in world space that display browser media content, intended for having ingame movienights.\n\n### SoundPyon\n\nFilter annoying sounds, similar to [SoundFilter](https://git.anna.lgbt/anna/SoundFilter) but updated for Dawntrail & simplified UI.\n\n### TamaPyon (In Development)\n\nA Tamagotchi game that you can play while you play FFXIV.\n\nhttps://github.com/user-attachments/assets/b0fe778a-4fe5-4051-b1cb-898ddaf95faf\n\n### TargetPyon\n\nDisplays names of players in a customizable overlay list who:\n- Are currently targeting you\n- Previously targeted you (and their current target)\n- Targeting those who targeted you\n\nAdditional features:\n- Customize the font, background & formatting of the overlay list\n- Play an audio alert when a player targets you\n- Mark players targeting you\n- Display direction of players from your facing direction.\n- Open Inspect & Adventure Plate windows without needing to target players\n- Interactions with listed players (Lock camera orbit, Target, Remove, Adventure Plate, Examine, Locate on map, Toggle visibility, Blacklist)\n- Toggle visibility of players who are not in party/friend list (useful for gpose in populated areas)\n- List & toggle visibility of non-player objects\n\nhttps://github.com/user-attachments/assets/5e9968ad-f95a-44be-a265-0fd4a59d1a75\n\n### TriggerPyon\n\nConditionally trigger counter/emote/command/title reactions.\n\nFeatures:\n- Trigger counter & emote/text reactions when an instigator either performs a selection of emotes, or sends a message with specific phrases.\n- Reaction queueing, for performing multiple reactions in a single trigger with delay/duration\n- Conditions for triggering reactions depending on:\n  - Who the instigator/receiver are. (Specific player, self, others, all)\n  - How the instigator/receiver relate to you. (Eg. Friend/Party/Synced)\n  - The status of the instigator/receiver (AFK, Busy, RPing etc)\n  - Instigator's distance/angle relative to you\n  - Your animated state (Moving/Idle/Sitting/Emoting)\n- Display counter as an Honorific title/toast/echo message with custom template per trigger\n- Options for LookAt/Target when performing emote reactions.\n- Restore specific states when a reaction finishes (Eg. Continue performing a dance emote that the triggered event interrupted)\n- Discord activity events (Eg. Display current song you're listening to in Honorific title)\n- Preset triggers for easy setup (Hug counter, mimic emotes, spank reaction, discord spotify status)",
+      "title": "FFXIVPlugins",
+      "url": "https://github.com/priprii/FFXIVPlugins"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "1c47c9c0b484f32d6b90388fe7e60428802ed68ade7e12bf03d86bac3fa1e675",
+        "records": 1
+      },
+      "behaviorConsistency": {
+        "recordDigest": "f06453c61264a925f97ce2f3062ad726ae3b8629b63a35207c0eecef598ae493",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "015da3358f775107bd3ee32d3844ddf1168c749a9d0f390721a5e555350a9988",
+        "records": 8
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "1c0c42519a57878e21eba506af54104b04ce037a839d27889a543d3b30c29237",
+        "records": 6
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "a2351472272cc21bac0b123c485a64a0c4172c1bb0af32b6cf1c23d7b1a98396",
+    "artifact_url": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip",
+    "assembly_version": "1.0.8.0",
+    "capabilities_json": [
+      "Character target control",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Registry access"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "plugin_id": 744,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+      "artifactBytes": 230895,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.8.0",
+        "artifactBytes": 230895,
+        "artifactSha256": "a2351472272cc21bac0b123c485a64a0c4172c1bb0af32b6cf1c23d7b1a98396",
+        "catalogAssemblyVersion": "1.0.8.0",
+        "manifestInternalName": "",
+        "manifestPath": "",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/priprii/FFXIVPlugins/main/bin/TargetPyon.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "tomestone.gg",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "tomestone.gg",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.target",
+        "game.memory.read",
+        "native.interop",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 44,
+          "exactVersionObservedCount": 34,
+          "families": {
+            "managed-assembly": 27,
+            "native": 10,
+            "nuget": 7
+          },
+          "fingerprint": "46bb9615a082d47393ff0d7bc25b4b62715174cec1d34cc4def41b5cf8700871",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 22,
+            "platformLibrary": 8
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DirectSoundCreate",
+              "library": "dsound.dll",
+              "managedName": "DirectSoundCreate",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DirectSoundEnumerateA",
+              "library": "dsound.dll",
+              "managedName": "DirectSoundEnumerate",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FreeLibrary",
+              "library": "kernel32.dll",
+              "managedName": "FreeLibrary",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetProcAddress",
+              "library": "kernel32.dll",
+              "managedName": "GetProcAddress",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Core.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "LoadLibrary",
+              "library": "kernel32.dll",
+              "managedName": "LoadLibrary",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFTranscodeGetAudioOutputAvailableTypes",
+              "library": "mf.dll",
+              "managedName": "MFTranscodeGetAudioOutputAvailableTypes",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateAttributes",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateAttributes",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMediaType",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMediaType",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMemoryBuffer",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMemoryBuffer",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMFByteStreamOnStream",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMFByteStreamOnStream",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateMFByteStreamOnStreamEx",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateMFByteStreamOnStreamEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSample",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateSample",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateWaveFormatExFromMFMediaType",
+              "library": "mfplat.dll",
+              "managedName": "MFCreateWaveFormatExFromMFMediaType",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFInitMediaTypeFromWaveFormatEx",
+              "library": "mfplat.dll",
+              "managedName": "MFInitMediaTypeFromWaveFormatEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFShutdown",
+              "library": "mfplat.dll",
+              "managedName": "MFShutdown",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFStartup",
+              "library": "mfplat.dll",
+              "managedName": "MFStartup",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFTEnumEx",
+              "library": "mfplat.dll",
+              "managedName": "MFTEnumEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSinkWriterFromURL",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSinkWriterFromURL",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSourceReaderFromByteStream",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSourceReaderFromByteStream",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MFCreateSourceReaderFromURL",
+              "library": "mfreadwrite.dll",
+              "managedName": "MFCreateSourceReaderFromURL",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "ActivateAudioInterfaceAsync",
+              "library": "Mmdevapi.dll",
+              "managedName": "ActivateAudioInterfaceAsync",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DMOEnum",
+              "library": "msdmo.dll",
+              "managedName": "DMOEnum",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DMOGetName",
+              "library": "msdmo.dll",
+              "managedName": "DMOGetName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NAudio.Wasapi.dll",
+              "directManagedCallCount": 7,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "MoFreeMediaType",
+              "library": "msdmo.dll",
+              "managedName": "MoFreeMediaType",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 4,
+            "observed": 33,
+            "required": 7
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 37,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 7,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 4,
+            "observed": 33,
+            "optional": 0,
+            "required": 7,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 44
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 3,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "tomestone.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 4,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/naudio/NAudio"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/priprii/FFXIVPlugins"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source-code reference",
+            "url": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "tomestone.gg",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://tomestone.gg/character-name/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip",
+        "internalName": "TargetPyon",
+        "manifestVersion": "1.0.8.0",
+        "observationId": 1915,
+        "observationKey": "manifest-67314c81dc39c063da6f01b57796",
+        "repositoryUrl": "https://github.com/priprii/FFXIVPlugins",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1116
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 4,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 6,
+        "uncompressedBytes": 521583
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+        "attemptId": "attempt-v2-2ac633bbee189255",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-7b1abe1b04a69d81",
+        "definitionsRevision": "defs-v1-198d28eed60fa0de",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-1116",
+        "queueSeedRevision": "queue-seed-v2-6c770da9969fa38e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "0b0058a403f0a557a720ce9992adb207963a303c9a7d2f51a4cabb5e031974c0",
+        "scannerRevision": "scanner-v1-6d28d3be6f1e0f68",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-31336f91d36df7c8",
+        "targetFingerprint": "artifact-target-v2-f7aad25470d1f527fbe2",
+        "variantId": 1116,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-01T04:27:19Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "a2351472272cc21bac0b123c485a64a0c4172c1bb0af32b6cf1c23d7b1a98396",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/priprii/FFXIVPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/priprii/FFXIVPlugins",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 82615,
+    "scanned_at_utc": "2026-09-01T04:27:19Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 245,
+    "source_repository": "https://github.com/priprii/FFXIVPlugins",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1116
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "9bbd3398c2e93e7a4c2cbbdce9d113dc463b7ff91bd31cd4a1bcaf4d30429df3",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"66135d37dd8d397211363cdf0e72378cd77f887a55c513605a7cfd4edff12e97\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-08-31T18:30:09Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-08-31T18:30:09Z",
+    "name": "priprii/FFXIVPlugins",
+    "plugin_count": 9,
+    "provider": "priprii/FFXIVPlugins",
+    "source_id": 245,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/priprii/FFXIVPlugins/main/repo.json"
+  },
+  "sourceId": 245,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.0.8.0",
+    "author": "Pyon",
+    "authors_json": [
+      "Pyon"
+    ],
+    "category_tags_json": [
+      "utility"
+    ],
+    "changelog": "Api15",
+    "dalamud_api_level": 15,
+    "description": "Track who is targeting you in an overlay list.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip",
+    "download_link_testing": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip",
+    "download_link_update": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip",
+    "first_seen_utc": "2026-08-20T00:07:32Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-20T00:07:32Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "TargetPyon",
+    "plugin_id": 744,
+    "punchline": "Track who is targeting you in an overlay list.",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.0.8.0",
+      "Author": "Pyon",
+      "CategoryTags": [
+        "utility"
+      ],
+      "Changelog": "Api15",
+      "DalamudApiLevel": 15,
+      "Description": "Track who is targeting you in an overlay list.",
+      "DownloadLinkInstall": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip",
+      "DownloadLinkTesting": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip",
+      "DownloadLinkUpdate": "https://github.com/priprii/FFXIVPlugins/raw/main/bin/TargetPyon.zip",
+      "InternalName": "TargetPyon",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "Name": "TargetPyon",
+      "Punchline": "Track who is targeting you in an overlay list.",
+      "RepoUrl": "https://github.com/priprii/FFXIVPlugins",
+      "Tags": [
+        "target",
+        "overlay",
+        "pyon"
+      ]
+    },
+    "repo_url": "https://github.com/priprii/FFXIVPlugins",
+    "source_entry_key": "targetpyon|1.0.8.0|15|0|7",
+    "source_id": 245,
+    "tags_json": [
+      "target",
+      "overlay",
+      "pyon"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 1116
+  },
+  "variantId": 1116
+}

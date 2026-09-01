@@ -1,0 +1,717 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private or loopback endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Avalonia.DesignerSupport.dll: http://localhost:5000/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.616419434c00",
+    "severity": "high",
+    "title": "Endpoint: localhost"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Avalonia.DesignerSupport.dll: http://127.0.0.1:8081/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.a8e2ed6e14a6",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:Avalonia.Base.dll:Avalonia.Threading.Dispatcher.Send+0x5a: callvirt System.Threading.SendOrPostCallback.Invoke",
+      "il:Avalonia.Base.dll:Avalonia.Threading.SendOrPostCallbackDispatcherOperation.InvokeCore+0x11: callvirt System.Threading.SendOrPostCallback.Invoke",
+      "il:Avalonia.Base.dll:Avalonia.Threading.NonPumpingSyncContext.Send+0xa: callvirt System.Threading.SendOrPostCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Avalonia.Base.dll: Assembly.Load",
+      "il:Avalonia.Base.dll:Avalonia.Platform.Internal.AssemblyDescriptorResolver.GetAssembly+0xbd: call System.Reflection.Assembly.Load: Assembly.Load",
+      "metadata:Avalonia.DesignerSupport.dll: Assembly.Load",
+      "metadata:Avalonia.DesignerSupport.dll: Assembly.LoadFrom",
+      "il:Avalonia.DesignerSupport.dll:Avalonia.DesignerSupport.DesignWindowLoader.LoadDesignerWindow+0x55: call System.Reflection.Assembly.LoadFrom: Assembly.Load",
+      "il:Avalonia.DesignerSupport.dll:Avalonia.DesignerSupport.DesignWindowLoader.LoadDesignerWindow+0x55: call System.Reflection.Assembly.LoadFrom: Assembly.LoadFrom",
+      "il:Avalonia.DesignerSupport.dll:Avalonia.DesignerSupport.Remote.RemoteDesignerEntryPoint.Main+0x2f: call System.Reflection.Assembly.LoadFrom: Assembly.Load",
+      "il:Avalonia.DesignerSupport.dll:Avalonia.DesignerSupport.Remote.RemoteDesignerEntryPoint.Main+0x2f: call System.Reflection.Assembly.LoadFrom: Assembly.LoadFrom"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Avalonia.Base.dll: s://github.com/avaloniaui",
+      "artifact:Avalonia.Base.dll: s://github.com/avaloniaui!Avalonia.Input.GestureRecognizers",
+      "artifact:Avalonia.Base.dll: s://github.com/AvaloniaUI/Avalonia/",
+      "artifact:Avalonia.Base.dll: s://",
+      "artifact:Avalonia.Controls.dll: s://github.com/avaloniaui",
+      "artifact:Avalonia.Controls.dll: s://github.com/AvaloniaUI/Avalonia/",
+      "artifact:Avalonia.Controls.dll: s://",
+      "artifact:Avalonia.Markup.Xaml.Loader.dll: s://github.com/AvaloniaUI/Avalonia/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:StudioFourteen.dll: SigScanner",
+      "metadata:StudioFourteen.dll: Dalamud.Hooking",
+      "metadata:StudioFourteen.dll: HookFromAddress",
+      "il:StudioFourteen.dll:StudioFourteen.Services.Interop.AddressHook`1.Create+0x6d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:StudioFourteen.dll:StudioFourteen.Services.Interop.SignatureHook`1.Create+0x0: call StudioFourteen.Studio.get_SigScanner: SigScanner",
+      "il:StudioFourteen.dll:StudioFourteen.Services.Interop.SignatureHook`1.Create+0x40: call StudioFourteen.Studio.get_SigScanner: SigScanner",
+      "il:StudioFourteen.dll:StudioFourteen.Services.Interop.SignatureHook`1.Create+0x4b: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:StudioFourteen.dll:StudioFourteen.Services.Interop.SignatureHook`1.Create+0x59: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:Avalonia.DesignerSupport.dll: TcpListener",
+      "il:Avalonia.DesignerSupport.dll:Avalonia.DesignerSupport.Remote.HtmlTransport.SimpleWebSocketHttpServer.Listen+0xc: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:Avalonia.DesignerSupport.dll:Avalonia.DesignerSupport.Remote.HtmlTransport.SimpleWebSocketHttpServer.Listen+0x13: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:Avalonia.DesignerSupport.dll:Avalonia.DesignerSupport.Remote.HtmlTransport.SimpleWebSocketHttpServer.Dispose+0xc: call System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "il:Avalonia.DesignerSupport.dll:<AcceptAsyncImpl>d__4.MoveNext+0x3e: callvirt System.Net.Sockets.TcpListener.AcceptSocketAsync: TcpListener",
+      "artifact:Avalonia.DesignerSupport.dll: TcpListener",
+      "metadata:Avalonia.Remote.Protocol.dll: TcpListener",
+      "il:Avalonia.Remote.Protocol.dll:Avalonia.Remote.Protocol.TcpTransportBase.Listen+0x16: newobj System.Net.Sockets.TcpListener..ctor: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Apos.WintabDN.dll: DllImportAttribute",
+      "metadata:Avalonia.Base.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Avalonia.Base.dll: NativeLibrary.Load",
+      "metadata:Avalonia.Base.dll: DllImportAttribute",
+      "artifact:Avalonia.Base.dll: GetProcAddress",
+      "metadata:Avalonia.FreeDesktop.dll: DllImportAttribute",
+      "artifact:Avalonia.Markup.Xaml.Loader.dll: GetProcAddress",
+      "metadata:Avalonia.Native.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/osx/native/libHarfBuzzSharp.dylib: http://crl.apple.com/timestamp.crl0",
+      "artifact:runtimes/osx/native/libSkiaSharp.dylib: http://crl.apple.com/timestamp.crl0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.172eac4f271a",
+    "severity": "caution",
+    "title": "Endpoint: crl.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/osx/native/libHarfBuzzSharp.dylib: http://ocsp.apple.com/ocsp03-devid080",
+      "artifact:runtimes/osx/native/libSkiaSharp.dylib: http://ocsp.apple.com/ocsp03-devid080"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3325a2fcd92f",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/linux-arm/native/libSkiaSharp.so: http://purl.org/dc/elements/1.1/",
+      "artifact:runtimes/linux-arm64/native/libSkiaSharp.so: http://purl.org/dc/elements/1.1/",
+      "artifact:runtimes/linux-musl-x64/native/libSkiaSharp.so: http://purl.org/dc/elements/1.1/",
+      "artifact:runtimes/linux-x64/native/libSkiaSharp.so: http://purl.org/dc/elements/1.1/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.481f09356511",
+    "severity": "caution",
+    "title": "Endpoint: purl.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/linux-arm/native/libSkiaSharp.so: http://ns.adobe.com/xap/1.0/mm/",
+      "artifact:runtimes/linux-arm64/native/libSkiaSharp.so: http://ns.adobe.com/xap/1.0/mm/",
+      "artifact:runtimes/linux-musl-x64/native/libSkiaSharp.so: http://ns.adobe.com/xap/1.0/mm/",
+      "artifact:runtimes/linux-x64/native/libSkiaSharp.so: http://ns.adobe.com/xap/1.0/mm/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5d1a28a44b4d",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/osx/native/libHarfBuzzSharp.dylib: http://crl.apple.com/root.crl0",
+      "artifact:runtimes/osx/native/libSkiaSharp.dylib: http://crl.apple.com/root.crl0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.60ec8712250f",
+    "severity": "caution",
+    "title": "Endpoint: crl.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.Mvvm.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/linux-arm/native/libSkiaSharp.so: http://gcc.gnu.org/bugs.html",
+      "artifact:runtimes/linux-arm64/native/libSkiaSharp.so: http://gcc.gnu.org/bugs.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.82642325f897",
+    "severity": "caution",
+    "title": "Endpoint: gcc.gnu.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/linux-arm/native/libSkiaSharp.so: http://ns.adobe.com/xap/1.0/",
+      "artifact:runtimes/linux-arm64/native/libSkiaSharp.so: http://ns.adobe.com/xap/1.0/",
+      "artifact:runtimes/linux-musl-x64/native/libSkiaSharp.so: http://ns.adobe.com/xap/1.0/",
+      "artifact:runtimes/linux-x64/native/libSkiaSharp.so: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.Mvvm.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/linux-arm/native/libSkiaSharp.so: http://ns.adobe.com/pdf/1.3/",
+      "artifact:runtimes/linux-arm64/native/libSkiaSharp.so: http://ns.adobe.com/pdf/1.3/",
+      "artifact:runtimes/linux-musl-x64/native/libSkiaSharp.so: http://ns.adobe.com/pdf/1.3/",
+      "artifact:runtimes/linux-x64/native/libSkiaSharp.so: http://ns.adobe.com/pdf/1.3/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.bd44c55690bc",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.Mvvm.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: http://json.schemastore.org/sarif-2.1.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e8b4a5cbf22e",
+    "severity": "caution",
+    "title": "Endpoint: json.schemastore.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: http://json.schemastore.org/sarif-1.0.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fa0c83d25376",
+    "severity": "caution",
+    "title": "Endpoint: json.schemastore.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.Mvvm.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.Mvvm.dll: https://developer.microsoft.com/en-us/windows/uwp-community-toolkit"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.18af43152701",
+    "severity": "caution",
+    "title": "Endpoint: developer.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/linux-musl-loongarch64/native/libHarfBuzzSharp.so: https://gcc.gnu.org/bugs/",
+      "artifact:runtimes/linux-musl-riscv64/native/libHarfBuzzSharp.so: https://gcc.gnu.org/bugs/",
+      "artifact:runtimes/linux-musl-x64/native/libSkiaSharp.so: https://gcc.gnu.org/bugs/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.762c690d0656",
+    "severity": "caution",
+    "title": "Endpoint: gcc.gnu.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Avalonia.Markup.Xaml.dll: https://docs.avaloniaui.net/docs/basics/user-interface/introduction-to-xaml"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7047b4d4d4b",
+    "severity": "caution",
+    "title": "Endpoint: docs.avaloniaui.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HarfBuzzSharp.dll: https://go.microsoft.com/fwlink/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b2a093ba178f",
+    "severity": "caution",
+    "title": "Endpoint: go.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://msdn.microsoft.com/query/roslyn.query"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ce13eaccbf59",
+    "severity": "caution",
+    "title": "Endpoint: msdn.microsoft.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Avalonia.DesignerSupport.dll: System.Net.Sockets",
+      "il:Avalonia.DesignerSupport.dll:Avalonia.DesignerSupport.Remote.HtmlTransport.SimpleWebSocketHttpServer.Listen+0xc: newobj System.Net.Sockets.TcpListener..ctor: System.Net.Sockets",
+      "il:Avalonia.DesignerSupport.dll:Avalonia.DesignerSupport.Remote.HtmlTransport.SimpleWebSocketHttpServer.Listen+0x13: callvirt System.Net.Sockets.TcpListener.Start: System.Net.Sockets",
+      "il:Avalonia.DesignerSupport.dll:Avalonia.DesignerSupport.Remote.HtmlTransport.SimpleWebSocketHttpServer.Dispose+0xc: call System.Net.Sockets.TcpListener.Stop: System.Net.Sockets",
+      "il:Avalonia.DesignerSupport.dll:<AcceptAsyncImpl>d__4.MoveNext+0x3e: callvirt System.Net.Sockets.TcpListener.AcceptSocketAsync: System.Net.Sockets",
+      "il:Avalonia.DesignerSupport.dll:<AcceptAsyncImpl>d__4.MoveNext+0xa3: newobj System.Net.Sockets.NetworkStream..ctor: System.Net.Sockets",
+      "artifact:Avalonia.DesignerSupport.dll: System.Net.Sockets",
+      "metadata:Avalonia.Remote.Protocol.dll: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Avalonia.Base.dll: System.Diagnostics.Process",
+      "metadata:Avalonia.Base.dll: ProcessStartInfo",
+      "metadata:Avalonia.Base.dll: ShellExecute",
+      "metadata:Avalonia.Base.dll: Process.Start",
+      "il:Avalonia.Base.dll:Avalonia.Platform.Storage.FileIO.BclLauncher.Exec+0x34: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:Avalonia.Base.dll:Avalonia.Platform.Storage.FileIO.BclLauncher.Exec+0x34: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:Avalonia.Base.dll:Avalonia.Platform.Storage.FileIO.BclLauncher.Exec+0x49: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:Avalonia.Base.dll:Avalonia.Platform.Storage.FileIO.BclLauncher.Exec+0x49: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Avalonia.Base.dll: FileStream",
+      "il:Avalonia.Base.dll:Avalonia.Platform.Storage.FileIO.BclStorageItem.OpenWriteCore+0x9: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Avalonia.Base.dll: FileStream",
+      "metadata:Avalonia.Native.dll: FileStream",
+      "artifact:Avalonia.Native.dll: FileStream",
+      "metadata:Avalonia.Skia.dll: FileStream",
+      "artifact:Avalonia.Skia.dll: FileStream",
+      "metadata:Avalonia.Win32.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Avalonia.Base.dll: https://github.com/avaloniaui!Avalonia.Input.GestureRecognizers"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1d38860f553d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/67592"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2f1b858ecd88",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn/issues/77697",
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/77697"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.30b1bf272b4f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn",
+      "artifact:Microsoft.CodeAnalysis.CSharp.Scripting.dll: https://github.com/dotnet/roslyn",
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn",
+      "artifact:Microsoft.CodeAnalysis.Scripting.dll: https://github.com/dotnet/roslyn"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.351354630292",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Avalonia.Base.dll: https://github.com/AvaloniaUI/Avalonia/",
+      "artifact:Avalonia.Controls.dll: https://github.com/AvaloniaUI/Avalonia/",
+      "artifact:Avalonia.DesignerSupport.dll: https://github.com/AvaloniaUI/Avalonia/",
+      "artifact:Avalonia.Desktop.dll: https://github.com/AvaloniaUI/Avalonia/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3c6d3453545c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MicroCom.Runtime.dll: https://github.com/kekekeks/MicroCom"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.435df6fdc4b6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Avalonia.Markup.Xaml.dll: https://github.com/avaloniaui%Avalonia.Markup.Xaml.MarkupExtensions"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4920e1989295",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Avalonia.Fonts.Inter.dll: https://github.com/rsms/inter)InterRegular3.019;RSMS;Inter-RegularInter"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4aa46afcdabf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Avalonia.Fonts.Inter.dll: https://github.com/rsms/inter)InterBold3.019;RSMS;Inter-BoldInter"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4f8a0431bc01",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Tmds.DBus.Protocol.dll: https://github.com/tmds/Tmds.DBus.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5075f58a96d8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.Mvvm.dll: https://github.com/CommunityToolkit/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5e2c4ed80499",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.Drawing.dll: https://github.com/SixLabors/ImageSharp.Drawing"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9234edb5ef5f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.Fonts.dll: https://github.com/SixLabors/Fonts"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9263e244362c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ShimSkiaSharp.dll: https://github.com/wieslawsoltes/Svg.Skia",
+      "artifact:Svg.Controls.Avalonia.dll: https://github.com/wieslawsoltes/Svg.Skia",
+      "artifact:Svg.Custom.dll: https://github.com/wieslawsoltes/Svg.Skia",
+      "artifact:Svg.Model.dll: https://github.com/wieslawsoltes/Svg.Skia"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.98c15aaf119b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn/issues/73002",
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/73002"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.af2c29b9f1dc",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Crayon.dll: https://github.com/riezebosch/crayon.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.afef84a7092f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn/issues/70609X"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b1b1e52b473e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:StudioFourteen.dll: https://github.com/UnlostWorld/StudioFourteen"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bf834cf2e8b3",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Apos.WintabDN.dll: https://github.com/Apostolique/Apos.WintabDN"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c4d743708f1b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Avalonia.Base.dll: https://github.com/avaloniaui",
+      "artifact:Avalonia.Controls.dll: https://github.com/avaloniaui",
+      "artifact:Avalonia.Fonts.Inter.dll: https://github.com/avaloniaui",
+      "artifact:Avalonia.Markup.dll: https://github.com/avaloniaui"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c6a6a06c571f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/63440"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cb6335723c68",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/74753"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d5e751092829",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PropertyGenerator.Avalonia.dll: https://github.com/zxbmmmmmmmmm/PropertyGenerator"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ddefa2c4d69e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ExCSS.dll: https://github.com/TylerBrinks/ExCSS"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e0beaad46d9b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Avalonia.Fonts.Inter.dll: https://github.com/rsms/inter)Inter"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e8976b8159ba",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/70609"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f0697fe68c5e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:cs/Microsoft.CodeAnalysis.CSharp.resources.dll: https://github.com/dotnet/roslyn/issues/72133",
+      "artifact:de/Microsoft.CodeAnalysis.CSharp.resources.dll: https://github.com/dotnet/roslyn/issues/72133",
+      "artifact:es/Microsoft.CodeAnalysis.CSharp.resources.dll: https://github.com/dotnet/roslyn/issues/72133",
+      "artifact:fr/Microsoft.CodeAnalysis.CSharp.resources.dll: https://github.com/dotnet/roslyn/issues/72133"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f8e7c912ff11",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: WebRequest",
+      "metadata:Svg.Controls.Avalonia.dll: System.Net.Http.HttpClient",
+      "il:Svg.Controls.Avalonia.dll:Avalonia.Svg.SvgSource.LoadPicture+0x56: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:Svg.Controls.Avalonia.dll:Avalonia.Svg.SvgSource.LoadPicture+0x5c: call System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "metadata:Svg.Custom.dll: System.Net.Http.HttpClient",
+      "il:Svg.Custom.dll:Svg.SvgElement..cctor+0xa: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:Svg.Custom.dll:Svg.SvgElementIdManager.GetElementById+0xe8: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:Svg.Custom.dll:Svg.SvgElementIdManager..cctor+0x0: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes/linux-arm/native/libHarfBuzzSharp.so",
+      "runtimes/linux-arm/native/libSkiaSharp.so",
+      "runtimes/linux-arm64/native/libHarfBuzzSharp.so",
+      "runtimes/linux-arm64/native/libSkiaSharp.so",
+      "runtimes/linux-loongarch64/native/libHarfBuzzSharp.so",
+      "runtimes/linux-musl-arm/native/libHarfBuzzSharp.so",
+      "runtimes/linux-musl-arm64/native/libHarfBuzzSharp.so",
+      "runtimes/linux-musl-loongarch64/native/libHarfBuzzSharp.so"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
