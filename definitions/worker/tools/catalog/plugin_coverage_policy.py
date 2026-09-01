@@ -92,6 +92,7 @@ def selection_sort_key(item: dict[str, Any], covered_plugins: set[int] | None = 
         lane,
         source_rank if lane in (0, 1) else 3,
         channel_rank if lane in (0, 1) else 2,
+        -int(item.get("operatorNudgeScore") or 0),
         -int(item.get("priority") or 0),
         str(item.get("currentScannedAtUtc") or ""),
         str(item.get("internalName") or "").casefold(),

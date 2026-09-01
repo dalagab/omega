@@ -324,6 +324,13 @@ COLLECTORS: tuple[dict[str, Any], ...] = (
         "cadence": "scheduled", "authority": "observation-only", "network": True,
     },
     {
+        "id": "omega.collector.discovery.roboscope-operations", "version": 1,
+        "componentId": DISCOVERY_COMPONENT_ID, "title": "RoboScope Git operations source intake",
+        "purpose": "Project append-only operator source requests into untrusted discovery candidates.",
+        "provides": ["catalogManifestCandidates", "catalogRepositoryCandidates"],
+        "cadence": "event-driven", "authority": "observation-only", "network": False,
+    },
+    {
         "id": "omega.collector.discovery.pluginmaster-validator", "version": 1,
         "componentId": DISCOVERY_COMPONENT_ID, "title": "PluginMaster validator",
         "purpose": "Validate novel public JSON candidates with the production PluginMaster parser and classify new plugin/source facts.",
