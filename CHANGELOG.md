@@ -1,5 +1,14 @@
 # DeltaScope changelog
 
+## 4.21.14 — orchestration alignment
+
+- Make durable `security-work-state` queue/lease/result/settlement data the primary health authority for the seven autonomous collection lanes; GitHub Actions results remain runner diagnostics and can no longer paint a successfully settled lane red.
+- Align Collector cards/topology with the current dedicated worker workflows (`catalog-*-worker`, `source-head-worker`, `threat-intelligence-worker`, `osv-worker`, and `secondary-security-worker`) instead of legacy `catalog-builder.yml` ancestry.
+- Align Operations Pipelines around the durable work lanes and label retained GitHub Actions components explicitly as diagnostics rather than platform-health authority.
+- Update the runtime fallback collector contracts and Actions classifier for the current reconciler/worker architecture, including the secondary-security durable lane.
+- Clarify that Operations → Scan Queue is the SigmaScope plugin artifact/source analysis queue, separate from the generic seven-lane collection orchestration state.
+- Update the Operations guide to use durable-first incident triage: inspect queue/lease/result/settlement first, then use Actions logs to diagnose the runner that produced that state.
+
 ## 4.21.13 — platform comprehension
 
 - Add a first-class evidence-coverage matrix to each selected plugin so retained, partial, missing, unavailable, not-linked, not-requested and reanalysis-required states stay distinct instead of being mentally reconstructed from several tabs.

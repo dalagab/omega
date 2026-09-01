@@ -13,11 +13,13 @@ import deltascope_0015_compat
 import deltascope_workflow_center
 import deltascope_availability
 import deltascope_platform_comprehension
+import deltascope_orchestration_alignment
 
 deltascope_0015_compat.install()
 deltascope_workflow_center.install()
 deltascope_availability.install()
 deltascope_platform_comprehension.install()
+deltascope_orchestration_alignment.install()
 
 if __name__ == "__main__":
     raise SystemExit(main())
