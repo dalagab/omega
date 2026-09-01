@@ -3297,12 +3297,12 @@
           "bytes": 107512,
           "encoding": "json",
           "path": "derived/variants/0005/5559/dependency-resolutions.json",
-          "recordDigest": "b6840ff0a9211d3c035b8804313eaf04bea17a1499dd7ba8588c09d2ed7fe611",
+          "recordDigest": "2e974c91b2a436a0486fa169fe180de8d6261c0a0f909ccfbd76eaac0b65e859",
           "records": 108,
-          "sha256": "76d7f60b83c2a3df17eb8ff7c3909541df8868a196513414974a0a8d1bbbb8ab"
+          "sha256": "9cbcd45e9870716ec7b9399e7e9667bacd8e4b15a3c07acd9ab4f4876c7e0680"
         }
       ],
-      "recordDigest": "b6840ff0a9211d3c035b8804313eaf04bea17a1499dd7ba8588c09d2ed7fe611",
+      "recordDigest": "2e974c91b2a436a0486fa169fe180de8d6261c0a0f909ccfbd76eaac0b65e859",
       "records": 108
     },
     "sourceAnalysisCache": {
@@ -3528,7 +3528,7 @@
     "canonical_name": "Loot Goblin",
     "first_seen_utc": "2026-08-22T09:49:09Z",
     "internal_name": "LootGoblin",
-    "last_seen_utc": "2026-08-31T18:30:09Z",
+    "last_seen_utc": "2026-09-01T06:24:09Z",
     "plugin_id": 1139
   },
   "pluginId": 1139,
@@ -3540,21 +3540,27 @@
       "nsfw": false,
       "official": false,
       "richCard": false,
-      "richnessScore": 382,
+      "richnessScore": 1232,
       "summary": "Automated treasure map hunting bot with party coordination.",
-      "webEnriched": false
+      "webEnriched": true
     },
-    "projectRepository": "",
+    "projectRepository": "https://github.com/McVaxius/LootGoblin",
     "schema": "omega.evidence.presentation.v1",
     "website": {
       "description": "",
       "homepage": "",
       "images": [],
-      "links": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/McVaxius/LootGoblin"
+        }
+      ],
       "omegaBannerUrl": "",
-      "readmeExcerpt": "",
-      "title": "",
-      "url": ""
+      "readmeExcerpt": "# Loot Goblin\n\nLoot Goblin is a Dalamud plugin for automating FFXIV treasure-map runs. It selects configured maps, deciphers them, reads the local map flag, travels with Lifestream, moves with vnavmesh, opens coffers, handles portals, and can hand treasure dungeons to ADS.\n\n## Install\n\nAdd the Aethertek custom repository in Dalamud:\n\n```text\nhttps://aethertek.io/x.json\n```\n\nThen open the plugin installer and install **Loot Goblin**.\n\nSupport development: https://ko-fi.com/mcvaxius  \nPlugins and guides: https://aethertek.io/\n\n## Quick Start\n\nOpen the main window:\n\n```text\n/lootgoblin\n/lg\n```\n\nCommon commands:\n\n```text\n/lg config\n/lg settings\n/lg on\n/lg enable\n/lg off\n/lg disable\n/lg status\n/lg debug\n/lg fetchretainer\n```\n\nEvery `/lg` command also works with `/lootgoblin`. `/lg debug` toggles map diagnostics in the UI. `/lg fetchretainer` starts manual retainer map retrieval when XADB/XASlave support is available and a configured map exists on a retainer.\n\n## Core Workflow\n\n1. Enable Loot Goblin from the main window or with `/lg on`.\n2. Preflight clears stale map flags, attempts to dismount, refreshes dependencies, and prepares configured job/repair state.\n3. Map selection scans inventory first, then loaded saddlebags, then retainer data through XADB. Enabled map types and per-map run counts control what is eligible.\n4. Opening a map uses the game item API, accepts the decipher confirmation dialog, and waits for a map flag or captured treasure spot.\n5. Location detection uses the local AgentMap flag reader, captured TreasureSpot data, and the bundled/community map-location database.\n6. Travel uses Lifestream `/li` commands to the nearest known aetheryte, then vnavmesh `/vnav flyto` or `/vnav moveto` to reach the map area.\n7. Party waits can delay teleporting, mounting, underwater descent, or dismounting until party members are ready or nearby.\n8. Chest handling targets and opens overworld treasure coffers, handles combat waits, loots, and solves or skips the Higher/Lower minigame based on config.\n9. Portal handling approaches the portal, clears old map flags, accepts the portal dialog, and waits for duty state or a treasure dungeon territory.\n10. Dungeon handling either sends `/ads inside` and waits for ADS ownership, or falls back to Loot Goblin's legacy dungeon solver.\n11. Completion runs finish commands, checks for remaining enabled inventory/saddlebag/retainer maps, optionally retrieves another map, and loops when auto-start is enabled.\n\nWhen a character loads during an active **Moogle Treasure Trove** event, Loot Goblin shows one normal reminder toast. Event timing is checked dynamically against Eventy's public event feed, cached for six hours, and failures remain silent.\n\n## Configuration\n\nMap settings control enabled map types, per-map run counts, gatherable-map choices, saddlebag retrieval, retainer retrieval, and whether all known map types are shown.\n\nParty settings control wait-for-party behavior, thief-map underwater waits, mounted-party checks, teleport delay, dismount waits, and optional required-party-count thresholds.\n\nDungeon settings control ADS handoff. When enabled and ADS is loaded, Loot Goblin sends `/ads inside` after a treasure dungeon is confirmed and waits for ADS to finish. If ADS is missing, Loot Goblin warns and can fall back to its legacy solver.\n\nReturn-when-done can send the selected Lifestream return only after no enabled inventory, loaded saddlebag, or retainer maps remain. Destinations are FC, personal house, or inn.\n\nCommand triggers run configured slash commands at landing/duty entry and at finish. Defaults include rotation/BossMod/FrenRider follow-control commands, but they are editable in settings.\n\nAutomation settings cover ADS repair threshold/mode, food selection and search, auto-discard through AutoRetainer `/ays discard`, chocobo companion summon/stance, combat automation, Krangle names, and diagnostics.\n\nDiagnostics include the main debug log, map diagnostics, and an optional dedicated LootGoblin diagnostic log under the plugin config directory.\n\n## Integrations\n\nRequired for normal map travel:\n\n- **Lifestream**: required by plugin metadata and used for `/li` aetheryte travel.\n- **vnavmesh**: required for route movement and checked through plugin metadata or vnavmesh IPC.\n\nOptional:\n\n- **ADS**: dungeon solver handoff, ADS loot UI, ADS repair, and BMR reflection settings.\n- **XADB** and **XASlave**: retainer/saddlebag map retrieval support.\n- **AutoRetainer**: auto-discard command support through `/ays discard`.\n- **RotationSolver Reborn, BossMod Reborn, VBM, Wrath**: command-trigger and combat automation support. BossMod Reborn is detected as the map-AI-capable option.\n- **TextAdvance**: optional Alexandrite dialogue support.\n- **GatherBuddyReborn**: optional map gathering support.\n- **MapPartyAssist**: optional treasure-map statistics display.\n\n## Death Return And Party State\n\nFFXIV treats death Return differently depending on context. A normal overworld Return should not leave a party by itself.\n\nIf the character is dead while `BoundByDuty`, `BoundByDuty56`, or treasure-map duty state is still active, accepting the Return prompt can remove the character from the party without a separate \"Leave party?\" confirmation. This can happen from normal game behavior; a plugin or external tool only needs to accept the Return prompt for the game-side party drop to occur.\n\nWhen investigating unexpected party drops, treat death Return from a bound treasure-map context as different from ordinary overworld Return.\n\n## Troubleshooting\n\nUse the Dalamud log first. If enabled, also check the dedicated LootGoblin diagnostic log from the settings window.\n\nUseful search strings:\n\n```text\nReturn to\nBoundByDuty\nYou leave ... party\nUnconscious\ndefeated\n[SelectYesno] accepted\n[YES/NO] Clicked Yes\n[OpeningMap] Clicked Yes\n[Portal] Clicked Yes\n[ADS]\n[RetainerMap]\n```\n\nFor party-drop investigations, line up the death/respawn line, `Return to` prompt, `BoundByDuty` state, LootGoblin dialog acceptance line, and the system party-leave message.\n\n## Build\n\n```bash\ngit clone https://github.com/McVaxius/LootGoblin.git\ncd LootGoblin\ndotnet restore\ndotnet build -c Release\n```\n\n## License\n\nAGPL-3.0-or-later",
+      "title": "LootGoblin",
+      "url": "https://github.com/McVaxius/LootGoblin"
     }
   },
   "projection": {
@@ -5253,20 +5259,20 @@
   },
   "schema": "omega.security-evidence.variant.v2",
   "source": {
-    "content_sha256": "888a9114c0d38f2c2fe1c7038b88c18ec047a67545d20d0d49e95a7cb7114a91",
+    "content_sha256": "cd5ed2c4b87f4d6713d026fb0c1432ea117f5acba2c0f58c9505539ca66d3a1c",
     "curated_id": "",
     "description": "",
     "discovered_by": "catalog-data/sources/index.json",
     "enabled_by_default": 1,
-    "etag": "\"0dc9c4de63137dba5d837a9ab31a64bfa2557d56358ffb96eeaa0ae15a3b0452\"",
+    "etag": "\"71cbb5a170ff2a7e5b7654ab90009f70998f7da643444d9ecf5572d4d4ce0159\"",
     "highest_api": 15,
     "integrate_with_dalamud": 0,
     "is_official": 0,
     "kind": "canonical",
-    "last_checked_utc": "2026-08-31T18:30:09Z",
+    "last_checked_utc": "2026-09-01T06:24:09Z",
     "last_error": "",
     "last_modified": "",
-    "last_success_utc": "2026-08-31T18:30:09Z",
+    "last_success_utc": "2026-09-01T06:24:09Z",
     "name": "yourShika/AetheryteRepo",
     "plugin_count": 144,
     "provider": "yourShika/AetheryteRepo",
@@ -5288,7 +5294,7 @@
     "dalamud_api_level": 15,
     "description": "LootGoblin automates treasure map hunting by opening maps, reading local map flags, teleporting to the nearest aetheryte, coordinating with party members, and flying to the treasure location. Use /lootgoblin or /lg to open.",
     "dip17_channel": "",
-    "download_count": 6098,
+    "download_count": 6239,
     "download_link_install": "https://github.com/McVaxius/LootGoblin/releases/download/v0.5.1.1/latest.zip",
     "download_link_testing": "",
     "download_link_update": "https://github.com/McVaxius/LootGoblin/releases/download/v0.5.1.1/latest.zip",
@@ -5297,19 +5303,38 @@
     "image_urls_json": [],
     "is_hide": 0,
     "is_testing_exclusive": 0,
-    "last_seen_utc": "2026-08-31T18:30:09Z",
+    "last_seen_utc": "2026-09-01T06:24:09Z",
     "last_update": 1788014292,
     "minimum_dalamud_version": null,
     "name": "Loot Goblin",
     "plugin_id": 1139,
     "punchline": "Automated treasure map hunting bot with party coordination.",
     "raw_manifest_json": {
+      "AcceptsFeedback": false,
       "ApplicableVersion": "any",
       "AssemblyVersion": "0.5.1.1",
       "Author": "DhogGPT",
+      "Changelog": null,
       "DalamudApiLevel": 15,
+      "Dependencies": [
+        {
+          "InternalName": "Lifestream",
+          "Reason": "LootGoblin uses Lifestream for /li aetheryte travel.",
+          "Required": true
+        },
+        {
+          "InternalName": "xadb",
+          "Reason": "Needed if you want retainer and saddlebag retrieval.",
+          "Required": false
+        },
+        {
+          "InternalName": "xaslave",
+          "Reason": "Needed if you want retainer and saddlebag retrieval.",
+          "Required": false
+        }
+      ],
       "Description": "LootGoblin automates treasure map hunting by opening maps, reading local map flags, teleporting to the nearest aetheryte, coordinating with party members, and flying to the treasure location. Use /lootgoblin or /lg to open.",
-      "DownloadCount": 6098,
+      "DownloadCount": 6239,
       "DownloadLinkInstall": "https://github.com/McVaxius/LootGoblin/releases/download/v0.5.1.1/latest.zip",
       "DownloadLinkUpdate": "https://github.com/McVaxius/LootGoblin/releases/download/v0.5.1.1/latest.zip",
       "IconUrl": "https://raw.githubusercontent.com/McVaxius/LootGoblin/master/LootGoblin/images/icon.png",
@@ -5319,20 +5344,24 @@
       "LastUpdate": 1788014292,
       "Name": "Loot Goblin",
       "Punchline": "Automated treasure map hunting bot with party coordination.",
-      "SupportsProfiles": true,
+      "RepoTitle": "Dhog Dumpsterfire",
+      "RepoUrl": "https://github.com/McVaxius/LootGoblin",
+      "SourceRepoName": "LootGoblin",
+      "SourceRepoUrl": "https://github.com/McVaxius/LootGoblin",
       "Tags": [
         "treasure",
         "map",
         "automation",
         "bot",
-        "loot"
+        "loot",
+        "aethertek"
       ],
       "_Category": "qol",
       "_SourceId": "mcvaxius-thedumpsterfire",
       "_SourceName": "McVaxius / TheDumpsterFire",
       "_SourceUrl": "https://raw.githubusercontent.com/McVaxius/TheDumpsterFire/master/repo.json"
     },
-    "repo_url": "",
+    "repo_url": "https://github.com/McVaxius/LootGoblin",
     "source_entry_key": "lootgoblin|0.5.1.1|15|0|71",
     "source_id": 595,
     "tags_json": [
@@ -5340,7 +5369,8 @@
       "map",
       "automation",
       "bot",
-      "loot"
+      "loot",
+      "aethertek"
     ],
     "testing_assembly_version": null,
     "testing_dalamud_api_level": null,
