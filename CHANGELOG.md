@@ -1,5 +1,14 @@
 # DeltaScope changelog
 
+## 4.21.13 — platform comprehension
+
+- Add a first-class evidence-coverage matrix to each selected plugin so retained, partial, missing, unavailable, not-linked, not-requested and reanalysis-required states stay distinct instead of being mentally reconstructed from several tabs.
+- Extend Journey with semantic source-behavior and endpoint threat-intelligence stages while preserving the rule that absent evidence is never presented as a negative/clean result.
+- Add semantic behavior chains for retained source operations/value-flow/control-flow, including the current market-data → market-board behavior rules; chains are explicitly static evidence paths rather than runtime claims.
+- Verify the published service and semantic-API registries against their SHA-256 descriptors in the current frozen Definitions index before using them as explanatory UI context.
+- Add an Operations work-state board over the durable `security-work-state` queues so operators can follow reason → queue → lease → result → settlement without inferring orchestration state from GitHub Actions names.
+- Keep all additions consumer-only and fail-soft: no scanner code, Evidence-v2 writer, queue mutation, repository mutation, or new security authority is introduced.
+
 ## 4.21.12 — quiet Windows desktop process model
 
 - Make the normal Windows `DeltaScope.exe` a zero-console desktop application and suppress console allocation for Python probes, venv/pip setup, the native window host, and the Python backend.
