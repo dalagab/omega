@@ -51,6 +51,26 @@ class SecurityOrchestrationDispatchWorkflowTests(unittest.TestCase):
         self.assertNotIn("gh workflow run security-reconcile.yml", text)
         self.assertNotIn("redispatch_active_leases: true", text)
 
+    def test_release_intake_uses_existing_router_and_separate_writer_queue(self):
+        router = (WF / "security-orchestration-dispatch.yml").read_text(encoding="utf-8")
+        reconcile = (WF / "security-reconcile.yml").read_text(encoding="utf-8")
+        intake = (WF / "catalog-release-intake.yml").read_text(encoding="utf-8")
+        self.assertIn("reconcile|release-intake)", router)
+        self.assertIn("uses: ./.github/workflows/catalog-release-intake.yml", router)
+        self.assertIn("catalog_release_intake.py ready", reconcile)
+        self.assertIn("-f mode=release-intake", reconcile)
+        self.assertNotIn("uses: ./.github/workflows/catalog-release-intake.yml", reconcile)
+        self.assertIn("workflow_call:", intake)
+        self.assertIn("group: omega-catalog-sigmascope-exclusive", intake)
+        self.assertIn("queue: max", intake)
+        self.assertIn("catalog_release_intake.py build", intake)
+        self.assertIn("--history-mode fast-forward --push", intake)
+        self.assertIn('--expected-parent-sha "$(git -C catalog/current-state rev-parse HEAD)"', intake)
+        self.assertIn("steps.intake.outputs.changed == 'true'", intake)
+        self.assertLess(intake.index("publish_catalog_state.py"), intake.index("gh workflow run sigmascope-parallel-drain.yml"))
+        self.assertNotIn("definitions_snapshot.py", intake)
+        self.assertNotIn("catalog-client-publish.yml", intake)
+
 
 if __name__ == "__main__":
     unittest.main()

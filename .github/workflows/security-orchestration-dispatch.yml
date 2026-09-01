@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Internal routing mode (worker or reconcile)
+        description: Internal routing mode (worker, reconcile or release-intake)
         required: true
         type: string
       queue_id:
@@ -47,8 +47,8 @@ jobs:
         run: |
           set -euo pipefail
           case "$MODE" in
-            reconcile)
-              test -z "$QUEUE_ID" || { echo "::error::queue_id must be empty for reconcile mode"; exit 2; }
+            reconcile|release-intake)
+              test -z "$QUEUE_ID" || { echo "::error::queue_id must be empty for $MODE mode"; exit 2; }
               ;;
             worker)
               case "$QUEUE_ID" in
@@ -59,7 +59,7 @@ jobs:
               test -n "$CLAIM_TOKEN" || { echo "::error::claim_token is required for worker mode"; exit 2; }
               ;;
             *)
-              echo "::error::mode must be worker or reconcile"
+              echo "::error::mode must be worker, reconcile or release-intake"
               exit 2
               ;;
           esac
@@ -69,6 +69,13 @@ jobs:
     needs: validate
     if: ${{ inputs.mode == 'reconcile' }}
     uses: ./.github/workflows/security-reconcile.yml
+    secrets: inherit
+
+  release-intake:
+    name: Admit catalog releases independently of Definitions freeze
+    needs: validate
+    if: ${{ inputs.mode == 'release-intake' }}
+    uses: ./.github/workflows/catalog-release-intake.yml
     secrets: inherit
 
   catalog-discovery:

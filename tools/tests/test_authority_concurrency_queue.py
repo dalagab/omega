@@ -37,6 +37,7 @@ class AuthorityConcurrencyQueueTests(unittest.TestCase):
         for expected in (
             "sigmascope.yml",
             "catalog-builder.yml",
+            "catalog-release-intake.yml",
             "catalog-client-publish.yml",
             "sigmascope-parallel-drain.yml",
             "rift-evidence-ingest.yml",

@@ -210,3 +210,17 @@ jobs:
             done
             test "$dispatched" = true || { echo "::error::Failed to dispatch exact leased work after 3 attempts: $queue_id/$work_id"; exit 4; }
           done < catalog/dispatch.tsv
+      - name: Wake release intake only for settled current-catalog manifests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/catalog/catalog_release_intake.py ready \
+            --state catalog/current-catalog --work-state catalog/work-state-next \
+            --enrichment catalog/lane-results/catalog-enrichment \
+            --report catalog/release-intake-ready.json
+          if [ "$(jq -r '.ready' catalog/release-intake-ready.json)" = true ]; then
+            gh workflow run security-orchestration-dispatch.yml \
+              --repo "${{ github.repository }}" --ref sigmascope -f mode=release-intake
+          fi

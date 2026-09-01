@@ -1,0 +1,90 @@
+name: Omega catalog · continuous release intake
+
+on:
+  workflow_call:
+
+permissions:
+  contents: write
+  actions: write
+  packages: read
+
+# Catalog identity and queue admission are atomic. Definitions are copied unchanged.
+concurrency:
+  group: omega-catalog-sigmascope-exclusive
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  resolve-image:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: security-worker-images, path: image-state, persist-credentials: false}
+      - id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="$(jq -er '.images["publisher-worker"] // empty' image-state/index.json)"
+          [[ "$ref" =~ ^ghcr\.io/[^@[:space:]]+@sha256:[0-9a-f]{64}$ ]] || exit 3
+          echo "image=$ref" >> "$GITHUB_OUTPUT"
+
+  admit:
+    needs: resolve-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: ${{ needs.resolve-image.outputs.image }}
+      credentials: {username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+      - name: Allow container Git access
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: actions/checkout@v6
+        with: {ref: catalog-data, path: catalog/current-state, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-work-state, path: catalog/work-state, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: catalog-enrichment-state, path: catalog/enrichment, persist-credentials: false}
+      - uses: actions/checkout@v6
+        with: {ref: security-evidence-v2, path: catalog/evidence, persist-credentials: false}
+      - name: Validate settled manifests and admit releases with unchanged Definitions
+        id: intake
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/catalog/catalog_release_intake.py build \
+            --state catalog/current-state --work-state catalog/work-state \
+            --enrichment catalog/enrichment --evidence catalog/evidence \
+            --output catalog/release-state --report catalog/release-intake.json
+          echo "changed=$(jq -r '.changed' catalog/release-intake.json)" >> "$GITHUB_OUTPUT"
+      - name: Publish catalog identity and queue seed atomically
+        if: steps.intake.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          python tools/catalog/publish_catalog_state.py --input catalog/release-state \
+            --repo . --branch catalog-data --history-mode fast-forward --push \
+            --expected-parent-sha "$(git -C catalog/current-state rev-parse HEAD)"
+      - name: Wake update and baseline workers after publication
+        if: steps.intake.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh workflow run sigmascope-parallel-drain.yml
+          --repo "${{ github.repository }}" --ref sigmascope
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: omega-catalog-release-intake
+          path: catalog/release-intake.json
+          if-no-files-found: warn
+          retention-days: 7

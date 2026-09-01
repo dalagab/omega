@@ -32,6 +32,7 @@ def publish(
     push: bool,
     *,
     history_mode: str = HISTORY_FAST_FORWARD,
+    expected_parent_sha: str | None = None,
 ) -> dict:
     source = source.resolve()
     validation = catalog_state.validate(source)
@@ -48,6 +49,7 @@ def publish(
         author_email="omega-catalog@users.noreply.github.com",
         commit_message=f"Catalog state {index.get('stateRevision','snapshot')}",
         history_mode=history_mode,
+        expected_previous_head=expected_parent_sha,
     )
     result = {**validation, "branch": branch}
     result.update(publication.as_dict())
@@ -63,8 +65,10 @@ def main() -> int:
     parser.add_argument("--history-mode", choices=HISTORY_MODES, default=HISTORY_FAST_FORWARD,
                         help="Authoritative publication history mode (default: controlled fast-forward)")
     parser.add_argument("--push", action="store_true")
+    parser.add_argument("--expected-parent-sha", help="Refuse publication if catalog-data moved since candidate construction")
     args = parser.parse_args()
-    print(json.dumps(publish(args.input, args.repo, args.branch, args.remote, args.push, history_mode=args.history_mode), indent=2))
+    print(json.dumps(publish(args.input, args.repo, args.branch, args.remote, args.push,
+                             history_mode=args.history_mode, expected_parent_sha=args.expected_parent_sha), indent=2))
     return 0
 
 

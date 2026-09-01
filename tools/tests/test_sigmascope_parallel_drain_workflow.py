@@ -41,6 +41,13 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn("WAVE % cadence", text)
         self.assertIn("needs.publish.outputs.publish_client == 'true'", text)
 
+    def test_workers_merge_and_publication_use_exact_planned_catalog(self) -> None:
+        text = (common.ROOT / ".github/workflows/sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
+        self.assertIn("catalog_head: ${{ steps.plan.outputs.catalog_head }}", text)
+        self.assertEqual(3, text.count("ref: ${{ needs.plan.outputs.catalog_head }}"))
+        self.assertIn('--wave "$WAVE"', text)
+        self.assertIn("matrix.lane", text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -97,6 +97,36 @@ class SigmaScopeParallelDrainPlanTests(unittest.TestCase):
             self.assertTrue(result["serialFallbackRequired"])
             self.assertIn("serialized-worker", result["blockedReason"])
 
+    def plan_mixed(self, root: Path, *, workers=2, items=3, wave=1, updates=6, baselines=6):
+        requests = [artifact_item(i) for i in range(1, baselines + 1)]
+        requests += [{**artifact_item(100 + i), "releaseUpdate": True} for i in range(updates)]
+        path = root / "seed.json"
+        path.write_text(json.dumps(seed(requests, baseline=False)), encoding="utf-8")
+        return drain_plan.build(path, self.write_evidence(root), workers=workers, items_per_worker=items,
+                                wave=wave, output=root / "plan.json", now=NOW)
+
+    def test_updates_and_baselines_each_have_reserved_workers(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.plan_mixed(Path(directory), workers=4)
+            by_key = {item["queueKey"]: item for item in result["assignments"]}
+            self.assertEqual(12, len(by_key))
+            for slot in result["matrix"]["include"]:
+                self.assertEqual(3, slot["assignmentCount"])
+                self.assertTrue(all(by_key[key]["releaseUpdate"] == (slot["lane"] == "updates") for key in slot["queueKeys"]))
+
+    def test_empty_lane_lends_all_capacity(self) -> None:
+        for updates, baselines in ((10, 0), (0, 10)):
+            with self.subTest(updates=updates), tempfile.TemporaryDirectory() as directory:
+                result = self.plan_mixed(Path(directory), updates=updates, baselines=baselines)
+                self.assertEqual(6, result["assignmentCount"])
+                self.assertEqual(6, len({item["queueKey"] for item in result["assignments"]}))
+
+    def test_single_worker_single_item_waves_do_not_starve_either_lane(self) -> None:
+        for wave, update in ((1, True), (2, False)):
+            with self.subTest(wave=wave), tempfile.TemporaryDirectory() as directory:
+                result = self.plan_mixed(Path(directory), workers=1, items=1, wave=wave)
+                self.assertEqual(update, result["assignments"][0]["releaseUpdate"])
+
 
 if __name__ == "__main__":
     unittest.main()

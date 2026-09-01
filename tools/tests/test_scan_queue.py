@@ -16,6 +16,21 @@ NOW = dt.datetime(2026, 8, 19, 10, 0, tzinfo=dt.timezone.utc)
 
 
 class ScanQueueTests(unittest.TestCase):
+    def test_preferred_update_lane_preserves_retry_eligibility_and_lends_capacity(self) -> None:
+        state = {"items": {
+            "update": {"queueKey": "update", "workType": "artifact", "releaseUpdate": True,
+                       "state": "retry", "nextEligibleAtUtc": "2026-08-19T11:00:00Z"},
+            "baseline": {"queueKey": "baseline", "workType": "artifact", "state": "pending"},
+        }}
+        self.assertEqual("baseline", scan_queue.select_next(state, now=NOW, preferred_lane="updates")["queueKey"])
+        self.assertEqual("update", scan_queue.select_next(state, now=NOW + dt.timedelta(hours=1), preferred_lane="updates")["queueKey"])
+
+    def test_pending_release_intent_survives_same_target_seed_refresh(self) -> None:
+        item = {"queueKey": "variant-1", "targetFingerprint": "target-1", "workType": "artifact"}
+        previous = {"items": {"variant-1": {**item, "releaseUpdate": True}}}
+        state = scan_queue.sync_state({"items": [item]}, previous, now=NOW)
+        self.assertTrue(state["items"]["variant-1"]["releaseUpdate"])
+
     def _catalog(self, root: Path) -> tuple[Path, dict]:
         curated, raw, enriched, websites = test_sqlite_catalog.fixture_documents(root)
         built = root / "built"

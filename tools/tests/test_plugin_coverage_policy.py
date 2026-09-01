@@ -104,6 +104,15 @@ class PluginCoveragePolicyTests(unittest.TestCase):
         self.assertEqual({7}, covered)
         self.assertEqual(2, policy.selection_lane(sibling, covered))
 
+    def test_update_lane_does_not_promote_generic_reanalysis_or_source_work(self) -> None:
+        base = {"workType": "artifact"}
+        self.assertTrue(policy.is_release_update({**base, "reasons": ["artifact_version_changed"]}))
+        self.assertTrue(policy.is_release_update({**base, "reasons": ["new_variant"], "pluginHasCurrentScan": True}))
+        self.assertTrue(policy.is_release_update({**base, "releaseUpdate": True}))
+        self.assertFalse(policy.is_release_update({**base, "reasons": ["new_variant"]}))
+        self.assertFalse(policy.is_release_update({**base, "reasons": ["artifact_analysis_changed"], "pluginHasCurrentScan": True}))
+        self.assertFalse(policy.is_release_update({"workType": "source", "releaseUpdate": True}))
+
 
 if __name__ == "__main__":
     unittest.main()

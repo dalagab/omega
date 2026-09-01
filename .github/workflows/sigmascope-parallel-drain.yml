@@ -89,13 +89,14 @@ jobs:
           echo "publisher_image=$publisher_ref" >> "$GITHUB_OUTPUT"
 
   plan:
-    name: Select one disjoint coverage-first production wave
+    name: Select disjoint release-update and baseline worker lanes
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       assignment_count: ${{ steps.plan.outputs.assignment_count }}
       base_head: ${{ steps.plan.outputs.base_head }}
+      catalog_head: ${{ steps.plan.outputs.catalog_head }}
       dev_sha: ${{ steps.plan.outputs.dev_sha }}
       serial_fallback: ${{ steps.plan.outputs.serial_fallback }}
       blocked_reason: ${{ steps.plan.outputs.blocked_reason }}
@@ -136,6 +137,7 @@ jobs:
         env:
           WORKERS: ${{ inputs.workers || 4 }}
           ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 10 }}
+          WAVE: ${{ inputs.wave || 1 }}
         shell: bash
         run: |
           set -euo pipefail
@@ -144,12 +146,14 @@ jobs:
             --evidence-root catalog/security-v2-current \
             --workers "$WORKERS" \
             --items-per-worker "$ITEMS_PER_WORKER" \
+            --wave "$WAVE" \
             --output catalog/sigmascope-drain-plan.json
           echo "matrix=$(jq -c '.matrix' catalog/sigmascope-drain-plan.json)" >> "$GITHUB_OUTPUT"
           echo "assignment_count=$(jq -r '.assignmentCount' catalog/sigmascope-drain-plan.json)" >> "$GITHUB_OUTPUT"
           echo "serial_fallback=$(jq -r '.serialFallbackRequired' catalog/sigmascope-drain-plan.json)" >> "$GITHUB_OUTPUT"
           echo "blocked_reason=$(jq -r '.blockedReason' catalog/sigmascope-drain-plan.json)" >> "$GITHUB_OUTPUT"
           echo "base_head=$(git -C catalog/security-v2-current rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "catalog_head=$(git -C catalog/active-state rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "dev_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Summarize production wave
         shell: bash
@@ -175,7 +179,7 @@ jobs:
           retention-days: 7
 
   workers:
-    name: Scan slot ${{ matrix.slot }} (${{ matrix.assignmentCount }} exact queue keys)
+    name: Scan ${{ matrix.lane }} slot ${{ matrix.slot }} (${{ matrix.assignmentCount }} exact queue keys)
     needs: [resolve-images, plan]
     if: needs.plan.outputs.assignment_count != '0'
     runs-on: ubuntu-latest
@@ -204,7 +208,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v6
         with:
-          ref: catalog-data
+          ref: ${{ needs.plan.outputs.catalog_head }}
           path: catalog/active-state
           fetch-depth: 1
           persist-credentials: false
@@ -364,7 +368,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v6
         with:
-          ref: catalog-data
+          ref: ${{ needs.plan.outputs.catalog_head }}
           path: catalog/active-state
           fetch-depth: 1
           persist-credentials: false
@@ -546,7 +550,7 @@ jobs:
           persist-credentials: true
       - uses: actions/checkout@v6
         with:
-          ref: catalog-data
+          ref: ${{ needs.plan.outputs.catalog_head }}
           path: catalog/active-state
           fetch-depth: 1
           persist-credentials: false
