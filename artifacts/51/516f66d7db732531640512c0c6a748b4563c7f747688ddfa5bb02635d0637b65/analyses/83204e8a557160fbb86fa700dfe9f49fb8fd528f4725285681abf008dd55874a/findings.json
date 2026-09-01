@@ -1,0 +1,323 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "native-pe:runtimes/win-x64/native/libwinpthread-1.dll: import KERNEL32.dll!OpenProcess: OpenProcess",
+      "artifact:runtimes/win-x64/native/libwinpthread-1.dll: OpenProcess"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:runtimes/win-x64/native/qpdf.dll: D:/a/Testing.QPDF/Testing.QPDF/qpdf/libqpdf/Buffer.cc",
+      "artifact:runtimes/win-x64/native/qpdf.dll: s://github.com/qpdf/qpdf/issues.",
+      "artifact:runtimes/win-x64/native/qpdf.dll: s://qpdf.readthedocs.io/en/stable/weak-crypto.html",
+      "artifact:runtimes/win-x64/native/qpdf.dll: s://qpdf.readthedocs.io",
+      "artifact:runtimes/win-x64/native/qpdf.dll: p://www.apache.org/licenses/LICENSE-2.0",
+      "artifact:runtimes/win-x64/native/qpdf.dll: C:/msys64/usr/local/ssl/private",
+      "artifact:runtimes/win-x64/native/qpdf.dll: C:/msys64/usr/local/ssl",
+      "artifact:runtimes/win-x64/native/qpdf.dll: C:/msys64/usr/local/ssl/certs"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:VenueHelper.dll: Dalamud.Hooking",
+      "artifact:VenueHelper.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "native-pe:runtimes/win-x64/native/libstdc++-6.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:runtimes/win-x64/native/libstdc++-6.dll: import KERNEL32.dll!LoadLibraryW: LoadLibrary",
+      "artifact:runtimes/win-x64/native/libstdc++-6.dll: LoadLibrary",
+      "artifact:runtimes/win-x64/native/libstdc++-6.dll: GetProcAddress",
+      "native-pe:runtimes/win-x64/native/libwinpthread-1.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:runtimes/win-x64/native/libwinpthread-1.dll: import KERNEL32.dll!LoadLibraryW: LoadLibrary",
+      "artifact:runtimes/win-x64/native/libwinpthread-1.dll: LoadLibrary",
+      "artifact:runtimes/win-x64/native/libwinpthread-1.dll: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DocumentFormat.OpenXml.Framework.dll: http://descriptions.openxmlformats.org/description/full"
+    ],
+    "rule_id": "network.endpoint.insecure-http.cf725a7b457c",
+    "severity": "caution",
+    "title": "Endpoint: descriptions.openxmlformats.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DocumentFormat.OpenXml.Framework.dll: http://descriptions.openxmlformats.org/description/base"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e9457bd4d971",
+    "severity": "caution",
+    "title": "Endpoint: descriptions.openxmlformats.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/win-x64/native/libstdc++-6.dll: https://gcc.gnu.org/bugs/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.762c690d0656",
+    "severity": "caution",
+    "title": "Endpoint: gcc.gnu.org"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:QuestPDF.dll: System.Diagnostics.Process",
+      "metadata:QuestPDF.dll: ProcessStartInfo",
+      "metadata:QuestPDF.dll: ShellExecute",
+      "metadata:QuestPDF.dll: Process.Start",
+      "il:QuestPDF.dll:QuestPDF.Helpers.Helpers.OpenFileUsingDefaultProgram+0x0: newobj System.Diagnostics.Process..ctor: System.Diagnostics.Process",
+      "il:QuestPDF.dll:QuestPDF.Helpers.Helpers.OpenFileUsingDefaultProgram+0x7: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:QuestPDF.dll:QuestPDF.Helpers.Helpers.OpenFileUsingDefaultProgram+0x7: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:QuestPDF.dll:QuestPDF.Helpers.Helpers.OpenFileUsingDefaultProgram+0xe: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "artifact:runtimes/win-x64/native/qpdf.dll: FileStream",
+      "metadata:ClosedXML.dll: FileStream",
+      "metadata:ClosedXML.dll: Directory.CreateDirectory",
+      "metadata:ClosedXML.dll: File.Delete",
+      "artifact:ClosedXML.dll: FileStream",
+      "metadata:DocumentFormat.OpenXml.Framework.dll: FileStream",
+      "il:DocumentFormat.OpenXml.Framework.dll:DocumentFormat.OpenXml.Packaging.WriteableStreamExtensions.EnableWriteableStream+0x4e: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:DocumentFormat.OpenXml.Framework.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:QuestPDF.dll: https://github.com/QuestPDF/library.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02f546a26335",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClosedXML.dll: https://github.com/googlefonts/carlito)CarlitoBareItalic1.104;tyPL;CarlitoBare-ItalicCarlitoBare"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0af3bb85b77a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RBush.dll: https://github.com/viceroypenguin/RBush"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1738d57d9d2a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/win-x64/native/qpdf.dll: https://github.com/qpdf/qpdf/issues"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.34364ba54617",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DocumentFormat.OpenXml.dll: https://github.com/dotnet/Open-XML-SDK",
+      "artifact:DocumentFormat.OpenXml.Framework.dll: https://github.com/dotnet/Open-XML-SDK"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.524e4d521dfb",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClosedXML.dll: https://github.com/ClosedXML/ClosedXML/releases/tag/0.104.2"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.623a31dbf170",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClosedXML.dll: https://github.com/ClosedXML/ClosedXML"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.652865d19175",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClosedXML.dll: https://github.com/googlefonts/carlito)CarlitoBareBold"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7d8ab9e33711",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClosedXML.dll: https://github.com/googlefonts/carlito)CarlitoBareRegular1.104;tyPL;CarlitoBare-RegularCarlitoBare"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8e55286d77f3",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.Fonts.dll: https://github.com/SixLabors/Fonts"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9263e244362c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.IO.Packaging.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VenueHelper.dll: https://github.com/dexcss/VenueHelper"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.adf06af03d42",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClosedXML.dll: https://github.com/googlefonts/carlito)CarlitoBareBold1.104;tyPL;CarlitoBare-BoldCarlitoBare"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b5ff5af45d2c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DocumentFormat.OpenXml.dll: https://github.com/dotnet/sign0",
+      "artifact:DocumentFormat.OpenXml.Framework.dll: https://github.com/dotnet/sign0"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.baf48015a230",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClosedXML.Parser.dll: https://github.com/ClosedXML/ClosedXML.Parser"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bd5ba58fe363",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VenueHelper.json: https://github.com/dexcss/VenueHelper"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.da6353d31629",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:ClosedXML.dll: System.Net.Http.HttpClient",
+      "il:ClosedXML.dll:<GetByteArrayAsync>d__25.MoveNext+0x26: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:ClosedXML.dll:<GetStreamAsync>d__23.MoveNext+0x29: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:ClosedXML.dll:<GetStringAsync>d__27.MoveNext+0x26: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "artifact:ClosedXML.dll: System.Net.Http.HttpClient",
+      "metadata:QuestPDF.dll: System.Net.Http.HttpClient",
+      "il:QuestPDF.dll:QuestPDF.Companion.CompanionService..ctor+0x4b: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:QuestPDF.dll:QuestPDF.Companion.CompanionService..ctor+0x87: callvirt System.Net.Http.HttpClient.set_BaseAddress: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes/win-x64/native/libgcc_s_seh-1.dll",
+      "runtimes/win-x64/native/libstdc++-6.dll",
+      "runtimes/win-x64/native/libwinpthread-1.dll",
+      "runtimes/win-x64/native/qpdf.dll",
+      "runtimes/win-x64/native/QuestPdfSkia.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
