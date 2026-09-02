@@ -1,0 +1,455 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private or loopback endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FantasyPlayer.Dalamud.dll: http://localhost:2984/callback"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.af3d4293d42c",
+    "severity": "high",
+    "title": "Endpoint: localhost"
+  },
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "artifact:TextCopy.dll: powershell.exe"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:EmbedIO.dll:EmbedIO.HttpContextExtensions.SendDataAsync+0x7: callvirt EmbedIO.ResponseSerializerCallback.Invoke",
+      "il:EmbedIO.dll:EmbedIO.HttpContextExtensions.SendDataAsync+0xd: callvirt EmbedIO.ResponseSerializerCallback.Invoke",
+      "il:EmbedIO.dll:<Handle>d__16.MoveNext+0xaa: callvirt EmbedIO.ExceptionHandlerCallback.Invoke",
+      "il:EmbedIO.dll:<Handle>d__16.MoveNext+0x203: callvirt EmbedIO.HttpExceptionHandlerCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Newtonsoft.Json.dll: Assembly.Load",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.DefaultSerializationBinder.GetTypeFromTypeNameKey+0x15: call System.Reflection.Assembly.LoadWithPartialName: Assembly.Load"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:EmbedIO.dll: C:\\Unosquare\\embedio\\src\\EmbedIO\\obj\\Release\\netstandard2.0\\EmbedIO.pdb",
+      "artifact:EmbedIO.dll: C:\\Unosquare\\embedio\\src\\EmbedIO\\HttpContextExtensions-Requests.cs",
+      "artifact:EmbedIO.dll: C:\\Unosquare\\embedio\\src\\EmbedIO\\HttpContextExtensions-RequestStream.cs",
+      "artifact:EmbedIO.dll: C:\\Unosquare\\embedio\\src\\EmbedIO\\HttpContextExtensions.cs",
+      "artifact:EmbedIO.dll: p://*:{0}/",
+      "artifact:EmbedIO.dll: C:\\Unosquare\\embedio\\src\\EmbedIO\\WebServer.cs",
+      "artifact:EmbedIO.dll: C:\\Unosquare\\embedio\\src\\EmbedIO\\WebSockets\\WebSocketModule.cs",
+      "artifact:EmbedIO.dll: C:\\Unosquare\\embedio\\src\\EmbedIO\\WebSockets\\Internal\\WebSocket.cs"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:EmbedIO.dll: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer..ctor+0x9: call EmbedIO.WebServer.CreateHttpListener: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.Prepare+0x6: callvirt EmbedIO.IHttpListener.Start: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.CreateHttpListener+0x1: call EmbedIO.WebServer.<CreateHttpListener>g__DoCreate|16_0: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.CreateHttpListener+0xd: callvirt EmbedIO.IHttpListener.get_Name: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.CreateHttpListener+0x7f: callvirt EmbedIO.IHttpListener.AddPrefix: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.<Prepare>b__13_0+0xb: callvirt EmbedIO.IHttpListener.Stop: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.<CreateHttpListener>g__DoCreate|16_0+0xe: call System.Net.HttpListener.get_IsSupported: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:TextCopy.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EmbedIO.dll: http://someone.is.screwing.with.the.headers.com/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.2de6f16e579b",
+    "severity": "caution",
+    "title": "Endpoint: someone.is.screwing.with.the.headers.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0k/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.40e6221be78d",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0k"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SpotifyAPI.Web.Auth.dll: http://www.w3.org/2000/svg"
+    ],
+    "rule_id": "network.endpoint.insecure-http.75aa47264e79",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SpotifyAPI.Web.Auth.dll: http://www.w3.org/1999/xlink"
+    ],
+    "rule_id": "network.endpoint.insecure-http.adb18f0f3741",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SpotifyAPI.Web.Auth.dll: http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"
+    ],
+    "rule_id": "network.endpoint.insecure-http.be5d2fcbe903",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0n/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.eaf7f9f0d685",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0n"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FantasyPlayer.Dalamud.dll: https://fp-helix.bix.moe/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.19d8a0be9c2e",
+    "severity": "caution",
+    "title": "Endpoint: fp-helix.bix.moe"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SpotifyAPI.Web.dll: https://accounts.spotify.com/api/token"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1f988e605fe2",
+    "severity": "caution",
+    "title": "Endpoint: accounts.spotify.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SpotifyAPI.Web.dll: https://accounts.spotify.com/authorize"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.205d0f012b7b",
+    "severity": "caution",
+    "title": "Endpoint: accounts.spotify.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2fc10d6dbcb0",
+    "severity": "caution",
+    "title": "Endpoint: www.nuget.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SpotifyAPI.Web.Auth.dll: https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3949f2908385",
+    "severity": "caution",
+    "title": "Endpoint: unpkg.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5a592d877451",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SpotifyAPI.Web.dll: https://api.spotify.com/v1/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.61bab0c73b06",
+    "severity": "caution",
+    "title": "Endpoint: api.spotify.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SpotifyAPI.Web.dll: https://api.spotify.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8f4333848a24",
+    "severity": "caution",
+    "title": "Endpoint: api.spotify.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7f45af35c13",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.be2490e7d948",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:EmbedIO.dll: System.Net.Sockets",
+      "metadata:EmbedIO.dll: SocketAsyncEventArgs",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x2b: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x51: callvirt System.Net.Sockets.Socket.SetSocketOption: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x62: callvirt System.Net.Sockets.Socket.Bind: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x72: callvirt System.Net.Sockets.Socket.Listen: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x77: newobj System.Net.Sockets.SocketAsyncEventArgs..ctor: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x77: newobj System.Net.Sockets.SocketAsyncEventArgs..ctor: SocketAsyncEventArgs"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:EmbedIO.dll: System.Diagnostics.Process",
+      "metadata:EmbedIO.dll: ProcessStartInfo",
+      "metadata:EmbedIO.dll: Process.Start",
+      "metadata:EmbedIO.dll: ShellExecute",
+      "il:EmbedIO.dll:EmbedIO.WebServerOptions.LoadCertificate+0x62: callvirt System.Diagnostics.Process.add_ErrorDataReceived: System.Diagnostics.Process",
+      "il:EmbedIO.dll:EmbedIO.WebServerOptions.LoadCertificate+0x74: callvirt System.Diagnostics.Process.add_OutputDataReceived: System.Diagnostics.Process",
+      "il:EmbedIO.dll:EmbedIO.WebServerOptions.LoadCertificate+0x7a: callvirt System.Diagnostics.Process.Start: System.Diagnostics.Process",
+      "il:EmbedIO.dll:EmbedIO.WebServerOptions.LoadCertificate+0x7a: callvirt System.Diagnostics.Process.Start: Process.Start"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "il:TextCopy.dll:TextCopy.Clipboard.GetTextAsync+0x1: call TextCopy.ClipboardService.GetTextAsync: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.Clipboard.GetText+0x0: call TextCopy.ClipboardService.GetText: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.Clipboard.SetTextAsync+0x2: call TextCopy.ClipboardService.SetTextAsync: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.Clipboard.SetText+0x1: call TextCopy.ClipboardService.SetText: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.ClipboardService..cctor+0x0: call TextCopy.ClipboardService.CreateAsyncGet: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.ClipboardService..cctor+0xa: call TextCopy.ClipboardService.CreateGet: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.ClipboardService..cctor+0x14: call TextCopy.ClipboardService.CreateAsyncSet: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.ClipboardService..cctor+0x1e: call TextCopy.ClipboardService.CreateSet: TextCopy.ClipboardService"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:EmbedIO.dll: FileStream",
+      "il:EmbedIO.dll:EmbedIO.WebModuleContainerExtensions.WithZipFileStream+0x5: call EmbedIO.WebModuleContainerExtensions.WithZipFileStream: FileStream",
+      "il:EmbedIO.dll:EmbedIO.Files.FileSystemProvider.OpenFile+0x4: newobj System.IO.FileStream..ctor: FileStream",
+      "il:EmbedIO.dll:EmbedIO.Files.ZipFileProvider..ctor+0xe: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:EmbedIO.dll: FileStream",
+      "metadata:Swan.Lite.dll: FileStream",
+      "metadata:Swan.Lite.dll: Directory.CreateDirectory",
+      "metadata:Swan.Lite.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TextCopy.dll: https://github.com/CopyText/TextCopy.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3ad2cdf49525",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FantasyPlayer.Dalamud.json: https://github.com/Dormanil/FantasyPlayer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a62a60c1fd19",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SpotifyAPI.Web.Auth.dll: https://github.com/JohnnyCrazy/SpotifyAPI-NET",
+      "artifact:SpotifyAPI.Web.dll: https://github.com/JohnnyCrazy/SpotifyAPI-NET"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b2ce1837f69b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:FantasyPlayer.Dalamud.dll: DownloadString",
+      "il:FantasyPlayer.Dalamud.dll:FantasyPlayer.Dalamud.Manager.RemoteManager..ctor+0x2a: callvirt System.Net.WebClient.DownloadString: DownloadString",
+      "artifact:FantasyPlayer.Dalamud.dll: DownloadString",
+      "metadata:SpotifyAPI.Web.dll: System.Net.Http.HttpClient",
+      "il:SpotifyAPI.Web.dll:SpotifyAPI.Web.Http.NetHttpClient..ctor+0x7: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:SpotifyAPI.Web.dll:SpotifyAPI.Web.Http.NetHttpClient..ctor+0x24: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:SpotifyAPI.Web.dll:SpotifyAPI.Web.Http.NetHttpClient.SetRequestTimeout+0x7: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:SpotifyAPI.Web.dll:SpotifyAPI.Web.Http.NetHttpClient.CreateMessageHandler+0x73: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
