@@ -1,43 +1,27 @@
 {
   "analysis": {
-    "analysisId": "329927568c4e538ea5db6f2d76b91039a8a8edf89ab6cff05a12d4a4f8225042",
+    "analysisId": "0abe31f3ab49a577fbc17b895a7c82be6b301b1df2b86334b31a8f63edefacfd",
     "artifactSha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
-    "path": "artifacts/81/815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c/analyses/329927568c4e538ea5db6f2d76b91039a8a8edf89ab6cff05a12d4a4f8225042",
-    "recordCount": 8751
+    "path": "artifacts/81/815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c/analyses/0abe31f3ab49a577fbc17b895a7c82be6b301b1df2b86334b31a8f63edefacfd",
+    "recordCount": 212
   },
   "current": {
     "artifact_channel": "stable",
     "artifact_sha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
     "artifact_url": "https://kamori.goats.dev/Plugin/Download/NowPlaying?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
     "assembly_version": "1.3.0.8",
-    "automation_capabilities_json": [
-      {
-        "automationLevel": "full-gameplay-automation",
-        "capabilityId": "input.keyboard.inject",
-        "confidence": "very-high",
-        "evidence": [
-          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x207: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event",
-          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x239: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event",
-          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x26b: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event",
-          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x29d: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event",
-          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x2c5: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event"
-        ],
-        "indirect": false,
-        "label": "Keyboard input injection",
-        "reachable": true,
-        "reason": "Calls a native keyboard/input injection API."
-      }
-    ],
-    "automation_level": "full-gameplay-automation",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
     "capabilities_json": [
       "Endpoint: github.com",
+      "Endpoint: telepathy.freedesktop.org",
       "Endpoint: www.freedesktop.org",
       "Hard-coded external file access",
       "Keyboard input injection",
       "Native/PInvoke",
       "Raw sockets"
     ],
-    "caution_count": 4,
+    "caution_count": 7,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -72,16 +56,36 @@
         "title": "Raw socket access"
       },
       {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "source:NowPlaying/Plugin.cs: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Tmds.DBus.Protocol.dll: http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd"
         ],
         "ruleId": "network.endpoint.insecure-http.912d43e7b940",
         "severity": "caution",
         "title": "Endpoint: www.freedesktop.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:NowPlaying/dbus-xml/org.mpris.MediaPlayer2.Player.xml: http://telepathy.freedesktop.org/wiki/DbusSpec"
+        ],
+        "ruleId": "network.endpoint.insecure-http.1a80c1ccd58f",
+        "severity": "caution",
+        "title": "Endpoint: telepathy.freedesktop.org"
       },
       {
         "category": "native",
@@ -104,10 +108,18 @@
         "title": "Hard-coded external file path"
       },
       {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:NowPlaying/MediaControllers/DBus/WineDBusConnectionOptions.cs: /var/lib/dbus/machine-id"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:NPSMLib.dll: https://github.com/ADeltaX/NPSMLib"
         ],
@@ -117,9 +129,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:NowPlaying.dll: https://github.com/wompscode/NowPlaying.git"
         ],
@@ -129,9 +139,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Tmds.DBus.Protocol.dll: https://github.com/tmds/Tmds.DBus.git"
         ],
@@ -144,8 +152,8 @@
     "highest_severity": "high",
     "informational_count": 3,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 147884,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
       "artifactBytes": 168102,
       "artifactIdentity": {
@@ -153,41 +161,20 @@
         "artifactBytes": 168102,
         "artifactSha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
         "catalogAssemblyVersion": "1.3.0.8",
-        "manifestInternalName": "NowPlaying",
+        "manifestInternalName": "",
         "manifestPath": "NowPlaying.json",
         "manifestRepositoryUrl": "",
-        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/dda0721f183c2b7b1bfafe6db8c26e7697c39764/stable/NowPlaying/latest.zip",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
       "artifactIdentityContractVersion": 1,
       "automation": {
-        "capabilities": [
-          {
-            "automationLevel": "full-gameplay-automation",
-            "capabilityId": "input.keyboard.inject",
-            "confidence": "very-high",
-            "indirect": false,
-            "label": "Keyboard input injection",
-            "reachable": true
-          }
-        ],
-        "level": "full-gameplay-automation"
+        "capabilities": [],
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
-          {
-            "category": "dynamic-code",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
           {
             "category": "filesystem",
             "declared": false,
@@ -208,6 +195,42 @@
             "expected": null,
             "id": "filesystem.read",
             "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -242,6 +265,18 @@
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
             "id": "network.socket",
             "label": "Raw socket access",
             "observed": true,
@@ -259,20 +294,20 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "insecure-http"
               ],
-              "confidence": "Low",
-              "host": "www.freedesktop.org",
+              "confidence": "High",
+              "host": "telepathy.freedesktop.org",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -281,20 +316,20 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "insecure-http"
               ],
-              "confidence": "Low",
-              "host": "www.freedesktop.org",
+              "confidence": "High",
+              "host": "telepathy.freedesktop.org",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -315,16 +350,17 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 6,
+          "observedCapabilityCount": 9,
           "observedConcreteDestinationCount": 2,
           "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 6,
+          "observedWithoutProfileCount": 9,
           "unexplainedDestinationCount": 0
         }
       },
       "capabilities": [
         "Endpoint: github.com",
+        "Endpoint: telepathy.freedesktop.org",
         "Endpoint: www.freedesktop.org",
         "Hard-coded external file access",
         "Keyboard input injection",
@@ -332,16 +368,19 @@
         "Raw sockets"
       ],
       "capabilityIds": [
-        "dynamic.code",
         "filesystem.external-path",
         "filesystem.read",
+        "filesystem.write",
+        "game.chat.read",
+        "game.state.read",
         "input.keyboard.inject",
         "native.interop",
+        "network.outbound",
         "network.socket"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 4,
+        "caution": 7,
         "critical": 0,
         "high": 1,
         "informational": 3
@@ -351,238 +390,72 @@
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 31,
-          "exactVersionObservedCount": 26,
+          "dependencyCount": 9,
+          "exactVersionObservedCount": 8,
           "families": {
-            "managed-assembly": 24,
-            "native": 5,
-            "nuget": 2
+            "native": 1,
+            "nuget": 8
           },
-          "fingerprint": "12e12914798f41aff1c058d8c31707be23b39056486d46135adb9ec875776f84",
+          "fingerprint": "bb49b8507d7b52eaa1186018dc7e6dd4cd74ac25f675962e1cfef39f0c71967b",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
-            "externalOrRuntimeResolved": 12,
-            "platformLibrary": 4
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 1
           },
           "nativeRelationships": [
             {
               "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 2,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "close",
-              "library": "libc",
-              "managedName": "close",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "geteuid",
-              "library": "libc",
-              "managedName": "geteuid",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "getpwuid_r",
-              "library": "libc",
-              "managedName": "getpwuid_r",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "getuid",
-              "library": "libc",
-              "managedName": "getuid",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "recvmsg",
-              "library": "libc",
-              "managedName": "recvmsg",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "sendmsg",
-              "library": "libc",
-              "managedName": "sendmsg",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XCloseDisplay",
-              "library": "libX11.so.6",
-              "managedName": "XCloseDisplay",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XFree",
-              "library": "libX11.so.6",
-              "managedName": "XFree",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XGetSelectionOwner",
-              "library": "libX11.so.6",
-              "managedName": "XGetSelectionOwner",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XGetWindowProperty",
-              "library": "libX11.so.6",
-              "managedName": "XGetWindowProperty",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 2,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XInternAtom",
-              "library": "libX11.so.6",
-              "managedName": "XInternAtom",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XOpenDisplay",
-              "library": "libX11.so.6",
-              "managedName": "XOpenDisplay",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "NPSMLib.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
+              "consumerPath": "NowPlaying/Plugin.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
               "disposition": "platform-library",
-              "entryPoint": "RtlGetDeviceFamilyInfoEnum",
-              "library": "ntdll.dll",
-              "managedName": "RtlGetDeviceFamilyInfoEnum",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "NPSMLib.dll",
-              "directManagedCallCount": 2,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "CoCreateInstance",
-              "library": "ole32.dll",
-              "managedName": "CoCreateInstance",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "NPSMLib.dll",
-              "directManagedCallCount": 10,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "PropVariantClear",
-              "library": "ole32.dll",
-              "managedName": "PropVariantClear",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "NowPlaying.dll",
-              "directManagedCallCount": 5,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "keybd_event",
+              "entryPoint": "",
               "library": "user32.dll",
-              "managedName": "keybd_event",
+              "managedName": "",
               "targetPath": ""
             }
           ],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 3,
-            "observed": 26,
-            "required": 2
+            "observed": 1,
+            "required": 8
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 29,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 2,
-          "notAnalyzed": 0,
+          "known": 8,
+          "notAnalyzed": 1,
           "requirements": {
-            "bundled": 3,
-            "observed": 26,
+            "bundled": 0,
+            "observed": 1,
             "optional": 0,
-            "required": 2,
+            "required": 8,
             "soft": 0,
             "unknown": 0
           },
-          "total": 31
+          "total": 9
         },
         "endpointSummary": {
-          "concreteDestinationCount": 4,
+          "concreteDestinationCount": 2,
           "destinationsUndetermined": false,
           "hostCount": 2,
           "hosts": [
             {
               "classifications": [
-                "recognised-platform"
+                "recognised-platform",
+                "source-reference"
               ],
-              "concreteCount": 3,
-              "confidence": "Low",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 3,
+              "literalCount": 2,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -590,15 +463,15 @@
                 "insecure-http"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.freedesktop.org",
+              "confidence": "High",
+              "host": "telepathy.freedesktop.org",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 4,
+          "literalCount": 3,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -608,44 +481,34 @@
         },
         "networkEndpoints": [
           {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/ADeltaX/NPSMLib"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Haplo064/ChatBubbles/blob/main/ChatBubbles/Services.cs"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
-            "url": "https://github.com/tmds/Tmds.DBus.git"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/wompscode/NowPlaying.git"
+            "url": "https://github.com/wompscode/NowPlaying"
           },
           {
             "classification": "insecure-http",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.freedesktop.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "confidence": "High",
+            "host": "telepathy.freedesktop.org",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unencrypted web traffic",
-            "url": "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd"
+            "url": "http://telepathy.freedesktop.org/wiki/DbusSpec"
           }
         ]
       },
@@ -671,7 +534,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
-        "attemptId": "attempt-v2-7bb7704d195d7d37",
+        "attemptId": "attempt-v2-cb276bf3f33b6dcd",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -680,11 +543,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-6304",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-6304",
         "queueSeedRevision": "queue-seed-v2-451040434e2460c4dad3",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
         "scannerBundleSha256": "dbb46c71ff40b108aa38b021ea59b0eafe680e91841a3f4aac0f2eb47be4a94b",
@@ -692,11 +555,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
         "sourceObservationRevision": "source-observations-v1-50c8d5740239e1aa",
-        "targetFingerprint": "artifact-target-v2-8e157e9731c01a6e67b1",
+        "targetFingerprint": "source-target-v2-415ce7b4d01300a8f00e",
         "variantId": 6304,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-03T06:15:31Z",
+      "scannedAtUtc": "2026-09-03T09:27:46Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -738,23 +601,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "master",
         "candidates": [
           "https://github.com/wompscode/NowPlaying",
-          "https://github.com/goatcorp/PluginDistD17",
           "https://kamori.goats.dev/Plugin/Download/NowPlaying",
           "https://github.com/goatcorp/DalamudPlugins"
         ],
-        "commit": "",
+        "commit": "c2ebe6014b95015cedf9b0956ac663f077ee9abf",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "f853f48377f5569263ca1a787374237423ec1cedeb269712d8d624418560e7f2"
           }
         },
         "developerProfile": {
@@ -762,57 +628,520 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
-        "repository": "https://github.com/wompscode/NowPlaying.git",
-        "treeSha256": ""
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.3.0.8",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "master",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
+        "repository": "https://github.com/wompscode/NowPlaying",
+        "treeSha256": "62cd6edf98b9501db54a6b4ee0642dcd9fb4c134"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 146257,
-    "scanned_at_utc": "2026-09-03T06:15:31Z",
+    "scan_id": 147895,
+    "scanned_at_utc": "2026-09-03T09:27:46Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
-    "source_repository": "https://github.com/wompscode/NowPlaying.git",
+    "source_available": 1,
+    "source_commit": "c2ebe6014b95015cedf9b0956ac663f077ee9abf",
+    "source_repository": "https://github.com/wompscode/NowPlaying",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 6304
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "native:user32",
+        "current_json": {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "normalizedName": "user32",
+          "origin": "source",
+          "paths": [
+            "NowPlaying/Plugin.cs"
+          ],
+          "requirements": [
+            "observed"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "not-analyzed"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "native-import",
+        "dependency_name": "user32.dll",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 95,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "informational",
+        "variant_id": 6304
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "NowPlaying/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 96,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "caution",
+        "variant_id": 6304
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "NowPlaying/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.2.39"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[1.2.39, )"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 97,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "caution",
+        "variant_id": 6304
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:npsmlib",
+        "current_json": {
+          "componentKey": "nuget:npsmlib",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "NPSMLib",
+          "normalizedName": "npsmlib",
+          "origin": "source",
+          "paths": [
+            "NowPlaying/NowPlaying.csproj",
+            "NowPlaying/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "0.9.14"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "0.9.14",
+            "[0.9.14, )"
+          ],
+          "versions": [
+            "0.9.14"
+          ]
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "nuget",
+        "dependency_name": "NPSMLib",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 98,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "caution",
+        "variant_id": 6304
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:tmds.dbus.generator",
+        "current_json": {
+          "componentKey": "nuget:tmds.dbus.generator",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "Tmds.DBus.Generator",
+          "normalizedName": "tmds.dbus.generator",
+          "origin": "source",
+          "paths": [
+            "NowPlaying/NowPlaying.csproj",
+            "NowPlaying/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "0.95.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "0.95.0",
+            "[0.95.0, )"
+          ],
+          "versions": [
+            "0.95.0"
+          ]
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "nuget",
+        "dependency_name": "Tmds.DBus.Generator",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 99,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "caution",
+        "variant_id": 6304
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:tmds.dbus.protocol",
+        "current_json": {
+          "componentKey": "nuget:tmds.dbus.protocol",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "Tmds.DBus.Protocol",
+          "normalizedName": "tmds.dbus.protocol",
+          "origin": "source",
+          "paths": [
+            "NowPlaying/NowPlaying.csproj",
+            "NowPlaying/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "0.95.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "0.95.0",
+            "[0.95.0, )"
+          ],
+          "versions": [
+            "0.95.0"
+          ]
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "nuget",
+        "dependency_name": "Tmds.DBus.Protocol",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 100,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "caution",
+        "variant_id": 6304
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 101,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "informational",
+        "variant_id": 6304
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 102,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "informational",
+        "variant_id": 6304
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.chat.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.chat.read",
+          "reasons": [
+            "Dalamud service IChatGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "permission",
+        "dependency_name": "game.chat.read",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 103,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "informational",
+        "variant_id": 6304
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service IClientState is referenced."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 104,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "informational",
+        "variant_id": 6304
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:native.interop",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "native.interop",
+          "reasons": [
+            "A DllImport native library is declared.",
+            "Interop namespaces are imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "permission",
+        "dependency_name": "native.interop",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 105,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "caution",
+        "variant_id": 6304
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:network.outbound",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "network.outbound",
+          "reasons": [
+            "Network namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 147895,
+        "dependency_kind": "permission",
+        "dependency_name": "network.outbound",
+        "detected_at_utc": "2026-09-03T09:27:54Z",
+        "drift_id": 106,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147884,
+        "severity": "informational",
+        "variant_id": 6304
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "baseline",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
       "current_assembly_version": "1.3.0.8",
-      "current_scan_id": 146257,
+      "current_scan_id": 147895,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-03T06:15:33Z",
-      "previous_artifact_sha256": "",
-      "previous_assembly_version": "",
-      "previous_scan_id": null,
-      "previous_scanner_version": "",
+      "current_source_commit": "c2ebe6014b95015cedf9b0956ac663f077ee9abf",
+      "detected_at_utc": "2026-09-03T09:27:54Z",
+      "previous_artifact_sha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
+      "previous_assembly_version": "1.3.0.8",
+      "previous_scan_id": 147884,
+      "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 6304
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 23,
-      "artifact_only_count": 23,
+      "artifact_only_count": 20,
       "artifact_only_json": [
         {
           "componentKey": "assembly:dalamud",
@@ -1095,40 +1424,56 @@
             "observed"
           ],
           "versions": []
-        },
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-03T09:27:54Z",
+      "comparison_id": 2315,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 3,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 147895,
+      "source_available": 1,
+      "source_dependency_count": 6,
+      "source_only_count": 3,
+      "source_only_json": [
         {
-          "componentKey": "native:user32",
-          "componentKind": "native",
-          "kinds": [
-            "native-import"
-          ],
-          "name": "user32.dll",
-          "requirements": [
-            "observed"
-          ],
-          "versions": []
-        },
-        {
-          "componentKey": "nuget:npsmlib",
+          "componentKey": "nuget:dalamudpackager",
           "componentKind": "nuget",
           "kinds": [
-            "nuget-resolved"
+            "nuget-lock"
           ],
-          "name": "NPSMLib",
+          "name": "DalamudPackager",
           "requirements": [
             "required"
           ],
           "versions": [
-            "0.9.14"
+            "15.0.0"
           ]
         },
         {
-          "componentKey": "nuget:tmds.dbus.protocol",
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
           "componentKind": "nuget",
           "kinds": [
-            "nuget-resolved"
+            "nuget-lock"
           ],
-          "name": "Tmds.DBus.Protocol",
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        {
+          "componentKey": "nuget:tmds.dbus.generator",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "Tmds.DBus.Generator",
           "requirements": [
             "required"
           ],
@@ -1137,19 +1482,7 @@
           ]
         }
       ],
-      "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-03T06:15:33Z",
-      "comparison_id": 2295,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
-      "requirement_mismatch_count": 0,
-      "requirement_mismatches_json": [],
-      "scan_id": 146257,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "source_project_sha256": "88b8a29bc0003741efe27e2cf25e2f980f1e385195607715113f7db82c2bf1c9",
       "variant_id": 6304,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -1187,36 +1520,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 29558,
+          "bytes": 37783,
           "encoding": "json",
           "path": "derived/variants/0006/6304/dependency-resolutions.json",
-          "recordDigest": "58862b028e6d7f6ee89e4824dc79fb5a797fa7db822455fea45658cd512a3418",
-          "records": 31,
-          "sha256": "3134f3105d28c4e28f2319f7206a9b4b846b02089fa959de53bbc0cab798a0a6"
+          "recordDigest": "fd45b098cb863432a7acbcbfdb025a62a1bb90f977a4193be38ad8ec8611417e",
+          "records": 40,
+          "sha256": "d29f5fa00b5eb093cf1a8b1edb70faebf12987d3cb6b8bd58de8f53bdcbd7cc5"
         }
       ],
-      "recordDigest": "58862b028e6d7f6ee89e4824dc79fb5a797fa7db822455fea45658cd512a3418",
-      "records": 31
+      "recordDigest": "fd45b098cb863432a7acbcbfdb025a62a1bb90f977a4193be38ad8ec8611417e",
+      "records": 40
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 81606,
           "encoding": "json",
           "path": "derived/variants/0006/6304/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "d14747278ec27c0392c9ea8a617ac9907e1a1198f28f5f6564eeff011e91de17",
+          "records": 1,
+          "sha256": "7964c02377e6bceced267cdd03ecdf878bc2b3870768baec2b27840d9188e862"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "d14747278ec27c0392c9ea8a617ac9907e1a1198f28f5f6564eeff011e91de17",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "c55bf7b971fa5c2344a9bb30befaf440b9dfcb4f946d3db28df6a6108eddd415",
+    "identityFingerprint": "c11c05950850710847754c707937492de2046f894afe9ac22effcc39f923067f",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -1226,37 +1559,27 @@
         "backingDataset": "artifactIdentity",
         "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
         "completeness": "retained",
-        "recordDigest": "1349c24b1cf4fd0ae895010827d084a8119ae7b5583fdd21ee0e0c648c3d3251",
+        "recordDigest": "003015abb70e50494756d3fa0d2c2273a9b19c1706603f636aeebc51da69b8ed",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
-        "srlEligible": true
-      },
-      "binaryClassifications": {
-        "backingDataset": "binaryClassifications",
-        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
-        "completeness": "retained",
-        "recordDigest": "ff372dcd572acc764371b8916a893c3d3e1d4e7413a96c4965c01162e06773b4",
-        "records": 3,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
         "srlEligible": true
       },
       "dependencies": {
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "daeadfaaa4972e1cc1a1308756fed803627dc8b22a5d414d569ba397971d3f4c",
-        "records": 31,
+        "recordDigest": "422e3a03bc7c3232c38f7fc4c388ba0dd09fb6439785fe6dbc9596c1862abf38",
+        "records": 40,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -1286,8 +1609,8 @@
         "backingDataset": "calls",
         "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
         "completeness": "retained",
-        "recordDigest": "3de7cc2d376033778766a22e39850e1b4e78daf62bb99a6abc56ff87178e1f2c",
-        "records": 7302,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1296,8 +1619,8 @@
         "backingDataset": "reachability",
         "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
         "completeness": "retained",
-        "recordDigest": "a14df278e42250c1752d57d8de068c3ff427a7ceeb5bb31a93b886dfe4a943d0",
-        "records": 73,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1306,8 +1629,8 @@
         "backingDataset": "symbols",
         "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
         "completeness": "retained",
-        "recordDigest": "a38bbf8cec2f090e7a077f9b885a5992296d97f24fb679b8f665f5d981d93457",
-        "records": 1258,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1326,8 +1649,8 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "af2d32eb2d857664fccc790451fd4f625bee5f6b70ee775c48548ffe33f77949",
+        "records": 31,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1336,8 +1659,8 @@
         "backingDataset": "nativeImports",
         "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
         "completeness": "retained",
-        "recordDigest": "a7734a63bfa267580ca24998ca662a4a40d8ee66de3295902c3e7ecf8ce613a3",
-        "records": 16,
+        "recordDigest": "59cce90778cd79f05439f3980cbc705762a8772fec114d3ab18332ef17ffd8b9",
+        "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1346,8 +1669,8 @@
         "backingDataset": "networkEndpoints",
         "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
         "completeness": "retained",
-        "recordDigest": "252eb8677b5433488424cba85c12783feb5c6691aa5a33ddec78efbdc24511b8",
-        "records": 4,
+        "recordDigest": "f5dfce4cd507997a9e877a609674c546587418c0f9b4979e6efb23e639afa0dc",
+        "records": 3,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1366,28 +1689,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "a22bdd7d3dbb6918af67534eb3e8e0f316ccd852ef3481ca408531cb30f8b525",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "202940077f85897a6c802784f036a94974e8006b5520db2fd05442230b682da3",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "ffc7e09beb820c1785f970bfb89e35bc859fa886d01d5c1a076a5b4a9bbcefc8",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "2209c184a11e70f53f58f435e132195f58b4c86c497719a69ec2f1fd98395881",
+        "records": 60,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "d9bd88c74ae2e4921777208bd7dc13f3a18b4f0bf67c3fa8632bb315cbc8433a",
+        "records": 8,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
         "srlEligible": true
       },
       "sourceFiles": {
         "backingDataset": "sourceFiles",
         "collectionSchema": "omega.sigmascope.observation.source-files.v1",
         "completeness": "retained",
-        "recordDigest": "6982edf99ed0701d842d01aeaa859ef887100f48e2f0e27e475f9c3d36d04759",
-        "records": 2,
+        "recordDigest": "5f7609b44cb7f70d950faf640dafd2b1e4b0d72f37402978c24c7ccf300cea66",
+        "records": 12,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "780e64c7b86d4f83e7e07dfc8e78cf2713b4164451bb2e6870b930e8d06878b3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "a453fe3e0f3688e9836803e28bb8bd0736123a54ce69b4d94417b95b846b2842",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "b10497ed74ed996d4e08c811bfe9fec3cad5f38cdc89d2747231b7212dabaef7",
-        "records": 26,
+        "recordDigest": "b66f001d326398c9388d56193d3282669d4145a05ebbfb10ca4469c6e09084cb",
+        "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1396,20 +1839,9 @@
     "contractRevision": "observations-v1-1e78d17eb03ed5c4",
     "legacyCompatibility": false,
     "missingCollections": [
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceProvenance",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "binaryClassifications"
     ],
-    "observationDigest": "obs-203eb0f321c930db9b0a57492c569414a62cd7a1cbde6d784167330bc0b70a8d",
+    "observationDigest": "obs-45ec419587ae991e8981abcdafe249e84de1817a28a5939a2f01eaf194036261",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
       "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
@@ -1455,21 +1887,21 @@
     "contractRevision": "projection-contract-v1-f507480528a1e6af",
     "outputs": {
       "automation": {
-        "recordDigest": "d9b2dc16f73120762c6fd4ebe13cdad7c7808cac1f970fbe1749b9aca7b6ee86",
-        "records": 1
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "947c0dd30721b12cde03ef65804c155ea0bbbb0466bb702dad2c18f7135b930e",
+        "recordDigest": "ee5c0c83b5a8d30f5877e77c6b0abce314a4de314fec2792f79e501863a22ebe",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "9c79774499327bc5a5ceb18228fbac2da6ffd1ebcb2690625ab62bdcceddd2b4",
-        "records": 6
+        "recordDigest": "b75e6347822830515a937817098c8b7ef902294fbfa670885c2e439bbf13c5bd",
+        "records": 9
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "721f3a556bdf75b53268e02db7a086a63b56ac2c50daa21927f120a2ea41137b",
-        "records": 8
+        "recordDigest": "b0cf5850c8b694f6c3ba6e0527ef918e5648b509de442f86e0425db2820e4cff",
+        "records": 11
       }
     },
     "projectionRevision": "projection-v1-26cf5d16f2b29bab",
@@ -1489,13 +1921,14 @@
     "assembly_version": "1.3.0.8",
     "capabilities_json": [
       "Endpoint: github.com",
+      "Endpoint: telepathy.freedesktop.org",
       "Endpoint: www.freedesktop.org",
       "Hard-coded external file access",
       "Keyboard input injection",
       "Native/PInvoke",
       "Raw sockets"
     ],
-    "caution_count": 4,
+    "caution_count": 7,
     "critical_count": 0,
     "error": "",
     "high_count": 1,
@@ -1503,8 +1936,8 @@
     "informational_count": 3,
     "plugin_id": 299,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 147884,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
       "artifactBytes": 168102,
       "artifactIdentity": {
@@ -1512,41 +1945,20 @@
         "artifactBytes": 168102,
         "artifactSha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
         "catalogAssemblyVersion": "1.3.0.8",
-        "manifestInternalName": "NowPlaying",
+        "manifestInternalName": "",
         "manifestPath": "NowPlaying.json",
         "manifestRepositoryUrl": "",
-        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/dda0721f183c2b7b1bfafe6db8c26e7697c39764/stable/NowPlaying/latest.zip",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
       "artifactIdentityContractVersion": 1,
       "automation": {
-        "capabilities": [
-          {
-            "automationLevel": "full-gameplay-automation",
-            "capabilityId": "input.keyboard.inject",
-            "confidence": "very-high",
-            "indirect": false,
-            "label": "Keyboard input injection",
-            "reachable": true
-          }
-        ],
-        "level": "full-gameplay-automation"
+        "capabilities": [],
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
-          {
-            "category": "dynamic-code",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
           {
             "category": "filesystem",
             "declared": false,
@@ -1567,6 +1979,42 @@
             "expected": null,
             "id": "filesystem.read",
             "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -1601,6 +2049,18 @@
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
             "id": "network.socket",
             "label": "Raw socket access",
             "observed": true,
@@ -1618,20 +2078,20 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "insecure-http"
               ],
-              "confidence": "Low",
-              "host": "www.freedesktop.org",
+              "confidence": "High",
+              "host": "telepathy.freedesktop.org",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -1640,20 +2100,20 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "insecure-http"
               ],
-              "confidence": "Low",
-              "host": "www.freedesktop.org",
+              "confidence": "High",
+              "host": "telepathy.freedesktop.org",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -1674,16 +2134,17 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 6,
+          "observedCapabilityCount": 9,
           "observedConcreteDestinationCount": 2,
           "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 6,
+          "observedWithoutProfileCount": 9,
           "unexplainedDestinationCount": 0
         }
       },
       "capabilities": [
         "Endpoint: github.com",
+        "Endpoint: telepathy.freedesktop.org",
         "Endpoint: www.freedesktop.org",
         "Hard-coded external file access",
         "Keyboard input injection",
@@ -1691,16 +2152,19 @@
         "Raw sockets"
       ],
       "capabilityIds": [
-        "dynamic.code",
         "filesystem.external-path",
         "filesystem.read",
+        "filesystem.write",
+        "game.chat.read",
+        "game.state.read",
         "input.keyboard.inject",
         "native.interop",
+        "network.outbound",
         "network.socket"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 4,
+        "caution": 7,
         "critical": 0,
         "high": 1,
         "informational": 3
@@ -1710,238 +2174,72 @@
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 31,
-          "exactVersionObservedCount": 26,
+          "dependencyCount": 9,
+          "exactVersionObservedCount": 8,
           "families": {
-            "managed-assembly": 24,
-            "native": 5,
-            "nuget": 2
+            "native": 1,
+            "nuget": 8
           },
-          "fingerprint": "12e12914798f41aff1c058d8c31707be23b39056486d46135adb9ec875776f84",
+          "fingerprint": "bb49b8507d7b52eaa1186018dc7e6dd4cd74ac25f675962e1cfef39f0c71967b",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
-            "externalOrRuntimeResolved": 12,
-            "platformLibrary": 4
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 1
           },
           "nativeRelationships": [
             {
               "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 2,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "close",
-              "library": "libc",
-              "managedName": "close",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "geteuid",
-              "library": "libc",
-              "managedName": "geteuid",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "getpwuid_r",
-              "library": "libc",
-              "managedName": "getpwuid_r",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "getuid",
-              "library": "libc",
-              "managedName": "getuid",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "recvmsg",
-              "library": "libc",
-              "managedName": "recvmsg",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "sendmsg",
-              "library": "libc",
-              "managedName": "sendmsg",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XCloseDisplay",
-              "library": "libX11.so.6",
-              "managedName": "XCloseDisplay",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XFree",
-              "library": "libX11.so.6",
-              "managedName": "XFree",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XGetSelectionOwner",
-              "library": "libX11.so.6",
-              "managedName": "XGetSelectionOwner",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XGetWindowProperty",
-              "library": "libX11.so.6",
-              "managedName": "XGetWindowProperty",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 2,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XInternAtom",
-              "library": "libX11.so.6",
-              "managedName": "XInternAtom",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "Tmds.DBus.Protocol.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "XOpenDisplay",
-              "library": "libX11.so.6",
-              "managedName": "XOpenDisplay",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "NPSMLib.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
+              "consumerPath": "NowPlaying/Plugin.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
               "disposition": "platform-library",
-              "entryPoint": "RtlGetDeviceFamilyInfoEnum",
-              "library": "ntdll.dll",
-              "managedName": "RtlGetDeviceFamilyInfoEnum",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "NPSMLib.dll",
-              "directManagedCallCount": 2,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "CoCreateInstance",
-              "library": "ole32.dll",
-              "managedName": "CoCreateInstance",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "NPSMLib.dll",
-              "directManagedCallCount": 10,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "PropVariantClear",
-              "library": "ole32.dll",
-              "managedName": "PropVariantClear",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "NowPlaying.dll",
-              "directManagedCallCount": 5,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "keybd_event",
+              "entryPoint": "",
               "library": "user32.dll",
-              "managedName": "keybd_event",
+              "managedName": "",
               "targetPath": ""
             }
           ],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 3,
-            "observed": 26,
-            "required": 2
+            "observed": 1,
+            "required": 8
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 29,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 2,
-          "notAnalyzed": 0,
+          "known": 8,
+          "notAnalyzed": 1,
           "requirements": {
-            "bundled": 3,
-            "observed": 26,
+            "bundled": 0,
+            "observed": 1,
             "optional": 0,
-            "required": 2,
+            "required": 8,
             "soft": 0,
             "unknown": 0
           },
-          "total": 31
+          "total": 9
         },
         "endpointSummary": {
-          "concreteDestinationCount": 4,
+          "concreteDestinationCount": 2,
           "destinationsUndetermined": false,
           "hostCount": 2,
           "hosts": [
             {
               "classifications": [
-                "recognised-platform"
+                "recognised-platform",
+                "source-reference"
               ],
-              "concreteCount": 3,
-              "confidence": "Low",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 3,
+              "literalCount": 2,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -1949,15 +2247,15 @@
                 "insecure-http"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.freedesktop.org",
+              "confidence": "High",
+              "host": "telepathy.freedesktop.org",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 4,
+          "literalCount": 3,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -1967,44 +2265,34 @@
         },
         "networkEndpoints": [
           {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/ADeltaX/NPSMLib"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Haplo064/ChatBubbles/blob/main/ChatBubbles/Services.cs"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
-            "url": "https://github.com/tmds/Tmds.DBus.git"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/wompscode/NowPlaying.git"
+            "url": "https://github.com/wompscode/NowPlaying"
           },
           {
             "classification": "insecure-http",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.freedesktop.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "confidence": "High",
+            "host": "telepathy.freedesktop.org",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unencrypted web traffic",
-            "url": "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd"
+            "url": "http://telepathy.freedesktop.org/wiki/DbusSpec"
           }
         ]
       },
@@ -2030,7 +2318,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
-        "attemptId": "attempt-v2-7bb7704d195d7d37",
+        "attemptId": "attempt-v2-cb276bf3f33b6dcd",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -2039,11 +2327,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-6304",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-6304",
         "queueSeedRevision": "queue-seed-v2-451040434e2460c4dad3",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
         "scannerBundleSha256": "dbb46c71ff40b108aa38b021ea59b0eafe680e91841a3f4aac0f2eb47be4a94b",
@@ -2051,11 +2339,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
         "sourceObservationRevision": "source-observations-v1-50c8d5740239e1aa",
-        "targetFingerprint": "artifact-target-v2-8e157e9731c01a6e67b1",
+        "targetFingerprint": "source-target-v2-415ce7b4d01300a8f00e",
         "variantId": 6304,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-03T06:15:31Z",
+      "scannedAtUtc": "2026-09-03T09:27:46Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -2097,23 +2385,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "master",
         "candidates": [
           "https://github.com/wompscode/NowPlaying",
-          "https://github.com/goatcorp/PluginDistD17",
           "https://kamori.goats.dev/Plugin/Download/NowPlaying",
           "https://github.com/goatcorp/DalamudPlugins"
         ],
-        "commit": "",
+        "commit": "c2ebe6014b95015cedf9b0956ac663f077ee9abf",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "f853f48377f5569263ca1a787374237423ec1cedeb269712d8d624418560e7f2"
           }
         },
         "developerProfile": {
@@ -2121,30 +2412,49 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
-        "repository": "https://github.com/wompscode/NowPlaying.git",
-        "treeSha256": ""
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.3.0.8",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "master",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
+        "repository": "https://github.com/wompscode/NowPlaying",
+        "treeSha256": "62cd6edf98b9501db54a6b4ee0642dcd9fb4c134"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 146257,
-    "scanned_at_utc": "2026-09-03T06:15:31Z",
+    "scan_id": 147895,
+    "scanned_at_utc": "2026-09-03T09:27:46Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "c2ebe6014b95015cedf9b0956ac663f077ee9abf",
     "source_id": 1,
-    "source_repository": "https://github.com/wompscode/NowPlaying.git",
+    "source_repository": "https://github.com/wompscode/NowPlaying",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 6304

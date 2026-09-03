@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "c77545c468f5bbedead4b491f9922f12859a612114120c0c39bec54c81427a96",
+    "analysisId": "40d55799578e553b40afde9fec44802bcd1e9c3d3c5c1a7261de24674f891cd9",
     "artifactSha256": "c547bd4552d252bed061d2e3c86446a9942bb020c291cd435c0842f8f84ccc86",
-    "path": "artifacts/c5/c547bd4552d252bed061d2e3c86446a9942bb020c291cd435c0842f8f84ccc86/analyses/c77545c468f5bbedead4b491f9922f12859a612114120c0c39bec54c81427a96",
-    "recordCount": 7948
+    "path": "artifacts/c5/c547bd4552d252bed061d2e3c86446a9942bb020c291cd435c0842f8f84ccc86/analyses/40d55799578e553b40afde9fec44802bcd1e9c3d3c5c1a7261de24674f891cd9",
+    "recordCount": 1027
   },
   "current": {
     "artifact_channel": "stable",
@@ -17,7 +17,7 @@
       "Game memory/hooks",
       "Hard-coded external file access"
     ],
-    "caution_count": 2,
+    "caution_count": 4,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -38,12 +38,36 @@
         "title": "Game memory/signature hooking"
       },
       {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "source:ZDs/Timeline/TimelineManager.cs: Dalamud.Hooking",
+          "source:ZDs/Timeline/TimelineManager.cs: Hook<",
+          "source:ZDs/Timeline/TimelineManager.cs: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
         "category": "filesystem",
         "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
         "evidence": [
           "artifact:ZDs.dll: s://github.com/Zeffuro/ZDs.git",
           "artifact:ZDs.dll: s://github.com/Zeffuro/ZDs",
           "artifact:ZDs.dll: s://ko-fi.com/Zeffuro"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:ZDs/Helpers/FontManager.cs: s://github.com/lichie567/LMeter/blob/develop/LMeter/Helpers/FontsManager.cs",
+          "source:ZDs/Helpers/FontManager.cs: s://skia.googlesource.com/external/github.com/ocornut/imgui/+/v1.53/extra_fonts/README.txt",
+          "source:ZDs/Helpers/FontManager.cs: \\\\Fonts\\\\"
         ],
         "ruleId": "filesystem.external-path",
         "severity": "caution",
@@ -65,14 +89,30 @@
         "ruleId": "filesystem.write",
         "severity": "informational",
         "title": "Filesystem write access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:ZDs/Helpers/ConfigHelpers.cs: WriteAllText",
+          "source:ZDs/Helpers/ConfigHelpers.cs: Directory.CreateDirectory",
+          "source:ZDs/Helpers/ConfigHelpers.cs: Directory.Delete",
+          "source:ZDs/Helpers/FontManager.cs: Directory.CreateDirectory",
+          "source:ZDs/Helpers/ProfileManager.cs: WriteAllText",
+          "source:ZDs/Helpers/ProfileManager.cs: Directory.CreateDirectory",
+          "source:ZDs/Settings.cs: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
       }
     ],
     "high_count": 0,
     "highest_severity": "caution",
-    "informational_count": 1,
+    "informational_count": 2,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 147883,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
       "artifactBytes": 222682,
       "artifactIdentity": {
@@ -80,10 +120,10 @@
         "artifactBytes": 222682,
         "artifactSha256": "c547bd4552d252bed061d2e3c86446a9942bb020c291cd435c0842f8f84ccc86",
         "catalogAssemblyVersion": "1.2.0.0",
-        "manifestInternalName": "ZDs",
+        "manifestInternalName": "",
         "manifestPath": "ZDs.json",
-        "manifestRepositoryUrl": "https://github.com/Zeffuro/ZDs",
-        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/bcd09bcf4fb006d52b3c9b00d0646127c49941cd/stable/ZDs/latest.zip",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
@@ -94,18 +134,6 @@
       },
       "behaviorConsistency": {
         "capabilities": [
-          {
-            "category": "dynamic-code",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
           {
             "category": "filesystem",
             "declared": false,
@@ -153,6 +181,54 @@
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
           }
         ],
         "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
@@ -165,21 +241,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "skia.googlesource.com",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -188,21 +273,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "skia.googlesource.com",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -223,11 +317,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 5,
-          "observedConcreteDestinationCount": 2,
-          "observedDestinationWithoutProfileCount": 2,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 5,
+          "observedWithoutProfileCount": 8,
           "unexplainedDestinationCount": 0
         }
       },
@@ -237,30 +331,33 @@
         "Hard-coded external file access"
       ],
       "capabilityIds": [
-        "dynamic.code",
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
-        "game.memory.read"
+        "game.memory.read",
+        "game.state.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 2,
+        "caution": 4,
         "critical": 0,
         "high": 0,
-        "informational": 1
+        "informational": 2
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 21,
-          "exactVersionObservedCount": 21,
+          "dependencyCount": 2,
+          "exactVersionObservedCount": 2,
           "families": {
-            "managed-assembly": 21
+            "nuget": 2
           },
-          "fingerprint": "c3ca34a1fb4a0fd563825b40b1f8b6b0a620a3e22dd70fbf61366fad0d9f159f",
+          "fingerprint": "aecf1e1437857310bda4ae178730b7e204d2377f65c7ecb10d0cbdbc9f37efd8",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -269,45 +366,44 @@
           "nativeRelationships": [],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 1,
-            "observed": 20
+            "required": 2
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 21,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
+          "known": 2,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 1,
-            "observed": 20,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 0,
+            "required": 2,
             "soft": 0,
             "unknown": 0
           },
-          "total": 21
+          "total": 2
         },
         "endpointSummary": {
           "concreteDestinationCount": 4,
           "destinationsUndetermined": false,
-          "hostCount": 2,
+          "hostCount": 3,
           "hosts": [
             {
               "classifications": [
-                "recognised-platform"
+                "recognised-platform",
+                "source-reference"
               ],
-              "concreteCount": 3,
-              "confidence": "VeryHigh",
+              "concreteCount": 2,
+              "confidence": "High",
               "host": "github.com",
               "literalCount": 3,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -315,15 +411,27 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "skia.googlesource.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
-          "literalCount": 4,
+          "literalCount": 5,
           "networkCapabilityObserved": false,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -335,42 +443,52 @@
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
-            "url": "https://github.com/Zeffuro/ZDs"
+            "url": "https://github.com/DelvUI/DelvUI/pull/1235"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://github.com/Zeffuro/ZDs"
           },
           {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/Zeffuro/ZDs.git"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/lichie567/LMeter/blob/develop/LMeter/Helpers/FontsManager.cs"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "ko-fi.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://ko-fi.com/Zeffuro"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "skia.googlesource.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://skia.googlesource.com/external/github.com/ocornut/imgui/+/v1.53/extra_fonts/README.txt"
           }
         ]
       },
@@ -396,7 +514,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
-        "attemptId": "attempt-v2-652687a5e06d0200",
+        "attemptId": "attempt-v2-fba62e32c66185ae",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -405,11 +523,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-6303",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-6303",
         "queueSeedRevision": "queue-seed-v2-451040434e2460c4dad3",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
         "scannerBundleSha256": "dbb46c71ff40b108aa38b021ea59b0eafe680e91841a3f4aac0f2eb47be4a94b",
@@ -417,11 +535,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
         "sourceObservationRevision": "source-observations-v1-50c8d5740239e1aa",
-        "targetFingerprint": "artifact-target-v2-84a5acee7277f74c7b6a",
+        "targetFingerprint": "source-target-v2-9517a262754c274e9944",
         "variantId": 6303,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-03T06:16:12Z",
+      "scannedAtUtc": "2026-09-03T09:28:04Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -463,23 +581,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "main",
         "candidates": [
           "https://github.com/Zeffuro/ZDs",
-          "https://github.com/goatcorp/PluginDistD17",
           "https://kamori.goats.dev/Plugin/Download/ZDs",
           "https://github.com/goatcorp/DalamudPlugins"
         ],
-        "commit": "",
+        "commit": "b43131e2380e1ff78e85309504510729d65f5bd8",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "53f39b53dcb8e9de56d78f9970210b812f41e79f6d335290d4e83414b158d5e3"
           }
         },
         "developerProfile": {
@@ -487,52 +608,369 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.2.0.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "main",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
         "repository": "https://github.com/Zeffuro/ZDs",
-        "treeSha256": ""
+        "treeSha256": "97de46a0dad9d18bdc2d97ac1daf8b061b379702"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 146259,
-    "scanned_at_utc": "2026-09-03T06:16:12Z",
+    "scan_id": 147896,
+    "scanned_at_utc": "2026-09-03T09:28:04Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "b43131e2380e1ff78e85309504510729d65f5bd8",
     "source_repository": "https://github.com/Zeffuro/ZDs",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 6303
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "ZDs/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 147896,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-03T09:28:23Z",
+        "drift_id": 107,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147883,
+        "severity": "caution",
+        "variant_id": 6303
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "ZDs/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.2.39"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[1.2.39, )"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        "current_scan_id": 147896,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-03T09:28:23Z",
+        "drift_id": 108,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147883,
+        "severity": "caution",
+        "variant_id": 6303
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 147896,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-03T09:28:23Z",
+        "drift_id": 109,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147883,
+        "severity": "informational",
+        "variant_id": 6303
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 147896,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-03T09:28:23Z",
+        "drift_id": 110,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147883,
+        "severity": "informational",
+        "variant_id": 6303
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "Dalamud hooking APIs are imported.",
+            "Dalamud service IGameInteropProvider is referenced.",
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 147896,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-03T09:28:23Z",
+        "drift_id": 111,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147883,
+        "severity": "caution",
+        "variant_id": 6303
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service ICondition is referenced.",
+            "Dalamud service IDataManager is referenced.",
+            "Dalamud service IObjectTable is referenced."
+          ],
+          "risks": [
+            "Low",
+            "Medium"
+          ]
+        },
+        "current_scan_id": 147896,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-03T09:28:23Z",
+        "drift_id": 112,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147883,
+        "severity": "informational",
+        "variant_id": 6303
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:native.interop",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "native.interop",
+          "reasons": [
+            "Interop namespaces are imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 147896,
+        "dependency_kind": "permission",
+        "dependency_name": "native.interop",
+        "detected_at_utc": "2026-09-03T09:28:23Z",
+        "drift_id": 113,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147883,
+        "severity": "caution",
+        "variant_id": 6303
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.execute",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.execute",
+          "reasons": [
+            "Diagnostics/process namespaces are imported; execution is not yet proven."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 147896,
+        "dependency_kind": "permission",
+        "dependency_name": "process.execute",
+        "detected_at_utc": "2026-09-03T09:28:23Z",
+        "drift_id": 114,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147883,
+        "severity": "caution",
+        "variant_id": 6303
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.inspect",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.inspect",
+          "reasons": [
+            "Diagnostics/process namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 147896,
+        "dependency_kind": "permission",
+        "dependency_name": "process.inspect",
+        "detected_at_utc": "2026-09-03T09:28:23Z",
+        "drift_id": 115,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 147883,
+        "severity": "informational",
+        "variant_id": 6303
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "baseline",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "c547bd4552d252bed061d2e3c86446a9942bb020c291cd435c0842f8f84ccc86",
       "current_assembly_version": "1.2.0.0",
-      "current_scan_id": 146259,
+      "current_scan_id": 147896,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-03T06:16:14Z",
-      "previous_artifact_sha256": "",
-      "previous_assembly_version": "",
-      "previous_scan_id": null,
-      "previous_scanner_version": "",
+      "current_source_commit": "b43131e2380e1ff78e85309504510729d65f5bd8",
+      "detected_at_utc": "2026-09-03T09:28:23Z",
+      "previous_artifact_sha256": "c547bd4552d252bed061d2e3c86446a9942bb020c291cd435c0842f8f84ccc86",
+      "previous_assembly_version": "1.2.0.0",
+      "previous_scan_id": 147883,
+      "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 6303
     },
     "sourceArtifactComparison": {
@@ -835,18 +1273,47 @@
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-03T06:16:14Z",
-      "comparison_id": 2297,
-      "comparison_status": "source-unavailable",
+      "compared_at_utc": "2026-09-03T09:28:23Z",
+      "comparison_id": 2316,
+      "comparison_status": "compared-not-verified",
       "matched_component_count": 0,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 146259,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "scan_id": 147896,
+      "source_available": 1,
+      "source_dependency_count": 2,
+      "source_only_count": 2,
+      "source_only_json": [
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        }
+      ],
+      "source_project_sha256": "bec545e4ff096fd4f57e1ed356e884be1b7a639b0061ce95c4c82c87a1c48ff9",
       "variant_id": 6303,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -884,36 +1351,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 19678,
+          "bytes": 21550,
           "encoding": "json",
           "path": "derived/variants/0006/6303/dependency-resolutions.json",
-          "recordDigest": "c28bac29fb922d866a92a82cb58a5d7f523849707bab31480a4c44fd7f3ede9a",
-          "records": 21,
-          "sha256": "a547f72a72e697fcb5df977eb8a39b056c173df49374e980fb00329f1086a265"
+          "recordDigest": "146bd338717005158f503c29c17cf119f3e5f5dac22d4dab052dbde9287ffb15",
+          "records": 23,
+          "sha256": "1e33cabc51d36d22c4ef76074f6687a6393d6928f43b1d1b6944713ec301df08"
         }
       ],
-      "recordDigest": "c28bac29fb922d866a92a82cb58a5d7f523849707bab31480a4c44fd7f3ede9a",
-      "records": 21
+      "recordDigest": "146bd338717005158f503c29c17cf119f3e5f5dac22d4dab052dbde9287ffb15",
+      "records": 23
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 462615,
           "encoding": "json",
           "path": "derived/variants/0006/6303/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "b8d24c07af66879e114c452845c60d08f6d5d11400c2ae4e042d7fd762965879",
+          "records": 1,
+          "sha256": "3332277709d2d7c36ba806bbc87df5b085c3b553936eb180891e5434bc99b932"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "b8d24c07af66879e114c452845c60d08f6d5d11400c2ae4e042d7fd762965879",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "3b2fe5a099c4d0d3a47c356fdcf16a3a1bdd69b88ad1612b8f86acf6af597b50",
+    "identityFingerprint": "660a753a5757c06316845e7151ebaf238e0d73f1962fab2526d3fae724000504",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -923,37 +1390,27 @@
         "backingDataset": "artifactIdentity",
         "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
         "completeness": "retained",
-        "recordDigest": "34f1a2ddb27f5cfb192373871546ddaabb4a341daea53f7b5691974b9326aead",
+        "recordDigest": "f9c142b0f987b12e3b6626dfa3fda2e05c2d7f3bf515911c32cb06db44fca95e",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
-        "srlEligible": true
-      },
-      "binaryClassifications": {
-        "backingDataset": "binaryClassifications",
-        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
-        "completeness": "retained",
-        "recordDigest": "15492402a52596bedf5ffdf296930f668c35ca76e267ae7740b98d44ba422fa5",
-        "records": 1,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
         "srlEligible": true
       },
       "dependencies": {
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "1a12bb4917e00823ce42db5221fc23da8d2277c45671a315454acecbd2ee43e0",
-        "records": 21,
+        "recordDigest": "28dd3015ebcdb8209c1d7c8079b32ec54d66d5ec84f395b22355edd2b8b92df1",
+        "records": 23,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -983,8 +1440,8 @@
         "backingDataset": "calls",
         "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
         "completeness": "retained",
-        "recordDigest": "59170a0766e44c7cccc44a06f8883fc258a625bc9a5a71dff299764d6b2c0273",
-        "records": 6413,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -993,8 +1450,8 @@
         "backingDataset": "reachability",
         "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
         "completeness": "retained",
-        "recordDigest": "20092996a94bad450e33c661f0dab9605518b9e34a9cc8b05488c50b969c1b9a",
-        "records": 573,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1003,8 +1460,8 @@
         "backingDataset": "symbols",
         "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
         "completeness": "retained",
-        "recordDigest": "f330ecf24e89aa09312ce5f7acb1adb0db8d7649764a58bf4ae98039b5adfb4d",
-        "records": 895,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1023,8 +1480,8 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "16c10f9d3c5ac0ecf10e0ddd4c74d6cb8bc113912f1e362804b27e804b47cb13",
+        "records": 308,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1033,8 +1490,8 @@
         "backingDataset": "networkEndpoints",
         "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
         "completeness": "retained",
-        "recordDigest": "d621613572e79c72d1658e5e47b359d5ad39387e8b06d473571c77a763cfa76c",
-        "records": 4,
+        "recordDigest": "1b49960308894452e42f70e6538ae3fa73084d5810bb8f9ccc8990e520af57b9",
+        "records": 5,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1053,28 +1510,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "a22bdd7d3dbb6918af67534eb3e8e0f316ccd852ef3481ca408531cb30f8b525",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "3282012d1e091f6864d46f89c783e6fed21fd44c4c4170869a4816e386f64a4e",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "84d45e74c096ecc895ba75c71c6f4148dec09c6efaca03f4fb250d91fc8fbf8d",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "0461ade6d8c3e30716970c5f9c78cc388192cd00f280a68c6c7fb93b8e24b2af",
+        "records": 552,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "7ee4c6b2de9c684a9d8fc9662fc015eeefed3966c982336cab673bf74364fec8",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
         "srlEligible": true
       },
       "sourceFiles": {
         "backingDataset": "sourceFiles",
         "collectionSchema": "omega.sigmascope.observation.source-files.v1",
         "completeness": "retained",
-        "recordDigest": "68a56bf2e16a67be87398a7cd4cc9ffe1b70cd08499fa5be4209d9b06a3a1ccf",
-        "records": 2,
+        "recordDigest": "502ad99985c17f38fba9c49d8a5882728be73ecaf3455cb721b06ebf8c999d20",
+        "records": 50,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "61b8e04356e8774ba1df63a33d8aa91f22e75a95ea8e655618a0f59c6c567148",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "83d9a54d8abd9df21dcd2787432ccb0dc18b82e26ce91276d5eed22ec9829447",
+        "records": 18,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "84af8c5183a43a903f0b39dbfa2a6660f1886038b34cbf8349e8f4f11d770aeb",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "21078d54e84bedb29c9c1bdacfa784903278a2eedf7ad89c27976d0a108b8554",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "4f2b5ee07b440296804647a02cae9a470398b08ebb0594205161a97b7a81b1b7",
+        "records": 17,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "ebf87baf4f2ff2b92fabee36f4966ffd27f042fefb287e1ef9317c88f039c3b5",
-        "records": 18,
+        "recordDigest": "c20582183d6d3ac087da56bacf6cd3500d959905481dba97cd76861e239e8a19",
+        "records": 10,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1083,21 +1660,10 @@
     "contractRevision": "observations-v1-1e78d17eb03ed5c4",
     "legacyCompatibility": false,
     "missingCollections": [
-      "nativeImports",
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceProvenance",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "binaryClassifications",
+      "nativeImports"
     ],
-    "observationDigest": "obs-b5219e8372c9898555dd1a4f0df67a39ad58dfdb86d59023d7415d74f3e9cf36",
+    "observationDigest": "obs-f9e713f5413c7b7cb123771363428f5fecf801edd1ea2d20ab24cd3edf71b86e",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
       "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
@@ -1157,17 +1723,17 @@
         "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "17998fdf33624867c813e10cc8e6d5e8b2fc9473acfff475c70505574e97a76a",
+        "recordDigest": "b26a9da9301df2c34bd7ca49b0753c995ef0e15b47e5f8afa5baef17694101f0",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "e140ad6a4b563e06d458db60357a6eb78189da5266fcd6dd568514e037c6b30b",
-        "records": 5
+        "recordDigest": "96ae47e873e8381d6596e837786faed9b28e5edde9bf7de8084f93633e416d32",
+        "records": 8
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "d1264b0dcd14c466930bd39afc62b954f33f281f7f60902668b9385440f39094",
-        "records": 3
+        "recordDigest": "1eca19aa7da5e3cd6d7098142086658ac10938756061f7bf75837dff91011199",
+        "records": 6
       }
     },
     "projectionRevision": "projection-v1-26cf5d16f2b29bab",
@@ -1190,16 +1756,16 @@
       "Game memory/hooks",
       "Hard-coded external file access"
     ],
-    "caution_count": 2,
+    "caution_count": 4,
     "critical_count": 0,
     "error": "",
     "high_count": 0,
     "highest_severity": "caution",
-    "informational_count": 1,
+    "informational_count": 2,
     "plugin_id": 283,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 147883,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
       "artifactBytes": 222682,
       "artifactIdentity": {
@@ -1207,10 +1773,10 @@
         "artifactBytes": 222682,
         "artifactSha256": "c547bd4552d252bed061d2e3c86446a9942bb020c291cd435c0842f8f84ccc86",
         "catalogAssemblyVersion": "1.2.0.0",
-        "manifestInternalName": "ZDs",
+        "manifestInternalName": "",
         "manifestPath": "ZDs.json",
-        "manifestRepositoryUrl": "https://github.com/Zeffuro/ZDs",
-        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/bcd09bcf4fb006d52b3c9b00d0646127c49941cd/stable/ZDs/latest.zip",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
@@ -1221,18 +1787,6 @@
       },
       "behaviorConsistency": {
         "capabilities": [
-          {
-            "category": "dynamic-code",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
           {
             "category": "filesystem",
             "declared": false,
@@ -1280,6 +1834,54 @@
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
           }
         ],
         "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
@@ -1292,21 +1894,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "skia.googlesource.com",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -1315,21 +1926,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "skia.googlesource.com",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -1350,11 +1970,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 5,
-          "observedConcreteDestinationCount": 2,
-          "observedDestinationWithoutProfileCount": 2,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 5,
+          "observedWithoutProfileCount": 8,
           "unexplainedDestinationCount": 0
         }
       },
@@ -1364,30 +1984,33 @@
         "Hard-coded external file access"
       ],
       "capabilityIds": [
-        "dynamic.code",
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
-        "game.memory.read"
+        "game.memory.read",
+        "game.state.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 2,
+        "caution": 4,
         "critical": 0,
         "high": 0,
-        "informational": 1
+        "informational": 2
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 21,
-          "exactVersionObservedCount": 21,
+          "dependencyCount": 2,
+          "exactVersionObservedCount": 2,
           "families": {
-            "managed-assembly": 21
+            "nuget": 2
           },
-          "fingerprint": "c3ca34a1fb4a0fd563825b40b1f8b6b0a620a3e22dd70fbf61366fad0d9f159f",
+          "fingerprint": "aecf1e1437857310bda4ae178730b7e204d2377f65c7ecb10d0cbdbc9f37efd8",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -1396,45 +2019,44 @@
           "nativeRelationships": [],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 1,
-            "observed": 20
+            "required": 2
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 21,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
+          "known": 2,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 1,
-            "observed": 20,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 0,
+            "required": 2,
             "soft": 0,
             "unknown": 0
           },
-          "total": 21
+          "total": 2
         },
         "endpointSummary": {
           "concreteDestinationCount": 4,
           "destinationsUndetermined": false,
-          "hostCount": 2,
+          "hostCount": 3,
           "hosts": [
             {
               "classifications": [
-                "recognised-platform"
+                "recognised-platform",
+                "source-reference"
               ],
-              "concreteCount": 3,
-              "confidence": "VeryHigh",
+              "concreteCount": 2,
+              "confidence": "High",
               "host": "github.com",
               "literalCount": 3,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -1442,15 +2064,27 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "skia.googlesource.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
-          "literalCount": 4,
+          "literalCount": 5,
           "networkCapabilityObserved": false,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -1462,42 +2096,52 @@
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
-            "url": "https://github.com/Zeffuro/ZDs"
+            "url": "https://github.com/DelvUI/DelvUI/pull/1235"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://github.com/Zeffuro/ZDs"
           },
           {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/Zeffuro/ZDs.git"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/lichie567/LMeter/blob/develop/LMeter/Helpers/FontsManager.cs"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "ko-fi.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://ko-fi.com/Zeffuro"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "skia.googlesource.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://skia.googlesource.com/external/github.com/ocornut/imgui/+/v1.53/extra_fonts/README.txt"
           }
         ]
       },
@@ -1523,7 +2167,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
-        "attemptId": "attempt-v2-652687a5e06d0200",
+        "attemptId": "attempt-v2-fba62e32c66185ae",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -1532,11 +2176,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-6303",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-6303",
         "queueSeedRevision": "queue-seed-v2-451040434e2460c4dad3",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
         "scannerBundleSha256": "dbb46c71ff40b108aa38b021ea59b0eafe680e91841a3f4aac0f2eb47be4a94b",
@@ -1544,11 +2188,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
         "sourceObservationRevision": "source-observations-v1-50c8d5740239e1aa",
-        "targetFingerprint": "artifact-target-v2-84a5acee7277f74c7b6a",
+        "targetFingerprint": "source-target-v2-9517a262754c274e9944",
         "variantId": 6303,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-03T06:16:12Z",
+      "scannedAtUtc": "2026-09-03T09:28:04Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -1590,23 +2234,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "main",
         "candidates": [
           "https://github.com/Zeffuro/ZDs",
-          "https://github.com/goatcorp/PluginDistD17",
           "https://kamori.goats.dev/Plugin/Download/ZDs",
           "https://github.com/goatcorp/DalamudPlugins"
         ],
-        "commit": "",
+        "commit": "b43131e2380e1ff78e85309504510729d65f5bd8",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "53f39b53dcb8e9de56d78f9970210b812f41e79f6d335290d4e83414b158d5e3"
           }
         },
         "developerProfile": {
@@ -1614,28 +2261,47 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.2.0.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "main",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
         "repository": "https://github.com/Zeffuro/ZDs",
-        "treeSha256": ""
+        "treeSha256": "97de46a0dad9d18bdc2d97ac1daf8b061b379702"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 146259,
-    "scanned_at_utc": "2026-09-03T06:16:12Z",
+    "scan_id": 147896,
+    "scanned_at_utc": "2026-09-03T09:28:04Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "b43131e2380e1ff78e85309504510729d65f5bd8",
     "source_id": 1,
     "source_repository": "https://github.com/Zeffuro/ZDs",
     "source_to_binary_verified": 0,

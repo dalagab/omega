@@ -1,0 +1,358 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MessagePack.dll: Reflection.Emit",
+      "metadata:MessagePack.dll: AssemblyLoadContext",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x28: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x35: callvirt System.Reflection.Emit.AssemblyBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x16: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x4d: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x55: callvirt System.Reflection.Emit.TypeBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x74: callvirt System.Reflection.Emit.TypeBuilder.DefineConstructor: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:MessagePack.dll: s://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: /home/runner/work/MessagePack-CSharp/MessagePack-CSharp/obj/src/MessagePack/Release/net9.0/MessagePack.pdb",
+      "artifact:TrackyTrack.dll: s://github.com/Infiziert90/TrackyTrack.git",
+      "artifact:TrackyTrack.dll: b:\\4f7",
+      "artifact:TrackyTrack.dll: s://xivstats.com/desynth",
+      "artifact:TrackyTrack.dll: s://discord.com/channels/581875019861328007/1143510564165926992",
+      "artifact:TrackyTrack.dll: s://github.com/Infiziert90/TrackyTrack/issues",
+      "artifact:TrackyTrack.dll: s://ko-fi.com/infiii"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "source:TrackyTrack/ConfigurationBase.cs: s://github.com/Penumbra-Sync/client/blob/main/MareSynchronos/MareConfiguration/ConfigurationServiceBase.cs"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:TrackyTrack.dll: SigScanner",
+      "metadata:TrackyTrack.dll: Dalamud.Hooking",
+      "metadata:TrackyTrack.dll: HookFromAddress",
+      "il:TrackyTrack.dll:TrackyTrack.Manager.HookManager..ctor+0xd4: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:TrackyTrack.dll:TrackyTrack.Manager.HookManager..ctor+0x101: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:TrackyTrack.dll:TrackyTrack.Manager.HookManager..ctor+0x116: call TrackyTrack.Plugin.get_SigScanner: SigScanner",
+      "il:TrackyTrack.dll:TrackyTrack.Manager.HookManager..ctor+0x120: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:TrackyTrack.dll:TrackyTrack.Manager.HookManager..ctor+0x13a: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "source:TrackyTrack/Manager/HookManager.cs: Dalamud.Hooking",
+      "source:TrackyTrack/Manager/HookManager.cs: SigScanner",
+      "source:TrackyTrack/Manager/HookManager.cs: Hook<",
+      "source:TrackyTrack/Plugin.cs: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TrackyTrack.dll: https://infi.ovh/api/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.09999e844e9b",
+    "severity": "caution",
+    "title": "Endpoint: infi.ovh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TrackyTrack.dll: https://ko-fi.com/infiii"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.09ffcedf3701",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TrackyTrack/Windows/Config/ConfigWindow.About.cs: https://xivstats.com/",
+      "source:TrackyTrack/Windows/Config/ConfigWindow.Upload.cs: https://xivstats.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1d1a4da8b73a",
+    "severity": "caution",
+    "title": "Endpoint: xivstats.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TrackyTrack/Utils.cs: https://stackoverflow.com/a/1415187"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.332e34405673",
+    "severity": "caution",
+    "title": "Endpoint: stackoverflow.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TrackyTrack/Data/Export.cs: https://infi.ovh/api/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.38bb9a1c281c",
+    "severity": "caution",
+    "title": "Endpoint: infi.ovh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TrackyTrack.dll: https://xivstats.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3b8270d33a76",
+    "severity": "caution",
+    "title": "Endpoint: xivstats.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TrackyTrack/Windows/Main/MainWindow.Desynthesis.cs: https://xivstats.com/desynth"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.51debcf2c628",
+    "severity": "caution",
+    "title": "Endpoint: xivstats.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TrackyTrack.dll: https://xivstats.com/desynth"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5ecac8342ca0",
+    "severity": "caution",
+    "title": "Endpoint: xivstats.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TrackyTrack/Windows/Config/ConfigWindow.About.cs: https://ko-fi.com/infiii"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cf4ec3205299",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:MessagePack.dll: System.Diagnostics.Process",
+      "artifact:MessagePack.dll: ProcessStartInfo",
+      "metadata:TrackyTrack.dll: System.Diagnostics.Process",
+      "il:TrackyTrack.dll:TrackyTrack.ConfigurationBase.SaveAll+0x5: call System.Diagnostics.Process.GetProcessesByName: System.Diagnostics.Process",
+      "il:TrackyTrack.dll:TrackyTrack.Windows.Main.MainWindow.RetainerAdvanced+0xb6: call System.Diagnostics.Process.GetProcessesByName: System.Diagnostics.Process",
+      "artifact:TrackyTrack.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:TrackyTrack.dll: FileStream",
+      "metadata:TrackyTrack.dll: Directory.CreateDirectory",
+      "metadata:TrackyTrack.dll: File.Delete",
+      "metadata:TrackyTrack.dll: WriteAllText",
+      "metadata:TrackyTrack.dll: File.Move",
+      "il:TrackyTrack.dll:TrackyTrack.ConfigurationBase..ctor+0x6a: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:TrackyTrack.dll:<SaveAndTryMoveConfig>d__25.MoveNext+0x103: call System.IO.File.Delete: File.Delete",
+      "il:TrackyTrack.dll:<SaveAndTryMoveConfig>d__25.MoveNext+0x11f: call System.IO.File.WriteAllText: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "source:TrackyTrack/ConfigurationBase.cs: WriteAllText",
+      "source:TrackyTrack/ConfigurationBase.cs: File.Delete",
+      "source:TrackyTrack/ConfigurationBase.cs: File.Move",
+      "source:TrackyTrack/Data/CrowdSourced.cs: WriteAllBytes",
+      "source:TrackyTrack/Data/CrowdSourced.cs: FileStream",
+      "source:TrackyTrack/Data/CrowdSourced.cs: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Discord (community messaging). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TrackyTrack/Windows/Config/ConfigWindow.About.cs: https://discord.com/channels/581875019861328007/1143510564165926992"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0fdf4fc49392",
+    "severity": "informational",
+    "title": "Endpoint: discord.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TrackyTrack/Windows/Helper.cs: https://github.com/Ottermandias/OtterGui"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2ee60279c8c7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3b676f6154bf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TrackyTrack.json: https://github.com/Infiziert90/TrackyTrack"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5ddbf737fdba",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TrackyTrack.dll: https://github.com/Infiziert90/TrackyTrack.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.797264e59ca9",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TrackyTrack.dll: https://github.com/Infiziert90/TrackyTrack/issues"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.81944ad889a0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CsvHelper.dll: https://github.com/JoshClose/CsvHelper"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9e7c5825f68c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TrackyTrack/CharacterConfig.cs: https://github.com/MidoriKami/DailyDuty/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a9c9f42adaa6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f2dfd1030921",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Discord (community messaging). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TrackyTrack.dll: https://discord.com/channels/581875019861328007/1143510564165926992"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.faf94dd15f4b",
+    "severity": "informational",
+    "title": "Endpoint: discord.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:TrackyTrack.dll: System.Net.Http.HttpClient",
+      "il:TrackyTrack.dll:TrackyTrack.Data.Export..cctor+0x0: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:TrackyTrack.dll:TrackyTrack.Data.Export..cctor+0x25: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:TrackyTrack.dll:TrackyTrack.Data.Export..cctor+0x3e: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:TrackyTrack.dll:<UploadEntry>d__22.MoveNext+0x43: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

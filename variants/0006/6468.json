@@ -1,44 +1,24 @@
 {
   "analysis": {
-    "analysisId": "32be85812e204f7fa240a919c21e8e0b49b76e793fadeeeb865d8ee2d16182c3",
+    "analysisId": "0852a742c6d613252ef057936d6109621db44b1a9a045dbd11388a02aeeb14a4",
     "artifactSha256": "01529261230e00947879e8486b9cfe2cd4149077fdac5aa2ebb6bacd383e9ef9",
-    "path": "artifacts/01/01529261230e00947879e8486b9cfe2cd4149077fdac5aa2ebb6bacd383e9ef9/analyses/32be85812e204f7fa240a919c21e8e0b49b76e793fadeeeb865d8ee2d16182c3",
-    "recordCount": 24446
+    "path": "artifacts/01/01529261230e00947879e8486b9cfe2cd4149077fdac5aa2ebb6bacd383e9ef9/analyses/0852a742c6d613252ef057936d6109621db44b1a9a045dbd11388a02aeeb14a4",
+    "recordCount": 3498
   },
   "current": {
     "artifact_channel": "stable",
     "artifact_sha256": "01529261230e00947879e8486b9cfe2cd4149077fdac5aa2ebb6bacd383e9ef9",
     "artifact_url": "https://github.com/ThatKwistine/WardrobePlugin/releases/latest/download/latest.zip",
     "assembly_version": "1.6.0.0",
-    "automation_capabilities_json": [
-      {
-        "automationLevel": "character-automation",
-        "capabilityId": "game.camera.control",
-        "confidence": "very-high",
-        "evidence": [
-          "il:WardrobePlugin.dll:WardrobePlugin.Configuration.MigrateCameraPresets+0x63: callvirt WardrobePlugin.Models.CameraPreset.set_Name",
-          "il:WardrobePlugin.dll:WardrobePlugin.Configuration.MigrateCameraPresets+0x6a: callvirt WardrobePlugin.Models.CameraPreset.set_IsDefault",
-          "il:WardrobePlugin.dll:WardrobePlugin.Configuration.LoadPresets+0x108: callvirt WardrobePlugin.Models.CameraPreset.set_Name",
-          "il:WardrobePlugin.dll:WardrobePlugin.Configuration.LoadPresets+0x110: callvirt WardrobePlugin.Models.CameraPreset.set_IsDefault",
-          "il:WardrobePlugin.dll:WardrobePlugin.Ui.PluginUi.DrawPresetRenameRow+0x78: callvirt WardrobePlugin.Models.CameraPreset.set_Name",
-          "il:WardrobePlugin.dll:WardrobePlugin.Ui.PluginUi.SaveCameraPreset+0x90: callvirt WardrobePlugin.Models.CameraPreset.set_Name",
-          "il:WardrobePlugin.dll:WardrobePlugin.Ui.PluginUi.SaveCameraPreset+0x9f: callvirt WardrobePlugin.Models.CameraPreset.set_IsDefault",
-          "il:WardrobePlugin.dll:WardrobePlugin.Ui.PluginUi.OverwritePreset+0x2e: callvirt WardrobePlugin.Models.CameraPreset.set_Name"
-        ],
-        "indirect": false,
-        "label": "Camera control",
-        "reachable": true,
-        "reason": "References camera-mutating functionality."
-      }
-    ],
-    "automation_level": "character-automation",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
     "capabilities_json": [
       "Camera control",
       "Filesystem write",
       "Hard-coded external file access",
       "Process execution"
     ],
-    "caution_count": 3,
+    "caution_count": 5,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -60,10 +40,39 @@
         "title": "Process execution"
       },
       {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "source:Ui/PluginUi.cs: System.Diagnostics.Process",
+          "source:Ui/PluginUi.cs: Process.Start",
+          "source:Ui/PluginUi.cs: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
         "category": "filesystem",
         "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
         "evidence": [
           "artifact:WardrobePlugin.dll: C:\\Users\\christine\\Documents\\WardrobePlugin\\obj\\Release\\net10.0-windows\\WardrobePlugin.pdb"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:Ui/PluginUi.cs: n:\\n{defaultFolder}",
+          "source:Ui/PluginUi.cs: r:\\n",
+          "source:Ui/PluginUi.cs: d:\\n",
+          "source:Ui/PluginUi.cs: f:\\n{LinkList(links)}",
+          "source:Ui/PluginUi.cs: s:\\n{LinkList(links)}",
+          "source:Ui/PluginUi.cs: s:\\n",
+          "source:Ui/PluginUi.cs: n:\\n{LinkList(links)}",
+          "source:Ui/PluginUi.cs: e:\\n{LinkList(links)}"
         ],
         "ruleId": "filesystem.external-path",
         "severity": "caution",
@@ -98,14 +107,31 @@
         "ruleId": "filesystem.write",
         "severity": "informational",
         "title": "Filesystem write access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:Configuration.cs: WriteAllText",
+          "source:Services/BackupService.cs: Directory.CreateDirectory",
+          "source:Services/IconPackService.cs: WriteAllText",
+          "source:Services/IconPackService.cs: Directory.CreateDirectory",
+          "source:Services/IconPackService.cs: Directory.Delete",
+          "source:Services/TextureCompressionFlagService.cs: FileStream",
+          "source:Services/WardrobePageWriter.cs: WriteAllText",
+          "source:Services/WardrobePageWriter.cs: WriteAllBytes"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
       }
     ],
     "high_count": 0,
     "highest_severity": "caution",
-    "informational_count": 1,
+    "informational_count": 2,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 146264,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
       "artifactBytes": 449664,
       "artifactIdentity": {
@@ -113,41 +139,20 @@
         "artifactBytes": 449664,
         "artifactSha256": "01529261230e00947879e8486b9cfe2cd4149077fdac5aa2ebb6bacd383e9ef9",
         "catalogAssemblyVersion": "1.6.0.0",
-        "manifestInternalName": "WardrobePlugin",
+        "manifestInternalName": "",
         "manifestPath": "WardrobePlugin.json",
-        "manifestRepositoryUrl": "https://github.com/ThatKwistine/WardrobePlugin",
-        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1318504382/4c4987d7-0517-44e9-b866-acaa1a0ed02a?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-03T07%3A08%3A44Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-03T06%3A07%3A55Z&ske=2026-09-03T07%3A08%3A44Z&sks=b&skv=2018-11-09&sig=1YxTTC%2FKfwLFaZhT58U0bsQKavuj76LPAiBS70jEqwY%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODQxNjIzNywibmJmIjoxNzg4NDE1OTM3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.HX0g8g5MQL10TLld0AQ7dzuraElYJFXAkIrEOiWU4KA&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
       "artifactIdentityContractVersion": 1,
       "automation": {
-        "capabilities": [
-          {
-            "automationLevel": "character-automation",
-            "capabilityId": "game.camera.control",
-            "confidence": "very-high",
-            "indirect": false,
-            "label": "Camera control",
-            "reachable": true
-          }
-        ],
-        "level": "character-automation"
+        "capabilities": [],
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
-          {
-            "category": "dynamic-code",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
           {
             "category": "filesystem",
             "declared": false,
@@ -209,13 +214,13 @@
             "state": "observed-no-profile"
           },
           {
-            "category": "process",
+            "category": "game-state",
             "declared": false,
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
-            "id": "process.execute",
-            "label": "External process execution",
+            "id": "game.state.read",
+            "label": "Game state read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -226,8 +231,8 @@
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
-            "id": "process.inspect",
-            "label": "Process inspection",
+            "id": "process.execute",
+            "label": "External process execution",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -243,20 +248,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "www.garlandtools.org",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -265,20 +280,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "www.garlandtools.org",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -299,11 +324,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 8,
-          "observedConcreteDestinationCount": 2,
-          "observedDestinationWithoutProfileCount": 2,
+          "observedCapabilityCount": 7,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 8,
+          "observedWithoutProfileCount": 7,
           "unexplainedDestinationCount": 0
         }
       },
@@ -314,81 +339,234 @@
         "Process execution"
       ],
       "capabilityIds": [
-        "dynamic.code",
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
         "game.camera.control",
         "game.memory.read",
-        "process.execute",
-        "process.inspect"
+        "game.state.read",
+        "process.execute"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 3,
+        "caution": 5,
         "critical": 0,
         "high": 0,
-        "informational": 1
+        "informational": 2
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 27,
-          "exactVersionObservedCount": 27,
+          "dependencyCount": 25,
+          "exactVersionObservedCount": 2,
           "families": {
-            "managed-assembly": 25,
+            "ipc": 17,
+            "managed-assembly": 6,
             "nuget": 2
           },
-          "fingerprint": "0b91e26b5a2e82d18ebecd9364dd179db69b379a65db4d6b583b7b5505582760",
+          "fingerprint": "0ea7b04817282b011f8035ac812264395fe48c6497815a72b2c9e2d233bef131",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
             "platformLibrary": 0
           },
           "nativeRelationships": [],
-          "pluginRelationships": [],
+          "pluginRelationships": [
+            {
+              "confidence": "High",
+              "kind": "ipc",
+              "name": "Glamourer.ApplyDesign",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Glamourer.ApplyState",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "High",
+              "kind": "ipc",
+              "name": "Glamourer.GetDesignJObject",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Glamourer.GetDesignList.V2",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "High",
+              "kind": "ipc",
+              "name": "Glamourer.OpenActorIndex",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Glamourer.RevertState",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Glamourer.SetItem.V3",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Glamourer.SetMetaState",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.GameObjectRedrawn.V3",
+              "origin": "source",
+              "relationship": "feature",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.GetCollections.V5",
+              "origin": "source",
+              "relationship": "feature",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "High",
+              "kind": "ipc",
+              "name": "Penumbra.GetGameObjectResourcePaths.V5",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.GetModDirectory",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.GetModList",
+              "origin": "source",
+              "relationship": "feature",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.RedrawObject.V5",
+              "origin": "source",
+              "relationship": "feature",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.TrySetMod.V5",
+              "origin": "source",
+              "relationship": "feature",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.TrySetModSetting.V5",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.TrySetModSettings.V5",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            }
+          ],
           "requirements": {
-            "bundled": 1,
-            "observed": 24,
-            "required": 2
+            "required": 8,
+            "soft": 17
           },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 6
         },
         "coverage": {
-          "analyzed": 25,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
-          "externalPlugin": 0,
-          "known": 2,
+          "externalPlugin": 17,
+          "known": 8,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 1,
-            "observed": 24,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 2,
-            "soft": 0,
+            "required": 8,
+            "soft": 17,
             "unknown": 0
           },
-          "total": 27
+          "total": 25
         },
         "endpointSummary": {
-          "concreteDestinationCount": 2,
+          "concreteDestinationCount": 5,
           "destinationsUndetermined": false,
-          "hostCount": 2,
+          "hostCount": 3,
           "hosts": [
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "concreteCount": 1,
-              "confidence": "VeryHigh",
+              "concreteCount": 3,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 1,
+              "literalCount": 3,
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -396,15 +574,27 @@
                 "recognised-platform"
               ],
               "concreteCount": 1,
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-config"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "www.garlandtools.org",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
-          "literalCount": 2,
+          "literalCount": 5,
           "networkCapabilityObserved": false,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -416,22 +606,52 @@
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://github.com/ThatKwistine/WardrobePlugin"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/ThatKwistine/WardrobePlugin/releases/latest/download/latest.zip"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/ocornut/imgui/issues/2701"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
             "host": "raw.githubusercontent.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://raw.githubusercontent.com/ThatKwistine/WardrobePlugin/main/images/icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "www.garlandtools.org",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://www.garlandtools.org/"
           }
         ]
       },
@@ -457,7 +677,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
-        "attemptId": "attempt-v2-6e1846c5b853b0a3",
+        "attemptId": "attempt-v2-fcfeb3b2b05c039e",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -466,11 +686,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-6468",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-6468",
         "queueSeedRevision": "queue-seed-v2-451040434e2460c4dad3",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
         "scannerBundleSha256": "dbb46c71ff40b108aa38b021ea59b0eafe680e91841a3f4aac0f2eb47be4a94b",
@@ -478,11 +698,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
         "sourceObservationRevision": "source-observations-v1-50c8d5740239e1aa",
-        "targetFingerprint": "artifact-target-v2-027c763c07938d6ebbb8",
+        "targetFingerprint": "source-target-v2-b8db9a97bc6ad1297909",
         "variantId": 6468,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-03T06:12:17Z",
+      "scannedAtUtc": "2026-09-03T09:27:12Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -524,21 +744,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "v1.6.0.0",
         "candidates": [
-          "https://github.com/ThatKwistine/WardrobePlugin",
-          "https://release-assets.githubusercontent.com/github-production-release-asset/1318504382/4c4987d7-0517-44e9-b866-acaa1a0ed02a"
+          "https://github.com/ThatKwistine/WardrobePlugin"
         ],
-        "commit": "",
+        "commit": "82934d10ef7a404006580fbef4a019367a6e27a4",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "8045dbfe1b7c8cc401c58f3f75dc3c4fd3ab22dc16a8b169aadabaf4e59c1280"
           }
         },
         "developerProfile": {
@@ -546,142 +771,1157 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "very-high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "1.6.0.0",
+          "manifestInternalName": "WardrobePlugin",
+          "manifestPath": "WardrobePlugin.json",
+          "manifestRepoUrl": "https://github.com/ThatKwistine/WardrobePlugin",
+          "manifestRepositoryMatched": true,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.6.0.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "v1.6.0.0",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
+        },
         "repository": "https://github.com/ThatKwistine/WardrobePlugin",
-        "treeSha256": ""
+        "treeSha256": "c8286ab41bb468a3c7a80bf3daed2f22121169f0"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 146264,
-    "scanned_at_utc": "2026-09-03T06:12:17Z",
+    "scan_id": 147894,
+    "scanned_at_utc": "2026-09-03T09:27:12Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "82934d10ef7a404006580fbef4a019367a6e27a4",
     "source_repository": "https://github.com/ThatKwistine/WardrobePlugin",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 6468
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:dalamud",
+        "current_json": {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Dalamud",
+          "normalizedName": "dalamud",
+          "origin": "source",
+          "paths": [
+            "WardrobePlugin.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "Dalamud",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 66,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "caution",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:dalamud.bindings.imgui",
+        "current_json": {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "normalizedName": "dalamud.bindings.imgui",
+          "origin": "source",
+          "paths": [
+            "WardrobePlugin.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "Dalamud.Bindings.ImGui",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 67,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "caution",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:ffxivclientstructs",
+        "current_json": {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "normalizedName": "ffxivclientstructs",
+          "origin": "source",
+          "paths": [
+            "WardrobePlugin.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "FFXIVClientStructs",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 68,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "caution",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:lumina",
+        "current_json": {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Lumina",
+          "normalizedName": "lumina",
+          "origin": "source",
+          "paths": [
+            "WardrobePlugin.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "Lumina",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 69,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "caution",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:lumina.excel",
+        "current_json": {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "normalizedName": "lumina.excel",
+          "origin": "source",
+          "paths": [
+            "WardrobePlugin.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "Lumina.Excel",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 70,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "caution",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:newtonsoft.json",
+        "current_json": {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "normalizedName": "newtonsoft.json",
+          "origin": "source",
+          "paths": [
+            "WardrobePlugin.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "Newtonsoft.Json",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 71,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "caution",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:glamourer.applydesign",
+        "current_json": {
+          "componentKey": "ipc:glamourer.applydesign",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.ApplyDesign",
+          "normalizedName": "glamourer.applydesign",
+          "origin": "source",
+          "paths": [
+            "Ipc/GlamourerIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Glamourer.ApplyDesign",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 72,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:glamourer.applystate",
+        "current_json": {
+          "componentKey": "ipc:glamourer.applystate",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.ApplyState",
+          "normalizedName": "glamourer.applystate",
+          "origin": "source",
+          "paths": [
+            "Ipc/GlamourerIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Glamourer.ApplyState",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 73,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:glamourer.getdesignjobject",
+        "current_json": {
+          "componentKey": "ipc:glamourer.getdesignjobject",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.GetDesignJObject",
+          "normalizedName": "glamourer.getdesignjobject",
+          "origin": "source",
+          "paths": [
+            "Ipc/GlamourerIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Glamourer.GetDesignJObject",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 74,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:glamourer.getdesignlist.v2",
+        "current_json": {
+          "componentKey": "ipc:glamourer.getdesignlist.v2",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.GetDesignList.V2",
+          "normalizedName": "glamourer.getdesignlist.v2",
+          "origin": "source",
+          "paths": [
+            "Ipc/GlamourerIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Glamourer.GetDesignList.V2",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 75,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:glamourer.openactorindex",
+        "current_json": {
+          "componentKey": "ipc:glamourer.openactorindex",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.OpenActorIndex",
+          "normalizedName": "glamourer.openactorindex",
+          "origin": "source",
+          "paths": [
+            "Ipc/GlamourerIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Glamourer.OpenActorIndex",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 76,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:glamourer.revertstate",
+        "current_json": {
+          "componentKey": "ipc:glamourer.revertstate",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.RevertState",
+          "normalizedName": "glamourer.revertstate",
+          "origin": "source",
+          "paths": [
+            "Ipc/GlamourerIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Glamourer.RevertState",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 77,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:glamourer.setitem.v3",
+        "current_json": {
+          "componentKey": "ipc:glamourer.setitem.v3",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.SetItem.V3",
+          "normalizedName": "glamourer.setitem.v3",
+          "origin": "source",
+          "paths": [
+            "Ipc/GlamourerIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Glamourer.SetItem.V3",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 78,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:glamourer.setmetastate",
+        "current_json": {
+          "componentKey": "ipc:glamourer.setmetastate",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.SetMetaState",
+          "normalizedName": "glamourer.setmetastate",
+          "origin": "source",
+          "paths": [
+            "Ipc/GlamourerIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Glamourer.SetMetaState",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 79,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:penumbra.gameobjectredrawn.v3",
+        "current_json": {
+          "componentKey": "ipc:penumbra.gameobjectredrawn.v3",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.GameObjectRedrawn.V3",
+          "normalizedName": "penumbra.gameobjectredrawn.v3",
+          "origin": "source",
+          "paths": [
+            "Ipc/PenumbraIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Penumbra.GameObjectRedrawn.V3",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 80,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:penumbra.getcollections.v5",
+        "current_json": {
+          "componentKey": "ipc:penumbra.getcollections.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.GetCollections.V5",
+          "normalizedName": "penumbra.getcollections.v5",
+          "origin": "source",
+          "paths": [
+            "Ipc/PenumbraIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Penumbra.GetCollections.V5",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 81,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:penumbra.getgameobjectresourcepaths.v5",
+        "current_json": {
+          "componentKey": "ipc:penumbra.getgameobjectresourcepaths.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.GetGameObjectResourcePaths.V5",
+          "normalizedName": "penumbra.getgameobjectresourcepaths.v5",
+          "origin": "source",
+          "paths": [
+            "Ipc/PenumbraIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Penumbra.GetGameObjectResourcePaths.V5",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 82,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:penumbra.getmoddirectory",
+        "current_json": {
+          "componentKey": "ipc:penumbra.getmoddirectory",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.GetModDirectory",
+          "normalizedName": "penumbra.getmoddirectory",
+          "origin": "source",
+          "paths": [
+            "Ipc/PenumbraIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Penumbra.GetModDirectory",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 83,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:penumbra.getmodlist",
+        "current_json": {
+          "componentKey": "ipc:penumbra.getmodlist",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.GetModList",
+          "normalizedName": "penumbra.getmodlist",
+          "origin": "source",
+          "paths": [
+            "Ipc/PenumbraIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Penumbra.GetModList",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 84,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:penumbra.redrawobject.v5",
+        "current_json": {
+          "componentKey": "ipc:penumbra.redrawobject.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.RedrawObject.V5",
+          "normalizedName": "penumbra.redrawobject.v5",
+          "origin": "source",
+          "paths": [
+            "Ipc/PenumbraIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Penumbra.RedrawObject.V5",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 85,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:penumbra.trysetmod.v5",
+        "current_json": {
+          "componentKey": "ipc:penumbra.trysetmod.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.TrySetMod.V5",
+          "normalizedName": "penumbra.trysetmod.v5",
+          "origin": "source",
+          "paths": [
+            "Ipc/PenumbraIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Penumbra.TrySetMod.V5",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 86,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:penumbra.trysetmodsetting.v5",
+        "current_json": {
+          "componentKey": "ipc:penumbra.trysetmodsetting.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.TrySetModSetting.V5",
+          "normalizedName": "penumbra.trysetmodsetting.v5",
+          "origin": "source",
+          "paths": [
+            "Ipc/PenumbraIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Penumbra.TrySetModSetting.V5",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 87,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:penumbra.trysetmodsettings.v5",
+        "current_json": {
+          "componentKey": "ipc:penumbra.trysetmodsettings.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.TrySetModSettings.V5",
+          "normalizedName": "penumbra.trysetmodsettings.v5",
+          "origin": "source",
+          "paths": [
+            "Ipc/PenumbraIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "ipc",
+        "dependency_name": "Penumbra.TrySetModSettings.V5",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 88,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "WardrobePlugin.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "2.1.13"
+          ],
+          "versions": [
+            "2.1.13"
+          ]
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "nuget",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 89,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "caution",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:system.drawing.common",
+        "current_json": {
+          "componentKey": "nuget:system.drawing.common",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget"
+          ],
+          "name": "System.Drawing.Common",
+          "normalizedName": "system.drawing.common",
+          "origin": "source",
+          "paths": [
+            "WardrobePlugin.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "10.0.0"
+          ],
+          "versions": [
+            "10.0.0"
+          ]
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "nuget",
+        "dependency_name": "System.Drawing.Common",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 90,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "caution",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 91,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 92,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "FFXIVClientStructs is imported.",
+            "FFXIVClientStructs package/reference is declared."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 93,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "caution",
+        "variant_id": 6468
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service IClientState is referenced.",
+            "Dalamud service IDataManager is referenced.",
+            "Dalamud service IObjectTable is referenced."
+          ],
+          "risks": [
+            "Low",
+            "Medium"
+          ]
+        },
+        "current_scan_id": 147894,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-03T09:27:35Z",
+        "drift_id": 94,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 146264,
+        "severity": "informational",
+        "variant_id": 6468
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "baseline",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "01529261230e00947879e8486b9cfe2cd4149077fdac5aa2ebb6bacd383e9ef9",
       "current_assembly_version": "1.6.0.0",
-      "current_scan_id": 146264,
+      "current_scan_id": 147894,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-03T06:12:19Z",
-      "previous_artifact_sha256": "",
-      "previous_assembly_version": "",
-      "previous_scan_id": null,
-      "previous_scanner_version": "",
+      "current_source_commit": "82934d10ef7a404006580fbef4a019367a6e27a4",
+      "detected_at_utc": "2026-09-03T09:27:35Z",
+      "previous_artifact_sha256": "01529261230e00947879e8486b9cfe2cd4149077fdac5aa2ebb6bacd383e9ef9",
+      "previous_assembly_version": "1.6.0.0",
+      "previous_scan_id": 146264,
+      "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 6468
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 27,
-      "artifact_only_count": 27,
+      "artifact_only_count": 20,
       "artifact_only_json": [
-        {
-          "componentKey": "assembly:dalamud",
-          "componentKind": "assembly",
-          "kinds": [
-            "managed-assembly-reference"
-          ],
-          "name": "Dalamud",
-          "requirements": [
-            "observed"
-          ],
-          "versions": [
-            "15.0.3.2"
-          ]
-        },
-        {
-          "componentKey": "assembly:dalamud.bindings.imgui",
-          "componentKind": "assembly",
-          "kinds": [
-            "managed-assembly-reference"
-          ],
-          "name": "Dalamud.Bindings.ImGui",
-          "requirements": [
-            "observed"
-          ],
-          "versions": [
-            "1.0.0.0"
-          ]
-        },
-        {
-          "componentKey": "assembly:ffxivclientstructs",
-          "componentKind": "assembly",
-          "kinds": [
-            "managed-assembly-reference"
-          ],
-          "name": "FFXIVClientStructs",
-          "requirements": [
-            "observed"
-          ],
-          "versions": [
-            "7.55.1.8875"
-          ]
-        },
-        {
-          "componentKey": "assembly:lumina",
-          "componentKind": "assembly",
-          "kinds": [
-            "managed-assembly-reference"
-          ],
-          "name": "Lumina",
-          "requirements": [
-            "observed"
-          ],
-          "versions": [
-            "7.0.0.0"
-          ]
-        },
-        {
-          "componentKey": "assembly:lumina.excel",
-          "componentKind": "assembly",
-          "kinds": [
-            "managed-assembly-reference"
-          ],
-          "name": "Lumina.Excel",
-          "requirements": [
-            "observed"
-          ],
-          "versions": [
-            "7.0.0.0"
-          ]
-        },
-        {
-          "componentKey": "assembly:newtonsoft.json",
-          "componentKind": "assembly",
-          "kinds": [
-            "managed-assembly-reference"
-          ],
-          "name": "Newtonsoft.Json",
-          "requirements": [
-            "observed"
-          ],
-          "versions": [
-            "13.0.0.0"
-          ]
-        },
         {
           "componentKey": "assembly:system.collections",
           "componentKind": "assembly",
@@ -961,35 +2201,240 @@
           "versions": [
             "10.0.0"
           ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-03T09:27:35Z",
+      "comparison_id": 2314,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 7,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 147894,
+      "source_available": 1,
+      "source_dependency_count": 25,
+      "source_only_count": 18,
+      "source_only_json": [
+        {
+          "componentKey": "ipc:glamourer.applydesign",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.ApplyDesign",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
         },
         {
-          "componentKey": "nuget:system.drawing.common",
+          "componentKey": "ipc:glamourer.applystate",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.ApplyState",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:glamourer.getdesignjobject",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.GetDesignJObject",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:glamourer.getdesignlist.v2",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.GetDesignList.V2",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:glamourer.openactorindex",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.OpenActorIndex",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:glamourer.revertstate",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.RevertState",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:glamourer.setitem.v3",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.SetItem.V3",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:glamourer.setmetastate",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Glamourer.SetMetaState",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:penumbra.gameobjectredrawn.v3",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.GameObjectRedrawn.V3",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:penumbra.getcollections.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.GetCollections.V5",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:penumbra.getgameobjectresourcepaths.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.GetGameObjectResourcePaths.V5",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:penumbra.getmoddirectory",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.GetModDirectory",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:penumbra.getmodlist",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.GetModList",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:penumbra.redrawobject.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.RedrawObject.V5",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:penumbra.trysetmod.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.TrySetMod.V5",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:penumbra.trysetmodsetting.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.TrySetModSetting.V5",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:penumbra.trysetmodsettings.v5",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Penumbra.TrySetModSettings.V5",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
           "componentKind": "nuget",
           "kinds": [
-            "nuget-resolved"
+            "nuget"
           ],
-          "name": "System.Drawing.Common",
+          "name": "DalamudPackager",
           "requirements": [
             "required"
           ],
           "versions": [
-            "10.0.0"
+            "2.1.13"
           ]
         }
       ],
-      "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-03T06:12:19Z",
-      "comparison_id": 2300,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
-      "requirement_mismatch_count": 0,
-      "requirement_mismatches_json": [],
-      "scan_id": 146264,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "source_project_sha256": "9e50ee8be3dfd15c4f68fba36aec840081e6223d5236681169e515903f5ba2d7",
       "variant_id": 6468,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -1002,12 +2447,12 @@
           "bytes": 537,
           "encoding": "json",
           "path": "derived/variants/0006/6468/advisory-matches.json",
-          "recordDigest": "ed65d2f4ad240836ca11279391f25862c1c7bee685cc8d4119a2ead1dc3bb378",
+          "recordDigest": "7671939e5a2ff631b33b0ea6298048a7fe5e5442289ef0facbe19fb4783d21af",
           "records": 1,
-          "sha256": "e5146827ab8e869378a5c7f0aa960dfdbf2fed0ddb1c3228941b9a5464e780ef"
+          "sha256": "e8000d7b82bae5c1adb824bda032fdbd942c539e25d61cffa699f159b3dac0e5"
         }
       ],
-      "recordDigest": "ed65d2f4ad240836ca11279391f25862c1c7bee685cc8d4119a2ead1dc3bb378",
+      "recordDigest": "7671939e5a2ff631b33b0ea6298048a7fe5e5442289ef0facbe19fb4783d21af",
       "records": 1
     },
     "dependencyIssues": {
@@ -1027,36 +2472,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 25871,
+          "bytes": 50642,
           "encoding": "json",
           "path": "derived/variants/0006/6468/dependency-resolutions.json",
-          "recordDigest": "e763aaf17d219bfb38526ac6570bc05ebf8313ae0bf4af0fd952ec3f6348b326",
-          "records": 27,
-          "sha256": "ae6071e89d6baa4c83a5b40885fcf60dad9cfd6ded5afb25a54cfc295a17c5ad"
+          "recordDigest": "dda80de49a24edfa3b637af9cfb9b3c118429558a94ff7c0288a9c28b991f5dc",
+          "records": 52,
+          "sha256": "8b737bbb6dfdf7f83fee85378df81eb1c105162bbc032c41584f1e8158cad2ee"
         }
       ],
-      "recordDigest": "e763aaf17d219bfb38526ac6570bc05ebf8313ae0bf4af0fd952ec3f6348b326",
-      "records": 27
+      "recordDigest": "dda80de49a24edfa3b637af9cfb9b3c118429558a94ff7c0288a9c28b991f5dc",
+      "records": 52
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 1885491,
           "encoding": "json",
           "path": "derived/variants/0006/6468/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "6d9e1b66187f64533122d5abdf285c4a093a6b2bf300326de836f2e68d7fa1a7",
+          "records": 1,
+          "sha256": "fcb2af8e3ffbb05e702369d4f0a8822862660e1ecf823518b062c34d0b1c8851"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "6d9e1b66187f64533122d5abdf285c4a093a6b2bf300326de836f2e68d7fa1a7",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "360281383df84f7eab7f1f07e1c9e45103c5551b547c846cbd6d5cfab00e15da",
+    "identityFingerprint": "e2113e9d105e020eb9c2f3bb6c7737f780cf485ab4fb87f67364d2cc06228f3a",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -1066,37 +2511,27 @@
         "backingDataset": "artifactIdentity",
         "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
         "completeness": "retained",
-        "recordDigest": "b433dea858f67378d9cafb70c3ff2364d63461398e2e1d9c22929356421669cb",
+        "recordDigest": "cf9e5d58c166648a40212e88e399c79c61310c91f5112a81c6e283c3f742ecfe",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
-        "srlEligible": true
-      },
-      "binaryClassifications": {
-        "backingDataset": "binaryClassifications",
-        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
-        "completeness": "retained",
-        "recordDigest": "1bb28771fabab2f5d957e12b6cdebf588810f0c005686ed44b58dfa26f227ba7",
-        "records": 1,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
         "srlEligible": true
       },
       "dependencies": {
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "56fe2bf1373338be055b787117b4870a4e19f993e622111af6b008e94387bc66",
-        "records": 27,
+        "recordDigest": "49bcd8d7cfda4f0587ba4916488a293fc39347738e0c0613469911be00b06668",
+        "records": 52,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -1106,8 +2541,8 @@
         "backingDataset": "ipc",
         "collectionSchema": "omega.sigmascope.observation.ipc.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "3ebd77a6005fb974f3b26f1ec69860388d566125ec74edb9882f413418a174cb",
+        "records": 17,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1126,8 +2561,8 @@
         "backingDataset": "calls",
         "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
         "completeness": "retained",
-        "recordDigest": "35bc5cff13e63c58d67f49460f6f8dc2e6586418f11e12bfe6ae95aaf71fa069",
-        "records": 20000,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1136,8 +2571,8 @@
         "backingDataset": "reachability",
         "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
         "completeness": "retained",
-        "recordDigest": "770639a9847c42c2cdc4a4b46ca7221565da03e0d44df3002878ad03c7be026f",
-        "records": 3265,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1146,8 +2581,8 @@
         "backingDataset": "symbols",
         "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
         "completeness": "retained",
-        "recordDigest": "1cf9f2db44cbb3227dd64c1317ecb6ff55a1e5741ccb0a9672ccfb52bf6a1334",
-        "records": 1090,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1166,8 +2601,8 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "8b9f67da40ec2f9848c06b6340866d4439e98c7014a2d02712ac3a0b9324f43e",
+        "records": 331,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1176,8 +2611,8 @@
         "backingDataset": "networkEndpoints",
         "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
         "completeness": "retained",
-        "recordDigest": "b4606d37c9794b45342fcbf66251f602e90db2e6f9e35610ac2deffab6b2429c",
-        "records": 2,
+        "recordDigest": "fd00252eb2d55c7d7c90c78cf0991d0c557199420fea8b6b40ad9609bb0c825b",
+        "records": 5,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1196,28 +2631,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "e85a65dee78c217e61106c665e1d038f8016435516756ededa582be2271cefb4",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "91da7ce56fb3f7b15c143f46488679b43e22447d96b962496ce69c4f05ee57a0",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "86d87537d0ded23f9b13cdd0d68883a52d63e0b20d9a74b49de0c8e32904bcb1",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "c5083bfc309ed9ee02660cc8da9d5c84d52451a5a119edce4f6c9efd4f7cd2d9",
+        "records": 2888,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "fb13e440062640f048740aef7f1a6d46af255e6d7d92e1e056b2c5563c72e2c0",
+        "records": 8,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
         "srlEligible": true
       },
       "sourceFiles": {
         "backingDataset": "sourceFiles",
         "collectionSchema": "omega.sigmascope.observation.source-files.v1",
         "completeness": "retained",
-        "recordDigest": "b0a36963d05c89d552c28225f66b7a1481167641186b49cfe39cebc56139a3d7",
-        "records": 2,
+        "recordDigest": "7c1c178823c74ee415b3b004f4b6872a4c41ddcdb66fdccedd3130f0cea3fea6",
+        "records": 60,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "3b77b41f4c987e43a2c1f657c44f4546595cf4845efc4b3f5761a40250602b63",
+        "records": 12,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "4235ef71b1ba3f4aef1973575366c292293afca33366d5958e17a522b054999e",
+        "records": 43,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "1dbea527d63aca7f63d3bc243e695425e671fd1b68f97f7fa4036b69097ea9f6",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "8028ccb9676abb61e3d84f6156027fbef536e961bcda1350ae0ae957049bd419",
+        "records": 27,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "6f7ad2acdbc3e2b42f70ff7cf3725c984cf66c364507c6b5bc9a19b35c458955",
-        "records": 33,
+        "recordDigest": "c24ef0aa00e0c9ee82d75da1ee354155fe5a31c617d85c48e7e420812c91172f",
+        "records": 15,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1226,21 +2781,10 @@
     "contractRevision": "observations-v1-1e78d17eb03ed5c4",
     "legacyCompatibility": false,
     "missingCollections": [
-      "nativeImports",
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceProvenance",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "binaryClassifications",
+      "nativeImports"
     ],
-    "observationDigest": "obs-6ef1c393bd8090b66691e2521262a3bbbe300ff4ec4dfe3c6f302bc62cb3b69f",
+    "observationDigest": "obs-b6aa904f93e3471ddbf4d0c884be6a15410fdb067ebb4f99585cbe47bccf46dc",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
       "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
@@ -1302,21 +2846,21 @@
     "contractRevision": "projection-contract-v1-f507480528a1e6af",
     "outputs": {
       "automation": {
-        "recordDigest": "bbb849e1fb22e825cde117e737e235fe239aedbb58c812de476be9211fa68691",
-        "records": 1
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "fe10f6d6a826b74ef03ed8e1708ac6aa7e2fd09d81c8a05b36a9e27d072249a7",
+        "recordDigest": "538cf224d5224f7ebe297a5923c72d012173d12d64a329b25adf210cdab68a7f",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "cb9e1be99ed717d9d1d4b306b20dafa89c66d9c7f5ae25cf16311d6a50d1813c",
-        "records": 8
+        "recordDigest": "a3a2aef7925ff46e2d0d1dd9f459ecc8659ba09f21df04b2119145d6cc71a1a5",
+        "records": 7
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "820b14503031417117b1d53915e62fb31a83eb6191d8307c727bdda59a51b03d",
-        "records": 4
+        "recordDigest": "03c3b83a1148d927a207ca60c842a65b2e13351c49d2cf0312a43ee69045de78",
+        "records": 7
       }
     },
     "projectionRevision": "projection-v1-26cf5d16f2b29bab",
@@ -1340,16 +2884,16 @@
       "Hard-coded external file access",
       "Process execution"
     ],
-    "caution_count": 3,
+    "caution_count": 5,
     "critical_count": 0,
     "error": "",
     "high_count": 0,
     "highest_severity": "caution",
-    "informational_count": 1,
+    "informational_count": 2,
     "plugin_id": 798,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 146264,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
       "artifactBytes": 449664,
       "artifactIdentity": {
@@ -1357,41 +2901,20 @@
         "artifactBytes": 449664,
         "artifactSha256": "01529261230e00947879e8486b9cfe2cd4149077fdac5aa2ebb6bacd383e9ef9",
         "catalogAssemblyVersion": "1.6.0.0",
-        "manifestInternalName": "WardrobePlugin",
+        "manifestInternalName": "",
         "manifestPath": "WardrobePlugin.json",
-        "manifestRepositoryUrl": "https://github.com/ThatKwistine/WardrobePlugin",
-        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1318504382/4c4987d7-0517-44e9-b866-acaa1a0ed02a?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-03T07%3A08%3A44Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-03T06%3A07%3A55Z&ske=2026-09-03T07%3A08%3A44Z&sks=b&skv=2018-11-09&sig=1YxTTC%2FKfwLFaZhT58U0bsQKavuj76LPAiBS70jEqwY%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODQxNjIzNywibmJmIjoxNzg4NDE1OTM3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.HX0g8g5MQL10TLld0AQ7dzuraElYJFXAkIrEOiWU4KA&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
       "artifactIdentityContractVersion": 1,
       "automation": {
-        "capabilities": [
-          {
-            "automationLevel": "character-automation",
-            "capabilityId": "game.camera.control",
-            "confidence": "very-high",
-            "indirect": false,
-            "label": "Camera control",
-            "reachable": true
-          }
-        ],
-        "level": "character-automation"
+        "capabilities": [],
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
-          {
-            "category": "dynamic-code",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
           {
             "category": "filesystem",
             "declared": false,
@@ -1453,13 +2976,13 @@
             "state": "observed-no-profile"
           },
           {
-            "category": "process",
+            "category": "game-state",
             "declared": false,
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
-            "id": "process.execute",
-            "label": "External process execution",
+            "id": "game.state.read",
+            "label": "Game state read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -1470,8 +2993,8 @@
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
-            "id": "process.inspect",
-            "label": "Process inspection",
+            "id": "process.execute",
+            "label": "External process execution",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -1487,20 +3010,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "www.garlandtools.org",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -1509,20 +3042,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "www.garlandtools.org",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -1543,11 +3086,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 8,
-          "observedConcreteDestinationCount": 2,
-          "observedDestinationWithoutProfileCount": 2,
+          "observedCapabilityCount": 7,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 8,
+          "observedWithoutProfileCount": 7,
           "unexplainedDestinationCount": 0
         }
       },
@@ -1558,81 +3101,234 @@
         "Process execution"
       ],
       "capabilityIds": [
-        "dynamic.code",
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
         "game.camera.control",
         "game.memory.read",
-        "process.execute",
-        "process.inspect"
+        "game.state.read",
+        "process.execute"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 3,
+        "caution": 5,
         "critical": 0,
         "high": 0,
-        "informational": 1
+        "informational": 2
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 27,
-          "exactVersionObservedCount": 27,
+          "dependencyCount": 25,
+          "exactVersionObservedCount": 2,
           "families": {
-            "managed-assembly": 25,
+            "ipc": 17,
+            "managed-assembly": 6,
             "nuget": 2
           },
-          "fingerprint": "0b91e26b5a2e82d18ebecd9364dd179db69b379a65db4d6b583b7b5505582760",
+          "fingerprint": "0ea7b04817282b011f8035ac812264395fe48c6497815a72b2c9e2d233bef131",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
             "platformLibrary": 0
           },
           "nativeRelationships": [],
-          "pluginRelationships": [],
+          "pluginRelationships": [
+            {
+              "confidence": "High",
+              "kind": "ipc",
+              "name": "Glamourer.ApplyDesign",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Glamourer.ApplyState",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "High",
+              "kind": "ipc",
+              "name": "Glamourer.GetDesignJObject",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Glamourer.GetDesignList.V2",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "High",
+              "kind": "ipc",
+              "name": "Glamourer.OpenActorIndex",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Glamourer.RevertState",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Glamourer.SetItem.V3",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Glamourer.SetMetaState",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.GameObjectRedrawn.V3",
+              "origin": "source",
+              "relationship": "feature",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.GetCollections.V5",
+              "origin": "source",
+              "relationship": "feature",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "High",
+              "kind": "ipc",
+              "name": "Penumbra.GetGameObjectResourcePaths.V5",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.GetModDirectory",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.GetModList",
+              "origin": "source",
+              "relationship": "feature",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.RedrawObject.V5",
+              "origin": "source",
+              "relationship": "feature",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.TrySetMod.V5",
+              "origin": "source",
+              "relationship": "feature",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.TrySetModSetting.V5",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Medium",
+              "kind": "ipc",
+              "name": "Penumbra.TrySetModSettings.V5",
+              "origin": "source",
+              "relationship": "optional",
+              "requirement": "soft",
+              "versionRequirement": ""
+            }
+          ],
           "requirements": {
-            "bundled": 1,
-            "observed": 24,
-            "required": 2
+            "required": 8,
+            "soft": 17
           },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 6
         },
         "coverage": {
-          "analyzed": 25,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
-          "externalPlugin": 0,
-          "known": 2,
+          "externalPlugin": 17,
+          "known": 8,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 1,
-            "observed": 24,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 2,
-            "soft": 0,
+            "required": 8,
+            "soft": 17,
             "unknown": 0
           },
-          "total": 27
+          "total": 25
         },
         "endpointSummary": {
-          "concreteDestinationCount": 2,
+          "concreteDestinationCount": 5,
           "destinationsUndetermined": false,
-          "hostCount": 2,
+          "hostCount": 3,
           "hosts": [
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "concreteCount": 1,
-              "confidence": "VeryHigh",
+              "concreteCount": 3,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 1,
+              "literalCount": 3,
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -1640,15 +3336,27 @@
                 "recognised-platform"
               ],
               "concreteCount": 1,
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-config"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "www.garlandtools.org",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
-          "literalCount": 2,
+          "literalCount": 5,
           "networkCapabilityObserved": false,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -1660,22 +3368,52 @@
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://github.com/ThatKwistine/WardrobePlugin"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/ThatKwistine/WardrobePlugin/releases/latest/download/latest.zip"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/ocornut/imgui/issues/2701"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
             "host": "raw.githubusercontent.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://raw.githubusercontent.com/ThatKwistine/WardrobePlugin/main/images/icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "www.garlandtools.org",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://www.garlandtools.org/"
           }
         ]
       },
@@ -1701,7 +3439,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
-        "attemptId": "attempt-v2-6e1846c5b853b0a3",
+        "attemptId": "attempt-v2-fcfeb3b2b05c039e",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -1710,11 +3448,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-6468",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-6468",
         "queueSeedRevision": "queue-seed-v2-451040434e2460c4dad3",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
         "scannerBundleSha256": "dbb46c71ff40b108aa38b021ea59b0eafe680e91841a3f4aac0f2eb47be4a94b",
@@ -1722,11 +3460,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
         "sourceObservationRevision": "source-observations-v1-50c8d5740239e1aa",
-        "targetFingerprint": "artifact-target-v2-027c763c07938d6ebbb8",
+        "targetFingerprint": "source-target-v2-b8db9a97bc6ad1297909",
         "variantId": 6468,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-03T06:12:17Z",
+      "scannedAtUtc": "2026-09-03T09:27:12Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -1768,21 +3506,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "v1.6.0.0",
         "candidates": [
-          "https://github.com/ThatKwistine/WardrobePlugin",
-          "https://release-assets.githubusercontent.com/github-production-release-asset/1318504382/4c4987d7-0517-44e9-b866-acaa1a0ed02a"
+          "https://github.com/ThatKwistine/WardrobePlugin"
         ],
-        "commit": "",
+        "commit": "82934d10ef7a404006580fbef4a019367a6e27a4",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "8045dbfe1b7c8cc401c58f3f75dc3c4fd3ab22dc16a8b169aadabaf4e59c1280"
           }
         },
         "developerProfile": {
@@ -1790,28 +3533,47 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "very-high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "1.6.0.0",
+          "manifestInternalName": "WardrobePlugin",
+          "manifestPath": "WardrobePlugin.json",
+          "manifestRepoUrl": "https://github.com/ThatKwistine/WardrobePlugin",
+          "manifestRepositoryMatched": true,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.6.0.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "v1.6.0.0",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
+        },
         "repository": "https://github.com/ThatKwistine/WardrobePlugin",
-        "treeSha256": ""
+        "treeSha256": "c8286ab41bb468a3c7a80bf3daed2f22121169f0"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 146264,
-    "scanned_at_utc": "2026-09-03T06:12:17Z",
+    "scan_id": 147894,
+    "scanned_at_utc": "2026-09-03T09:27:12Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "82934d10ef7a404006580fbef4a019367a6e27a4",
     "source_id": 269,
     "source_repository": "https://github.com/ThatKwistine/WardrobePlugin",
     "source_to_binary_verified": 0,
