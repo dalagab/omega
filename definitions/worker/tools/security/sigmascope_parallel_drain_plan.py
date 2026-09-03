@@ -68,6 +68,7 @@ def build(
     *,
     workers: int = 4,
     items_per_worker: int = 10,
+    wave: int = 1,
     output: Path,
     now: dt.datetime | None = None,
 ) -> dict[str, Any]:
@@ -87,9 +88,18 @@ def build(
     assignments: list[dict[str, Any]] = []
     blocked_reason = ""
     serial_fallback_required = False
+    slots: list[dict[str, Any]] = [
+        {"slot": slot, "lane": "mixed" if workers == 1 else ("updates" if slot % 2 == 0 else "baseline"), "queueKeys": [], "assignmentCount": 0}
+        for slot in range(workers)
+    ]
 
     while len(assignments) < capacity:
-        item = scan_queue.select_next(state, now=now)
+        ordinal = len(assignments)
+        slot = slots[ordinal % workers]
+        # A single runner alternates within the batch; one-item waves alternate
+        # by wave number too, so neither lane can starve the other.
+        preference = slot["lane"] if workers > 1 else ("updates" if (ordinal + max(1, wave) - 1) % 2 == 0 else "baseline")
+        item = scan_queue.select_next(state, now=now, preferred_lane=preference)
         if item is None:
             break
 
@@ -118,7 +128,11 @@ def build(
             "priority": int(item.get("priority") or 0),
             "primaryReason": str(item.get("primaryReason") or ""),
             "selectionLane": int(scan_queue._selection_lane(item)),
+            "workerLane": preference,
+            "releaseUpdate": scan_queue.plugin_coverage.is_release_update(item),
         })
+        slot["queueKeys"].append(queue_key)
+        slot["assignmentCount"] += 1
 
         # This is a local planning copy only. Marking selected keys complete prevents
         # duplicate selection inside the wave without creating a persistent lease.
@@ -126,14 +140,6 @@ def build(
         if isinstance(state_item, dict):
             state_item["state"] = "complete"
 
-    slots: list[dict[str, Any]] = [
-        {"slot": slot, "queueKeys": [], "assignmentCount": 0}
-        for slot in range(workers)
-    ]
-    for ordinal, assignment in enumerate(assignments):
-        slot = slots[ordinal % workers]
-        slot["queueKeys"].append(assignment["queueKey"])
-        slot["assignmentCount"] += 1
     active_slots = [slot for slot in slots if slot["queueKeys"]]
 
     probe = copy.deepcopy(state)
@@ -161,6 +167,8 @@ def build(
         "evidenceCatalogIdentityEpoch": evidence_epoch,
         "baselineSecurityRebuild": bool(seed.get("baselineSecurityRebuild")),
         "selectionPolicy": str(seed.get("selectionPolicy") or ""),
+        "workerAllocationPolicy": "release-and-baseline-lanes-v1",
+        "wave": max(1, wave),
         "workers": workers,
         "itemsPerWorker": items_per_worker,
         "capacity": capacity,
@@ -186,6 +194,7 @@ def main() -> int:
     parser.add_argument("--evidence-root", required=True, type=Path)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--items-per-worker", type=int, default=10)
+    parser.add_argument("--wave", type=int, default=1)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     result = build(
@@ -193,6 +202,7 @@ def main() -> int:
         args.evidence_root,
         workers=args.workers,
         items_per_worker=args.items_per_worker,
+        wave=args.wave,
         output=args.output,
     )
     print(json.dumps({

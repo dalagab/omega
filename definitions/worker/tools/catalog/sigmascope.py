@@ -63,6 +63,7 @@ from public_git_source import MAX_GIT_TREE_ENTRIES, PublicGitSource
 from plugin_profile import observe_profile
 import source_build_intelligence
 import source_behavior
+import semantic_flow
 from capability_registry import legacy_capability_ids, load_registry
 from behavior_consistency import refresh_behavior_consistency
 from artifact_source_model import (
@@ -1404,6 +1405,7 @@ def empty_dependency_intelligence(origin: str) -> dict:
         "networkEndpoints": [],
         "staticPatternMatches": [],
         "sourceBehavior": {},
+        "semanticFlow": {},
         "endpointSummary": {},
         "componentSummary": {},
         "limits": {"truncated": False, "droppedByCollection": {}},
@@ -2452,7 +2454,9 @@ def _inspect_source_tree(
             for path in scope.get("criticalPaths") or []
             if path in source_entries
         }
-        intel["sourceBehavior"] = source_behavior.collect(behavior_entries, read_file)
+        source_behavior_result = source_behavior.collect(behavior_entries, read_file)
+        intel["sourceBehavior"] = source_behavior_result
+        intel["semanticFlow"] = semantic_flow.collect(behavior_entries, read_file, source_behavior=source_behavior_result)
         for logical_name in sorted(scope["criticalPaths"], key=str.casefold):
             if files_scanned >= 500 or total_text >= MAX_SOURCE_TEXT_TOTAL:
                 break
@@ -2849,6 +2853,12 @@ def merge_dependency_intelligence(*items: dict) -> dict:
             _append_intel(combined, "networkEndpoints", dict(item), ("origin", "originType", "url"))
         for item in intel.get("staticPatternMatches") or []:
             _append_intel(combined, "staticPatternMatches", dict(item), ("origin", "pattern", "evidenceLabel"))
+        # Object-valued source analysis collections are immutable evidence payloads rather
+        # than append-only row sets. Preserve them when source and artifact intelligence are
+        # projected into the combined report; artifact intelligence normally leaves them empty.
+        for field in ("sourceBehavior", "semanticFlow"):
+            if isinstance(intel.get(field), dict) and intel.get(field):
+                combined[field] = copy.deepcopy(intel[field])
         fp = intel.get("fingerprints") or {}
         if fp.get("sourceArchiveSha256"):
             source_archives.append(str(fp["sourceArchiveSha256"]))

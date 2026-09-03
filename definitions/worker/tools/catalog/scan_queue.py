@@ -430,6 +430,7 @@ def _queue_item(
         "sourceName": str(variant.get("sourceName") or ""),
         "sourcePriorityClass": str(variant.get("sourcePriorityClass") or "discovered"),
         "pluginHasCurrentScan": bool(variant.get("pluginHasCurrentScan")),
+        "releaseUpdate": bool(variant.get("releaseUpdate")),
         "assemblyVersion": str(variant.get("assemblyVersion") or ""),
         "artifactChannel": str(variant.get("artifactChannel") or ""),
         "artifactUrl": str(variant.get("artifactUrl") or ""),
@@ -732,6 +733,16 @@ def build_seed(
         if int(variant.get("pluginId") or 0) > 0
         and plugin_coverage.current_has_artifact_coverage(current.get(int(variant.get("variantId") or 0)))
     }
+    # A newly released variant often retires the scanned version. Coverage must
+    # therefore include retained Evidence, not only today's active catalog variants.
+    if not baseline_security_rebuild:
+        for _entry, payload in iter_variant_entries(evidence_root):
+            if plugin_coverage.current_has_artifact_coverage(payload.get("current")):
+                plugin = payload.get("plugin") or {}
+                variant_row = payload.get("variant") or {}
+                plugin_id = int(payload.get("pluginId") or plugin.get("plugin_id") or variant_row.get("plugin_id") or 0)
+                if plugin_id > 0:
+                    published_covered_plugin_ids.add(plugin_id)
     srl_plan = _srl_reprojection_plan(definitions_root, evidence_root, definitions_index) if not baseline_security_rebuild else {
         "schema": rule_reprojection.PLAN_SCHEMA,
         "ruleSetRevision": str(((definitions_index.get("srlDefinitionPacks") or {}) if isinstance(definitions_index.get("srlDefinitionPacks"), dict) else {}).get("ruleSetRevision") or ""),
@@ -904,6 +915,7 @@ def sync_state(seed: dict[str, Any], previous: dict[str, Any] | None, *, now: dt
         same_target = str(old.get("targetFingerprint") or "") == str(seeded.get("targetFingerprint") or "")
         state = {
             **seeded,
+            "releaseUpdate": bool(seeded.get("releaseUpdate") or (same_target and old.get("releaseUpdate"))),
             "state": "pending",
             "attemptCount": int(old.get("attemptCount") or 0) if same_target else 0,
             "nextEligibleAtUtc": str(old.get("nextEligibleAtUtc") or "") if same_target else "",
@@ -1072,13 +1084,15 @@ def select_key(state: dict[str, Any], queue_key: str, *, now: dt.datetime | None
     return _select_item(state, item, now_dt=now or dt.datetime.now(dt.timezone.utc))
 
 
-def select_next(state: dict[str, Any], *, now: dt.datetime | None = None) -> dict[str, Any] | None:
+def select_next(state: dict[str, Any], *, now: dt.datetime | None = None, preferred_lane: str = "") -> dict[str, Any] | None:
     """Select one eligible item under the single Sigmascope workflow lock.
 
     There is deliberately no lease/expiry state. If a runner dies before publication,
     its mutation is never committed to Security Evidence v2 and the next worker simply
     selects the same previously-published item again.
     """
+    if preferred_lane not in {"", "updates", "baseline"}:
+        raise ValueError(f"unknown worker lane: {preferred_lane}")
     now_dt = now or dt.datetime.now(dt.timezone.utc)
     eligible: list[dict[str, Any]] = []
     for item in (state.get("items") or {}).values():
@@ -1093,6 +1107,11 @@ def select_next(state: dict[str, Any], *, now: dt.datetime | None = None) -> dic
         eligible.append(item)
     if not eligible:
         return None
+    if preferred_lane:
+        preferred = [item for item in eligible if plugin_coverage.is_release_update(item) == (preferred_lane == "updates")]
+        # Idle slots lend capacity, while the other lane retains its own slots.
+        if preferred:
+            eligible = preferred
     covered_plugin_ids = plugin_coverage.covered_plugin_ids((state.get("items") or {}).values())
     eligible.sort(key=lambda item: _selection_sort_key(item, covered_plugin_ids))
     return _select_item(state, eligible[0], now_dt=now_dt)

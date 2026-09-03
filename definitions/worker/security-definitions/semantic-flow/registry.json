@@ -1,0 +1,164 @@
+{
+  "schema": "omega.sigmascope.semantic-flow-registry.v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "input.command.arguments",
+      "dataClass": "untrusted-user-input",
+      "triggerKinds": ["user-command"],
+      "eventContains": [],
+      "parameterNames": ["arg", "args", "argument", "arguments", "input", "text"]
+    },
+    {
+      "id": "input.chat.message",
+      "dataClass": "untrusted-game-input",
+      "triggerKinds": ["event"],
+      "eventContains": ["chat", "message"],
+      "parameterNames": ["chat", "message", "text", "payload"]
+    },
+    {
+      "id": "filesystem.read",
+      "dataClass": "local-file-data",
+      "members": ["ReadAllBytes", "ReadAllLines", "ReadAllText"],
+      "receiverContains": ["File"]
+    },
+    {
+      "id": "environment.variable",
+      "dataClass": "process-environment-data",
+      "members": ["GetEnvironmentVariable"],
+      "receiverContains": ["Environment"]
+    },
+    {
+      "id": "privacy.clipboard.read",
+      "dataClass": "clipboard-data",
+      "members": ["GetText", "GetTextAsync", "GetClipboardText"],
+      "receiverContains": ["Clipboard", "ClipboardService", "SDL"]
+    },
+    {
+      "id": "network.response.text",
+      "dataClass": "untrusted-network-data",
+      "members": ["DownloadString", "GetStringAsync", "ReadAsStringAsync"],
+      "receiverContains": ["Client", "Content", "Http", "Web"]
+    },
+    {
+      "id": "network.response.bytes",
+      "dataClass": "untrusted-network-data",
+      "members": ["DownloadData", "GetByteArrayAsync", "ReadAsByteArrayAsync"],
+      "receiverContains": ["Client", "Content", "Http", "Web"]
+    }
+  ],
+  "sinks": [
+    {
+      "id": "process.execute",
+      "dataClass": "process-execution-input",
+      "members": ["Start"],
+      "receiverContains": ["Process"],
+      "argumentIndexes": [0, 1]
+    },
+    {
+      "id": "dynamic.assembly.load",
+      "dataClass": "dynamic-code-input",
+      "members": ["Load", "LoadFile", "LoadFrom"],
+      "receiverContains": ["Assembly", "AssemblyLoadContext"],
+      "argumentIndexes": [0]
+    },
+    {
+      "id": "native.library.load",
+      "dataClass": "native-code-input",
+      "members": ["Load", "LoadLibrary", "LoadLibraryEx"],
+      "receiverContains": ["NativeLibrary", "Kernel32"],
+      "argumentIndexes": [0]
+    },
+    {
+      "id": "filesystem.path.write",
+      "dataClass": "filesystem-path-input",
+      "members": ["AppendAllLines", "AppendAllText", "Move", "WriteAllBytes", "WriteAllLines", "WriteAllText"],
+      "receiverContains": ["File"],
+      "argumentIndexes": [0]
+    },
+    {
+      "id": "filesystem.content.write",
+      "dataClass": "filesystem-content-input",
+      "members": ["AppendAllLines", "AppendAllText", "WriteAllBytes", "WriteAllLines", "WriteAllText"],
+      "receiverContains": ["File"],
+      "argumentIndexes": [1]
+    },
+    {
+      "id": "filesystem.path.delete",
+      "dataClass": "filesystem-path-input",
+      "members": ["Delete"],
+      "receiverContains": ["Directory", "File"],
+      "argumentIndexes": [0]
+    },
+    {
+      "id": "network.request.body",
+      "dataClass": "network-egress-data",
+      "members": ["PatchAsync", "PostAsync", "PutAsync"],
+      "receiverContains": ["Client", "Http"],
+      "argumentIndexes": [1]
+    },
+    {
+      "id": "network.socket.send",
+      "dataClass": "network-egress-data",
+      "members": ["Send", "SendAsync", "SendTo", "SendToAsync"],
+      "receiverContains": ["Socket", "WebSocket"],
+      "argumentIndexes": [0]
+    },
+    {
+      "id": "registry.value.write",
+      "dataClass": "registry-write-data",
+      "members": ["SetValue"],
+      "receiverContains": ["Registry", "RegistryKey"],
+      "argumentIndexes": [1, 2]
+    },
+    {
+      "id": "serialization.deserialize",
+      "dataClass": "deserialization-input",
+      "members": ["Deserialize", "DeserializeObject", "DeserializeXmlNode"],
+      "receiverContains": ["BinaryFormatter", "JsonConvert", "Serializer"],
+      "argumentIndexes": [0]
+    }
+  ],
+  "sanitizers": [
+    {
+      "id": "path.basename",
+      "effect": "path-component-reduction",
+      "members": ["GetFileName", "GetFileNameWithoutExtension"],
+      "receiverContains": ["Path"],
+      "argumentIndexes": [0]
+    },
+    {
+      "id": "path.normalize",
+      "effect": "path-normalization-only",
+      "members": ["GetFullPath"],
+      "receiverContains": ["Path"],
+      "argumentIndexes": [0]
+    },
+    {
+      "id": "url.encode",
+      "effect": "component-encoding",
+      "members": ["EscapeDataString", "UrlEncode"],
+      "receiverContains": ["Uri", "WebUtility"],
+      "argumentIndexes": [0]
+    },
+    {
+      "id": "type.integer.parse",
+      "effect": "type-restriction",
+      "members": ["Parse"],
+      "receiverContains": ["Int16", "Int32", "Int64", "UInt16", "UInt32", "UInt64"],
+      "argumentIndexes": [0]
+    }
+  ],
+  "assignmentSinks": [
+    {
+      "id": "process.arguments",
+      "dataClass": "process-execution-input",
+      "targetSuffixes": [".Arguments", ".FileName"]
+    },
+    {
+      "id": "sql.command.text",
+      "dataClass": "database-command-input",
+      "targetSuffixes": [".CommandText"]
+    }
+  ]
+}

@@ -17,6 +17,19 @@ SOURCE_PRIORITY_RANK = {
 }
 
 
+def is_release_update(item: dict[str, Any]) -> bool:
+    """Release freshness is a scheduling signal, never a security verdict."""
+    if str(item.get("workType") or "") != "artifact":
+        return False
+    reasons = set(item.get("reasons") or item.get("reasonCodes") or [])
+    reasons.add(str(item.get("primaryReason") or ""))
+    return bool(
+        item.get("releaseUpdate")
+        or reasons.intersection({"artifact_url_changed", "artifact_version_changed"})
+        or ("new_variant" in reasons and item.get("pluginHasCurrentScan"))
+    )
+
+
 def source_priority_class(source: dict[str, Any] | None) -> str:
     source = source if isinstance(source, dict) else {}
     if int(source.get("is_official") or 0) == 1:
