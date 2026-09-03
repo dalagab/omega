@@ -44,6 +44,7 @@ import srl_migration_parity  # noqa: E402
 import sigmascope  # noqa: E402
 import secondary_security_assets  # noqa: E402
 import semantic_registry  # noqa: E402
+import semantic_flow  # noqa: E402
 import component_registry  # noqa: E402
 import collector_contracts  # noqa: E402
 import execution_topology  # noqa: E402
@@ -59,6 +60,7 @@ WORKER_BUNDLE_EXTRA_FILES = (
     "security-definitions/capabilities/registry.json",
     "security-definitions/services/registry.json",
     "security-definitions/semantic-apis/registry.json",
+    "security-definitions/semantic-flow/registry.json",
     "tools/requirements-security.txt",
     "tools/security/authenticode_probe.ps1",
     "tools/orchestration/git_snapshot_history.py",
@@ -94,6 +96,7 @@ RULE_SET_FILES = (
     "tools/catalog/source_stability.py",
     "tools/catalog/source_build_intelligence.py",
     "tools/catalog/source_behavior.py",
+    "tools/catalog/semantic_flow.py",
     "tools/catalog/semantic_registry.py",
     "tools/catalog/plugin_profile.py",
     "tools/catalog/capability_registry.py",
@@ -102,6 +105,7 @@ RULE_SET_FILES = (
     "security-definitions/capabilities/registry.json",
     "security-definitions/services/registry.json",
     "security-definitions/semantic-apis/registry.json",
+    "security-definitions/semantic-flow/registry.json",
     "tools/requirements-security.txt",
 )
 
@@ -927,12 +931,16 @@ def build_snapshot(
     semantic_output.mkdir(parents=True, exist_ok=True)
     source_service_registry_path = repo_root / "security-definitions/services/registry.json"
     source_api_registry_path = repo_root / "security-definitions/semantic-apis/registry.json"
+    source_flow_registry_path = repo_root / "security-definitions/semantic-flow/registry.json"
     service_registry_document = semantic_registry.load_service_registry(source_service_registry_path)
     semantic_api_registry_document = semantic_registry.load_api_registry(source_api_registry_path)
+    semantic_flow_registry_document = semantic_flow.load_registry(source_flow_registry_path)
     service_registry_path = semantic_output / "service-registry.json"
     semantic_api_registry_path = semantic_output / "api-registry.json"
+    semantic_flow_registry_path = semantic_output / "flow-registry.json"
     service_registry_path.write_bytes(source_service_registry_path.read_bytes())
     semantic_api_registry_path.write_bytes(source_api_registry_path.read_bytes())
+    semantic_flow_registry_path.write_bytes(source_flow_registry_path.read_bytes())
     service_registry_descriptor = {
         "schema": str(service_registry_document.get("schema") or ""),
         "path": "semantic/service-registry.json",
@@ -949,6 +957,17 @@ def build_snapshot(
         "version": int(semantic_api_registry_document.get("version") or 0),
         "sourceMatcherCount": len(semantic_api_registry_document.get("sourceMatchers") or []),
         "compiledMatcherCount": len(semantic_api_registry_document.get("compiledMatchers") or []),
+    }
+    semantic_flow_registry_descriptor = {
+        "schema": str(semantic_flow_registry_document.get("schema") or ""),
+        "path": "semantic/flow-registry.json",
+        "sha256": sha256_file(semantic_flow_registry_path),
+        "revision": str(semantic_flow_registry_document.get("revision") or ""),
+        "version": int(semantic_flow_registry_document.get("version") or 0),
+        "sourceCount": len(semantic_flow_registry_document.get("sources") or []),
+        "sinkCount": len(semantic_flow_registry_document.get("sinks") or []),
+        "sanitizerCount": len(semantic_flow_registry_document.get("sanitizers") or []),
+        "assignmentSinkCount": len(semantic_flow_registry_document.get("assignmentSinks") or []),
     }
 
     # Freeze platform topology/collector contracts as explicit Definitions payloads.
@@ -1046,6 +1065,7 @@ def build_snapshot(
         "capabilityRegistry": capability_registry_descriptor,
         "serviceRegistry": service_registry_descriptor,
         "semanticApiRegistry": semantic_api_registry_descriptor,
+        "semanticFlowRegistry": semantic_flow_registry_descriptor,
         "componentRegistry": component_registry_descriptor,
         "collectorRegistry": collector_registry_descriptor,
         "executionTopology": execution_topology_descriptor,
@@ -1116,6 +1136,31 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
                 errors.append(f"frozen {descriptor_key} count mismatch")
         except Exception as exc:
             errors.append(f"frozen {descriptor_key} invalid: {type(exc).__name__}: {exc}")
+
+    flow_descriptor = index.get("semanticFlowRegistry") if isinstance(index.get("semanticFlowRegistry"), dict) else {}
+    flow_rel = str(flow_descriptor.get("path") or "")
+    flow_path = definitions_root / flow_rel
+    if not flow_rel or not flow_path.is_file():
+        errors.append("frozen semanticFlowRegistry is missing")
+    elif sha256_file(flow_path) != str(flow_descriptor.get("sha256") or ""):
+        errors.append("frozen semanticFlowRegistry hash mismatch")
+    else:
+        try:
+            flow_document = semantic_flow.load_registry(flow_path)
+            if str(flow_document.get("schema") or "") != semantic_flow.REGISTRY_SCHEMA:
+                errors.append("frozen semanticFlowRegistry schema mismatch")
+            if str(flow_document.get("revision") or "") != str(flow_descriptor.get("revision") or ""):
+                errors.append("frozen semanticFlowRegistry revision mismatch")
+            for count_field, document_field in (
+                ("sourceCount", "sources"),
+                ("sinkCount", "sinks"),
+                ("sanitizerCount", "sanitizers"),
+                ("assignmentSinkCount", "assignmentSinks"),
+            ):
+                if len(flow_document.get(document_field) or []) != int(flow_descriptor.get(count_field) or 0):
+                    errors.append(f"frozen semanticFlowRegistry {document_field} count mismatch")
+        except Exception as exc:
+            errors.append(f"frozen semanticFlowRegistry invalid: {type(exc).__name__}: {exc}")
 
     for descriptor_key, expected_schema, expected_revision, builder in (
         ("componentRegistry", component_registry.REGISTRY_SCHEMA, component_registry.component_revision(), component_registry.build_registry),

@@ -128,6 +128,16 @@ class AnalysisRevisionTests(unittest.TestCase):
             self.assertEqual(first["artifactAnalysisRevision"], second["artifactAnalysisRevision"])
             self.assertNotEqual(first["sourceAnalysisRevision"], second["sourceAnalysisRevision"])
 
+    def test_semantic_flow_registry_change_changes_only_source_revision(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-analysis-revision-semantic-flow-") as td:
+            repo = self.copy_analysis_tree(Path(td))
+            first = analysis_revision.compute(repo)
+            registry = repo / "security-definitions/semantic-flow/registry.json"
+            registry.write_text(registry.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+            second = analysis_revision.compute(repo)
+            self.assertEqual(first["artifactAnalysisRevision"], second["artifactAnalysisRevision"])
+            self.assertNotEqual(first["sourceAnalysisRevision"], second["sourceAnalysisRevision"])
+
     def test_source_behavior_collector_change_changes_only_source_revision(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-analysis-revision-source-behavior-") as td:
             repo = self.copy_analysis_tree(Path(td))

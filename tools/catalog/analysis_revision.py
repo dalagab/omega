@@ -63,6 +63,7 @@ SOURCE_SUPPORT_FILES = (
     "tools/catalog/source_stability.py",
     "tools/catalog/source_build_intelligence.py",
     "tools/catalog/source_behavior.py",
+    "tools/catalog/semantic_flow.py",
     "tools/catalog/semantic_registry.py",
     "tools/catalog/artifact_source_model.py",
     "tools/catalog/security_endpoint_inventory.py",
@@ -73,6 +74,7 @@ SOURCE_SUPPORT_FILES = (
     "security-definitions/capabilities/registry.json",
     "security-definitions/services/registry.json",
     "security-definitions/semantic-apis/registry.json",
+    "security-definitions/semantic-flow/registry.json",
     "tools/requirements-security.txt",
 )
 

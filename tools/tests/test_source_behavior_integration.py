@@ -14,6 +14,15 @@ import sigmascope
 
 
 PROJECT = b"""<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><AssemblyName>Buyer</AssemblyName></PropertyGroup></Project>"""
+FLOW_SOURCE = b"""
+public sealed class Buyer {
+    public void Run() {
+        var tool = Environment.GetEnvironmentVariable("OMEGA_TOOL");
+        Process.Start(tool);
+    }
+}
+"""
+
 SOURCE = b"""
 public sealed class Buyer {
     public async Task Run() {
@@ -39,6 +48,20 @@ class SourceBehaviorProductionIntegrationTests(unittest.TestCase):
         self.assertTrue(any(row.get("operation") == "game.marketboard.purchase" for row in operations))
         self.assertTrue(any(row.get("serviceId") == "ffxiv.universalis" for row in operations))
 
+    def test_selected_source_scope_collects_semantic_flow(self) -> None:
+        files = {"Buyer.csproj": PROJECT, "Buyer.cs": FLOW_SOURCE}
+        entries = {name: len(data) for name, data in files.items()}
+        intel, scope, _files_scanned, _manifest, _profile = sigmascope._inspect_source_tree(
+            entries, lambda path: files[path], defaultdict(list), "Buyer", "Buyer", "1.0.0", analyze=True
+        )
+        self.assertEqual("Buyer.csproj", scope.get("primaryProject"))
+        semantic_flow = intel.get("semanticFlow") or {}
+        self.assertEqual(1, semantic_flow.get("contractVersion"))
+        self.assertTrue(any(
+            row.get("sourceKind") == "environment.variable" and row.get("sinkKind") == "process.execute"
+            for row in semantic_flow.get("flows") or []
+        ))
+
     def test_candidate_resolution_does_not_claim_complete_behavior_analysis(self) -> None:
         files = {"Buyer.csproj": PROJECT, "Buyer.cs": SOURCE}
         entries = {name: len(data) for name, data in files.items()}
@@ -46,6 +69,7 @@ class SourceBehaviorProductionIntegrationTests(unittest.TestCase):
             entries, lambda path: files[path], defaultdict(list), "Buyer", "Buyer", "1.0.0", analyze=False
         )
         self.assertEqual({}, intel.get("sourceBehavior"))
+        self.assertEqual({}, intel.get("semanticFlow"))
 
     def test_unrelated_monorepo_project_does_not_contribute_behavior(self) -> None:
         other_project = b"""<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><AssemblyName>Other</AssemblyName></PropertyGroup></Project>"""
