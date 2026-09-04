@@ -1,0 +1,2579 @@
+{
+  "analysis": {
+    "analysisId": "2fe4ffbddf913616245e3453b79ff4fc94c25841474e06e8b03ba508c34fbcb5",
+    "artifactSha256": "0805e8764bf375eaccba4e2f17ab3ad8b43bced66b71ff7b7375a5359ad05d4f",
+    "path": "artifacts/08/0805e8764bf375eaccba4e2f17ab3ad8b43bced66b71ff7b7375a5359ad05d4f/analyses/2fe4ffbddf913616245e3453b79ff4fc94c25841474e06e8b03ba508c34fbcb5",
+    "recordCount": 646
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "0805e8764bf375eaccba4e2f17ab3ad8b43bced66b71ff7b7375a5359ad05d4f",
+    "artifact_url": "https://puni.sh/api/plugins/download/6/Artisan/versions/4.0.5.19/install/latest.zip",
+    "assembly_version": "4.0.5.19",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "full-gameplay-automation",
+        "capabilityId": "game.character.execute_action",
+        "confidence": "very-high",
+        "indirect": false,
+        "label": "Character action execution",
+        "reachable": true
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.interact",
+        "confidence": "high",
+        "indirect": false,
+        "label": "World/NPC interaction control",
+        "reachable": false
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "very-high",
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": true
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.teleport",
+        "confidence": "very-high",
+        "indirect": false,
+        "label": "Teleport/travel control",
+        "reachable": true
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "very-high",
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": true
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.inventory_control",
+        "confidence": "very-high",
+        "indirect": false,
+        "label": "Inventory UI/control",
+        "reachable": true
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.synthetic_click",
+        "confidence": "high",
+        "indirect": false,
+        "label": "Synthetic game UI interaction",
+        "reachable": false
+      }
+    ],
+    "automation_level": "full-gameplay-automation",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Character action execution",
+      "Character target control",
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: cdn.discordapp.com",
+      "Endpoint: crypto.nightmarexiv.org",
+      "Endpoint: discord.com",
+      "Endpoint: discord.gg",
+      "Endpoint: discord.nightmarexiv.org",
+      "Endpoint: donate.nightmarexiv.org",
+      "Endpoint: explore.nightmarexiv.org",
+      "Endpoint: ffxivteamcraft.com",
+      "Endpoint: github.com",
+      "Endpoint: i.scdn.co",
+      "Endpoint: james.newtonking.com",
+      "Endpoint: json.schemastore.org",
+      "Endpoint: ko-fi.com",
+      "Endpoint: love.puni.sh",
+      "Endpoint: msdn.microsoft.com",
+      "Endpoint: ocsp.digicert.com0c",
+      "Endpoint: ocsp.digicert.com0o",
+      "Endpoint: open.spotify.com",
+      "Endpoint: puni.sh",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: reniguide.info",
+      "Endpoint: store.finalfantasyxiv.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Inventory UI/control",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access",
+      "Registry access",
+      "Synthetic game UI interaction",
+      "Teleport/travel control",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 40,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "memory",
+        "description": "References APIs used to open another process or read/write its memory.",
+        "evidence": [
+          "metadata:ECommons.dll: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x23: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x47: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x147: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "artifact:ECommons.dll: VirtualProtectEx",
+          "metadata:Reloaded.Memory.dll: ReadProcessMemory",
+          "metadata:Reloaded.Memory.dll: WriteProcessMemory",
+          "metadata:Reloaded.Memory.dll: VirtualAllocEx"
+        ],
+        "ruleId": "memory.process",
+        "severity": "high",
+        "title": "Cross-process memory access"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:Artisan.dll:Artisan.GameInterop.ActionManagerEx.UseSkill+0x98: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+          "il:Artisan.dll:Artisan.GameInterop.ActionManagerEx.UseItem+0x16: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+          "il:Artisan.dll:Artisan.GameInterop.ActionManagerEx.UseRepair+0x12: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+          "il:Artisan.dll:Artisan.GameInterop.ActionManagerEx.UseMateriaExtraction+0x13: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "ruleId": "automation.game.character.execute_action",
+        "severity": "high",
+        "title": "Character action execution"
+      },
+      {
+        "category": "system",
+        "description": "References Windows Registry APIs.",
+        "evidence": [
+          "metadata:NAudio.Asio.dll: Microsoft.Win32.Registry",
+          "metadata:NAudio.Asio.dll: RegistryKey",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: Microsoft.Win32.Registry",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: RegistryKey",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: Microsoft.Win32.Registry",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: RegistryKey"
+        ],
+        "ruleId": "registry.access",
+        "severity": "caution",
+        "title": "Windows Registry access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:Artisan.dll: System.Diagnostics.Process",
+          "metadata:Artisan.dll: ProcessStartInfo",
+          "metadata:Artisan.dll: ShellExecute",
+          "metadata:Artisan.dll: Process.Start",
+          "artifact:Artisan.dll: System.Diagnostics.Process",
+          "artifact:Artisan.dll: ProcessStartInfo",
+          "artifact:Artisan.dll: ShellExecute",
+          "metadata:ECommons.dll: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:LuminaSupplemental.Excel.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/1001"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.d948a9235dc2",
+        "severity": "caution",
+        "title": "Endpoint: store.finalfantasyxiv.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://msdn.microsoft.com/query/roslyn.query"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.ce13eaccbf59",
+        "severity": "caution",
+        "title": "Endpoint: msdn.microsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Artisan.dll: https://ffxivteamcraft.com/import/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.cd568b2acf89",
+        "severity": "caution",
+        "title": "Endpoint: ffxivteamcraft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.cc91d234fb3b",
+        "severity": "caution",
+        "title": "Endpoint: discord.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:LuminaSupplemental.Excel.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.bb11b825c155",
+        "severity": "caution",
+        "title": "Endpoint: store.finalfantasyxiv.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.b5dad10c192a",
+        "severity": "caution",
+        "title": "Endpoint: donate.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.9d3ce8792d14",
+        "severity": "caution",
+        "title": "Endpoint: explore.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.8785017a999f",
+        "severity": "caution",
+        "title": "Endpoint: crypto.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:OtterGui.dll: https://ko-fi.com/ottermandias"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.86e7fa25c3d3",
+        "severity": "caution",
+        "title": "Endpoint: ko-fi.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:LuminaSupplemental.Excel.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/1"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.80e169a8126b",
+        "severity": "caution",
+        "title": "Endpoint: store.finalfantasyxiv.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:LuminaSupplemental.Excel.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/1005"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.7feed60809b5",
+        "severity": "caution",
+        "title": "Endpoint: store.finalfantasyxiv.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:LuminaSupplemental.Excel.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/1000"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.75bf1edc97ba",
+        "severity": "caution",
+        "title": "Endpoint: store.finalfantasyxiv.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Discord.Net.Core.dll: https://open.spotify.com/track/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.7314ac10f461",
+        "severity": "caution",
+        "title": "Endpoint: open.spotify.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:LuminaSupplemental.Excel.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/1004"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.5fcd8dcf6e78",
+        "severity": "caution",
+        "title": "Endpoint: store.finalfantasyxiv.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Artisan.dll: https://ko-fi.com/taurenkey"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.57824bdcd804",
+        "severity": "caution",
+        "title": "Endpoint: ko-fi.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:PunishLib.dll: https://ko-fi.com/spetsnaz"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.54d6dd6039b2",
+        "severity": "caution",
+        "title": "Endpoint: ko-fi.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Artisan.json: https://puni.sh/api/plugins/icon/6"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.418e84d587be",
+        "severity": "caution",
+        "title": "Endpoint: puni.sh"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:PunishLib.dll: https://puni.sh/api/test/auth"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.2849e22216f9",
+        "severity": "caution",
+        "title": "Endpoint: puni.sh"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:LuminaSupplemental.Excel.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/1002"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.1e1e0fa41872",
+        "severity": "caution",
+        "title": "Endpoint: store.finalfantasyxiv.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Discord.Net.Core.dll: https://i.scdn.co/image/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.15e43057530a",
+        "severity": "caution",
+        "title": "Endpoint: i.scdn.co"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:PunishLib.dll: https://love.puni.sh/ment.json"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.132188e04987",
+        "severity": "caution",
+        "title": "Endpoint: love.puni.sh"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:OtterGui.dll: https://reniguide.info/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.06407015b781",
+        "severity": "caution",
+        "title": "Endpoint: reniguide.info"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:LuminaSupplemental.Excel.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/1003"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.03aad2685b10",
+        "severity": "caution",
+        "title": "Endpoint: store.finalfantasyxiv.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.CodeAnalysis.dll: http://json.schemastore.org/sarif-1.0.0"
+        ],
+        "ruleId": "network.endpoint.insecure-http.fa0c83d25376",
+        "severity": "caution",
+        "title": "Endpoint: json.schemastore.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.CodeAnalysis.dll: http://json.schemastore.org/sarif-2.1.0"
+        ],
+        "ruleId": "network.endpoint.insecure-http.e8b4a5cbf22e",
+        "severity": "caution",
+        "title": "Endpoint: json.schemastore.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.c831a6f811e0",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0c"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.b80d4039aa50",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0o"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+        ],
+        "ruleId": "network.endpoint.insecure-http.49cce80f87f1",
+        "severity": "caution",
+        "title": "Endpoint: james.newtonking.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:ECommons.dll: DllImportAttribute",
+          "metadata:Microsoft.CodeAnalysis.CSharp.dll: DllImportAttribute",
+          "artifact:Microsoft.CodeAnalysis.CSharp.dll: DllImportAttribute",
+          "metadata:Microsoft.CodeAnalysis.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.CodeAnalysis.dll: DllImportAttribute",
+          "metadata:Microsoft.CodeAnalysis.dll: LoadLibrary",
+          "metadata:Microsoft.CodeAnalysis.dll: GetProcAddress",
+          "il:Microsoft.CodeAnalysis.dll:Microsoft.DiaSymReader.SymUnmanagedFactory.TryLoadFromAlternativePath+0x20: call Microsoft.DiaSymReader.SymUnmanagedFactory.LoadLibrary -> kernel32!LoadLibrary: LoadLibrary"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Artisan.dll: Dalamud.Hooking",
+          "artifact:Artisan.dll: Dalamud.Hooking",
+          "metadata:ECommons.dll: Dalamud.Hooking",
+          "metadata:ECommons.dll: SigScanner",
+          "metadata:ECommons.dll: HookFromAddress",
+          "il:ECommons.dll:ECommons.ECommonsMain.Init+0x169: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+          "il:ECommons.dll:ECommons.ECommonsMain.Init+0x174: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+          "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x7: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:Artisan.dll: C:\\Users\\TK\\source\\repos\\Artisan\\Artisan\\obj\\x64\\Release\\Artisan.pdb",
+          "artifact:Artisan.dll: s://ko-fi.com/taurenkey",
+          "artifact:Artisan.dll: s://discord.gg/Zzrcc8kmvy",
+          "artifact:Artisan.dll: s://github.com/PunishXIV/Artisan",
+          "artifact:Artisan.dll: s://universalis.app/api/v2/",
+          "artifact:CSVFile.dll: /home/runner/work/csharp-csv-reader/csharp-csv-reader/src/net80/obj/Release/net8.0/CSVFile.pdb",
+          "artifact:Discord.Net.Core.dll: t://github.com/Discord-Net/Discord.Net",
+          "artifact:Discord.Net.Core.dll: /home/runner/work/Discord.Net/Discord.Net/src/Discord.Net.Core/obj/Release/net10.0/Discord.Net.Core.pdb"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:Artisan.dll: AssemblyLoadContext",
+          "il:Artisan.dll:Artisan.CraftingLogic.Solvers.ScriptSolverCompiler.Load+0x36: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromStream: AssemblyLoadContext",
+          "artifact:Artisan.dll: AssemblyLoadContext",
+          "metadata:ECommons.dll: AssemblyLoadContext",
+          "metadata:ECommons.dll: Assembly.Load",
+          "il:ECommons.dll:ECommons.Reflection.ReflectionHelper.GetTypeFromRuntimeAssembly+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+          "artifact:ECommons.dll: AssemblyLoadContext",
+          "metadata:Microsoft.CodeAnalysis.dll: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for synthetic game ui interaction. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:Artisan.dll:Artisan.GameInterop.PreCrafting.ClickSynthButtons+0x37: callvirt ClickSynthesisButton.Invoke"
+        ],
+        "ruleId": "automation.game.ui.synthetic_click",
+        "severity": "caution",
+        "title": "Synthetic game UI interaction"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for inventory ui/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:Artisan.dll:Artisan.UI.DebugTab.TeleportToGCTown+0x94: call FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInventoryContext.UseItem",
+          "il:Artisan.dll:Artisan.GameInterop.PreCrafting.TaskEquipItem+0xdb: call FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.MoveItemSlot"
+        ],
+        "ruleId": "automation.game.ui.inventory_control",
+        "severity": "caution",
+        "title": "Inventory UI/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:Artisan.dll:Artisan.Tasks.RetainerListHandlers.CloseRetainerList+0x4b: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:Artisan.dll:Artisan.Tasks.RetainerHandlers.OpenItemContextMenu+0x249: call ECommons.Automation.Callback.Fire",
+          "il:Artisan.dll:Artisan.Tasks.RetainerHandlers.OpenItemContextMenu+0x299: call ECommons.Automation.Callback.Fire",
+          "il:Artisan.dll:Artisan.Tasks.RetainerHandlers.InputNumericValue+0x53: call ECommons.Automation.Callback.Fire"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for teleport/travel control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:Artisan.dll:Artisan.UI.DebugTab.TeleportToGCTown+0xa2: call FFXIVClientStructs.FFXIV.Client.Game.UI.Telepo.Teleport"
+        ],
+        "ruleId": "automation.game.character.teleport",
+        "severity": "caution",
+        "title": "Teleport/travel control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:Artisan.dll:Artisan.Tasks.PlayerWorldHandlers.SelectNearestBell+0x32: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+          "il:Artisan.dll:Artisan.QuestSync.QuestList.DoEmoteQuest+0x4e: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:Artisan.dll:Artisan.Tasks.PlayerWorldHandlers.InteractWithTargetedBell+0xc0: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "ruleId": "automation.game.character.interact",
+        "severity": "caution",
+        "title": "World/NPC interaction control"
+      },
+      {
+        "category": "package",
+        "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+        "evidence": [
+          "bcryptprimitives.dll"
+        ],
+        "ruleId": "package.native-library",
+        "severity": "informational",
+        "title": "Bundled native libraries"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:Artisan.dll: System.Net.Http.HttpClient",
+          "il:Artisan.dll:Artisan.Universalis.UniversalisClient..ctor+0x7: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Artisan.dll:Artisan.Universalis.UniversalisClient..ctor+0x18: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+          "il:Artisan.dll:Artisan.RawInformation.DropSources.DropList+0x6: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Artisan.dll:Artisan.RawInformation.DropSources.DropList+0x10: call System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+          "metadata:Discord.Net.Rest.dll: System.Net.Http.HttpClient",
+          "il:Discord.Net.Rest.dll:Discord.Net.Rest.DefaultRestClient..ctor+0xe: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+          "il:Discord.Net.Rest.dll:Discord.Net.Rest.DefaultRestClient..ctor+0x15: callvirt System.Net.Http.HttpClientHandler.set_AutomaticDecompression: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Artisan.json: https://github.com/PunishXIV/Artisan"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.fc8f64da77d2",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/70609"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.f0697fe68c5e",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.e6cb42e4f3a8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Sylvan.Data.Csv.dll: https://github.com/markpflug/Sylvan"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.d11d3883a769",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/63440"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.cb6335723c68",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:OtterGui.dll: https://github.com/Taurenkey/OtterGui"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.c983321366ea",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Artisan.dll: https://raw.githubusercontent.com/ffxiv-teamcraft/ffxiv-teamcraft/master/libs/data/src/lib/json/drop-sources.json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.c51cb1d503c3",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.b68d17bbb7cf",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: Discord (community messaging). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Discord.Net.Core.dll: https://discord.com/channels/"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.b285af0f4113",
+        "severity": "informational",
+        "title": "Endpoint: discord.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn/issues/70609X"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.b1b1e52b473e",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:NAudio.Asio.dll: https://github.com/naudio/NAudio",
+          "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+          "artifact:NAudio.dll: https://github.com/naudio/NAudio",
+          "artifact:NAudio.Midi.dll: https://github.com/naudio/NAudio"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.acd34a308b7d",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/runtime",
+          "artifact:Microsoft.Extensions.DependencyInjection.dll: https://github.com/dotnet/runtime"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.9f15c9767ba8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:CsvHelper.dll: https://github.com/JoshClose/CsvHelper"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.9e7c5825f68c",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: Discord (community messaging). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Discord.Net.Core.dll: https://discord.com/api/v"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.9cd9826f4102",
+        "severity": "informational",
+        "title": "Endpoint: discord.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/csharplang/issues/7009N"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.998cc3a3e5d9",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:LuminaSupplemental.Excel.dll: https://github.com/Critical-Impact/LuminaSupplemental"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.8107d126a6f8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:KamiToolKit.dll: https://github.com/Taurenkey/KamiToolKit"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.7ad65ca776f0",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: Discord (community messaging). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Discord.Net.Core.dll: https://cdn.discordapp.com/app-icons/"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.73b884ad412e",
+        "severity": "informational",
+        "title": "Endpoint: cdn.discordapp.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/csharplang/issues/7009"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.7324b599ad11",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: Discord (community messaging). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Discord.Net.Core.dll: https://cdn.discordapp.com/<redacted>"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.6d3485aa223a",
+        "severity": "informational",
+        "title": "Endpoint: cdn.discordapp.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Artisan.dll: https://github.com/PunishXIV/Artisan"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.3db494f98478",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Discord.Net.Core.dll: https://github.com/discord-net/Discord.Net"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.364549a730c0",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn",
+          "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.351354630292",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/67592"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.2f1b858ecd88",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:JetBrains.Annotations.dll: https://github.com/JetBrains/JetBrains.Annotations/"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.081de96440b7",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: Discord (community messaging). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Discord.Net.Core.dll: https://cdn.discordapp.com/"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.02a43cdaa0a2",
+        "severity": "informational",
+        "title": "Endpoint: cdn.discordapp.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:OtterGui.dll: https://discord.gg/kVva7DHV4r"
+        ],
+        "ruleId": "network.endpoint.community-invite.d54730561467",
+        "severity": "informational",
+        "title": "Community invite: Discord"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Discord.Net.Core.dll: https://discord.gg/",
+          "artifact:Discord.Net.Rest.dll: https://discord.gg/"
+        ],
+        "ruleId": "network.endpoint.community-invite.b6412e430a24",
+        "severity": "informational",
+        "title": "Community invite: Discord"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Artisan.dll: https://discord.gg/Zzrcc8kmvy",
+          "artifact:PunishLib.dll: https://discord.gg/Zzrcc8kmvy"
+        ],
+        "ruleId": "network.endpoint.community-invite.21e883b91408",
+        "severity": "informational",
+        "title": "Community invite: Discord"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Artisan.dll: Directory.CreateDirectory",
+          "metadata:Artisan.dll: WriteAllText",
+          "il:Artisan.dll:Artisan.Configuration..ctor+0x1ba: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:Artisan.dll:Artisan.CraftingLogic.TrackConditions..ctor+0x33: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:Artisan.dll:Artisan.CraftingLogic.TrackConditions.WriteFile+0x2e: call System.IO.File.WriteAllText: WriteAllText",
+          "il:Artisan.dll:Artisan.CraftingLogic.Solvers.RaphaelCache.WriteRaphaelCache+0x55: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:Artisan.dll:Artisan.CraftingLogic.Solvers.RaphaelCache.WriteRaphaelCache+0x62: call System.IO.File.WriteAllText: WriteAllText",
+          "artifact:Artisan.dll: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
+        "category": "privacy",
+        "description": "References APIs that can read or modify clipboard contents.",
+        "evidence": [
+          "artifact:ECommons.dll: System.Windows.Forms.Clipboard"
+        ],
+        "ruleId": "clipboard",
+        "severity": "informational",
+        "title": "Clipboard access"
+      }
+    ],
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 33,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 165782,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-69a422e00282c31a",
+      "artifactBytes": 10149172,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "4.0.5.19",
+        "artifactBytes": 10149172,
+        "artifactSha256": "0805e8764bf375eaccba4e2f17ab3ad8b43bced66b71ff7b7375a5359ad05d4f",
+        "catalogAssemblyVersion": "4.0.5.19",
+        "manifestInternalName": "",
+        "manifestPath": "Artisan.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://s3.puni.sh/plugins/6/versions/4.0.5.19.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=root%2F20260904%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260904T001223Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=653ba90f249c10472b9664ac5343d74bc849c44cc621595f9571c9a7f6b0000e",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.teleport",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Teleport/travel control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.inventory_control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Inventory UI/control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.synthetic_click",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Synthetic game UI interaction",
+            "reachable": false
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.teleport",
+            "label": "Teleport/travel control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.inventory_control",
+            "label": "Inventory UI/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.synthetic_click",
+            "label": "Synthetic game UI interaction",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 18,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 18,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Character action execution",
+        "Character target control",
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: cdn.discordapp.com",
+        "Endpoint: crypto.nightmarexiv.org",
+        "Endpoint: discord.com",
+        "Endpoint: discord.gg",
+        "Endpoint: discord.nightmarexiv.org",
+        "Endpoint: donate.nightmarexiv.org",
+        "Endpoint: explore.nightmarexiv.org",
+        "Endpoint: ffxivteamcraft.com",
+        "Endpoint: github.com",
+        "Endpoint: i.scdn.co",
+        "Endpoint: james.newtonking.com",
+        "Endpoint: json.schemastore.org",
+        "Endpoint: ko-fi.com",
+        "Endpoint: love.puni.sh",
+        "Endpoint: msdn.microsoft.com",
+        "Endpoint: ocsp.digicert.com0c",
+        "Endpoint: ocsp.digicert.com0o",
+        "Endpoint: open.spotify.com",
+        "Endpoint: puni.sh",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: reniguide.info",
+        "Endpoint: store.finalfantasyxiv.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Inventory UI/control",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access",
+        "Registry access",
+        "Synthetic game UI interaction",
+        "Teleport/travel control",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.character.interact",
+        "game.character.target",
+        "game.character.teleport",
+        "game.memory.read",
+        "game.ui.callback",
+        "game.ui.inventory_control",
+        "game.ui.synthetic_click",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "privacy.clipboard",
+        "process.execute",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 40,
+        "critical": 0,
+        "high": 3,
+        "informational": 33
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {},
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {},
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://puni.sh/api/plugins/download/6/Artisan/versions/4.0.5.19/install/latest.zip",
+        "internalName": "Artisan",
+        "manifestVersion": "4.0.5.19",
+        "observationId": 10687,
+        "observationKey": "manifest-9140602bb7e011fe6e21aa331a5a",
+        "repositoryUrl": "https://github.com/PunishXIV/Artisan",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 6529
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 31,
+        "bundledNativeLibraryCount": 1,
+        "fileCount": 57,
+        "uncompressedBytes": 31386551
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-69a422e00282c31a",
+        "attemptId": "attempt-v2-e00e32c83e8ad457",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-b6a4741a50c5a26c",
+        "definitionsRevision": "defs-v1-8ac507145b62898b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-6529",
+        "queueSeedRevision": "queue-seed-v2-6512945ece052487a025",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-4bc59834c2fc9bcb",
+        "scannerBundleSha256": "db1f3deaa68526e8734741d46bee6772c67c419f226462ad537a7acd167f5db2",
+        "scannerRevision": "scanner-v1-28b679f33d7e4398",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-c1f05d5298afe1c5",
+        "sourceObservationRevision": "source-observations-v1-bfe5b2799a241ceb",
+        "targetFingerprint": "artifact-target-v2-b0feb36491dc4270ca57",
+        "variantId": 6529,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-04T00:12:03Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "0805e8764bf375eaccba4e2f17ab3ad8b43bced66b71ff7b7375a5359ad05d4f",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/PunishXIV/Artisan"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/PunishXIV/Artisan",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 167390,
+    "scanned_at_utc": "2026-09-04T00:12:03Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/PunishXIV/Artisan",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 6529
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "0805e8764bf375eaccba4e2f17ab3ad8b43bced66b71ff7b7375a5359ad05d4f",
+      "current_assembly_version": "4.0.5.19",
+      "current_scan_id": 167390,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-04T00:12:25Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 6529
+    },
+    "sourceArtifactComparison": null
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 539,
+          "encoding": "json",
+          "path": "derived/variants/0006/6529/advisory-matches.json",
+          "recordDigest": "22fbed542305ed8766b965fb8e8a5682a82c439a79447dba8a7addb7a4bfddec",
+          "records": 1,
+          "sha256": "068d4bb3bdcc2c84d74e8afdd3e8d7c0421b159775b2eb8ba064adc9067afd49"
+        }
+      ],
+      "recordDigest": "22fbed542305ed8766b965fb8e8a5682a82c439a79447dba8a7addb7a4bfddec",
+      "records": 1
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0006/6529/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 449375,
+          "encoding": "json",
+          "path": "derived/variants/0006/6529/dependency-resolutions.json",
+          "recordDigest": "715365e13868ce28445c8a6c915427e7a09532b984d2ae7bf677bb68d7431ab5",
+          "records": 467,
+          "sha256": "8651728f47e30cb947d4fb4e6a8f710e547f182864791b62b084a9ecab0acdf6"
+        }
+      ],
+      "recordDigest": "715365e13868ce28445c8a6c915427e7a09532b984d2ae7bf677bb68d7431ab5",
+      "records": 467
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0006/6529/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "e262e13629ce2cd8488c754ba008e0c40c8c3cb59b687cc91342bd3dc622c1d0",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "16cc73f17a9069f50eadc9363e13169588b118972580bce52a8485c37b544dd6",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "3fbfbc38cae2c53e7ffea22d90c77cf65b5bec4a81f9861f0ea5dbdb8a55b842",
+        "records": 467,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "be42c6971555a0c99884e37eeb9715468d48c039cd39c42d5dc9100e07bae171",
+        "records": 31,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "a2173d980640fc90cd3b259674556c6363de2af56368241b8f4feb5df046675c",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "66018aa93581b9ca5daec937245bdd48c227d84f91409f59166c9faf924a1c36",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-7cb373ebdcd0067c5922e39f9f00a315491deea236aa04983d5e3d94f0af6c0c",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-69a422e00282c31a",
+      "sourceAnalysisRevision": "source-analysis-v1-c1f05d5298afe1c5"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Artisan",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "Artisan",
+    "last_seen_utc": "2026-09-03T23:52:46Z",
+    "plugin_id": 507
+  },
+  "pluginId": 507,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "The all-in-one crafting plugin. Perfect for people with next to no knowledge about crafting rotations. No need for a library of different macros, the solvers will work dynamically to try and complete your crafts. Also provides convenient ways to craft lists of items or grind out a specific item repeatedly.",
+      "images": [
+        "https://discordapp.com/api/guilds/1001823907193552978/embed.png?style=banner2",
+        "https://github.com/PunishXIV/Artisan/blob/main/PunishImages/artisan-icon.png?raw=true",
+        "https://github.com/PunishXIV/Artisan/blob/050a58be7b0ce94c959c17e43dabecb65e38a55c/PunishImages/artisan.png"
+      ],
+      "nsfw": false,
+      "official": false,
+      "richCard": true,
+      "richnessScore": 31311,
+      "summary": "A 'simple' crafting plugin.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/PunishXIV/Artisan",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "A 'simple' crafting plugin.",
+      "homepage": "https://puni.sh/plugin/Artisan",
+      "images": [
+        "https://discordapp.com/api/guilds/1001823907193552978/embed.png?style=banner2",
+        "https://github.com/PunishXIV/Artisan/blob/main/PunishImages/artisan-icon.png?raw=true",
+        "https://github.com/PunishXIV/Artisan/blob/050a58be7b0ce94c959c17e43dabecb65e38a55c/PunishImages/artisan.png"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/PunishXIV/Artisan"
+        },
+        {
+          "kind": "website",
+          "label": "Website",
+          "url": "https://puni.sh/plugin/Artisan"
+        },
+        {
+          "kind": "discord",
+          "label": "Join Discord",
+          "url": "https://discord.gg/Zzrcc8kmvy"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "<!-- Repository Header Begin -->\n<div align=\"center\">\n<img src=\"https://github.com/PunishXIV/Artisan/blob/main/PunishImages/artisan-icon.png?raw=true\" alt=\"Artisan IconUrl\" width=\"15%\">\n<br>\n<img src=\"https://github.com/PunishXIV/Artisan/blob/050a58be7b0ce94c959c17e43dabecb65e38a55c/PunishImages/artisan.png\" width=\"30%\" />\n\nCrafting Automation Plugin/Helper for FFXIV\n\n[![image](https://discordapp.com/api/guilds/1001823907193552978/embed.png?style=banner2)](https://discord.gg/Zzrcc8kmvy)\n\nRepo Url: \n\n`https://love.puni.sh/ment.json`\n</div>",
+      "title": "Artisan",
+      "url": "https://github.com/PunishXIV/Artisan"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "73a874e1c203b22e08c3977ce1ebd7cd1ca11fa6abd6abefc2d9542ef4a1739e",
+        "records": 7
+      },
+      "behaviorConsistency": {
+        "recordDigest": "7532c29294b47de485b43c7a67d8ed432a1768c6cce68acad206cf3bc0d84380",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "20018318b8b10f7c3b27cb8a1f482d025842ee876101adf8a53df3a5e8ad753d",
+        "records": 18
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "682a88a0a6aa47cba2ea32d0c1f6dc544243d759b74edd6f0f8fc0630e2ed823",
+        "records": 76
+      }
+    },
+    "projectionRevision": "projection-v1-e3c8db122599e152",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-4bc59834c2fc9bcb",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "0805e8764bf375eaccba4e2f17ab3ad8b43bced66b71ff7b7375a5359ad05d4f",
+    "artifact_url": "https://puni.sh/api/plugins/download/6/Artisan/versions/4.0.5.19/install/latest.zip",
+    "assembly_version": "4.0.5.19",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Character action execution",
+      "Character target control",
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: cdn.discordapp.com",
+      "Endpoint: crypto.nightmarexiv.org",
+      "Endpoint: discord.com",
+      "Endpoint: discord.gg",
+      "Endpoint: discord.nightmarexiv.org",
+      "Endpoint: donate.nightmarexiv.org",
+      "Endpoint: explore.nightmarexiv.org",
+      "Endpoint: ffxivteamcraft.com",
+      "Endpoint: github.com",
+      "Endpoint: i.scdn.co",
+      "Endpoint: james.newtonking.com",
+      "Endpoint: json.schemastore.org",
+      "Endpoint: ko-fi.com",
+      "Endpoint: love.puni.sh",
+      "Endpoint: msdn.microsoft.com",
+      "Endpoint: ocsp.digicert.com0c",
+      "Endpoint: ocsp.digicert.com0o",
+      "Endpoint: open.spotify.com",
+      "Endpoint: puni.sh",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: reniguide.info",
+      "Endpoint: store.finalfantasyxiv.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Inventory UI/control",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access",
+      "Registry access",
+      "Synthetic game UI interaction",
+      "Teleport/travel control",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 40,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 33,
+    "plugin_id": 507,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 165782,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-69a422e00282c31a",
+      "artifactBytes": 10149172,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "4.0.5.19",
+        "artifactBytes": 10149172,
+        "artifactSha256": "0805e8764bf375eaccba4e2f17ab3ad8b43bced66b71ff7b7375a5359ad05d4f",
+        "catalogAssemblyVersion": "4.0.5.19",
+        "manifestInternalName": "",
+        "manifestPath": "Artisan.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://s3.puni.sh/plugins/6/versions/4.0.5.19.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=root%2F20260904%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260904T001223Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=653ba90f249c10472b9664ac5343d74bc849c44cc621595f9571c9a7f6b0000e",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.teleport",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Teleport/travel control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.inventory_control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Inventory UI/control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.synthetic_click",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Synthetic game UI interaction",
+            "reachable": false
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.teleport",
+            "label": "Teleport/travel control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.inventory_control",
+            "label": "Inventory UI/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.synthetic_click",
+            "label": "Synthetic game UI interaction",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 18,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 18,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Character action execution",
+        "Character target control",
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: cdn.discordapp.com",
+        "Endpoint: crypto.nightmarexiv.org",
+        "Endpoint: discord.com",
+        "Endpoint: discord.gg",
+        "Endpoint: discord.nightmarexiv.org",
+        "Endpoint: donate.nightmarexiv.org",
+        "Endpoint: explore.nightmarexiv.org",
+        "Endpoint: ffxivteamcraft.com",
+        "Endpoint: github.com",
+        "Endpoint: i.scdn.co",
+        "Endpoint: james.newtonking.com",
+        "Endpoint: json.schemastore.org",
+        "Endpoint: ko-fi.com",
+        "Endpoint: love.puni.sh",
+        "Endpoint: msdn.microsoft.com",
+        "Endpoint: ocsp.digicert.com0c",
+        "Endpoint: ocsp.digicert.com0o",
+        "Endpoint: open.spotify.com",
+        "Endpoint: puni.sh",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: reniguide.info",
+        "Endpoint: store.finalfantasyxiv.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Inventory UI/control",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access",
+        "Registry access",
+        "Synthetic game UI interaction",
+        "Teleport/travel control",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.character.interact",
+        "game.character.target",
+        "game.character.teleport",
+        "game.memory.read",
+        "game.ui.callback",
+        "game.ui.inventory_control",
+        "game.ui.synthetic_click",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "privacy.clipboard",
+        "process.execute",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 40,
+        "critical": 0,
+        "high": 3,
+        "informational": 33
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {},
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {},
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://puni.sh/api/plugins/download/6/Artisan/versions/4.0.5.19/install/latest.zip",
+        "internalName": "Artisan",
+        "manifestVersion": "4.0.5.19",
+        "observationId": 10687,
+        "observationKey": "manifest-9140602bb7e011fe6e21aa331a5a",
+        "repositoryUrl": "https://github.com/PunishXIV/Artisan",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 6529
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 31,
+        "bundledNativeLibraryCount": 1,
+        "fileCount": 57,
+        "uncompressedBytes": 31386551
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-69a422e00282c31a",
+        "attemptId": "attempt-v2-e00e32c83e8ad457",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-b6a4741a50c5a26c",
+        "definitionsRevision": "defs-v1-8ac507145b62898b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-6529",
+        "queueSeedRevision": "queue-seed-v2-6512945ece052487a025",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-4bc59834c2fc9bcb",
+        "scannerBundleSha256": "db1f3deaa68526e8734741d46bee6772c67c419f226462ad537a7acd167f5db2",
+        "scannerRevision": "scanner-v1-28b679f33d7e4398",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-c1f05d5298afe1c5",
+        "sourceObservationRevision": "source-observations-v1-bfe5b2799a241ceb",
+        "targetFingerprint": "artifact-target-v2-b0feb36491dc4270ca57",
+        "variantId": 6529,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-04T00:12:22Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "0805e8764bf375eaccba4e2f17ab3ad8b43bced66b71ff7b7375a5359ad05d4f",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/PunishXIV/Artisan"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/PunishXIV/Artisan",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 167390,
+    "scanned_at_utc": "2026-09-04T00:12:22Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 947,
+    "source_repository": "https://github.com/PunishXIV/Artisan",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 6529
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "a69f313834272cee335b52956172bc6c0cd201fa86f27ea956fe0301e9a07f01",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"4b5b9c694c2d79fa777cd02f867b07e191f8284dac3b70f5f7026edf97179d63\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-03T23:52:46Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-03T23:52:46Z",
+    "name": "yourShika/AetheryteRepo",
+    "plugin_count": 111,
+    "provider": "yourShika/AetheryteRepo",
+    "source_id": 947,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/yourShika/AetheryteRepo/main/cache/williamw1979-ffxiv.json"
+  },
+  "sourceId": 947,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "4.0.5.19",
+    "author": "Taurenkey, kawaii, NightmareXIV",
+    "authors_json": [
+      "Taurenkey",
+      "kawaii",
+      "NightmareXIV"
+    ],
+    "category_tags_json": [],
+    "changelog": "- Add premade lists for relic tools.\n- Add IPC for macro information.",
+    "dalamud_api_level": 15,
+    "description": "The all-in-one crafting plugin. Perfect for people with next to no knowledge about crafting rotations. No need for a library of different macros, the solvers will work dynamically to try and complete your crafts. Also provides convenient ways to craft lists of items or grind out a specific item repeatedly.",
+    "dip17_channel": "",
+    "download_count": 5888174,
+    "download_link_install": "https://puni.sh/api/plugins/download/6/Artisan/versions/4.0.5.19/install/latest.zip",
+    "download_link_testing": "https://puni.sh/api/plugins/download/6/Artisan/versions/4.0.5.16/install/testing.zip",
+    "download_link_update": "https://puni.sh/api/plugins/download/6/Artisan/versions/4.0.5.19/update/latest.zip",
+    "first_seen_utc": "2026-09-03T00:44:55Z",
+    "icon_url": "https://puni.sh/api/plugins/icon/6",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-03T23:52:46Z",
+    "last_update": 1788272491,
+    "minimum_dalamud_version": null,
+    "name": "Artisan",
+    "plugin_id": 507,
+    "punchline": "A 'simple' crafting plugin.",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "4.0.5.19",
+      "Author": "Taurenkey, kawaii, NightmareXIV",
+      "Changelog": "- Add premade lists for relic tools.\n- Add IPC for macro information.",
+      "DalamudApiLevel": 15,
+      "Description": "The all-in-one crafting plugin. Perfect for people with next to no knowledge about crafting rotations. No need for a library of different macros, the solvers will work dynamically to try and complete your crafts. Also provides convenient ways to craft lists of items or grind out a specific item repeatedly.",
+      "DownloadCount": 5888174,
+      "DownloadLinkInstall": "https://puni.sh/api/plugins/download/6/Artisan/versions/4.0.5.19/install/latest.zip",
+      "DownloadLinkTesting": "https://puni.sh/api/plugins/download/6/Artisan/versions/4.0.5.16/install/testing.zip",
+      "DownloadLinkUpdate": "https://puni.sh/api/plugins/download/6/Artisan/versions/4.0.5.19/update/latest.zip",
+      "IconUrl": "https://puni.sh/api/plugins/icon/6",
+      "InternalName": "Artisan",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": 1788272491,
+      "Name": "Artisan",
+      "Punchline": "A 'simple' crafting plugin.",
+      "RepoUrl": "https://github.com/PunishXIV/Artisan",
+      "SourceRepo": "https://love.puni.sh/ment.json",
+      "Tags": [
+        "crafting"
+      ],
+      "TestingAssemblyVersion": "4.0.5.16",
+      "TestingDalamudApiLevel": "15",
+      "_SourceId": "williamw1979-ffxiv",
+      "_SourceName": "MEGA Repository",
+      "_SourceUrl": "https://raw.githubusercontent.com/WilliamW1979/FFXIV/main/repository.json"
+    },
+    "repo_url": "https://github.com/PunishXIV/Artisan",
+    "source_entry_key": "artisan|4.0.5.19|15|15|13",
+    "source_id": 947,
+    "tags_json": [
+      "crafting"
+    ],
+    "testing_assembly_version": "4.0.5.16",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 6529
+  },
+  "variantId": 6529
+}
