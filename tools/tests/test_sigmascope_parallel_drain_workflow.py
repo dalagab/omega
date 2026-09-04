@@ -39,6 +39,10 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn("Revalidate planned authority heads after acquiring the writer lock", publish)
         self.assertIn("refs/heads/catalog-data", publish)
         self.assertIn("refs/heads/security-evidence-v2", publish)
+        self.assertIn("git -C catalog/active-state ls-remote --heads origin refs/heads/catalog-data", publish)
+        self.assertIn("git -C catalog/security-v2-current ls-remote --heads origin refs/heads/security-evidence-v2", publish)
+        self.assertNotIn('current_catalog="$(git ls-remote', publish)
+        self.assertNotIn('current_evidence="$(git ls-remote', publish)
         self.assertIn("Stale parallel candidate discarded", publish)
         self.assertIn("if: steps.authority.outputs.publish == 'true'", publish)
 
