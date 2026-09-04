@@ -53,7 +53,9 @@ permissions:
   packages: read
 
 concurrency:
-  group: omega-catalog-sigmascope-exclusive
+  # Keep duplicate drain chains serialized, but do not hold the catalog/Evidence
+  # authority mutex while workers perform read-only analysis.
+  group: omega-sigmascope-parallel-drain-exclusive
   cancel-in-progress: false
   queue: max
 
@@ -530,6 +532,10 @@ jobs:
     if: needs.merge.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    concurrency:
+      group: omega-catalog-sigmascope-exclusive
+      cancel-in-progress: false
+      queue: max
     permissions:
       contents: write
       issues: write
@@ -540,8 +546,8 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     outputs:
-      next_mode: ${{ needs.merge.outputs.next_mode }}
-      publish_client: ${{ needs.merge.outputs.publish_client }}
+      next_mode: ${{ steps.authority.outputs.next_mode }}
+      publish_client: ${{ steps.authority.outputs.publish_client }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -565,7 +571,45 @@ jobs:
           name: omega-sigmascope-drain-publication
           path: catalog/drain-publication
 
+      - id: authority
+        name: Revalidate planned authority heads after acquiring the writer lock
+        env:
+          EXPECTED_CATALOG_HEAD: ${{ needs.plan.outputs.catalog_head }}
+          EXPECTED_EVIDENCE_HEAD: ${{ needs.plan.outputs.base_head }}
+          PLANNED_NEXT_MODE: ${{ needs.merge.outputs.next_mode }}
+          PLANNED_PUBLISH_CLIENT: ${{ needs.merge.outputs.publish_client }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_catalog="$(git ls-remote --heads origin refs/heads/catalog-data | awk '{print $1}')"
+          current_evidence="$(git ls-remote --heads origin refs/heads/security-evidence-v2 | awk '{print $1}')"
+          [[ "$current_catalog" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$current_evidence" =~ ^[0-9a-f]{40}$ ]]
+
+          if [ "$current_catalog" != "$EXPECTED_CATALOG_HEAD" ] || [ "$current_evidence" != "$EXPECTED_EVIDENCE_HEAD" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "next_mode=parallel" >> "$GITHUB_OUTPUT"
+            echo "publish_client=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Stale parallel candidate discarded"
+              echo
+              echo "The candidate was computed outside the authority lock and an authoritative parent advanced before publication."
+              echo
+              echo "- Planned catalog: \`$EXPECTED_CATALOG_HEAD\`"
+              echo "- Current catalog: \`$current_catalog\`"
+              echo "- Planned Evidence: \`$EXPECTED_EVIDENCE_HEAD\`"
+              echo "- Current Evidence: \`$current_evidence\`"
+              echo
+              echo "A fresh drain will use the newly authoritative inputs; no stale candidate was published."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "next_mode=$PLANNED_NEXT_MODE" >> "$GITHUB_OUTPUT"
+            echo "publish_client=$PLANNED_PUBLISH_CLIENT" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Rehydrate exact candidate and re-check parent
+        if: steps.authority.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -580,6 +624,7 @@ jobs:
           }
 
       - name: Publish exact validated Security Evidence v2 child
+        if: steps.authority.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -598,7 +643,7 @@ jobs:
             --push
 
       - name: Publish Deep Scan state derived from newly-authoritative Evidence
-        if: ${{ hashFiles('catalog/drain-publication/deep-scan-state/index.json') != '' }}
+        if: ${{ steps.authority.outputs.publish == 'true' && hashFiles('catalog/drain-publication/deep-scan-state/index.json') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
@@ -609,7 +654,7 @@ jobs:
           --push
 
       - name: Reconcile source follow-up issues after Evidence publication
-        if: ${{ hashFiles('catalog/drain-publication/source-followups.json') != '' }}
+        if: ${{ steps.authority.outputs.publish == 'true' && hashFiles('catalog/drain-publication/source-followups.json') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
@@ -619,6 +664,7 @@ jobs:
           --max-new 25
 
       - name: Publish wave summary
+        if: steps.authority.outputs.publish == 'true'
         shell: bash
         run: |
           {
@@ -637,7 +683,9 @@ jobs:
     if: needs.publish.outputs.publish_client == 'true'
     uses: ./.github/workflows/catalog-client-publish.yml
     with:
-      authority_lock_held: true
+      # The publish job releases its job-scoped authority lock before this
+      # reusable workflow starts, so customer projection must reacquire it.
+      authority_lock_held: false
     secrets: inherit
 
   continue:

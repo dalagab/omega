@@ -518,11 +518,17 @@ class WorkflowContractTests(unittest.TestCase):
         drain = self.read("sigmascope-parallel-drain.yml")
         shared_group = "omega-catalog-sigmascope-exclusive"
 
-        # Continuous serialized and parallel Evidence publication share one authority mutex.
+        # Continuous serialized publication and the parallel drain's short publish
+        # phase share one authority mutex. Read-only parallel scanning does not.
         self.assertIn(f"group: {shared_group}", security)
-        self.assertIn(f"group: {shared_group}", drain)
-        self.assertIn("cancel-in-progress: false", drain)
-        self.assertIn("queue: max", drain)
+        drain_top = drain[: drain.index("\njobs:")]
+        drain_publish = drain[drain.index("\n  publish:"): drain.index("\n  publish-client:")]
+        self.assertIn("group: omega-sigmascope-parallel-drain-exclusive", drain_top)
+        self.assertNotIn(f"group: {shared_group}", drain_top)
+        self.assertIn(f"group: {shared_group}", drain_publish)
+        self.assertIn("cancel-in-progress: false", drain_publish)
+        self.assertIn("queue: max", drain_publish)
+        self.assertIn("Revalidate planned authority heads", drain_publish)
 
         # Catalog freeze retains its existing nested-authority escape hatch. The label
         # still contains the historical Phase-4 name but is only an internal group name.

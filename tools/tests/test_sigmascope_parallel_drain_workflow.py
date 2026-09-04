@@ -8,13 +8,13 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
     def test_production_drain_is_parallel_bounded_and_one_writer(self) -> None:
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
         for required in (
-            "group: omega-catalog-sigmascope-exclusive", "queue: max", "default: 4", "default: 10",
+            "group: omega-sigmascope-parallel-drain-exclusive", "queue: max", "default: 4", "default: 10",
             "sigmascope_parallel_drain_plan.py", "strategy:", "fail-fast: false", "QUEUE_KEYS_JSON",
             "sigmascope_worker_batch.py run", "--queue-keys-file catalog/slot-work/queue-keys.txt",
             "sigmascope_worker_batch.py bundles", "sigmascope_result_merger.py",
             "--queue-seed catalog/active-state/scan-queue.json", "security_developer_audit.py",
             "evidence_storage_audit.py", "publish_security_evidence_v2.py", "--expected-parent-sha",
-            "publish_deep_scan_state.py", "catalog-client-publish.yml", "authority_lock_held: true",
+            "publish_deep_scan_state.py", "catalog-client-publish.yml", "authority_lock_held: false",
             "gh workflow run sigmascope-parallel-drain.yml",
         ):
             self.assertIn(required, text)
@@ -33,6 +33,12 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertNotIn("publish_deep_scan_state.py", workers)
         self.assertIn("publish_security_evidence_v2.py", publish)
         self.assertIn("publish_deep_scan_state.py", publish)
+        self.assertIn("group: omega-catalog-sigmascope-exclusive", publish)
+        self.assertIn("Revalidate planned authority heads after acquiring the writer lock", publish)
+        self.assertIn("refs/heads/catalog-data", publish)
+        self.assertIn("refs/heads/security-evidence-v2", publish)
+        self.assertIn("Stale parallel candidate discarded", publish)
+        self.assertIn("if: steps.authority.outputs.publish == 'true'", publish)
 
     def test_customer_projection_is_periodic_and_terminal(self) -> None:
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")

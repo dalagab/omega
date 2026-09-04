@@ -39,15 +39,20 @@ class AuthorityConcurrencyQueueTests(unittest.TestCase):
             "catalog-builder.yml",
             "catalog-release-intake.yml",
             "catalog-client-publish.yml",
-            "sigmascope-parallel-drain.yml",
             "rift-evidence-ingest.yml",
         ):
             self.assertIn(expected, users)
 
         drain = (WORKFLOWS / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
-        self.assertIn(f"group: {AUTHORITY_GROUP}", drain)
-        self.assertIn("cancel-in-progress: false", drain)
-        self.assertIn("queue: max", drain)
+        top = drain[: drain.index("\njobs:")]
+        publish = drain[drain.index("\n  publish:"): drain.index("\n  publish-client:")]
+        self.assertIn("group: omega-sigmascope-parallel-drain-exclusive", top)
+        self.assertNotIn(f"group: {AUTHORITY_GROUP}", top)
+        self.assertIn(f"group: {AUTHORITY_GROUP}", publish)
+        self.assertIn("cancel-in-progress: false", publish)
+        self.assertIn("queue: max", publish)
+        self.assertIn("refs/heads/catalog-data", publish)
+        self.assertIn("refs/heads/security-evidence-v2", publish)
 
 
 if __name__ == "__main__":
