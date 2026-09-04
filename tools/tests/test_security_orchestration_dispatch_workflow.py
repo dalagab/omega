@@ -19,6 +19,11 @@ class SecurityOrchestrationDispatchWorkflowTests(unittest.TestCase):
     def test_router_exists_and_routes_every_policy_worker(self):
         text = (WF / "security-orchestration-dispatch.yml").read_text(encoding="utf-8")
         self.assertIn("workflow_dispatch:", text)
+        top = text[: text.index("\njobs:")]
+        self.assertIn("group: omega-security-dispatch-${{ inputs.mode }}-", top)
+        self.assertIn("inputs.queue_id, inputs.work_id", top)
+        self.assertIn("cancel-in-progress: false", top)
+        self.assertNotIn("queue: max", top)
         self.assertIn("uses: ./.github/workflows/security-reconcile.yml", text)
         for queue_id, workflow in WORKERS.items():
             self.assertIn(queue_id, text)

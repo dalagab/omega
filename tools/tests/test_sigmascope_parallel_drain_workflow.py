@@ -16,6 +16,8 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
             "evidence_storage_audit.py", "publish_security_evidence_v2.py", "--expected-parent-sha",
             "publish_deep_scan_state.py", "catalog-client-publish.yml", "authority_lock_held: false",
             "gh workflow run sigmascope-parallel-drain.yml",
+            "Capacity used:", "Assignments by lane:", "Eligible queue items now:",
+            "Deferred by retry backoff:", "Oldest eligible enqueue:", "Highest pending attempt count:",
         ):
             self.assertIn(required, text)
         self.assertNotIn('--queue-key "$queue_key"', text)

@@ -1172,7 +1172,8 @@ def finish_attempt(
     state["updatedAtUtc"] = utc_now(now_dt)
 
 
-def state_summary(state: dict[str, Any]) -> dict[str, Any]:
+def state_summary(state: dict[str, Any], *, now: dt.datetime | None = None) -> dict[str, Any]:
+    now_dt = now or dt.datetime.now(dt.timezone.utc)
     counts: dict[str, int] = {}
     due_by_reason: dict[str, int] = {}
     uncovered_variant_ids: set[int] = set()
@@ -1180,6 +1181,10 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
     uncovered_plugin_ids: set[int] = set()
     uncovered_retry_plugin_ids: set[int] = set()
     covered_work_pending = 0
+    eligible_now = 0
+    retry_deferred = 0
+    oldest_eligible: dt.datetime | None = None
+    max_pending_attempt_count = 0
     covered_plugin_ids = plugin_coverage.covered_plugin_ids((state.get("items") or {}).values())
     for item in (state.get("items") or {}).values():
         if not isinstance(item, dict):
@@ -1187,6 +1192,15 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
         status = str(item.get("state") or "pending")
         counts[status] = counts.get(status, 0) + 1
         if status != "complete":
+            max_pending_attempt_count = max(max_pending_attempt_count, int(item.get("attemptCount") or 0))
+            next_at = parse_utc(str(item.get("nextEligibleAtUtc") or ""))
+            if next_at is not None and now_dt < next_at:
+                retry_deferred += 1
+            else:
+                eligible_now += 1
+                enqueued_at = parse_utc(str(item.get("enqueuedAtUtc") or ""))
+                if enqueued_at is not None and (oldest_eligible is None or enqueued_at < oldest_eligible):
+                    oldest_eligible = enqueued_at
             reason = str(item.get("primaryReason") or "")
             due_by_reason[reason] = due_by_reason.get(reason, 0) + 1
             variant_id = int(item.get("variantId") or 0)
@@ -1219,6 +1233,10 @@ def state_summary(state: dict[str, Any]) -> dict[str, Any]:
         "advisoryRevision": str(state.get("advisoryRevision") or ""),
         "states": counts,
         "pendingByReason": due_by_reason,
+        "eligibleNow": eligible_now,
+        "retryDeferred": retry_deferred,
+        "oldestEligibleEnqueuedAtUtc": utc_now(oldest_eligible) if oldest_eligible is not None else "",
+        "maxPendingAttemptCount": max_pending_attempt_count,
         "reasonContracts": dict(state.get("reasonContracts") or REASON_CONTRACTS),
         "selectionPolicy": str(state.get("selectionPolicy") or SELECTION_POLICY),
         "unscannedVariantsPending": len(uncovered_variant_ids),

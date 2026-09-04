@@ -166,6 +166,13 @@ jobs:
             echo "- Assignments: \`$(jq -r '.assignmentCount' catalog/sigmascope-drain-plan.json)\`"
             echo "- Active workers: \`$(jq -r '.activeWorkerCount' catalog/sigmascope-drain-plan.json)\`"
             echo "- Capacity: \`$(jq -r '.capacity' catalog/sigmascope-drain-plan.json)\`"
+            echo "- Capacity used: \`$(jq -r 'if .capacity > 0 then (((.assignmentCount * 10000 / .capacity) | floor) / 100) else 0 end' catalog/sigmascope-drain-plan.json)%\`"
+            echo "- Assignments by lane: \`$(jq -c '[.assignments[].workerLane] | group_by(.) | map({(.[0]): length}) | add // {}' catalog/sigmascope-drain-plan.json)\`"
+            echo "- Eligible queue items now: \`$(jq -r '.queueSummaryBefore.eligibleNow' catalog/sigmascope-drain-plan.json)\`"
+            echo "- Deferred by retry backoff: \`$(jq -r '.queueSummaryBefore.retryDeferred' catalog/sigmascope-drain-plan.json)\`"
+            echo "- Oldest eligible enqueue: \`$(jq -r '.queueSummaryBefore.oldestEligibleEnqueuedAtUtc // "" | if . == "" then "none" else . end' catalog/sigmascope-drain-plan.json)\`"
+            echo "- Highest pending attempt count: \`$(jq -r '.queueSummaryBefore.maxPendingAttemptCount' catalog/sigmascope-drain-plan.json)\`"
+            echo "- More parallel work after this wave: \`$(jq -r '.moreParallelEligible' catalog/sigmascope-drain-plan.json)\`"
             echo "- Baseline rebuild: \`$(jq -r '.baselineSecurityRebuild' catalog/sigmascope-drain-plan.json)\`"
             echo "- Selection policy: \`$(jq -r '.selectionPolicy' catalog/sigmascope-drain-plan.json)\`"
             echo "- Blocked reason: \`$(jq -r '.blockedReason' catalog/sigmascope-drain-plan.json)\`"
@@ -595,6 +602,8 @@ jobs:
               echo
               echo "The candidate was computed outside the authority lock and an authoritative parent advanced before publication."
               echo
+              echo "- Completed exact results: \`${{ needs.merge.outputs.successful }}\`"
+              echo "- Failed / retained for retry: \`${{ needs.merge.outputs.failed }}\`"
               echo "- Planned catalog: \`$EXPECTED_CATALOG_HEAD\`"
               echo "- Current catalog: \`$current_catalog\`"
               echo "- Planned Evidence: \`$EXPECTED_EVIDENCE_HEAD\`"

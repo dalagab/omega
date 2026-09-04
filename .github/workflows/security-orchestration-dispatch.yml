@@ -31,6 +31,14 @@ permissions:
   packages: read
   issues: read
 
+# Collapse redundant wake-ups without cancelling useful work. Reconcile and release
+# intake are desired-state signals, while an exact leased worker is identified by its
+# durable queue/work identity. GitHub keeps the running dispatch plus only the latest
+# pending dispatch for each group when no explicit queue preservation mode is set.
+concurrency:
+  group: omega-security-dispatch-${{ inputs.mode }}-${{ inputs.mode == 'worker' && format('{0}-{1}', inputs.queue_id, inputs.work_id) || 'singleton' }}
+  cancel-in-progress: false
+
 jobs:
   validate:
     name: Validate internal dispatch

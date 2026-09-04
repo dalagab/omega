@@ -83,7 +83,7 @@ def build(
     evidence_root = evidence_root.resolve()
     evidence_revision, evidence_epoch = _index_revision(evidence_root)
     state = _synchronized_state(seed, evidence_root, now=now)
-    summary_before = scan_queue.state_summary(state)
+    summary_before = scan_queue.state_summary(state, now=now)
 
     assignments: list[dict[str, Any]] = []
     blocked_reason = ""

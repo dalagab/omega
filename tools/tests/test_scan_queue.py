@@ -357,6 +357,30 @@ class ScanQueueTests(unittest.TestCase):
         self.assertEqual(1, summary["unscannedRetryVariants"])
         self.assertEqual(1, summary["coveredWorkPending"])
 
+    def test_summary_reports_actionable_backlog_telemetry(self) -> None:
+        state = {
+            "schema": scan_queue.STATE_SCHEMA,
+            "items": {
+                "eligible": {
+                    "state": "pending", "primaryReason": "new_variant", "attemptCount": 3,
+                    "enqueuedAtUtc": "2026-08-28T13:00:00Z", "nextEligibleAtUtc": "",
+                },
+                "deferred": {
+                    "state": "retry", "primaryReason": "failed_retry", "attemptCount": 2,
+                    "enqueuedAtUtc": "2026-08-28T12:00:00Z", "nextEligibleAtUtc": "2026-08-28T17:00:00Z",
+                },
+                "complete": {
+                    "state": "complete", "primaryReason": "new_variant", "attemptCount": 5,
+                    "enqueuedAtUtc": "2026-08-28T11:00:00Z", "nextEligibleAtUtc": "",
+                },
+            },
+        }
+        summary = scan_queue.state_summary(state, now=NOW)
+        self.assertEqual(1, summary["eligibleNow"])
+        self.assertEqual(1, summary["retryDeferred"])
+        self.assertEqual("2026-08-28T13:00:00Z", summary["oldestEligibleEnqueuedAtUtc"])
+        self.assertEqual(3, summary["maxPendingAttemptCount"])
+
     def test_failed_attempts_back_off_instead_of_releasing_every_fifteen_minutes(self) -> None:
         seed = {
             "schema": scan_queue.SEED_SCHEMA,

@@ -67,6 +67,8 @@ class SigmaScopeParallelDrainPlanTests(unittest.TestCase):
             self.assertEqual(40, len({item["queueKey"] for item in result["assignments"]}))
             self.assertTrue(result["moreParallelEligible"])
             self.assertFalse(result["serialFallbackRequired"])
+            self.assertEqual(50, result["queueSummaryBefore"]["eligibleNow"])
+            self.assertEqual(0, result["queueSummaryBefore"]["retryDeferred"])
 
     def test_coverage_first_keeps_source_followup_behind_uncovered_artifacts(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-drain-coverage-") as td:
