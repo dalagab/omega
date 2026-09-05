@@ -73,7 +73,9 @@ class SecurityOrchestrationDispatchWorkflowTests(unittest.TestCase):
         self.assertIn("--history-mode fast-forward --push", intake)
         self.assertIn('--expected-parent-sha "$(git -C catalog/current-state rev-parse HEAD)"', intake)
         self.assertIn("steps.intake.outputs.changed == 'true'", intake)
-        self.assertLess(intake.index("publish_catalog_state.py"), intake.index("gh workflow run sigmascope-parallel-drain.yml"))
+        self.assertIn("gh workflow run sigmascope-drain-wake.yml", intake)
+        self.assertLess(intake.index("publish_catalog_state.py"), intake.index("gh workflow run sigmascope-drain-wake.yml"))
+        self.assertNotIn("gh workflow run sigmascope-parallel-drain.yml", intake)
         self.assertNotIn("definitions_snapshot.py", intake)
         self.assertNotIn("catalog-client-publish.yml", intake)
 

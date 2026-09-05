@@ -1,0 +1,124 @@
+name: Omega SigmaScope · coalesced production drain wake
+
+on:
+  workflow_call:
+    inputs:
+      workers:
+        description: Parallel scanner workers for the production drain
+        type: number
+        required: false
+        default: 4
+      items_per_worker:
+        description: Exact queue keys per worker
+        type: number
+        required: false
+        default: 10
+      publish_client_every:
+        description: Republish Omega customer DB every N successful waves
+        type: number
+        required: false
+        default: 5
+  workflow_dispatch:
+    inputs:
+      workers:
+        description: Parallel scanner workers for the production drain (1-8)
+        type: number
+        required: false
+        default: 4
+      items_per_worker:
+        description: Exact queue keys per worker (1-16)
+        type: number
+        required: false
+        default: 10
+      publish_client_every:
+        description: Republish Omega customer DB every N successful waves
+        type: number
+        required: false
+        default: 5
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  # External wake sources serialize through this short controller instead of
+  # entering the production drain's long-lived concurrency queue themselves.
+  group: omega-sigmascope-drain-wake
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  ensure:
+    name: Ensure one production drain chain is active
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Coalesce wake-up into the active production drain
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKERS: ${{ inputs.workers || 4 }}
+          ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 10 }}
+          PUBLISH_CLIENT_EVERY: ${{ inputs.publish_client_every || 5 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          active_runs() {
+            gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow sigmascope-parallel-drain.yml \
+              --limit 100 \
+              --json databaseId,status,url,createdAt
+          }
+
+          active_json="$(active_runs)"
+          active_count="$(
+            jq '[.[] | select(.status != "completed")] | length' <<<"$active_json"
+          )"
+
+          if [ "$active_count" -gt 0 ]; then
+            echo "A production drain is already active; this wake-up is satisfied."
+            {
+              echo "### SigmaScope drain wake coalesced"
+              echo
+              echo "- Active drain runs: \`$active_count\`"
+              jq -r '.[] | select(.status != "completed") | "- \(.status): [run \(.databaseId)](\(.url)) started \(.createdAt)"' <<<"$active_json"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          gh workflow run sigmascope-parallel-drain.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref sigmascope \
+            -f workers="$WORKERS" \
+            -f items_per_worker="$ITEMS_PER_WORKER" \
+            -f wave=1 \
+            -f publish_client_every="$PUBLISH_CLIENT_EVERY"
+
+          # Keep the wake mutex until GitHub exposes the dispatched drain. This closes
+          # the small visibility race where a second wake could otherwise dispatch
+          # another owner before the first run appears in the Actions run list.
+          visible=false
+          for attempt in 1 2 3 4 5; do
+            sleep 2
+            active_json="$(active_runs)"
+            active_count="$(
+              jq '[.[] | select(.status != "completed")] | length' <<<"$active_json"
+            )"
+            if [ "$active_count" -gt 0 ]; then
+              visible=true
+              break
+            fi
+          done
+          if [ "$visible" != "true" ]; then
+            echo "::error::Production drain dispatch was accepted but did not become visible."
+            exit 3
+          fi
+
+          {
+            echo "### SigmaScope drain wake dispatched"
+            echo
+            echo "- Workers: \`$WORKERS\`"
+            echo "- Items per worker: \`$ITEMS_PER_WORKER\`"
+            echo "- Active drain runs after dispatch: \`$active_count\`"
+          } >> "$GITHUB_STEP_SUMMARY"
