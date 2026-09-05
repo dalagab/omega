@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import unittest
@@ -88,6 +88,9 @@ class SourceFollowupIssueSafetyTests(unittest.TestCase):
             )
         self.assertEqual((0, 3), result)
         self.assertEqual(3, sum(call[:2] == ("issue", "close") for call in calls))
+        close_calls = [call for call in calls if call[:2] == ("issue", "close")]
+        self.assertTrue(close_calls)
+        self.assertFalse(any("--comment" in call for call in close_calls))
 
     def test_cleanup_plan_keeps_oldest_and_apply_is_bounded(self) -> None:
         plan = cleanup_source_followup_issues.cleanup_plan([
@@ -105,7 +108,17 @@ class SourceFollowupIssueSafetyTests(unittest.TestCase):
         ) as close:
             closed = cleanup_source_followup_issues.apply_cleanup(plan, "example/omega", 1)
         self.assertEqual(1, closed)
-        close.assert_called_once()
+        close.assert_called_once_with("example/omega", {"number": 4})
+
+    def test_close_issue_does_not_comment_on_automated_closure(self) -> None:
+        calls = []
+        with mock.patch.object(
+            create_source_followup_issues, "gh", side_effect=lambda *args: calls.append(args) or "",
+        ):
+            closed = create_source_followup_issues._close_issue("example/omega", {"number": 12})
+        self.assertTrue(closed)
+        self.assertEqual([("issue", "close", "12", "--repo", "example/omega")], calls)
+        self.assertFalse(any("--comment" in call for call in calls))
 
 
 if __name__ == "__main__":

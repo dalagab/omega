@@ -181,11 +181,11 @@ def _open_followup_issues(repository: str) -> list[dict]:
     return issues
 
 
-def _close_issue(repository: str, issue: dict, comment: str) -> bool:
+def _close_issue(repository: str, issue: dict) -> bool:
     number = str(issue.get("number") or "")
     if not number:
         return False
-    gh("issue", "close", number, "--repo", repository, "--comment", comment)
+    gh("issue", "close", number, "--repo", repository)
     return True
 
 
@@ -232,11 +232,11 @@ def reconcile_issues(
 
     closed = 0
 
-    def close(issue: dict, comment: str) -> bool:
+    def close(issue: dict) -> bool:
         nonlocal closed
         if closed >= max(0, max_close):
             return False
-        if not _close_issue(repository, issue, comment):
+        if not _close_issue(repository, issue):
             return False
         closed += 1
         return True
@@ -245,10 +245,7 @@ def reconcile_issues(
     for issue in unscoped:
         if followup_key(str(issue.get("body") or "")) not in resolved_keys:
             continue
-        close(
-            issue,
-            "Omega's current Sigmascope evidence successfully inspected public source for this source-discovery request.",
-        )
+        close(issue)
 
     # Source discovery is plugin-scoped: once current evidence successfully inspects
     # public source for an InternalName, close every mirror-specific legacy issue.
@@ -260,23 +257,8 @@ def reconcile_issues(
             if exact is None:
                 continue
             resolution = {}
-        repository_url = str(resolution.get("repository") or "")
-        commit = str(resolution.get("commit") or "")
-        confidence = str(resolution.get("confidence") or "")
-        detail = ""
-        if repository_url:
-            detail += f" Repository: {repository_url}."
-        if commit:
-            detail += f" Commit: {commit[:12]}."
-        if confidence:
-            detail += f" Provenance confidence: {confidence}."
-        comment = (
-            "Omega's current Sigmascope evidence successfully inspected a public source repository for this plugin. "
-            "This resolves the source-discovery request across catalog mirrors; individual artifact-to-source verification remains per variant."
-            + detail
-        )
         for issue in issues:
-            close(issue, comment)
+            close(issue)
         open_by_internal.pop(internal_key, None)
 
     # Consolidate still-unresolved legacy mirror issues to one canonical issue and
@@ -285,12 +267,8 @@ def reconcile_issues(
         if not issues:
             continue
         canonical = issues[0]
-        canonical_number = str(canonical.get("number") or "")
         for duplicate in issues[1:]:
-            close(
-                duplicate,
-                f"Consolidated into #{canonical_number}. Source discovery is tracked once per plugin InternalName; mirror-specific artifact provenance remains separate.",
-            )
+            close(duplicate)
         current_items = actionable_by_internal.get(internal_key) or []
         if current_items:
             internal_name = str(current_items[0].get("internalName") or "")

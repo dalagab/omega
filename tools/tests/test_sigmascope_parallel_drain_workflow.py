@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unittest
 import common
 
@@ -10,6 +11,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         for required in (
             "group: omega-sigmascope-parallel-drain-exclusive", "queue: max", "default: 4", "default: 10",
             "sigmascope_parallel_drain_plan.py", "strategy:", "fail-fast: false", "QUEUE_KEYS_JSON",
+            "runs-on: [self-hosted, Linux, X64, omega-security]", "max-parallel: 2",
             "sigmascope_worker_batch.py run", "--queue-keys-file catalog/slot-work/queue-keys.txt",
             "sigmascope_worker_batch.py bundles", "sigmascope_result_merger.py",
             "--queue-seed catalog/active-state/scan-queue.json", "security_developer_audit.py",
@@ -30,6 +32,16 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
         workers = text[text.index("\n  workers:"): text.index("\n  merge:")]
         publish = text[text.index("\n  publish:"): text.index("\n  publish-client:")]
+        for job_name in ("\n  plan:", "\n  merge:", "\n  publish:", "\n  issue-summary:"):
+            if job_name in text:
+                start = text.index(job_name)
+                job_starts = [match.start() for match in re.finditer(r"(?m)^  [A-Za-z0-9_-]+:", text)]
+                next_starts = [position for position in job_starts if position > start + len(job_name)]
+                job = text[start:] if not next_starts else text[start:next_starts[0]]
+                self.assertIn("runs-on: ubuntu-latest", job)
+        client_publish = (common.ROOT / ".github" / "workflows" / "catalog-client-publish.yml").read_text(encoding="utf-8")
+        self.assertIn("uses: ./.github/workflows/catalog-client-publish.yml", text)
+        self.assertIn("runs-on: ubuntu-latest", client_publish)
         self.assertIn("permissions:\n      contents: read", workers)
         self.assertNotIn("publish_security_evidence_v2.py", workers)
         self.assertNotIn("publish_deep_scan_state.py", workers)
