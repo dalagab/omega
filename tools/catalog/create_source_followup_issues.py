@@ -30,7 +30,7 @@ INTERNAL_RE = re.compile(r"omega-source-internal:([^\s<>]+)")
 
 
 def gh(*args: str) -> str:
-    completed = subprocess.run(["gh", *args], check=True, text=True, capture_output=True)
+    completed = subprocess.run(["gh", *args], check=True, text=True, encoding="utf-8", errors="strict", capture_output=True)
     return completed.stdout
 
 
@@ -163,7 +163,6 @@ def _open_followup_issues(repository: str) -> list[dict]:
     label = urllib.parse.quote(LABEL, safe="")
     raw = gh(
         "api", "--paginate", "--slurp",
-        "--jq", "map(map({number,body,title,pull_request}))",
         f"repos/{owner_repo}/issues?state=open&labels={label}&per_page=100",
     )
     pages = json.loads(raw)
