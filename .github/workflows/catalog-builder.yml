@@ -38,6 +38,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
   packages: read
 
 env:
@@ -112,7 +113,7 @@ jobs:
     name: Freeze coherent authoritative catalog/Definitions state
     needs: [resolve-publisher-image, preflight]
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 150
     container:
       image: ${{ needs.resolve-publisher-image.outputs.image }}
       credentials:
@@ -175,14 +176,83 @@ jobs:
       - name: Checkout secondary-security definitions lane result
         uses: actions/checkout@v6
         with: {ref: secondary-security-state, path: catalog/lane-results/secondary-security-definitions, fetch-depth: 1, persist-credentials: false}
-      - name: Validate all lane results against settled durable queues
-        run: >-
-          python tools/orchestration/freeze_inputs.py
-          --work-state catalog/work-state
-          --policy security-definitions/orchestration/work-policy.json
-          --lanes-root catalog/lane-results
-          --catalog-root catalog/previous-state/catalog
-          --output catalog/freeze-inputs.json
+      - name: Wait for exact settled catalog and collector inputs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          validate_inputs() {
+            python tools/orchestration/freeze_inputs.py \
+              --work-state catalog/work-state \
+              --policy security-definitions/orchestration/work-policy.json \
+              --lanes-root catalog/lane-results \
+              --catalog-root catalog/previous-state/catalog \
+              --output catalog/freeze-inputs.json \
+              >catalog/freeze-readiness.out 2>catalog/freeze-readiness.err
+          }
+
+          refresh_branch() {
+            local path="$1"
+            local ref="$2"
+            git -C "$path" fetch --quiet --depth=1 origin "$ref"
+            git -C "$path" reset --quiet --hard FETCH_HEAD
+          }
+
+          refresh_inputs() {
+            refresh_branch catalog/work-state security-work-state
+            refresh_branch catalog/lane-results/catalog-discovery catalog-discovery-work-state
+            refresh_branch catalog/lane-results/catalog-enrichment catalog-enrichment-state
+            refresh_branch catalog/lane-results/catalog-scrape catalog-scrape-state
+            refresh_branch catalog/lane-results/source-head-observation source-head-state
+            refresh_branch catalog/lane-results/threat-intelligence threat-intelligence-state
+            refresh_branch catalog/lane-results/osv-advisories osv-advisory-state
+            refresh_branch catalog/lane-results/secondary-security-definitions secondary-security-state
+          }
+
+          wake_reconcile() {
+            local attempt
+            for attempt in 1 2 3; do
+              if gh workflow run security-orchestration-dispatch.yml \
+                --repo "${{ github.repository }}" --ref sigmascope -f mode=reconcile; then
+                return 0
+              fi
+              echo "::warning::Reconcile dispatch attempt $attempt failed while preparing catalog freeze"
+              sleep $((attempt * 5))
+            done
+            return 1
+          }
+
+          max_attempts=60
+          for attempt in $(seq 1 "$max_attempts"); do
+            if validate_inputs; then
+              cat catalog/freeze-readiness.out
+              echo "::notice::Catalog freeze inputs are exact and settled on attempt $attempt."
+              break
+            fi
+
+            reason="$(tail -n 1 catalog/freeze-readiness.err || true)"
+            if ! grep -Eq \
+              'latest work is .*not completed|was not collected against current catalog revision|result revision is not the settled result|result SHA-256 is not the settled result|catalog enrichment did not consume the settled discovery result|website scraper did not consume the settled enrichment result' \
+              catalog/freeze-readiness.err; then
+              cat catalog/freeze-readiness.err >&2
+              echo "::error::Catalog freeze readiness failed for a non-transient validation reason: $reason"
+              exit 5
+            fi
+
+            echo "::notice::Catalog freeze is waiting for collector convergence ($attempt/$max_attempts): $reason"
+            if (( attempt == 1 || attempt % 5 == 0 )); then
+              wake_reconcile || echo "::warning::Collector reconciliation wake failed; the scheduled heartbeat may recover it."
+            fi
+            if (( attempt == max_attempts )); then
+              cat catalog/freeze-readiness.err >&2
+              echo "::error::Catalog-bound collectors did not converge within ${max_attempts} minutes."
+              exit 6
+            fi
+            sleep 60
+            refresh_inputs
+          done
       - name: Stage settled catalog working state
         shell: bash
         run: |
@@ -305,6 +375,22 @@ jobs:
           gh auth setup-git
           python tools/catalog/publish_catalog_state.py --input catalog/state --repo . --branch catalog-data --history-mode fast-forward --push \
             | tee catalog/catalog-history-publication.json
+      - name: Wake collector reconciliation after catalog publication
+        if: steps.freeze_identity.outputs.changed == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if gh workflow run security-orchestration-dispatch.yml \
+              --repo "${{ github.repository }}" --ref sigmascope -f mode=reconcile; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          exit 1
       - name: Build a sanitised Discord catalog notice
         id: discord_notice
         if: steps.freeze_identity.outputs.changed == 'true'

@@ -74,6 +74,22 @@ jobs:
           python tools/catalog/publish_catalog_state.py --input catalog/release-state \
             --repo . --branch catalog-data --history-mode fast-forward --push \
             --expected-parent-sha "$(git -C catalog/current-state rev-parse HEAD)"
+      - name: Wake collector reconciliation after catalog publication
+        if: steps.intake.outputs.changed == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if gh workflow run security-orchestration-dispatch.yml \
+              --repo "${{ github.repository }}" --ref sigmascope -f mode=reconcile; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          exit 1
       - name: Wake update and baseline workers after publication
         if: steps.intake.outputs.changed == 'true'
         env:

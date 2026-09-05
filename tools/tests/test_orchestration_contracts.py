@@ -149,6 +149,36 @@ class OrchestrationContractTests(unittest.TestCase):
         self.assertIn("row['queueId']", text)
         self.assertIn("actions: write", text)
 
+    def test_catalog_publication_reconciles_and_freeze_waits_for_exact_inputs(self) -> None:
+        freeze = self.read_workflow("catalog-builder.yml")
+        self.assertIn("actions: write", freeze)
+        self.assertIn("Wait for exact settled catalog and collector inputs", freeze)
+        self.assertIn("freeze_inputs.py", freeze)
+        self.assertIn("refresh_branch catalog/work-state security-work-state", freeze)
+        self.assertIn("catalog-enrichment-state", freeze)
+        self.assertIn("catalog-scrape-state", freeze)
+        self.assertIn("source-head-state", freeze)
+        self.assertIn("-f mode=reconcile", freeze)
+        self.assertIn("Catalog-bound collectors did not converge", freeze)
+        self.assertLess(
+            freeze.index("Publish changed frozen JSON state atomically"),
+            freeze.index("Wake collector reconciliation after catalog publication"),
+        )
+
+        intake = self.read_workflow("catalog-release-intake.yml")
+        self.assertLess(
+            intake.index("Publish catalog identity and queue seed atomically"),
+            intake.index("Wake collector reconciliation after catalog publication"),
+        )
+        self.assertLess(
+            intake.index("Wake collector reconciliation after catalog publication"),
+            intake.index("Wake update and baseline workers after publication"),
+        )
+        self.assertIn("-f mode=reconcile", intake)
+
+        boundary = self.read_workflow("catalog-freeze.yml")
+        self.assertIn("actions: write", boundary)
+
     def test_worker_image_manifest_is_persisted_not_only_an_actions_artifact(self) -> None:
         text=self.read_workflow("worker-images.yml")
         self.assertIn("security-worker-images", text)
