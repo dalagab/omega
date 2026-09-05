@@ -17,17 +17,20 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
+import urllib.parse
 
 
 LABEL = "omega-source-followup"
 DEFAULT_MAX_NEW = 25
+DEFAULT_MAX_CLOSE = 100
+MAX_MANAGED_OPEN_ISSUES = 10_000
 FOLLOWUP_KEY_RE = re.compile(r"omega-source-followup:([A-Za-z0-9_-]+)")
 OVERRIDE_KEY_RE = re.compile(r"omega-source-override:([A-Za-z0-9_-]+)")
 INTERNAL_RE = re.compile(r"omega-source-internal:([^\s<>]+)")
 
 
 def gh(*args: str) -> str:
-    completed = subprocess.run(["gh", *args], check=True, text=True, capture_output=True)
+    completed = subprocess.run(["gh", *args], check=True, text=True, encoding="utf-8", errors="strict", capture_output=True)
     return completed.stdout
 
 
@@ -156,12 +159,26 @@ Finding source for the plugin resolves this human source-discovery request acros
 
 
 def _open_followup_issues(repository: str) -> list[dict]:
+    owner_repo = "/".join(urllib.parse.quote(part, safe="") for part in repository.split("/"))
+    label = urllib.parse.quote(LABEL, safe="")
     raw = gh(
-        "issue", "list", "--repo", repository, "--label", LABEL, "--state", "open",
-        "--limit", "1000", "--json", "number,body,title",
+        "api", "--paginate", "--slurp",
+        f"repos/{owner_repo}/issues?state=open&labels={label}&per_page=100",
     )
-    data = json.loads(raw)
-    return data if isinstance(data, list) else []
+    pages = json.loads(raw)
+    if not isinstance(pages, list) or any(not isinstance(page, list) for page in pages):
+        raise RuntimeError("GitHub returned an incomplete or malformed source-followup issue listing")
+    issues: list[dict] = []
+    for page in pages:
+        for issue in page:
+            if not isinstance(issue, dict):
+                raise RuntimeError("GitHub returned a malformed source-followup issue")
+            if issue.get("pull_request"):
+                continue
+            issues.append({key: issue.get(key) for key in ("number", "body", "title")})
+            if len(issues) > MAX_MANAGED_OPEN_ISSUES:
+                raise RuntimeError(f"managed source-followup issue count exceeds {MAX_MANAGED_OPEN_ISSUES}")
+    return issues
 
 
 def _close_issue(repository: str, issue: dict, comment: str) -> bool:
@@ -187,7 +204,12 @@ def _update_issue(repository: str, issue: dict, title: str, body: str) -> None:
         Path(body_file).unlink(missing_ok=True)
 
 
-def reconcile_issues(document: dict, repository: str, max_new: int = DEFAULT_MAX_NEW) -> tuple[int, int]:
+def reconcile_issues(
+    document: dict,
+    repository: str,
+    max_new: int = DEFAULT_MAX_NEW,
+    max_close: int = DEFAULT_MAX_CLOSE,
+) -> tuple[int, int]:
     gh("label", "create", LABEL, "--color", "D4C5F9", "--description", "Public source needed for an Omega scan", "--force", "--repo", repository)
     existing = _open_followup_issues(repository)
     actionable_by_internal = _group_actionable(document)
@@ -210,15 +232,23 @@ def reconcile_issues(document: dict, repository: str, max_new: int = DEFAULT_MAX
 
     closed = 0
 
+    def close(issue: dict, comment: str) -> bool:
+        nonlocal closed
+        if closed >= max(0, max_close):
+            return False
+        if not _close_issue(repository, issue, comment):
+            return False
+        closed += 1
+        return True
+
     # Compatibility for historical managed issues that somehow lack the InternalName marker.
     for issue in unscoped:
         if followup_key(str(issue.get("body") or "")) not in resolved_keys:
             continue
-        if _close_issue(
-            repository, issue,
+        close(
+            issue,
             "Omega's current Sigmascope evidence successfully inspected public source for this source-discovery request.",
-        ):
-            closed += 1
+        )
 
     # Source discovery is plugin-scoped: once current evidence successfully inspects
     # public source for an InternalName, close every mirror-specific legacy issue.
@@ -246,8 +276,7 @@ def reconcile_issues(document: dict, repository: str, max_new: int = DEFAULT_MAX
             + detail
         )
         for issue in issues:
-            if _close_issue(repository, issue, comment):
-                closed += 1
+            close(issue, comment)
         open_by_internal.pop(internal_key, None)
 
     # Consolidate still-unresolved legacy mirror issues to one canonical issue and
@@ -258,11 +287,10 @@ def reconcile_issues(document: dict, repository: str, max_new: int = DEFAULT_MAX
         canonical = issues[0]
         canonical_number = str(canonical.get("number") or "")
         for duplicate in issues[1:]:
-            if _close_issue(
-                repository, duplicate,
+            close(
+                duplicate,
                 f"Consolidated into #{canonical_number}. Source discovery is tracked once per plugin InternalName; mirror-specific artifact provenance remains separate.",
-            ):
-                closed += 1
+            )
         current_items = actionable_by_internal.get(internal_key) or []
         if current_items:
             internal_name = str(current_items[0].get("internalName") or "")
@@ -298,11 +326,12 @@ def main() -> int:
     parser.add_argument("--input", required=True)
     parser.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY", ""))
     parser.add_argument("--max-new", type=int, default=DEFAULT_MAX_NEW)
+    parser.add_argument("--max-close", type=int, default=DEFAULT_MAX_CLOSE)
     args = parser.parse_args()
     if not args.repository:
         parser.error("--repository or GITHUB_REPOSITORY is required")
     document = json.loads(Path(args.input).read_text(encoding="utf-8"))
-    created, closed = reconcile_issues(document, args.repository, args.max_new)
+    created, closed = reconcile_issues(document, args.repository, args.max_new, args.max_close)
     print(f"Created {created} and closed {closed} source follow-up issue(s)")
     return 0
 
