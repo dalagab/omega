@@ -1,0 +1,223 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriverExt.BufferSwitchCallBack+0x88: callvirt NAudio.Wave.Asio.AsioFillBufferCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:System.Private.Windows.Core.dll: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Assemblies.get_MscorlibAssembly+0xe: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.TryBindToType+0x6f: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.TryBindToType+0x88: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.<GetSimplyNamedTypeFromAssembly>g__ResolveSimpleAssemblyName|7_0+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.<GetSimplyNamedTypeFromAssembly>g__ResolveSimpleAssemblyName|7_0+0x13: call System.Reflection.Assembly.Load: Assembly.Load"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:AetherialArena.dll: s://github.com/rail2025/AetherialArena.git",
+      "artifact:AetherialArena.dll: s://suno.com/song/5907b5d4-4171-4a9d-ae78-c4774cc03101APIC",
+      "artifact:AetherialArena.dll: J:/X",
+      "artifact:AetherialArena.dll: s:/2_",
+      "artifact:AetherialArena.dll: s://suno.com/song/84ec3a3e-f520-40e9-b7d0-d8d1a1f7e108APIC",
+      "artifact:AetherialArena.dll: d:/&m",
+      "artifact:AetherialArena.dll: v:\\2",
+      "artifact:AetherialArena.dll: U:/5_"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Win32.SystemEvents.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:NAudio.Asio.dll: DllImportAttribute",
+      "metadata:NAudio.Core.dll: DllImportAttribute",
+      "metadata:NAudio.Core.dll: LoadLibrary",
+      "metadata:NAudio.Core.dll: GetProcAddress",
+      "artifact:NAudio.Core.dll: LoadLibrary",
+      "artifact:NAudio.Core.dll: GetProcAddress",
+      "metadata:NAudio.Midi.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Win32.SystemEvents.dll: http://www.microsoft.com0/",
+      "artifact:System.Drawing.Common.dll: http://www.microsoft.com0/",
+      "artifact:System.Private.Windows.Core.dll: http://www.microsoft.com0/",
+      "artifact:System.Private.Windows.GdiPlus.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AetherialArena.dll: https://ko-fi.com/rail2025"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.eb59a0efebb6",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AetherialArena.dll: https://suno.com/song/<redacted>"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ec91f04c573d",
+    "severity": "caution",
+    "title": "Endpoint: suno.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:System.Private.Windows.Core.dll: CreateProcess"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:NAudio.Asio.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.Asio.dll: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:AetherialArena.dll: WriteAllText",
+      "il:AetherialArena.dll:AetherialArena.Services.SaveManager.SaveProfile+0x1a: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:AetherialArena.dll: WriteAllText",
+      "metadata:NAudio.Core.dll: FileStream",
+      "il:NAudio.Core.dll:NAudio.SoundFont.SoundFont..ctor+0x4: newobj System.IO.FileStream..ctor: FileStream",
+      "il:NAudio.Core.dll:NAudio.Wave.AiffFileWriter..ctor+0x5: newobj System.IO.FileStream..ctor: FileStream",
+      "il:NAudio.Core.dll:NAudio.Wave.WaveFileWriter..ctor+0x5: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:NAudio.Core.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AetherialArena.dll: https://github.com/rail2025/AetherialArena.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6daff2890fbf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AetherialArena.json: https://github.com/rail2025/AetherialArena"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9c6ccd1bc2ae",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.Asio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Midi.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Win32.SystemEvents.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Drawing.Common.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Private.Windows.Core.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Private.Windows.GdiPlus.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net10.0\\Microsoft.Win32.SystemEvents.dll: WebRequest",
+      "artifact:runtimes\\win\\lib\\net10.0\\Microsoft.Win32.SystemEvents.dll: HttpWebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
