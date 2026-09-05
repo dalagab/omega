@@ -1,0 +1,39 @@
+name: Omega SigmaScope · coalesced production drain wake
+
+# Default-branch registration copy. The authoritative implementation lives at this
+# same path on branch `sigmascope`; this copy only makes direct dispatch possible.
+
+on:
+  workflow_dispatch:
+    inputs:
+      workers:
+        description: Parallel scanner workers for the production drain (1-8)
+        type: number
+        required: false
+        default: 4
+      items_per_worker:
+        description: Exact queue keys per worker (1-16)
+        type: number
+        required: false
+        default: 10
+      publish_client_every:
+        description: Republish Omega customer DB every N successful waves
+        type: number
+        required: false
+        default: 5
+
+permissions:
+  contents: read
+
+jobs:
+  registration-only:
+    name: Select the sigmascope branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Stop accidental main-branch execution
+        shell: bash
+        run: |
+          echo "::error::This main-branch file only registers the coalesced SigmaScope drain wake in GitHub Actions."
+          echo "::error::Run it with Branch = sigmascope; the sigmascope copy contains the real coalescing implementation."
+          exit 2

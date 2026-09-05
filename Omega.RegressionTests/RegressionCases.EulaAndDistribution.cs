@@ -183,11 +183,16 @@ internal static partial class RegressionCases
 
         var sigmascopeWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "sigmascope.yml"));
         Contains(sigmascopeWorkflow, "name: Omega security services · Sigmascope launcher", "main exposes only the thin Sigmascope launcher");
-        Contains(sigmascopeWorkflow, "uses: dalagab/omega/.github/workflows/sigmascope-drain-wake.yml@sigmascope", "scheduled and manual production wake-ups are coalesced on the security-services branch");
+        Contains(sigmascopeWorkflow, "gh workflow run sigmascope-drain-wake.yml", "scheduled and manual production wake-ups dispatch the coalesced security-services controller");
+        Contains(sigmascopeWorkflow, "--ref sigmascope", "production wake dispatch explicitly selects the security-services implementation branch");
         Contains(sigmascopeWorkflow, "uses: dalagab/omega/.github/workflows/sigmascope.yml@sigmascope", "bounded developer analysis remains isolated on the security-services branch");
+        False(sigmascopeWorkflow.Contains("uses: dalagab/omega/.github/workflows/sigmascope-drain-wake.yml@sigmascope", StringComparison.Ordinal), "main does not depend on reusable-workflow expansion for the production wake controller");
         False(sigmascopeWorkflow.Contains("uses: dalagab/omega/.github/workflows/sigmascope-parallel-drain.yml@sigmascope", StringComparison.Ordinal), "main must not queue production drain owners directly");
         False(sigmascopeWorkflow.Contains("publish_security_evidence_v2.py", StringComparison.Ordinal), "client branch does not duplicate the evidence publisher");
         False(sigmascopeWorkflow.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "continuous security launcher cannot churn the client database directly");
+        var wakeRegistration = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "sigmascope-drain-wake.yml"));
+        Contains(wakeRegistration, "Default-branch registration copy", "main registers the coalesced wake for direct Actions dispatch");
+        Contains(wakeRegistration, "Run it with Branch = sigmascope", "registration copy cannot accidentally execute production work on main");
         var dailyCatalogWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
         Contains(dailyCatalogWorkflow, "uses: dalagab/omega/.github/workflows/catalog-builder.yml@sigmascope", "daily/manual catalog publication is delegated to the security-services branch");
         False(dailyCatalogWorkflow.Contains("production_sigmascope_v2_pipeline.py", StringComparison.Ordinal), "catalog launcher cannot directly run Sigmascope");

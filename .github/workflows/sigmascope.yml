@@ -30,12 +30,23 @@ permissions:
 jobs:
   production-drain-wake:
     if: ${{ (inputs.internal_names || '') == '' }}
-    uses: dalagab/omega/.github/workflows/sigmascope-drain-wake.yml@sigmascope
-    with:
-      workers: ${{ inputs.workers || 4 }}
-      items_per_worker: ${{ inputs.items_per_worker || 10 }}
-      publish_client_every: 5
-    secrets: inherit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch coalesced production drain wake on SigmaScope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKERS: ${{ inputs.workers || 4 }}
+          ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 10 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run sigmascope-drain-wake.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref sigmascope \
+            -f workers="$WORKERS" \
+            -f items_per_worker="$ITEMS_PER_WORKER" \
+            -f publish_client_every=5
 
   bounded-developer-run:
     if: ${{ (inputs.internal_names || '') != '' }}
