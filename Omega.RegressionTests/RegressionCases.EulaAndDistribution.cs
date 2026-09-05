@@ -183,7 +183,9 @@ internal static partial class RegressionCases
 
         var sigmascopeWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "sigmascope.yml"));
         Contains(sigmascopeWorkflow, "name: Omega security services · Sigmascope launcher", "main exposes only the thin Sigmascope launcher");
-        Contains(sigmascopeWorkflow, "uses: dalagab/omega/.github/workflows/sigmascope.yml@sigmascope", "third-party analysis implementation remains isolated on the security-services branch");
+        Contains(sigmascopeWorkflow, "uses: dalagab/omega/.github/workflows/sigmascope-drain-wake.yml@sigmascope", "scheduled and manual production wake-ups are coalesced on the security-services branch");
+        Contains(sigmascopeWorkflow, "uses: dalagab/omega/.github/workflows/sigmascope.yml@sigmascope", "bounded developer analysis remains isolated on the security-services branch");
+        False(sigmascopeWorkflow.Contains("uses: dalagab/omega/.github/workflows/sigmascope-parallel-drain.yml@sigmascope", StringComparison.Ordinal), "main must not queue production drain owners directly");
         False(sigmascopeWorkflow.Contains("publish_security_evidence_v2.py", StringComparison.Ordinal), "client branch does not duplicate the evidence publisher");
         False(sigmascopeWorkflow.Contains("gh release upload catalog-latest", StringComparison.Ordinal), "continuous security launcher cannot churn the client database directly");
         var dailyCatalogWorkflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "catalog-builder.yml"));
