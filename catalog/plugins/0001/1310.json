@@ -4,7 +4,7 @@
     "canonical_name": "Lazy Fate Automation",
     "first_seen_utc": "2026-08-26T03:31:07Z",
     "internal_name": "LazyFateAutomation",
-    "last_seen_utc": "2026-09-05T22:54:06Z",
+    "last_seen_utc": "2026-09-05T23:01:17Z",
     "plugin_id": 1310
   },
   "presentation": {
@@ -297,7 +297,7 @@
         }
       ],
       "variant": {
-        "active": 1,
+        "active": 0,
         "applicable_version": "any",
         "assembly_version": "0.0.1.45",
         "author": "croizat, dajoey",
@@ -822,7 +822,7 @@
         }
       ],
       "variant": {
-        "active": 1,
+        "active": 0,
         "applicable_version": "any",
         "assembly_version": "0.0.1.45",
         "author": "croizat, dajoey",
@@ -855,6 +855,156 @@
         "testing_assembly_version": "0.0.2.0",
         "testing_dalamud_api_level": 15,
         "variant_id": 7419
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "utility",
+          "variant_id": 7481
+        },
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 7481
+        },
+        {
+          "kind": "tag",
+          "tag": "fate",
+          "variant_id": 7481
+        },
+        {
+          "kind": "tag",
+          "tag": "grind",
+          "variant_id": 7481
+        },
+        {
+          "kind": "tag",
+          "tag": "relic",
+          "variant_id": 7481
+        },
+        {
+          "kind": "tag",
+          "tag": "vnavmesh",
+          "variant_id": 7481
+        },
+        {
+          "kind": "tag",
+          "tag": "yokai",
+          "variant_id": 7481
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.0.2.0",
+        "author": "croizat, dajoey",
+        "authors_json": "[\"croizat\",\"dajoey\"]",
+        "category_tags_json": "[\"utility\"]",
+        "changelog": "v0.0.2.0 (2026-09-05)\n\n- Added the in-game \"What's new\" popup. After Lazy Fate Automation updates, its changelog now opens once inside the game so you can see what changed without going to GitHub. It waits until you are logged in and out of combat, duty, cutscenes and zoning; closing it (Got it, X or Escape) marks it read. Type `/lazyfate changelog` any time to reopen it.\n- No change to FATE grinding: zone swapping, the duty pause, the Gluttony lease and every sort/blacklist setting are unchanged.\n\nv0.0.1.45 - 2026-08-17\n- **Pauses inside instanced content and RELEASES the Gluttony lease.** `FateGrind` had no duty gate: queuing\n- **Auto-Rotation control actually works now.** `GluttonyComboIPC.Enable()` called `SetAutoRotationConfigState`\n- **`InvalidLease` handled on every IPC call** (`SetAutoRotationState`, `SetAutoRotationConfigState`,\n- IPC warnings are throttled to one per 10s.\n\nv0.0.1.44 - 2026-06-27\n- **Stop now halts vnavmesh immediately.** Hitting Stop (or `/lazyfate stop`) while the bot was pathfinding/flying to a FATE previously left vnavmesh navigating to the destination on its own - cancelling the plugin's task does not stop vnav's in-flight movement. `FateToolKit` Running=false and the `FateGrind` task teardown now call `Svc.Navmesh.PathfindCancelAll()` + `Svc.Navmesh.Stop()` (cancel any in-progress pathfind AND stop following the current path), so the character stops the moment you hit Stop.\n\nv0.0.1.43 - 2026-06-27\n- **Stop now fully releases the Gluttony Combo lease** instead of only disabling auto-rotation. Previously, Stop (and `/lazyfate stop`, and auto-complete) left Gluttony \"controlled by Lazy Fate Automation\" with the lease still held, so your manual/macro control of Gluttony stayed locked out. `FateToolKit` Running=false now calls `GluttonyComboIPC.Release()` (which calls `ReleaseControl`) instead of `Disable()`; a fresh lease is acquired on the next grind start. Between-FATE pauses still use `Disable()` (keep the lease, just stop the rotation).\n\nv0.0.1.42 - 2026-06-27\n- Renamed the BossMod combat preset `CBT - Gluttony` -> `Gluttony` (dropped the leftover \"CBT -\" prefix that came from the original \"CBT - DwD\" community preset). The status bar now reads just \"Gluttony\".\n\nv0.0.1.41 - 2026-06-27\n- **Critical: Gluttony Combo lease churn that crashed Gluttony and tanked FPS.** `GluttonyComboIPC` re-registered a new lease on every transient IPC hiccup; because Gluttony's `CreateRegistration` dedups on `PluginName == internalPluginName` (and `PluginName` stores the *display* name), the dedup never matched and duplicate \"Lazy Fate Automation\" registrations piled up. Two or more registrations make Gluttony's `Search.AllJobsControlled` `ToDictionary` (keyed by plugin name) throw on every UI render and rotation tick - dead framerate, an error dialog in Gluttony's settings window, and a non-functional toggle macro. The lease is now acquired exactly once (throttled, only when none is held) and is never dropped on a transient error - only when Gluttony itself reports the lease invalid (by then it is already removed, so re-acquiring cannot duplicate).\n- Renamed the BossMod combat preset `CBT - DwD` -> `CBT - Gluttony` so the status bar reflects the new combat engine. Preset JSON re-brotli-compressed in `FateGrind._presetCompressed`; `_presetName` updated to match.\n- After updating, **reload Gluttony Combo** (or restart the game) once to clear any orphaned duplicate registrations left behind by v0.0.1.40.",
+        "dalamud_api_level": 15,
+        "description": "Automates FATE grinding, including Zodiac Atma, Anima Luminous Crystals, Resistance Memories, Phantom Demiatmas, Yo-kai Watch Medals, and Bicolor Gemstones. Seamlessly integrates with vnavmesh for pathing and flight, lifestream for zone swapping, TextAdvance for dialogue skipping, and Gluttony Combo/BossMod for combat. Use /lazyfate to open.",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/latest/latest.zip",
+        "download_link_testing": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/testing/testing.zip",
+        "download_link_update": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/latest/latest.zip",
+        "first_seen_utc": "2026-09-05T23:01:17Z",
+        "icon_url": "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazyfateautomation-icon.png",
+        "image_urls_json": "[\"\"]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-09-05T23:01:17Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "Lazy Fate Automation",
+        "plugin_id": 1310,
+        "punchline": "Fully automated FATE grinding utilizing vnavmesh, lifestream, and Gluttony Combo.",
+        "raw_manifest_json": "{\"Author\":\"croizat, dajoey\",\"Name\":\"Lazy Fate Automation\",\"Punchline\":\"Fully automated FATE grinding utilizing vnavmesh, lifestream, and Gluttony Combo.\",\"Description\":\"Automates FATE grinding, including Zodiac Atma, Anima Luminous Crystals, Resistance Memories, Phantom Demiatmas, Yo-kai Watch Medals, and Bicolor Gemstones. Seamlessly integrates with vnavmesh for pathing and flight, lifestream for zone swapping, TextAdvance for dialogue skipping, and Gluttony Combo/BossMod for combat. Use /lazyfate to open.\",\"InternalName\":\"LazyFateAutomation\",\"AssemblyVersion\":\"0.0.2.0\",\"Changelog\":\"v0.0.2.0 (2026-09-05)\\n\\n- Added the in-game \\\"What's new\\\" popup. After Lazy Fate Automation updates, its changelog now opens once inside the game so you can see what changed without going to GitHub. It waits until you are logged in and out of combat, duty, cutscenes and zoning; closing it (Got it, X or Escape) marks it read. Type `/lazyfate changelog` any time to reopen it.\\n- No change to FATE grinding: zone swapping, the duty pause, the Gluttony lease and every sort/blacklist setting are unchanged.\\n\\nv0.0.1.45 - 2026-08-17\\n- **Pauses inside instanced content and RELEASES the Gluttony lease.** `FateGrind` had no duty gate: queuing\\n- **Auto-Rotation control actually works now.** `GluttonyComboIPC.Enable()` called `SetAutoRotationConfigState`\\n- **`InvalidLease` handled on every IPC call** (`SetAutoRotationState`, `SetAutoRotationConfigState`,\\n- IPC warnings are throttled to one per 10s.\\n\\nv0.0.1.44 - 2026-06-27\\n- **Stop now halts vnavmesh immediately.** Hitting Stop (or `/lazyfate stop`) while the bot was pathfinding/flying to a FATE previously left vnavmesh navigating to the destination on its own - cancelling the plugin's task does not stop vnav's in-flight movement. `FateToolKit` Running=false and the `FateGrind` task teardown now call `Svc.Navmesh.PathfindCancelAll()` + `Svc.Navmesh.Stop()` (cancel any in-progress pathfind AND stop following the current path), so the character stops the moment you hit Stop.\\n\\nv0.0.1.43 - 2026-06-27\\n- **Stop now fully releases the Gluttony Combo lease** instead of only disabling auto-rotation. Previously, Stop (and `/lazyfate stop`, and auto-complete) left Gluttony \\\"controlled by Lazy Fate Automation\\\" with the lease still held, so your manual/macro control of Gluttony stayed locked out. `FateToolKit` Running=false now calls `GluttonyComboIPC.Release()` (which calls `ReleaseControl`) instead of `Disable()`; a fresh lease is acquired on the next grind start. Between-FATE pauses still use `Disable()` (keep the lease, just stop the rotation).\\n\\nv0.0.1.42 - 2026-06-27\\n- Renamed the BossMod combat preset `CBT - Gluttony` -> `Gluttony` (dropped the leftover \\\"CBT -\\\" prefix that came from the original \\\"CBT - DwD\\\" community preset). The status bar now reads just \\\"Gluttony\\\".\\n\\nv0.0.1.41 - 2026-06-27\\n- **Critical: Gluttony Combo lease churn that crashed Gluttony and tanked FPS.** `GluttonyComboIPC` re-registered a new lease on every transient IPC hiccup; because Gluttony's `CreateRegistration` dedups on `PluginName == internalPluginName` (and `PluginName` stores the *display* name), the dedup never matched and duplicate \\\"Lazy Fate Automation\\\" registrations piled up. Two or more registrations make Gluttony's `Search.AllJobsControlled` `ToDictionary` (keyed by plugin name) throw on every UI render and rotation tick - dead framerate, an error dialog in Gluttony's settings window, and a non-functional toggle macro. The lease is now acquired exactly once (throttled, only when none is held) and is never dropped on a transient error - only when Gluttony itself reports the lease invalid (by then it is already removed, so re-acquiring cannot duplicate).\\n- Renamed the BossMod combat preset `CBT - DwD` -> `CBT - Gluttony` so the status bar reflects the new combat engine. Preset JSON re-brotli-compressed in `FateGrind._presetCompressed`; `_presetName` updated to match.\\n- After updating, **reload Gluttony Combo** (or restart the game) once to clear any orphaned duplicate registrations left behind by v0.0.1.40.\",\"RepoUrl\":\"https://github.com/dajoey/lalalazy/tree/main/src/LazyFateAutomation\",\"ApplicableVersion\":\"any\",\"DalamudApiLevel\":15,\"IsHide\":false,\"IsTestingExclusive\":false,\"DownloadLinkInstall\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/latest/latest.zip\",\"DownloadLinkUpdate\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/latest/latest.zip\",\"DownloadLinkTesting\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/testing/testing.zip\",\"Tags\":[\"fate\",\"grind\",\"automation\",\"relic\",\"yokai\",\"vnavmesh\"],\"CategoryTags\":[\"utility\"],\"IconUrl\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazyfateautomation-icon.png\",\"ImageUrls\":[\"\"],\"DownloadCount\":0,\"LastUpdate\":\"0\",\"TestingAssemblyVersion\":\"0.0.2.0\",\"TestingDalamudApiLevel\":15,\"_SourceId\":\"dajoey-lalalazy\",\"_SourceName\":\"dajoey / lalalazy\",\"_SourceUrl\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/pluginmaster.json\",\"_Category\":\"automation\"}",
+        "repo_url": "https://github.com/dajoey/lalalazy/tree/main/src/LazyFateAutomation",
+        "source_entry_key": "lazyfateautomation|0.0.2.0|15|15|67",
+        "source_id": 691,
+        "tags_json": "[\"fate\",\"grind\",\"automation\",\"relic\",\"yokai\",\"vnavmesh\"]",
+        "testing_assembly_version": "0.0.2.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 7481
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "utility",
+          "variant_id": 7489
+        },
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 7489
+        },
+        {
+          "kind": "tag",
+          "tag": "fate",
+          "variant_id": 7489
+        },
+        {
+          "kind": "tag",
+          "tag": "grind",
+          "variant_id": 7489
+        },
+        {
+          "kind": "tag",
+          "tag": "relic",
+          "variant_id": 7489
+        },
+        {
+          "kind": "tag",
+          "tag": "vnavmesh",
+          "variant_id": 7489
+        },
+        {
+          "kind": "tag",
+          "tag": "yokai",
+          "variant_id": 7489
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.0.2.0",
+        "author": "croizat, dajoey",
+        "authors_json": "[\"croizat\",\"dajoey\"]",
+        "category_tags_json": "[\"utility\"]",
+        "changelog": "v0.0.2.0 (2026-09-05)\n\n- Added the in-game \"What's new\" popup. After Lazy Fate Automation updates, its changelog now opens once inside the game so you can see what changed without going to GitHub. It waits until you are logged in and out of combat, duty, cutscenes and zoning; closing it (Got it, X or Escape) marks it read. Type `/lazyfate changelog` any time to reopen it.\n- No change to FATE grinding: zone swapping, the duty pause, the Gluttony lease and every sort/blacklist setting are unchanged.\n\nv0.0.1.45 - 2026-08-17\n- **Pauses inside instanced content and RELEASES the Gluttony lease.** `FateGrind` had no duty gate: queuing\n- **Auto-Rotation control actually works now.** `GluttonyComboIPC.Enable()` called `SetAutoRotationConfigState`\n- **`InvalidLease` handled on every IPC call** (`SetAutoRotationState`, `SetAutoRotationConfigState`,\n- IPC warnings are throttled to one per 10s.\n\nv0.0.1.44 - 2026-06-27\n- **Stop now halts vnavmesh immediately.** Hitting Stop (or `/lazyfate stop`) while the bot was pathfinding/flying to a FATE previously left vnavmesh navigating to the destination on its own - cancelling the plugin's task does not stop vnav's in-flight movement. `FateToolKit` Running=false and the `FateGrind` task teardown now call `Svc.Navmesh.PathfindCancelAll()` + `Svc.Navmesh.Stop()` (cancel any in-progress pathfind AND stop following the current path), so the character stops the moment you hit Stop.\n\nv0.0.1.43 - 2026-06-27\n- **Stop now fully releases the Gluttony Combo lease** instead of only disabling auto-rotation. Previously, Stop (and `/lazyfate stop`, and auto-complete) left Gluttony \"controlled by Lazy Fate Automation\" with the lease still held, so your manual/macro control of Gluttony stayed locked out. `FateToolKit` Running=false now calls `GluttonyComboIPC.Release()` (which calls `ReleaseControl`) instead of `Disable()`; a fresh lease is acquired on the next grind start. Between-FATE pauses still use `Disable()` (keep the lease, just stop the rotation).\n\nv0.0.1.42 - 2026-06-27\n- Renamed the BossMod combat preset `CBT - Gluttony` -> `Gluttony` (dropped the leftover \"CBT -\" prefix that came from the original \"CBT - DwD\" community preset). The status bar now reads just \"Gluttony\".\n\nv0.0.1.41 - 2026-06-27\n- **Critical: Gluttony Combo lease churn that crashed Gluttony and tanked FPS.** `GluttonyComboIPC` re-registered a new lease on every transient IPC hiccup; because Gluttony's `CreateRegistration` dedups on `PluginName == internalPluginName` (and `PluginName` stores the *display* name), the dedup never matched and duplicate \"Lazy Fate Automation\" registrations piled up. Two or more registrations make Gluttony's `Search.AllJobsControlled` `ToDictionary` (keyed by plugin name) throw on every UI render and rotation tick - dead framerate, an error dialog in Gluttony's settings window, and a non-functional toggle macro. The lease is now acquired exactly once (throttled, only when none is held) and is never dropped on a transient error - only when Gluttony itself reports the lease invalid (by then it is already removed, so re-acquiring cannot duplicate).\n- Renamed the BossMod combat preset `CBT - DwD` -> `CBT - Gluttony` so the status bar reflects the new combat engine. Preset JSON re-brotli-compressed in `FateGrind._presetCompressed`; `_presetName` updated to match.\n- After updating, **reload Gluttony Combo** (or restart the game) once to clear any orphaned duplicate registrations left behind by v0.0.1.40.",
+        "dalamud_api_level": 15,
+        "description": "Automates FATE grinding, including Zodiac Atma, Anima Luminous Crystals, Resistance Memories, Phantom Demiatmas, Yo-kai Watch Medals, and Bicolor Gemstones. Seamlessly integrates with vnavmesh for pathing and flight, lifestream for zone swapping, TextAdvance for dialogue skipping, and Gluttony Combo/BossMod for combat. Use /lazyfate to open.",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/latest/latest.zip",
+        "download_link_testing": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/testing/testing.zip",
+        "download_link_update": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/latest/latest.zip",
+        "first_seen_utc": "2026-09-05T23:01:17Z",
+        "icon_url": "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazyfateautomation-icon.png",
+        "image_urls_json": "[\"\"]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-09-05T23:01:17Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "Lazy Fate Automation",
+        "plugin_id": 1310,
+        "punchline": "Fully automated FATE grinding utilizing vnavmesh, lifestream, and Gluttony Combo.",
+        "raw_manifest_json": "{\"Author\":\"croizat, dajoey\",\"Name\":\"Lazy Fate Automation\",\"Punchline\":\"Fully automated FATE grinding utilizing vnavmesh, lifestream, and Gluttony Combo.\",\"Description\":\"Automates FATE grinding, including Zodiac Atma, Anima Luminous Crystals, Resistance Memories, Phantom Demiatmas, Yo-kai Watch Medals, and Bicolor Gemstones. Seamlessly integrates with vnavmesh for pathing and flight, lifestream for zone swapping, TextAdvance for dialogue skipping, and Gluttony Combo/BossMod for combat. Use /lazyfate to open.\",\"InternalName\":\"LazyFateAutomation\",\"AssemblyVersion\":\"0.0.2.0\",\"Changelog\":\"v0.0.2.0 (2026-09-05)\\n\\n- Added the in-game \\\"What's new\\\" popup. After Lazy Fate Automation updates, its changelog now opens once inside the game so you can see what changed without going to GitHub. It waits until you are logged in and out of combat, duty, cutscenes and zoning; closing it (Got it, X or Escape) marks it read. Type `/lazyfate changelog` any time to reopen it.\\n- No change to FATE grinding: zone swapping, the duty pause, the Gluttony lease and every sort/blacklist setting are unchanged.\\n\\nv0.0.1.45 - 2026-08-17\\n- **Pauses inside instanced content and RELEASES the Gluttony lease.** `FateGrind` had no duty gate: queuing\\n- **Auto-Rotation control actually works now.** `GluttonyComboIPC.Enable()` called `SetAutoRotationConfigState`\\n- **`InvalidLease` handled on every IPC call** (`SetAutoRotationState`, `SetAutoRotationConfigState`,\\n- IPC warnings are throttled to one per 10s.\\n\\nv0.0.1.44 - 2026-06-27\\n- **Stop now halts vnavmesh immediately.** Hitting Stop (or `/lazyfate stop`) while the bot was pathfinding/flying to a FATE previously left vnavmesh navigating to the destination on its own - cancelling the plugin's task does not stop vnav's in-flight movement. `FateToolKit` Running=false and the `FateGrind` task teardown now call `Svc.Navmesh.PathfindCancelAll()` + `Svc.Navmesh.Stop()` (cancel any in-progress pathfind AND stop following the current path), so the character stops the moment you hit Stop.\\n\\nv0.0.1.43 - 2026-06-27\\n- **Stop now fully releases the Gluttony Combo lease** instead of only disabling auto-rotation. Previously, Stop (and `/lazyfate stop`, and auto-complete) left Gluttony \\\"controlled by Lazy Fate Automation\\\" with the lease still held, so your manual/macro control of Gluttony stayed locked out. `FateToolKit` Running=false now calls `GluttonyComboIPC.Release()` (which calls `ReleaseControl`) instead of `Disable()`; a fresh lease is acquired on the next grind start. Between-FATE pauses still use `Disable()` (keep the lease, just stop the rotation).\\n\\nv0.0.1.42 - 2026-06-27\\n- Renamed the BossMod combat preset `CBT - Gluttony` -> `Gluttony` (dropped the leftover \\\"CBT -\\\" prefix that came from the original \\\"CBT - DwD\\\" community preset). The status bar now reads just \\\"Gluttony\\\".\\n\\nv0.0.1.41 - 2026-06-27\\n- **Critical: Gluttony Combo lease churn that crashed Gluttony and tanked FPS.** `GluttonyComboIPC` re-registered a new lease on every transient IPC hiccup; because Gluttony's `CreateRegistration` dedups on `PluginName == internalPluginName` (and `PluginName` stores the *display* name), the dedup never matched and duplicate \\\"Lazy Fate Automation\\\" registrations piled up. Two or more registrations make Gluttony's `Search.AllJobsControlled` `ToDictionary` (keyed by plugin name) throw on every UI render and rotation tick - dead framerate, an error dialog in Gluttony's settings window, and a non-functional toggle macro. The lease is now acquired exactly once (throttled, only when none is held) and is never dropped on a transient error - only when Gluttony itself reports the lease invalid (by then it is already removed, so re-acquiring cannot duplicate).\\n- Renamed the BossMod combat preset `CBT - DwD` -> `CBT - Gluttony` so the status bar reflects the new combat engine. Preset JSON re-brotli-compressed in `FateGrind._presetCompressed`; `_presetName` updated to match.\\n- After updating, **reload Gluttony Combo** (or restart the game) once to clear any orphaned duplicate registrations left behind by v0.0.1.40.\",\"RepoUrl\":\"https://github.com/dajoey/lalalazy/tree/main/src/LazyFateAutomation\",\"ApplicableVersion\":\"any\",\"DalamudApiLevel\":15,\"IsHide\":false,\"IsTestingExclusive\":false,\"DownloadLinkInstall\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/latest/latest.zip\",\"DownloadLinkUpdate\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/latest/latest.zip\",\"DownloadLinkTesting\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyFateAutomation/testing/testing.zip\",\"Tags\":[\"fate\",\"grind\",\"automation\",\"relic\",\"yokai\",\"vnavmesh\"],\"CategoryTags\":[\"utility\"],\"IconUrl\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazyfateautomation-icon.png\",\"ImageUrls\":[\"\"],\"DownloadCount\":0,\"LastUpdate\":\"0\",\"TestingAssemblyVersion\":\"0.0.2.0\",\"TestingDalamudApiLevel\":15,\"_SourceId\":\"dajoey-lalalazy\",\"_SourceName\":\"dajoey / lalalazy\",\"_SourceUrl\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/pluginmaster.json\"}",
+        "repo_url": "https://github.com/dajoey/lalalazy/tree/main/src/LazyFateAutomation",
+        "source_entry_key": "lazyfateautomation|0.0.2.0|15|15|6",
+        "source_id": 703,
+        "tags_json": "[\"fate\",\"grind\",\"automation\",\"relic\",\"yokai\",\"vnavmesh\"]",
+        "testing_assembly_version": "0.0.2.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 7489
       }
     }
   ]
