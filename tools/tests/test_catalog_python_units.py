@@ -218,7 +218,7 @@ class CatalogPythonUnitTests(unittest.TestCase):
 
         def fake_gh(*args: str) -> str:
             calls.append(args)
-            return json.dumps(existing) if args[:2] == ("issue", "list") else ""
+            return json.dumps([existing]) if args[:2] == ("api", "--paginate") else ""
 
         document = {
             "followups": [{"key": "omega-source-followup:src-transient", "actionable": False}],
@@ -239,7 +239,7 @@ class CatalogPythonUnitTests(unittest.TestCase):
 
         def fake_gh(*args: str) -> str:
             calls.append(args)
-            return json.dumps(existing) if args[:2] == ("issue", "list") else ""
+            return json.dumps([existing]) if args[:2] == ("api", "--paginate") else ""
 
         document = {
             "followups": [{"key": "omega-source-followup:src-two", "internalName": "Cammy", "actionable": True}],
@@ -267,8 +267,8 @@ class CatalogPythonUnitTests(unittest.TestCase):
 
         def fake_gh(*args: str) -> str:
             calls.append(args)
-            if args[:2] == ("issue", "list"):
-                return json.dumps(existing)
+            if args[:2] == ("api", "--paginate"):
+                return json.dumps([existing])
             if args[:2] == ("issue", "edit"):
                 body_file = args[args.index("--body-file") + 1]
                 edited_body["text"] = Path(body_file).read_text(encoding="utf-8")
@@ -308,8 +308,8 @@ class CatalogPythonUnitTests(unittest.TestCase):
 
         def fake_gh(*args: str) -> str:
             calls.append(args)
-            if args[:2] == ("issue", "list"):
-                return "[]"
+            if args[:2] == ("api", "--paginate"):
+                return json.dumps([[]])
             if args[:2] == ("issue", "create"):
                 body_file = args[args.index("--body-file") + 1]
                 created_body["text"] = Path(body_file).read_text(encoding="utf-8")
