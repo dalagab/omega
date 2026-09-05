@@ -2478,6 +2478,23 @@ def _inspect_source_tree(
     return intel, scope, files_scanned, manifest, developer_profile
 
 
+
+def _source_project_version_match(source_intel: dict, scope: dict, assembly_version: str) -> tuple[bool, str]:
+    version = str(assembly_version or "").strip().casefold()
+    if not version:
+        return False, ""
+    primary = str(scope.get("primaryProject") or "")
+    build = source_intel.get("sourceBuildIntelligence") if isinstance(source_intel.get("sourceBuildIntelligence"), dict) else {}
+    for row in build.get("projects") or []:
+        if not isinstance(row, dict):
+            continue
+        if primary and str(row.get("path") or "") != primary:
+            continue
+        project_version = str(row.get("projectVersion") or "").strip()
+        if project_version and project_version.casefold() == version:
+            return True, str(row.get("path") or "")
+    return False, ""
+
 def _github_json(url: str, headers: dict[str, str], *, timeout: float = 20.0) -> dict:
     request = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(request, timeout=timeout) as response:
@@ -2583,6 +2600,7 @@ def _fetch_source_candidate(
                 )
                 manifest_repo = github_repository_url(str(manifest.get("repoUrl") or ""))
                 manifest_repo_matched = bool(manifest_repo and manifest_repo.casefold() == canonical_repo.casefold())
+                project_version_matched, project_version_path = _source_project_version_match(source_intel, scope, assembly_version)
                 provenance = {
                     "schema": "omega.plugin-source-provenance.v1",
                     "requestedAssemblyVersion": str(assembly_version or ""),
@@ -2592,8 +2610,9 @@ def _fetch_source_candidate(
                     "manifestInternalName": str(manifest.get("internalName") or ""),
                     "manifestAssemblyVersion": str(manifest.get("assemblyVersion") or ""),
                     "manifestRepoUrl": str(manifest.get("repoUrl") or ""),
+                    "projectVersionPath": project_version_path,
                     "identityMatched": bool(manifest.get("identityMatched")) or bool(scope.get("identityMatched")),
-                    "versionMatched": bool(manifest.get("versionMatched")),
+                    "versionMatched": bool(manifest.get("versionMatched")) or (project_version_matched and (bool(manifest.get("identityMatched")) or bool(scope.get("identityMatched")))),
                     "manifestRepositoryMatched": manifest_repo_matched,
                 }
                 result = {
@@ -2667,6 +2686,7 @@ def _fetch_public_git_source_candidate(
                 analyze=analyze,
             )
             intel = source_intel
+            project_version_matched, project_version_path = _source_project_version_match(source_intel, scope, assembly_version)
             retrieval = {
                 "schema": "omega.source-retrieval.v1",
                 "mode": "git-partial-blob-none",
@@ -2689,8 +2709,9 @@ def _fetch_public_git_source_candidate(
                     "manifestInternalName": str(manifest.get("internalName") or ""),
                     "manifestAssemblyVersion": str(manifest.get("assemblyVersion") or ""),
                     "manifestRepoUrl": str(manifest.get("repoUrl") or ""),
+                    "projectVersionPath": project_version_path,
                     "identityMatched": bool(manifest.get("identityMatched")) or bool(scope.get("identityMatched")),
-                    "versionMatched": bool(manifest.get("versionMatched")),
+                    "versionMatched": bool(manifest.get("versionMatched")) or (project_version_matched and (bool(manifest.get("identityMatched")) or bool(scope.get("identityMatched")))),
                     "manifestRepositoryMatched": public_repository_url(str(manifest.get("repoUrl") or "")).casefold() == repository.repository.casefold() if manifest.get("repoUrl") else False,
                 },
                 "error": "",

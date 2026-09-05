@@ -27,7 +27,7 @@ class SourceBuildIntelligenceTests(unittest.TestCase):
 
     def test_selected_plugin_build_graph_collects_projects_edges_inputs_dependencies_and_release_context(self) -> None:
         files = {
-            "Plugin/Plugin.csproj": b'''<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0-windows</TargetFramework><AssemblyName>ExamplePlugin</AssemblyName><AllowUnsafeBlocks>true</AllowUnsafeBlocks></PropertyGroup><ItemGroup><PackageReference Include="DalamudPackager" Version="13.0.0" PrivateAssets="all"/><ProjectReference Include="../Shared/Shared.csproj" /></ItemGroup></Project>''',
+            "Plugin/Plugin.csproj": b'''<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0-windows</TargetFramework><AssemblyName>ExamplePlugin</AssemblyName><Version>1.0.0</Version><AllowUnsafeBlocks>true</AllowUnsafeBlocks></PropertyGroup><ItemGroup><PackageReference Include="DalamudPackager" Version="13.0.0" PrivateAssets="all"/><ProjectReference Include="../Shared/Shared.csproj" /></ItemGroup></Project>''',
             "Shared/Shared.csproj": b'''<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>''',
             "Plugin/Plugin.cs": b"using Dalamud.Plugin; class P {}",
             "Directory.Packages.props": b'''<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include="Newtonsoft.Json" Version="13.0.4"/></ItemGroup></Project>''',
@@ -41,6 +41,7 @@ class SourceBuildIntelligenceTests(unittest.TestCase):
         self.assertEqual(1, build["contractVersion"])
         by_path = {row["path"]: row for row in build["projects"]}
         self.assertEqual("primary", by_path["Plugin/Plugin.csproj"]["role"])
+        self.assertEqual("1.0.0", by_path["Plugin/Plugin.csproj"]["projectVersion"])
         self.assertEqual(["net10.0-windows"], by_path["Plugin/Plugin.csproj"]["targetFrameworks"])
         self.assertTrue(by_path["Plugin/Plugin.csproj"]["allowUnsafeBlocks"])
         self.assertEqual("Shared/Shared.csproj", build["edges"][0]["toProject"])

@@ -509,6 +509,27 @@ class CatalogPythonUnitTests(unittest.TestCase):
         with self.assertRaises(enrich_metadata.urllib.error.HTTPError):
             handler.redirect_request(request, None, 302, "Found", {}, "https://127.0.0.1/private.json")
 
+
+    def test_source_candidate_accepts_manifest_identity_with_project_version(self) -> None:
+        files = {
+            "PvpStats/PvpStats.csproj": b'<Project Sdk="Dalamud.NET.Sdk/15.0.0"><PropertyGroup><Version>2.7.0.1</Version></PropertyGroup></Project>',
+            "PvpStats/PvpStats.json": b'{"InternalName":"PvpStats","Name":"PvP Tracker","RepoUrl":"https://github.com/wrath16/PvpStats"}',
+            "PvpStats/Plugin.cs": b"namespace PvpStats; public sealed class Plugin {}",
+        }
+        source_entries = {path: len(raw) for path, raw in files.items()}
+
+        def read_file(path: str) -> bytes:
+            return files[path]
+
+        intel, scope, _files_scanned, manifest, _profile = sigmascope._inspect_source_tree(
+            source_entries, read_file, defaultdict(list), "PvpStats", "PvP Tracker", "2.7.0.1", analyze=False
+        )
+        matched, path = sigmascope._source_project_version_match(intel, scope, "2.7.0.1")
+        self.assertTrue(manifest["identityMatched"])
+        self.assertTrue(scope["identityMatched"])
+        self.assertTrue(matched)
+        self.assertEqual("PvpStats/PvpStats.csproj", path)
+
     def test_source_followup_reply_persists_stable_plugin_source_override(self) -> None:
         validation = {
             "ok": True, "repository": "https://github.com/example/Plugin", "commit": "abc123",
