@@ -165,7 +165,13 @@ internal static partial class RegressionCases
         Contains(update, "The old repository is not removed", "migration assistance does not break other plugins that may still use the old source");
         Contains(update, "CompareRepositorySecurity", "migration confirmation surfaces package/security differences between old and new repositories");
         Contains(product, "OpenUninstallConfirmation(plugin)", "installed product pages expose uninstall");
+        Contains(library, "library-uninstall-", "Library rows expose a dedicated uninstall button");
+        Contains(library, "OpenUninstallConfirmation(plugin)", "Library uninstall uses the canonical confirmation flow");
         Contains(popups, "Uninstall plugin###DalagabOmegaUninstall", "uninstall is explicitly confirmed");
+        Contains(popups, "is also in this named collection", "uninstall confirmation explains named collection membership");
+        Contains(popups, "Remove from collections", "uninstall confirmation offers optional named collection cleanup");
+        Contains(popups, "RemovePendingUninstallFromCollectionsAsync", "uninstall collection cleanup is a dedicated asynchronous operation");
+        Contains(popups, "profileBridge.RemovePluginFromCollectionAsync", "optional uninstall cleanup delegates membership removal to Dalamud");
         Contains(coordinator, "installer.UninstallAsync", "uninstall coordinator delegates lifecycle work");
         Contains(installer, "pluginInterface.InternalName", "uninstall blocks Omega self-removal");
         Contains(installer, "exposed.IsDev", "uninstall protects dev plugins");

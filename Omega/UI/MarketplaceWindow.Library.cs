@@ -219,7 +219,7 @@ internal sealed partial class MarketplaceWindow
         var iconActionSize = Ui(34f);
         var actionWidth = Ui(92f);
         var actionGap = Ui(8f);
-        var actionGroupWidth = toggleWidth + (actionGap * 3f) + (iconActionSize * 2f) + actionWidth;
+        var actionGroupWidth = toggleWidth + (actionGap * 4f) + (iconActionSize * 2f) + (actionWidth * 2f);
         ImGui.SameLine();
         var actionsX = Math.Max(
             textStart + Ui(240f),
@@ -269,6 +269,28 @@ internal sealed partial class MarketplaceWindow
                 canStartBackup))
         {
             StartPluginConfigBackup(plugin);
+        }
+
+        ImGui.SameLine(0f, actionGap);
+        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, Ui(32f)));
+        var uninstallingThisPlugin = uninstallTask is not null &&
+                                     uninstallingInternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase);
+        var canUninstallHere = uninstallTask is null && collectionOperationTask is null && !isSelf;
+        if (DrawRoundedButton(
+                uninstallingThisPlugin ? "Uninstalling…" : "Uninstall",
+                $"library-uninstall-{StableId(plugin.InternalName)}",
+                new Vector2(actionWidth, Ui(32f)),
+                enabled: canUninstallHere))
+        {
+            OpenUninstallConfirmation(plugin);
+        }
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled) && !canUninstallHere)
+        {
+            ImGui.SetTooltip(isSelf
+                ? "Omega cannot uninstall itself while it is running. Use Dalamud to remove Omega."
+                : collectionOperationTask is not null
+                    ? "Another Dalamud collection change is still being applied."
+                    : "Another plugin uninstall is still in progress.");
         }
 
         ImGui.SameLine(0f, actionGap);
