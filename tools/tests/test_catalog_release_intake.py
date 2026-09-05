@@ -134,6 +134,48 @@ class CatalogReleaseIntakeTests(unittest.TestCase):
                                           expected_parent_sha="a" * 40)
             self.assertEqual("a" * 40, publish.call_args.kwargs["expected_previous_head"])
 
+    def test_historical_definitions_without_external_analysis_remain_verifiable(self):
+        legacy = self.root / "legacy-definitions"
+        shutil.copytree(self.root / "definitions", legacy)
+        index = intake.read(legacy / "index.json")
+        external = index.pop("externalAnalysis")
+        (legacy / external["path"]).unlink()
+
+        secondary, secondary_errors = definitions_snapshot.verify_secondary_security_snapshot(
+            legacy, index["secondarySecurity"]
+        )
+        self.assertFalse(secondary_errors)
+        index["definitionsRevision"] = definitions_snapshot.definitions_revision(
+            scanner_version=index["scannerVersion"],
+            scanner_revision=index["scannerRevision"],
+            scanner_rule_revision=index["ruleSetRevision"],
+            fingerprints=index["ruleFiles"],
+            artifact_analysis_revision=index["artifactAnalysisRevision"],
+            source_analysis_revision=index["sourceAnalysisRevision"],
+            source_observation_revision=index["sourceObservationRevision"],
+            osv_document=intake.read(legacy / index["osv"]["path"]),
+            reputation=intake.read(legacy / index["reputation"]["path"]),
+            external_analysis=None,
+            secondary_security=secondary,
+            srl_definition_packs=index["srlDefinitionPacks"],
+            component_registry_revision=index["componentRegistry"]["revision"],
+            collector_registry_revision=index["collectorRegistry"]["revision"],
+            execution_topology_revision=index["executionTopology"]["revision"],
+        )
+        intake.write(legacy / "index.json", index)
+
+        validation = definitions_snapshot.verify_snapshot(definitions_root=legacy)
+        self.assertTrue(validation["ok"], validation["errors"])
+
+    def test_frozen_platform_registry_validation_does_not_use_current_builder(self):
+        with mock.patch.object(
+            definitions_snapshot.execution_topology,
+            "build_topology",
+            side_effect=AssertionError("historical verification consulted current topology code"),
+        ):
+            validation = definitions_snapshot.verify_snapshot(definitions_root=self.root / "definitions")
+        self.assertTrue(validation["ok"], validation["errors"])
+
     def test_new_release_of_retired_scanned_variant_retains_plugin_coverage(self):
         self.settle()
         variant = scan_queue.catalog_variants(self.state / "catalog")[0]

@@ -627,7 +627,7 @@ def bind_artifact_analysis_revision(code_revision: str, secondary_revision: str)
 def definitions_revision(
     *, scanner_version: str, scanner_revision: str, scanner_rule_revision: str, fingerprints: dict[str, str],
     artifact_analysis_revision: str, source_analysis_revision: str, source_observation_revision: str,
-    osv_document: dict[str, Any], reputation: dict[str, Any], external_analysis: dict[str, Any], secondary_security: dict[str, Any],
+    osv_document: dict[str, Any], reputation: dict[str, Any], external_analysis: dict[str, Any] | None, secondary_security: dict[str, Any],
     srl_definition_packs: dict[str, Any], component_registry_revision: str, collector_registry_revision: str,
     execution_topology_revision: str,
 ) -> str:
@@ -646,7 +646,6 @@ def definitions_revision(
         "executionTopologyRevision": execution_topology_revision,
         "osv": _semantic_osv(osv_document),
         "reputation": _semantic_reputation(reputation),
-        "externalAnalysis": _semantic_external_analysis(external_analysis),
         "secondarySecurity": _secondary_security_semantic(secondary_security),
         "srlDefinitionPacks": {
             "schema": str(srl_definition_packs.get("schema") or ""),
@@ -657,6 +656,11 @@ def definitions_revision(
             "totalRuleCount": int(srl_definition_packs.get("totalRuleCount") or 0),
         },
     }
+    # externalAnalysis was added to omega.definitions.v1 after the first published
+    # snapshots. Omitting it here reproduces the exact legacy revision algorithm;
+    # current builders always pass a document and therefore retain current semantics.
+    if external_analysis is not None:
+        semantic["externalAnalysis"] = _semantic_external_analysis(external_analysis)
     return f"defs-v1-{sha256_bytes(canonical(semantic))[:16]}"
 
 
@@ -1225,10 +1229,24 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
         except Exception as exc:
             errors.append(f"frozen semanticFlowRegistry invalid: {type(exc).__name__}: {exc}")
 
-    for descriptor_key, expected_schema, expected_revision, builder in (
-        ("componentRegistry", component_registry.REGISTRY_SCHEMA, component_registry.component_revision(), component_registry.build_registry),
-        ("collectorRegistry", collector_contracts.REGISTRY_SCHEMA, collector_contracts.registry_revision(), collector_contracts.build_registry),
-        ("executionTopology", execution_topology.TOPOLOGY_SCHEMA, execution_topology.topology_revision(), execution_topology.build_topology),
+    # Platform registries are immutable Definitions payloads. Historical snapshot
+    # verification must validate the frozen payload/descriptor pair, not compare it
+    # with whichever development checkout happens to be running the validator.
+    # The worker-bundle verifier independently binds every frozen code byte.
+    for descriptor_key, count_fields in (
+        ("componentRegistry", (
+            ("componentCount", "components"),
+            ("dispatchableCount", "dispatchableComponents"),
+            ("launchableCount", "launchableComponents"),
+        )),
+        ("collectorRegistry", (
+            ("collectorCount", "collectors"),
+            ("observationTypeCount", "observationTypes"),
+        )),
+        ("executionTopology", (
+            ("nodeCount", "nodes"),
+            ("workflowCount", "workflows"),
+        )),
     ):
         descriptor = index.get(descriptor_key) if isinstance(index.get(descriptor_key), dict) else {}
         rel = str(descriptor.get("path") or "")
@@ -1241,15 +1259,19 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
             continue
         try:
             document = json.loads(path.read_text(encoding="utf-8"))
-            if str(document.get("schema") or "") != expected_schema:
+            descriptor_schema = str(descriptor.get("schema") or "")
+            if not descriptor_schema:
+                errors.append(f"frozen {descriptor_key} descriptor schema is missing")
+            elif str(document.get("schema") or "") != descriptor_schema:
                 errors.append(f"frozen {descriptor_key} schema mismatch")
             if str(document.get("revision") or "") != str(descriptor.get("revision") or ""):
                 errors.append(f"frozen {descriptor_key} descriptor revision mismatch")
-            # Verification uses the worker's frozen registry code. A mismatch means the
-            # payload and executable orchestration contracts have drifted.
-            current = builder()
-            if str(document.get("revision") or "") != str(current.get("revision") or expected_revision):
-                errors.append(f"frozen {descriptor_key} revision does not match frozen registry code")
+            for count_field, document_field in count_fields:
+                if count_field not in descriptor:
+                    errors.append(f"frozen {descriptor_key} descriptor {count_field} is missing")
+                    continue
+                if len(document.get(document_field) or []) != int(descriptor.get(count_field) or 0):
+                    errors.append(f"frozen {descriptor_key} {document_field} count mismatch")
         except Exception as exc:
             errors.append(f"frozen {descriptor_key} unreadable: {type(exc).__name__}: {exc}")
 
@@ -1282,13 +1304,22 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
             errors.append(f"SRL migration parity report unreadable: {type(exc).__name__}: {exc}")
 
     payloads: dict[str, dict[str, Any]] = {}
-    for key in ("osv", "reputation", "externalAnalysis"):
-        item = index.get(key) or {}
+    payload_keys = ["osv", "reputation"]
+    # externalAnalysis was added without changing the v1 Definitions schema name.
+    # Treat absence as the historical contract, but validate it strictly when present.
+    if "externalAnalysis" in index:
+        payload_keys.append("externalAnalysis")
+    for key in payload_keys:
+        item = index.get(key) if isinstance(index.get(key), dict) else {}
         rel = str(item.get("path") or "")
+        expected_sha = str(item.get("sha256") or "")
+        if not rel or not expected_sha:
+            errors.append(f"definitions {key} descriptor is incomplete")
+            continue
         path = definitions_root / rel
         if not path.is_file():
             errors.append(f"definitions payload missing: {rel}")
-        elif str(item.get("sha256") or "") != sha256_file(path):
+        elif expected_sha != sha256_file(path):
             errors.append(f"definitions payload hash mismatch: {rel}")
         else:
             try:
@@ -1352,7 +1383,11 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
             errors.append("external-analysis revision does not match frozen payload")
         if sha256_bytes(canonical(_semantic_external_analysis(payloads["externalAnalysis"]))) != str(external_descriptor.get("semanticSha256") or ""):
             errors.append("external-analysis semantic SHA-256 does not match frozen payload")
-    if "osv" in payloads and "reputation" in payloads and "externalAnalysis" in payloads and expected_rule_set:
+    has_external_analysis = "externalAnalysis" in index
+    required_payloads = {"osv", "reputation"}
+    if has_external_analysis:
+        required_payloads.add("externalAnalysis")
+    if required_payloads.issubset(payloads) and expected_rule_set:
         expected_definitions = definitions_revision(
             scanner_version=scanner_version,
             scanner_revision=str(index.get("scannerRevision") or ""),
@@ -1363,7 +1398,7 @@ def verify_snapshot(*, definitions_root: Path, repo_root: Path | None = None) ->
             source_observation_revision=expected_source_observation_revision,
             osv_document=payloads["osv"],
             reputation=payloads["reputation"],
-            external_analysis=payloads["externalAnalysis"],
+            external_analysis=payloads.get("externalAnalysis") if has_external_analysis else None,
             secondary_security=secondary_security_document,
             srl_definition_packs=srl_descriptor,
             component_registry_revision=str((index.get("componentRegistry") or {}).get("revision") or ""),
