@@ -170,8 +170,10 @@ class SigmaScopeWorkerBatchTests(unittest.TestCase):
 
     def test_parallel_drain_workflow_batches_and_suppresses_duplicate_successors(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
-        self.assertIn("sigmascope_worker_batch.py run", workflow)
-        self.assertIn("sigmascope_worker_batch.py bundles", workflow)
+        entrypoint = (ROOT / "tools" / "security" / "sigmascope_parallel_worker_entrypoint.sh").read_text(encoding="utf-8")
+        self.assertIn("sigmascope_parallel_worker_entrypoint.sh process", workflow)
+        self.assertIn("sigmascope_worker_batch.py run", entrypoint)
+        self.assertIn("sigmascope_worker_batch.py bundles", entrypoint)
         self.assertNotIn("while IFS= read -r queue_key; do", workflow)
         self.assertIn("gh run list", workflow)
         self.assertIn("Another active parallel drain already owns successor dispatch", workflow)
