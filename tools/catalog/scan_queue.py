@@ -207,6 +207,8 @@ def catalog_variants(catalog_root: Path) -> list[dict[str, Any]]:
                 "sourcePriorityClass": plugin_coverage.source_priority_class(source),
                 "assemblyVersion": version,
                 "artifactChannel": channel,
+                "dalamudApiLevel": int(variant.get("dalamud_api_level") or 0),
+                "testingDalamudApiLevel": int(variant.get("testing_dalamud_api_level") or 0),
                 "artifactUrl": artifact_url,
                 "repositoryUrl": str(variant.get("repo_url") or ""),
                 "sourceRepositoryUrl": str(source.get("source_repo_url") or ""),
@@ -433,6 +435,9 @@ def _queue_item(
         "releaseUpdate": bool(variant.get("releaseUpdate")),
         "assemblyVersion": str(variant.get("assemblyVersion") or ""),
         "artifactChannel": str(variant.get("artifactChannel") or ""),
+        "dalamudApiLevel": int(variant.get("dalamudApiLevel") or 0),
+        "currentDalamudApi": bool(variant.get("currentDalamudApi")),
+        "archiveDeferred": bool(variant.get("archiveDeferred")),
         "artifactUrl": str(variant.get("artifactUrl") or ""),
         "repositoryUrl": str(variant.get("repositoryUrl") or ""),
         "sourceRepositoryUrl": str(variant.get("sourceRepositoryUrl") or ""),
@@ -502,6 +507,9 @@ def _source_queue_item(
         "pluginHasCurrentScan": bool(variant.get("pluginHasCurrentScan")),
         "assemblyVersion": str(variant.get("assemblyVersion") or ""),
         "artifactChannel": str(variant.get("artifactChannel") or ""),
+        "dalamudApiLevel": int(variant.get("dalamudApiLevel") or 0),
+        "currentDalamudApi": bool(variant.get("currentDalamudApi")),
+        "archiveDeferred": bool(variant.get("archiveDeferred")),
         "artifactUrl": str(variant.get("artifactUrl") or ""),
         "repositoryUrl": str(variant.get("repositoryUrl") or ""),
         "sourceRepositoryUrl": str(variant.get("sourceRepositoryUrl") or ""),
@@ -700,6 +708,17 @@ def _srl_reprojection_plan(definitions_root: Path, evidence_root: Path, definiti
     return plan
 
 
+
+def _variant_api_level(variant: dict[str, Any]) -> int:
+    channel = str(variant.get("artifactChannel") or "").casefold()
+    if channel == "testing":
+        return int(variant.get("testingDalamudApiLevel") or variant.get("dalamudApiLevel") or 0)
+    return int(variant.get("dalamudApiLevel") or 0)
+
+
+def _current_api_level(variants: Iterable[dict[str, Any]]) -> int:
+    return max((_variant_api_level(variant) for variant in variants), default=0)
+
 def build_seed(
     *,
     catalog_root: Path,
@@ -801,6 +820,19 @@ def build_seed(
                 items.append(source_item)
                 for reason in source_reasons:
                     counts[reason] = counts.get(reason, 0) + 1
+    current_api_level = _current_api_level(variants)
+    active_items = [item for item in items if int(item.get("dalamudApiLevel") or 0) >= current_api_level or int(item.get("dalamudApiLevel") or 0) <= 0]
+    stale_items = [item for item in items if item not in active_items]
+    archive_deferred_count = 0
+    if active_items and stale_items:
+        archive_deferred_count = len(stale_items)
+        for item in stale_items:
+            item["archiveDeferred"] = True
+            item["currentDalamudApi"] = False
+        items = active_items
+    for item in items:
+        item["currentDalamudApi"] = int(item.get("dalamudApiLevel") or 0) >= current_api_level if current_api_level else True
+
     if (
         not baseline_security_rebuild
         and advisory_revision
@@ -844,7 +876,7 @@ def build_seed(
         "items": [
             {
                 key: item[key]
-                for key in ("queueKey", "workType", "targetFingerprint", "variantId", "pluginId", "sourceId", "sourcePriorityClass", "pluginHasCurrentScan", "artifactChannel", "assemblyVersion", "artifactUrl", "artifactAnalysisRevision", "sourceAnalysisRevision", "ruleSetRevision", "srlRuleSetRevision", "requiredObservationCollections", "srlReanalysisReasons", "observedSourceCommit", "reasons", "priority")
+                for key in ("queueKey", "workType", "targetFingerprint", "variantId", "pluginId", "sourceId", "sourcePriorityClass", "pluginHasCurrentScan", "artifactChannel", "assemblyVersion", "dalamudApiLevel", "currentDalamudApi", "archiveDeferred", "artifactUrl", "artifactAnalysisRevision", "sourceAnalysisRevision", "ruleSetRevision", "srlRuleSetRevision", "requiredObservationCollections", "srlReanalysisReasons", "observedSourceCommit", "reasons", "priority")
                 if key in item
             }
             for item in items
@@ -879,7 +911,7 @@ def build_seed(
         "previousAdvisoryRevision": previous_advisory_revision,
         "reasonContracts": REASON_CONTRACTS,
         "selectionPolicy": SELECTION_POLICY,
-        "counts": {**counts, "queued": len(items)},
+        "counts": {**counts, "queued": len(items), "archiveDeferred": archive_deferred_count, "currentDalamudApiLevel": current_api_level},
         "items": items,
     }
     write_json(output, seed)

@@ -494,6 +494,42 @@ class ScanQueueTests(unittest.TestCase):
         self.assertEqual("pending", next_state["items"]["variant-1"]["state"])
         self.assertEqual(0, next_state["items"]["variant-1"]["attemptCount"])
 
+
+    def test_stale_api_work_is_deferred_until_current_api_queue_is_empty(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-queue-api-") as td:
+            root = Path(td)
+            catalog, current_variant = self._catalog(root)
+            plugin_index = json.loads((catalog / "plugins" / "index.json").read_text(encoding="utf-8"))
+            payload_path = catalog / plugin_index["plugins"][0]["path"]
+            payload = json.loads(payload_path.read_text(encoding="utf-8"))
+            variants = [group["variant"] for group in payload["variants"]]
+            variants[0]["variant_id"] = 101
+            variants[0]["dalamud_api_level"] = 15
+            stale = dict(variants[0])
+            stale["variant_id"] = 102
+            stale["assembly_version"] = "0.9.0"
+            stale["dalamud_api_level"] = 14
+            payload["variants"] = [{"variant": variants[0]}, {"variant": stale}]
+            payload_path.write_text(json.dumps(payload), encoding="utf-8")
+            definitions = self._definitions(root)
+            evidence = self._evidence(root)
+            seed = scan_queue.build_seed(catalog_root=catalog, definitions_root=definitions, evidence_root=evidence, output=root / "queue.json", now=NOW)
+            self.assertTrue(seed["items"])
+            self.assertTrue(all(int(item.get("dalamudApiLevel") or 0) == 15 for item in seed["items"]))
+            self.assertGreaterEqual(seed["counts"]["archiveDeferred"], 1)
+            self.assertEqual(15, seed["counts"]["currentDalamudApiLevel"])
+
+            current_complete = {
+                "scan_id": 9, "status": "complete", "scanned_at_utc": "2026-08-19T09:00:00Z",
+                "artifact_url": str(variants[0].get("download_link_install") or ""),
+                "assembly_version": str(variants[0].get("assembly_version") or ""),
+                "artifact_sha256": "a" * 64, "report_json": {"artifactAnalysisRevision": "artifact-analysis-v1-fixture", "workType": "source", "sourceAnalysisRevision": "source-analysis-v1-fixture", "source": {"available": True, "candidates": [], "attribution": {"confidence": 80, "basis": ["identity_match"]}}},
+            }
+            evidence = self._evidence(root, current_complete, variant_id=101)
+            seed = scan_queue.build_seed(catalog_root=catalog, definitions_root=definitions, evidence_root=evidence, output=root / "queue2.json", now=NOW)
+            self.assertTrue(any(int(item.get("dalamudApiLevel") or 0) == 14 for item in seed["items"]))
+            self.assertEqual(0, seed["counts"]["archiveDeferred"])
+
     def test_inactive_catalog_variant_is_not_a_queue_candidate(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-queue-retired-") as td:
             root = Path(td)
@@ -507,7 +543,7 @@ class ScanQueueTests(unittest.TestCase):
             current = {
                 "scan_id": 9, "status": "complete", "scanned_at_utc": "2026-08-19T09:00:00Z",
                 "artifact_url": variant["artifactUrl"], "assembly_version": variant["assemblyVersion"],
-                "artifact_sha256": "a" * 64, "report_json": {"artifactAnalysisRevision": "artifact-analysis-v1-fixture"},
+                "artifact_sha256": "a" * 64, "report_json": {"artifactAnalysisRevision": "artifact-analysis-v1-fixture", "workType": "source", "sourceAnalysisRevision": "source-analysis-v1-fixture", "source": {"available": True, "candidates": [], "attribution": {"confidence": 80, "basis": ["identity_match"]}}},
             }
             seed = scan_queue.build_seed(
                 catalog_root=catalog, definitions_root=self._definitions(root),

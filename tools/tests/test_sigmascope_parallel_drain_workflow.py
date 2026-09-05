@@ -11,7 +11,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         for required in (
             "group: omega-sigmascope-parallel-drain-exclusive", "queue: max", "default: 4", "default: 10",
             "sigmascope_parallel_drain_plan.py", "strategy:", "fail-fast: false", "QUEUE_KEYS_JSON",
-            "runs-on: ubuntu-latest", "container:", "image: ${{ needs.resolve-images.outputs.scan_image }}",
+            "runs-on: [self-hosted, Linux, X64, omega-security]", "max-parallel: 2", "docker pull \"$WORKER_IMAGE\"",
             "sigmascope_parallel_worker_entrypoint.sh process",
             "sigmascope_result_merger.py",
             "--queue-seed catalog/active-state/scan-queue.json", "security_developer_audit.py",
@@ -49,11 +49,10 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         client_publish = (common.ROOT / ".github" / "workflows" / "catalog-client-publish.yml").read_text(encoding="utf-8")
         self.assertIn("uses: ./.github/workflows/catalog-client-publish.yml", text)
         self.assertIn("runs-on: ubuntu-latest", client_publish)
-        self.assertIn("\n    container:", workers)
-        self.assertIn("image: ${{ needs.resolve-images.outputs.scan_image }}", workers)
-        self.assertNotIn("self-hosted", workers)
-        self.assertNotIn("max-parallel: 2", workers)
-        self.assertNotIn("docker run", workers)
+        self.assertIn("runs-on: [self-hosted, Linux, X64, omega-security]", workers)
+        self.assertIn("max-parallel: 2", workers)
+        self.assertNotIn("\n    container:", workers)
+        self.assertIn("docker run --rm --userns=keep-id -v \"$PWD:$PWD:Z\"", workers)
         self.assertNotIn("--user 0:0", workers)
         self.assertNotIn('--user "$(id -u):$(id -g)"', workers)
         self.assertIn("permissions:\n      contents: read", workers)
