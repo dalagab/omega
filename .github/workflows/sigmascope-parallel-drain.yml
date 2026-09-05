@@ -200,16 +200,12 @@ jobs:
     permissions:
       contents: read
       packages: read
-    container:
-      image: ${{ needs.resolve-images.outputs.scan_image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     env:
       OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
       OMEGA_SECONDARY_SECURITY_CACHE: catalog/secondary-security-runtime
       QUEUE_KEYS_JSON: ${{ toJSON(matrix.queueKeys) }}
       BASE_EVIDENCE_HEAD: ${{ needs.plan.outputs.base_head }}
+      WORKER_IMAGE: ${{ needs.resolve-images.outputs.scan_image }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -233,111 +229,46 @@ jobs:
         with:
           name: omega-sigmascope-drain-plan
           path: catalog/roboscope-plan
+      - name: Pull pinned worker image
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker pull "$WORKER_IMAGE"
       - name: Bind worker to exact planned Evidence and frozen worker
         shell: bash
         run: |
           set -euo pipefail
-          current="$(git -C catalog/security-v2-current rev-parse HEAD)"
-          test "$current" = "$BASE_EVIDENCE_HEAD" || {
-            echo "::error::Evidence moved after drain planning: planned=$BASE_EVIDENCE_HEAD current=$current"
-            exit 3
-          }
-          python "$OMEGA_FROZEN_WORKER/tools/catalog/definitions_snapshot.py" \
-            verify-worker --definitions-root catalog/active-state/definitions
-          pipeline="$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
-          python "$pipeline" --help 2>&1 | grep -q -- '--queue-key' || {
-            echo "::error::Frozen Definitions worker lacks exact queue-key execution."
-            exit 4
-          }
-          yara --version
-          clamscan --version || true
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:$PWD" -w "$PWD" \
+            -e BASE_EVIDENCE_HEAD -e OMEGA_FROZEN_WORKER \
+            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh bind
 
       - name: Materialize frozen secondary-security assets when available
         continue-on-error: true
-        run: >-
-          python "$OMEGA_FROZEN_WORKER/tools/catalog/secondary_security_assets.py" materialize-clamav
-          --definitions-root catalog/active-state/definitions
-          --output "$OMEGA_SECONDARY_SECURITY_CACHE"
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:$PWD" -w "$PWD" \
+            -e OMEGA_FROZEN_WORKER -e OMEGA_SECONDARY_SECURITY_CACHE \
+            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh materialize-assets
 
       - name: Materialize frozen canonical catalog once for this worker slot
         shell: bash
         run: |
           set -euo pipefail
-          definitions_revision="$(jq -r '.definitionsRevision' catalog/active-state/definitions/index.json)"
-          python "$OMEGA_FROZEN_WORKER/tools/catalog/catalog_json_store.py" materialize \
-            --root catalog/active-state/catalog \
-            --database catalog/security-input/omega-catalog.sqlite \
-            --definitions-revision "$definitions_revision"
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:$PWD" -w "$PWD" \
+            -e OMEGA_FROZEN_WORKER \
+            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh materialize-catalog
 
       - name: Process exact queue keys in one frozen Evidence hydration
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WORKER_IMAGE: ${{ needs.resolve-images.outputs.scan_image }}
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p catalog/slot-result-bundles catalog/slot-work
-          python - <<'PY' > catalog/slot-work/queue-keys.txt
-          import json, os
-          keys = json.loads(os.environ["QUEUE_KEYS_JSON"])
-          if not isinstance(keys, list) or not keys:
-              raise SystemExit("worker slot has no queue keys")
-          if len(keys) > 16 or len(keys) != len(set(keys)):
-              raise SystemExit("worker slot queue-key set is invalid")
-          for key in keys:
-              text = str(key)
-              if not text or "\n" in text or "\r" in text:
-                  raise SystemExit("unsafe queue key")
-              print(text)
-          PY
-
-          defs=catalog/active-state/definitions/index.json
-          catalog_index=catalog/active-state/catalog/index.json
-          pipeline="$OMEGA_FROZEN_WORKER/tools/security/production_sigmascope_v2_pipeline.py"
-          candidate=catalog/slot-work/candidate
-          work=catalog/slot-work/work
-          rm -rf "$candidate" "$work" catalog/slot-result-bundles catalog/slot-work/bundle-reports
-          mkdir -p catalog/slot-result-bundles
-
-          # Keep scanner/pipeline authority frozen, but constrain its ordinary select_next
-          # scheduler to this planner-owned slot. This shares one Evidence materialization
-          # across every exact key instead of rebuilding the full snapshot once per key.
-          python tools/security/sigmascope_worker_batch.py run \
-            --pipeline "$pipeline" \
-            --queue-keys-file catalog/slot-work/queue-keys.txt \
-            -- \
-            --base-database catalog/security-input/omega-catalog.sqlite \
-            --current-evidence catalog/security-v2-current \
-            --candidate-evidence "$candidate" \
-            --work-dir "$work" \
-            --skip-marketplace \
-            --frozen-advisories catalog/active-state/definitions/osv-advisories.json \
-            --frozen-definitions catalog/active-state/definitions \
-            --catalog-revision "$(jq -r '.catalogRevision' "$catalog_index")" \
-            --definitions-revision "$(jq -r '.definitionsRevision' "$defs")" \
-            --scanner-revision "$(jq -r '.scannerRevision' "$defs")" \
-            --artifact-analysis-revision "$(jq -r '.artifactAnalysisRevision' "$defs")" \
-            --source-analysis-revision "$(jq -r '.sourceAnalysisRevision' "$defs")" \
-            --scanner-bundle-sha256 "$(jq -r '.scannerBundle.sha256' "$defs")" \
-            --rule-set-revision "$(jq -r '.ruleSetRevision' "$defs")" \
-            --advisory-revision "$(jq -r '.advisoryRevision' "$defs")" \
-            --queue-seed catalog/roboscope-plan/roboscope-effective-scan-queue.json \
-            --evidence-index-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/security-evidence-v2/index.json" \
-            --max-batch-seconds 3000 \
-            --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"
-
-          # The merger contract remains one immutable result bundle per exact queue key.
-          # Split only the report view; each bundle extracts its own variant-local delta
-          # from the common batch candidate and remains bound to the original Evidence head.
-          python tools/security/sigmascope_worker_batch.py bundles \
-            --current-evidence catalog/security-v2-current \
-            --candidate-evidence "$candidate" \
-            --work-dir "$work" \
-            --definitions-root catalog/active-state/definitions \
-            --queue-keys-file catalog/slot-work/queue-keys.txt \
-            --worker-image "$WORKER_IMAGE" \
-            --output-root catalog/slot-result-bundles \
-            --split-work-root catalog/slot-work/bundle-reports
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:$PWD" -w "$PWD" \
+            -e GITHUB_REPOSITORY -e OMEGA_FROZEN_WORKER -e QUEUE_KEYS_JSON -e WORKER_IMAGE \
+            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh process
 
       - uses: actions/upload-artifact@v7
         with:

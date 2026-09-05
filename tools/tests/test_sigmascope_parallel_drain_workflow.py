@@ -11,9 +11,9 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         for required in (
             "group: omega-sigmascope-parallel-drain-exclusive", "queue: max", "default: 4", "default: 10",
             "sigmascope_parallel_drain_plan.py", "strategy:", "fail-fast: false", "QUEUE_KEYS_JSON",
-            "runs-on: [self-hosted, Linux, X64, omega-security]", "max-parallel: 2",
-            "sigmascope_worker_batch.py run", "--queue-keys-file catalog/slot-work/queue-keys.txt",
-            "sigmascope_worker_batch.py bundles", "sigmascope_result_merger.py",
+            "runs-on: [self-hosted, Linux, X64, omega-security]", "max-parallel: 2", "docker run --rm --user",
+            "sigmascope_parallel_worker_entrypoint.sh process",
+            "sigmascope_result_merger.py",
             "--queue-seed catalog/active-state/scan-queue.json", "security_developer_audit.py",
             "evidence_storage_audit.py", "publish_security_evidence_v2.py", "--expected-parent-sha",
             "publish_deep_scan_state.py", "catalog-client-publish.yml", "authority_lock_held: false",
@@ -27,6 +27,10 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertNotIn("sigmascope_merge_equivalence.py", text)
         self.assertNotIn("confirm_migration", text)
         self.assertNotIn("shadow_run_id", text)
+        worker = (common.ROOT / "tools" / "security" / "sigmascope_parallel_worker_entrypoint.sh").read_text(encoding="utf-8")
+        self.assertIn("sigmascope_worker_batch.py run", worker)
+        self.assertIn("--queue-keys-file catalog/slot-work/queue-keys.txt", worker)
+        self.assertIn("sigmascope_worker_batch.py bundles", worker)
 
     def test_parallel_workers_are_result_only_and_publication_is_serialized(self) -> None:
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
@@ -42,6 +46,8 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         client_publish = (common.ROOT / ".github" / "workflows" / "catalog-client-publish.yml").read_text(encoding="utf-8")
         self.assertIn("uses: ./.github/workflows/catalog-client-publish.yml", text)
         self.assertIn("runs-on: ubuntu-latest", client_publish)
+        self.assertNotIn("\n    container:", workers)
+        self.assertNotIn("--user 0:0", workers)
         self.assertIn("permissions:\n      contents: read", workers)
         self.assertNotIn("publish_security_evidence_v2.py", workers)
         self.assertNotIn("publish_deep_scan_state.py", workers)
