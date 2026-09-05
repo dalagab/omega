@@ -11,7 +11,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         for required in (
             "group: omega-sigmascope-parallel-drain-exclusive", "queue: max", "default: 4", "default: 10",
             "sigmascope_parallel_drain_plan.py", "strategy:", "fail-fast: false", "QUEUE_KEYS_JSON",
-            "runs-on: [self-hosted, Linux, X64, omega-security]", "max-parallel: 2", "docker run --rm --user",
+            "runs-on: [self-hosted, Linux, X64, omega-security]", "max-parallel: 2", "docker run --rm --userns=keep-id",
             "sigmascope_parallel_worker_entrypoint.sh process",
             "sigmascope_result_merger.py",
             "--queue-seed catalog/active-state/scan-queue.json", "security_developer_audit.py",
@@ -28,7 +28,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertNotIn("confirm_migration", text)
         self.assertNotIn("shadow_run_id", text)
         worker = (common.ROOT / "tools" / "security" / "sigmascope_parallel_worker_entrypoint.sh").read_text(encoding="utf-8")
-        self.assertIn('GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-$PWD/catalog/slot-work/gitconfig}"', worker)
+        self.assertIn('GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-/tmp/sigmascope-worker-gitconfig}"', worker)
         self.assertIn('safe.directory "$PWD/catalog/security-v2-current"', worker)
         self.assertNotIn("safe.directory=*", worker)
         self.assertIn("sigmascope_worker_batch.py run", worker)
@@ -51,6 +51,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn("runs-on: ubuntu-latest", client_publish)
         self.assertNotIn("\n    container:", workers)
         self.assertNotIn("--user 0:0", workers)
+        self.assertNotIn('--user "$(id -u):$(id -g)"', workers)
         self.assertIn("permissions:\n      contents: read", workers)
         self.assertNotIn("publish_security_evidence_v2.py", workers)
         self.assertNotIn("publish_deep_scan_state.py", workers)
