@@ -46,14 +46,10 @@ def apply_cleanup(plan: dict, repository: str, maximum: int) -> int:
         for keep in [int(group.get("keepIssue") or 0)]
     }
     closed = 0
-    for number, keep in close_targets.items():
+    for number in close_targets:
         if closed >= max(0, maximum):
             break
-        if _close_issue(
-            repository,
-            {"number": number},
-            f"Duplicate automated source-discovery request; consolidated into #{keep}. No security conclusion changed.",
-        ):
+        if _close_issue(repository, {"number": number}):
             closed += 1
     return closed
 

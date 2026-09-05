@@ -130,6 +130,7 @@ def _project_row(path: str, text: str, role: str) -> dict[str, Any] | None:
         "runtimeIdentifiers": _values(props.get("RuntimeIdentifiers") or props.get("RuntimeIdentifier") or ""),
         "outputType": str(props.get("OutputType") or "")[:128],
         "assemblyName": str(props.get("AssemblyName") or "")[:256],
+        "projectVersion": str(props.get("Version") or "")[:128],
         "rootNamespace": str(props.get("RootNamespace") or "")[:256],
         "langVersion": str(props.get("LangVersion") or "")[:128],
         "nullable": str(props.get("Nullable") or "")[:128],
