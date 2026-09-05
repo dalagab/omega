@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+mkdir -p catalog/slot-work
+export GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-$PWD/catalog/slot-work/gitconfig}"
+git config --global --add safe.directory "$PWD"
+git config --global --add safe.directory "$PWD/catalog/active-state"
+git config --global --add safe.directory "$PWD/catalog/security-v2-current"
+
 case "${1:-}" in
   bind)
     current="$(git -C catalog/security-v2-current rev-parse HEAD)"
