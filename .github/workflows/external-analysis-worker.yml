@@ -1,0 +1,72 @@
+name: Omega collector ? external analysis sources
+
+on:
+  workflow_call:
+    inputs:
+      work_id: {required: true, type: string}
+      claim_token: {required: true, type: string}
+  workflow_dispatch:
+    inputs:
+      work_id: {required: true, type: string}
+      claim_token: {required: true, type: string}
+
+permissions:
+  contents: write
+  actions: write
+  packages: read
+
+concurrency:
+  group: omega-worker-external-analysis
+  cancel-in-progress: false
+
+jobs:
+  resolve-image:
+    runs-on: ubuntu-latest
+    outputs: {image: "${{ steps.image.outputs.image }}"}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: security-worker-images, path: image-state, persist-credentials: false}
+      - id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="$(jq -er --arg image "catalog-worker" '.images[$image] // empty' image-state/index.json)"
+          [[ "$ref" =~ ^ghcr\.io/[^@[:space:]]+@sha256:[0-9a-f]{64}$ ]] || { echo "::error::Invalid or missing digest-pinned worker image reference: $ref"; exit 3; }
+          echo "image=$ref" >> "$GITHUB_OUTPUT"
+  collect:
+    needs: resolve-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: ${{ needs.resolve-image.outputs.image }}
+      credentials: {username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
+    steps:
+      - uses: actions/checkout@v6
+        with: {ref: sigmascope, persist-credentials: true}
+      - uses: actions/checkout@v6
+        with: {ref: security-work-state, path: catalog/work-state, persist-credentials: false}
+      - name: Validate exact durable lease
+        run: >-
+          python tools/orchestration/worker_claim.py --work-state catalog/work-state --queue-id external-analysis-sources --work-id "${{ inputs.work_id }}" --owner omega.worker.external-analysis --claim-token "${{ inputs.claim_token }}" --output catalog/work-item.json
+      - name: Observe license-gated external analysis source revisions
+        run: >-
+          python tools/security/external_analysis_sources.py observe --output catalog/external-analysis-sources.json --timeout 12
+      - name: Build and publish lease-bound external-analysis result
+        env: {GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog/lane-result
+          cp catalog/external-analysis-sources.json catalog/lane-result/
+          python tools/orchestration/work_result.py build --queue-id external-analysis-sources --work-item catalog/work-item.json --root catalog/lane-result --worker-image "${{ needs.resolve-image.outputs.image }}" --file external-analysis-sources.json
+          gh auth setup-git
+          python tools/orchestration/publish_lane_state.py --input catalog/lane-result --repo . --branch external-analysis-state --push
+      - name: Wake the reconciler after result publication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: >-
+          gh workflow run security-orchestration-dispatch.yml
+          --repo "${{ github.repository }}"
+          --ref sigmascope
+          -f mode=reconcile

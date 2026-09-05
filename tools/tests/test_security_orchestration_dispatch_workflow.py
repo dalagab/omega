@@ -11,6 +11,7 @@ WORKERS = {
     "source-head-observation": "source-head-worker.yml",
     "threat-intelligence": "threat-intelligence-worker.yml",
     "osv-advisories": "osv-worker.yml",
+    "external-analysis-sources": "external-analysis-worker.yml",
     "secondary-security-definitions": "secondary-security-worker.yml",
 }
 

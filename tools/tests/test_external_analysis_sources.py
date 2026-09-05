@@ -31,6 +31,27 @@ class ExternalAnalysisSourceRegistryTests(unittest.TestCase):
         self.assertNotIn("sonarsource-sonar-dotnet", ids)
         self.assertNotIn("semgrep-community-rules", ids)
 
+
+    def test_observation_only_resolves_automated_safe_sources(self) -> None:
+        registry = external_analysis_sources.load_registry()
+        calls = []
+
+        def resolver(repository: str, ref: str, timeout: float) -> str:
+            calls.append((repository, ref, timeout))
+            return "a" * 40
+
+        document = external_analysis_sources.build_observation(
+            registry, ref_resolver=resolver, observed_at_utc="2026-09-05T00:00:00Z"
+        )
+        by_id = {source["id"]: source for source in document["sources"]}
+        self.assertEqual("omega.sigmascope.external-analysis-source-observations.v1", document["schema"])
+        self.assertEqual("external-analysis-v1-", document["externalAnalysisRevision"][:21])
+        self.assertEqual("metadata-only", by_id["sonarsource-sonar-dotnet"]["inspectionPolicy"])
+        self.assertEqual("", by_id["sonarsource-sonar-dotnet"]["observedRevision"])
+        self.assertEqual("head-observed", by_id["github-codeql-csharp"]["inspectionPolicy"])
+        self.assertEqual("a" * 40, by_id["github-codeql-csharp"]["observedRevision"])
+        self.assertEqual(len(external_analysis_sources.automated_research_sources(registry)), len(calls))
+
     def test_restricted_source_cannot_enable_ai_ingestion(self) -> None:
         registry = external_analysis_sources.load_registry()
         document = {key: value for key, value in registry.items() if key not in {"revision", "path"}}

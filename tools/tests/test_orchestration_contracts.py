@@ -87,6 +87,7 @@ class OrchestrationContractTests(unittest.TestCase):
         self.assertIn('"queueId": "source-head-observation"', policy)
         self.assertIn('"queueId": "threat-intelligence"', policy)
         self.assertIn('"queueId": "osv-advisories"', policy)
+        self.assertIn('"queueId": "external-analysis-sources"', policy)
         self.assertIn('"queueId": "secondary-security-definitions"', policy)
         self.assertIn('"prerequisites": [\n        "catalog-discovery"', policy)
         self.assertIn('"prerequisites": [\n        "catalog-enrichment"', policy)
@@ -110,6 +111,7 @@ class OrchestrationContractTests(unittest.TestCase):
             "source-head-worker.yml": "source-head-observation",
             "threat-intelligence-worker.yml": "threat-intelligence",
             "osv-worker.yml": "osv-advisories",
+            "external-analysis-worker.yml": "external-analysis-sources",
             "secondary-security-worker.yml": "secondary-security-definitions",
         }
         for name, queue in workflows.items():
@@ -127,7 +129,7 @@ class OrchestrationContractTests(unittest.TestCase):
         workflows = (
             "catalog-discovery-worker.yml", "catalog-enrichment-worker.yml", "catalog-scrape-worker.yml",
             "source-head-worker.yml", "threat-intelligence-worker.yml", "osv-worker.yml",
-            "secondary-security-worker.yml",
+            "external-analysis-worker.yml", "secondary-security-worker.yml",
         )
         for name in workflows:
             text = self.read_workflow(name)
@@ -158,6 +160,7 @@ class OrchestrationContractTests(unittest.TestCase):
         self.assertIn("catalog-enrichment-state", freeze)
         self.assertIn("catalog-scrape-state", freeze)
         self.assertIn("source-head-state", freeze)
+        self.assertIn("external-analysis-state", freeze)
         self.assertIn("-f mode=reconcile", freeze)
         self.assertIn("Catalog-bound collectors did not converge", freeze)
         self.assertLess(

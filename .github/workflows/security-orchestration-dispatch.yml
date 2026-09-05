@@ -60,7 +60,7 @@ jobs:
               ;;
             worker)
               case "$QUEUE_ID" in
-                catalog-discovery|catalog-enrichment|catalog-scrape|source-head-observation|threat-intelligence|osv-advisories|secondary-security-definitions) ;;
+                catalog-discovery|catalog-enrichment|catalog-scrape|source-head-observation|threat-intelligence|osv-advisories|external-analysis-sources|secondary-security-definitions) ;;
                 *) echo "::error::Unknown worker queue_id: $QUEUE_ID"; exit 2 ;;
               esac
               test -n "$WORK_ID" || { echo "::error::work_id is required for worker mode"; exit 2; }
@@ -141,6 +141,16 @@ jobs:
     needs: validate
     if: ${{ inputs.mode == 'worker' && inputs.queue_id == 'osv-advisories' }}
     uses: ./.github/workflows/osv-worker.yml
+    with:
+      work_id: ${{ inputs.work_id }}
+      claim_token: ${{ inputs.claim_token }}
+    secrets: inherit
+
+  external-analysis:
+    name: Route external analysis sources worker
+    needs: validate
+    if: ${{ inputs.mode == 'worker' && inputs.queue_id == 'external-analysis-sources' }}
+    uses: ./.github/workflows/external-analysis-worker.yml
     with:
       work_id: ${{ inputs.work_id }}
       claim_token: ${{ inputs.claim_token }}

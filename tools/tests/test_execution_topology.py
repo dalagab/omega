@@ -53,6 +53,7 @@ class ExecutionTopologyTests(unittest.TestCase):
         self.assertEqual("source-head-worker.yml", nodes["source-revision-observer"]["workflow"])
         self.assertEqual("threat-intelligence-worker.yml", nodes["threat-intelligence"]["workflow"])
         self.assertEqual("osv-worker.yml", nodes["advisory-collector"]["workflow"])
+        self.assertEqual("external-analysis-worker.yml", nodes["external-analysis-sources"]["workflow"])
         self.assertEqual("secondary-security-worker.yml", nodes["secondary-security-definitions"]["workflow"])
         self.assertEqual("security-reconcile.yml", nodes["security-work-reconciler"]["workflow"])
         self.assertEqual("catalog-freeze.yml", nodes["catalog-freeze"]["workflow"])

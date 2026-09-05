@@ -115,7 +115,7 @@ def validate_policy(value: Mapping[str, Any]) -> dict[str, Any]:
         subject = row.get("subject") if isinstance(row.get("subject"), Mapping) else {}
         reason = row.get("reason") if isinstance(row.get("reason"), list) else [row.get("reason")]
         revision_inputs = [str(item).strip() for item in (row.get("revisionInputs") or []) if str(item).strip()]
-        unknown_revision_inputs = sorted(set(revision_inputs) - {"catalog", "operator-sources"})
+        unknown_revision_inputs = sorted(set(revision_inputs) - {"catalog", "operator-sources", "external-analysis-registry"})
         if unknown_revision_inputs:
             raise ValueError(f"queue {queue_id} has unknown revisionInputs: {unknown_revision_inputs}")
         queues.append({

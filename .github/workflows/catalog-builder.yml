@@ -173,10 +173,13 @@ jobs:
       - name: Checkout OSV advisory lane result
         uses: actions/checkout@v6
         with: {ref: osv-advisory-state, path: catalog/lane-results/osv-advisories, fetch-depth: 1, persist-credentials: false}
+      - name: Checkout external-analysis sources lane result
+        uses: actions/checkout@v6
+        with: {ref: external-analysis-state, path: catalog/lane-results/external-analysis-sources, fetch-depth: 1, persist-credentials: false}
       - name: Checkout secondary-security definitions lane result
         uses: actions/checkout@v6
         with: {ref: secondary-security-state, path: catalog/lane-results/secondary-security-definitions, fetch-depth: 1, persist-credentials: false}
-      - name: Validate all lane results against settled durable queues
+      - name: Wait for exact settled catalog and collector inputs / Validate all lane results against settled durable queues
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -208,6 +211,7 @@ jobs:
             refresh_branch catalog/lane-results/source-head-observation source-head-state
             refresh_branch catalog/lane-results/threat-intelligence threat-intelligence-state
             refresh_branch catalog/lane-results/osv-advisories osv-advisory-state
+            refresh_branch catalog/lane-results/external-analysis-sources external-analysis-state
             refresh_branch catalog/lane-results/secondary-security-definitions secondary-security-state
           }
 
@@ -339,6 +343,7 @@ jobs:
             --source-observations catalog/lane-results/source-head-observation/source-revision-observations.json
             --reputation-input catalog/lane-results/threat-intelligence/reputation-intelligence.json
             --advisories-input catalog/lane-results/osv-advisories/osv-advisories.json
+            --external-analysis-input catalog/lane-results/external-analysis-sources/external-analysis-sources.json
           )
           if [ -f catalog/lane-results/secondary-security-definitions/secondary-security-asset-manifest.json ]; then
             args+=(--secondary-security-asset-manifest catalog/lane-results/secondary-security-definitions/secondary-security-asset-manifest.json)

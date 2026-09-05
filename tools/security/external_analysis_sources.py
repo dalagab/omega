@@ -13,9 +13,11 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import urllib.parse
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 SCHEMA = "omega.sigmascope.external-analysis-sources.v1"
 SEMANTICS = "research-input-only"
@@ -256,10 +258,105 @@ def automated_research_sources(registry: dict[str, Any] | None = None) -> list[d
     ]
 
 
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def external_analysis_revision(document: dict[str, Any]) -> str:
+    semantic = {
+        "schema": str(document.get("schema") or ""),
+        "registryRevision": str(document.get("registryRevision") or ""),
+        "semantics": str(document.get("semantics") or ""),
+        "sources": [
+            {
+                "id": str(source.get("id") or ""),
+                "repository": str(source.get("repository") or ""),
+                "defaultRef": str(source.get("defaultRef") or ""),
+                "inspectionPolicy": str(source.get("inspectionPolicy") or ""),
+                "observedRevision": str(source.get("observedRevision") or ""),
+                "status": str(source.get("status") or ""),
+            }
+            for source in document.get("sources") or []
+            if isinstance(source, dict)
+        ],
+    }
+    return f"external-analysis-v1-{hashlib.sha256(canonical_bytes(semantic)).hexdigest()[:16]}"
+
+
+def _default_ref_resolver(repository: str, ref: str, timeout: float) -> str:
+    completed = subprocess.run(
+        ["git", "ls-remote", repository, f"refs/heads/{ref}"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=timeout,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError((completed.stderr or completed.stdout or "git ls-remote failed").strip())
+    line = (completed.stdout or "").splitlines()[0] if (completed.stdout or "").splitlines() else ""
+    sha = line.split("\t", 1)[0].strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise RuntimeError(f"no branch head found for {repository}@{ref}")
+    return sha
+
+
+def build_observation(
+    registry: dict[str, Any] | None = None,
+    *,
+    ref_resolver: Callable[[str, str, float], str] | None = None,
+    timeout: float = 12.0,
+    observed_at_utc: str | None = None,
+) -> dict[str, Any]:
+    registry = registry or load_registry()
+    ref_resolver = ref_resolver or _default_ref_resolver
+    rows: list[dict[str, Any]] = []
+    for source in registry.get("sources") or []:
+        usage = source.get("usage") or {}
+        automated = bool(usage.get("automatedInspection")) and bool(usage.get("aiIngestion"))
+        row = {
+            "id": source["id"],
+            "name": source["name"],
+            "repository": source["repository"],
+            "defaultRef": source["defaultRef"],
+            "licenseClass": (source.get("license") or {}).get("classification") or "",
+            "derivationMode": usage.get("derivationMode") or "",
+            "inspectionPolicy": "head-observed" if automated else "metadata-only",
+            "status": "metadata-only",
+            "observedRevision": "",
+            "error": "",
+        }
+        if automated:
+            try:
+                row["observedRevision"] = ref_resolver(source["repository"], source["defaultRef"], timeout)
+                row["status"] = "observed"
+            except Exception as exc:
+                row["status"] = "observe-failed"
+                row["error"] = f"{type(exc).__name__}: {exc}"
+        rows.append(row)
+    document = {
+        "schema": "omega.sigmascope.external-analysis-source-observations.v1",
+        "semantics": SEMANTICS,
+        "observedAtUtc": observed_at_utc or _utc_now(),
+        "registryRevision": registry["revision"],
+        "counts": {
+            "sources": len(rows),
+            "headObserved": sum(1 for row in rows if row["status"] == "observed"),
+            "metadataOnly": sum(1 for row in rows if row["inspectionPolicy"] == "metadata-only"),
+            "observeFailed": sum(1 for row in rows if row["status"] == "observe-failed"),
+        },
+        "sources": sorted(rows, key=lambda row: row["id"]),
+    }
+    document["externalAnalysisRevision"] = external_analysis_revision(document)
+    return document
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate or inspect SigmaScope external analysis research sources")
-    parser.add_argument("command", nargs="?", choices=["validate", "list", "automated"], default="validate")
+    parser.add_argument("command", nargs="?", choices=["validate", "list", "automated", "observe"], default="validate")
     parser.add_argument("--registry", type=Path, default=default_registry_path())
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--timeout", type=float, default=12.0)
     args = parser.parse_args(argv)
     try:
         registry = load_registry(args.registry)
@@ -274,6 +371,8 @@ def main(argv: list[str] | None = None) -> int:
             "revision": registry["revision"],
             "sources": automated_research_sources(registry),
         }
+    elif args.command == "observe":
+        payload = build_observation(registry, timeout=args.timeout)
     else:
         payload = {
             "schema": SCHEMA,
@@ -286,7 +385,11 @@ def main(argv: list[str] | None = None) -> int:
                 if str((source.get("license") or {}).get("classification") or "") in RESTRICTED_LICENSE_CLASSES
             ),
         }
-    print(json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2))
+    text = json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(text, encoding="utf-8")
+    print(text, end="")
     return 0
 
 
