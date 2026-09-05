@@ -11,7 +11,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         for required in (
             "group: omega-sigmascope-parallel-drain-exclusive", "queue: max", "default: 4", "default: 10",
             "sigmascope_parallel_drain_plan.py", "strategy:", "fail-fast: false", "QUEUE_KEYS_JSON",
-            "runs-on: [self-hosted, Linux, X64, omega-security]", "max-parallel: 2", "docker run --rm --userns=keep-id",
+            "runs-on: [self-hosted, Linux, X64, omega-security]", "max-parallel: 2", "docker run --rm --userns=keep-id", '-v "$PWD:$PWD:Z"',
             "sigmascope_parallel_worker_entrypoint.sh process",
             "sigmascope_result_merger.py",
             "--queue-seed catalog/active-state/scan-queue.json", "security_developer_audit.py",
