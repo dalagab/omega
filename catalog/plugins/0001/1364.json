@@ -4,7 +4,7 @@
     "canonical_name": "Lazy Market Companion",
     "first_seen_utc": "2026-09-05T16:06:46Z",
     "internal_name": "LazyMarketCompanion",
-    "last_seen_utc": "2026-09-05T17:29:02Z",
+    "last_seen_utc": "2026-09-05T17:35:04Z",
     "plugin_id": 1364
   },
   "presentation": {
@@ -13,8 +13,8 @@
     "nsfw": 0,
     "official": 0,
     "plugin_id": 1364,
-    "preferred_variant_id": 7294,
-    "presentation_variant_id": 7294,
+    "preferred_variant_id": 7355,
+    "presentation_variant_id": 7355,
     "rich_card": 0,
     "richness_score": 657,
     "summary": "Auto-lists your always-sell items and matches market board prices",
@@ -72,7 +72,7 @@
         }
       ],
       "variant": {
-        "active": 1,
+        "active": 0,
         "applicable_version": "any",
         "assembly_version": "0.0.0.0",
         "author": "dajoey",
@@ -255,6 +255,81 @@
         "testing_assembly_version": "0.1.0.1",
         "testing_dalamud_api_level": 15,
         "variant_id": 7341
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "utility",
+          "variant_id": 7355
+        },
+        {
+          "kind": "tag",
+          "tag": "autoretainer",
+          "variant_id": 7355
+        },
+        {
+          "kind": "tag",
+          "tag": "marketboard",
+          "variant_id": 7355
+        },
+        {
+          "kind": "tag",
+          "tag": "match",
+          "variant_id": 7355
+        },
+        {
+          "kind": "tag",
+          "tag": "price",
+          "variant_id": 7355
+        },
+        {
+          "kind": "tag",
+          "tag": "retainer",
+          "variant_id": 7355
+        },
+        {
+          "kind": "tag",
+          "tag": "sell",
+          "variant_id": 7355
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.1.0.1",
+        "author": "dajoey",
+        "authors_json": "[\"dajoey\"]",
+        "category_tags_json": "[\"utility\"]",
+        "changelog": "v0.1.0.1 (2026-09-05)\n\n- Plugin failed to load (\"A window with this name/ID already exists\"): the config window and the retainer-list button overlay were both registered as \"Lazy Market Companion\" in one WindowSystem; the overlay is now \"Lazy Market Companion##overlay\" (file: `MarketAutomation.cs`, ctor). Found in omasky dalamud.log at 12:14:27 on the first install attempt.\n- `/pricematch` alias is only registered when no other plugin (Dagobert) already owns it, and only removed on unload if we registered it (file: `Plugin.cs`, `_ownsLegacyCommand`).\n\n- The Dagobert settings import DID run on that first attempt (4 retainers, 0 price limits) and is idempotent, so a reinstall picks up the imported config.\n\nv0.1.0.0 (2026-09-05)\n\n- New plugin. Successor to Dagobert Price Matcher (fork of SHOEGAZEssb/Dagobert, AGPL-3.0; the price-matching engine, Universalis lookup, per-item min/max limits, retainer selection and hotkeys are carried over unchanged in behaviour). Files: `MarketAutomation.cs`, `MarketBoardHandler.cs`, `UniversalisPriceProvider.cs`, `Configuration.cs`.\n- Auto-Market list: items you always sell, each with stack size per listing, keep-in-bags, keep-in-retainer, max listings per retainer, stock-source override and optional fixed price. Add from the config window search or the inventory right-click menu (\"Add to Auto-Market\"). HQ and NQ are separate entries. Files: `Configuration.cs` (`AutoMarketItem`), `Windows/ConfigWindow.cs`.\n- Auto-Market engine: while a retainer's sell list is open, snapshots bags + the retainer's inventory + the 20 market slots, plans listings (Dalamud-free `AutoMarket/AutoMarketPlanner.cs`, unit-tested in `tests/LazyMarketCompanion.Harness`), lists each via `InventoryManager.MoveToRetainerMarket` at a placeholder price, waits for the server to confirm the slot, then runs the normal price match on the new listings (or on everything, toggle). File: `AutoMarket/AutoMarketService.cs`, `MarketAutomation.cs` (`InsertAutoMarketThenPinch`).\n- \"Auto Market\" button next to \"Auto Pinch\" on both the retainer list (all enabled retainers) and the sell list (this retainer). `/lmc market`, `/lmc pinch`, `/lmc sweep`, `/lmc cancel`, `/lmc debug` subcommands.\n- AutoRetainer integration: with \"Run during AutoRetainer ventures\" on, the plugin claims each enabled retainer through AutoRetainer's postprocess IPC (`OnRetainerAdditionalTask` -> `RequestPostprocess` -> `OnRetainerReadyForPostprocess` -> `FinishPostprocessRequest`), opens Sell Items, auto-markets, pinches, closes, and hands the retainer back. Watchdog releases AutoRetainer on abort/timeout and after a 5-minute cap. File: `AutoRetainerIPC.cs`, `MarketAutomation.cs` (`OnArReadyToPostprocess`).\n- New-listing price mode: placeholder-then-match (default) or Universalis-first. Global toggles: stock source, retainer-stock-first, list partial stacks, reserve N market slots, pinch-all-after, chat messages.\n- One-time settings import from `pluginConfigs/DagobertPriceMatcher.json` on first load (price limits, retainer selection, seen retainers, all matching options). File: `Plugin.cs` (`LoadOrImportConfiguration`).\n\n- Command is `/lmc`; `/pricematch` kept as a hidden alias.\n- Chat prefix `[LMC]`. Windows System.Speech TTS removed (Dalamud chat notifications only); the plugin no longer ships `System.Speech.dll`.\n- \"Sell items\" menu entry is matched by Addon-sheet text (row 2380) with the old index-2 fallback.\n- The max-price-cut guard is bypassed for listings still at the Auto-Market placeholder price, so a fresh listing always drops to the matched price.\n\n- Ships on the TESTING channel first. Dagobert Price Matcher stays published until this is verified in-game, then gets retired (P3).\n- `MoveToRetainerMarket` / `SetRetainerMarketPrice` / `RetainerMarket` container facts verified against FFXIVClientStructs and DailyRoutines' AutoRetainerWork (2026-09-05).",
+        "dalamud_api_level": 15,
+        "description": "Keep an Auto-Market list of items you always sell. The companion lists them through your retainers in the stack size you choose (keeping a reserve in your bags if you want), prices every listing by matching the lowest board price instead of undercutting, and can do all of it inside AutoRetainer's venture cycle. Also re-prices existing listings (Auto Pinch). Successor to Dagobert Price Matcher; your old settings are imported automatically.",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyMarketCompanion/latest/latest.zip",
+        "download_link_testing": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyMarketCompanion/testing/testing.zip",
+        "download_link_update": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyMarketCompanion/latest/latest.zip",
+        "first_seen_utc": "2026-09-05T17:35:04Z",
+        "icon_url": "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazymarketcompanion-icon.png",
+        "image_urls_json": "[\"\"]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-09-05T17:35:04Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "Lazy Market Companion",
+        "plugin_id": 1364,
+        "punchline": "Auto-lists your always-sell items and matches market board prices",
+        "raw_manifest_json": "{\"Author\":\"dajoey\",\"Name\":\"Lazy Market Companion\",\"Punchline\":\"Auto-lists your always-sell items and matches market board prices\",\"Description\":\"Keep an Auto-Market list of items you always sell. The companion lists them through your retainers in the stack size you choose (keeping a reserve in your bags if you want), prices every listing by matching the lowest board price instead of undercutting, and can do all of it inside AutoRetainer's venture cycle. Also re-prices existing listings (Auto Pinch). Successor to Dagobert Price Matcher; your old settings are imported automatically.\",\"InternalName\":\"LazyMarketCompanion\",\"AssemblyVersion\":\"0.1.0.1\",\"TestingAssemblyVersion\":\"0.1.0.1\",\"TestingDalamudApiLevel\":15,\"Changelog\":\"v0.1.0.1 (2026-09-05)\\n\\n- Plugin failed to load (\\\"A window with this name/ID already exists\\\"): the config window and the retainer-list button overlay were both registered as \\\"Lazy Market Companion\\\" in one WindowSystem; the overlay is now \\\"Lazy Market Companion##overlay\\\" (file: `MarketAutomation.cs`, ctor). Found in omasky dalamud.log at 12:14:27 on the first install attempt.\\n- `/pricematch` alias is only registered when no other plugin (Dagobert) already owns it, and only removed on unload if we registered it (file: `Plugin.cs`, `_ownsLegacyCommand`).\\n\\n- The Dagobert settings import DID run on that first attempt (4 retainers, 0 price limits) and is idempotent, so a reinstall picks up the imported config.\\n\\nv0.1.0.0 (2026-09-05)\\n\\n- New plugin. Successor to Dagobert Price Matcher (fork of SHOEGAZEssb/Dagobert, AGPL-3.0; the price-matching engine, Universalis lookup, per-item min/max limits, retainer selection and hotkeys are carried over unchanged in behaviour). Files: `MarketAutomation.cs`, `MarketBoardHandler.cs`, `UniversalisPriceProvider.cs`, `Configuration.cs`.\\n- Auto-Market list: items you always sell, each with stack size per listing, keep-in-bags, keep-in-retainer, max listings per retainer, stock-source override and optional fixed price. Add from the config window search or the inventory right-click menu (\\\"Add to Auto-Market\\\"). HQ and NQ are separate entries. Files: `Configuration.cs` (`AutoMarketItem`), `Windows/ConfigWindow.cs`.\\n- Auto-Market engine: while a retainer's sell list is open, snapshots bags + the retainer's inventory + the 20 market slots, plans listings (Dalamud-free `AutoMarket/AutoMarketPlanner.cs`, unit-tested in `tests/LazyMarketCompanion.Harness`), lists each via `InventoryManager.MoveToRetainerMarket` at a placeholder price, waits for the server to confirm the slot, then runs the normal price match on the new listings (or on everything, toggle). File: `AutoMarket/AutoMarketService.cs`, `MarketAutomation.cs` (`InsertAutoMarketThenPinch`).\\n- \\\"Auto Market\\\" button next to \\\"Auto Pinch\\\" on both the retainer list (all enabled retainers) and the sell list (this retainer). `/lmc market`, `/lmc pinch`, `/lmc sweep`, `/lmc cancel`, `/lmc debug` subcommands.\\n- AutoRetainer integration: with \\\"Run during AutoRetainer ventures\\\" on, the plugin claims each enabled retainer through AutoRetainer's postprocess IPC (`OnRetainerAdditionalTask` -> `RequestPostprocess` -> `OnRetainerReadyForPostprocess` -> `FinishPostprocessRequest`), opens Sell Items, auto-markets, pinches, closes, and hands the retainer back. Watchdog releases AutoRetainer on abort/timeout and after a 5-minute cap. File: `AutoRetainerIPC.cs`, `MarketAutomation.cs` (`OnArReadyToPostprocess`).\\n- New-listing price mode: placeholder-then-match (default) or Universalis-first. Global toggles: stock source, retainer-stock-first, list partial stacks, reserve N market slots, pinch-all-after, chat messages.\\n- One-time settings import from `pluginConfigs/DagobertPriceMatcher.json` on first load (price limits, retainer selection, seen retainers, all matching options). File: `Plugin.cs` (`LoadOrImportConfiguration`).\\n\\n- Command is `/lmc`; `/pricematch` kept as a hidden alias.\\n- Chat prefix `[LMC]`. Windows System.Speech TTS removed (Dalamud chat notifications only); the plugin no longer ships `System.Speech.dll`.\\n- \\\"Sell items\\\" menu entry is matched by Addon-sheet text (row 2380) with the old index-2 fallback.\\n- The max-price-cut guard is bypassed for listings still at the Auto-Market placeholder price, so a fresh listing always drops to the matched price.\\n\\n- Ships on the TESTING channel first. Dagobert Price Matcher stays published until this is verified in-game, then gets retired (P3).\\n- `MoveToRetainerMarket` / `SetRetainerMarketPrice` / `RetainerMarket` container facts verified against FFXIVClientStructs and DailyRoutines' AutoRetainerWork (2026-09-05).\",\"RepoUrl\":\"https://github.com/dajoey/lalalazy/tree/main/src/LazyMarketCompanion\",\"ApplicableVersion\":\"any\",\"DalamudApiLevel\":15,\"IsHide\":false,\"IsTestingExclusive\":false,\"DownloadLinkInstall\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyMarketCompanion/latest/latest.zip\",\"DownloadLinkUpdate\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyMarketCompanion/latest/latest.zip\",\"DownloadLinkTesting\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyMarketCompanion/testing/testing.zip\",\"Tags\":[\"marketboard\",\"retainer\",\"sell\",\"price\",\"match\",\"autoretainer\"],\"CategoryTags\":[\"utility\"],\"IconUrl\":\"https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazymarketcompanion-icon.png\",\"ImageUrls\":[\"\"],\"DownloadCount\":0,\"LastUpdate\":\"0\"}",
+        "repo_url": "https://github.com/dajoey/lalalazy/tree/main/src/LazyMarketCompanion",
+        "source_entry_key": "lazymarketcompanion|0.1.0.1|15|15|12",
+        "source_id": 1006,
+        "tags_json": "[\"marketboard\",\"retainer\",\"sell\",\"price\",\"match\",\"autoretainer\"]",
+        "testing_assembly_version": "0.1.0.1",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 7355
       }
     }
   ]
