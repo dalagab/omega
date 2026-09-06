@@ -42,6 +42,10 @@ class MarketplaceProjectionTests(unittest.TestCase):
             with closing(sqlite3.connect(out)) as db:
                 leaked = db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%'").fetchone()[0]
                 self.assertEqual(0, leaked)
+                search_tables = db.execute(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='plugin_search'"
+                ).fetchone()[0]
+                self.assertEqual(1, search_tables)
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM runtime_plugin_variants").fetchone()[0], 0)
                 row = db.execute(
                     "SELECT website_readme_excerpt,website_image_urls_json,security_dependencies_json,security_dependency_total_count FROM runtime_plugin_variants WHERE internal_name='Fixture'"
