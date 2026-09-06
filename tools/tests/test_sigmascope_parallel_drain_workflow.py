@@ -148,6 +148,8 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         workers = text[text.index("\n  workers:"):text.index("\n  merge:")]
         self.assertIn("sigmascope_sparse_evidence.py", workers)
         self.assertIn("Fetch Security Evidence metadata for sparse worker view", workers)
+        self.assertIn('GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-/tmp/sigmascope-worker-gitconfig}"', workers)
+        self.assertIn('git config --global --add safe.directory "$PWD"', workers)
         self.assertNotIn("path: catalog/security-v2-current", workers)
         self.assertIn(".sigmascope-sparse-evidence.json", (common.ROOT / "tools" / "security" / "sigmascope_parallel_worker_entrypoint.sh").read_text(encoding="utf-8"))
 
