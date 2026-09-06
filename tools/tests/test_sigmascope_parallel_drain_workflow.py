@@ -92,6 +92,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertNotIn("publish_deep_scan_state.py", workers)
         self.assertIn("publish_security_evidence_v2.py", publish)
         self.assertIn("publish_deep_scan_state.py", publish)
+        self.assertIn("continue-on-error: true", publish[publish.index("Reconcile source follow-up issues"):])
         self.assertIn("group: omega-catalog-sigmascope-exclusive", publish)
         self.assertIn("Revalidate planned authority heads after acquiring the writer lock", publish)
         self.assertIn("refs/heads/catalog-data", publish)
