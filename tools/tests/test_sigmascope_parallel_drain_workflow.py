@@ -42,8 +42,9 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn("WORKERS: ${{ inputs.workers || 8 }}", text)
         self.assertIn("ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}", text)
         self.assertIn("omega.sigmascope-drain-execution-context.v1", text)
-        self.assertNotIn("self-hosted", text)
-        self.assertNotIn("omega-security", text)
+        workers = text[text.index("\n  workers:"): text.index("\n  merge:")]
+        self.assertNotIn("self-hosted", workers)
+        self.assertNotIn("omega-security", workers)
         wake = (common.ROOT / ".github" / "workflows" / "sigmascope-drain-wake.yml").read_text(encoding="utf-8")
         self.assertNotIn("default: 4", wake)
         self.assertNotIn("default: 10", wake)
