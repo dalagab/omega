@@ -43,6 +43,16 @@ jobs:
           ref: ${{ steps.release.outputs.tag }}
           fetch-depth: 0
 
+      - name: Verify release tag belongs to Omega client branch
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.release.outputs.tag }}'
+          git fetch --no-tags origin '+refs/heads/omega:refs/remotes/origin/omega'
+          $tagCommit = (git rev-list -n 1 $tag).Trim()
+          if ([string]::IsNullOrWhiteSpace($tagCommit)) { throw "Release tag $tag does not resolve to a commit." }
+          git merge-base --is-ancestor $tagCommit refs/remotes/origin/omega
+          if ($LASTEXITCODE -ne 0) { throw "Release tag $tag ($tagCommit) is not contained in the Omega client branch 'omega'." }
+
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
@@ -233,27 +243,23 @@ jobs:
           if ([string]$manifest[0].DownloadLinkInstall -ne $expectedUrl -or [string]$manifest[0].DownloadLinkUpdate -ne $expectedUrl) {
             throw 'Stable generated PluginMaster does not point to the immutable tagged Omega.zip.'
           }
-      - name: Finalize tagged changelog on default branch
+      - name: Finalize tagged changelog on Omega client branch
         if: github.event_name == 'push'
         shell: pwsh
         run: |
           $tag = '${{ steps.release.outputs.tag }}'
           $version = '${{ steps.release.outputs.version }}'
-          $defaultBranch = '${{ github.event.repository.default_branch }}'
-          if ([string]::IsNullOrWhiteSpace($defaultBranch)) {
-            Write-Warning 'Repository default branch is unavailable; release is published but CHANGELOG.md was not rolled forward.'
-            exit 0
-          }
+          $clientBranch = 'omega'
 
           $tagCommit = (git rev-list -n 1 $tag).Trim()
-          $remoteLine = (git ls-remote origin "refs/heads/$defaultBranch" | Select-Object -First 1)
+          $remoteLine = (git ls-remote origin "refs/heads/$clientBranch" | Select-Object -First 1)
           $remoteHead = if ($remoteLine) { ($remoteLine -split "`t")[0].Trim() } else { '' }
           if ($remoteHead -ne $tagCommit) {
-            Write-Warning "Default branch '$defaultBranch' moved beyond tagged commit $tagCommit; skipping automatic changelog finalization so post-tag Unreleased work cannot be misassigned."
+            Write-Warning "Omega client branch '$clientBranch' moved beyond tagged commit $tagCommit; skipping automatic changelog finalization so post-tag Unreleased work cannot be misassigned."
             exit 0
           }
 
-          git checkout -B $defaultBranch $tagCommit
+          git checkout -B $clientBranch $tagCommit
           $releaseDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')
           python tools/release/finalize_changelog.py --version $version --date $releaseDate
           if (-not (git status --porcelain -- CHANGELOG.md)) {
@@ -264,7 +270,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add CHANGELOG.md
           git commit -m "Finalize changelog for $tag"
-          git push origin "HEAD:refs/heads/$defaultBranch"
+          git push origin "HEAD:refs/heads/$clientBranch"
 
       - name: Publish legacy raw-main PluginMaster compatibility mirror
         shell: pwsh
