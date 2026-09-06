@@ -39,6 +39,15 @@ class SigmaScopeLocalQueueWorkerContractTests(unittest.TestCase):
         self.assertNotIn("catalog-client-publish.yml", text)
         self.assertNotIn("gh workflow run", text)
 
+    def test_local_queue_powershell_wrapper_reports_summary(self) -> None:
+        text = (common.ROOT / "tools" / "security" / "run_sigmascope_local_queue.ps1").read_text(encoding="utf-8")
+        self.assertIn("sigmascope_local_queue_worker.py", text)
+        self.assertIn("local-sigmascope-queue-worker-report.json", text)
+        self.assertIn("sigmascope-report-*.json", text)
+        self.assertIn("Batch summary", text)
+        self.assertIn("previousHead", text)
+        self.assertIn("newHead", text)
+
 
 if __name__ == "__main__":
     unittest.main()
