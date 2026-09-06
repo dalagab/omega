@@ -1,0 +1,2126 @@
+{
+  "analysis": {
+    "analysisId": "ea378b43d8396ad649ae8e4eeb1e26c43857ab8568f8c301e8350b0fbaa54511",
+    "artifactSha256": "b31d33c914180d1af9e25b2fd2126bb501e4e8cd58626748648b554e1b78945f",
+    "path": "artifacts/b3/b31d33c914180d1af9e25b2fd2126bb501e4e8cd58626748648b554e1b78945f/analyses/ea378b43d8396ad649ae8e4eeb1e26c43857ab8568f8c301e8350b0fbaa54511",
+    "recordCount": 841
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "b31d33c914180d1af9e25b2fd2126bb501e4e8cd58626748648b554e1b78945f",
+    "artifact_url": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest/download/latest.zip",
+    "assembly_version": "1.3.0.0",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.interact",
+        "confidence": "high",
+        "evidence": [
+          "il:AutoDailyTribes.dll:AutoDailyTribes.Core.Game.AddonInteractions.InteractWith+0x33: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "indirect": false,
+        "label": "World/NPC interaction control",
+        "reachable": false,
+        "reason": "Invokes an interaction mechanism capable of activating an NPC, object, or other world target."
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "high",
+        "evidence": [
+          "il:AutoDailyTribes.dll:AutoDailyTribes.Core.Game.AddonInteractions.InteractWith+0x17: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+          "il:AutoDailyTribes.dll:AutoDailyTribes.Core.Game.AddonInteractions.InteractWith+0x22: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": false,
+        "reason": "References a target-setting API rather than only reading the current target."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "high",
+        "evidence": [
+          "il:AutoDailyTribes.dll:AutoDailyTribes.Core.Game.AddonInteractions.ProgressTalk+0x55: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": false,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.synthetic_click",
+        "confidence": "high",
+        "evidence": [
+          "il:AutoDailyTribes.dll:<AcceptDailies>d__46.MoveNext+0x40c: call clib.Extensions.AddonSelectStringExtensions.Select"
+        ],
+        "indirect": false,
+        "label": "Synthetic game UI interaction",
+        "reachable": false,
+        "reason": "Invokes code associated with synthetic clicks or selection dialogs."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Character target control",
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: autofac.readthedocs.io",
+      "Endpoint: autofac.rtfd.io",
+      "Endpoint: crypto.nightmarexiv.org",
+      "Endpoint: developer.microsoft.com",
+      "Endpoint: discord.gg",
+      "Endpoint: discord.nightmarexiv.org",
+      "Endpoint: donate.nightmarexiv.org",
+      "Endpoint: egorbo.com",
+      "Endpoint: explore.nightmarexiv.org",
+      "Endpoint: github.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access",
+      "Registry access",
+      "Synthetic game UI interaction",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 22,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "memory",
+        "description": "References APIs used to open another process or read/write its memory.",
+        "evidence": [
+          "il:Dalamud.Common.dll:Dalamud.Common.DalamudStartInfo.PrintMembers+0x338: call Dalamud.Common.DalamudStartInfo.get_BootDotnetOpenProcessHookMode: OpenProcess",
+          "artifact:Dalamud.Common.dll: OpenProcess",
+          "metadata:ECommons.dll: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x23: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x47: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x147: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "artifact:ECommons.dll: VirtualProtectEx",
+          "metadata:Reloaded.Memory.dll: ReadProcessMemory"
+        ],
+        "ruleId": "memory.process",
+        "severity": "high",
+        "title": "Cross-process memory access"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "system",
+        "description": "References Windows Registry APIs.",
+        "evidence": [
+          "metadata:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll: Microsoft.Win32.Registry",
+          "metadata:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll: RegistryKey",
+          "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: RegistryKey",
+          "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+          "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey"
+        ],
+        "ruleId": "registry.access",
+        "severity": "caution",
+        "title": "Windows Registry access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:AllaganLib.Shared.dll: System.Diagnostics.Process",
+          "metadata:AllaganLib.Shared.dll: ProcessStartInfo",
+          "metadata:AllaganLib.Shared.dll: ShellExecute",
+          "metadata:AllaganLib.Shared.dll: Process.Start",
+          "il:AllaganLib.Shared.dll:AllaganLib.Shared.Extensions.StringExtensions.OpenBrowser+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:AllaganLib.Shared.dll:AllaganLib.Shared.Extensions.StringExtensions.OpenBrowser+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:AllaganLib.Shared.dll:AllaganLib.Shared.Extensions.StringExtensions.OpenBrowser+0x7: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:AllaganLib.Shared.dll:AllaganLib.Shared.Extensions.StringExtensions.OpenBrowser+0x7: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ECommons.xml: https://egorbo.com/llvm-range-checks.html"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.f4c18a6e1831",
+        "severity": "caution",
+        "title": "Endpoint: egorbo.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Autofac.dll: https://autofac.readthedocs.io/en/latest/advanced/delegate-factories.html"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.f071694d1dfa",
+        "severity": "caution",
+        "title": "Endpoint: autofac.readthedocs.io"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.cc91d234fb3b",
+        "severity": "caution",
+        "title": "Endpoint: discord.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.b5dad10c192a",
+        "severity": "caution",
+        "title": "Endpoint: donate.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.9d3ce8792d14",
+        "severity": "caution",
+        "title": "Endpoint: explore.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Autofac.dll: https://autofac.rtfd.io/help/service-not-registered"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.984a0ff30d72",
+        "severity": "caution",
+        "title": "Endpoint: autofac.rtfd.io"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.8785017a999f",
+        "severity": "caution",
+        "title": "Endpoint: crypto.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Autofac.dll: https://autofac.readthedocs.io/en/latest/resolve/relationships.html"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.3f21a8a8cb0d",
+        "severity": "caution",
+        "title": "Endpoint: autofac.readthedocs.io"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Autofac.dll: https://autofac.rtfd.io/help/<redacted>"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.366b33d94684",
+        "severity": "caution",
+        "title": "Endpoint: autofac.rtfd.io"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Autofac.dll: https://autofac.rtfd.io/help/no-constructors-found"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.2ce52b23df54",
+        "severity": "caution",
+        "title": "Endpoint: autofac.rtfd.io"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Autofac.dll: https://autofac.rtfd.io/help/no-matching-scope"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.2408eb562f2c",
+        "severity": "caution",
+        "title": "Endpoint: autofac.rtfd.io"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:CommunityToolkit.HighPerformance.dll: https://developer.microsoft.com/en-us/windows/uwp-community-toolkit"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.18af43152701",
+        "severity": "caution",
+        "title": "Endpoint: developer.microsoft.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:clib.dll: DllImportAttribute",
+          "metadata:ECommons.dll: DllImportAttribute",
+          "metadata:goatcorp.Reloaded.Hooks.dll: DllImportAttribute",
+          "metadata:goatcorp.Reloaded.Memory.Buffers.dll: DllImportAttribute",
+          "metadata:HexaGen.Runtime.dll: NativeLibrary.Load",
+          "il:HexaGen.Runtime.dll:HexaGen.Runtime.FunctionTable.Load+0x9: callvirt HexaGen.Runtime.INativeContext.TryGetProcAddress: GetProcAddress",
+          "il:HexaGen.Runtime.dll:HexaGen.Runtime.LibraryLoader.LoadLibraryEx+0x52: call HexaGen.Runtime.LibraryLoader.LoadLibrary: LoadLibrary",
+          "il:HexaGen.Runtime.dll:HexaGen.Runtime.LibraryLoader.LoadLibrary+0xaa: call System.Runtime.InteropServices.NativeLibrary.Load: NativeLibrary.Load"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:clib.dll: Dalamud.Hooking",
+          "metadata:clib.dll: SigScanner",
+          "metadata:clib.dll: HookFromAddress",
+          "il:clib.dll:clib.Utils.OverrideMovement..ctor+0x27: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "il:clib.dll:clib.Utils.OverrideMovement..ctor+0x41: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "il:clib.dll:clib.Extensions.IDalamudPluginInterfaceExtensions.InitCustomClientStructs+0x19: callvirt Dalamud.Plugin.Services.ISigScanner.get_SearchBase: SigScanner",
+          "il:clib.dll:clib.Extensions.IGameInteropProviderExtensions.HookFromVTable+0xa: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:clib.dll:clib.Extensions.IGameInteropProviderExtensions.GetDelegate+0x6: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:BCnEncoder.dll: s://github.com/Nominom/BCnEncoder.NET",
+          "artifact:BCnEncoder.dll: C:\\Projects\\BCnEncoder.NET\\BCnEnc.Net\\obj\\Release\\netstandard2.1\\BCnEncoder.pdb",
+          "artifact:BCnEncoder.dll: p://ocsp.digicert.com0",
+          "artifact:BCnEncoder.dll: p://cacerts.digicert.com/DigiCertTrustedG4TimeStampingRSA4096SHA2562025CA1.crt0_",
+          "artifact:BCnEncoder.dll: p://crl3.digicert.com/DigiCertTrustedG4TimeStampingRSA4096SHA2562025CA1.crl0",
+          "artifact:BCnEncoder.dll: p://ocsp.digicert.com0A",
+          "artifact:BCnEncoder.dll: p://cacerts.digicert.com/DigiCertTrustedRootG4.crt0C",
+          "artifact:BCnEncoder.dll: p://crl3.digicert.com/DigiCertTrustedRootG4.crl0"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:Autofac.dll: AssemblyLoadContext",
+          "il:Autofac.dll:Autofac.Core.Lifetime.LifetimeScope.BeginLoadContextLifetimeScope+0x13: call System.Runtime.Loader.AssemblyLoadContext.get_Default: AssemblyLoadContext",
+          "il:Autofac.dll:<>c__DisplayClass43_0.<BeginLoadContextLifetimeScope>b__1+0xf: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+          "artifact:Autofac.dll: AssemblyLoadContext",
+          "metadata:ECommons.dll: AssemblyLoadContext",
+          "metadata:ECommons.dll: Assembly.Load",
+          "il:ECommons.dll:ECommons.Reflection.ReflectionHelper.GetTypeFromRuntimeAssembly+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+          "artifact:ECommons.dll: AssemblyLoadContext"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for synthetic game ui interaction. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:AutoDailyTribes.dll:<AcceptDailies>d__46.MoveNext+0x40c: call clib.Extensions.AddonSelectStringExtensions.Select"
+        ],
+        "ruleId": "automation.game.ui.synthetic_click",
+        "severity": "caution",
+        "title": "Synthetic game UI interaction"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:AutoDailyTribes.dll:AutoDailyTribes.Core.Game.AddonInteractions.ProgressTalk+0x55: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:AutoDailyTribes.dll:AutoDailyTribes.Core.Game.AddonInteractions.InteractWith+0x17: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+          "il:AutoDailyTribes.dll:AutoDailyTribes.Core.Game.AddonInteractions.InteractWith+0x22: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:AutoDailyTribes.dll:AutoDailyTribes.Core.Game.AddonInteractions.InteractWith+0x33: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "ruleId": "automation.game.character.interact",
+        "severity": "caution",
+        "title": "World/NPC interaction control"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "artifact:Autofac.dll: WebRequest",
+          "metadata:ECommons.dll: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.Opcodes.OpcodeUpdater.DownloadOpcodes+0x21: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.Networking.HttpClientProxyHelper.ApplyProxySettings+0x69: callvirt System.Net.Http.HttpClientHandler.set_Proxy: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x7: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x15: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass1_0.<DownloadOpcodes>b__0+0x3e: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0x2: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:HexaGen.Runtime.dll: https://github.com/JunaMeinhold/HexaGen"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.fc0d86840e1a",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:BCnEncoder.dll: https://github.com/Nominom/BCnEncoder.NET"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.e85fd72d0e75",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.e6cb42e4f3a8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Iced.dll: https://github.com/icedland/iced"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.e0484baf82ab",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:AllaganLib.GameSheets.dll: https://github.com/Critical-Impact/AllaganLib",
+          "artifact:AllaganLib.Shared.dll: https://github.com/Critical-Impact/AllaganLib"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.da84cdf48fcb",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Sylvan.Data.Csv.dll: https://github.com/markpflug/Sylvan"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.d11d3883a769",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:SQLitePCLRaw.batteries_v2.dll: https://github.com/ericsink/SQLitePCL.raw",
+          "artifact:SQLitePCLRaw.core.dll: https://github.com/ericsink/SQLitePCL.raw",
+          "artifact:SQLitePCLRaw.provider.e_sqlite3.dll: https://github.com/ericsink/SQLitePCL.raw"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.cfabce510df0",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Extensions.Configuration.Abstractions.dll: https://github.com/dotnet/dotnet",
+          "artifact:Microsoft.Extensions.Configuration.Binder.dll: https://github.com/dotnet/dotnet",
+          "artifact:Microsoft.Extensions.Configuration.CommandLine.dll: https://github.com/dotnet/dotnet",
+          "artifact:Microsoft.Extensions.Configuration.dll: https://github.com/dotnet/dotnet"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.c2aa6da77912",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:AutoDailyTribes.dll: https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/issues"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.b85cac3219b3",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:goatcorp.Reloaded.Hooks.dll: https://github.com/goatcorp/Reloaded.Hooks"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.a0e6b5f9a44b",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:CsvHelper.dll: https://github.com/JoshClose/CsvHelper"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.9e7c5825f68c",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:AutoDailyTribes.dll: https://github.com/XeldarAlz/FFXIV-AutoDailyTribes"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.997c4bc7fe63",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Iced.dll: https://github.com/icedland"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.819fe4f6ef75",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:LuminaSupplemental.Excel.dll: https://github.com/Critical-Impact/LuminaSupplemental"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.8107d126a6f8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:System.Reactive.dll: https://github.com/dotnet/reactive"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.7c7f66411aeb",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:BitFaster.Caching.dll: https://github.com/bitfaster/BitFaster.Caching"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.782cc0610b47",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Autofac.dll: https://github.com/autofac/Autofac"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.759a9a45e7bd",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:CommunityToolkit.HighPerformance.dll: https://github.com/CommunityToolkit/dotnet"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.5e2c4ed80499",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:goatcorp.Reloaded.Memory.Buffers.dll: https://github.com/Reloaded-Project/Reloaded.Memory.Buffers"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.5a9ac730bfa4",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Reloaded.Hooks.Definitions.dll: https://github.com/Reloaded-Project/Reloaded.Hooks"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.4e0f78f88171",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:AutoDailyTribes.dll: https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/security/advisories/new"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.4b0f9809477e",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:AutoDailyTribes.dll: https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/discussions"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.3e5de5a85a03",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:AutoDailyTribes.dll: https://github.com/XeldarAlz/DalamudPlugins"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.36351fc7f188",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:clib.dll: https://github.com/Jaksuhn/clib"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.25a028504ad1",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:System.Reactive.dll: https://github.com/dotnet/reactive0"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.2545080a4100",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Autofac.Extensions.DependencyInjection.dll: https://github.com/autofac/Autofac.Extensions.DependencyInjection"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.23958b08943c",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:CheapLoc.dll: https://github.com/goaaats/CheapLoc"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.1be22da23d0c",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:AutoDailyTribes.json: https://github.com/XeldarAlz/FFXIV-AutoDailyTribes"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.0feba64a19ae",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.02c17b1985f5",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:AutoDailyTribes.dll: https://discord.gg/3HbJCscMyS"
+        ],
+        "ruleId": "network.endpoint.community-invite.d15d7df8dc66",
+        "severity": "informational",
+        "title": "Community invite: Discord"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:BCnEncoder.dll: FileStream",
+          "artifact:BCnEncoder.dll: FileStream",
+          "metadata:CheapLoc.dll: WriteAllText",
+          "il:CheapLoc.dll:CheapLoc.Loc.ExportLocalizableForAssembly+0x382: call System.IO.File.WriteAllText: WriteAllText",
+          "il:CheapLoc.dll:CheapLoc.Loc.ExportLocalizableForAssembly+0x3a9: call System.IO.File.WriteAllText: WriteAllText",
+          "artifact:CheapLoc.dll: WriteAllText",
+          "metadata:CSVFile.dll: FileStream",
+          "il:CSVFile.dll:CSVFile.CSVDataTable.WriteToFile+0xc: newobj System.IO.FileStream..ctor: FileStream"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
+        "category": "privacy",
+        "description": "References APIs that can read or modify clipboard contents.",
+        "evidence": [
+          "artifact:ECommons.dll: System.Windows.Forms.Clipboard"
+        ],
+        "ruleId": "clipboard",
+        "severity": "informational",
+        "title": "Clipboard access"
+      }
+    ],
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 33,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 85778,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
+      "artifactBytes": 14941607,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.3.0.0",
+        "artifactBytes": 14941607,
+        "artifactSha256": "b31d33c914180d1af9e25b2fd2126bb501e4e8cd58626748648b554e1b78945f",
+        "catalogAssemblyVersion": "1.3.0.0",
+        "manifestInternalName": "",
+        "manifestPath": "AutoDailyTribes.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1247619993/92c13c3b-a0ad-4f32-897e-68438f25c7ee?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-03T18%3A18%3A10Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-03T17%3A17%3A32Z&ske=2026-09-03T18%3A18%3A10Z&sks=b&skv=2018-11-09&sig=78gnpL3vN1PkzS643%2F6kcRsK3iOYdNlv6ZzAmAr3abc%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODQ1ODM4MywibmJmIjoxNzg4NDU2NTgzLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.BbAjXknSUOGkaN53jKTva9p1nYqilLJ4S4cgeJ0gXRc&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.synthetic_click",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Synthetic game UI interaction",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.synthetic_click",
+            "label": "Synthetic game UI interaction",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 15,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: autofac.readthedocs.io",
+        "Endpoint: autofac.rtfd.io",
+        "Endpoint: crypto.nightmarexiv.org",
+        "Endpoint: developer.microsoft.com",
+        "Endpoint: discord.gg",
+        "Endpoint: discord.nightmarexiv.org",
+        "Endpoint: donate.nightmarexiv.org",
+        "Endpoint: egorbo.com",
+        "Endpoint: explore.nightmarexiv.org",
+        "Endpoint: github.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access",
+        "Registry access",
+        "Synthetic game UI interaction",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.interact",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "game.ui.synthetic_click",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "privacy.clipboard",
+        "process.execute",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 22,
+        "critical": 0,
+        "high": 2,
+        "informational": 33
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {},
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {},
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest/download/latest.zip",
+        "internalName": "AutoDailyTribes",
+        "manifestVersion": "1.3.0.0",
+        "observationId": 10947,
+        "observationKey": "manifest-0f4b88028bedbd9d3187e5cba4f8",
+        "repositoryUrl": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 6685
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 62,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 88,
+        "uncompressedBytes": 44893944
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
+        "attemptId": "attempt-v2-d8cccb93927756e5",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-23282425180fb45d",
+        "definitionsRevision": "defs-v1-72b62ae5819f67ef",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-6685",
+        "queueSeedRevision": "queue-seed-v2-99589d83498404509913",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "dbb46c71ff40b108aa38b021ea59b0eafe680e91841a3f4aac0f2eb47be4a94b",
+        "scannerRevision": "scanner-v1-d969057dc879d530",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-50c8d5740239e1aa",
+        "targetFingerprint": "artifact-target-v2-1b9cfa749629e7e056f2",
+        "variantId": 6685,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-08-28T19:04:39Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "b31d33c914180d1af9e25b2fd2126bb501e4e8cd58626748648b554e1b78945f",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes",
+          "https://release-assets.githubusercontent.com/github-production-release-asset/1247619993/92c13c3b-a0ad-4f32-897e-68438f25c7ee"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 159327,
+    "scanned_at_utc": "2026-08-28T19:04:39Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 6685
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "b31d33c914180d1af9e25b2fd2126bb501e4e8cd58626748648b554e1b78945f",
+      "current_assembly_version": "1.3.0.0",
+      "current_scan_id": 159327,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-03T17:29:43Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 6685
+    },
+    "sourceArtifactComparison": null
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "ae3bfa0ab302eb6565258bfe4805f1076846dd84843dd26519910cec95c7ec80",
+    "observedAtUtc": "2026-09-06T16:33:23Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "b2945922affe1b93044056bad2196579a4e510d9b4a91d1d8312fc40f29b1291",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "de87f940ca389f6c76235c5220f93c3cc37a6e095ea11c55f996b792445ef469",
+        "records": 654,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "416288cdad26e4907611094506e2c5e370e5b23ae7402d0d4f345489ff94bbb6",
+        "records": 62,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "d1c1ca26640b609de3363f8e1285116e78b13185ca67360ccc586ad06448fb4f",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "f0554f529e703734b6641fe1ab0b780573af31d15cb75cdaa9c28f43273fe0e2",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-c19a94663f483998ebdcfd66ac2797fb48ef8008451852538c595aa1e34a6be6",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Auto Daily Tribes",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "AutoDailyTribes",
+    "last_seen_utc": "2026-09-05T03:58:21Z",
+    "plugin_id": 542
+  },
+  "pluginId": 542,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Does your daily allied tribe quests for you: tick the tribes, the plugin handles the rest.\n\nPlugin from https://raw.githubusercontent.com/XeldarAlz/DalamudPlugins/main/repo.json",
+      "images": [
+        "https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoDailyTribes/master/AutoDailyTribes/Images/demo.gif"
+      ],
+      "nsfw": false,
+      "official": false,
+      "richCard": true,
+      "richnessScore": 11207,
+      "summary": "Daily allied tribe quests, done for you.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "Daily allied tribe quests, done for you.",
+      "homepage": "",
+      "images": [
+        "https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoDailyTribes/master/AutoDailyTribes/Images/demo.gif"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes"
+        },
+        {
+          "kind": "releases",
+          "label": "Releases",
+          "url": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "<p align=\"center\">\n  <img src=\"AutoDailyTribes/Images/Icon.png\" width=\"180\" alt=\"Auto Daily Tribes icon\" />\n</p>\n\n<h1 align=\"center\">Auto Daily Tribes</h1>\n\n<p align=\"center\">\n  <a href=\"https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest\"><img alt=\"Release\" src=\"https://img.shields.io/github/v/release/XeldarAlz/FFXIV-AutoDailyTribes?style=flat-square&color=blue\"></a>\n  <a href=\"https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases\"><img alt=\"Downloads\" src=\"https://img.shields.io/github/downloads/XeldarAlz/FFXIV-AutoDailyTribes/total?style=flat-square&color=blue\"></a>\n  <a href=\"https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/actions/workflows/release.yml\"><img alt=\"Build\" src=\"https://img.shields.io/github/actions/workflow/status/XeldarAlz/FFXIV-AutoDailyTribes/release.yml?style=flat-square\"></a>\n  <a href=\"LICENSE.md\"><img alt=\"License\" src=\"https://img.shields.io/badge/license-AGPL--3.0--or--later-blue?style=flat-square\"></a>\n</p>\n\n<p align=\"center\">\n  <em>Daily allied tribe quests, done for you. Built on Dalamud.</em>\n</p>\n\n---\n\n<p align=\"center\">\n  <img src=\"AutoDailyTribes/Images/demo.gif\" alt=\"Auto Daily Tribes demo\" />\n</p>\n\n## What it does\n\nLists every Allied Tribe (formerly Beast Tribe) from A Realm Reborn through Dawntrail in one window. Tick the tribes you want, press **Run selected**, and the plugin teleports to each issuer, accepts the day's quests, plays them out, and turns them in.\n\n## Features\n\n- One window listing every Allied Tribe from ARR through DT.\n- Click cards to select; **Run selected** automates them back-to-back.\n- Per-tribe progress: rank, reputation bar, allowance pill.\n- Tribe-specific icons; era-grouped sections (newest first).\n- Locked tribes greyed out with hover tooltips explaining why.\n- Cancellable mid-run; selection persists across reloads.\n- Per-discipline job preference for crafter / gatherer tribes.\n\n## Install\n\nIn-game: `/xlsettings` → **Experimental** → paste into **Custom Plugin Repositories**:\n\n```\nhttps://raw.githubusercontent.com/XeldarAlz/DalamudPlugins/main/repo.json\n```\n\nTick **Enabled**, click **+**, then **Save and Close**. Open `/xlplugins` → **All Plugins**, search for **Auto Daily Tribes**, and install.\n\n## Commands\n\n| Command | Action |\n|---|---|\n| `/adt` | Toggle the main window |\n| `/dailytribes` | Alias for `/adt` |\n| `/adt config` | Open settings |\n| `/adt deps` | Open dependencies window |\n| `/adt about` | Open credits / links |\n| `/adt target` | Log targeted NPC's BaseId (debug helper) |\n\n## More from me\n\nIf you liked this plugin, take a look at my other Dalamud work. You might find something else there for you.\n\n→ [XeldarAlz Dalamud Plugins](https://github.com/XeldarAlz/DalamudPlugins)\n\n## License\n\nAGPL-3.0-or-later. See [LICENSE.md](LICENSE.md).",
+      "title": "FFXIV-AutoDailyTribes",
+      "url": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "65ea92ced8f593e0e18de344370f38d7a97661b53f68f62a684e443f70caf197",
+        "records": 4
+      },
+      "behaviorConsistency": {
+        "recordDigest": "ec5dbe2ba3cd9377d746aad6a60d733f8d27f6820b4c4e17afb4b0f40574a9b6",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "f38b3d97436838afedc73d31c9e140870fc4c739efba43f44156eefb71494c35",
+        "records": 15
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "eeddd846359d6197669d0369e2c3bf595f60b1e60b3b9ab60dd74d72250bd09c",
+        "records": 57
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "b31d33c914180d1af9e25b2fd2126bb501e4e8cd58626748648b554e1b78945f",
+    "artifact_url": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest/download/latest.zip",
+    "assembly_version": "1.3.0.0",
+    "capabilities_json": [
+      "Character target control",
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: autofac.readthedocs.io",
+      "Endpoint: autofac.rtfd.io",
+      "Endpoint: crypto.nightmarexiv.org",
+      "Endpoint: developer.microsoft.com",
+      "Endpoint: discord.gg",
+      "Endpoint: discord.nightmarexiv.org",
+      "Endpoint: donate.nightmarexiv.org",
+      "Endpoint: egorbo.com",
+      "Endpoint: explore.nightmarexiv.org",
+      "Endpoint: github.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access",
+      "Registry access",
+      "Synthetic game UI interaction",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 22,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 33,
+    "plugin_id": 542,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 85778,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
+      "artifactBytes": 14941607,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.3.0.0",
+        "artifactBytes": 14941607,
+        "artifactSha256": "b31d33c914180d1af9e25b2fd2126bb501e4e8cd58626748648b554e1b78945f",
+        "catalogAssemblyVersion": "1.3.0.0",
+        "manifestInternalName": "",
+        "manifestPath": "AutoDailyTribes.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1247619993/92c13c3b-a0ad-4f32-897e-68438f25c7ee?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-03T18%3A18%3A10Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-03T17%3A17%3A32Z&ske=2026-09-03T18%3A18%3A10Z&sks=b&skv=2018-11-09&sig=78gnpL3vN1PkzS643%2F6kcRsK3iOYdNlv6ZzAmAr3abc%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODQ1ODM4MywibmJmIjoxNzg4NDU2NTgzLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.BbAjXknSUOGkaN53jKTva9p1nYqilLJ4S4cgeJ0gXRc&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.synthetic_click",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Synthetic game UI interaction",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.synthetic_click",
+            "label": "Synthetic game UI interaction",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 15,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: autofac.readthedocs.io",
+        "Endpoint: autofac.rtfd.io",
+        "Endpoint: crypto.nightmarexiv.org",
+        "Endpoint: developer.microsoft.com",
+        "Endpoint: discord.gg",
+        "Endpoint: discord.nightmarexiv.org",
+        "Endpoint: donate.nightmarexiv.org",
+        "Endpoint: egorbo.com",
+        "Endpoint: explore.nightmarexiv.org",
+        "Endpoint: github.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access",
+        "Registry access",
+        "Synthetic game UI interaction",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.interact",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "game.ui.synthetic_click",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "privacy.clipboard",
+        "process.execute",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 22,
+        "critical": 0,
+        "high": 2,
+        "informational": 33
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {},
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {},
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest/download/latest.zip",
+        "internalName": "AutoDailyTribes",
+        "manifestVersion": "1.3.0.0",
+        "observationId": 10947,
+        "observationKey": "manifest-0f4b88028bedbd9d3187e5cba4f8",
+        "repositoryUrl": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 6685
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 62,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 88,
+        "uncompressedBytes": 44893944
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
+        "attemptId": "attempt-v2-d8cccb93927756e5",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-23282425180fb45d",
+        "definitionsRevision": "defs-v1-72b62ae5819f67ef",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-6685",
+        "queueSeedRevision": "queue-seed-v2-99589d83498404509913",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "dbb46c71ff40b108aa38b021ea59b0eafe680e91841a3f4aac0f2eb47be4a94b",
+        "scannerRevision": "scanner-v1-d969057dc879d530",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-50c8d5740239e1aa",
+        "targetFingerprint": "artifact-target-v2-1b9cfa749629e7e056f2",
+        "variantId": 6685,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-03T17:29:43Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "b31d33c914180d1af9e25b2fd2126bb501e4e8cd58626748648b554e1b78945f",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes",
+          "https://release-assets.githubusercontent.com/github-production-release-asset/1247619993/92c13c3b-a0ad-4f32-897e-68438f25c7ee"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 159327,
+    "scanned_at_utc": "2026-09-03T17:29:43Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 966,
+    "source_repository": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 6685
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "f01bcdec4bc473af6fed74f421027d61121257a6153d8a36cc66a5871ed41b14",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"97901b70ccc927518d9b41a6132eb661bbc704a5e083686ff73a605dbf99dcd9\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-05T03:58:21Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-05T03:58:21Z",
+    "name": "XeldarAlz/FFXIV-AutoDailyTribes",
+    "plugin_count": 1,
+    "provider": "XeldarAlz/FFXIV-AutoDailyTribes",
+    "source_id": 966,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoDailyTribes/master/repo.json"
+  },
+  "sourceId": 966,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.3.0.0",
+    "author": "XeldarAlz",
+    "authors_json": [
+      "XeldarAlz"
+    ],
+    "category_tags_json": [
+      "utility"
+    ],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "Does your daily allied tribe quests for you: tick the tribes, the plugin handles the rest.",
+    "dip17_channel": "",
+    "download_count": 7722,
+    "download_link_install": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest/download/latest.zip",
+    "download_link_testing": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest/download/latest.zip",
+    "download_link_update": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest/download/latest.zip",
+    "first_seen_utc": "2026-09-03T15:55:44Z",
+    "icon_url": "https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoDailyTribes/master/AutoDailyTribes/Images/Icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-03T15:55:44Z",
+    "last_update": 1787079507,
+    "minimum_dalamud_version": null,
+    "name": "Auto Daily Tribes",
+    "plugin_id": 542,
+    "punchline": "Daily allied tribe quests, done for you.",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.3.0.0",
+      "Author": "XeldarAlz",
+      "CategoryTags": [
+        "utility"
+      ],
+      "DalamudApiLevel": 15,
+      "Description": "Does your daily allied tribe quests for you: tick the tribes, the plugin handles the rest.",
+      "DownloadCount": 7722,
+      "DownloadLinkInstall": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest/download/latest.zip",
+      "DownloadLinkTesting": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest/download/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes/releases/latest/download/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/XeldarAlz/FFXIV-AutoDailyTribes/master/AutoDailyTribes/Images/Icon.png",
+      "InternalName": "AutoDailyTribes",
+      "IsTestingExclusive": false,
+      "LastUpdate": "1787079507",
+      "Name": "Auto Daily Tribes",
+      "Punchline": "Daily allied tribe quests, done for you.",
+      "RepoUrl": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes",
+      "Tags": [
+        "beast tribes",
+        "allied tribes",
+        "daily quests",
+        "automation"
+      ],
+      "TestingAssemblyVersion": "1.3.0.0"
+    },
+    "repo_url": "https://github.com/XeldarAlz/FFXIV-AutoDailyTribes",
+    "source_entry_key": "autodailytribes|1.3.0.0|15|0|0",
+    "source_id": 966,
+    "tags_json": [
+      "beast tribes",
+      "allied tribes",
+      "daily quests",
+      "automation"
+    ],
+    "testing_assembly_version": "1.3.0.0",
+    "testing_dalamud_api_level": null,
+    "variant_id": 6685
+  },
+  "variantId": 6685
+}
