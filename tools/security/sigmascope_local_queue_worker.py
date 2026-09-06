@@ -14,8 +14,14 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import stat
 import sys
-from typing import Any
+import time
+from typing import Any, Callable
+
+
+def phase(message: str) -> None:
+    print(f"==> {message}", flush=True)
 
 
 def run(args: list[str], *, cwd: Path, check: bool = True, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -35,27 +41,64 @@ def output(args: list[str], *, cwd: Path) -> str:
     return completed.stdout.strip()
 
 
+def _remove_readonly(func: Callable[[str], None], path: str, _exc_info: object) -> None:
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
+def _windows_delete_path(path: Path) -> Path:
+    if os.name != "nt":
+        return path
+    resolved = str(path.resolve())
+    if resolved.startswith("\\\\?\\"):
+        return Path(resolved)
+    return Path("\\\\?\\" + resolved)
+
+
+def robust_rmtree(path: Path) -> None:
+    delete_path = _windows_delete_path(path)
+    for attempt in range(5):
+        try:
+            shutil.rmtree(delete_path, onexc=_remove_readonly)
+            return
+        except OSError:
+            if attempt == 4:
+                raise
+            time.sleep(0.5)
+
+
 def ensure_empty(path: Path, *, reset: bool) -> None:
     if path.exists():
         if not reset:
             raise FileExistsError(f"{path} already exists; pass --reset-work-dir to replace it")
-        shutil.rmtree(path)
+        robust_rmtree(path)
     path.mkdir(parents=True, exist_ok=True)
 
 
 def export_branch(repo: Path, branch: str, destination: Path) -> str:
-    run(["git", "fetch", "--depth=1", "origin", branch], cwd=repo)
+    run(["git", "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "fetch", "--quiet", "--depth=1", "origin", branch], cwd=repo)
     sha = output(["git", "rev-parse", "FETCH_HEAD"], cwd=repo)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    run(["git", "worktree", "add", "--detach", str(destination), sha], cwd=repo)
+    run(["git", "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "worktree", "add", "--quiet", "--detach", str(destination), sha], cwd=repo)
     return sha
 
 
 def remove_worktree(repo: Path, path: Path) -> None:
     if path.exists():
-        run(["git", "worktree", "remove", "--force", str(path)], cwd=repo, check=False)
-    shutil.rmtree(path, ignore_errors=True)
+        run(["git", "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "worktree", "remove", "--force", str(path)], cwd=repo, check=False)
+    shutil.rmtree(path, ignore_errors=True, onexc=_remove_readonly)
 
+
+def reset_work_dir(repo: Path, work: Path) -> None:
+    for relative in (
+        Path("catalog") / "active-state",
+        Path("catalog") / "security-v2-current",
+        Path("catalog") / "deep-scan-current",
+    ):
+        remove_worktree(repo, work / relative)
+    if work.exists():
+        robust_rmtree(work)
+    work.mkdir(parents=True, exist_ok=True)
 
 def frozen_revision(definitions: Path, key: str) -> str:
     return str(read_json(definitions / "index.json").get(key) or "")
@@ -97,15 +140,21 @@ def maybe_run_source_followups(args: argparse.Namespace, work: Path, env: dict[s
 def local_drain(args: argparse.Namespace) -> int:
     repo = args.repo.resolve()
     work = args.work_dir.resolve()
-    ensure_empty(work, reset=args.reset_work_dir)
+    if args.reset_work_dir:
+        reset_work_dir(repo, work)
+    else:
+        ensure_empty(work, reset=False)
 
     catalog = work / "catalog" / "active-state"
     current = work / "catalog" / "security-v2-current"
     deep = work / "catalog" / "deep-scan-current"
     try:
+        phase("fetch catalog-data")
         catalog_head = export_branch(repo, "catalog-data", catalog)
+        phase("fetch security-evidence-v2")
         evidence_head = export_branch(repo, "security-evidence-v2", current)
         try:
+            phase("fetch deep-scan-state")
             export_branch(repo, "deep-scan-state", deep)
         except subprocess.CalledProcessError:
             deep.mkdir(parents=True, exist_ok=True)
@@ -113,8 +162,11 @@ def local_drain(args: argparse.Namespace) -> int:
         env = build_env(work)
         frozen_worker = Path(env["OMEGA_FROZEN_WORKER"])
         definitions = catalog / "definitions"
+        phase("verify frozen worker")
         run([sys.executable, str(frozen_worker / "tools" / "catalog" / "definitions_snapshot.py"), "verify-worker", "--definitions-root", str(definitions)], cwd=work, env=env)
+        phase("materialize secondary assets")
         run([sys.executable, str(frozen_worker / "tools" / "catalog" / "secondary_security_assets.py"), "materialize-clamav", "--definitions-root", str(definitions), "--output", env["OMEGA_SECONDARY_SECURITY_CACHE"]], cwd=work, check=False, env=env)
+        phase("materialize catalog database")
         run([
             sys.executable,
             str(frozen_worker / "tools" / "catalog" / "catalog_json_store.py"),
@@ -124,6 +176,21 @@ def local_drain(args: argparse.Namespace) -> int:
             "--definitions-revision", frozen_revision(definitions, "definitionsRevision"),
         ], cwd=work, env=env)
 
+        report = {
+            "schema": "omega.sigmascope-local-queue-worker.v1",
+            "catalogHead": catalog_head,
+            "baseEvidenceHead": evidence_head,
+            "candidate": str(work / "catalog" / "security-v2-candidate"),
+            "workDir": str(work / "catalog" / "security-v2-work"),
+            "publishRequested": bool(args.push),
+            "preflightOnly": bool(args.preflight_only),
+        }
+        if args.preflight_only:
+            (work / "local-sigmascope-queue-worker-report.json").write_text(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+            return 0
+
+        phase("run production SigmaScope pipeline")
         pipeline = frozen_worker / "tools" / "security" / "production_sigmascope_v2_pipeline.py"
         pipeline_args = [
             sys.executable, str(pipeline),
@@ -153,21 +220,16 @@ def local_drain(args: argparse.Namespace) -> int:
             pipeline_args.extend(["--deep-scan-state", str(deep / "index.json"), "--deep-scan-output", str(work / "catalog" / "security-v2-work" / "deep-scan-state")])
         run(pipeline_args, cwd=work, env=env)
 
+        phase("generate source followups")
         run([sys.executable, str(frozen_worker / "tools" / "catalog" / "sigmascope_source_followups.py"), "--database", str(work / "catalog" / "security-v2-work" / "omega-security-v2-working.sqlite"), "--output", str(work / "catalog" / "security-v2-work" / "sigmascope-source-followups.json")], cwd=work, env=env)
         maybe_run_source_followups(args, work, env)
         audit = work / "catalog" / "security-v2-work" / "security-developer-audit.json"
+        phase("run developer audit")
         run([sys.executable, str(frozen_worker / "tools" / "security" / "security_developer_audit.py"), "--database", str(work / "catalog" / "security-v2-work" / "omega-security-v2-working.sqlite"), "--advisories", str(definitions / "osv-advisories.json"), "--json"], cwd=work, env=env)
         audit.write_text(output([sys.executable, str(frozen_worker / "tools" / "security" / "security_developer_audit.py"), "--database", str(work / "catalog" / "security-v2-work" / "omega-security-v2-working.sqlite"), "--advisories", str(definitions / "osv-advisories.json"), "--json"], cwd=work) + "\n", encoding="utf-8")
+        phase("run storage audit")
         run([sys.executable, str(frozen_worker / "tools" / "security" / "evidence_storage_audit.py"), "--root", str(work / "catalog" / "security-v2-candidate"), "--report", str(work / "catalog" / "security-v2-work" / "evidence-storage-audit.json")], cwd=work, env=env)
 
-        report = {
-            "schema": "omega.sigmascope-local-queue-worker.v1",
-            "catalogHead": catalog_head,
-            "baseEvidenceHead": evidence_head,
-            "candidate": str(work / "catalog" / "security-v2-candidate"),
-            "workDir": str(work / "catalog" / "security-v2-work"),
-            "publishRequested": bool(args.push),
-        }
         if args.push:
             publish_script = frozen_worker / "tools" / "security" / "publish_security_evidence_v2.py"
             publication = output([
@@ -202,6 +264,7 @@ def main() -> int:
     parser.add_argument("--max-batch-seconds", type=int, default=3300)
     parser.add_argument("--internal-names", default="")
     parser.add_argument("--push", action="store_true", help="Publish the validated candidate with expected-parent protection")
+    parser.add_argument("--preflight-only", action="store_true", help="Fetch frozen inputs, verify worker, materialize local inputs, then stop before scanning")
     parser.add_argument("--reconcile-source-followups", action="store_true", help="Best-effort issue side effect; never gates Evidence publication")
     parser.add_argument("--max-new-followups", type=int, default=25)
     parser.add_argument("--max-close-followups", type=int, default=100)
