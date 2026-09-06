@@ -28,6 +28,7 @@ class StorageAuditTests(unittest.TestCase):
                 meta = dict(db.execute("SELECT key,value FROM catalog_meta"))
                 self.assertEqual("fresh-allowlist-v1", meta["client_projection_mode"])
             audit = client_database_audit.audit(out)
+            self.assertIn("plugin_search", {row["name"] for row in audit["tables"]})
             self.assertEqual([], audit["prohibitedTables"])
             self.assertEqual("fresh-allowlist-v1", audit["projectionMode"])
 
@@ -38,7 +39,7 @@ class StorageAuditTests(unittest.TestCase):
             current = root / "current.sqlite"
             bundle = root / "previous.zip"
             for path, count in ((previous, 1), (current, 3)):
-                with sqlite3.connect(path) as db:
+                with closing(sqlite3.connect(path)) as db:
                     db.execute("CREATE TABLE catalog_meta(key TEXT PRIMARY KEY,value TEXT)")
                     db.execute("INSERT INTO catalog_meta VALUES('client_projection_mode','fresh-allowlist-v1')")
                     db.execute("CREATE TABLE sample(id INTEGER PRIMARY KEY,payload TEXT)")

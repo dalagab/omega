@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 import hashlib
 import json
 import shutil
@@ -14,7 +15,7 @@ from typing import Any
 
 PROHIBITED_TABLES = {
     "manifest_observations", "manifest_source_candidates", "source_repositories", "source_repository_aliases",
-    "plugin_identity_aliases", "plugin_tags", "plugin_images", "plugin_search", "websites", "presentation",
+    "plugin_identity_aliases", "plugin_tags", "plugin_images", "websites", "presentation",
     "plugin_security_scans", "plugin_security_findings", "plugin_security_dependencies", "plugin_security_current",
     "artifact_blobs", "artifact_analyses", "source_analyses", "source_revisions", "artifact_source_attributions",
 }
@@ -91,7 +92,7 @@ def _security_coverage(db: sqlite3.Connection) -> dict[str, Any]:
 
 
 def audit(path: Path) -> dict[str, Any]:
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db:
         integrity = str(db.execute("PRAGMA integrity_check").fetchone()[0])
         tables = [
             str(r[0])
