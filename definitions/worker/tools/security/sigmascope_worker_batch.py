@@ -23,6 +23,7 @@ from typing import Any, Callable, Iterable
 
 MAX_SLOT_KEYS = 16
 REPORT_NAME = "production-sigmascope-v2-report.json"
+SLOT_SUMMARY_SCHEMA = "omega.sigmascope-worker-slot-summary.v1"
 
 
 def load_queue_keys(path: Path) -> list[str]:
@@ -36,6 +37,25 @@ def load_queue_keys(path: Path) -> list[str]:
     if any("\r" in key or "\n" in key for key in keys):
         raise ValueError("worker slot contains an unsafe queue key")
     return keys
+
+
+def validated_selected_queue_keys(report: dict[str, Any], planned_queue_keys: Iterable[str]) -> list[str]:
+    """Accept the exact plan or a budget-stopped prefix; reject every other subset."""
+    planned = list(planned_queue_keys)
+    queue = report.get("queue") if isinstance(report.get("queue"), dict) else {}
+    selected = [
+        str(item.get("queueKey") or "")
+        for item in (queue.get("selectedItems") or [])
+        if isinstance(item, dict)
+    ]
+    if selected == planned:
+        return selected
+    if bool(queue.get("stoppedByBatchBudget")) and selected == planned[:len(selected)]:
+        return selected
+    raise RuntimeError(
+        f"frozen SigmaScope batch selected {selected!r}, expected {planned!r}"
+        + (" or an exact budget-stopped prefix" if bool(queue.get("stoppedByBatchBudget")) else "")
+    )
 
 
 def planned_selector(
@@ -251,13 +271,7 @@ def run_frozen_pipeline(pipeline: Path, queue_keys: list[str], pipeline_argument
 
     report_path = work_dir / REPORT_NAME
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    selected = [
-        str(item.get("queueKey") or "")
-        for item in ((report.get("queue") or {}).get("selectedItems") or [])
-        if isinstance(item, dict)
-    ]
-    if selected != queue_keys:
-        raise RuntimeError(f"frozen SigmaScope batch selected {selected!r}, expected {queue_keys!r}")
+    validated_selected_queue_keys(report, queue_keys)
     return report
 
 
@@ -308,6 +322,63 @@ def split_report_for_key(report: dict[str, Any], queue_key: str) -> dict[str, An
     return result
 
 
+def _write_slot_summary(
+    path: Path,
+    *,
+    planned_queue_keys: list[str],
+    selected_queue_keys: list[str],
+    bundled_queue_keys: list[str],
+    bundle_revisions: list[str],
+    report: dict[str, Any],
+    slot: int,
+    lane: str,
+    plan_revision: str,
+) -> None:
+    queue = report.get("queue") if isinstance(report.get("queue"), dict) else {}
+    selected_items = [
+        item for item in (queue.get("selectedItems") or [])
+        if isinstance(item, dict)
+    ]
+    successful = {int(value or 0) for value in (report.get("successfulVariantIds") or []) if int(value or 0) > 0}
+    failed = {int(value or 0) for value in (report.get("failedRetainedVariantIds") or []) if int(value or 0) > 0}
+    outcomes = []
+    for item in selected_items:
+        variant_id = int(item.get("variantId") or 0)
+        status = "complete" if variant_id in successful else "failed" if variant_id in failed else "unknown"
+        outcomes.append({
+            "queueKey": str(item.get("queueKey") or ""),
+            "variantId": variant_id,
+            "workType": str(item.get("workType") or ""),
+            "status": status,
+        })
+    document = {
+        "schema": SLOT_SUMMARY_SCHEMA,
+        "authority": "operational-result-summary-only",
+        "slot": int(slot),
+        "lane": str(lane or ""),
+        "planRevision": str(plan_revision or ""),
+        "scanReportGeneratedAtUtc": str(report.get("generatedAtUtc") or ""),
+        "stoppedByBatchBudget": bool(queue.get("stoppedByBatchBudget")),
+        "plannedQueueKeys": list(planned_queue_keys),
+        "selectedQueueKeys": list(selected_queue_keys),
+        "bundledQueueKeys": list(bundled_queue_keys),
+        "unprocessedQueueKeys": list(planned_queue_keys[len(selected_queue_keys):]),
+        "unbundledSelectedQueueKeys": list(selected_queue_keys[len(bundled_queue_keys):]),
+        "bundleCount": len(bundled_queue_keys),
+        "bundleRevisions": list(bundle_revisions),
+        "successfulVariantIds": sorted(successful),
+        "failedRetainedVariantIds": sorted(failed),
+        "outcomes": outcomes,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(
+        json.dumps(document, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    os.replace(temporary, path)
+
+
 def build_result_bundles(
     *,
     current_evidence: Path,
@@ -318,6 +389,10 @@ def build_result_bundles(
     worker_image: str,
     output_root: Path,
     split_work_root: Path,
+    summary_path: Path | None = None,
+    slot: int = 0,
+    lane: str = "",
+    plan_revision: str = "",
 ) -> dict[str, Any]:
     script_dir = Path(__file__).resolve().parent
     if str(script_dir) not in sys.path:
@@ -325,13 +400,7 @@ def build_result_bundles(
     import sigmascope_result_bundle  # noqa: WPS433 - same-tree production helper
 
     report = json.loads((work_dir / REPORT_NAME).read_text(encoding="utf-8"))
-    selected = [
-        str(item.get("queueKey") or "")
-        for item in ((report.get("queue") or {}).get("selectedItems") or [])
-        if isinstance(item, dict)
-    ]
-    if selected != queue_keys:
-        raise RuntimeError(f"cannot split SigmaScope batch with selections {selected!r}; expected {queue_keys!r}")
+    selected = validated_selected_queue_keys(report, queue_keys)
 
     if output_root.exists():
         shutil.rmtree(output_root)
@@ -341,7 +410,20 @@ def build_result_bundles(
     split_work_root.mkdir(parents=True, exist_ok=True)
 
     revisions: list[str] = []
-    for ordinal, queue_key in enumerate(queue_keys, 1):
+    bundled: list[str] = []
+    if summary_path is not None:
+        _write_slot_summary(
+            summary_path,
+            planned_queue_keys=queue_keys,
+            selected_queue_keys=selected,
+            bundled_queue_keys=bundled,
+            bundle_revisions=revisions,
+            report=report,
+            slot=slot,
+            lane=lane,
+            plan_revision=plan_revision,
+        )
+    for ordinal, queue_key in enumerate(selected, 1):
         split_work = split_work_root / f"key-{ordinal:02d}"
         split_work.mkdir(parents=True, exist_ok=True)
         split = split_report_for_key(report, queue_key)
@@ -350,19 +432,46 @@ def build_result_bundles(
             encoding="utf-8",
         )
         bundle_root = output_root / f"key-{ordinal:02d}"
-        validation = sigmascope_result_bundle.build(
-            current=current_evidence,
-            candidate=candidate_evidence,
-            work_dir=split_work,
-            definitions=definitions_root,
-            queue_key=queue_key,
-            worker_image=worker_image,
-            output=bundle_root,
-        )
-        sigmascope_result_bundle.validate(bundle_root, current_evidence=current_evidence)
+        temporary_bundle = output_root / f".key-{ordinal:02d}.tmp"
+        shutil.rmtree(temporary_bundle, ignore_errors=True)
+        try:
+            validation = sigmascope_result_bundle.build(
+                current=current_evidence,
+                candidate=candidate_evidence,
+                work_dir=split_work,
+                definitions=definitions_root,
+                queue_key=queue_key,
+                worker_image=worker_image,
+                output=temporary_bundle,
+            )
+            sigmascope_result_bundle.validate(temporary_bundle, current_evidence=current_evidence)
+            os.replace(temporary_bundle, bundle_root)
+        except Exception:
+            shutil.rmtree(temporary_bundle, ignore_errors=True)
+            raise
         revisions.append(str(validation.get("bundleRevision") or ""))
+        bundled.append(queue_key)
+        if summary_path is not None:
+            _write_slot_summary(
+                summary_path,
+                planned_queue_keys=queue_keys,
+                selected_queue_keys=selected,
+                bundled_queue_keys=bundled,
+                bundle_revisions=revisions,
+                report=report,
+                slot=slot,
+                lane=lane,
+                plan_revision=plan_revision,
+            )
 
-    return {"bundleCount": len(queue_keys), "queueKeys": queue_keys, "bundleRevisions": revisions}
+    return {
+        "bundleCount": len(bundled),
+        "plannedQueueKeys": queue_keys,
+        "queueKeys": bundled,
+        "unprocessedQueueKeys": queue_keys[len(selected):],
+        "stoppedByBatchBudget": bool((report.get("queue") or {}).get("stoppedByBatchBudget")),
+        "bundleRevisions": revisions,
+    }
 
 
 def _run_command(args: argparse.Namespace) -> int:
@@ -382,6 +491,10 @@ def _bundles_command(args: argparse.Namespace) -> int:
         worker_image=args.worker_image,
         output_root=args.output_root,
         split_work_root=args.split_work_root,
+        summary_path=args.summary,
+        slot=args.slot,
+        lane=args.lane,
+        plan_revision=args.plan_revision,
     )
     print(json.dumps(result, sort_keys=True))
     return 0
@@ -406,6 +519,10 @@ def main() -> int:
     bundle_parser.add_argument("--worker-image", required=True)
     bundle_parser.add_argument("--output-root", type=Path, required=True)
     bundle_parser.add_argument("--split-work-root", type=Path, required=True)
+    bundle_parser.add_argument("--summary", type=Path)
+    bundle_parser.add_argument("--slot", type=int, default=0)
+    bundle_parser.add_argument("--lane", default="")
+    bundle_parser.add_argument("--plan-revision", default="")
     bundle_parser.set_defaults(handler=_bundles_command)
 
     args = parser.parse_args()

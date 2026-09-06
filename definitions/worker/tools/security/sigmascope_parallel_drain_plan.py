@@ -66,8 +66,8 @@ def build(
     seed_path: Path,
     evidence_root: Path,
     *,
-    workers: int = 4,
-    items_per_worker: int = 10,
+    workers: int = 8,
+    items_per_worker: int = 8,
     wave: int = 1,
     output: Path,
     now: dt.datetime | None = None,
@@ -192,8 +192,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--queue-seed", required=True, type=Path)
     parser.add_argument("--evidence-root", required=True, type=Path)
-    parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--items-per-worker", type=int, default=10)
+    parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument("--items-per-worker", type=int, default=8)
     parser.add_argument("--wave", type=int, default=1)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
