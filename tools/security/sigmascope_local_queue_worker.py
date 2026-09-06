@@ -174,6 +174,24 @@ def build_env(work: Path) -> dict[str, str]:
     return env
 
 
+def default_work_dir() -> Path:
+    if os.name == "nt":
+        return Path("C:/osl")
+    return Path("omega-local-sigmascope-worker")
+
+
+def validate_windows_work_dir(work: Path, *, force: bool) -> None:
+    if os.name != "nt" or force:
+        return
+    resolved = str(work.resolve())
+    if len(resolved) <= 12:
+        return
+    raise RuntimeError(
+        "Windows SigmaScope Evidence paths exceed MAX_PATH from this work root. "
+        f"Use a short root such as C:\\osl or pass --allow-long-windows-work-dir to override: {resolved}"
+    )
+
+
 def maybe_run_source_followups(args: argparse.Namespace, work: Path, env: dict[str, str]) -> None:
     if not args.reconcile_source_followups:
         return
@@ -195,6 +213,7 @@ def maybe_run_source_followups(args: argparse.Namespace, work: Path, env: dict[s
 def local_drain(args: argparse.Namespace) -> int:
     repo = args.repo.resolve()
     work = args.work_dir.resolve()
+    validate_windows_work_dir(work, force=args.allow_long_windows_work_dir)
     if args.reset_work_dir:
         reset_work_dir(repo, work)
     else:
@@ -325,7 +344,7 @@ def local_drain(args: argparse.Namespace) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Omega repository checkout with origin configured")
-    parser.add_argument("--work-dir", type=Path, default=Path("omega-local-sigmascope-worker"))
+    parser.add_argument("--work-dir", type=Path, default=default_work_dir())
     parser.add_argument("--reset-work-dir", action="store_true")
     parser.add_argument("--repository", default="dalagab/omega")
     parser.add_argument("--max-scans", type=int, default=20)
