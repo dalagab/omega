@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+import urllib.error
 import zipfile
 from argparse import Namespace
 from contextlib import closing
@@ -24,6 +25,36 @@ import sigmascope
 
 
 class LocalSecurityV2TestScannerTests(unittest.TestCase):
+    def test_artifact_download_falls_back_to_update_url_on_transient_http_error(self) -> None:
+        primary = "https://kamori.goats.dev/Plugin/Download/Fixture"
+        fallback = "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api9/plugins/Fixture/latest.zip"
+        row = {"download_link_update": fallback}
+        failure = urllib.error.HTTPError(primary, 500, "Internal Server Error", hdrs=None, fp=None)
+        with mock.patch.object(
+            sigmascope,
+            "request_bytes",
+            side_effect=[failure, (b"artifact", fallback)],
+        ) as request:
+            artifact, resolved = sigmascope.request_artifact_bytes(
+                row, "stable", primary, sigmascope.MAX_ARTIFACT_BYTES,
+            )
+        self.assertEqual(b"artifact", artifact)
+        self.assertEqual(fallback, resolved)
+        self.assertEqual(
+            [mock.call(primary, sigmascope.MAX_ARTIFACT_BYTES), mock.call(fallback, sigmascope.MAX_ARTIFACT_BYTES)],
+            request.call_args_list,
+        )
+
+    def test_artifact_download_does_not_fallback_on_permanent_http_error(self) -> None:
+        primary = "https://kamori.goats.dev/Plugin/Download/Fixture"
+        fallback = "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api9/plugins/Fixture/latest.zip"
+        row = {"download_link_update": fallback}
+        failure = urllib.error.HTTPError(primary, 404, "Not Found", hdrs=None, fp=None)
+        with mock.patch.object(sigmascope, "request_bytes", side_effect=failure) as request:
+            with self.assertRaises(urllib.error.HTTPError):
+                sigmascope.request_artifact_bytes(row, "stable", primary, sigmascope.MAX_ARTIFACT_BYTES)
+        request.assert_called_once_with(primary, sigmascope.MAX_ARTIFACT_BYTES)
+
     def test_dotnet_deps_json_yields_exact_nuget_versions_from_artifact(self) -> None:
         deps = {
             "runtimeTarget": {"name": ".NETCoreApp,Version=v9.0/win-x64"},
