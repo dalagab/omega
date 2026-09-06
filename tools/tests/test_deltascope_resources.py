@@ -36,6 +36,15 @@ def remote_fixture(base: str) -> dict[str, bytes]:
         "collectors": [{"id": "omega.collector.future", "componentId": "omega.future", "title": "Future provider", "status": "planned", "provides": ["futureObservation"]}],
     })
     capability = canonical_json({"schema": "omega.sigmascope.capability-registry.v1", "revision": "capabilities-v1-test", "capabilities": []})
+    inspectable = {
+        "semanticApiRegistry": ("semantic/api-registry.json", canonical_json({"schema": "omega.semantic-api-registry.v1", "matchers": []})),
+        "semanticFlowRegistry": ("semantic/flow-registry.json", canonical_json({"schema": "omega.semantic-flow-registry.v1", "sources": [], "sinks": []})),
+        "serviceRegistry": ("semantic/service-registry.json", canonical_json({"schema": "omega.service-registry.v1", "services": []})),
+        "reputation": ("reputation.json", canonical_json({"schema": "omega.reputation.v1", "indicators": []})),
+        "osv": ("osv-advisories.json", canonical_json({"schema": "omega.osv-advisories.v1", "advisories": []})),
+        "sourceObservations": ("source-revisions.json", canonical_json({"schema": "omega.source-revisions.v1", "repositories": []})),
+        "secondarySecurity": ("secondary-security/index.json", canonical_json({"schema": "omega.secondary-security.v1", "engines": []})),
+    }
     srl_index = {
         "schema": "omega.sigmascope.definition-packs.v1",
         "definitionPackRevision": "definition-packs-v1-test",
@@ -51,15 +60,18 @@ def remote_fixture(base: str) -> dict[str, bytes]:
         }],
     }
     srl = canonical_json(srl_index)
-    index = canonical_json({
+    index_document = {
         "schema": "omega.definitions.v1", "definitionsRevision": "defs-v1-test",
         "capabilityRegistry": {"path": "capabilities/registry.json", "sha256": digest(capability), "revision": "capabilities-v1-test"},
         "componentRegistry": {"path": "platform/component-registry.json", "sha256": digest(component), "revision": "component-registry-v1-test"},
         "collectorRegistry": {"path": "platform/collector-registry.json", "sha256": digest(collector), "revision": "collector-registry-v1-test"},
         "srlDefinitionPacks": {"path": "srl/index.json", "sha256": digest(srl), "schema": "omega.sigmascope.definition-packs.v1", "definitionPackRevision": "definition-packs-v1-test", "ruleSetRevision": "srl-ruleset-v1-test"},
         "scannerBundle": {"path": "worker", "manifestPath": "worker/manifest.json", "sha256": "f" * 64},
-    })
-    return {
+    }
+    for key, (relative, payload) in inspectable.items():
+        index_document[key] = {"path": relative, "sha256": digest(payload), "revision": f"{key}-v1-test"}
+    index = canonical_json(index_document)
+    result = {
         f"{base}/index.json": index,
         f"{base}/capabilities/registry.json": capability,
         f"{base}/platform/component-registry.json": component,
@@ -70,6 +82,8 @@ def remote_fixture(base: str) -> dict[str, bytes]:
         f"{base}/srl/packs/omega-test/rules/test.yaml": rule_file,
         f"{base}/srl/packs/omega-test/fixtures/test.yaml": fixture_file,
     }
+    result.update({f"{base}/{relative}": payload for relative, payload in inspectable.values()})
+    return result
 
 
 class DeltaScopePublishedResourceTests(unittest.TestCase):
@@ -95,6 +109,21 @@ class DeltaScopePublishedResourceTests(unittest.TestCase):
             self.assertTrue((resources.packs_root / "omega-test" / "rules" / "test.yaml").is_file())
             self.assertFalse(any("/worker/" in url or url.endswith("/worker") for url in calls))
             self.assertFalse(resources.public_status()["downloadedWorkerCode"])
+            self.assertTrue((resources.root / "semantic" / "api-registry.json").is_file())
+            self.assertTrue((resources.root / "secondary-security" / "index.json").is_file())
+
+            inventory = resources.contract_inventory()
+            groups = {group["id"]: group for group in inventory["groups"]}
+            self.assertIn("semantic-apis", groups)
+            self.assertEqual("omega-test", groups["srl"]["children"][0]["id"])
+            exact = resources.read_contract_resource("srl/packs/omega-test/rules/test.yaml")
+            self.assertTrue(exact["verified"])
+            self.assertIn("id: test.rule", exact["content"])
+            with self.assertRaises(deltascope_resources.ResourceError):
+                resources.read_contract_resource("../current.json")
+            with self.assertRaises(deltascope_resources.ResourceError):
+                resources.read_contract_resource("not-in-manifest.json")
+            self.assertEqual(resources.root.name, inventory["snapshots"][0]["snapshotName"])
 
     def test_sync_downloads_published_execution_topology_when_available(self) -> None:
         base = "https://example.invalid/definitions"
@@ -120,6 +149,32 @@ class DeltaScopePublishedResourceTests(unittest.TestCase):
             self.assertTrue((resources.root / "platform" / "execution-topology.json").is_file())
 
 
+    def test_security_telemetry_projects_new_published_contracts(self) -> None:
+        projected = deltascope_resources.project_security_telemetry({
+            "generatedAtUtc": "2026-09-03T22:43:57Z",
+            "scannerVersion": "2.15.0", "scannerRevision": "scanner-v1-current",
+            "artifactAnalysisRevision": "artifact-v3", "sourceAnalysisRevision": "source-v1",
+            "srlDefinitionPacks": {"ruleSetRevision": "srl-v1", "totalRuleCount": 66, "packCount": 7, "activeRuleCount": 16, "productionRuleEvaluationEnabled": False},
+            "capabilityRegistry": {"revision": "cap-v1", "capabilityCount": 40, "categoryCount": 14},
+            "semanticApiRegistry": {"revision": "api-v1", "sourceMatcherCount": 11, "compiledMatcherCount": 6},
+            "semanticFlowRegistry": {"revision": "flow-v1", "sourceCount": 7, "sinkCount": 10, "sanitizerCount": 4},
+            "serviceRegistry": {"revision": "services-v1", "serviceCount": 7},
+            "reputation": {"reputationRevision": "rep-v2", "indicators": 3791, "activeFeeds": 2, "matchedEndpointHosts": 2},
+            "advisoryRevision": "osv-v1", "osv": {"matchedPackages": 35, "queriedPackages": 2000},
+            "sourceObservations": {"revision": "observations-v1", "counts": {"observed": 1341, "repositories": 1457, "failed": 116}},
+            "secondarySecurity": {"revision": "secondary-v2", "engines": [{"engine": "yara", "status": "configured"}, {"engine": "clamav", "status": "configured"}]},
+            "componentRegistry": {"revision": "components-v1", "componentCount": 13, "launchableCount": 5},
+            "collectorRegistry": {"revision": "collectors-v1", "collectorCount": 18, "observationTypeCount": 17},
+        })
+        by_id = {row["id"]: row for row in projected["contracts"]}
+        self.assertEqual(66, by_id["srl"]["primaryCount"])
+        self.assertIn("16 active", by_id["srl"]["detail"])
+        self.assertEqual(17, by_id["semantic-apis"]["primaryCount"])
+        self.assertEqual(17, by_id["semantic-flow"]["primaryCount"])
+        self.assertEqual(3791, by_id["reputation"]["primaryCount"])
+        self.assertEqual(1341, by_id["source-observations"]["primaryCount"])
+        self.assertEqual(2, by_id["secondary-security"]["primaryCount"])
+        self.assertEqual("2.15.0", projected["scanner"]["version"])
     def test_network_failure_reuses_last_verified_snapshot(self) -> None:
         base = "https://example.invalid/definitions"
         remote = remote_fixture(base)

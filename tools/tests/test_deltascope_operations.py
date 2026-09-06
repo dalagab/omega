@@ -431,7 +431,7 @@ on:
                 return _Response(b'{"workflows": []}')
             raise AssertionError(request.full_url)
 
-        client = deltascope_operations.GitHubOperationsClient("dalagab/omega", opener=opener)
+        client = deltascope_operations.GitHubOperationsClient("dalagab/omega", opener=opener, token="")
         self.assertFalse(client.status()["available"])
         self.assertEqual([], calls)
         refreshed = client.refresh_snapshot({})

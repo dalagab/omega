@@ -29,6 +29,7 @@ from typing import Any, Mapping
 
 RESOURCE_SCHEMA = "omega.deltascope.published-resources.v1"
 STATE_SCHEMA = "omega.deltascope.published-resources-state.v1"
+RESOURCE_BUNDLE_VERSION = 2
 DEFAULT_DEFINITIONS_BASE_URL = "https://raw.githubusercontent.com/dalagab/omega/catalog-data/definitions"
 MAX_INDEX_BYTES = 8 * 1024 * 1024
 MAX_RESOURCE_BYTES = 16 * 1024 * 1024
@@ -126,6 +127,44 @@ def _optional_descriptor(index: Mapping[str, Any], key: str) -> dict[str, Any] |
     return _descriptor(index, key)
 
 
+def project_security_telemetry(index: Mapping[str, Any]) -> dict[str, Any]:
+    """Project the verified Definitions trust anchor into operator-facing telemetry."""
+    def value(key: str) -> Mapping[str, Any]:
+        candidate = index.get(key)
+        return candidate if isinstance(candidate, Mapping) else {}
+
+    source_counts = value("sourceObservations").get("counts")
+    source_counts = source_counts if isinstance(source_counts, Mapping) else {}
+    secondary_engines = value("secondarySecurity").get("engines")
+    secondary_engines = secondary_engines if isinstance(secondary_engines, list) else []
+    contracts = [
+        {"id": "srl", "label": "SRL rules", "revision": str(value("srlDefinitionPacks").get("ruleSetRevision") or ""), "primaryCount": int(value("srlDefinitionPacks").get("totalRuleCount") or 0), "detail": f"{int(value('srlDefinitionPacks').get('packCount') or 0)} packs / {int(value('srlDefinitionPacks').get('activeRuleCount') or 0)} active / production {'enabled' if value('srlDefinitionPacks').get('productionRuleEvaluationEnabled') else 'gated'}"},
+        {"id": "capabilities", "label": "Capabilities", "revision": str(value("capabilityRegistry").get("revision") or ""), "primaryCount": int(value("capabilityRegistry").get("capabilityCount") or 0), "detail": f"{int(value('capabilityRegistry').get('categoryCount') or 0)} categories"},
+        {"id": "semantic-apis", "label": "Semantic APIs", "revision": str(value("semanticApiRegistry").get("revision") or ""), "primaryCount": int(value("semanticApiRegistry").get("sourceMatcherCount") or 0) + int(value("semanticApiRegistry").get("compiledMatcherCount") or 0), "detail": f"{int(value('semanticApiRegistry').get('sourceMatcherCount') or 0)} source / {int(value('semanticApiRegistry').get('compiledMatcherCount') or 0)} compiled matchers"},
+        {"id": "semantic-flow", "label": "Semantic flow", "revision": str(value("semanticFlowRegistry").get("revision") or ""), "primaryCount": int(value("semanticFlowRegistry").get("sourceCount") or 0) + int(value("semanticFlowRegistry").get("sinkCount") or 0), "detail": f"{int(value('semanticFlowRegistry').get('sourceCount') or 0)} sources / {int(value('semanticFlowRegistry').get('sinkCount') or 0)} sinks / {int(value('semanticFlowRegistry').get('sanitizerCount') or 0)} sanitizers"},
+        {"id": "services", "label": "Services", "revision": str(value("serviceRegistry").get("revision") or ""), "primaryCount": int(value("serviceRegistry").get("serviceCount") or 0), "detail": "verified service identities"},
+        {"id": "reputation", "label": "Threat reputation", "revision": str(value("reputation").get("reputationRevision") or ""), "primaryCount": int(value("reputation").get("indicators") or 0), "detail": f"{int(value('reputation').get('activeFeeds') or 0)} active feeds / {int(value('reputation').get('matchedEndpointHosts') or 0)} matched hosts"},
+        {"id": "osv", "label": "OSV advisories", "revision": str(index.get("advisoryRevision") or ""), "primaryCount": int(value("osv").get("matchedPackages") or 0), "detail": f"{int(value('osv').get('queriedPackages') or 0)} packages queried"},
+        {"id": "source-observations", "label": "Source observations", "revision": str(value("sourceObservations").get("revision") or ""), "primaryCount": int(source_counts.get("observed") or 0), "detail": f"{int(source_counts.get('repositories') or 0)} repositories / {int(source_counts.get('failed') or 0)} failed"},
+        {"id": "secondary-security", "label": "Secondary engines", "revision": str(value("secondarySecurity").get("revision") or ""), "primaryCount": len(secondary_engines), "detail": " / ".join(str(engine.get("engine") or "") for engine in secondary_engines if isinstance(engine, Mapping))},
+        {"id": "components", "label": "Components", "revision": str(value("componentRegistry").get("revision") or ""), "primaryCount": int(value("componentRegistry").get("componentCount") or 0), "detail": f"{int(value('componentRegistry').get('launchableCount') or 0)} launchable"},
+        {"id": "collectors", "label": "Collectors", "revision": str(value("collectorRegistry").get("revision") or ""), "primaryCount": int(value("collectorRegistry").get("collectorCount") or 0), "detail": f"{int(value('collectorRegistry').get('observationTypeCount') or 0)} observation types"},
+    ]
+    return {
+        "schema": "omega.deltascope.security-telemetry.v1",
+        "generatedAtUtc": str(index.get("generatedAtUtc") or ""),
+        "scanner": {
+            "version": str(index.get("scannerVersion") or ""),
+            "revision": str(index.get("scannerRevision") or ""),
+            "artifactAnalysisRevision": str(index.get("artifactAnalysisRevision") or ""),
+            "sourceAnalysisRevision": str(index.get("sourceAnalysisRevision") or ""),
+            "sourceObservationRevision": str(index.get("sourceObservationRevision") or ""),
+        },
+        "contracts": contracts,
+        "secondaryEngines": [dict(engine) for engine in secondary_engines if isinstance(engine, Mapping)],
+        "sourceObservationCounts": dict(source_counts),
+    }
+
 def _fallback_execution_topology() -> dict[str, Any]:
     try:
         payload = _json_bytes(FALLBACK_EXECUTION_TOPOLOGY.read_bytes(), label="bundled execution topology")
@@ -141,13 +180,14 @@ def _state_path(cache_root: Path) -> Path:
 
 
 def _snapshot_root(cache_root: Path, revision: str) -> Path:
-    return cache_root / "snapshots" / revision
+    return cache_root / "snapshots" / f"{revision}-bundle-v{RESOURCE_BUNDLE_VERSION}"
 
 
-def _write_state(cache_root: Path, revision: str) -> None:
+def _write_state(cache_root: Path, revision: str, snapshot_name: str = "") -> None:
     state = {
         "schema": STATE_SCHEMA,
         "definitionsRevision": revision,
+        "snapshotName": snapshot_name or _snapshot_root(cache_root, revision).name,
         "updatedAtUtc": _utc_now(),
     }
     state_temp = _state_path(cache_root).with_suffix(".json.part")
@@ -221,6 +261,141 @@ class PublishedResources:
                 return _json_bytes(path.read_bytes(), label="cached execution topology")
         return _fallback_execution_topology()
 
+    def available_snapshots(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        snapshots = self.root.parent
+        if snapshots.is_dir():
+            for candidate in snapshots.iterdir():
+                if not candidate.is_dir() or candidate.name.startswith("."):
+                    continue
+                try:
+                    manifest = _load_manifest(candidate)
+                except ResourceError:
+                    continue
+                rows.append({
+                    "definitionsRevision": str(manifest.get("definitionsRevision") or ""),
+                    "definitionPackRevision": str(manifest.get("definitionPackRevision") or ""),
+                    "ruleSetRevision": str(manifest.get("ruleSetRevision") or ""),
+                    "cachedAtUtc": str(manifest.get("cachedAtUtc") or ""),
+                    "snapshotName": candidate.name,
+                    "current": candidate == self.root,
+                    "fileCount": int(manifest.get("fileCount") or 0),
+                    "consumerBundleVersion": int(manifest.get("consumerBundleVersion") or 1),
+                })
+        return sorted(rows, key=lambda row: (str(row["cachedAtUtc"]), str(row["snapshotName"])), reverse=True)
+
+    def select_snapshot(self, revision: str = "") -> "PublishedResources":
+        requested = str(revision or "").strip()
+        if not requested or requested == str(self.manifest.get("definitionsRevision") or ""):
+            return self
+        matches = [
+            row for row in self.available_snapshots()
+            if row["definitionsRevision"] == requested or row["snapshotName"] == requested
+        ]
+        if not matches:
+            raise ResourceError(f"verified Definitions snapshot is not cached: {requested}")
+        root = self.root.parent / _safe_rel(matches[0]["snapshotName"])
+        return PublishedResources(root, _load_manifest(root), stale=root != self.root)
+
+    def _file_descriptor(self, relative: str) -> dict[str, Any]:
+        relative = _safe_rel(relative)
+        for item in self.manifest.get("files") or []:
+            if isinstance(item, Mapping) and str(item.get("path") or "") == relative:
+                return dict(item)
+        raise ResourceError(f"resource is not allowlisted by the verified snapshot manifest: {relative}")
+
+    def read_contract_resource(self, relative: str) -> dict[str, Any]:
+        descriptor = self._file_descriptor(relative)
+        path = self.root / _safe_rel(relative)
+        data = path.read_bytes()
+        expected = str(descriptor.get("sha256") or "").lower()
+        if len(data) != int(descriptor.get("bytes") or -1) or _sha256_bytes(data) != expected:
+            raise ResourceError(f"cached DeltaScope resource failed verification: {relative}")
+        if len(data) > MAX_RESOURCE_BYTES:
+            raise ResourceError(f"cached DeltaScope resource exceeded {MAX_RESOURCE_BYTES:,} bytes")
+        try:
+            content = data.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ResourceError(f"cached DeltaScope resource is not UTF-8 text: {relative}") from exc
+        parsed: Any = None
+        if relative.casefold().endswith(".json"):
+            try:
+                parsed = json.loads(content)
+            except json.JSONDecodeError:
+                parsed = None
+        return {
+            "schema": "omega.deltascope.contract-resource.v1",
+            "definitionsRevision": str(self.manifest.get("definitionsRevision") or ""),
+            "path": relative, "sha256": expected, "bytes": len(data),
+            "content": content, "parsed": parsed, "verified": True, "readOnly": True,
+        }
+
+    def contract_inventory(self) -> dict[str, Any]:
+        descriptors = {
+            str(item.get("path") or ""): dict(item)
+            for item in self.manifest.get("files") or [] if isinstance(item, Mapping)
+        }
+
+        def resource(path: object, label: str, kind: str, metadata: Mapping[str, Any] | None = None) -> dict[str, Any]:
+            relative = _safe_rel(path)
+            pinned = descriptors.get(relative, {})
+            return {
+                "label": label, "kind": kind, "path": relative,
+                "sha256": str(pinned.get("sha256") or ""), "bytes": int(pinned.get("bytes") or 0),
+                "metadata": dict(metadata or {}),
+            }
+
+        groups: list[dict[str, Any]] = [{
+            "id": "definitions", "label": "Definitions trust anchor", "kind": "trust-anchor",
+            "resources": [resource("index.json", "Definitions index", "trust-anchor")],
+        }]
+        srl = self.srl_index
+        srl_resources = [resource(self.manifest.get("srlIndexPath") or "srl/index.json", "Definition pack index", "index")]
+        compiled = srl.get("compiledRuleSet") if isinstance(srl.get("compiledRuleSet"), Mapping) else {}
+        if compiled.get("path"):
+            srl_resources.append(resource(compiled["path"], "Compiled SRL ruleset", "ruleset", compiled))
+        packs: list[dict[str, Any]] = []
+        for pack in srl.get("packs") or []:
+            if not isinstance(pack, Mapping):
+                continue
+            pack_id = str(pack.get("id") or "")
+            base = f"srl/packs/{pack_id}"
+            manifest = pack.get("manifest") if isinstance(pack.get("manifest"), Mapping) else {}
+            pack_resources = [resource(f"{base}/{_safe_rel(manifest.get('path') or 'pack.yaml')}", "Pack manifest", "pack-manifest", manifest)]
+            for item in pack.get("rules") or []:
+                if isinstance(item, Mapping):
+                    ids = item.get("ruleIds") if isinstance(item.get("ruleIds"), list) else []
+                    label = ", ".join(str(value) for value in ids) or str(item.get("path") or "Rule")
+                    pack_resources.append(resource(f"{base}/{_safe_rel(item.get('path'))}", label, "rule", item))
+            for item in pack.get("fixtures") or []:
+                if isinstance(item, Mapping):
+                    pack_resources.append(resource(f"{base}/{_safe_rel(item.get('path'))}", str(item.get("name") or item.get("path") or "Fixture"), "fixture", item))
+            packs.append({
+                "id": pack_id, "label": str(pack.get("title") or pack_id), "kind": "definition-pack",
+                "metadata": {key: pack.get(key) for key in ("trustTier", "productionEligible", "packRevision", "compiledRuleSetRevision") if key in pack},
+                "resources": pack_resources,
+            })
+        groups.append({"id": "srl", "label": "SRL definitions and rulesets", "kind": "rules", "resources": srl_resources, "children": packs})
+
+        index = self.definitions_index
+        contract_specs = [
+            ("capabilities", "Capabilities", "capabilityRegistry"), ("components", "Components", "componentRegistry"),
+            ("collectors", "Collectors", "collectorRegistry"), ("execution-topology", "Execution topology", "executionTopology"),
+            ("semantic-apis", "Semantic APIs", "semanticApiRegistry"), ("semantic-flow", "Semantic flow", "semanticFlowRegistry"),
+            ("services", "Services", "serviceRegistry"), ("reputation", "Threat reputation", "reputation"),
+            ("osv", "OSV advisories", "osv"), ("source-observations", "Source observations", "sourceObservations"),
+            ("secondary-security", "Secondary engines", "secondarySecurity"),
+        ]
+        for group_id, label, key in contract_specs:
+            descriptor = index.get(key)
+            if isinstance(descriptor, Mapping) and descriptor.get("path") and str(descriptor.get("path")) in descriptors:
+                groups.append({"id": group_id, "label": label, "kind": "contract", "resources": [resource(descriptor["path"], label, key, descriptor)]})
+        return {
+            "schema": "omega.deltascope.contract-inventory.v1", "readOnly": True, "verified": True,
+            "mutationAuthority": "none", "definitionsRevision": str(self.manifest.get("definitionsRevision") or ""),
+            "snapshots": self.available_snapshots(), "groups": groups,
+        }
+
     def public_status(self) -> dict[str, Any]:
         return {
             "schema": RESOURCE_SCHEMA,
@@ -242,6 +417,7 @@ class PublishedResources:
             "stale": bool(self.stale),
             "warning": str(self.warning or ""),
             "downloadedWorkerCode": False,
+            "securityTelemetry": project_security_telemetry(self.definitions_index),
         }
 
 
@@ -254,7 +430,22 @@ def load_cached(cache_root: Path) -> PublishedResources:
     if state.get("schema") != STATE_SCHEMA:
         raise ResourceError("unsupported DeltaScope resource state schema")
     revision = str(state.get("definitionsRevision") or "")
-    root = _snapshot_root(cache_root, revision)
+    snapshot_name = str(state.get("snapshotName") or "")
+    root = cache_root / "snapshots" / _safe_rel(snapshot_name) if snapshot_name else _snapshot_root(cache_root, revision)
+    if not root.is_dir():
+        candidates = []
+        snapshots = cache_root / "snapshots"
+        for candidate in snapshots.iterdir() if snapshots.is_dir() else []:
+            if not candidate.is_dir():
+                continue
+            try:
+                candidate_manifest = _load_manifest(candidate)
+            except ResourceError:
+                continue
+            if str(candidate_manifest.get("definitionsRevision") or "") == revision:
+                candidates.append((int(candidate_manifest.get("consumerBundleVersion") or 1), candidate))
+        if candidates:
+            root = sorted(candidates, key=lambda item: item[0], reverse=True)[0][1]
     manifest = _load_manifest(root)
     if str(manifest.get("definitionsRevision") or "") != revision:
         raise ResourceError("cached DeltaScope resource state revision mismatch")
@@ -298,7 +489,7 @@ def sync_published_resources(
         existing = _snapshot_root(cache_root, revision)
         if existing.is_dir():
             manifest = _load_manifest(existing)
-            _write_state(cache_root, revision)
+            _write_state(cache_root, revision, existing.name)
             return PublishedResources(existing, manifest)
 
         snapshots = cache_root / "snapshots"
@@ -314,11 +505,19 @@ def sync_published_resources(
             component = _descriptor(index, "componentRegistry")
             collector = _descriptor(index, "collectorRegistry")
             execution = _optional_descriptor(index, "executionTopology")
+            inspectable = {
+                key: descriptor for key in (
+                    "semanticApiRegistry", "semanticFlowRegistry", "serviceRegistry", "reputation",
+                    "osv", "sourceObservations", "secondarySecurity",
+                ) if (descriptor := _optional_descriptor(index, key)) is not None
+            }
             srl = _descriptor(index, "srlDefinitionPacks")
             for descriptor in (capability, component, collector):
                 _fetch_child(base_url, temp_root, descriptor["path"], descriptor["sha256"], files)
             if execution is not None:
                 _fetch_child(base_url, temp_root, execution["path"], execution["sha256"], files)
+            for descriptor in inspectable.values():
+                _fetch_child(base_url, temp_root, descriptor["path"], descriptor["sha256"], files)
 
             srl_bytes = _fetch_child(base_url, temp_root, srl["path"], srl["sha256"], files)
             srl_index = _json_bytes(srl_bytes, label="published SRL Definition Pack index")
@@ -354,6 +553,7 @@ def sync_published_resources(
 
             manifest = {
                 "schema": RESOURCE_SCHEMA,
+                "consumerBundleVersion": RESOURCE_BUNDLE_VERSION,
                 "readOnly": True,
                 "mutationAuthority": "none",
                 "policyInput": False,
@@ -374,6 +574,7 @@ def sync_published_resources(
                     "collectors": str(collector["path"]),
                     "capabilities": str(capability["path"]),
                 },
+                "inspectableContracts": {key: str(value["path"]) for key, value in inspectable.items()},
                 "files": files,
                 "fileCount": len(files),
                 "downloadedWorkerCode": False,
@@ -385,7 +586,7 @@ def sync_published_resources(
             shutil.rmtree(temp_root, ignore_errors=True)
             raise
 
-        _write_state(cache_root, revision)
+        _write_state(cache_root, revision, existing.name)
         return PublishedResources(existing, _load_manifest(existing))
     except (OSError, urllib.error.URLError, urllib.error.HTTPError, ResourceError, ValueError, json.JSONDecodeError) as exc:
         if not allow_stale:

@@ -113,8 +113,11 @@ def utc_now() -> str:
 
 
 def default_cache_dir() -> Path:
-    if os.name == "nt" and os.environ.get("LOCALAPPDATA"):
-        return Path(os.environ["LOCALAPPDATA"]) / "Omega" / "SecurityDeveloperView"
+    override = os.environ.get("OMEGA_DELTASCOPE_CACHE_HOME")
+    if override:
+        return Path(override).expanduser()
+    if os.name == "nt":
+        return Path.home() / ".omega" / "deltascope" / "cache"
     xdg = os.environ.get("XDG_CACHE_HOME")
     if xdg:
         return Path(xdg) / "omega-security-developer-view"

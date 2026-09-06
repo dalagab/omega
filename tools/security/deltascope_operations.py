@@ -34,6 +34,8 @@ MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 MAX_WORKFLOW_DEFINITION_BYTES = 512 * 1024
 MAX_JOB_LOG_BYTES = 2 * 1024 * 1024
 MAX_WORKFLOW_HISTORY = 8
+CLIENT_RELEASE_TAG = "catalog-latest"
+CLIENT_BUILD_ASSET = "database-build.json"
 RUNNING_STATES = {"queued", "in_progress", "requested", "waiting", "pending"}
 FAIL_CONCLUSIONS = {"failure", "timed_out", "action_required", "startup_failure"}
 WARN_CONCLUSIONS = {"cancelled", "neutral", "stale"}
@@ -380,8 +382,8 @@ class GitHubOperationsClient:
             headers["Authorization"] = f"Bearer {self.token}"
         return headers
 
-    def _request_json(self, url: str, *, timeout: float = 6.0, maximum: int = MAX_RESPONSE_BYTES) -> Mapping[str, Any]:
-        request = urllib.request.Request(url, headers=self._headers())
+    def _request_json(self, url: str, *, timeout: float = 6.0, maximum: int = MAX_RESPONSE_BYTES, accept: str = "application/vnd.github+json") -> Mapping[str, Any]:
+        request = urllib.request.Request(url, headers=self._headers(accept=accept))
         with self._opener(request, timeout=timeout) as response:
             raw = response.read(maximum + 1)
         if len(raw) > maximum:
@@ -390,6 +392,74 @@ class GitHubOperationsClient:
         if not isinstance(payload, Mapping):
             raise RuntimeError("GitHub Actions response was not an object")
         return payload
+
+    def client_delivery(self, *, refresh: bool = False) -> dict[str, Any]:
+        """Return the authenticated, explicitly acquired client release snapshot."""
+        cache_key = ("client-delivery",)
+        with self._lock:
+            cached = self._workflow_cache.get(cache_key)
+            if not refresh and cached:
+                return dict(cached[1])
+        if not self.token:
+            return {
+                "schema": "omega.deltascope.client-delivery.v1", "available": False,
+                "authenticated": False, "repository": self.repository, "tag": CLIENT_RELEASE_TAG,
+                "snapshotLoaded": False, "cachePolicy": "explicit-refresh",
+                "error": "Connect authenticated GitHub access to inspect client delivery telemetry",
+            }
+        repository = urllib.parse.quote(self.repository, safe="/")
+        release_url = f"https://api.github.com/repos/{repository}/releases/tags/{CLIENT_RELEASE_TAG}"
+        try:
+            release = self._request_json(release_url)
+            raw_assets = release.get("assets") if isinstance(release.get("assets"), list) else []
+            assets = []
+            build_asset: Mapping[str, Any] | None = None
+            for row in raw_assets:
+                if not isinstance(row, Mapping):
+                    continue
+                name = str(row.get("name") or "")
+                assets.append({
+                    "name": name, "bytes": int(row.get("size") or 0),
+                    "updatedAtUtc": str(row.get("updated_at") or ""),
+                    "downloadCount": int(row.get("download_count") or 0),
+                    "url": self._safe_github_url(row.get("browser_download_url")),
+                })
+                if name == CLIENT_BUILD_ASSET:
+                    build_asset = row
+            if build_asset is None or not str(build_asset.get("url") or "").startswith("https://api.github.com/"):
+                raise RuntimeError(f"{CLIENT_BUILD_ASSET} is missing from release {CLIENT_RELEASE_TAG}")
+            manifest = self._request_json(
+                str(build_asset.get("url")), maximum=MAX_RESPONSE_BYTES,
+                accept="application/octet-stream",
+            )
+            operations = self.status(refresh=False)
+            publisher = next((
+                dict(row) for row in operations.get("events") or []
+                if isinstance(row, Mapping) and str(row.get("workflowPath") or "").replace("\\", "/").endswith("/catalog-client-publish.yml")
+            ), None)
+            result = {
+                "schema": "omega.deltascope.client-delivery.v1", "available": True,
+                "authenticated": True, "repository": self.repository, "tag": CLIENT_RELEASE_TAG,
+                "release": {
+                    "name": str(release.get("name") or CLIENT_RELEASE_TAG),
+                    "publishedAtUtc": str(release.get("published_at") or ""),
+                    "updatedAtUtc": str(release.get("updated_at") or ""),
+                    "url": self._safe_github_url(release.get("html_url")), "assets": assets,
+                },
+                "manifest": dict(manifest), "publisherRun": publisher,
+                "fetchedAtUtc": _utc_now(), "snapshotLoaded": True,
+                "cachePolicy": "explicit-refresh", "readOnly": True, "mutationAuthority": "none",
+            }
+        except (OSError, ValueError, RuntimeError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
+            result = {
+                "schema": "omega.deltascope.client-delivery.v1", "available": False,
+                "authenticated": True, "repository": self.repository, "tag": CLIENT_RELEASE_TAG,
+                "fetchedAtUtc": _utc_now(), "snapshotLoaded": True,
+                "cachePolicy": "explicit-refresh", "error": str(exc),
+            }
+        with self._lock:
+            self._workflow_cache[cache_key] = (time.monotonic(), dict(result))
+        return result
 
     def _request(self, url: str, *, method: str = "GET", body: Mapping[str, Any] | None = None, timeout: float = 10.0) -> tuple[int, Mapping[str, Any]]:
         encoded = json.dumps(body, separators=(",", ":")).encode("utf-8") if body is not None else None
@@ -842,7 +912,7 @@ class GitHubOperationsClient:
         with self._lock:
             payload = dict(self._cache or {})
             workflow_keys = list(self._workflow_cache)
-        history_count = sum(1 for key in workflow_keys if key and key[0] not in {"workflows", "workflow-form"})
+        history_count = sum(1 for key in workflow_keys if key and key[0] not in {"workflows", "workflow-form", "client-delivery"})
         form_count = sum(1 for key in workflow_keys if key and key[0] == "workflow-form")
         return {
             "schema": "omega.deltascope.github-acquisition-state.v1",
@@ -871,6 +941,7 @@ class GitHubOperationsClient:
             self._workflow_cache.clear()
         operations = self.status(refresh=True)
         workflows = self.workflows(refresh=True)
+        client_delivery = self.client_delivery(refresh=True)
         histories: dict[str, dict[str, Any]] = {}
         for workflow_file, job_names in sorted((workflow_contracts or {}).items()):
             names = {str(name).strip() for name in (job_names or []) if str(name).strip()}
@@ -884,6 +955,7 @@ class GitHubOperationsClient:
             "refreshed": True,
             "operations": operations,
             "workflows": workflows,
+            "clientDelivery": client_delivery,
             "workflowHistories": histories,
             "snapshot": self.snapshot_status(),
         }
