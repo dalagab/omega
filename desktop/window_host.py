@@ -112,9 +112,23 @@ def apply_windows_window_icon(window: object, icon: str | None) -> bool:
     path = Path(icon)
     if path.suffix.lower() != ".ico" or not path.is_file():
         return False
+    # Set the WinForms Form.Icon directly while before_show is executing on the
+    # WinForms UI thread. This is the icon Windows uses for the title bar and
+    # normally for the taskbar button.
+    winforms_applied = False
+    native = getattr(window, "native", None)
+    if native is not None:
+        try:
+            from System.Drawing import Icon
+
+            native.Icon = Icon(str(path))
+            winforms_applied = True
+        except Exception as exc:
+            print(f"DeltaScope Desktop: WinForms icon assignment failed: {exc}", file=sys.stderr, flush=True)
+
     hwnd = _native_window_handle(window)
     if not hwnd:
-        return False
+        return winforms_applied
 
     try:
         from ctypes import wintypes
@@ -135,15 +149,14 @@ def apply_windows_window_icon(window: object, icon: str | None) -> bool:
 
         big = load_icon(SM_CXICON, SM_CYICON)
         small = load_icon(SM_CXSMICON, SM_CYSMICON)
-        if not big and not small:
-            return False
         if big:
             user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, int(big))
         if small:
             user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, int(small))
-        return True
-    except Exception:
-        return False
+        return winforms_applied or bool(big or small)
+    except Exception as exc:
+        print(f"DeltaScope Desktop: HWND icon assignment failed: {exc}", file=sys.stderr, flush=True)
+        return winforms_applied
 
 
 def main() -> int:
@@ -157,6 +170,11 @@ def main() -> int:
     parser.add_argument("--icon", default="")
     args = parser.parse_args()
 
+    # Establish the Windows shell identity before pywebview loads WinForms.
+    # The probe path intentionally avoids changing process shell identity.
+    if not args.probe:
+        set_windows_identity()
+
     try:
         import webview
     except Exception as exc:
@@ -168,11 +186,11 @@ def main() -> int:
         return 0
     if not args.url:
         parser.error("--url is required")
-
-    set_windows_identity()
     storage = Path(args.storage_path).expanduser().resolve() if args.storage_path else Path.home() / ".deltascope-webview"
     storage.mkdir(parents=True, exist_ok=True)
     icon = resolve_icon(args.icon, storage)
+    if sys.platform == "win32":
+        print(f"DeltaScope Desktop icon source: {icon or 'unavailable'}", file=sys.stderr, flush=True)
 
     webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
     window = webview.create_window(
@@ -185,7 +203,16 @@ def main() -> int:
         text_select=True,
     )
     if sys.platform == "win32" and icon:
-        window.events.before_show += lambda current_window: apply_windows_window_icon(current_window, icon)
+        # pywebview injects its Window object only when the callback parameter is
+        # literally named "window".  A differently named single parameter is
+        # called with zero arguments and the resulting TypeError is swallowed by
+        # pywebview's event logger.
+        def before_show(window):
+            applied = apply_windows_window_icon(window, icon)
+            state = "applied" if applied else "FAILED"
+            print(f"DeltaScope Desktop native icon: {state}", file=sys.stderr, flush=True)
+
+        window.events.before_show += before_show
     start_kwargs = {
         "private_mode": False,
         "storage_path": str(storage),
