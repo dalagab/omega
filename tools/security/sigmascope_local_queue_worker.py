@@ -76,7 +76,7 @@ def ensure_empty(path: Path, *, reset: bool) -> None:
 
 
 def export_branch(repo: Path, branch: str, destination: Path) -> str:
-    run(["git", "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "fetch", "--quiet", "--depth=1", "origin", branch], cwd=repo)
+    run(["git", "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "fetch", "--quiet", "--depth=1", "origin", f"refs/heads/{branch}"], cwd=repo)
     sha = output(["git", "rev-parse", "FETCH_HEAD"], cwd=repo)
     destination.parent.mkdir(parents=True, exist_ok=True)
     run(["git", "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "worktree", "add", "--quiet", "--detach", str(destination), sha], cwd=repo)
@@ -105,8 +105,8 @@ def frozen_revision(definitions: Path, key: str) -> str:
 
 
 def fetch_branch_ref(repo: Path, branch: str) -> str:
-    run(["git", "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "fetch", "--quiet", "--depth=1", "origin", f"{branch}:refs/remotes/origin/{branch}"], cwd=repo)
-    return output(["git", "rev-parse", f"origin/{branch}"], cwd=repo)
+    run(["git", "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "fetch", "--quiet", "--depth=1", "origin", f"refs/heads/{branch}"], cwd=repo)
+    return output(["git", "rev-parse", "FETCH_HEAD"], cwd=repo)
 
 
 def scanner_bundle_sha(definitions: Path) -> str:
@@ -147,12 +147,17 @@ def write_queue_keys_for_sparse_view(repo: Path, catalog: Path, evidence_head: s
 def overlay_windows_exporter_compatibility(repo: Path, frozen_worker: Path) -> bool:
     if os.name != "nt":
         return False
-    source = repo / "tools" / "security" / "security_evidence_v2.py"
-    target = frozen_worker / "tools" / "security" / "security_evidence_v2.py"
-    if not source.is_file() or not target.is_file():
-        return False
-    shutil.copy2(source, target)
-    return True
+    overlays = (
+        (repo / "tools" / "security" / "security_evidence_v2.py", frozen_worker / "tools" / "security" / "security_evidence_v2.py"),
+        (repo / "tools" / "orchestration" / "git_snapshot_history.py", frozen_worker / "tools" / "orchestration" / "git_snapshot_history.py"),
+    )
+    applied = False
+    for source, target in overlays:
+        if not source.is_file() or not target.is_file():
+            continue
+        shutil.copy2(source, target)
+        applied = True
+    return applied
 
 
 def materialize_sparse_evidence(repo: Path, evidence_head: str, queue_keys: Path, output_root: Path, queue_seed: Path) -> None:

@@ -105,7 +105,8 @@ def _copy_tree(
     *,
     excluded_names: frozenset[str],
     excluded_prefixes: tuple[str, ...],
-) -> None:
+) -> int:
+    copied = 0
     source = source.resolve()
     for path in sorted(source.rglob("*")):
         if not path.is_file() or path.name in excluded_names:
@@ -118,6 +119,8 @@ def _copy_tree(
         destination = target / rel
         platform_path(destination.parent).mkdir(parents=True, exist_ok=True)
         shutil.copy2(platform_path(path), platform_path(destination))
+        copied += 1
+    return copied
 
 
 @dataclass(frozen=True)
@@ -216,12 +219,14 @@ def publish_snapshot_tree(
         else:
             run(["git", "checkout", "-q", "--orphan", branch], cwd=work)
 
-        _copy_tree(
+        copied_files = _copy_tree(
             source,
             work,
             excluded_names=frozenset(excluded_names),
             excluded_prefixes=tuple(excluded_prefixes),
         )
+        if copied_files <= 0 or not (work / "index.json").is_file():
+            raise RuntimeError("snapshot staging copied no publishable Evidence files; refusing to commit an empty snapshot")
         run(["git", "add", "--all"], cwd=work)
 
         if history_mode == HISTORY_FAST_FORWARD and old_sha:

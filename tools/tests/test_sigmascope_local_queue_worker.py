@@ -20,6 +20,7 @@ class SigmaScopeLocalQueueWorkerContractTests(unittest.TestCase):
         self.assertIn("--preflight-only", text)
         self.assertIn("--sparse-evidence", text)
         self.assertIn("sigmascope_sparse_evidence.py", text)
+        self.assertIn("git_snapshot_history.py", text)
         self.assertIn("default_work_dir", text)
         self.assertIn("C:/osl", text)
         self.assertIn("validate_windows_work_dir", text)
