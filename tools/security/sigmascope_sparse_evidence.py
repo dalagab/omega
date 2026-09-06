@@ -144,7 +144,7 @@ def git_output(repo: Path, *args: str) -> str:
     return subprocess.run(["git", "-C", str(repo), *args], check=True, text=True, encoding="utf-8", stdout=subprocess.PIPE).stdout.strip()
 
 
-def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path) -> dict[str, Any]:
+def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path, queue_seed: Path | None = None) -> dict[str, Any]:
     if output.exists():
         shutil.rmtree(output, onexc=_remove_readonly)
     output.mkdir(parents=True, exist_ok=True)
@@ -152,7 +152,19 @@ def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path)
     source_head = git_output(repo, "rev-parse", ref)
     root_index = read_json_bytes(git_show(repo, ref, "index.json"))
     scanner_queue = read_json_bytes(git_show(repo, ref, "scanner-queue.json"))
-    queue_items = scanner_queue.get("items") if isinstance(scanner_queue.get("items"), dict) else {}
+    queue_items = dict(scanner_queue.get("items") if isinstance(scanner_queue.get("items"), dict) else {})
+    if queue_seed is not None:
+        seed = read_json(queue_seed)
+        raw_seed_items = seed.get("items")
+        if isinstance(raw_seed_items, dict):
+            seed_items = raw_seed_items.items()
+        elif isinstance(raw_seed_items, list):
+            seed_items = ((str(item.get("queueKey") or ""), item) for item in raw_seed_items if isinstance(item, dict))
+        else:
+            seed_items = ()
+        for key, item in seed_items:
+            if isinstance(item, dict) and key and key not in queue_items:
+                queue_items[str(key)] = item
     selected_items = [queue_items[key] for key in queue_keys if isinstance(queue_items.get(key), dict)]
     selected_variant_ids = {int(item.get("variantId") or 0) for item in selected_items if int(item.get("variantId") or 0) > 0}
     if len(selected_items) != len(queue_keys):
@@ -193,7 +205,12 @@ def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path)
 
     write_json(output / plugins_rel, filtered_plugins)
     write_json(output / artifacts_rel, filtered_artifacts)
-    write_json(output / "scanner-queue.json", scanner_queue)
+    sparse_queue = dict(scanner_queue)
+    merged_items = dict(scanner_queue.get("items") if isinstance(scanner_queue.get("items"), dict) else {})
+    for item in selected_items:
+        merged_items[str(item.get("queueKey") or "")] = item
+    sparse_queue["items"] = merged_items
+    write_json(output / "scanner-queue.json", sparse_queue)
     sparse_indexes = {
         "plugins": file_entry(output, output / plugins_rel, records=sum(len(filtered_plugins.get(name) or []) for name in ("currentVariants", "terminalVariants", "historicalSnapshots"))),
         "artifacts": file_entry(output, output / artifacts_rel, records=len(filtered_artifacts.get("artifacts") or [])),
@@ -240,9 +257,10 @@ def main() -> int:
     parser.add_argument("--repo", type=Path, default=Path.cwd())
     parser.add_argument("--ref", default="origin/security-evidence-v2")
     parser.add_argument("--queue-keys-file", type=Path, required=True)
+    parser.add_argument("--queue-seed", type=Path, help="Optional queue seed used to resolve newly selected queue keys not yet present in current Evidence")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    result = build_sparse_view(args.repo, args.ref, load_queue_keys(args.queue_keys_file), args.output)
+    result = build_sparse_view(args.repo, args.ref, load_queue_keys(args.queue_keys_file), args.output, queue_seed=args.queue_seed)
     write_json(args.output / ".sigmascope-sparse-evidence.json", result)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
     return 0

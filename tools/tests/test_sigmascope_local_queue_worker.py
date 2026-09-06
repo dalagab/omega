@@ -18,6 +18,8 @@ class SigmaScopeLocalQueueWorkerContractTests(unittest.TestCase):
         self.assertIn("\"--expected-parent-sha\", evidence_head", text)
         self.assertIn("if args.push:", text)
         self.assertIn("--preflight-only", text)
+        self.assertIn("--sparse-evidence", text)
+        self.assertIn("sigmascope_sparse_evidence.py", text)
         self.assertIn("core.longpaths=true", text)
         self.assertIn("core.autocrlf=false", text)
         self.assertIn("warning: source follow-up issue reconciliation failed", text)

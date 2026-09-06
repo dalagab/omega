@@ -84,7 +84,7 @@ def export_branch(repo: Path, branch: str, destination: Path) -> str:
 
 
 def remove_worktree(repo: Path, path: Path) -> None:
-    if path.exists():
+    if (path / ".git").exists():
         run(["git", "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "worktree", "remove", "--force", str(path)], cwd=repo, check=False)
     shutil.rmtree(path, ignore_errors=True, onexc=_remove_readonly)
 
@@ -104,11 +104,55 @@ def frozen_revision(definitions: Path, key: str) -> str:
     return str(read_json(definitions / "index.json").get(key) or "")
 
 
+def fetch_branch_ref(repo: Path, branch: str) -> str:
+    run(["git", "-c", "core.longpaths=true", "-c", "core.autocrlf=false", "fetch", "--quiet", "--depth=1", "origin", f"{branch}:refs/remotes/origin/{branch}"], cwd=repo)
+    return output(["git", "rev-parse", f"origin/{branch}"], cwd=repo)
+
+
 def scanner_bundle_sha(definitions: Path) -> str:
     bundle = read_json(definitions / "index.json").get("scannerBundle")
     if not isinstance(bundle, dict):
         raise ValueError("definitions index has no scannerBundle object")
     return str(bundle.get("sha256") or "")
+
+
+def write_queue_keys_for_sparse_view(repo: Path, catalog: Path, evidence_head: str, work: Path, max_scans: int) -> Path:
+    metadata = work / "catalog" / "security-v2-metadata"
+    if metadata.exists():
+        robust_rmtree(metadata)
+    metadata.mkdir(parents=True, exist_ok=True)
+    (metadata / "index.json").write_bytes(subprocess.run(["git", "-C", str(repo), "show", f"{evidence_head}:index.json"], check=True, stdout=subprocess.PIPE).stdout)
+    (metadata / "scanner-queue.json").write_bytes(subprocess.run(["git", "-C", str(repo), "show", f"{evidence_head}:scanner-queue.json"], check=True, stdout=subprocess.PIPE).stdout)
+    plan = work / "catalog" / "local-sparse-plan.json"
+    run([
+        sys.executable, str(repo / "tools" / "security" / "sigmascope_parallel_drain_plan.py"),
+        "--queue-seed", str(catalog / "scan-queue.json"),
+        "--evidence-root", str(metadata),
+        "--workers", "1",
+        "--items-per-worker", str(max(1, min(max_scans, 16))),
+        "--wave", "1",
+        "--output", str(plan),
+    ], cwd=repo)
+    document = read_json(plan)
+    matrix = document.get("matrix") if isinstance(document.get("matrix"), dict) else {}
+    slots = matrix.get("include") if isinstance(matrix.get("include"), list) else []
+    keys = list(slots[0].get("queueKeys") or []) if slots and isinstance(slots[0], dict) else []
+    if not keys:
+        raise RuntimeError("no eligible sparse SigmaScope queue keys selected")
+    queue_keys = work / "catalog" / "local-sparse-queue-keys.txt"
+    queue_keys.write_text("".join(f"{key}\n" for key in keys), encoding="utf-8")
+    return queue_keys
+
+
+def materialize_sparse_evidence(repo: Path, evidence_head: str, queue_keys: Path, output_root: Path, queue_seed: Path) -> None:
+    run([
+        sys.executable, str(repo / "tools" / "security" / "sigmascope_sparse_evidence.py"),
+        "--repo", str(repo),
+        "--ref", evidence_head,
+        "--queue-keys-file", str(queue_keys),
+        "--queue-seed", str(queue_seed),
+        "--output", str(output_root),
+    ], cwd=repo)
 
 
 def build_env(work: Path) -> dict[str, str]:
@@ -151,8 +195,16 @@ def local_drain(args: argparse.Namespace) -> int:
     try:
         phase("fetch catalog-data")
         catalog_head = export_branch(repo, "catalog-data", catalog)
-        phase("fetch security-evidence-v2")
-        evidence_head = export_branch(repo, "security-evidence-v2", current)
+        if args.sparse_evidence:
+            phase("fetch security-evidence-v2 metadata")
+            evidence_head = fetch_branch_ref(repo, "security-evidence-v2")
+            phase("select sparse queue keys")
+            sparse_queue_keys = write_queue_keys_for_sparse_view(repo, catalog, evidence_head, work, args.max_scans)
+            phase("materialize sparse security-evidence-v2")
+            materialize_sparse_evidence(repo, evidence_head, sparse_queue_keys, current, catalog / "scan-queue.json")
+        else:
+            phase("fetch security-evidence-v2")
+            evidence_head = export_branch(repo, "security-evidence-v2", current)
         try:
             phase("fetch deep-scan-state")
             export_branch(repo, "deep-scan-state", deep)
@@ -184,6 +236,7 @@ def local_drain(args: argparse.Namespace) -> int:
             "workDir": str(work / "catalog" / "security-v2-work"),
             "publishRequested": bool(args.push),
             "preflightOnly": bool(args.preflight_only),
+            "sparseEvidence": bool(args.sparse_evidence),
         }
         if args.preflight_only:
             (work / "local-sigmascope-queue-worker-report.json").write_text(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
@@ -264,6 +317,7 @@ def main() -> int:
     parser.add_argument("--max-batch-seconds", type=int, default=3300)
     parser.add_argument("--internal-names", default="")
     parser.add_argument("--push", action="store_true", help="Publish the validated candidate with expected-parent protection")
+    parser.add_argument("--sparse-evidence", action=argparse.BooleanOptionalAction, default=True, help="Use a sparse current Evidence view for selected queue keys instead of a full branch worktree")
     parser.add_argument("--preflight-only", action="store_true", help="Fetch frozen inputs, verify worker, materialize local inputs, then stop before scanning")
     parser.add_argument("--reconcile-source-followups", action="store_true", help="Best-effort issue side effect; never gates Evidence publication")
     parser.add_argument("--max-new-followups", type=int, default=25)
