@@ -144,6 +144,17 @@ def write_queue_keys_for_sparse_view(repo: Path, catalog: Path, evidence_head: s
     return queue_keys
 
 
+def overlay_windows_exporter_compatibility(repo: Path, frozen_worker: Path) -> bool:
+    if os.name != "nt":
+        return False
+    source = repo / "tools" / "security" / "security_evidence_v2.py"
+    target = frozen_worker / "tools" / "security" / "security_evidence_v2.py"
+    if not source.is_file() or not target.is_file():
+        return False
+    shutil.copy2(source, target)
+    return True
+
+
 def materialize_sparse_evidence(repo: Path, evidence_head: str, queue_keys: Path, output_root: Path, queue_seed: Path) -> None:
     run([
         sys.executable, str(repo / "tools" / "security" / "sigmascope_sparse_evidence.py"),
@@ -216,6 +227,9 @@ def local_drain(args: argparse.Namespace) -> int:
         definitions = catalog / "definitions"
         phase("verify frozen worker")
         run([sys.executable, str(frozen_worker / "tools" / "catalog" / "definitions_snapshot.py"), "verify-worker", "--definitions-root", str(definitions)], cwd=work, env=env)
+        windows_overlay_applied = overlay_windows_exporter_compatibility(repo, frozen_worker)
+        if windows_overlay_applied:
+            phase("overlay Windows exporter compatibility")
         phase("materialize secondary assets")
         run([sys.executable, str(frozen_worker / "tools" / "catalog" / "secondary_security_assets.py"), "materialize-clamav", "--definitions-root", str(definitions), "--output", env["OMEGA_SECONDARY_SECURITY_CACHE"]], cwd=work, check=False, env=env)
         phase("materialize catalog database")
@@ -237,6 +251,7 @@ def local_drain(args: argparse.Namespace) -> int:
             "publishRequested": bool(args.push),
             "preflightOnly": bool(args.preflight_only),
             "sparseEvidence": bool(args.sparse_evidence),
+            "windowsExporterCompatibilityOverlay": bool(windows_overlay_applied),
         }
         if args.preflight_only:
             (work / "local-sigmascope-queue-worker-report.json").write_text(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
