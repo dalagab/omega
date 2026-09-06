@@ -55,6 +55,18 @@ def platform_path(path: Path) -> Path:
     return Path("\\\\?\\" + resolved)
 
 
+def publication_temp_parent(source: Path) -> Path | None:
+    if os.name != "nt":
+        return None
+    override = os.environ.get("OMEGA_GIT_SNAPSHOT_TEMP")
+    if override:
+        parent = Path(override)
+    else:
+        parent = Path(source.anchor or "C:/") / "osg"
+    platform_path(parent).mkdir(parents=True, exist_ok=True)
+    return parent
+
+
 def git_root(path: Path) -> Path:
     requested = path.resolve()
     result = run(_repo_git(requested, "rev-parse", "--show-toplevel"), cwd=requested, capture=True)
@@ -180,7 +192,7 @@ def publish_snapshot_tree(
             parent_head=old_sha if history_mode == HISTORY_FAST_FORWARD else "",
         )
 
-    with tempfile.TemporaryDirectory(prefix="omega-git-snapshot-history-") as td:
+    with tempfile.TemporaryDirectory(prefix="pub-", dir=publication_temp_parent(source)) as td:
         work = Path(td)
         run(["git", "init", "-q"], cwd=work)
         run(["git", "config", "user.name", author_name], cwd=work)

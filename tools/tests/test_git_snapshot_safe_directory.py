@@ -88,6 +88,12 @@ class GitSnapshotSafeDirectoryTests(unittest.TestCase):
             self.assertIn(f"safe.directory={nested.resolve()}", command)
             self.assertNotIn("safe.directory=*", command)
 
+    def test_windows_publication_temp_root_is_short_and_overridable(self) -> None:
+        source = (ROOT / "tools" / "orchestration" / "git_snapshot_history.py").read_text(encoding="utf-8")
+        self.assertIn("OMEGA_GIT_SNAPSHOT_TEMP", source)
+        self.assertIn('/ "osg"', source)
+        self.assertIn('TemporaryDirectory(prefix="pub-", dir=publication_temp_parent(source))', source)
+
 
 if __name__ == "__main__":
     unittest.main()
