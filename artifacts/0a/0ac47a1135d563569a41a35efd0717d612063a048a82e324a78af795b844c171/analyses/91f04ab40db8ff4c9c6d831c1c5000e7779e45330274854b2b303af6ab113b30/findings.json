@@ -1,0 +1,212 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.Services.RetainerPriceService.TryClickRetainerSellListItem+0x38: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for inventory ui/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:UndercutterFFXIV.dll:BagAssistant.BagAssistantPlugin.DeleteSpecificJunk+0x3a: call FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.DiscardItem",
+      "il:UndercutterFFXIV.dll:BagAssistant.BagAssistantPlugin.DeleteJunk+0x83: call FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.DiscardItem",
+      "il:UndercutterFFXIV.dll:BagAssistant.Services.InventoryService.MoveOrSwap+0x98: call FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.MoveItemSlot",
+      "il:UndercutterFFXIV.dll:BagAssistant.Services.InventoryService.MoveSlotToSlot+0x35: call FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.MoveItemSlot"
+    ],
+    "rule_id": "automation.game.ui.inventory_control",
+    "severity": "caution",
+    "title": "Inventory UI/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Microsoft.Data.Sqlite.dll: s://github.com/dotnet/efcore",
+      "artifact:Microsoft.Data.Sqlite.dll: s://www.sqlite.org/rescode.html",
+      "artifact:Microsoft.Data.Sqlite.dll: s://go.microsoft.com/fwlink/?linkid=2142181.",
+      "artifact:Microsoft.Data.Sqlite.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:Microsoft.Data.Sqlite.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:Microsoft.Data.Sqlite.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.Data.Sqlite.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:Microsoft.Data.Sqlite.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:SQLitePCLRaw.provider.e_sqlite3.dll: DllImportAttribute",
+      "native-pe:runtimes/win-arm/native/e_sqlite3.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:runtimes/win-arm/native/e_sqlite3.dll: import KERNEL32.dll!LoadLibraryW: LoadLibrary",
+      "native-pe:runtimes/win-arm/native/e_sqlite3.dll: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+      "native-pe:runtimes/win-arm/native/e_sqlite3.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+      "artifact:runtimes/win-arm/native/e_sqlite3.dll: LoadLibrary",
+      "artifact:runtimes/win-arm/native/e_sqlite3.dll: GetProcAddress",
+      "native-pe:runtimes/win-arm64/native/e_sqlite3.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Data.Sqlite.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Data.Sqlite.dll: https://www.sqlite.org/rescode.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6da23f9403a4",
+    "severity": "caution",
+    "title": "Endpoint: www.sqlite.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Data.Sqlite.dll: https://go.microsoft.com/fwlink/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b2a093ba178f",
+    "severity": "caution",
+    "title": "Endpoint: go.microsoft.com"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:UndercutterFFXIV.dll: Directory.CreateDirectory",
+      "metadata:UndercutterFFXIV.dll: WriteAllText",
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.Services.LoggingService.Initialize+0xc: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.Services.PersistenceService..ctor+0x2f: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.Services.PersistenceService.SaveTrackedItems+0x1e: call System.IO.File.WriteAllText: WriteAllText",
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.Services.PersistenceService.SavePriceHistory+0x1e: call System.IO.File.WriteAllText: WriteAllText",
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.Services.PersistenceService.SaveAlerts+0x1e: call System.IO.File.WriteAllText: WriteAllText",
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.Services.PersistenceService.SaveFlipTransactions+0x1e: call System.IO.File.WriteAllText: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:UndercutterFFXIV.dll: https://universalis.app/api/v2/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.48e0f530ab27",
+    "severity": "informational",
+    "title": "Endpoint: universalis.app"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:UndercutterFFXIV.json: https://raw.githubusercontent.com/Aschmies/UndercutterFFXIV/main/assets/icon-market-master-pro.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.55f33903f9f1",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Data.Sqlite.dll: https://github.com/dotnet/efcore"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bcb0560fa0f1",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:UndercutterFFXIV.dll: https://github.com/Aschmies/AschyQOL"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.be26fbfb8bde",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:UndercutterFFXIV.dll: https://universalis.app/api/v2"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c65dbdb00d45",
+    "severity": "informational",
+    "title": "Endpoint: universalis.app"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SQLitePCLRaw.batteries_v2.dll: https://github.com/ericsink/SQLitePCL.raw",
+      "artifact:SQLitePCLRaw.core.dll: https://github.com/ericsink/SQLitePCL.raw",
+      "artifact:SQLitePCLRaw.provider.e_sqlite3.dll: https://github.com/ericsink/SQLitePCL.raw"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cfabce510df0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:UndercutterFFXIV.json: https://github.com/Aschmies/UndercutterFFXIV"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.eded46ef93b1",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:UndercutterFFXIV.dll: System.Net.Http.HttpClient",
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.MarketAssistantPlugin..ctor+0x79: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.Services.UniversalisApiService..ctor+0x16: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.Services.UniversalisApiService..cctor+0x0: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.Services.UniversalisMarketClient..ctor+0x31: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:UndercutterFFXIV.dll:UndercutterFFXIV.Services.UniversalisMarketClient..ctor+0x3c: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:UndercutterFFXIV.dll:<GetPriceData>d__4.MoveNext+0x6e: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:UndercutterFFXIV.dll:<GetBatchSnapshotsAsync>d__12.MoveNext+0x10d: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes/linux-arm/native/libe_sqlite3.so",
+      "runtimes/linux-arm64/native/libe_sqlite3.so",
+      "runtimes/linux-armel/native/libe_sqlite3.so",
+      "runtimes/linux-mips64/native/libe_sqlite3.so",
+      "runtimes/linux-musl-arm/native/libe_sqlite3.so",
+      "runtimes/linux-musl-arm64/native/libe_sqlite3.so",
+      "runtimes/linux-musl-x64/native/libe_sqlite3.so",
+      "runtimes/linux-ppc64le/native/libe_sqlite3.so"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
