@@ -1,0 +1,79 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:KamiToolKit.dll:KamiToolKit.NativeAddon.OnFireCallback+0x80: callvirt FireCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:KamiToolKit.dll: s://github.com/dajoey/lalalazy.git",
+      "artifact:KamiToolKit.dll: C:\\Users\\dajoey\\lalalazy\\src\\LazyWTMath\\KamiToolKit\\KamiToolKitLibrary.cs",
+      "artifact:KamiToolKit.dll: C:\\Users\\dajoey\\lalalazy\\src\\LazyWTMath\\KamiToolKit\\NodeBase\\NodeBase.cs",
+      "artifact:KamiToolKit.dll: C:\\Users\\dajoey\\lalalazy\\src\\LazyWTMath\\KamiToolKit\\NodeBase\\NodeBase.Linking.cs",
+      "artifact:LazyWTMath.dll: s://github.com/dajoey/lalalazy.git",
+      "artifact:LazyWTMath.dll: s://github.com/dajoey/lalalazy/blob/main/",
+      "artifact:SixLabors.ImageSharp.dll: s://github.com/SixLabors/ImageSharp",
+      "artifact:SixLabors.ImageSharp.dll: p://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: Dalamud.Hooking",
+      "metadata:KamiToolKit.dll: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.NativeAddon.InitializeCloseCallback+0x37: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Classes.Controllers.NativeListController.LoadPopulators+0x3a: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Classes.Controllers.NativeListController.LoadPopulators+0x7d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:KamiToolKit.dll: Dalamud.Hooking",
+      "artifact:KamiToolKit.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:WinRT.Runtime.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:WinRT.Runtime.dll: DllImportAttribute",
+      "metadata:WinRT.Runtime.dll: GetProcAddress",
+      "metadata:WinRT.Runtime.dll: LoadLibrary",
+      "il:WinRT.Runtime.dll:WinRT.DllModule.TryCreate+0x17: call WinRT.Interop.Platform.LoadLibraryExW: LoadLibrary",
+      "il:WinRT.Runtime.dll:WinRT.DllModule.TryCreate+0x66: call WinRT.Interop.Platform.TryGetProcAddress: GetProcAddress",
+      "il:WinRT.Runtime.dll:WinRT.DllModule..ctor+0x33: call WinRT.Interop.Platform.TryGetProcAddress: GetProcAddress",
+      "il:WinRT.Runtime.dll:WinRT.ExceptionHelpers.Initialize+0xf: call WinRT.Interop.Platform.LoadLibraryExW: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: FileStream",
+      "metadata:KamiToolKit.dll: WriteAllText",
+      "il:KamiToolKit.dll:KamiToolKit.NativeAddon.SaveAddonConfig+0x41: call Dalamud.Utility.FilesystemUtil.WriteAllTextSafe: WriteAllText",
+      "artifact:KamiToolKit.dll: WriteAllText",
+      "artifact:KamiToolKit.dll: FileStream",
+      "metadata:LazyWTMath.dll: Directory.CreateDirectory",
+      "metadata:LazyWTMath.dll: WriteAllText",
+      "il:LazyWTMath.dll:Lalalazy.Changelog.SidecarSeenStore.Set+0xb: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
