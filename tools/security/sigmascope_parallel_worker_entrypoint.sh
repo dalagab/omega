@@ -8,7 +8,11 @@ git config --global --add safe.directory "$PWD/catalog/security-v2-current"
 
 case "${1:-}" in
   bind)
-    current="$(git -C catalog/security-v2-current rev-parse HEAD)"
+    if [ -d catalog/security-v2-current/.git ]; then
+      current="$(git -C catalog/security-v2-current rev-parse HEAD)"
+    else
+      current="$(jq -r '.sourceHead // ""' catalog/security-v2-current/.sigmascope-sparse-evidence.json 2>/dev/null || true)"
+    fi
     test "$current" = "$BASE_EVIDENCE_HEAD" || {
       echo "::error::Evidence moved after drain planning: planned=$BASE_EVIDENCE_HEAD current=$current"
       exit 3

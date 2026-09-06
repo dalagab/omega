@@ -47,13 +47,21 @@ class OrchestrationContractTests(unittest.TestCase):
         for name, tools in expected.items():
             text = (common.ROOT / "containers" / name / "Dockerfile").read_text(encoding="utf-8")
             self.assertIn("python:3.13.15-slim-bookworm", text)
-            self.assertIn("PyYAML==6.0.3", text)
+            if name == "sigmascope-worker":
+                requirements = (common.ROOT / "containers" / name / "requirements-security.txt").read_text(encoding="utf-8")
+                self.assertIn("requirements-security.txt", text)
+                self.assertIn("PyYAML==6.0.3", requirements)
+                self.assertIn("core.autocrlf false", text)
+                self.assertIn("core.longpaths true", text)
+            else:
+                self.assertIn("PyYAML==6.0.3", text)
             for tool in tools:
                 self.assertIn(tool, text)
             self.assertNotIn("COPY security-definitions", text)
             self.assertNotIn("COPY catalog", text)
             self.assertNotIn("COPY definitions", text)
             self.assertNotIn("COPY tools", text, "first worker images are reusable toolchains, not mutable code/data snapshots")
+            self.assertNotIn("COPY catalog", text)
 
     def test_image_workflow_publishes_ghcr_digest_artifacts(self) -> None:
         text = self.read_workflow("worker-images.yml")

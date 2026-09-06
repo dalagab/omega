@@ -143,6 +143,14 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn('--wave "$WAVE"', text)
         self.assertIn("matrix.lane", text)
 
+    def test_workers_materialize_sparse_evidence_view(self) -> None:
+        text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
+        workers = text[text.index("\n  workers:"):text.index("\n  merge:")]
+        self.assertIn("sigmascope_sparse_evidence.py", workers)
+        self.assertIn("Fetch Security Evidence metadata for sparse worker view", workers)
+        self.assertNotIn("path: catalog/security-v2-current", workers)
+        self.assertIn(".sigmascope-sparse-evidence.json", (common.ROOT / "tools" / "security" / "sigmascope_parallel_worker_entrypoint.sh").read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

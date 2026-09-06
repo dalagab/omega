@@ -260,12 +260,14 @@ jobs:
           path: catalog/active-state
           fetch-depth: 1
           persist-credentials: false
-      - uses: actions/checkout@v6
-        with:
-          ref: security-evidence-v2
-          path: catalog/security-v2-current
-          fetch-depth: 1
-          persist-credentials: false
+      - name: Fetch Security Evidence metadata for sparse worker view
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin security-evidence-v2:refs/remotes/origin/security-evidence-v2
+          mkdir -p catalog/slot-work
+          python -c 'import json, os; [print(str(key)) for key in json.loads(os.environ["QUEUE_KEYS_JSON"])]' > catalog/slot-work/queue-keys.txt
+          python tools/security/sigmascope_sparse_evidence.py --repo . --ref origin/security-evidence-v2 --queue-keys-file catalog/slot-work/queue-keys.txt --output catalog/security-v2-current
 
       - uses: actions/download-artifact@v8
         with:
