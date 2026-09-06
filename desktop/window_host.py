@@ -15,6 +15,16 @@ import sys
 
 APP_USER_MODEL_ID = "Dalagab.Omega.DeltaScope"
 
+WM_SETICON = 0x0080
+ICON_SMALL = 0
+ICON_BIG = 1
+IMAGE_ICON = 1
+LR_LOADFROMFILE = 0x0010
+SM_CXICON = 11
+SM_CYICON = 12
+SM_CXSMICON = 49
+SM_CYSMICON = 50
+
 
 def _png_size(data: bytes) -> tuple[int, int] | None:
     if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
@@ -72,6 +82,70 @@ def set_windows_identity() -> None:
         pass
 
 
+def _native_window_handle(window: object) -> int:
+    native = getattr(window, "native", None)
+    handle = getattr(native, "Handle", None)
+    if handle is None:
+        return 0
+    for method_name in ("ToInt64", "ToInt32"):
+        method = getattr(handle, method_name, None)
+        if callable(method):
+            try:
+                return int(method())
+            except (TypeError, ValueError, OverflowError):
+                pass
+    try:
+        return int(handle)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def apply_windows_window_icon(window: object, icon: str | None) -> bool:
+    """Force the DeltaScope ICO onto the native WinForms HWND/taskbar button.
+
+    pywebview 6.2 supports WinForms icons, but the top-level process is still python.exe.
+    Explicit WM_SETICON messages prevent Windows from falling back to Python's executable
+    icon when the Edge/WebView2 host creates the taskbar entry.
+    """
+    if sys.platform != "win32" or not icon:
+        return False
+    path = Path(icon)
+    if path.suffix.lower() != ".ico" or not path.is_file():
+        return False
+    hwnd = _native_window_handle(window)
+    if not hwnd:
+        return False
+
+    try:
+        from ctypes import wintypes
+
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        user32.LoadImageW.argtypes = [
+            wintypes.HINSTANCE, wintypes.LPCWSTR, wintypes.UINT,
+            ctypes.c_int, ctypes.c_int, wintypes.UINT,
+        ]
+        user32.LoadImageW.restype = wintypes.HANDLE
+        user32.SendMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+        user32.SendMessageW.restype = wintypes.LRESULT
+
+        def load_icon(width_metric: int, height_metric: int):
+            width = int(user32.GetSystemMetrics(width_metric))
+            height = int(user32.GetSystemMetrics(height_metric))
+            return user32.LoadImageW(None, str(path), IMAGE_ICON, width, height, LR_LOADFROMFILE)
+
+        big = load_icon(SM_CXICON, SM_CYICON)
+        small = load_icon(SM_CXSMICON, SM_CYSMICON)
+        if not big and not small:
+            return False
+        if big:
+            user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, int(big))
+        if small:
+            user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, int(small))
+        return True
+    except Exception:
+        return False
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--probe", action="store_true")
@@ -101,7 +175,7 @@ def main() -> int:
     icon = resolve_icon(args.icon, storage)
 
     webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
-    webview.create_window(
+    window = webview.create_window(
         args.title,
         args.url,
         width=max(args.width, 960),
@@ -110,6 +184,8 @@ def main() -> int:
         background_color="#f4f4f4",
         text_select=True,
     )
+    if sys.platform == "win32" and icon:
+        window.events.before_show += lambda current_window: apply_windows_window_icon(current_window, icon)
     start_kwargs = {
         "private_mode": False,
         "storage_path": str(storage),
