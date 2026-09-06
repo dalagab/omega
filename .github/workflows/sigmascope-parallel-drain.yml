@@ -204,27 +204,21 @@ jobs:
     name: Scan ${{ matrix.lane }} slot ${{ matrix.slot }} (${{ matrix.assignmentCount }} exact queue keys)
     needs: [resolve-images, plan]
     if: needs.plan.outputs.assignment_count != '0'
-    runs-on: ubuntu-latest
-    timeout-minutes: 75
+    runs-on: [self-hosted, Linux, X64, omega-security]
+    timeout-minutes: 240
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     permissions:
       contents: read
       packages: read
-    container:
-      image: ${{ needs.resolve-images.outputs.scan_image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     env:
       OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
       OMEGA_SECONDARY_SECURITY_CACHE: catalog/secondary-security-runtime
       QUEUE_KEYS_JSON: ${{ toJSON(matrix.queueKeys) }}
       BASE_EVIDENCE_HEAD: ${{ needs.plan.outputs.base_head }}
       WORKER_IMAGE: ${{ needs.resolve-images.outputs.scan_image }}
-      WORKER_SLOT: ${{ matrix.slot }}
-      WORKER_LANE: ${{ matrix.lane }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -248,37 +242,52 @@ jobs:
         with:
           name: omega-sigmascope-drain-plan
           path: catalog/roboscope-plan
+      - name: Pull pinned worker image
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker pull "$WORKER_IMAGE"
       - name: Bind worker to exact planned Evidence and frozen worker
         shell: bash
         run: |
           set -euo pipefail
-          bash tools/security/sigmascope_parallel_worker_entrypoint.sh bind
+          docker run --rm --userns=keep-id -v "$PWD:$PWD:Z" -w "$PWD" \
+            -e BASE_EVIDENCE_HEAD -e OMEGA_FROZEN_WORKER \
+            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh bind
 
       - name: Materialize frozen secondary-security assets when available
         continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          bash tools/security/sigmascope_parallel_worker_entrypoint.sh materialize-assets
+          docker run --rm --userns=keep-id -v "$PWD:$PWD:Z" -w "$PWD" \
+            -e OMEGA_FROZEN_WORKER -e OMEGA_SECONDARY_SECURITY_CACHE \
+            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh materialize-assets
 
       - name: Materialize frozen canonical catalog once for this worker slot
         shell: bash
         run: |
           set -euo pipefail
-          bash tools/security/sigmascope_parallel_worker_entrypoint.sh materialize-catalog
+          docker run --rm --userns=keep-id -v "$PWD:$PWD:Z" -w "$PWD" \
+            -e OMEGA_FROZEN_WORKER \
+            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh materialize-catalog
 
       - name: Process exact queue keys in one frozen Evidence hydration
         shell: bash
         run: |
           set -euo pipefail
-          bash tools/security/sigmascope_parallel_worker_entrypoint.sh process
+          docker run --rm --userns=keep-id -v "$PWD:$PWD:Z" -w "$PWD" \
+            -e GITHUB_REPOSITORY -e OMEGA_FROZEN_WORKER -e QUEUE_KEYS_JSON -e WORKER_IMAGE -e WORKER_MAX_BATCH_SECONDS \
+            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh process
 
       - uses: actions/upload-artifact@v7
-        if: always()
         with:
           name: omega-sigmascope-drain-${{ github.run_id }}-slot-${{ matrix.slot }}
           path: catalog/slot-result-bundles
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
 
   merge:
