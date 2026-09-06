@@ -40,6 +40,7 @@ class AuthorityConcurrencyQueueTests(unittest.TestCase):
             "catalog-release-intake.yml",
             "catalog-client-publish.yml",
             "rift-evidence-ingest.yml",
+            "definitions-worker-refresh.yml",
         ):
             self.assertIn(expected, users)
 
