@@ -1,5 +1,10 @@
 # Omega
 
+[![Omega client regression tests](https://github.com/dalagab/omega/actions/workflows/regression-tests.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/regression-tests.yml)
+[![Publish Omega release](https://github.com/dalagab/omega/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/release.yml)
+[![Daily catalog launcher](https://github.com/dalagab/omega/actions/workflows/catalog-builder.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/catalog-builder.yml)
+[![Source submission launcher](https://github.com/dalagab/omega/actions/workflows/source-submissions.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/source-submissions.yml)
+
 **Omega is a plugin marketplace for Dalamud.**
 
 Think of it like this:
