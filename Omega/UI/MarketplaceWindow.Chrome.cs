@@ -125,7 +125,9 @@ internal sealed partial class MarketplaceWindow
 
     private void OpenSettings()
     {
-        RefreshDalamudRepositoryAwareness();
+        // Settings opens on the lightweight preference list. Repository reflection and catalog
+        // inventory are only evaluated when the user explicitly opens the Repositories tab.
+        settingsSection = SettingsSection.General;
         settingsOpen = true;
         requestSettingsPopup = true;
     }
@@ -425,8 +427,9 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawMinimizedIconWindow()
     {
-        var windowSize = Ui(58f);
-        var iconSize = Ui(54f);
+        // Match the 64px title/start-menu asset more closely so the minimized mark stays readable.
+        var windowSize = Ui(68f);
+        var iconSize = Ui(64f);
         ImGui.SetWindowSize(new Vector2(windowSize, windowSize), ImGuiCond.Always);
         ImGui.SetCursorPos(Ui(2f, 2f));
 

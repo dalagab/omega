@@ -165,6 +165,10 @@ internal static partial class RegressionCases
         DoesNotContain(settings, "SettingsSection.Behavior", "Settings no longer has a dedicated Behavior area");
         DoesNotContain(settings, "settings-tab-behavior", "Behavior is removed from the Settings tab bar");
         Contains(settings, "DrawSettingsGeneralTab", "General owns the combined settings surface");
+        Contains(settings, "settingsSection = SettingsSection.General", "Settings opens on the lightweight General list instead of repository inventory");
+        Contains(settings, "ImGui.Checkbox($\"##settings-{id}\"", "General preferences render as a checkbox list");
+        Contains(settings, "Repository reflection and catalog", "opening Settings defers repository work until the Repositories tab is requested");
+        DoesNotContain(Capture(settings, @"private void OpenSettings\(\)\s*\{([\s\S]*?)\r?\n    \}"), "RefreshDalamudRepositoryAwareness()", "opening Settings must not synchronously refresh repository awareness");
         Contains(settings, "Minimize Omega as a bar", "General settings expose compact bar minimize mode");
         Contains(settings, "Show Omega in the ESC / System menu", "General settings expose ESC menu visibility");
         Contains(settings, "Show Omega before login", "General settings expose pre-login menu visibility");

@@ -200,7 +200,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private Vector2 expandedWindowPosition;
     private bool migrateLegacyFullscreenGeometry;
 
-    private SettingsSection settingsSection = SettingsSection.Repositories;
+    private SettingsSection settingsSection = SettingsSection.General;
     private SourceManagerSection sourceSection = SourceManagerSection.Curated;
     private string sourceSearch = string.Empty;
     private string pendingInstallRiskSourceUrl = string.Empty;

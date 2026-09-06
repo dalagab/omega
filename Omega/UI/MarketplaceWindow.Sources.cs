@@ -27,7 +27,7 @@ internal sealed partial class MarketplaceWindow
 
         // The modal itself never scrolls. Keeping Omega chrome and tabs outside any scrolling
         // child means the close cross remains visible regardless of repository-list position.
-        if (DrawOmegaModalHeader("Settings", "settings"))
+        if (DrawOmegaModalHeader("Settings", "settings", showMark: false))
         {
             settingsOpen = false;
             ImGui.CloseCurrentPopup();

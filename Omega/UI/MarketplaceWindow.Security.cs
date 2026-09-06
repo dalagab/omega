@@ -172,18 +172,23 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawGeneralSetting(string label, string description, string id, bool value, Action<bool> apply)
     {
-        var start = ImGui.GetCursorPos();
-        ImGui.TextUnformatted(label);
-        ImGui.TextDisabled(description);
-        var toggleWidth = Ui(44f);
-        ImGui.SetCursorPos(new Vector2(Math.Max(start.X, ImGui.GetWindowWidth() - toggleWidth - Ui(34f)), start.Y));
-        if (DrawToggleSwitch(id, value))
+        // General preferences are a simple list: one explicit checkbox and its explanation per row.
+        var startY = ImGui.GetCursorPosY();
+        var selected = value;
+        if (ImGui.Checkbox($"##settings-{id}", ref selected))
         {
-            apply(!value);
+            apply(selected);
             configuration.Save();
             behaviorConfigurationChanged();
         }
-        ImGui.SetCursorPosY(Math.Max(ImGui.GetCursorPosY(), start.Y + Ui(52f)));
+
+        ImGui.SameLine(0f, Ui(10f));
+        ImGui.BeginGroup();
+        ImGui.TextUnformatted(label);
+        ImGui.TextDisabled(description);
+        ImGui.EndGroup();
+
+        ImGui.SetCursorPosY(Math.Max(ImGui.GetCursorPosY(), startY + Ui(46f)));
         ImGui.Separator();
         ImGui.Spacing();
     }
@@ -245,7 +250,7 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        if (DrawOmegaModalHeader("About Omega", "about"))
+        if (DrawOmegaModalHeader("About Omega", "about", showMark: false))
         {
             aboutOpen = false;
             ImGui.CloseCurrentPopup();

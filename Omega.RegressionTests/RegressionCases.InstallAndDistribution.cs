@@ -91,6 +91,8 @@ internal static partial class RegressionCases
         False(ui.Contains("content-minimize", StringComparison.Ordinal), "retired pill-style content minimize control must not return");
         False(ui.Contains("DrawPillButton(\"—\"", StringComparison.Ordinal), "window controls must not regress to pill buttons");
         Contains(ui, "##omega-minimized-icon", "minimized state is one icon-sized interaction");
+        Contains(ui, "var windowSize = Ui(68f)", "minimized icon window is large enough to remain readable");
+        Contains(ui, "var iconSize = Ui(64f)", "minimized Omega mark matches the title/start-menu asset scale");
         Contains(ui, "omegaIconTexture", "minimized state renders the Omega product icon");
         Contains(ui, "ImGui.IsMouseDragging(ImGuiMouseButton.Left, 3f)", "holding and dragging moves the minimized icon");
         Contains(ui, "ImGui.SetWindowPos(ImGui.GetWindowPos() + delta", "minimized drag repositions the icon window");

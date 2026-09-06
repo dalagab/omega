@@ -374,6 +374,7 @@ internal static partial class RegressionCases
     {
         var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ModalChrome.cs"));
         var settings = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sources.cs"));
+        var about = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
         var install = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Install.cs"));
         var uninstall = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.UninstallAndSources.cs"));
         var filters = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Filters.cs"));
@@ -382,7 +383,9 @@ internal static partial class RegressionCases
         Contains(chrome, "DrawOmegaModalHeader", "secondary panels share one Omega chrome implementation");
         Contains(chrome, "DrawApplicationIconButton(FontAwesomeIcon.Times", "secondary-panel X uses the same styled application control as the main panel");
         Contains(settings, "ImGuiWindowFlags.NoTitleBar", "Settings suppresses the host/default title bar");
-        Contains(settings, "DrawOmegaModalHeader(\"Settings\"", "Settings uses Omega chrome");
+        Contains(settings, "DrawOmegaModalHeader(\"Settings\", \"settings\", showMark: false)", "Settings keeps Omega chrome without a redundant mini mark");
+        Contains(about, "DrawOmegaModalHeader(\"About Omega\", \"about\", showMark: false)", "About keeps Omega chrome without a redundant mini mark above its identity hero");
+        Contains(chrome, "bool showMark = true", "other secondary panels retain the shared mark by default");
         DoesNotContain(settings, "ImGui.Button(\"Close\")", "Settings has no redundant bottom Close button");
         Contains(install, "ImGuiWindowFlags.NoTitleBar", "install chooser suppresses the host/default title bar");
         Contains(install, "DrawOmegaModalHeader(\"Choose repository\"", "install chooser uses Omega chrome");
