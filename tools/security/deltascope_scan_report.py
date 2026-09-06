@@ -1016,6 +1016,102 @@ def _worker_summary(operation: Mapping[str, Any], selected_job_id: int = 0) -> d
     }
 
 
+def project_scan_queue_operation(queue_projection: Mapping[str, Any], operation: Mapping[str, Any]) -> dict[str, Any]:
+    """Overlay one bounded live drain snapshot onto the published queue projection.
+
+    The published queue fields are preserved verbatim.  GitHub Actions state is exposed
+    only as ``live*`` metadata and exact assignment correlation still requires the
+    persistent queue key plus variant identity.
+    """
+    projected = dict(queue_projection)
+    plan = _mapping(operation.get("plan"))
+    plan_available = bool(operation.get("planAvailable")) and bool(plan)
+    run = _mapping(operation.get("run"))
+    rows: list[dict[str, Any]] = []
+    live_counts: dict[str, int] = {}
+
+    for raw in queue_projection.get("queueItems") or []:
+        if not isinstance(raw, Mapping):
+            continue
+        row = dict(raw)
+        queue_key = _text(row.get("queueKey"))
+        variant_id = _integer(row.get("variantId"))
+        correlation = correlate_plan(plan, queue_key, variant_id) if plan_available else None
+        run_id = _integer(run.get("runId"))
+        if not bool(operation.get("available")):
+            live_state = "Unknown"
+            live_explanation = _redact_secret(operation.get("error") or operation.get("notice") or "Live SigmaScope state has not been acquired.")
+            worker = {}
+        elif run_id and not plan_available:
+            live_state = "Unknown"
+            live_explanation = "A production drain run is visible, but its exact planning artifact is not available yet, so DeltaScope will not guess assignment state."
+            worker = {}
+        else:
+            live_state, live_explanation, worker = _current_status({}, [row], operation, correlation)
+        if live_state not in STATUS_VALUES:
+            live_state = "Unknown"
+            live_explanation = "Available operational metadata does not support a recognized queue state."
+        live_counts[live_state] = live_counts.get(live_state, 0) + 1
+        worker_summary = _worker_summary(operation, _integer(worker.get("jobId"))) if worker else _worker_summary(operation)
+        row["publishedQueueState"] = _text(row.get("state")).casefold() or "pending"
+        row["liveState"] = live_state
+        row["liveExplanation"] = live_explanation
+        row["liveOperation"] = {
+            "correlated": bool(correlation),
+            "runId": _integer(run.get("runId")),
+            "runNumber": _integer(run.get("runNumber")),
+            "runStatus": _text(run.get("status")).casefold(),
+            "runConclusion": _text(run.get("conclusion")).casefold(),
+            "runUrl": _safe_github_url(run.get("url")),
+            "wave": (_integer(plan.get("wave")) if plan_available else None),
+            "slot": (correlation.get("slot") if correlation else None),
+            "lane": (_text(correlation.get("lane")) if correlation else ""),
+            "workerAssignmentPosition": (_integer(correlation.get("workerAssignmentPosition")) if correlation else None),
+            "workerAssignmentCount": (_integer(correlation.get("workerAssignmentCount")) if correlation else None),
+            "completionSemantics": (_text(correlation.get("completionSemantics")) if correlation else ""),
+            "worker": {
+                "jobId": _integer(worker.get("jobId")),
+                "name": _text(worker.get("name")),
+                "status": _text(worker.get("status")).casefold(),
+                "conclusion": _text(worker.get("conclusion")).casefold(),
+                "startedAtUtc": _iso(worker.get("startedAtUtc")),
+                "completedAtUtc": _iso(worker.get("completedAtUtc")),
+                "elapsedSeconds": worker.get("elapsedSeconds"),
+                "url": _safe_github_url(worker.get("url")),
+            } if worker else {},
+            "workerSummary": worker_summary,
+        }
+        rows.append(row)
+
+    projected["queueItems"] = rows
+    projected["operationalOverlay"] = {
+        "schema": OPERATION_SCHEMA,
+        "authenticated": bool(operation.get("authenticated")),
+        "available": bool(operation.get("available")),
+        "refreshRequired": bool(operation.get("refreshRequired")),
+        "state": _text(operation.get("state")),
+        "fetchedAtUtc": _iso(operation.get("fetchedAtUtc")),
+        "error": _redact_secret(operation.get("error")),
+        "notice": _text(operation.get("notice")),
+        "run": {
+            "runId": _integer(run.get("runId")),
+            "runNumber": _integer(run.get("runNumber")),
+            "status": _text(run.get("status")).casefold(),
+            "conclusion": _text(run.get("conclusion")).casefold(),
+            "url": _safe_github_url(run.get("url")),
+        },
+        "planAvailable": plan_available,
+        "planRevision": _text(plan.get("planRevision")),
+        "wave": (_integer(plan.get("wave")) if plan_available else None),
+        "assignmentCount": (_integer(plan.get("assignmentCount")) if plan_available else None),
+        "counts": {state: live_counts[state] for state in STATUS_VALUES if live_counts.get(state)},
+        "readOnly": True,
+        "mutationAuthority": "none",
+        "securityAuthority": False,
+    }
+    return projected
+
+
 def _raw_queue_context(queue_state: Mapping[str, Any], queue_key: str) -> dict[str, Any]:
     items = queue_state.get("items") if isinstance(queue_state.get("items"), Mapping) else {}
     raw = items.get(queue_key) if queue_key and isinstance(items.get(queue_key), Mapping) else {}
@@ -1166,12 +1262,52 @@ setTimeout(function(){
 },0);
 '''
 
+_SCAN_QUEUE_LIVE_JS = r'''
+setTimeout(function(){
+ if(window.__deltascopeQueueLiveInstalled)return;window.__deltascopeQueueLiveInstalled=true;
+ var style=document.createElement('style');style.textContent=`
+ .queue-live-badge{display:inline-block;padding:3px 7px;border:1px solid #8d8d8d;background:#f4f4f4;font-size:10px;font-weight:700;letter-spacing:.03em;white-space:nowrap}
+ .queue-live-badge.scanning{border-color:#0f62fe;background:#edf5ff}.queue-live-badge.assigned{border-color:#8a3ffc;background:#f6f2ff}.queue-live-badge.waiting-for-other-workers,.queue-live-badge.waiting-for-merge,.queue-live-badge.waiting-for-publication,.queue-live-badge.worker-completed{border-color:#b28600;background:#fff8e1}.queue-live-badge.failed,.queue-live-badge.timed-out,.queue-live-badge.stale-superseded{border-color:#da1e28;background:#fff1f1}.queue-live-badge.retry-pending{border-color:#ff832b;background:#fff2e8}.queue-live-badge.queued{border-color:#8d8d8d;background:#f4f4f4}
+ .queue-row.queue-live-scanning td:first-child{box-shadow:inset 3px 0 #0f62fe}.queue-row.queue-live-failed td:first-child,.queue-row.queue-live-timed-out td:first-child{box-shadow:inset 3px 0 #da1e28}
+ .queue-live-card{margin:10px 0;padding:11px;border:1px solid #c6c6c6;border-left:4px solid #0f62fe;background:#f8fbff}.queue-live-card.failed,.queue-live-card.timed-out{border-left-color:#da1e28;background:#fff1f1}.queue-live-card .queue-live-facts{display:grid;grid-template-columns:120px minmax(0,1fr);gap:4px 9px;margin-top:8px}.queue-live-card .queue-live-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.queue-live-card code{overflow-wrap:anywhere}
+ #queueLiveFilter{min-width:150px}#queueLiveRefresh{white-space:nowrap}.queue-live-summary-note{font-size:10px;color:#525252;align-self:center}
+ `;document.head.appendChild(style);
+ function liveClass(value){return String(value||'unknown').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'unknown'}
+ function liveRow(key){var rows=Array.isArray(currentScanQueue?.queueItems)?currentScanQueue.queueItems:[];return rows.find(function(x){return String(x.queueKey||'')===String(key||'')})||null}
+ function fmtElapsed(seconds){if(seconds==null||seconds==='')return'—';var s=Number(seconds||0),m=Math.floor(s/60),h=Math.floor(m/60);return h?`${h}h ${m%60}m`:`${m}m`}
+ function isWaiting(state){return String(state||'').startsWith('Waiting ')}
+ var baseFiltered=window.queueFilteredItems;
+ if(typeof baseFiltered==='function'){
+  window.queueFilteredItems=function(){var rows=baseFiltered(),filter=document.getElementById('queueLiveFilter')?.value||'';if(!filter)return rows;return rows.filter(function(x){var state=String(x.liveState||'Queued');if(filter==='waiting')return isWaiting(state);if(filter==='problem')return ['Failed','Timed out','Stale / superseded'].includes(state);return state===filter})};
+  queueFilteredItems=window.queueFilteredItems;
+ }
+ var baseRows=window.renderQueueRows;
+ if(typeof baseRows==='function'){
+  window.renderQueueRows=function(){baseRows();document.querySelectorAll('#queueNextRows [data-queue-key]').forEach(function(tr){var x=liveRow(tr.dataset.queueKey);if(!x)return;var state=String(x.liveState||'Queued'),published=String(x.publishedQueueState||x.state||'pending').toUpperCase(),op=x.liveOperation||{},worker=op.worker||{},cell=tr.lastElementChild;if(!cell)return;tr.classList.add('queue-live-'+liveClass(state));var assignment=op.correlated?`<div class="muted tiny">wave ${fmt(op.wave??'—')} · slot ${fmt(op.slot??'—')}${op.lane?' · '+esc(op.lane):''}</div>`:'';var workerState=worker.jobId?`<div class="muted tiny">worker ${esc(worker.status||'unknown')}${worker.conclusion?' / '+esc(worker.conclusion):''}</div>`:'';cell.innerHTML=`<span class="queue-live-badge ${liveClass(state)}">${esc(state.toUpperCase())}</span><div class="muted tiny">published queue: ${esc(published)}</div>${assignment}${workerState}`})};
+  renderQueueRows=window.renderQueueRows;
+ }
+ var baseSelected=window.renderQueueSelected;
+ if(typeof baseSelected==='function'){
+  window.renderQueueSelected=function(key){baseSelected(key);var x=liveRow(key)||liveRow(selectedQueueKey);if(!x)return;var detail=document.getElementById('queueSelectedDetail');if(!detail)return;detail.querySelectorAll('.queue-detail-kv b').forEach(function(label){if(label.textContent==='State')label.textContent='Published queue state'});var state=String(x.liveState||'Unknown'),op=x.liveOperation||{},worker=op.worker||{},overlay=currentScanQueue?.operationalOverlay||{},facts='';if(!overlay.available){facts=`<div class="muted small" style="margin-top:7px">${esc(overlay.error||overlay.notice||'Live SigmaScope state has not been acquired yet.')}</div>`}else if(op.correlated){facts=`<div class=queue-live-facts><b>Run</b><span>${op.runNumber?'#'+fmt(op.runNumber):'—'}${op.runStatus?' · '+esc(op.runStatus):''}</span><b>Wave / slot</b><span>${fmt(op.wave??'—')} / ${fmt(op.slot??'—')} ${op.lane?'· '+esc(op.lane):''}</span><b>Assignment</b><span>${fmt(op.workerAssignmentPosition??'—')} of ${fmt(op.workerAssignmentCount??'—')} in this worker</span><b>Worker</b><span>${worker.jobId?esc(worker.status||'unknown')+(worker.conclusion?' / '+esc(worker.conclusion):''):'state unavailable'}</span><b>Started</b><span>${esc(worker.startedAtUtc||'—')}</span><b>Elapsed</b><span>${esc(fmtElapsed(worker.elapsedSeconds))}</span></div><div class="muted tiny" style="margin-top:6px">Assignment position is placement in the worker batch, not per-item completion progress.</div>`}else{facts='<div class="muted small" style="margin-top:7px">This exact queue key is not assigned to the currently acquired bounded drain wave.</div>'}var links=[];if(op.runUrl)links.push(`<a href="${esc(op.runUrl)}" target=_blank rel="noopener noreferrer">Open GitHub run</a>`);if(worker.url)links.push(`<a href="${esc(worker.url)}" target=_blank rel="noopener noreferrer">Open worker job</a>`);var card=document.createElement('div');card.className='queue-live-card '+liveClass(state);card.innerHTML=`<div><span class="queue-live-badge ${liveClass(state)}">${esc(state.toUpperCase())}</span></div><div class="small" style="margin-top:6px">${esc(x.liveExplanation||'No bounded live explanation is available.')}</div>${facts}${links.length?'<div class=queue-live-links>'+links.join('')+'</div>':''}`;var title=detail.querySelector('.queue-selection-title');if(title)title.insertAdjacentElement('afterend',card);else detail.prepend(card)};
+  renderQueueSelected=window.renderQueueSelected;
+ }
+ function ensureControls(){var toolbar=document.querySelector('#queueSearch')?.closest('.queue-toolbar');if(!toolbar)return;if(!document.getElementById('queueLiveFilter')){var select=document.createElement('select');select.id='queueLiveFilter';select.innerHTML='<option value="">All live states</option><option value="Scanning">Scanning</option><option value="Assigned">Assigned</option><option value="waiting">Waiting for merge/publication</option><option value="Worker completed">Worker completed</option><option value="Retry pending">Retry pending</option><option value="problem">Failed / timed out / stale</option><option value="Queued">Queued / not assigned</option><option value="Unknown">Unknown / live not acquired</option>';select.addEventListener('change',renderQueueRows);toolbar.appendChild(select)}if(!document.getElementById('queueLiveRefresh')){var button=document.createElement('button');button.id='queueLiveRefresh';button.textContent='Refresh live state';button.addEventListener('click',async function(){button.disabled=true;var old=button.textContent;button.textContent='Refreshing…';try{var payload=await api('/api/workbench/scan-queue?refresh=1');renderScanQueue(payload)}catch(e){if(typeof toniSay==='function')toniSay('Live queue refresh failed: '+e.message);button.textContent='Refresh failed';setTimeout(function(){button.textContent=old},1800)}finally{button.disabled=false}});toolbar.appendChild(button)}}
+ function renderSummary(){var host=document.getElementById('queueCompactStats'),op=currentScanQueue?.operationalOverlay||{};if(!host)return;host.querySelectorAll('[data-queue-live-stat]').forEach(function(x){x.remove()});var refresh=document.getElementById('queueLiveRefresh');if(refresh){refresh.disabled=!op.authenticated;refresh.title=op.authenticated?'Acquire the current bounded SigmaScope drain snapshot':'Sign in to acquire live SigmaScope state'}if(!op.authenticated){host.insertAdjacentHTML('beforeend','<span data-queue-live-stat class=queue-live-summary-note>Sign in for live worker state</span>');return}if(!op.available){host.insertAdjacentHTML('beforeend',`<span data-queue-live-stat class=queue-live-summary-note>${esc(op.error||op.notice||'Live state not acquired yet')}</span>`);return}var c=op.counts||{},waiting=Object.entries(c).filter(function(x){return isWaiting(x[0])}).reduce(function(n,x){return n+Number(x[1]||0)},0),problem=Number(c.Failed||0)+Number(c['Timed out']||0)+Number(c['Stale / superseded']||0),chips=[['Scanning',c.Scanning],['Assigned',c.Assigned],['Waiting',waiting],['Worker done',c['Worker completed']],['Retry',c['Retry pending']],['Problem',problem],['Queued',c.Queued]].filter(function(x){return Number(x[1]||0)>0});chips.forEach(function(x){host.insertAdjacentHTML('beforeend',`<span data-queue-live-stat class=queue-stat><b>${fmt(x[1])}</b> ${esc(x[0].toLowerCase())}</span>`)});var suffix=op.run?.runNumber?`run #${fmt(op.run.runNumber)}${op.wave!=null?' · wave '+fmt(op.wave):''}`:'live snapshot';if(op.fetchedAtUtc)suffix+=' · '+esc(op.fetchedAtUtc);host.insertAdjacentHTML('beforeend',`<span data-queue-live-stat class=queue-live-summary-note>${suffix}</span>`)}
+ var baseScan=window.renderScanQueue;
+ if(typeof baseScan==='function'){
+  window.renderScanQueue=function(q){baseScan(q);ensureControls();var th=document.querySelector('#queueNextRows')?.closest('table')?.querySelector('thead th:last-child');if(th)th.textContent='Live state';renderSummary()};
+  renderScanQueue=window.renderScanQueue;
+ }
+ ensureControls();if(currentScanQueue)renderScanQueue(currentScanQueue);
+},0);
+'''
+
 
 def _patch_html(html: str) -> str:
     text = str(html)
     if "__deltascopeScanReportInstalled" in text:
         return text
-    script = _SCAN_REPORT_JS.replace("__SCAN_REPORT_CSS__", json.dumps(_SCAN_REPORT_CSS))
+    script = _SCAN_REPORT_JS.replace("__SCAN_REPORT_CSS__", json.dumps(_SCAN_REPORT_CSS)) + "\n" + _SCAN_QUEUE_LIVE_JS
     marker = "</script>"
     index = text.rfind(marker)
     if index < 0:
@@ -1189,13 +1325,10 @@ def install() -> None:
 
     def patched_get(self: Any) -> None:
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path != "/api/plugin-scan-report":
+        if parsed.path not in {"/api/plugin-scan-report", "/api/workbench/scan-queue"}:
             return original_get(self)
         try:
             query = urllib.parse.parse_qs(parsed.query)
-            variant_id = int((query.get("variant_id") or ["0"])[0])
-            if variant_id <= 0:
-                return self.json_response({"error": "variant_id is required"}, 400)
             client = getattr(self, "operations_client", None)
             if client is None:
                 class _NoOperations:
@@ -1209,6 +1342,19 @@ def install() -> None:
                 }
             else:
                 operational = acquire_sigmascope_operation(client, refresh=(query.get("refresh") or ["0"])[0] == "1")
+
+            if parsed.path == "/api/workbench/scan-queue":
+                summary = self.inspector.summary()
+                queue_state = self.inspector.scan_queue_state() if hasattr(self.inspector, "scan_queue_state") else {}
+                counts = summary.get("counts") if isinstance(summary.get("counts"), dict) else {}
+                queue = deltascope_scan_queue.project_scan_queue(
+                    queue_state, current_variants=int(counts.get("variants") or 0),
+                )
+                return self.json_response(project_scan_queue_operation(queue, operational))
+
+            variant_id = int((query.get("variant_id") or ["0"])[0])
+            if variant_id <= 0:
+                return self.json_response({"error": "variant_id is required"}, 400)
             return self.json_response(project_scan_report(self.inspector, client, variant_id, operational=operational))
         except Exception as exc:
             return self.json_response({"error": str(exc)}, 500)

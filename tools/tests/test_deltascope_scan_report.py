@@ -229,6 +229,50 @@ class DeltaScopeScanReportTests(unittest.TestCase):
         self.assertFalse(result["operationalMetadataAuthority"])
         self.assertFalse(result["publicationAuthority"])
 
+    def test_scan_queue_overlay_marks_exact_worker_scanning_and_preserves_published_state(self):
+        queue = deltascope_scan_queue.project_scan_queue(FakeInspector().scan_queue_state(), current_variants=1)
+        result = report.project_scan_queue_operation(queue, operation())
+        row = result["queueItems"][0]
+        self.assertEqual("pending", row["state"])
+        self.assertEqual("pending", row["publishedQueueState"])
+        self.assertEqual("Scanning", row["liveState"])
+        self.assertTrue(row["liveOperation"]["correlated"])
+        self.assertEqual(0, row["liveOperation"]["slot"])
+        self.assertEqual(1, result["operationalOverlay"]["counts"]["Scanning"])
+        self.assertEqual("none", result["operationalOverlay"]["mutationAuthority"])
+        self.assertFalse(result["operationalOverlay"]["securityAuthority"])
+
+    def test_scan_queue_overlay_never_correlates_by_name_when_identity_differs(self):
+        queue = deltascope_scan_queue.project_scan_queue(FakeInspector().scan_queue_state(), current_variants=1)
+        result = report.project_scan_queue_operation(queue, operation(variant_id=99))
+        row = result["queueItems"][0]
+        self.assertEqual("Queued", row["liveState"])
+        self.assertFalse(row["liveOperation"]["correlated"])
+
+    def test_scan_queue_overlay_is_unknown_when_live_state_was_not_acquired(self):
+        queue = deltascope_scan_queue.project_scan_queue(FakeInspector().scan_queue_state(), current_variants=1)
+        op = {
+            "schema": report.OPERATION_SCHEMA, "available": False, "authenticated": True,
+            "refreshRequired": True, "state": "not-acquired", "notice": "Acquire live state explicitly.",
+            "run": {}, "jobs": [], "plan": {}, "planAvailable": False,
+        }
+        row = report.project_scan_queue_operation(queue, op)["queueItems"][0]
+        self.assertEqual("Unknown", row["liveState"])
+        self.assertIn("Acquire live state explicitly", row["liveExplanation"])
+        self.assertEqual("pending", row["publishedQueueState"])
+
+    def test_scan_queue_overlay_distinguishes_worker_done_from_wave_done(self):
+        op = operation(worker_status="completed", conclusion="success")
+        op["jobs"].append({
+            "jobId": 202, "name": "Scan baseline slot 1 (1 exact queue keys)", "status": "in_progress",
+            "conclusion": "", "startedAtUtc": "2026-09-06T08:05:00Z", "completedAtUtc": "",
+            "elapsedSeconds": 1500, "url": "https://github.com/dalagab/omega/actions/runs/123/job/202",
+        })
+        queue = deltascope_scan_queue.project_scan_queue(FakeInspector().scan_queue_state(), current_variants=1)
+        row = report.project_scan_queue_operation(queue, op)["queueItems"][0]
+        self.assertEqual("Waiting for other workers", row["liveState"])
+        self.assertEqual("pending", row["publishedQueueState"])
+
     def test_exact_queue_key_and_variant_are_both_required(self):
         plan = report.validate_drain_plan(make_plan(variant_id=99))
         self.assertIsNone(report.correlate_plan(plan, "artifact:42", 42))
@@ -332,6 +376,9 @@ class DeltaScopeScanReportTests(unittest.TestCase):
         self.assertIn("/api/plugin-scan-report", patched)
         self.assertIn("Assignment position only", patched)
         self.assertIn("published Security Evidence v2", patched)
+        self.assertIn("queueLiveFilter", patched)
+        self.assertIn("Refresh live state", patched)
+        self.assertIn("/api/workbench/scan-queue?refresh=1", patched)
 
     def test_missing_operational_state_does_not_gain_mutation_authority(self):
         result = report.project_scan_report(FakeInspector(queue=False), FakeClient(False), 42)
