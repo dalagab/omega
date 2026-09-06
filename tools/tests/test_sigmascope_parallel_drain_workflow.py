@@ -32,6 +32,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn('safe.directory "$PWD/catalog/security-v2-current"', worker)
         self.assertNotIn("safe.directory=*", worker)
         self.assertIn("sigmascope_worker_batch.py run", worker)
+        self.assertIn("WORKER_MAX_BATCH_SECONDS:-10800", worker)
         self.assertIn("--queue-keys-file catalog/slot-work/queue-keys.txt", worker)
         self.assertIn("sigmascope_worker_batch.py bundles", worker)
 

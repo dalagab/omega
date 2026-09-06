@@ -192,7 +192,7 @@ jobs:
     needs: [resolve-images, plan]
     if: needs.plan.outputs.assignment_count != '0'
     runs-on: [self-hosted, Linux, X64, omega-security]
-    timeout-minutes: 70
+    timeout-minutes: 240
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -267,7 +267,7 @@ jobs:
         run: |
           set -euo pipefail
           docker run --rm --userns=keep-id -v "$PWD:$PWD:Z" -w "$PWD" \
-            -e GITHUB_REPOSITORY -e OMEGA_FROZEN_WORKER -e QUEUE_KEYS_JSON -e WORKER_IMAGE \
+            -e GITHUB_REPOSITORY -e OMEGA_FROZEN_WORKER -e QUEUE_KEYS_JSON -e WORKER_IMAGE -e WORKER_MAX_BATCH_SECONDS \
             "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh process
 
       - uses: actions/upload-artifact@v7

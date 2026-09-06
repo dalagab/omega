@@ -79,7 +79,7 @@ PY
       --advisory-revision "$(jq -r '.advisoryRevision' "$defs")" \
       --queue-seed catalog/roboscope-plan/roboscope-effective-scan-queue.json \
       --evidence-index-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/security-evidence-v2/index.json" \
-      --max-batch-seconds 3000 \
+      --max-batch-seconds "${WORKER_MAX_BATCH_SECONDS:-10800}" \
       --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"
 
     python tools/security/sigmascope_worker_batch.py bundles \
