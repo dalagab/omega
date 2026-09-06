@@ -23,7 +23,7 @@ from typing import Any
 from source_stability import stable_source_priority
 from behavior_consistency import compact_behavior_consistency, compute_behavior_consistency
 
-PROJECTOR_VERSION = "1.8.0"
+PROJECTOR_VERSION = "1.9.0"
 MARKETPLACE_DB_FILENAME = "omega-marketplace.sqlite"
 MARKETPLACE_BUNDLE_FILENAME = "omega-marketplace.sqlite.zip"
 CLIENT_INTERNAL_DB_FILENAME = "omega-catalog.sqlite"
@@ -903,6 +903,11 @@ def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
         if "omega_banner_url" in website_columns
         else "'' AS omega_banner_url"
     )
+    website_license_projection = (
+        "CASE WHEN w.ok=1 THEN COALESCE(w.license,'') ELSE '' END AS website_license"
+        if "license" in website_columns
+        else "'' AS website_license"
+    )
     db.execute("DROP VIEW IF EXISTS runtime_plugin_variants")
     db.execute(
         f"""CREATE VIEW runtime_plugin_variants AS
@@ -917,6 +922,7 @@ def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
              CASE WHEN w.ok=1 THEN COALESCE(w.image_urls_json,'[]') ELSE '[]' END AS website_image_urls_json,
              CASE WHEN w.ok=1 THEN COALESCE(w.links_json,'[]') ELSE '[]' END AS website_links_json,
              {omega_banner_projection},
+             {website_license_projection},
              CASE WHEN w.website_id IS NOT NULL AND w.ok=1 THEN 1 ELSE 0 END AS website_enriched,
              COALESCE(pr.rich_card,0) AS rich_card,COALESCE(pr.official,0) AS plugin_official,COALESCE(pr.nsfw,0) AS plugin_nsfw,
              COALESCE(pr.richness_score,0) AS richness_score,

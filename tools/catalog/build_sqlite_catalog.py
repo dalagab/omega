@@ -1021,6 +1021,7 @@ def create_runtime_view(db: sqlite3.Connection) -> None:
              CASE WHEN w.ok=1 THEN COALESCE(w.image_urls_json,'[]') ELSE '[]' END AS website_image_urls_json,
              CASE WHEN w.ok=1 THEN COALESCE(w.links_json,'[]') ELSE '[]' END AS website_links_json,
              CASE WHEN w.ok=1 THEN COALESCE(w.omega_banner_url,'') ELSE '' END AS omega_banner_url,
+             CASE WHEN w.ok=1 THEN COALESCE(w.license,'') ELSE '' END AS website_license,
              CASE WHEN w.website_id IS NOT NULL AND w.ok=1 THEN 1 ELSE 0 END AS website_enriched,
              COALESCE(pr.rich_card,0) AS rich_card,
              COALESCE(pr.official,0) AS plugin_official,

@@ -28,7 +28,7 @@ class MarketplaceProjectionTests(unittest.TestCase):
             compact_sqlite_catalog.build_self_test_database(evidence)
             with closing(sqlite3.connect(evidence)) as db:
                 db.execute("UPDATE plugin_variants SET repo_url='https://github.com/example/fixture' WHERE variant_id=1")
-                db.execute("INSERT INTO websites(url,ok,readme_excerpt,image_urls_json) VALUES('https://github.com/example/fixture',1,'# Fixture README','[\"https://example.invalid/preview.png\"]')")
+                db.execute("INSERT INTO websites(url,ok,license,readme_excerpt,image_urls_json) VALUES('https://github.com/example/fixture',1,'MIT','# Fixture README','[\"https://example.invalid/preview.png\"]')")
                 db.execute("UPDATE plugin_security_dependencies SET kind='external-plugin',name='Fixture.Dependency',requirement='required' WHERE dependency_id=1")
                 db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('catalog_revision','cat-v1-0123456789abcdef')")
                 db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_revision','sec-2.0.0-0123456789abcdef')")
@@ -48,14 +48,15 @@ class MarketplaceProjectionTests(unittest.TestCase):
                 self.assertEqual(1, search_tables)
                 self.assertGreater(db.execute("SELECT COUNT(*) FROM runtime_plugin_variants").fetchone()[0], 0)
                 row = db.execute(
-                    "SELECT website_readme_excerpt,website_image_urls_json,security_dependencies_json,security_dependency_total_count FROM runtime_plugin_variants WHERE internal_name='Fixture'"
+                    "SELECT website_license,website_readme_excerpt,website_image_urls_json,security_dependencies_json,security_dependency_total_count FROM runtime_plugin_variants WHERE internal_name='Fixture'"
                 ).fetchone()
                 self.assertIsNotNone(row)
-                self.assertEqual("# Fixture README", row[0])
-                self.assertEqual(["https://example.invalid/preview.png"], json.loads(row[1]))
-                dependencies = json.loads(row[2])
+                self.assertEqual("MIT", row[0])
+                self.assertEqual("# Fixture README", row[1])
+                self.assertEqual(["https://example.invalid/preview.png"], json.loads(row[2]))
+                dependencies = json.loads(row[3])
                 self.assertEqual("Fixture.Dependency", dependencies[0]["name"])
-                self.assertGreaterEqual(row[3], 1)
+                self.assertGreaterEqual(row[4], 1)
                 self.assertLessEqual(len(dependencies), project_marketplace_catalog.DEPENDENCY_SUMMARY_LIMIT)
                 self.assertEqual("marketplace", dict(db.execute("SELECT key,value FROM catalog_meta"))["database_role"])
 
