@@ -185,6 +185,7 @@ class WorkflowContractTests(unittest.TestCase):
             "security_developer_audit.py",
             "sigmascope-source-followups.json",
             "continue-on-error: true",
+            "Reconcile actionable source follow-up issues",
         )
         self.assertNotIn("schedule:", text, "schedule is owned by the thin default-branch launcher")
         self.assertNotIn("--rescan-after-hours", text, "production scheduling is event-driven, not age/TTL driven")
