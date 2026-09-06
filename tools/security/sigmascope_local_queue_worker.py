@@ -219,6 +219,10 @@ def local_drain(args: argparse.Namespace) -> int:
     repo = args.repo.resolve()
     work = args.work_dir.resolve()
     validate_windows_work_dir(work, force=args.allow_long_windows_work_dir)
+    if args.reconcile_source_followups and not args.push:
+        raise ValueError(
+            "--reconcile-source-followups requires --push so GitHub issue state follows published Evidence"
+        )
     if args.reset_work_dir:
         reset_work_dir(repo, work)
     else:
@@ -314,7 +318,6 @@ def local_drain(args: argparse.Namespace) -> int:
 
         phase("generate source followups")
         run([sys.executable, str(frozen_worker / "tools" / "catalog" / "sigmascope_source_followups.py"), "--database", str(work / "catalog" / "security-v2-work" / "omega-security-v2-working.sqlite"), "--output", str(work / "catalog" / "security-v2-work" / "sigmascope-source-followups.json")], cwd=work, env=env)
-        maybe_run_source_followups(args, work, env)
         audit = work / "catalog" / "security-v2-work" / "security-developer-audit.json"
         phase("run developer audit")
         run([sys.executable, str(frozen_worker / "tools" / "security" / "security_developer_audit.py"), "--database", str(work / "catalog" / "security-v2-work" / "omega-security-v2-working.sqlite"), "--advisories", str(definitions / "osv-advisories.json"), "--json"], cwd=work, env=env)
@@ -337,6 +340,9 @@ def local_drain(args: argparse.Namespace) -> int:
                 "--push",
             ], cwd=work)
             report["publication"] = json.loads(publication)
+            # GitHub issues are a side effect of authoritative Evidence, never of an
+            # unpublished local candidate. Reconcile only after publication succeeds.
+            maybe_run_source_followups(args, work, env)
         (work / "local-sigmascope-queue-worker-report.json").write_text(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
         return 0

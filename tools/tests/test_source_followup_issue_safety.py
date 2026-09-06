@@ -92,6 +92,29 @@ class SourceFollowupIssueSafetyTests(unittest.TestCase):
         self.assertTrue(close_calls)
         self.assertFalse(any("--comment" in call for call in close_calls))
 
+    def test_closure_only_reconciliation_closes_resolved_without_creating(self) -> None:
+        existing = [managed_issue(12, "ResolvedPlugin"), managed_issue(13, "ResolvedPlugin")]
+        document = {
+            "followups": [],
+            "resolved": [{
+                "internalName": "ResolvedPlugin",
+                "versionMatched": True,
+            }],
+            "resolvedKeys": [],
+        }
+        calls = []
+        with mock.patch.object(
+            create_source_followup_issues, "_open_followup_issues", return_value=existing,
+        ), mock.patch.object(
+            create_source_followup_issues, "gh", side_effect=lambda *args: calls.append(args) or "",
+        ):
+            result = create_source_followup_issues.reconcile_issues(
+                document, "example/omega", max_new=0, max_close=100,
+            )
+        self.assertEqual((0, 2), result)
+        self.assertEqual(2, sum(call[:2] == ("issue", "close") for call in calls))
+        self.assertFalse(any(call[:2] == ("issue", "create") for call in calls))
+
     def test_cleanup_plan_keeps_oldest_and_apply_is_bounded(self) -> None:
         plan = cleanup_source_followup_issues.cleanup_plan([
             managed_issue(8, "Alpha"),

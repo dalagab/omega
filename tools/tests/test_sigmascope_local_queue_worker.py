@@ -28,6 +28,11 @@ class SigmaScopeLocalQueueWorkerContractTests(unittest.TestCase):
         self.assertIn("core.longpaths=true", text)
         self.assertIn("core.autocrlf=false", text)
         self.assertIn("warning: source follow-up issue reconciliation failed", text)
+        self.assertIn("--reconcile-source-followups requires --push", text)
+        self.assertGreater(
+            text.index("maybe_run_source_followups(args, work, env)"),
+            text.index('report["publication"] = json.loads(publication)'),
+        )
         self.assertNotIn("legacy-orphan", text)
         self.assertNotIn("force-with-lease", text)
 
@@ -47,6 +52,10 @@ class SigmaScopeLocalQueueWorkerContractTests(unittest.TestCase):
         self.assertIn("Batch summary", text)
         self.assertIn("previousHead", text)
         self.assertIn("newHead", text)
+        self.assertIn("SkipSourceFollowupReconcile", text)
+        self.assertIn("MaxNewFollowups = 0", text)
+        self.assertIn("MaxCloseFollowups = 100", text)
+        self.assertIn("--reconcile-source-followups", text)
 
 
 if __name__ == "__main__":

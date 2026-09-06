@@ -3,6 +3,9 @@
   [int]$MaxBatchSeconds = 900,
   [string]$WorkDir = "C:\osl",
   [switch]$Push,
+  [switch]$SkipSourceFollowupReconcile,
+  [int]$MaxNewFollowups = 0,
+  [int]$MaxCloseFollowups = 100,
   [switch]$NoReset,
   [string]$Repository = "dalagab/omega"
 )
@@ -21,7 +24,16 @@ $argsList = @(
   "--repository", $Repository
 )
 if (-not $NoReset) { $argsList += "--reset-work-dir" }
-if ($Push) { $argsList += "--push" }
+if ($Push) {
+  $argsList += "--push"
+  if (-not $SkipSourceFollowupReconcile) {
+    $argsList += @(
+      "--reconcile-source-followups",
+      "--max-new-followups", [string]$MaxNewFollowups,
+      "--max-close-followups", [string]$MaxCloseFollowups
+    )
+  }
+}
 
 Write-Host "==> SigmaScope local batch"
 Write-Host "+ python $($argsList -join ' ')"

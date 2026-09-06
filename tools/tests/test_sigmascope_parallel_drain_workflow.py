@@ -151,6 +151,12 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn("--queue-seed catalog/active-state/scan-queue.json", workers)
         self.assertIn('GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-/tmp/sigmascope-worker-gitconfig}"', workers)
         self.assertIn('git config --global --add safe.directory "$PWD"', workers)
+        self.assertIn('git fetch --depth=1 origin "$BASE_EVIDENCE_HEAD"', workers)
+        self.assertIn('planned_evidence_head="$(git rev-parse FETCH_HEAD)"', workers)
+        self.assertIn('test "$planned_evidence_head" = "$BASE_EVIDENCE_HEAD"', workers)
+        self.assertIn('--ref "$BASE_EVIDENCE_HEAD"', workers)
+        self.assertNotIn("security-evidence-v2:refs/remotes/origin/security-evidence-v2", workers)
+        self.assertNotIn("--ref origin/security-evidence-v2", workers)
         self.assertNotIn("path: catalog/security-v2-current", workers)
         self.assertIn(".sigmascope-sparse-evidence.json", (common.ROOT / "tools" / "security" / "sigmascope_parallel_worker_entrypoint.sh").read_text(encoding="utf-8"))
 

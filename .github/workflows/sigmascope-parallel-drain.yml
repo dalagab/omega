@@ -266,10 +266,18 @@ jobs:
           set -euo pipefail
           export GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-/tmp/sigmascope-worker-gitconfig}"
           git config --global --add safe.directory "$PWD"
-          git fetch --depth=1 origin security-evidence-v2:refs/remotes/origin/security-evidence-v2
+          # The plan freezes the Evidence authority head. Fetch that exact commit instead of
+          # the moving branch name so publication between planning and worker startup cannot
+          # silently materialize a newer sparse view.
+          git fetch --depth=1 origin "$BASE_EVIDENCE_HEAD"
+          planned_evidence_head="$(git rev-parse FETCH_HEAD)"
+          test "$planned_evidence_head" = "$BASE_EVIDENCE_HEAD" || {
+            echo "::error::Fetched Evidence commit does not match planned authority: planned=$BASE_EVIDENCE_HEAD fetched=$planned_evidence_head"
+            exit 3
+          }
           mkdir -p catalog/slot-work
           python -c 'import json, os; [print(str(key)) for key in json.loads(os.environ["QUEUE_KEYS_JSON"])]' > catalog/slot-work/queue-keys.txt
-          python tools/security/sigmascope_sparse_evidence.py --repo . --ref origin/security-evidence-v2 --queue-keys-file catalog/slot-work/queue-keys.txt --queue-seed catalog/active-state/scan-queue.json --output catalog/security-v2-current
+          python tools/security/sigmascope_sparse_evidence.py --repo . --ref "$BASE_EVIDENCE_HEAD" --queue-keys-file catalog/slot-work/queue-keys.txt --queue-seed catalog/active-state/scan-queue.json --output catalog/security-v2-current
 
       - uses: actions/download-artifact@v8
         with:
