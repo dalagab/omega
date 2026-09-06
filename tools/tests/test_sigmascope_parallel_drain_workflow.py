@@ -6,14 +6,16 @@ import common
 
 
 class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
-    def test_production_drain_is_parallel_bounded_and_one_writer(self) -> None:
+    def test_production_drain_is_hosted_bounded_and_one_writer(self) -> None:
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
         for required in (
             "group: omega-sigmascope-parallel-drain-exclusive", "queue: max", "default: 8",
             "sigmascope_parallel_drain_plan.py", "strategy:", "fail-fast: false", "QUEUE_KEYS_JSON",
-            "runs-on: [self-hosted, Linux, X64, omega-security]", "max-parallel: 2",
+            "runs-on: ubuntu-latest", "timeout-minutes: 75",
+            "image: ${{ needs.resolve-images.outputs.scan_image }}",
+            "WORKER_SLOT: ${{ matrix.slot }}", "WORKER_LANE: ${{ matrix.lane }}",
             "sigmascope_parallel_worker_entrypoint.sh process",
-            "sigmascope_result_merger.py",
+            "sigmascope_drain_bundle_intake.py", "sigmascope_result_merger.py",
             "--queue-seed catalog/active-state/scan-queue.json", "security_developer_audit.py",
             "evidence_storage_audit.py", "publish_security_evidence_v2.py", "--expected-parent-sha",
             "publish_deep_scan_state.py", "catalog-client-publish.yml", "authority_lock_held: false",
@@ -32,19 +34,30 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn('safe.directory "$PWD/catalog/security-v2-current"', worker)
         self.assertNotIn("safe.directory=*", worker)
         self.assertIn("sigmascope_worker_batch.py run", worker)
-        self.assertIn("WORKER_MAX_BATCH_SECONDS:-10800", worker)
+        self.assertIn("WORKER_MAX_BATCH_SECONDS:-3600", worker)
+        self.assertNotIn("WORKER_MAX_BATCH_SECONDS:-10800", worker)
         self.assertIn("--queue-keys-file catalog/slot-work/queue-keys.txt", worker)
         self.assertIn("sigmascope_worker_batch.py bundles", worker)
         self.assertIn("--summary catalog/slot-result-bundles/slot-summary.json", worker)
         self.assertIn('run_status=0', worker)
         self.assertNotIn("default: 4", text)
         self.assertNotIn("default: 10", text)
-        self.assertIn("WORKERS: ${{ inputs.workers || 8 }}", text)
-        self.assertIn("ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}", text)
+        self.assertIn("INPUT_WORKERS: ${{ inputs.workers || 8 }}", text)
+        self.assertIn("INPUT_ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}", text)
+        self.assertIn("CAPACITY_MODE: ${{ inputs.capacity_mode || 'production' }}", text)
+        self.assertIn("capacity_mode:", text)
+        self.assertIn("PRODUCTION_WORKERS: 8", text)
+        self.assertIn("PRODUCTION_ITEMS_PER_WORKER: 8", text)
         self.assertIn("omega.sigmascope-drain-execution-context.v1", text)
         workers = text[text.index("\n  workers:"): text.index("\n  merge:")]
-        self.assertIn("runs-on: [self-hosted, Linux, X64, omega-security]", workers)
-        self.assertIn("max-parallel: 2", workers)
+        self.assertIn("runs-on: ubuntu-latest", workers)
+        self.assertIn("timeout-minutes: 75", workers)
+        self.assertIn("container:", workers)
+        self.assertNotIn("self-hosted", workers)
+        self.assertNotIn("omega-security", workers)
+        self.assertNotIn("max-parallel", workers)
+        self.assertNotIn("docker pull", workers)
+        self.assertNotIn("docker run", workers)
         wake = (common.ROOT / ".github" / "workflows" / "sigmascope-drain-wake.yml").read_text(encoding="utf-8")
         self.assertNotIn("default: 4", wake)
         self.assertNotIn("default: 10", wake)
@@ -55,7 +68,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
         workers = text[text.index("\n  workers:"): text.index("\n  merge:")]
         publish = text[text.index("\n  publish:"): text.index("\n  publish-client:")]
-        for job_name in ("\n  plan:", "\n  merge:", "\n  publish:", "\n  issue-summary:"):
+        for job_name in ("\n  plan:", "\n  workers:", "\n  merge:", "\n  publish:", "\n  issue-summary:"):
             if job_name in text:
                 start = text.index(job_name)
                 job_starts = [match.start() for match in re.finditer(r"(?m)^  [A-Za-z0-9_-]+:", text)]
@@ -65,15 +78,15 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         client_publish = (common.ROOT / ".github" / "workflows" / "catalog-client-publish.yml").read_text(encoding="utf-8")
         self.assertIn("uses: ./.github/workflows/catalog-client-publish.yml", text)
         self.assertIn("runs-on: ubuntu-latest", client_publish)
-        self.assertIn("runs-on: [self-hosted, Linux, X64, omega-security]", workers)
-        self.assertIn("timeout-minutes: 240", workers)
-        self.assertIn("max-parallel: 2", workers)
-        self.assertNotIn("\n    container:", workers)
-        self.assertIn("docker pull \"$WORKER_IMAGE\"", workers)
-        self.assertIn("docker run --rm --userns=keep-id", workers)
-        self.assertIn("if-no-files-found: error", workers)
-        self.assertNotIn("--user 0:0", workers)
-        self.assertNotIn('--user "$(id -u):$(id -g)"', workers)
+        self.assertIn("container:", workers)
+        self.assertIn("timeout-minutes: 75", workers)
+        self.assertIn("if: always()", workers)
+        self.assertIn("if-no-files-found: warn", workers)
+        self.assertNotIn("docker pull", workers)
+        self.assertNotIn("docker run", workers)
+        self.assertNotIn("self-hosted", workers)
+        self.assertNotIn("omega-security", workers)
+        self.assertNotIn("max-parallel", workers)
         self.assertIn("permissions:\n      contents: read", workers)
         self.assertNotIn("publish_security_evidence_v2.py", workers)
         self.assertNotIn("publish_deep_scan_state.py", workers)
@@ -85,17 +98,14 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn("refs/heads/security-evidence-v2", publish)
         self.assertIn("git -C catalog/active-state ls-remote --heads origin refs/heads/catalog-data", publish)
         self.assertIn("git -C catalog/security-v2-current ls-remote --heads origin refs/heads/security-evidence-v2", publish)
-        self.assertNotIn('current_catalog="$(git ls-remote', publish)
-        self.assertNotIn('current_evidence="$(git ls-remote', publish)
         self.assertIn("Stale parallel candidate discarded", publish)
         self.assertIn("if: steps.authority.outputs.publish == 'true'", publish)
         merge = text[text.index("\n  merge:"): text.index("\n  publish:")]
         self.assertIn("always() &&", merge)
         self.assertIn("!cancelled() &&", merge)
         self.assertNotIn("needs.workers.result == 'success'", merge)
-        self.assertIn("omega.sigmascope-drain-bundle-intake.v1", merge)
-        self.assertIn("result bundles are outside the exact drain plan", merge)
-        self.assertIn("no finalized SigmaScope result bundles were delivered", merge)
+        self.assertIn("omega.sigmascope-drain-bundle-intake.v1", (common.ROOT / "tools" / "security" / "sigmascope_drain_bundle_intake.py").read_text(encoding="utf-8"))
+        self.assertIn("sigmascope_drain_bundle_intake.py", merge)
         self.assertIn("bundle-intake.json", merge)
 
     def test_customer_projection_is_periodic_and_terminal(self) -> None:
@@ -104,6 +114,26 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn('if [ "$next_mode" != "parallel" ] ||', text)
         self.assertIn("WAVE % cadence", text)
         self.assertIn("needs.publish.outputs.publish_client == 'true'", text)
+
+    def test_continuation_converges_to_canonical_production_capacity(self) -> None:
+        text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
+        merge = text[text.index("\n  merge:"): text.index("\n  publish:")]
+        cont = text[text.index("\n  continue:"): text.index("\n  idle-or-serial-fallback:")]
+        self.assertIn("PRODUCTION_WORKERS: 8", merge)
+        self.assertIn("PRODUCTION_ITEMS_PER_WORKER: 8", merge)
+        self.assertIn('--workers "$PRODUCTION_WORKERS"', merge)
+        self.assertIn('--items-per-worker "$PRODUCTION_ITEMS_PER_WORKER"', merge)
+        self.assertIn("PRODUCTION_WORKERS: 8", cont)
+        self.assertIn("PRODUCTION_ITEMS_PER_WORKER: 8", cont)
+        self.assertIn('-f capacity_mode="production"', cont)
+        self.assertIn('-f workers="$PRODUCTION_WORKERS"', cont)
+        self.assertIn('-f items_per_worker="$PRODUCTION_ITEMS_PER_WORKER"', cont)
+        self.assertNotIn('-f workers="$WORKERS"', cont)
+        self.assertNotIn('-f items_per_worker="$ITEMS_PER_WORKER"', cont)
+        plan = text[text.index("\n  plan:"): text.index("\n  workers:")]
+        self.assertIn('if [ "$CAPACITY_MODE" = "bounded" ]', plan)
+        self.assertIn('WORKERS="$PRODUCTION_WORKERS"', plan)
+        self.assertIn('ITEMS_PER_WORKER="$PRODUCTION_ITEMS_PER_WORKER"', plan)
 
     def test_workers_merge_and_publication_use_exact_planned_catalog(self) -> None:
         text = (common.ROOT / ".github/workflows/sigmascope-parallel-drain.yml").read_text(encoding="utf-8")

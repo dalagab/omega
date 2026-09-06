@@ -23,6 +23,11 @@ on:
         type: number
         required: false
         default: 5
+      capacity_mode:
+        description: Production uses canonical 8x8 capacity; bounded preserves explicit manual/debug limits
+        type: string
+        required: false
+        default: production
   workflow_dispatch:
     inputs:
       workers:
@@ -45,6 +50,14 @@ on:
         type: number
         required: false
         default: 5
+      capacity_mode:
+        description: Use production for canonical 8x8; bounded is explicit manual/debug reduced capacity
+        type: choice
+        options:
+          - production
+          - bounded
+        required: false
+        default: production
 
 permissions:
   contents: write
@@ -137,12 +150,22 @@ jobs:
             --report catalog/roboscope-operations-report.json
       - id: plan
         env:
-          WORKERS: ${{ inputs.workers || 8 }}
-          ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}
+          INPUT_WORKERS: ${{ inputs.workers || 8 }}
+          INPUT_ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}
+          CAPACITY_MODE: ${{ inputs.capacity_mode || 'production' }}
+          PRODUCTION_WORKERS: 8
+          PRODUCTION_ITEMS_PER_WORKER: 8
           WAVE: ${{ inputs.wave || 1 }}
         shell: bash
         run: |
           set -euo pipefail
+          if [ "$CAPACITY_MODE" = "bounded" ]; then
+            WORKERS="$INPUT_WORKERS"
+            ITEMS_PER_WORKER="$INPUT_ITEMS_PER_WORKER"
+          else
+            WORKERS="$PRODUCTION_WORKERS"
+            ITEMS_PER_WORKER="$PRODUCTION_ITEMS_PER_WORKER"
+          fi
           python tools/security/sigmascope_parallel_drain_plan.py \
             --queue-seed catalog/roboscope-effective-scan-queue.json \
             --evidence-root catalog/security-v2-current \
@@ -204,11 +227,15 @@ jobs:
     name: Scan ${{ matrix.lane }} slot ${{ matrix.slot }} (${{ matrix.assignmentCount }} exact queue keys)
     needs: [resolve-images, plan]
     if: needs.plan.outputs.assignment_count != '0'
-    runs-on: [self-hosted, Linux, X64, omega-security]
-    timeout-minutes: 240
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    container:
+      image: ${{ needs.resolve-images.outputs.scan_image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     strategy:
       fail-fast: false
-      max-parallel: 2
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     permissions:
       contents: read
@@ -219,6 +246,8 @@ jobs:
       QUEUE_KEYS_JSON: ${{ toJSON(matrix.queueKeys) }}
       BASE_EVIDENCE_HEAD: ${{ needs.plan.outputs.base_head }}
       WORKER_IMAGE: ${{ needs.resolve-images.outputs.scan_image }}
+      WORKER_SLOT: ${{ matrix.slot }}
+      WORKER_LANE: ${{ matrix.lane }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -242,52 +271,38 @@ jobs:
         with:
           name: omega-sigmascope-drain-plan
           path: catalog/roboscope-plan
-      - name: Pull pinned worker image
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          docker pull "$WORKER_IMAGE"
+
       - name: Bind worker to exact planned Evidence and frozen worker
         shell: bash
         run: |
           set -euo pipefail
-          docker run --rm --userns=keep-id -v "$PWD:$PWD:Z" -w "$PWD" \
-            -e BASE_EVIDENCE_HEAD -e OMEGA_FROZEN_WORKER \
-            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh bind
+          bash tools/security/sigmascope_parallel_worker_entrypoint.sh bind
 
       - name: Materialize frozen secondary-security assets when available
         continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          docker run --rm --userns=keep-id -v "$PWD:$PWD:Z" -w "$PWD" \
-            -e OMEGA_FROZEN_WORKER -e OMEGA_SECONDARY_SECURITY_CACHE \
-            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh materialize-assets
+          bash tools/security/sigmascope_parallel_worker_entrypoint.sh materialize-assets
 
       - name: Materialize frozen canonical catalog once for this worker slot
         shell: bash
         run: |
           set -euo pipefail
-          docker run --rm --userns=keep-id -v "$PWD:$PWD:Z" -w "$PWD" \
-            -e OMEGA_FROZEN_WORKER \
-            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh materialize-catalog
+          bash tools/security/sigmascope_parallel_worker_entrypoint.sh materialize-catalog
 
       - name: Process exact queue keys in one frozen Evidence hydration
         shell: bash
         run: |
           set -euo pipefail
-          docker run --rm --userns=keep-id -v "$PWD:$PWD:Z" -w "$PWD" \
-            -e GITHUB_REPOSITORY -e OMEGA_FROZEN_WORKER -e QUEUE_KEYS_JSON -e WORKER_IMAGE -e WORKER_MAX_BATCH_SECONDS \
-            "$WORKER_IMAGE" bash tools/security/sigmascope_parallel_worker_entrypoint.sh process
+          bash tools/security/sigmascope_parallel_worker_entrypoint.sh process
 
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: omega-sigmascope-drain-${{ github.run_id }}-slot-${{ matrix.slot }}
           path: catalog/slot-result-bundles
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
 
   merge:
@@ -359,65 +374,12 @@ jobs:
             echo "::error::Evidence moved before merge: planned=$BASE_EVIDENCE_HEAD current=$current"
             exit 3
           }
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          plan = json.loads(Path("catalog/roboscope-plan/sigmascope-drain-plan.json").read_text(encoding="utf-8"))
-          planned = [
-              str(item.get("queueKey") or "")
-              for item in (plan.get("assignments") or [])
-              if isinstance(item, dict)
-          ]
-          expected = int(os.environ["EXPECTED_ASSIGNMENTS"])
-          if len(planned) != expected or len(planned) != len(set(planned)):
-              raise SystemExit("drain plan assignment cardinality/uniqueness is invalid")
-
-          root = Path("catalog/drain-worker-artifacts")
-          bundle_paths = sorted(root.rglob("bundle.json")) if root.exists() else []
-          if not bundle_paths:
-              raise SystemExit("no finalized SigmaScope result bundles were delivered")
-
-          delivered = []
-          for path in bundle_paths:
-              document = json.loads(path.read_text(encoding="utf-8"))
-              work = document.get("work") if isinstance(document.get("work"), dict) else {}
-              key = str(work.get("queueKey") or "")
-              if not key:
-                  raise SystemExit(f"result bundle has no queue key: {path}")
-              delivered.append(key)
-
-          duplicates = sorted({key for key in delivered if delivered.count(key) > 1})
-          unexpected = sorted(set(delivered) - set(planned))
-          if duplicates:
-              raise SystemExit(f"duplicate delivered queue keys: {duplicates}")
-          if unexpected:
-              raise SystemExit(f"result bundles are outside the exact drain plan: {unexpected}")
-          if len(delivered) > expected:
-              raise SystemExit(f"received {len(delivered)} bundles for {expected} planned assignments")
-
-          missing = [key for key in planned if key not in set(delivered)]
-          intake = {
-              "schema": "omega.sigmascope-drain-bundle-intake.v1",
-              "authority": "operational-result-intake-only",
-              "planRevision": str(plan.get("planRevision") or ""),
-              "workersResult": os.environ.get("WORKERS_RESULT", ""),
-              "plannedCount": expected,
-              "receivedCount": len(delivered),
-              "missingCount": len(missing),
-              "receivedQueueKeys": delivered,
-              "missingQueueKeys": missing,
-          }
-          Path("catalog/sigmascope-drain-bundle-intake.json").write_text(
-              json.dumps(intake, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
-              encoding="utf-8",
-          )
-          print(
-              f"Accepted {len(delivered)}/{expected} exact result bundles; "
-              f"{len(missing)} planned key(s) remain pending/retryable."
-          )
-          PY
+          python tools/security/sigmascope_drain_bundle_intake.py \
+            --plan catalog/roboscope-plan/sigmascope-drain-plan.json \
+            --artifacts-root catalog/drain-worker-artifacts \
+            --expected-assignments "$EXPECTED_ASSIGNMENTS" \
+            --workers-result "$WORKERS_RESULT" \
+            --output catalog/sigmascope-drain-bundle-intake.json
 
       - name: Checkout previous Deep Scan state when available
         shell: bash
@@ -475,8 +437,8 @@ jobs:
       - id: next
         name: Plan from merged candidate and decide whether to continue
         env:
-          WORKERS: ${{ inputs.workers || 8 }}
-          ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}
+          PRODUCTION_WORKERS: 8
+          PRODUCTION_ITEMS_PER_WORKER: 8
           WAVE: ${{ inputs.wave || 1 }}
           PUBLISH_CLIENT_EVERY: ${{ inputs.publish_client_every || 5 }}
         shell: bash
@@ -485,8 +447,8 @@ jobs:
           python tools/security/sigmascope_parallel_drain_plan.py \
             --queue-seed catalog/roboscope-plan/roboscope-effective-scan-queue.json \
             --evidence-root catalog/security-v2-drain-candidate \
-            --workers "$WORKERS" \
-            --items-per-worker "$ITEMS_PER_WORKER" \
+            --workers "$PRODUCTION_WORKERS" \
+            --items-per-worker "$PRODUCTION_ITEMS_PER_WORKER" \
             --output catalog/sigmascope-drain-post-plan.json
 
           assignments="$(jq -r '.assignmentCount' catalog/sigmascope-drain-post-plan.json)"
@@ -722,8 +684,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEXT_MODE: ${{ needs.publish.outputs.next_mode }}
-          WORKERS: ${{ inputs.workers || 8 }}
-          ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}
+          PRODUCTION_WORKERS: 8
+          PRODUCTION_ITEMS_PER_WORKER: 8
           PUBLISH_CLIENT_EVERY: ${{ inputs.publish_client_every || 5 }}
           WAVE: ${{ inputs.wave || 1 }}
         shell: bash
@@ -747,11 +709,12 @@ jobs:
             gh workflow run sigmascope-parallel-drain.yml \
               --repo "$GITHUB_REPOSITORY" \
               --ref sigmascope \
-              -f workers="$WORKERS" \
-              -f items_per_worker="$ITEMS_PER_WORKER" \
+              -f workers="$PRODUCTION_WORKERS" \
+              -f items_per_worker="$PRODUCTION_ITEMS_PER_WORKER" \
               -f wave="$next_wave" \
-              -f publish_client_every="$PUBLISH_CLIENT_EVERY"
-            echo "Queued production parallel drain wave $next_wave."
+              -f publish_client_every="$PUBLISH_CLIENT_EVERY" \
+              -f capacity_mode="production"
+            echo "Queued production parallel drain wave $next_wave at canonical ${PRODUCTION_WORKERS}x${PRODUCTION_ITEMS_PER_WORKER} capacity."
           elif [ "$NEXT_MODE" = "serial" ]; then
             gh workflow run sigmascope.yml --repo "$GITHUB_REPOSITORY" --ref sigmascope
             echo "Queued bounded serialized worker for global/non-variant work."

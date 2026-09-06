@@ -544,7 +544,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("group: omega-sigmascope", security)
 
     def test_workflows_do_not_embed_large_python_heredocs(self) -> None:
-        for name in ("catalog-builder.yml", "sigmascope.yml"):
+        for name in ("catalog-builder.yml", "sigmascope.yml", "sigmascope-parallel-drain.yml"):
             self.assertNotIn("python - <<'PY'", self.read(name), f"{name} should call tested Python modules instead of inline Python")
 
     def test_rift_runtime_ingestion_is_broker_bound_and_evidence_only(self) -> None:
