@@ -346,6 +346,7 @@ def main() -> int:
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Omega repository checkout with origin configured")
     parser.add_argument("--work-dir", type=Path, default=default_work_dir())
     parser.add_argument("--reset-work-dir", action="store_true")
+    parser.add_argument("--allow-long-windows-work-dir", action="store_true", help="Permit a long Windows work root despite known Evidence path-length failures")
     parser.add_argument("--repository", default="dalagab/omega")
     parser.add_argument("--max-scans", type=int, default=20)
     parser.add_argument("--max-batch-seconds", type=int, default=3300)
