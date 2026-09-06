@@ -44,6 +44,7 @@ import sqlite3
 import struct
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -92,6 +93,7 @@ MAX_MANAGED_TYPE_REFS = 10_000
 MAX_MANAGED_MEMBER_REFS = 20_000
 MAX_MANAGED_PINVOKES = 2_048
 MAX_MANAGED_METHOD_BODIES = 30_000
+TRANSIENT_ARTIFACT_HTTP_STATUS = frozenset({429, 500, 502, 503, 504})
 MAX_MANAGED_CALL_SITES = 20_000
 MAX_MANAGED_IL_BYTES_PER_METHOD = 1 * 1024 * 1024
 MAX_MANAGED_IL_BYTES_TOTAL = 16 * 1024 * 1024
@@ -408,6 +410,26 @@ def request_bytes(url: str, max_bytes: int, token: str = "") -> tuple[bytes, str
         if len(data) > max_bytes:
             raise ValueError(f"Download exceeds {max_bytes} byte limit")
         return data, response.geturl()
+
+
+def request_artifact_bytes(
+    row: sqlite3.Row | dict,
+    channel: str,
+    primary_url: str,
+    max_bytes: int,
+) -> tuple[bytes, str]:
+    """Download one artifact, using the catalog update URL only for transient stable failures."""
+    try:
+        return request_bytes(primary_url, max_bytes)
+    except urllib.error.HTTPError as exc:
+        fallback = ""
+        if channel == "stable":
+            keys = row.keys() if hasattr(row, "keys") else ()
+            if "download_link_update" in keys:
+                fallback = str(row["download_link_update"] or "").strip()
+        if int(exc.code) not in TRANSIENT_ARTIFACT_HTTP_STATUS or not fallback or fallback == primary_url:
+            raise
+        return request_bytes(fallback, max_bytes)
 
 
 def decoded_views(data: bytes) -> str:
@@ -6098,7 +6120,7 @@ def scan_row(
         "error": "",
     }
     try:
-        artifact, final_url = request_bytes(url, MAX_ARTIFACT_BYTES)
+        artifact, final_url = request_artifact_bytes(row, channel, url, MAX_ARTIFACT_BYTES)
         artifact_sha = sha256_bytes(artifact)
         base["resolvedArtifactUrl"] = final_url
         base["artifactBytes"] = len(artifact)

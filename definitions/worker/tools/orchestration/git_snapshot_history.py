@@ -12,6 +12,7 @@ snapshot semantics remain separate from forensic publication history.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -42,7 +43,28 @@ def _repo_git(repo: Path, *args: str) -> list[str]:
     container steps must opt into the exact repository path again.  Never use
     ``safe.directory=*`` here: authoritative publication should not broaden Git trust.
     """
-    return ["git", "-c", f"safe.directory={repo.resolve()}", *args]
+    return ["git", "-c", "core.longpaths=true", "-c", f"safe.directory={repo.resolve()}", *args]
+
+
+def platform_path(path: Path) -> Path:
+    if os.name != "nt":
+        return path
+    resolved = str(path.resolve())
+    if resolved.startswith("\\\\?\\"):
+        return Path(resolved)
+    return Path("\\\\?\\" + resolved)
+
+
+def publication_temp_parent(source: Path) -> Path | None:
+    if os.name != "nt":
+        return None
+    override = os.environ.get("OMEGA_GIT_SNAPSHOT_TEMP")
+    if override:
+        parent = Path(override)
+    else:
+        parent = Path(source.anchor or "C:/") / "osg"
+    platform_path(parent).mkdir(parents=True, exist_ok=True)
+    return parent
 
 
 def git_root(path: Path) -> Path:
@@ -83,7 +105,8 @@ def _copy_tree(
     *,
     excluded_names: frozenset[str],
     excluded_prefixes: tuple[str, ...],
-) -> None:
+) -> int:
+    copied = 0
     source = source.resolve()
     for path in sorted(source.rglob("*")):
         if not path.is_file() or path.name in excluded_names:
@@ -94,8 +117,10 @@ def _copy_tree(
         if any(rel == prefix or rel.startswith(prefix.rstrip("/") + "/") for prefix in excluded_prefixes):
             continue
         destination = target / rel
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, destination)
+        platform_path(destination.parent).mkdir(parents=True, exist_ok=True)
+        shutil.copy2(platform_path(path), platform_path(destination))
+        copied += 1
+    return copied
 
 
 @dataclass(frozen=True)
@@ -170,11 +195,12 @@ def publish_snapshot_tree(
             parent_head=old_sha if history_mode == HISTORY_FAST_FORWARD else "",
         )
 
-    with tempfile.TemporaryDirectory(prefix="omega-git-snapshot-history-") as td:
+    with tempfile.TemporaryDirectory(prefix="pub-", dir=publication_temp_parent(source)) as td:
         work = Path(td)
         run(["git", "init", "-q"], cwd=work)
         run(["git", "config", "user.name", author_name], cwd=work)
         run(["git", "config", "user.email", author_email], cwd=work)
+        run(["git", "config", "core.longpaths", "true"], cwd=work)
         run(["git", "config", "core.autocrlf", "false"], cwd=work)
         run(["git", "remote", "add", remote, url], cwd=work)
 
@@ -193,12 +219,14 @@ def publish_snapshot_tree(
         else:
             run(["git", "checkout", "-q", "--orphan", branch], cwd=work)
 
-        _copy_tree(
+        copied_files = _copy_tree(
             source,
             work,
             excluded_names=frozenset(excluded_names),
             excluded_prefixes=tuple(excluded_prefixes),
         )
+        if copied_files <= 0 or not (work / "index.json").is_file():
+            raise RuntimeError("snapshot staging copied no publishable Evidence files; refusing to commit an empty snapshot")
         run(["git", "add", "--all"], cwd=work)
 
         if history_mode == HISTORY_FAST_FORWARD and old_sha:

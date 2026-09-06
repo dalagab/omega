@@ -23,7 +23,7 @@ from typing import Any
 from source_stability import stable_source_priority
 from behavior_consistency import compact_behavior_consistency, compute_behavior_consistency
 
-PROJECTOR_VERSION = "1.7.0"
+PROJECTOR_VERSION = "1.9.0"
 MARKETPLACE_DB_FILENAME = "omega-marketplace.sqlite"
 MARKETPLACE_BUNDLE_FILENAME = "omega-marketplace.sqlite.zip"
 CLIENT_INTERNAL_DB_FILENAME = "omega-catalog.sqlite"
@@ -903,6 +903,11 @@ def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
         if "omega_banner_url" in website_columns
         else "'' AS omega_banner_url"
     )
+    website_license_projection = (
+        "CASE WHEN w.ok=1 THEN COALESCE(w.license,'') ELSE '' END AS website_license"
+        if "license" in website_columns
+        else "'' AS website_license"
+    )
     db.execute("DROP VIEW IF EXISTS runtime_plugin_variants")
     db.execute(
         f"""CREATE VIEW runtime_plugin_variants AS
@@ -917,6 +922,7 @@ def create_marketplace_runtime_view(db: sqlite3.Connection) -> None:
              CASE WHEN w.ok=1 THEN COALESCE(w.image_urls_json,'[]') ELSE '[]' END AS website_image_urls_json,
              CASE WHEN w.ok=1 THEN COALESCE(w.links_json,'[]') ELSE '[]' END AS website_links_json,
              {omega_banner_projection},
+             {website_license_projection},
              CASE WHEN w.website_id IS NOT NULL AND w.ok=1 THEN 1 ELSE 0 END AS website_enriched,
              COALESCE(pr.rich_card,0) AS rich_card,COALESCE(pr.official,0) AS plugin_official,COALESCE(pr.nsfw,0) AS plugin_nsfw,
              COALESCE(pr.richness_score,0) AS richness_score,
@@ -992,6 +998,19 @@ CREATE TABLE plugin_variants (
 );
 CREATE INDEX ix_client_variants_plugin ON plugin_variants(plugin_id);
 CREATE INDEX ix_client_variants_source ON plugin_variants(source_id);
+CREATE TABLE plugin_search (
+    plugin_id INTEGER PRIMARY KEY,
+    internal_name TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    author TEXT NOT NULL DEFAULT '',
+    punchline TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '',
+    website_text TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX ix_client_plugin_search_internal_name ON plugin_search(internal_name COLLATE NOCASE);
+CREATE INDEX ix_client_plugin_search_name ON plugin_search(name COLLATE NOCASE);
+CREATE INDEX ix_client_plugin_search_author ON plugin_search(author COLLATE NOCASE);
 """
 
 # The downloadable Omega database is an explicit client allow-list.  The rich normalized catalog
@@ -1004,6 +1023,7 @@ CLIENT_ALLOWED_BASE_TABLES = {
     "plugins",
     "plugin_variants",
     "runtime_plugin_variants",
+    "plugin_search",
     "catalog_changelog",
 }
 
@@ -1073,6 +1093,13 @@ def _write_fresh_client_database(working: sqlite3.Connection, output_database: P
             client.execute("CREATE INDEX ix_client_runtime_internal_name ON runtime_plugin_variants(internal_name COLLATE NOCASE)")
             client.execute("CREATE INDEX ix_client_runtime_plugin_id ON runtime_plugin_variants(plugin_id)")
             client.execute("CREATE INDEX ix_client_runtime_source_url ON runtime_plugin_variants(source_url COLLATE NOCASE)")
+            if _table_exists(working, "plugin_search"):
+                client.execute("""
+                    INSERT INTO plugin_search(plugin_id,internal_name,name,author,punchline,description,tags,website_text)
+                    SELECT plugin_id,COALESCE(internal_name,''),COALESCE(name,''),COALESCE(author,''),
+                           COALESCE(punchline,''),COALESCE(description,''),COALESCE(tags,''),COALESCE(website_text,'')
+                      FROM server.plugin_search
+                """)
 
             if _table_exists(working, "catalog_changelog"):
                 # The changelog table is small semantic history already consumed by Omega.  Copy its
@@ -1161,7 +1188,7 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
             raise RuntimeError(f"marketplace database integrity check failed: {integrity}")
         leaked = [
             row[0] for row in check.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND (name LIKE 'plugin_security_%' OR name IN ('manifest_observations','manifest_source_candidates','source_repositories','source_repository_aliases','plugin_identity_aliases','plugin_tags','plugin_images','plugin_search','websites','presentation')) ORDER BY name"
+                "SELECT name FROM sqlite_master WHERE type='table' AND (name LIKE 'plugin_security_%' OR name IN ('manifest_observations','manifest_source_candidates','source_repositories','source_repository_aliases','plugin_identity_aliases','plugin_tags','plugin_images','websites','presentation')) ORDER BY name"
             )
         ]
         if leaked:

@@ -508,6 +508,14 @@ CORE_DATASETS: tuple[tuple[str, str, str], ...] = (
 LARGE_DATASETS = {"imports", "symbols", "calls", "reachability"}
 
 
+def platform_path(path: Path) -> Path:
+    if os.name != "nt":
+        return path
+    resolved = str(path.resolve())
+    if resolved.startswith("\\\\?\\"):
+        return Path(resolved)
+    return Path("\\\\?\\" + resolved)
+
 def canonical_json_bytes(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
@@ -812,7 +820,7 @@ class JsonlGzipChunkWriter:
         self.directory = directory
         self.stem = stem
         self.target_bytes = max(1024 * 1024, int(target_bytes))
-        self.directory.mkdir(parents=True, exist_ok=True)
+        platform_path(self.directory).mkdir(parents=True, exist_ok=True)
         self._index = 0
         self._raw = None
         self._gzip = None
@@ -824,7 +832,7 @@ class JsonlGzipChunkWriter:
     def _open(self) -> None:
         self._index += 1
         self._path = self.directory / f"{self.stem}-{self._index:04d}.jsonl.gz"
-        self._raw = self._path.open("wb")
+        self._raw = platform_path(self._path).open("wb")
         self._gzip = gzip.GzipFile(filename="", mode="wb", fileobj=self._raw, compresslevel=6, mtime=0)
         self._records = 0
         self._row_hashes = []
@@ -835,11 +843,11 @@ class JsonlGzipChunkWriter:
         self._gzip.close()
         self._raw.close()
         count, digest = dataset_record_digest_from_hashes(self._row_hashes)
-        size = self._path.stat().st_size
+        size = platform_path(self._path).stat().st_size
         self.results.append(ChunkResult(
             path=self._path.name,
             bytes=size,
-            sha256=sha256_file(self._path),
+            sha256=sha256_file(platform_path(self._path)),
             records=count,
             record_digest=digest,
         ))
@@ -888,8 +896,8 @@ def file_entry(root: Path, path: Path, *, records: int | None = None, record_dig
     rel = path.relative_to(root).as_posix()
     result: dict[str, Any] = {
         "path": rel,
-        "bytes": path.stat().st_size,
-        "sha256": sha256_file(path),
+        "bytes": platform_path(path).stat().st_size,
+        "sha256": sha256_file(platform_path(path)),
     }
     if records is not None:
         result["records"] = int(records)
@@ -907,16 +915,16 @@ def verify_file_entry(root: Path, entry: dict[str, Any], *, max_bytes: int | Non
     except ValueError as exc:
         return [str(exc)]
     path = root / rel
-    if not path.is_file():
+    if not platform_path(path).is_file():
         return [f"missing file: {rel}"]
-    actual_size = path.stat().st_size
+    actual_size = platform_path(path).stat().st_size
     expected_size = int(entry.get("bytes") or -1)
     if actual_size != expected_size:
         errors.append(f"size mismatch for {rel}: manifest={expected_size}, actual={actual_size}")
     if max_bytes is not None and actual_size > max_bytes:
         errors.append(f"file exceeds {max_bytes} byte ceiling: {rel} ({actual_size} bytes)")
     expected_hash = str(entry.get("sha256") or "").lower()
-    actual_hash = sha256_file(path)
+    actual_hash = sha256_file(platform_path(path))
     if expected_hash != actual_hash:
         errors.append(f"sha256 mismatch for {rel}: manifest={expected_hash}, actual={actual_hash}")
     return errors
@@ -942,7 +950,7 @@ def write_record_dataset(
     directory = directory.resolve()
     if directory != root and root not in directory.parents:
         raise ValueError(f"record dataset directory escaped evidence root: {directory}")
-    directory.mkdir(parents=True, exist_ok=True)
+    platform_path(directory).mkdir(parents=True, exist_ok=True)
     safe_stem = "".join(ch if ch.isalnum() or ch in "-_." else "-" for ch in stem).strip(".-") or "records"
 
     # Remove the previous transport representation for this logical dataset before
@@ -1037,7 +1045,7 @@ def read_json_file(root: Path, relative: str) -> Any:
     resolved_root = root.resolve()
     if path != resolved_root and resolved_root not in path.parents:
         raise ValueError(f"evidence path escaped root: {relative!r}")
-    if not path.is_file():
+    if not platform_path(path).is_file():
         raise FileNotFoundError(path)
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -1912,7 +1920,7 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
     # production snapshots so repeated bounded scans cannot regrow branch storage.
     all_files: set[str] = set()
     for path in root.rglob("*"):
-        if not path.is_file():
+        if not platform_path(path).is_file():
             continue
         rel = path.relative_to(root).as_posix()
         if rel.startswith(".git/") or rel.startswith(".staging/") or path.name == ".omega-security-evidence-v2-migration.json":

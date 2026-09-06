@@ -67,6 +67,7 @@ def _redacted_url(value: str) -> tuple[str, str, str, str] | None:
     candidate = value.rstrip(".,;:!?)]}")
     try:
         parsed = urllib.parse.urlsplit(candidate)
+        port = parsed.port
     except ValueError:
         return None
     if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
@@ -76,7 +77,7 @@ def _redacted_url(value: str) -> tuple[str, str, str, str] | None:
         return None
     # Never persist credentials/userinfo/query/fragment. IPv6 authorities need brackets.
     authority_host = f"[{host}]" if ":" in host and not host.startswith("[") else host
-    authority = authority_host if parsed.port is None else f"{authority_host}:{parsed.port}"
+    authority = authority_host if port is None else f"{authority_host}:{port}"
     path = _safe_path(parsed.path)
     return urllib.parse.urlunsplit((parsed.scheme.lower(), authority, path, "", "")), host, parsed.scheme.lower(), path
 
