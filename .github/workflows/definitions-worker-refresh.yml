@@ -1,0 +1,203 @@
+name: Omega Definitions · refresh frozen scanner worker
+
+on:
+  push:
+    branches: [sigmascope]
+    paths:
+      - "tools/catalog/**/*.py"
+      - "tools/security/**/*.py"
+      - "tools/security/authenticode_probe.ps1"
+      - "tools/orchestration/git_snapshot_history.py"
+      - "tools/requirements-security.txt"
+      - "sources/source-overrides.json"
+      - "security-definitions/**"
+
+permissions:
+  contents: write
+  actions: write
+  packages: read
+
+concurrency:
+  group: omega-catalog-sigmascope-exclusive
+  cancel-in-progress: false
+
+jobs:
+  resolve-image:
+    name: Resolve immutable publisher toolchain
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: security-worker-images
+          path: image-state
+          persist-credentials: false
+      - id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="$(jq -er '.images["publisher-worker"] // empty' image-state/index.json)"
+          [[ "$ref" =~ ^ghcr\.io/[^@[:space:]]+@sha256:[0-9a-f]{64}$ ]] || {
+            echo "::error::Invalid or missing digest-pinned publisher image: $ref"
+            exit 3
+          }
+          echo "image=$ref" >> "$GITHUB_OUTPUT"
+
+  refresh:
+    name: Refresh Definitions worker and scanner queue
+    needs: resolve-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: ${{ needs.resolve-image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Allow container Git access
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/current-state
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: source-head-state
+          path: catalog/inputs/source-head
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: threat-intelligence-state
+          path: catalog/inputs/threat-intelligence
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: osv-advisory-state
+          path: catalog/inputs/osv
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: external-analysis-state
+          path: catalog/inputs/external-analysis
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: secondary-security-state
+          path: catalog/inputs/secondary-security
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Rebuild Definitions from current scanner source and settled definition inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --repo-root .
+            --evidence-root catalog/security-v2-current
+            --output catalog/state-definitions
+            --built-from-dev-commit "$GITHUB_SHA"
+            --source-observations catalog/inputs/source-head/source-revision-observations.json
+            --reputation-input catalog/inputs/threat-intelligence/reputation-intelligence.json
+            --advisories-input catalog/inputs/osv/osv-advisories.json
+            --external-analysis-input catalog/inputs/external-analysis/external-analysis-sources.json
+          )
+          if [ -f catalog/inputs/secondary-security/secondary-security-asset-manifest.json ]; then
+            args+=(--secondary-security-asset-manifest catalog/inputs/secondary-security/secondary-security-asset-manifest.json)
+          fi
+          python tools/catalog/definitions_snapshot.py build "${args[@]}"
+
+      - name: Rebuild queue seed without changing catalog identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a catalog/current-state/catalog catalog/state-catalog
+          python tools/catalog/scan_queue.py build-seed \
+            --catalog-root catalog/state-catalog \
+            --definitions-root catalog/state-definitions \
+            --evidence-root catalog/security-v2-current \
+            --output catalog/state-scan-queue.json
+          python tools/catalog/catalog_state.py assemble \
+            --catalog catalog/state-catalog \
+            --definitions catalog/state-definitions \
+            --queue-seed catalog/state-scan-queue.json \
+            --source-inventory catalog/current-state/source-inventory.json \
+            --output catalog/state
+          python tools/catalog/catalog_state.py validate --root catalog/state
+
+      - name: Detect semantic Definitions/queue change
+        id: change
+        shell: bash
+        run: |
+          set -euo pipefail
+          old_state="$(jq -r '.stateRevision // ""' catalog/current-state/index.json)"
+          new_state="$(jq -r '.stateRevision // ""' catalog/state/index.json)"
+          old_scanner="$(jq -r '.definitions.scannerRevision // ""' catalog/current-state/index.json)"
+          new_scanner="$(jq -r '.definitions.scannerRevision // ""' catalog/state/index.json)"
+          echo "old_scanner=$old_scanner" >> "$GITHUB_OUTPUT"
+          echo "new_scanner=$new_scanner" >> "$GITHUB_OUTPUT"
+          if [ "$old_state" = "$new_state" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Frozen scanner/Definitions semantics are already current."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish refreshed Definitions and queue seed atomically
+        if: steps.change.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          expected_parent="$(git -C catalog/current-state rev-parse HEAD)"
+          python tools/catalog/publish_catalog_state.py \
+            --input catalog/state \
+            --repo . \
+            --branch catalog-data \
+            --history-mode fast-forward \
+            --expected-parent-sha "$expected_parent" \
+            --push
+
+      - name: Wake SigmaScope after scanner refresh
+        if: steps.change.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run sigmascope-drain-wake.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref sigmascope
+
+      - name: Summarize frozen worker refresh
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### SigmaScope frozen worker refresh"
+            echo
+            echo "- Source commit: \`$GITHUB_SHA\`"
+            echo "- Previous scanner: \`${{ steps.change.outputs.old_scanner || 'unknown' }}\`"
+            echo "- New scanner: \`${{ steps.change.outputs.new_scanner || 'unknown' }}\`"
+            echo "- Published: \`${{ steps.change.outputs.changed || 'unknown' }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -33,6 +33,10 @@ class SigmaScopeLocalQueueWorkerContractTests(unittest.TestCase):
             text.index("maybe_run_source_followups(args, work, env)"),
             text.index('report["publication"] = json.loads(publication)'),
         )
+        self.assertIn("verify_frozen_worker_matches_checkout(repo, catalog)", text)
+        self.assertIn("Frozen SigmaScope worker is stale relative to this checkout", text)
+        self.assertIn("definitions\" / \"worker\" / \"manifest.json", text)
+        self.assertIn("refresh frozen scanner worker", text)
         self.assertNotIn("legacy-orphan", text)
         self.assertNotIn("force-with-lease", text)
 

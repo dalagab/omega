@@ -50,6 +50,13 @@ class EndpointIntelligenceTests(unittest.TestCase):
         self.assertEqual("platform.discord", item["serviceId"])
         self.assertEqual("established", item["serviceRecognition"])
 
+    def test_templated_port_literal_is_ignored_instead_of_failing_scan(self) -> None:
+        endpoints = endpoint_candidates(
+            'const string endpoint = "http://127.0.0.1:{0}/speech";',
+            "artifact:TextToTalk.dll",
+        )
+        self.assertEqual([], endpoints)
+
     def test_binary_certificate_url_is_inventory_evidence_not_destination(self) -> None:
         endpoints = endpoint_candidates(
             "https://ocsp.digicert.com/ https://api.unknown-service.test/v1",

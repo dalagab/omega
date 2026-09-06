@@ -9,6 +9,7 @@ with the exact Evidence parent SHA observed before the scan.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -34,6 +35,49 @@ def read_json(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path}")
     return value
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def verify_frozen_worker_matches_checkout(repo: Path, catalog: Path) -> None:
+    manifest_path = catalog / "definitions" / "worker" / "manifest.json"
+    manifest = read_json(manifest_path)
+    entries = [item for item in manifest.get("files") or [] if isinstance(item, dict)]
+    frozen = {str(item.get("path") or ""): str(item.get("sha256") or "") for item in entries}
+    expected_paths = {
+        path.relative_to(repo).as_posix()
+        for rel in ("tools/catalog", "tools/security")
+        for path in (repo / rel).rglob("*.py")
+        if path.is_file() and "__pycache__" not in path.parts
+    }
+    expected_paths.update({
+        "sources/source-overrides.json",
+        "security-definitions/capabilities/registry.json",
+        "security-definitions/services/registry.json",
+        "security-definitions/semantic-apis/registry.json",
+        "security-definitions/semantic-flow/registry.json",
+        "tools/requirements-security.txt",
+        "tools/security/authenticode_probe.ps1",
+        "tools/orchestration/git_snapshot_history.py",
+    })
+    mismatched = sorted(
+        rel for rel in expected_paths | set(frozen)
+        if rel not in frozen or not (repo / rel).is_file() or _sha256_file(repo / rel) != frozen.get(rel)
+    )
+    if mismatched:
+        revision = str(manifest.get("scannerRevision") or "")
+        preview = ", ".join(mismatched[:8])
+        suffix = "" if len(mismatched) <= 8 else f" (+{len(mismatched) - 8} more)"
+        raise RuntimeError(
+            f"Frozen SigmaScope worker is stale relative to this checkout ({revision}): {preview}{suffix}. "
+            "Wait for 'Omega Definitions · refresh frozen scanner worker' to publish catalog-data before scanning."
+        )
 
 
 def output(args: list[str], *, cwd: Path) -> str:
@@ -234,6 +278,8 @@ def local_drain(args: argparse.Namespace) -> int:
     try:
         phase("fetch catalog-data")
         catalog_head = export_branch(repo, "catalog-data", catalog)
+        phase("verify frozen scanner worker matches local source")
+        verify_frozen_worker_matches_checkout(repo, catalog)
         if args.sparse_evidence:
             phase("fetch security-evidence-v2 metadata")
             evidence_head = fetch_branch_ref(repo, "security-evidence-v2")
