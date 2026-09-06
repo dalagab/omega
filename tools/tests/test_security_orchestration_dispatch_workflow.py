@@ -34,6 +34,9 @@ class SecurityOrchestrationDispatchWorkflowTests(unittest.TestCase):
         for workflow in WORKERS.values():
             text = (WF / workflow).read_text(encoding="utf-8")
             self.assertIn("workflow_call:", text, workflow)
+            self.assertIn("gh run list", text, workflow)
+            self.assertIn("security-orchestration-dispatch.yml", text, workflow)
+            self.assertIn("Recent or active orchestration dispatch exists", text, workflow)
             self.assertIn("gh workflow run security-orchestration-dispatch.yml", text, workflow)
             self.assertIn("-f mode=reconcile", text, workflow)
             self.assertNotIn("gh workflow run security-reconcile.yml", text, workflow)

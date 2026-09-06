@@ -130,8 +130,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
-        run: >-
-          gh workflow run security-orchestration-dispatch.yml
-          --repo "${{ github.repository }}"
-          --ref sigmascope
-          -f mode=reconcile
+        run: |
+          set -euo pipefail
+          cutoff_epoch="$(( $(date -u +%s) - 300 ))"
+          recent_count="$(gh run list \
+            --repo "${{ github.repository }}" \
+            --workflow security-orchestration-dispatch.yml \
+            --limit 20 \
+            --json createdAt,status \
+            --jq "[.[] | select((.status == \"queued\" or .status == \"in_progress\") or ((.createdAt | fromdateiso8601) >= ${cutoff_epoch}))] | length")"
+          if [ "${recent_count:-0}" != "0" ]; then
+            echo "::notice::Recent or active orchestration dispatch exists; skipping duplicate reconcile wake."
+            exit 0
+          fi
+          gh workflow run security-orchestration-dispatch.yml \
+            --repo "${{ github.repository }}" \
+            --ref sigmascope \
+            -f mode=reconcile

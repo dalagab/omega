@@ -135,6 +135,8 @@ class OrchestrationContractTests(unittest.TestCase):
             text = self.read_workflow(name)
             self.assertIn("actions: write", text)
             self.assertIn("Wake the reconciler after result publication", text)
+            self.assertIn("gh run list", text)
+            self.assertIn("Recent or active orchestration dispatch exists", text)
             self.assertIn("gh workflow run security-orchestration-dispatch.yml", text)
             self.assertIn("-f mode=reconcile", text)
             self.assertNotIn("gh workflow run security-reconcile.yml", text)
