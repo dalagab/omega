@@ -12,6 +12,7 @@ snapshot semantics remain separate from forensic publication history.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -42,7 +43,16 @@ def _repo_git(repo: Path, *args: str) -> list[str]:
     container steps must opt into the exact repository path again.  Never use
     ``safe.directory=*`` here: authoritative publication should not broaden Git trust.
     """
-    return ["git", "-c", f"safe.directory={repo.resolve()}", *args]
+    return ["git", "-c", "core.longpaths=true", "-c", f"safe.directory={repo.resolve()}", *args]
+
+
+def platform_path(path: Path) -> Path:
+    if os.name != "nt":
+        return path
+    resolved = str(path.resolve())
+    if resolved.startswith("\\\\?\\"):
+        return Path(resolved)
+    return Path("\\\\?\\" + resolved)
 
 
 def git_root(path: Path) -> Path:
@@ -94,8 +104,8 @@ def _copy_tree(
         if any(rel == prefix or rel.startswith(prefix.rstrip("/") + "/") for prefix in excluded_prefixes):
             continue
         destination = target / rel
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, destination)
+        platform_path(destination.parent).mkdir(parents=True, exist_ok=True)
+        shutil.copy2(platform_path(path), platform_path(destination))
 
 
 @dataclass(frozen=True)
@@ -175,6 +185,7 @@ def publish_snapshot_tree(
         run(["git", "init", "-q"], cwd=work)
         run(["git", "config", "user.name", author_name], cwd=work)
         run(["git", "config", "user.email", author_email], cwd=work)
+        run(["git", "config", "core.longpaths", "true"], cwd=work)
         run(["git", "config", "core.autocrlf", "false"], cwd=work)
         run(["git", "remote", "add", remote, url], cwd=work)
 

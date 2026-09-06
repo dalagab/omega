@@ -39,7 +39,7 @@ class GitSnapshotSafeDirectoryTests(unittest.TestCase):
                 self.assertEqual(repo, history.git_root(repo))
 
             self.assertEqual(
-                ["git", "-c", f"safe.directory={repo}", "rev-parse", "--show-toplevel"],
+                ["git", "-c", "core.longpaths=true", "-c", f"safe.directory={repo}", "rev-parse", "--show-toplevel"],
                 calls[0],
             )
             self.assertFalse(any("safe.directory=*" in part for cmd in calls for part in cmd))
@@ -60,11 +60,11 @@ class GitSnapshotSafeDirectoryTests(unittest.TestCase):
                 self.assertEqual("", history.remote_branch_sha(repo, url, "catalog-data"))
 
             self.assertEqual(
-                ["git", "-c", f"safe.directory={repo}", "remote", "get-url", "origin"],
+                ["git", "-c", "core.longpaths=true", "-c", f"safe.directory={repo}", "remote", "get-url", "origin"],
                 calls[0],
             )
             self.assertEqual(
-                ["git", "-c", f"safe.directory={repo}", "ls-remote", "--heads", str(bare), "refs/heads/catalog-data"],
+                ["git", "-c", "core.longpaths=true", "-c", f"safe.directory={repo}", "ls-remote", "--heads", str(bare), "refs/heads/catalog-data"],
                 calls[1],
             )
             self.assertNotIn("origin", calls[1])
