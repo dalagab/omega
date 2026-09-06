@@ -53,7 +53,8 @@ from security_evidence_v2 import sha256_file, validate_snapshot  # noqa: E402
 
 SCHEMA = "omega.sigmascope-result-merge.v1"
 # Production drain waves are bounded to 64 exact persistent queue items. The default
-# coordinator wave remains 4 workers x 10 items = 40 result bundles.
+# coordinator wave is 8 workers x 8 items = 64 planned assignments; partial intake may
+# safely merge any validated non-empty subset while untouched keys remain pending.
 MAX_BUNDLES = 64
 MAX_VARIANTS = 64
 

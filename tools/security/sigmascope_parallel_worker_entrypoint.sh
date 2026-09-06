@@ -58,6 +58,7 @@ PY
     rm -rf "$candidate" "$work" catalog/slot-result-bundles catalog/slot-work/bundle-reports
     mkdir -p catalog/slot-result-bundles
 
+    run_status=0
     python tools/security/sigmascope_worker_batch.py run \
       --pipeline "$pipeline" \
       --queue-keys-file catalog/slot-work/queue-keys.txt \
@@ -79,18 +80,32 @@ PY
       --advisory-revision "$(jq -r '.advisoryRevision' "$defs")" \
       --queue-seed catalog/roboscope-plan/roboscope-effective-scan-queue.json \
       --evidence-index-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/security-evidence-v2/index.json" \
-      --max-batch-seconds "${WORKER_MAX_BATCH_SECONDS:-10800}" \
-      --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json"
+      --max-batch-seconds "${WORKER_MAX_BATCH_SECONDS:-3600}" \
+      --source-overrides "$OMEGA_FROZEN_WORKER/sources/source-overrides.json" || run_status=$?
 
-    python tools/security/sigmascope_worker_batch.py bundles \
-      --current-evidence catalog/security-v2-current \
-      --candidate-evidence "$candidate" \
-      --work-dir "$work" \
-      --definitions-root catalog/active-state/definitions \
-      --queue-keys-file catalog/slot-work/queue-keys.txt \
-      --worker-image "$WORKER_IMAGE" \
-      --output-root catalog/slot-result-bundles \
-      --split-work-root catalog/slot-work/bundle-reports
+    bundle_status=0
+    if [ -f "$work/production-sigmascope-v2-report.json" ] && [ -f "$candidate/index.json" ]; then
+      python tools/security/sigmascope_worker_batch.py bundles \
+        --current-evidence catalog/security-v2-current \
+        --candidate-evidence "$candidate" \
+        --work-dir "$work" \
+        --definitions-root catalog/active-state/definitions \
+        --queue-keys-file catalog/slot-work/queue-keys.txt \
+        --worker-image "$WORKER_IMAGE" \
+        --output-root catalog/slot-result-bundles \
+        --split-work-root catalog/slot-work/bundle-reports \
+        --summary catalog/slot-result-bundles/slot-summary.json \
+        --slot "${WORKER_SLOT:-0}" \
+        --lane "${WORKER_LANE:-}" \
+        --plan-revision "$(jq -r '.planRevision // ""' catalog/roboscope-plan/sigmascope-drain-plan.json)" || bundle_status=$?
+    else
+      echo "::warning::SigmaScope worker did not leave a finalized candidate/report to bundle."
+    fi
+
+    if [ "$run_status" -ne 0 ]; then
+      exit "$run_status"
+    fi
+    exit "$bundle_status"
     ;;
   *)
     echo "usage: $0 {bind|materialize-assets|materialize-catalog|process}" >&2

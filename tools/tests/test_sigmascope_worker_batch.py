@@ -18,6 +18,7 @@ from sigmascope_worker_batch import (
     prepare_frozen_transport_view,
     run_frozen_pipeline,
     split_report_for_key,
+    validated_selected_queue_keys,
 )
 
 
@@ -28,6 +29,33 @@ class SigmaScopeWorkerBatchTests(unittest.TestCase):
             path.write_text("variant-1\nvariant-1\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "duplicate"):
                 load_queue_keys(path)
+
+    def test_budget_stop_accepts_only_an_exact_planned_prefix(self) -> None:
+        planned = ["variant-1", "variant-2", "variant-3"]
+        stopped = {
+            "queue": {
+                "selectedItems": [
+                    {"queueKey": "variant-1"},
+                    {"queueKey": "variant-2"},
+                ],
+                "stoppedByBatchBudget": True,
+            }
+        }
+        self.assertEqual(["variant-1", "variant-2"], validated_selected_queue_keys(stopped, planned))
+        with self.assertRaisesRegex(RuntimeError, "expected"):
+            validated_selected_queue_keys({
+                "queue": {
+                    "selectedItems": [{"queueKey": "variant-2"}],
+                    "stoppedByBatchBudget": True,
+                }
+            }, planned)
+        with self.assertRaisesRegex(RuntimeError, "expected"):
+            validated_selected_queue_keys({
+                "queue": {
+                    "selectedItems": [{"queueKey": "variant-1"}],
+                    "stoppedByBatchBudget": False,
+                }
+            }, planned)
 
     def test_planned_selector_preserves_exact_planner_order_and_fails_closed(self) -> None:
         states = {"variant-2": {"queueKey": "variant-2"}, "variant-1": {"queueKey": "variant-1"}}
@@ -174,6 +202,11 @@ class SigmaScopeWorkerBatchTests(unittest.TestCase):
         self.assertIn("sigmascope_parallel_worker_entrypoint.sh process", workflow)
         self.assertIn("sigmascope_worker_batch.py run", entrypoint)
         self.assertIn("sigmascope_worker_batch.py bundles", entrypoint)
+        self.assertIn("--summary catalog/slot-result-bundles/slot-summary.json", entrypoint)
+        self.assertIn("WORKER_MAX_BATCH_SECONDS:-3600", entrypoint)
+        self.assertIn("if: always()", workflow)
+        self.assertIn("omega.sigmascope-drain-bundle-intake.v1", workflow)
+        self.assertNotIn("needs.workers.result == 'success'", workflow)
         self.assertNotIn("while IFS= read -r queue_key; do", workflow)
         self.assertIn("gh run list", workflow)
         self.assertIn("Another active parallel drain already owns successor dispatch", workflow)

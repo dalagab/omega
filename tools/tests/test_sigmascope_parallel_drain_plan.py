@@ -53,21 +53,21 @@ class SigmaScopeParallelDrainPlanTests(unittest.TestCase):
         }), encoding="utf-8")
         return evidence
 
-    def test_baseline_rebuild_is_parallel_and_partitioned_four_by_ten(self) -> None:
+    def test_baseline_rebuild_defaults_to_eight_by_eight_and_caps_at_sixty_four(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-drain-plan-") as td:
             root = Path(td)
             seed_path = root / "seed.json"
-            seed_path.write_text(json.dumps(seed([artifact_item(i) for i in range(1, 51)])), encoding="utf-8")
-            result = drain_plan.build(seed_path, self.write_evidence(root), workers=4, items_per_worker=10,
+            seed_path.write_text(json.dumps(seed([artifact_item(i) for i in range(1, 71)])), encoding="utf-8")
+            result = drain_plan.build(seed_path, self.write_evidence(root),
                                       output=root / "plan.json", now=NOW)
             self.assertTrue(result["baselineSecurityRebuild"])
-            self.assertEqual(40, result["assignmentCount"])
-            self.assertEqual(4, result["activeWorkerCount"])
-            self.assertEqual([10, 10, 10, 10], [row["assignmentCount"] for row in result["matrix"]["include"]])
-            self.assertEqual(40, len({item["queueKey"] for item in result["assignments"]}))
+            self.assertEqual(64, result["assignmentCount"])
+            self.assertEqual(8, result["activeWorkerCount"])
+            self.assertEqual([8] * 8, [row["assignmentCount"] for row in result["matrix"]["include"]])
+            self.assertEqual(64, len({item["queueKey"] for item in result["assignments"]}))
             self.assertTrue(result["moreParallelEligible"])
             self.assertFalse(result["serialFallbackRequired"])
-            self.assertEqual(50, result["queueSummaryBefore"]["eligibleNow"])
+            self.assertEqual(70, result["queueSummaryBefore"]["eligibleNow"])
             self.assertEqual(0, result["queueSummaryBefore"]["retryDeferred"])
 
     def test_coverage_first_keeps_source_followup_behind_uncovered_artifacts(self) -> None:
