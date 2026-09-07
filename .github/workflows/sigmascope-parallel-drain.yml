@@ -475,30 +475,35 @@ jobs:
       OMEGA_SECONDARY_SECURITY_CACHE: catalog/secondary-security-runtime
       BASE_EVIDENCE_HEAD: ${{ needs.plan.outputs.base_head }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout frozen SigmaScope source
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.plan.outputs.dev_sha }}
           fetch-depth: 1
           persist-credentials: false
-      - uses: actions/checkout@v6
+      - name: Checkout exact catalog authority
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.plan.outputs.catalog_head }}
           path: catalog/active-state
           fetch-depth: 1
           persist-credentials: false
-      - uses: actions/checkout@v6
+      - name: Checkout current Evidence authority
+        uses: actions/checkout@v6
         with:
           ref: security-evidence-v2
           path: catalog/security-v2-current
           fetch-depth: 2
           persist-credentials: false
-      - uses: actions/download-artifact@v8
+      - name: Download finalized worker result bundles
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           pattern: omega-sigmascope-drain-${{ github.run_id }}-slot-*
           path: catalog/drain-worker-artifacts
 
-      - uses: actions/download-artifact@v8
+      - name: Download exact drain plan
+        uses: actions/download-artifact@v8
         with:
           name: omega-sigmascope-drain-plan
           path: catalog/roboscope-plan
@@ -509,6 +514,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "Planned exact assignments: $EXPECTED_ASSIGNMENTS"
+          echo "Worker aggregate result: $WORKERS_RESULT"
+          echo "Planned Evidence parent: $BASE_EVIDENCE_HEAD"
+          echo "Validating delivered bundles against the frozen plan..."
           current="$(git -C catalog/security-v2-current rev-parse HEAD)"
           test "$current" = "$BASE_EVIDENCE_HEAD" || {
             echo "::error::Evidence moved before merge: planned=$BASE_EVIDENCE_HEAD current=$current"
@@ -520,6 +529,9 @@ jobs:
             --expected-assignments "$EXPECTED_ASSIGNMENTS" \
             --workers-result "$WORKERS_RESULT" \
             --output catalog/sigmascope-drain-bundle-intake.json
+          jq -c '{planned:.plannedCount,received:.receivedCount,missing:.missingCount,workersResult:.workersResult,slots:(.slotSummaries|length)}' \
+            catalog/sigmascope-drain-bundle-intake.json
+          echo "Bundle intake validated."
 
       - name: Checkout previous Deep Scan state when available
         shell: bash
@@ -549,6 +561,9 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t bundles < <(find catalog/drain-worker-artifacts -name bundle.json -printf '%h\n' | sort)
+          echo "Finalized bundles discovered: ${#bundles[@]}"
+          echo "Starting serialized candidate merge."
+          echo "No Evidence publication occurs in this step."
           python tools/security/sigmascope_result_merger.py \
             --current-evidence catalog/security-v2-current \
             --base-database catalog/security-input/omega-catalog.sqlite \
@@ -560,7 +575,30 @@ jobs:
             --previous-deep-scan-state catalog/deep-scan-current/index.json \
             --deep-scan-output catalog/security-v2-drain-work/deep-scan-state \
             --source-followup-output catalog/security-v2-drain-work/sigmascope-source-followups.json \
-            "${bundles[@]}"
+            "${bundles[@]}" &
+          merge_pid=$!
+          (
+            while kill -0 "$merge_pid" 2>/dev/null; do
+              sleep 60
+              if kill -0 "$merge_pid" 2>/dev/null; then
+                echo "SigmaScope serialized merge is still running..."
+              fi
+            done
+          ) &
+          heartbeat_pid=$!
+          set +e
+          wait "$merge_pid"
+          merge_status=$?
+          set -e
+          kill "$heartbeat_pid" 2>/dev/null || true
+          wait "$heartbeat_pid" 2>/dev/null || true
+          if [ "$merge_status" -ne 0 ]; then
+            echo "::error::Serialized SigmaScope merge failed with exit code $merge_status"
+            exit "$merge_status"
+          fi
+          jq -c '{mergeRevision,authority,selected:(.variantIds|length),successful:(.successfulVariantIds|length),candidateIndexSha256,queue:.queueSummary,validation}' \
+            catalog/sigmascope-drain-merge-report.json
+          echo "Serialized candidate merge completed."
 
       - name: Apply independent Evidence audit and storage gates
         shell: bash
@@ -616,6 +654,18 @@ jobs:
           echo "publish_client=$publish_client" >> "$GITHUB_OUTPUT"
           echo "successful=$successful" >> "$GITHUB_OUTPUT"
           echo "failed=$failed" >> "$GITHUB_OUTPUT"
+          echo "Post-merge next mode: $next_mode"
+          echo "Next parallel assignments: $assignments"
+          echo "Successful exact items this wave: $successful"
+          echo "Failed / retained items this wave: $failed"
+          {
+            echo "### SigmaScope merged candidate"
+            echo
+            echo "- Successful exact items: \`$successful\`"
+            echo "- Failed / retained: \`$failed\`"
+            echo "- Next mode: \`$next_mode\`"
+            echo "- Candidate is not authoritative until the one-writer publish job succeeds."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Package exact candidate and deferred side effects for one writer
         shell: bash
