@@ -246,6 +246,10 @@ jobs:
           PY
           printf '%s\n' '{"schema_version":"rift.workflow.v1","phase":"request","outcome":"resolved"}' \
             > "$RUNNER_TEMP/rift-runtime-results/workflow-status.json"
+          python3 rift/tools/omega_actions_telemetry.py plugin.selected \
+            --component rift --stage request-resolved --state acquiring \
+            --worker-role rift --worker-label "Rift worker" --worker-state acquiring \
+            --variant-id '${{ steps.request.outputs.variant_id }}' --work-type runtime
 
       - name: Download exact requested plugin artifact
         shell: bash
@@ -357,6 +361,10 @@ jobs:
         run: |
           set +e
           results="$RUNNER_TEMP/rift-runtime-results"
+          python3 ./tools/omega_actions_telemetry.py scan.started \
+            --component rift --stage sandbox-runtime --state scanning \
+            --worker-role rift --worker-label "Rift worker" --worker-state scanning \
+            --variant-id "$VARIANT_ID" --work-type runtime
           bash ./tools/run-rift-bwrap.sh \
             --runtime-dir "$RUNNER_TEMP/rift-runtime" \
             --contract-dir "$RIFT_HOOKS" \
@@ -378,6 +386,12 @@ jobs:
             --cpu-quota 100%
           rc=$?
           echo "$rc" > "$results/rift-exit-code.txt"
+          telemetry_status=complete
+          [[ "$rc" == "0" ]] || telemetry_status=failed
+          python3 ./tools/omega_actions_telemetry.py scan.completed \
+            --component rift --stage sandbox-runtime --state "$telemetry_status" \
+            --worker-role rift --worker-label "Rift worker" --worker-state "$telemetry_status" \
+            --variant-id "$VARIANT_ID" --work-type runtime --result-status "$telemetry_status"
           generated="$results/runtime-report.supervisor-attestation.json"
           if [[ -s "$generated" ]]; then cp "$generated" "$results/supervisor-attestation.json"; fi
           printf '{"schema_version":"rift.workflow.v1","phase":"execution","outcome":"completed","exit_code":%d}\n' "$rc" \
@@ -409,6 +423,11 @@ jobs:
           [[ -s "$results/outer-observer.json" ]] && args+=(--observer "$results/outer-observer.json")
           [[ -s "$results/component-security.json" ]] && args+=(--component-security "$results/component-security.json")
           python3 ./tools/collect-rift-runtime.py "${args[@]}"
+          python3 ./tools/omega_actions_telemetry.py bundle.created \
+            --component rift --stage runtime-observation-bundle --state bundling \
+            --worker-role rift --worker-label "Rift worker" --worker-state bundling \
+            --variant-id '${{ steps.request.outputs.variant_id }}' --work-type runtime \
+            --bundle-id rift-runtime-results --bundle-status complete
 
       - name: Validate request-bound runtime evidence
         if: always() && steps.rift.outcome != 'skipped'
@@ -480,6 +499,11 @@ jobs:
         env:
           ENTRY_MODEL: ${{ inputs.entry_model }}
         run: |
+          python3 rift/tools/omega_actions_telemetry.py workflow.completed \
+            --component rift --stage runtime-result --state '${{ steps.final.outputs.outcome }}' \
+            --worker-role rift --worker-label "Rift worker" --worker-state idle \
+            --variant-id '${{ steps.final.outputs.variant_id }}' --work-type runtime \
+            --result-status '${{ steps.final.outputs.outcome }}'
           {
             echo '## Rift reusable runtime result'
             echo

@@ -262,6 +262,10 @@ jobs:
           echo "plugin=$plugin" >> "$GITHUB_OUTPUT"
           echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
           echo "version=$packaged_version" >> "$GITHUB_OUTPUT"
+          python3 ./tools/omega_actions_telemetry.py plugin.selected \
+            --component rift --stage package-staged --state acquiring \
+            --worker-role rift --worker-label "Rift worker" --worker-state acquiring \
+            --internal-name Omega --version "$packaged_version" --work-type runtime
 
       - name: Execute Omega inside cgroup + Bubblewrap + seccomp
         id: rift
@@ -270,6 +274,10 @@ jobs:
           set +e
           results="$RUNNER_TEMP/rift-results"
           mkdir -p "$results"
+          python3 ./tools/omega_actions_telemetry.py scan.started \
+            --component rift --stage sandbox-runtime --state scanning \
+            --worker-role rift --worker-label "Rift worker" --worker-state scanning \
+            --internal-name Omega --version '${{ steps.stage.outputs.version }}' --work-type runtime
           bash ./tools/run-rift-bwrap.sh \
             --runtime-dir "$RUNNER_TEMP/rift-runtime" \
             --contract-dir "$RIFT_HOOKS" \
@@ -288,6 +296,13 @@ jobs:
             --cpu-quota 100%
           rc=$?
           echo "$rc" > "$results/rift-exit-code.txt"
+          telemetry_status=complete
+          [[ "$rc" == "0" ]] || telemetry_status=failed
+          python3 ./tools/omega_actions_telemetry.py scan.completed \
+            --component rift --stage sandbox-runtime --state "$telemetry_status" \
+            --worker-role rift --worker-label "Rift worker" --worker-state "$telemetry_status" \
+            --internal-name Omega --version '${{ steps.stage.outputs.version }}' --work-type runtime \
+            --result-status "$telemetry_status"
           printf '{"schema_version":"rift.workflow.v1","phase":"execution","outcome":"completed","exit_code":%d}\n' "$rc" > "$results/workflow-status.json"
           cp "$RUNNER_TEMP/omega-input/acquisition.json" "$results/acquisition.json"
           cp "$RUNNER_TEMP/omega-input/Omega.zip.sha256" "$results/Omega.zip.sha256"
@@ -374,6 +389,11 @@ jobs:
             --observer "$results/rift-omega-observer.json" \
             --component-security "$results/component-security.json" \
             --out "$results/omega-collector-rift-runtime.json"
+          python3 ./tools/omega_actions_telemetry.py bundle.created \
+            --component rift --stage runtime-observation-bundle --state bundling \
+            --worker-role rift --worker-label "Rift worker" --worker-state bundling \
+            --internal-name Omega --version '${{ steps.stage.outputs.version }}' --work-type runtime \
+            --bundle-id rift-omega-results --bundle-status complete
 
       - name: Validate Rift runtime and supervisor attestation
         if: always() && steps.rift.outcome != 'skipped'
@@ -393,6 +413,13 @@ jobs:
         shell: bash
         run: |
           results="$RUNNER_TEMP/rift-results"
+          telemetry_status=complete
+          [[ '${{ steps.rift.outputs.exit_code }}' == '0' ]] || telemetry_status=failed
+          python3 ./tools/omega_actions_telemetry.py workflow.completed \
+            --component rift --stage runtime-result --state "$telemetry_status" \
+            --worker-role rift --worker-label "Rift worker" --worker-state idle \
+            --internal-name Omega --version '${{ steps.stage.outputs.version }}' --work-type runtime \
+            --result-status "$telemetry_status"
           {
             echo '## Interdimensional Rift — published Omega'
             echo
