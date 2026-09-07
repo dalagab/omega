@@ -17,11 +17,21 @@ class SigmaScopeLocalQueueWorkerContractTests(unittest.TestCase):
         self.assertIn("\"--history-mode\", \"fast-forward\"", text)
         self.assertIn("\"--expected-parent-sha\", evidence_head", text)
         self.assertIn("if args.push:", text)
-        self.assertIn("if args.push and args.sparse_evidence:", text)
-        self.assertIn("--push cannot be combined with --sparse-evidence", text)
+        self.assertIn("if args.sparse_evidence and args.push:", text)
+        self.assertNotIn("--push cannot be combined with --sparse-evidence", text)
+        self.assertIn("sigmascope_worker_batch.py", text)
+        self.assertIn("sigmascope_result_merger.py", text)
+        self.assertIn("omega-local-frozen-worker@sha256:", text)
+        self.assertIn("security-v2-authoritative", text)
+        self.assertIn('"--input", str(publication_candidate)', text)
+        self.assertIn("keeping result bundles unpublished", text)
         self.assertLess(
-            text.index("if args.push and args.sparse_evidence:"),
-            text.index('phase("fetch catalog-data")'),
+            text.index('phase("build immutable local result bundles")'),
+            text.index('phase("merge local result bundles onto full authoritative Evidence")'),
+        )
+        self.assertLess(
+            text.index('phase("merge local result bundles onto full authoritative Evidence")'),
+            text.index("publication = output(["),
         )
         self.assertIn("--preflight-only", text)
         self.assertIn("--sparse-evidence", text)

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Run a bounded SigmaScope queue batch from a local operator machine.
 
-The local worker intentionally follows the serialized production authority model:
-it reads frozen catalog/Definitions and current Security Evidence, builds and audits
-a candidate locally, then publishes only through the existing fast-forward publisher
-with the exact Evidence parent SHA observed before the scan.
+The local worker intentionally follows the serialized production authority model.
+Sparse workers scan only a bounded read-only Evidence projection and emit immutable
+result bundles. Publication rehydrates the exact full Evidence parent, merges those
+bundles through the serialized result merger, audits the reconstructed full candidate,
+and only then uses the fast-forward publisher with the exact observed parent SHA.
 """
 from __future__ import annotations
 
@@ -187,6 +188,18 @@ def scanner_bundle_sha(definitions: Path) -> str:
     return str(bundle.get("sha256") or "")
 
 
+def local_worker_identity(definitions: Path) -> str:
+    manifest = definitions / "worker" / "manifest.json"
+    return f"omega-local-frozen-worker@sha256:{hashlib.sha256(manifest.read_bytes()).hexdigest()}"
+
+
+def result_bundle_roots(root: Path) -> list[Path]:
+    bundles = sorted(path.parent for path in root.glob("key-*/bundle.json"))
+    if not bundles:
+        raise RuntimeError("local SigmaScope batch produced no immutable result bundles")
+    return bundles
+
+
 def write_queue_keys_for_sparse_view(repo: Path, catalog: Path, evidence_head: str, work: Path, max_scans: int) -> Path:
     metadata = work / "catalog" / "security-v2-metadata"
     if metadata.exists():
@@ -289,13 +302,6 @@ def maybe_run_source_followups(args: argparse.Namespace, work: Path, env: dict[s
 def local_drain(args: argparse.Namespace) -> int:
     repo = args.repo.resolve()
     work = args.work_dir.resolve()
-    # Sparse Evidence is a bounded worker input projection, never publication authority.
-    if args.push and args.sparse_evidence:
-        raise ValueError(
-            "--push cannot be combined with --sparse-evidence: sparse Evidence is a read-only worker "
-            "input projection and cannot be the base of an authoritative candidate. Run without --push "
-            "until serialized result-bundle merge publication is available."
-        )
     validate_windows_work_dir(work, force=args.allow_long_windows_work_dir)
     if args.reconcile_source_followups and not args.push:
         raise ValueError(
@@ -308,7 +314,9 @@ def local_drain(args: argparse.Namespace) -> int:
 
     catalog = work / "catalog" / "active-state"
     current = work / "catalog" / "security-v2-current"
+    authoritative_current = work / "catalog" / "security-v2-authoritative"
     deep = work / "catalog" / "deep-scan-current"
+    sparse_queue_keys: Path | None = None
     try:
         phase("fetch catalog-data")
         catalog_head = export_branch(repo, "catalog-data", catalog)
@@ -366,10 +374,8 @@ def local_drain(args: argparse.Namespace) -> int:
             print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
             return 0
 
-        phase("run production SigmaScope pipeline")
         pipeline = frozen_worker / "tools" / "security" / "production_sigmascope_v2_pipeline.py"
         pipeline_args = [
-            sys.executable, str(pipeline),
             "--base-database", str(work / "catalog" / "security-input" / "omega-catalog.sqlite"),
             "--current-evidence", str(current),
             "--candidate-evidence", str(work / "catalog" / "security-v2-candidate"),
@@ -387,14 +393,47 @@ def local_drain(args: argparse.Namespace) -> int:
             "--advisory-revision", frozen_revision(definitions, "advisoryRevision"),
             "--queue-seed", str(catalog / "scan-queue.json"),
             "--evidence-index-url", f"https://raw.githubusercontent.com/{args.repository or 'dalagab/omega'}/security-evidence-v2/index.json",
-            "--max-scans", str(args.max_scans),
             "--max-batch-seconds", str(args.max_batch_seconds),
             "--internal-names", args.internal_names,
             "--source-overrides", str(frozen_worker / "sources" / "source-overrides.json"),
         ]
         if (deep / "index.json").is_file():
             pipeline_args.extend(["--deep-scan-state", str(deep / "index.json"), "--deep-scan-output", str(work / "catalog" / "security-v2-work" / "deep-scan-state")])
-        run(pipeline_args, cwd=work, env=env)
+        if args.sparse_evidence:
+            if sparse_queue_keys is None:
+                raise RuntimeError("sparse queue keys were not materialized")
+            batch_runner = repo / "tools" / "security" / "sigmascope_worker_batch.py"
+            phase("run exact sparse SigmaScope batch")
+            run([
+                sys.executable, str(batch_runner), "run",
+                "--pipeline", str(pipeline),
+                "--queue-keys-file", str(sparse_queue_keys),
+                "--", *pipeline_args,
+            ], cwd=work, env=env)
+            phase("build immutable local result bundles")
+            bundle_root = work / "catalog" / "local-result-bundles"
+            bundle_result = output([
+                sys.executable, str(batch_runner), "bundles",
+                "--current-evidence", str(current),
+                "--candidate-evidence", str(work / "catalog" / "security-v2-candidate"),
+                "--work-dir", str(work / "catalog" / "security-v2-work"),
+                "--definitions-root", str(definitions),
+                "--queue-keys-file", str(sparse_queue_keys),
+                "--worker-image", local_worker_identity(definitions),
+                "--output-root", str(bundle_root),
+                "--split-work-root", str(work / "catalog" / "local-result-bundle-reports"),
+                "--summary", str(work / "catalog" / "local-result-bundles" / "slot-summary.json"),
+                "--slot", "0",
+                "--lane", "local",
+            ], cwd=work)
+            report["resultBundles"] = json.loads(bundle_result)
+            report["resultBundleRoot"] = str(bundle_root)
+        else:
+            phase("run production SigmaScope pipeline")
+            run([
+                sys.executable, str(pipeline), *pipeline_args,
+                "--max-scans", str(args.max_scans),
+            ], cwd=work, env=env)
 
         phase("generate source followups")
         run([sys.executable, str(frozen_worker / "tools" / "catalog" / "sigmascope_source_followups.py"), "--database", str(work / "catalog" / "security-v2-work" / "omega-security-v2-working.sqlite"), "--output", str(work / "catalog" / "security-v2-work" / "sigmascope-source-followups.json")], cwd=work, env=env)
@@ -405,14 +444,71 @@ def local_drain(args: argparse.Namespace) -> int:
         phase("run storage audit")
         run([sys.executable, str(frozen_worker / "tools" / "security" / "evidence_storage_audit.py"), "--root", str(work / "catalog" / "security-v2-candidate"), "--report", str(work / "catalog" / "security-v2-work" / "evidence-storage-audit.json")], cwd=work, env=env)
 
+        publication_candidate = work / "catalog" / "security-v2-candidate"
+        if args.sparse_evidence and args.push:
+            phase("revalidate authority heads before serialized local merge")
+            current_catalog_head = fetch_branch_ref(repo, "catalog-data")
+            if current_catalog_head != catalog_head:
+                raise RuntimeError(
+                    f"catalog-data moved during local SigmaScope scan: planned={catalog_head} current={current_catalog_head}; "
+                    "keeping result bundles unpublished"
+                )
+            phase("fetch full authoritative security-evidence-v2 for local result merge")
+            authoritative_head = export_branch(repo, "security-evidence-v2", authoritative_current)
+            if authoritative_head != evidence_head:
+                raise RuntimeError(
+                    f"Security Evidence moved during local SigmaScope scan: planned={evidence_head} current={authoritative_head}; "
+                    "keeping result bundles unpublished"
+                )
+            bundle_root = Path(str(report.get("resultBundleRoot") or ""))
+            bundles = result_bundle_roots(bundle_root)
+            publication_candidate = work / "catalog" / "security-v2-merged-candidate"
+            merge_work = work / "catalog" / "security-v2-merge-work"
+            merge_report = work / "catalog" / "local-result-merge-report.json"
+            merge_args = [
+                sys.executable, str(repo / "tools" / "security" / "sigmascope_result_merger.py"),
+                "--current-evidence", str(authoritative_current),
+                "--base-database", str(work / "catalog" / "security-input" / "omega-catalog.sqlite"),
+                "--definitions-root", str(definitions),
+                "--queue-seed", str(catalog / "scan-queue.json"),
+                "--candidate-evidence", str(publication_candidate),
+                "--work-dir", str(merge_work),
+                "--report", str(merge_report),
+                "--deep-scan-output", str(work / "catalog" / "security-v2-work" / "deep-scan-state"),
+                "--source-followup-output", str(work / "catalog" / "security-v2-work" / "sigmascope-source-followups.json"),
+            ]
+            if (deep / "index.json").is_file():
+                merge_args.extend(["--previous-deep-scan-state", str(deep / "index.json")])
+            merge_args.extend(str(bundle) for bundle in bundles)
+            phase("merge local result bundles onto full authoritative Evidence")
+            run(merge_args, cwd=work, env=env)
+            report["merge"] = read_json(merge_report)
+            report["candidate"] = str(publication_candidate)
+            report["mergeWorkDir"] = str(merge_work)
+
+            phase("run merged developer audit")
+            merged_database = merge_work / "omega-security-parallel-merge.sqlite"
+            run([sys.executable, str(frozen_worker / "tools" / "security" / "security_developer_audit.py"), "--database", str(merged_database), "--advisories", str(definitions / "osv-advisories.json"), "--json"], cwd=work, env=env)
+            audit.write_text(output([sys.executable, str(frozen_worker / "tools" / "security" / "security_developer_audit.py"), "--database", str(merged_database), "--advisories", str(definitions / "osv-advisories.json"), "--json"], cwd=work) + "\n", encoding="utf-8")
+            phase("run merged storage audit")
+            run([sys.executable, str(frozen_worker / "tools" / "security" / "evidence_storage_audit.py"), "--root", str(publication_candidate), "--report", str(work / "catalog" / "security-v2-work" / "evidence-storage-audit.json")], cwd=work, env=env)
+
         if args.push:
+            if args.sparse_evidence:
+                phase("revalidate authority heads before local publication")
+                current_catalog_head = fetch_branch_ref(repo, "catalog-data")
+                current_evidence_head = fetch_branch_ref(repo, "security-evidence-v2")
+                if current_catalog_head != catalog_head or current_evidence_head != evidence_head:
+                    raise RuntimeError(
+                        "authoritative inputs moved after local result merge; keeping reconstructed candidate unpublished"
+                    )
             publish_script = frozen_worker / "tools" / "security" / "publish_security_evidence_v2.py"
             publication = output([
                 sys.executable, str(publish_script),
-                "--input", str(work / "catalog" / "security-v2-candidate"),
+                "--input", str(publication_candidate),
                 "--repo", str(repo),
                 "--branch", "security-evidence-v2",
-                "--snapshot-validation-report", str(work / "catalog" / "security-v2-candidate" / "validation-report.json"),
+                "--snapshot-validation-report", str(publication_candidate / "validation-report.json"),
                 "--audit-report", str(audit),
                 "--history-mode", "fast-forward",
                 "--expected-parent-sha", evidence_head,
@@ -427,7 +523,7 @@ def local_drain(args: argparse.Namespace) -> int:
         print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
         return 0
     finally:
-        for path in (catalog, current, deep):
+        for path in (catalog, current, authoritative_current, deep):
             if (path / ".git").exists():
                 remove_worktree(repo, path)
 
@@ -442,7 +538,7 @@ def main() -> int:
     parser.add_argument("--max-scans", type=int, default=20)
     parser.add_argument("--max-batch-seconds", type=int, default=3300)
     parser.add_argument("--internal-names", default="")
-    parser.add_argument("--push", action="store_true", help="Publish the validated candidate with expected-parent protection")
+    parser.add_argument("--push", action="store_true", help="Publish a full candidate, or serialize sparse result bundles onto the exact full Evidence parent")
     parser.add_argument("--sparse-evidence", action=argparse.BooleanOptionalAction, default=True, help="Use a sparse current Evidence view for selected queue keys instead of a full branch worktree")
     parser.add_argument("--preflight-only", action="store_true", help="Fetch frozen inputs, verify worker, materialize local inputs, then stop before scanning")
     parser.add_argument("--reconcile-source-followups", action="store_true", help="Best-effort issue side effect; never gates Evidence publication")
