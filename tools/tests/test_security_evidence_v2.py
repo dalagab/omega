@@ -96,6 +96,8 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             self.assertEqual(index["counts"]["analyses"], 1)
             self.assertEqual(index["counts"]["artifactGroups"], 1)
             self.assertEqual(index["counts"]["nugetPackageVersionPairs"], 1)
+            self.assertIn("pluginDependencies", index["indexes"])
+            self.assertTrue(index["revisions"]["dependencyGraphRevision"].startswith("plugin-deps-v1-"))
             first = json.loads((output / "variants" / "0000" / "1.json").read_text(encoding="utf-8"))
             second = json.loads((output / "variants" / "0000" / "2.json").read_text(encoding="utf-8"))
             self.assertEqual(first["analysis"]["analysisId"], second["analysis"]["analysisId"])
