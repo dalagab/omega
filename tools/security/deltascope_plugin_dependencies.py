@@ -19,6 +19,8 @@ GRAPH_AUTHORITY = "catalog-package-resolution-projection"
 CONTEXT_SCHEMA = "omega.deltascope.plugin-dependency-context.v1"
 PROVIDER_IDENTITY = "stable-plugin-id"
 CONSUMER_IDENTITY = "catalog-variant"
+RECOVERY_SCHEMA = "omega.sigmascope-evidence-recovery.v1"
+DELTASCOPE_VERSION = "4.21.15"
 PACKAGE_RELATIONSHIPS = ("required", "recommended", "optional")
 ALL_RELATIONSHIPS = frozenset((*PACKAGE_RELATIONSHIPS, "observed"))
 MAX_INTEGRATIONS = 100
@@ -412,6 +414,8 @@ def _install_inspector_extensions(cls: Any) -> None:
         return
     original_catalog = cls.table_catalog
     original_special = cls._special_table_rows
+    original_summary = getattr(cls, "summary", None)
+    original_system_context = getattr(cls, "workbench_system_context", None)
 
     def table_catalog(self: Any) -> list[dict[str, Any]]:
         rows = list(original_catalog(self))
@@ -446,27 +450,170 @@ def _install_inspector_extensions(cls: Any) -> None:
     cls.plugin_dependency_context = project_plugin_dependency_context
     cls.table_catalog = table_catalog
     cls._special_table_rows = special_rows
+
+    if callable(original_summary):
+        def summary(self: Any) -> dict[str, Any]:
+            result = dict(original_summary(self))
+            counts = dict(result.get("counts") or {}) if isinstance(result.get("counts"), Mapping) else {}
+            root = self.root if isinstance(getattr(self, "root", None), Mapping) else {}
+            root_counts = root.get("counts") if isinstance(root.get("counts"), Mapping) else {}
+            revisions = root.get("revisions") if isinstance(root.get("revisions"), Mapping) else {}
+            descriptor = _root_descriptor(self)
+            counts["pluginDependencyEdges"] = _int(root_counts.get("pluginDependencyEdges"))
+            counts["pluginDependencyProviders"] = _int(root_counts.get("pluginDependencyProviders"))
+            result["counts"] = counts
+            result["pluginDependencyGraph"] = {
+                "available": bool(descriptor.get("path")),
+                "dependencyGraphRevision": str(revisions.get("dependencyGraphRevision") or ""),
+                "edges": counts["pluginDependencyEdges"],
+                "providers": counts["pluginDependencyProviders"],
+            }
+            return result
+        cls.summary = summary
+
+    if callable(original_system_context):
+        def workbench_system_context(self: Any) -> dict[str, Any]:
+            result = dict(original_system_context(self))
+            root = self.root if isinstance(getattr(self, "root", None), Mapping) else {}
+            revisions = root.get("revisions") if isinstance(root.get("revisions"), Mapping) else {}
+            source = root.get("source") if isinstance(root.get("source"), Mapping) else {}
+            scan = source.get("scan") if isinstance(source.get("scan"), Mapping) else {}
+            recovery = scan.get("recovery") if isinstance(scan.get("recovery"), Mapping) else {}
+            descriptor = _root_descriptor(self)
+            result["pluginDependencyGraph"] = {
+                "available": bool(descriptor.get("path")),
+                "dependencyGraphRevision": str(revisions.get("dependencyGraphRevision") or ""),
+                "path": str(descriptor.get("path") or ""),
+                "records": _int(descriptor.get("records")),
+            }
+            result["evidenceRecovery"] = dict(recovery)
+            return result
+        cls.workbench_system_context = workbench_system_context
+
     cls._deltascope_plugin_dependencies_installed = True
 
 
+def project_evidence_recovery(system_context: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Turn published recovery provenance into an informational System/Operations notice."""
+    context = system_context if isinstance(system_context, Mapping) else {}
+    raw = context.get("evidenceRecovery") if isinstance(context.get("evidenceRecovery"), Mapping) else {}
+    if not raw:
+        return {
+            "available": False,
+            "securityEvent": False,
+            "authorityRepair": False,
+        }
+    schema = str(raw.get("schema") or "")
+    mode = str(raw.get("mode") or "")
+    new_scans = _int(raw.get("newScans"))
+    if mode == "forward-retained-current-wins":
+        headline = "Evidence authority repaired from retained full-tree history"
+        if new_scans == 0:
+            detail = "Current data won where newer. 0 new scans were performed during recovery."
+        else:
+            detail = f"Current data won where newer. {new_scans} new scan(s) were performed during recovery."
+    else:
+        headline = "Evidence recovery publication is active"
+        detail = f"Published recovery mode: {mode or 'unspecified'}."
+    return {
+        "available": True,
+        "schema": schema,
+        "recognizedSchema": schema == RECOVERY_SCHEMA,
+        "mode": mode,
+        "newScans": new_scans,
+        "retainedEvidenceRevision": str(raw.get("retainedEvidenceRevision") or ""),
+        "retainedIndexSha256": str(raw.get("retainedIndexSha256") or ""),
+        "headline": headline,
+        "detail": detail,
+        "securityEvent": False,
+        "authorityRepair": mode == "forward-retained-current-wins",
+        "readOnly": True,
+        "mutationAuthority": "none",
+    }
+
+
+def _install_workbench_extensions(module: Any) -> None:
+    if getattr(module, "_deltascope_42115_plugin_dependency_system_installed", False):
+        return
+    original = module.project_system_status
+
+    def project_system_status(
+        system_context: Mapping[str, Any] | None,
+        provenance: Mapping[str, Any] | None,
+    ) -> dict[str, Any]:
+        result = dict(original(system_context, provenance))
+        context = system_context if isinstance(system_context, Mapping) else {}
+        evidence = context.get("evidence") if isinstance(context.get("evidence"), Mapping) else {}
+        revisions = evidence.get("revisions") if isinstance(evidence.get("revisions"), Mapping) else {}
+        projected_revisions = dict(result.get("revisions") or {}) if isinstance(result.get("revisions"), Mapping) else {}
+        projected_revisions["dependencyGraphRevision"] = str(revisions.get("dependencyGraphRevision") or "")
+        result["revisions"] = projected_revisions
+        graph = context.get("pluginDependencyGraph") if isinstance(context.get("pluginDependencyGraph"), Mapping) else {}
+        result["pluginDependencyGraph"] = dict(graph)
+        recovery = project_evidence_recovery(context)
+        result["evidenceRecovery"] = recovery
+        result["compatibilityVersion"] = DELTASCOPE_VERSION
+
+        checks = [dict(row) for row in result.get("checks") or [] if isinstance(row, Mapping)]
+        checks.append({
+            "code": "dependency.graph",
+            "label": "Plugin dependency graph",
+            "status": "pass" if graph.get("available") else "warn",
+            "detail": str(
+                projected_revisions.get("dependencyGraphRevision")
+                or "not published in this Evidence snapshot"
+            ),
+        })
+        result["checks"] = checks
+
+        # The original System projection revision predates this compatibility contract.
+        # Recompute it over the augmented deterministic payload so graph/recovery changes
+        # cannot leave the System projection ID unchanged.
+        stable_core = {
+            key: value for key, value in result.items()
+            if key not in {
+                "schema", "projectionRevision", "readOnly", "mutationAuthority",
+                "authoritativeChangeBoundary",
+            }
+        }
+        if hasattr(module, "_stable_id"):
+            result["projectionRevision"] = module._stable_id("system", stable_core)
+        return result
+
+    module.project_system_status = project_system_status
+    module._deltascope_42115_plugin_dependency_system_installed = True
+
+
 _DEPENDENCY_CSS = r"""
-.plugin-dependency-shell{margin-top:14px;border-top:1px solid #d9dde2;padding-top:14px}.plugin-dependency-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.plugin-dependency-head h4{margin:0 0 5px}.plugin-dependency-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.plugin-dependency-box{border:1px solid #d9dde2;background:#fff;padding:12px}.plugin-dependency-box h5{margin:0 0 8px;font-size:13px}.plugin-dependency-group{margin-top:9px}.plugin-dependency-group:first-child{margin-top:0}.plugin-dependency-group-title{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#525252;margin-bottom:5px}.plugin-dependency-row{padding:7px 0;border-top:1px solid #e8e8e8}.plugin-dependency-row:first-child{border-top:0}.plugin-dependency-row b{display:block}.plugin-dependency-meta{font-size:10px;color:#525252}.plugin-dependency-boundary{margin-top:10px;border-left:4px solid #0f62fe;background:#edf5ff;padding:10px}.plugin-dependency-empty{padding:10px;background:#f4f4f4;color:#525252}.plugin-dependency-raw{margin-top:10px}@media(max-width:900px){.plugin-dependency-grid{grid-template-columns:1fr}}
+.plugin-dependency-shell{margin-top:14px;border-top:1px solid #d9dde2;padding-top:14px}.plugin-dependency-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.plugin-dependency-head h4{margin:0 0 5px}.plugin-dependency-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.plugin-dependency-box{border:1px solid #d9dde2;background:#fff;padding:12px}.plugin-dependency-box h5{margin:0 0 8px;font-size:13px}.plugin-dependency-group{margin-top:9px}.plugin-dependency-group:first-child{margin-top:0}.plugin-dependency-group-title{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#525252;margin-bottom:5px}.plugin-dependency-row{padding:7px 0;border-top:1px solid #e8e8e8}.plugin-dependency-row:first-child{border-top:0}.plugin-dependency-row b{display:block}.plugin-dependency-meta{font-size:10px;color:#525252}.plugin-dependency-boundary{margin-top:10px;border-left:4px solid #0f62fe;background:#edf5ff;padding:10px}.plugin-dependency-empty{padding:10px;background:#f4f4f4;color:#525252}.plugin-dependency-raw{margin-top:10px}.evidence-recovery-banner{margin:10px 0;padding:11px 12px;border-left:4px solid #24a148;background:#defbe6}.evidence-recovery-banner b{display:block;margin-bottom:4px}.evidence-recovery-banner code{overflow-wrap:anywhere}@media(max-width:900px){.plugin-dependency-grid{grid-template-columns:1fr}}
 """
 
 _DEPENDENCY_JS = r"""
 setTimeout(function(){
  if(window.__deltascopePluginDependenciesInstalled)return;window.__deltascopePluginDependenciesInstalled=true;
  var style=document.createElement('style');style.textContent=__DEPENDENCY_CSS__;document.head.appendChild(style);
- var baseLoad=window.loadAssetRelationships;
+ var baseLoad=window.loadAssetRelationships,baseRelationshipCatalog=window.renderRelationshipCatalog,baseSystemStatus=window.renderSystemStatus,baseOperationalSystem=window.renderOperationalSystemPages;
  if(typeof baseLoad!=='function')return;
- function relationRows(rows,direction){if(!Array.isArray(rows)||!rows.length)return'<div class="muted small">none</div>';return rows.map(function(x){var name=direction==='reverse'?(x.consumerInternalName||`plugin ${x.consumerPluginId||'?'}`):(x.providerInternalName||`plugin ${x.providerPluginId||'?'}`),constraint=x.versionConstraint?` · ${esc(x.versionConstraint)}`:'',status=[x.resolutionStatus,x.versionStatus].filter(Boolean).join(' / '),target=x.preferredVariantId?` · current Evidence variant ${fmt(x.preferredVariantId)}`:'';return `<div class=plugin-dependency-row><b>${esc(name)}</b><div class=plugin-dependency-meta>${esc(x.relationship||'observed')}${constraint}${target}</div>${status?`<div class=plugin-dependency-meta>${esc(status)}</div>`:''}</div>`}).join('')}
+ function openDependencyVariant(id){id=Number(id||0);if(!id)return;if(typeof clearPivotContext==='function')clearPivotContext();if(typeof setWorkbenchView==='function')setWorkbenchView('assets');if(typeof loadDetail==='function')loadDetail(id,'relationships')}
+ function relationRows(rows,direction){if(!Array.isArray(rows)||!rows.length)return'<div class="muted small">none</div>';return rows.map(function(x){var name=direction==='reverse'?(x.consumerInternalName||`plugin ${x.consumerPluginId||'?'}`):(x.providerInternalName||`plugin ${x.providerPluginId||'?'}`),constraint=x.versionConstraint?` · ${esc(x.versionConstraint)}`:'',status=[x.resolutionStatus,x.versionStatus].filter(Boolean).join(' / '),target=x.preferredVariantId?` · current Evidence variant ${fmt(x.preferredVariantId)}`:'',label=x.preferredVariantId?`<button class=linkbutton data-dependency-variant="${Number(x.preferredVariantId)}">${esc(name)}</button>`:`<b>${esc(name)}</b>`;return `<div class=plugin-dependency-row>${label}<div class=plugin-dependency-meta>${esc(x.relationship||'observed')}${constraint}${target}</div>${status?`<div class=plugin-dependency-meta>${esc(status)}</div>`:''}</div>`}).join('')}
  function groups(obj,direction){return [['Required',obj?.required||[]],['Recommended',obj?.recommended||[]],['Optional',obj?.optional||[]]].map(function(pair){return `<div class=plugin-dependency-group><div class=plugin-dependency-group-title>${pair[0]}</div>${relationRows(pair[1],direction)}</div>`}).join('')}
  function integrationHtml(i){if(!i?.available)return `<div class=research-error>${esc(i?.error||'IPC evidence unavailable.')}</div>`;if(!(i.rows||[]).length)return'<div class="muted small">No IPC integration relationships are retained for this variant.</div>';return evidence(i.rows||[])}
  function componentHtml(c){if(!c?.available)return `<div class=research-error>${esc(c?.error||'Component relationship evidence unavailable.')}</div>`;if(!(c.rows||[]).length)return'<div class="muted small">No dependency components are retained for this variant.</div>';return evidence(c.rows||[])}
- function dependencyHtml(r){var g=r.graph||{},req=r.requires||{},rev=r.requiredBy||{},empty=g.globallyEmpty?`<div class=plugin-dependency-empty>${esc(r.message||'No normalized plugin dependency relationships are currently published.')}</div>`:'',observed=(req.observedPackageRelationships||[]).length?`<details><summary>Observed package relationships that are not Required / Recommended / Optional</summary>${evidence(req.observedPackageRelationships)}</details>`:'';return `<section class=plugin-dependency-shell><div class=plugin-dependency-head><div><h4>Plugin dependency graph</h4><div class="muted small">${esc(r.message||'')}</div></div><span class=pill>${g.available?`${fmt(g.counts?.edges||0)} edges · ${fmt(g.counts?.providers||0)} providers`:'GRAPH UNAVAILABLE'}</span></div>${empty}<div class=plugin-dependency-grid><div class=plugin-dependency-box><h5>Requires</h5><div class="muted small">Only normalized plugin-dependency edges can appear here.</div>${groups(req,'forward')}${observed}</div><div class=plugin-dependency-box><h5>Required by</h5><div class="muted small">Consumers resolved against this plugin's stable plugin identity.</div>${groups(rev,'reverse')}</div><div class=plugin-dependency-box><h5>Integrations</h5><div class="muted small">IPC relationships. Integration evidence is not a package requirement.</div>${integrationHtml(r.integrations||{})}</div><div class=plugin-dependency-box><h5>Components</h5><div class="muted small">NuGet/native/framework/assembly observations. Components are not plugin package requirements.</div>${componentHtml(r.components||{})}</div></div><div class=plugin-dependency-boundary><b>Relationship authority boundary</b><div class="small">IPC is explicitly <code>ipcIsPackageDependency=false</code>. DeltaScope will never display “A requires B” from IPC alone. Package requirements come only from <code>indexes.pluginDependencies</code>. Omega owns package management; DeltaScope is investigation/navigation only.</div></div><details class="plugin-dependency-raw technical-detail"><summary>Raw plugin dependency context</summary>${evidence(r)}</details></section>`}
- async function appendPluginDependencies(id,pane){var target=pane?.querySelector?.('[data-asset-relationships]');if(!target||target.querySelector('.plugin-dependency-shell'))return;var host=document.createElement('div');host.innerHTML='<div class=workspace-empty>Loading normalized plugin dependency relationships…</div>';target.appendChild(host);try{var r=await api('/api/plugin-dependencies?variant_id='+encodeURIComponent(id));host.innerHTML=dependencyHtml(r)}catch(e){host.innerHTML=`<div class=research-error><b>Plugin dependency graph unavailable</b><div>${esc(e.message)}</div></div>`}}
+ function dependencyHtml(r){var g=r.graph||{},req=r.requires||{},rev=r.requiredBy||{},empty=g.globallyEmpty?`<div class=plugin-dependency-empty>${esc(r.message||'No normalized plugin dependency relationships are currently published.')}</div>`:'',observed=(req.observedPackageRelationships||[]).length?`<details><summary>Observed package relationships that are not Required / Recommended / Optional</summary>${evidence(req.observedPackageRelationships)}</details>`:'';return `<section class=plugin-dependency-shell><div class=plugin-dependency-head><div><h4>Plugin dependency graph</h4><div class="muted small">${esc(r.message||'')}</div></div><span class=pill>${g.available?`${fmt(g.counts?.edges||0)} edges · ${fmt(g.counts?.providers||0)} providers`:'GRAPH UNAVAILABLE'}</span></div>${empty}<div class=plugin-dependency-grid><div class=plugin-dependency-box><h5>Requires</h5><div class="muted small">Only normalized plugin-dependency edges can appear here. Click a resolved plugin to investigate it.</div>${groups(req,'forward')}${observed}</div><div class=plugin-dependency-box><h5>Required by</h5><div class="muted small">Consumers resolved against this plugin's stable plugin identity. Click a consumer to investigate it.</div>${groups(rev,'reverse')}</div><div class=plugin-dependency-box><h5>Integrations</h5><div class="muted small">IPC relationships. Integration evidence is not a package requirement.</div>${integrationHtml(r.integrations||{})}</div><div class=plugin-dependency-box><h5>Components</h5><div class="muted small">NuGet/native/framework/assembly observations. Components are not plugin package requirements.</div>${componentHtml(r.components||{})}</div></div><div class=plugin-dependency-boundary><b>Relationship authority boundary</b><div class="small">IPC is explicitly <code>ipcIsPackageDependency=false</code>. DeltaScope will never display “A requires B” from IPC alone. Package requirements come only from <code>indexes.pluginDependencies</code>. Omega owns package management; DeltaScope is investigation/navigation only.</div></div><details class="plugin-dependency-raw technical-detail"><summary>Raw plugin dependency context</summary>${evidence(r)}</details></section>`}
+ function wireDependencyLinks(host){host?.querySelectorAll?.('[data-dependency-variant]').forEach(function(x){x.addEventListener('click',()=>openDependencyVariant(x.dataset.dependencyVariant))})}
+ async function appendPluginDependencies(id,pane){var target=pane?.querySelector?.('[data-asset-relationships]');if(!target||target.querySelector('.plugin-dependency-shell'))return;var host=document.createElement('div');host.innerHTML='<div class=workspace-empty>Loading normalized plugin dependency relationships…</div>';target.appendChild(host);try{var r=await api('/api/plugin-dependencies?variant_id='+encodeURIComponent(id));host.innerHTML=dependencyHtml(r);wireDependencyLinks(host)}catch(e){host.innerHTML=`<div class=research-error><b>Plugin dependency graph unavailable</b><div>${esc(e.message)}</div></div>`}}
  window.loadAssetRelationships=async function(id,pane){await baseLoad(id,pane);await appendPluginDependencies(id,pane)};
  loadAssetRelationships=window.loadAssetRelationships;
+ function markedCard(label,value,action={},hint=''){return card(label,value,action,hint).replace('<div class="card','<div data-delta-plugin-dependency-metric class="card')}
+ function refreshDependencyAllMetrics(){var host=document.getElementById('allMetricCards'),c=window.currentSummary?.counts||currentSummary?.counts||{};if(!host)return;host.querySelectorAll('[data-delta-plugin-dependency-metric]').forEach(x=>x.remove());host.insertAdjacentHTML('beforeend',markedCard('Plugin dependency edges',c.pluginDependencyEdges||0,{table:'v2_plugin_dependencies'},'normalized plugin package relationships')+markedCard('Dependency providers',c.pluginDependencyProviders||0,{table:'v2_plugin_dependency_providers'},'stable provider plugin identities'));if(typeof wireMetricCards==='function')wireMetricCards(host)}
+ function renderExplicitIntelligenceCards(c){var host=document.getElementById('intelligenceCards'),counts=c?.counts||{},caps=c?.capabilityCoverage||{},s=window.currentSummary?.counts||currentSummary?.counts||{};if(!host||typeof card!=='function')return;host.innerHTML=card('Observed endpoints',counts.endpoints||0)+card('Behavior pivots',caps.exactCompactCapabilityCount||caps.boundedBehaviorSignalCount||0)+card('Source families',counts.families||0)+card('Authors',counts.authors||0)+card('Plugin dependency edges',s.pluginDependencyEdges||0,{table:'v2_plugin_dependencies'},'normalized package relationships')+card('Dependency providers',s.pluginDependencyProviders||0,{table:'v2_plugin_dependency_providers'},'stable provider identities')+card('Dependency components',s.dependencyComponents||0,{table:'v2_dependency_components'},'NuGet/native/framework/assembly observations')+card('IPC providers',s.ipcProviders||0,{table:'v2_ipc_providers'},'integration providers; not package requirements')+card('Known advisories',s.advisories||0,{table:'v2_advisories'},'frozen advisory matches');if(typeof wireMetricCards==='function')wireMetricCards(host);refreshDependencyAllMetrics()}
+ if(typeof baseRelationshipCatalog==='function'){window.renderRelationshipCatalog=function(c){baseRelationshipCatalog(c);renderExplicitIntelligenceCards(c)};renderRelationshipCatalog=window.renderRelationshipCatalog}
+ function recoveryBanner(s){var r=s?.evidenceRecovery||{};if(!r.available)return'';var rev=r.retainedEvidenceRevision?`<div class="muted tiny">retained Evidence ${esc(r.retainedEvidenceRevision)}</div>`:'';return `<div class=evidence-recovery-banner data-evidence-recovery-banner><span class=pill>AUTHORITY REPAIR · NOT A SECURITY EVENT</span><b>${esc(r.headline||'Evidence recovery publication')}</b><div class=small>${esc(r.detail||'')}</div>${rev}</div>`}
+ function decorateOperationalSystem(s){var host=document.getElementById('opsEvidenceChecks');if(host){host.querySelectorAll('[data-evidence-recovery-banner]').forEach(x=>x.remove());var html=recoveryBanner(s);if(html)host.insertAdjacentHTML('afterbegin',html)}var revisions=document.getElementById('opsEvidenceRevision');if(revisions){revisions.querySelectorAll('[data-dependency-graph-revision]').forEach(x=>x.remove());var rev=s?.revisions?.dependencyGraphRevision;if(rev)revisions.insertAdjacentHTML('beforeend',`<div data-dependency-graph-revision class="muted small" style="margin-top:10px"><b>Dependency graph</b> <code>${esc(rev)}</code></div>`)}}
+ function decorateSystem(s){var host=document.getElementById('systemChecks');if(host){host.querySelectorAll('[data-evidence-recovery-banner]').forEach(x=>x.remove());var html=recoveryBanner(s);if(html)host.insertAdjacentHTML('afterbegin',html)}}
+ if(typeof baseOperationalSystem==='function'){window.renderOperationalSystemPages=function(s){baseOperationalSystem(s);decorateOperationalSystem(s)};renderOperationalSystemPages=window.renderOperationalSystemPages}
+ if(typeof baseSystemStatus==='function'){window.renderSystemStatus=function(s){baseSystemStatus(s);decorateSystem(s)};renderSystemStatus=window.renderSystemStatus}
+ refreshDependencyAllMetrics();
 },0);
 """
 
@@ -487,12 +634,15 @@ def install() -> None:
     """Install the graph consumer into the existing read-only DeltaScope process."""
     import developer_view
     import evidence_v2_inspector
+    import deltascope_workbench
 
     if getattr(developer_view, "_deltascope_plugin_dependencies_installed", False):
         return
 
     _install_inspector_extensions(evidence_v2_inspector.V2SigmascopeInspector)
+    _install_workbench_extensions(deltascope_workbench)
     developer_view.HTML = _patch_html(developer_view.HTML)
+    developer_view.AppHandler.server_version = f"OmegaDeltaScope/{DELTASCOPE_VERSION}"
     original_get = developer_view.AppHandler.do_GET
 
     def patched_get(self: Any) -> None:

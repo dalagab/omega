@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 import unittest
+import types
 
 SECURITY = Path(__file__).resolve().parents[1] / "security"
 if str(SECURITY) not in sys.path:
@@ -269,6 +270,124 @@ class DeltaScopePluginDependencyTests(unittest.TestCase):
         self.assertIn("IPC is explicitly", patched)
         self.assertIn("Package requirements come only from", patched)
         self.assertIn("NuGet/native/framework/assembly observations", patched)
+
+
+    def test_inspector_extensions_publish_dependency_counts_and_recovery_context(self):
+        class InspectorClass(FakeInspector):
+            def summary(self):
+                return {"counts": {"dependencyComponents": 5, "ipcProviders": 2, "advisories": 1}}
+
+            def workbench_system_context(self):
+                return {
+                    "evidence": {
+                        "schema": "omega.security-evidence.v2",
+                        "revisions": dict(self.root.get("revisions") or {}),
+                        "counts": dict(self.root.get("counts") or {}),
+                    }
+                }
+
+        deps._install_inspector_extensions(InspectorClass)
+        inspector = InspectorClass(nonempty_graph())
+        inspector.root["source"] = {
+            "scan": {
+                "recovery": {
+                    "schema": deps.RECOVERY_SCHEMA,
+                    "mode": "forward-retained-current-wins",
+                    "newScans": 0,
+                    "retainedEvidenceRevision": "ev-v2-retained",
+                    "retainedIndexSha256": "b" * 64,
+                }
+            }
+        }
+        summary = inspector.summary()
+        self.assertEqual(3, summary["counts"]["pluginDependencyEdges"])
+        self.assertEqual(3, summary["counts"]["pluginDependencyProviders"])
+        self.assertEqual("plugin-deps-v1-test", summary["pluginDependencyGraph"]["dependencyGraphRevision"])
+        context = inspector.workbench_system_context()
+        self.assertEqual("forward-retained-current-wins", context["evidenceRecovery"]["mode"])
+        self.assertEqual("plugin-deps-v1-test", context["pluginDependencyGraph"]["dependencyGraphRevision"])
+
+    def test_system_projection_exposes_dependency_revision_and_recovery_as_authority_repair(self):
+        fake = types.SimpleNamespace(
+            project_system_status=lambda _context, _provenance: {
+                "schema": "omega.deltascope.system-status.v1",
+                "revisions": {"evidenceRevision": "ev-current"},
+                "checks": [],
+                "projectionRevision": "legacy-system",
+            },
+            _stable_id=lambda prefix, payload: (
+                prefix + "-" + str((payload.get("revisions") or {}).get("dependencyGraphRevision") or "none")
+            ),
+        )
+        deps._install_workbench_extensions(fake)
+        context = {
+            "evidence": {
+                "revisions": {
+                    "evidenceRevision": "ev-current",
+                    "dependencyGraphRevision": "plugin-deps-v1-test",
+                }
+            },
+            "pluginDependencyGraph": {
+                "available": True,
+                "dependencyGraphRevision": "plugin-deps-v1-test",
+            },
+            "evidenceRecovery": {
+                "schema": deps.RECOVERY_SCHEMA,
+                "mode": "forward-retained-current-wins",
+                "newScans": 0,
+                "retainedEvidenceRevision": "ev-retained",
+                "retainedIndexSha256": "c" * 64,
+            },
+        }
+        first = fake.project_system_status(context, {})
+        self.assertEqual("plugin-deps-v1-test", first["revisions"]["dependencyGraphRevision"])
+        self.assertEqual("pass", next(x for x in first["checks"] if x["code"] == "dependency.graph")["status"])
+        context["evidence"]["revisions"]["dependencyGraphRevision"] = "plugin-deps-v1-next"
+        context["pluginDependencyGraph"]["dependencyGraphRevision"] = "plugin-deps-v1-next"
+        second = fake.project_system_status(context, {})
+        self.assertNotEqual(first["projectionRevision"], second["projectionRevision"])
+        result = first
+        self.assertTrue(result["evidenceRecovery"]["authorityRepair"])
+        self.assertFalse(result["evidenceRecovery"]["securityEvent"])
+        self.assertIn("retained full-tree history", result["evidenceRecovery"]["headline"])
+        self.assertEqual(
+            "Current data won where newer. 0 new scans were performed during recovery.",
+            result["evidenceRecovery"]["detail"],
+        )
+        self.assertEqual("4.21.15", result["compatibilityVersion"])
+
+    def test_dependency_ui_links_plugins_and_adds_explicit_intelligence_counters(self):
+        patched = deps._patch_html(
+            "<html><script>function loadAssetRelationships(){};"
+            "function renderRelationshipCatalog(){};"
+            "function renderSystemStatus(){};"
+            "function renderOperationalSystemPages(){}</script></html>"
+        )
+        self.assertIn("data-dependency-variant", patched)
+        self.assertIn("loadDetail(id,'relationships')", patched)
+        self.assertIn("Plugin dependency edges", patched)
+        self.assertIn("Dependency providers", patched)
+        self.assertIn("Dependency components", patched)
+        self.assertIn("IPC providers", patched)
+        self.assertIn("Known advisories", patched)
+
+    def test_recovery_ui_is_system_operations_context_not_security_event(self):
+        patched = deps._patch_html(
+            "<html><script>function loadAssetRelationships(){};"
+            "function renderSystemStatus(){};"
+            "function renderOperationalSystemPages(){}</script></html>"
+        )
+        self.assertIn("AUTHORITY REPAIR · NOT A SECURITY EVENT", patched)
+        recovery = deps.project_evidence_recovery({
+            "evidenceRecovery": {
+                "schema": deps.RECOVERY_SCHEMA,
+                "mode": "forward-retained-current-wins",
+                "newScans": 0,
+            }
+        })
+        self.assertEqual("Evidence authority repaired from retained full-tree history", recovery["headline"])
+        self.assertFalse(recovery["securityEvent"])
+        self.assertIn("Dependency graph", patched)
 
     def test_entrypoint_installs_dependency_graph_compatibility(self):
         entrypoint = SECURITY / "deltascope.py"
