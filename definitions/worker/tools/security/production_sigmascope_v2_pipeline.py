@@ -56,6 +56,7 @@ from migrate_security_evidence_v2 import (  # noqa: E402
     _export_identity_index,
     _export_ipc_index,
     _export_nuget_index,
+    _export_plugin_dependency_graph,
     _export_workbench_relationship_index,
     migrate,
 )
@@ -1103,7 +1104,7 @@ def _evidence_revision(candidate: Path, index_entries: dict[str, dict[str, Any]]
     semantic_indexes = {
         name: str(entry.get("sha256") or "")
         for name, entry in sorted(index_entries.items())
-        if name in {"nuget", "ipc", "dependencyComponents", "advisories"}
+        if name in {"nuget", "pluginDependencies", "ipc", "dependencyComponents", "advisories"}
     }
     digest = sha256_bytes(canonical_json_bytes({
         "schema": "omega.security-evidence.revision.v2",
@@ -1134,6 +1135,7 @@ def rebuild_candidate_indexes(
         db.row_factory = sqlite3.Row
         identity_entry = _export_identity_index(db, candidate)
         nuget_entry, nuget_count = _export_nuget_index(db, candidate)
+        plugin_dependency_entry, plugin_dependency_edge_count, plugin_dependency_provider_count, dependency_graph_revision = _export_plugin_dependency_graph(db, candidate)
         ipc_entry, ipc_count = _export_ipc_index(db, candidate)
         component_entry, component_count = _export_global_table(db, candidate, "plugin_security_dependency_components", "dependency-components")
         advisory_entry, advisory_count = _export_global_table(db, candidate, "plugin_security_dependency_advisory_matches", "advisories")
@@ -1144,6 +1146,7 @@ def rebuild_candidate_indexes(
             "plugins": plugins_entry,
             "artifacts": artifacts_entry,
             "nuget": nuget_entry,
+            "pluginDependencies": plugin_dependency_entry,
             "ipc": ipc_entry,
             "dependencyComponents": component_entry,
             "advisories": advisory_entry,
@@ -1163,6 +1166,7 @@ def rebuild_candidate_indexes(
             ("security_revision_candidate", security_revision),
             ("evidence_revision", evidence_revision),
             ("evidence_revision_candidate", evidence_revision),
+            ("dependency_graph_revision", dependency_graph_revision),
             ("catalog_revision", catalog_revision),
             ("catalog_revision_candidate", catalog_revision),
             ("sigmascope_name", sigmascope.SIGMASCOPE_NAME),
@@ -1204,6 +1208,7 @@ def rebuild_candidate_indexes(
             "artifactAnalysisRevision": scan_context.get("artifactAnalysisRevision", ""),
             "sourceAnalysisRevision": scan_context.get("sourceAnalysisRevision", ""),
             "advisoryRevision": scan_context.get("advisoryRevision", ""),
+            "dependencyGraphRevision": dependency_graph_revision,
             "observationContractRevision": observation_projection.contract_revision(),
             "projectionContractRevision": observation_projection.projection_contract_revision(),
             "securityRevision": security_revision,
@@ -1219,6 +1224,8 @@ def rebuild_candidate_indexes(
             "analyses": analysis_count,
             "artifactGroups": artifact_count,
             "nugetPackageVersionPairs": nuget_count,
+            "pluginDependencyEdges": plugin_dependency_edge_count,
+            "pluginDependencyProviders": plugin_dependency_provider_count,
             "ipcProviders": ipc_count,
             "dependencyComponents": component_count,
             "advisories": advisory_count,

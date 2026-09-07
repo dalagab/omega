@@ -34,10 +34,13 @@ import tempfile
 from typing import Any, Iterable, Sequence
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
+CATALOG_DIR = SCRIPT_DIR.parent / "catalog"
+for import_root in (SCRIPT_DIR, CATALOG_DIR):
+    if str(import_root) not in sys.path:
+        sys.path.insert(0, str(import_root))
 
 from security_evidence_download import default_cache_dir, download_current_database  # noqa: E402
+import plugin_dependency_graph  # noqa: E402
 from security_evidence_v2 import (  # noqa: E402
     CORE_DATASETS,
     DEFAULT_CHUNK_BYTES,
@@ -451,6 +454,18 @@ def _export_nuget_index(db: sqlite3.Connection, output: Path) -> tuple[dict[str,
     path = output / "indexes" / "nuget.json"
     _write_json(path, payload)
     return file_entry(output, path, records=len(packages), encoding="json"), len(packages)
+
+
+def _export_plugin_dependency_graph(db: sqlite3.Connection, output: Path) -> tuple[dict[str, Any], int, int, str]:
+    graph = plugin_dependency_graph.build_graph(db)
+    path = output / "indexes" / "plugin-dependencies.json"
+    _write_json(path, graph)
+    return (
+        file_entry(output, path, records=int((graph.get("counts") or {}).get("edges") or 0), encoding="json"),
+        int((graph.get("counts") or {}).get("edges") or 0),
+        int((graph.get("counts") or {}).get("providers") or 0),
+        str(graph.get("dependencyGraphRevision") or ""),
+    )
 
 
 def _export_ipc_index(db: sqlite3.Connection, output: Path) -> tuple[dict[str, Any], int]:
@@ -910,6 +925,7 @@ def migrate(
 
         identity_entry = _export_identity_index(db, output)
         nuget_entry, nuget_count = _export_nuget_index(db, output)
+        plugin_dependency_entry, plugin_dependency_edge_count, plugin_dependency_provider_count, dependency_graph_revision = _export_plugin_dependency_graph(db, output)
         ipc_entry, ipc_count = _export_ipc_index(db, output)
         component_entry, component_count = _export_global_table(db, output, "plugin_security_dependency_components", "dependency-components")
         advisory_entry, advisory_count = _export_global_table(db, output, "plugin_security_dependency_advisory_matches", "advisories")
@@ -957,6 +973,7 @@ def migrate(
                 "catalogRevision": meta.get("catalog_revision", meta.get("catalog_revision_candidate", "")),
                 "securityRevision": meta.get("security_revision", ""),
                 "evidenceRevision": meta.get("evidence_revision", ""),
+                "dependencyGraphRevision": dependency_graph_revision,
                 "observationContractRevision": observation_projection.contract_revision(),
                 "projectionContractRevision": observation_projection.projection_contract_revision(),
             },
@@ -965,6 +982,8 @@ def migrate(
                 "analyses": len(analysis_paths),
                 "artifactGroups": len(artifact_map),
                 "nugetPackageVersionPairs": nuget_count,
+                "pluginDependencyEdges": plugin_dependency_edge_count,
+                "pluginDependencyProviders": plugin_dependency_provider_count,
                 "ipcProviders": ipc_count,
                 "dependencyComponents": component_count,
                 "advisories": advisory_count,
@@ -975,6 +994,7 @@ def migrate(
                 "plugins": plugins_entry,
                 "artifacts": artifacts_entry,
                 "nuget": nuget_entry,
+                "pluginDependencies": plugin_dependency_entry,
                 "ipc": ipc_entry,
                 "dependencyComponents": component_entry,
                 "advisories": advisory_entry,
