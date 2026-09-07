@@ -1,54 +1,82 @@
 # Omega
 
-[![Omega client regression tests](https://github.com/dalagab/omega/actions/workflows/regression-tests.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/regression-tests.yml)
-[![Publish Omega release](https://github.com/dalagab/omega/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/release.yml)
-[![Daily catalog launcher](https://github.com/dalagab/omega/actions/workflows/catalog-builder.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/catalog-builder.yml)
-[![Source submission launcher](https://github.com/dalagab/omega/actions/workflows/source-submissions.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/source-submissions.yml)
+[![Client regression tests](https://github.com/dalagab/omega/actions/workflows/regression-tests.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/regression-tests.yml)
+[![Release publisher](https://github.com/dalagab/omega/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/release.yml)
+[![Catalog refresh launcher](https://github.com/dalagab/omega/actions/workflows/catalog-builder.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/catalog-builder.yml)
+[![Source submission intake](https://github.com/dalagab/omega/actions/workflows/source-submissions.yml/badge.svg?branch=main)](https://github.com/dalagab/omega/actions/workflows/source-submissions.yml)
 
-**Omega is a plugin marketplace for Dalamud.**
+**Omega is a Dalamud plugin marketplace and discovery layer.**
 
-Think of it like this:
+Omega helps users find public Dalamud plugins, understand where they come from, inspect metadata and security evidence, and then hand installation back to Dalamud. Omega does **not** replace Dalamud's plugin installer and does **not** guarantee that every listed plugin is safe.
 
-- **Dalamud** is the thing that installs and updates plugins.
-- **Omega** helps you find plugins and understand what you are looking at.
-- When you choose to install something, **Dalamud still does the installing**.
+## Quick Links
 
-That is basically it.
+| Need | Go here |
+| --- | --- |
+| Install Omega | https://dalagab.github.io/omega/#install |
+| Use the public website | https://dalagab.github.io/omega/ |
+| Report an incorrect scanner result | https://github.com/dalagab/omega/issues/new?template=scanner-result.yml |
+| Work on the Omega client | [`main`](https://github.com/dalagab/omega/tree/main) |
+| Work on SigmaScope, DeltaScope, SRL/Stigma-1, or Evidence tooling | [`sigmascope`](https://github.com/dalagab/omega/tree/sigmascope) |
+| Work on runtime observation and sandboxing | [`rift`](https://github.com/dalagab/omega/tree/rift) |
+| Work on the public website | [`website`](https://github.com/dalagab/omega/tree/website) |
 
-## I just want to install Omega
+## What Omega Does
 
-Go here:
+Omega collects public Dalamud plugin repository information and presents it as one in-game marketplace. It can show:
+
+- plugin names, descriptions, authors and source repositories;
+- available versions, changelogs and project links;
+- repository/source provenance;
+- dependency and compatibility information;
+- published SigmaScope security evidence and findings.
+
+When a user chooses to install something, Dalamud still performs the installation.
+
+## Installation
+
+Use the website installation page:
 
 **https://dalagab.github.io/omega/#install**
 
-The installation page has the current Omega repository link, a copy button, and the steps for adding it to Dalamud.
+The installation page has the current Omega repository link, a copy button, and the steps for adding it to Dalamud. The actual repository URL is intentionally kept there rather than duplicated in this README, so there is one authoritative installation location.
 
-We intentionally keep the actual repository URL on the website instead of copying it into this README, so there is one obvious place to find the current installation instructions.
+## Safety Model
 
-## What does Omega do?
+Omega provides **more information**, not a blanket approval system.
 
-Omega looks at public Dalamud plugin repositories and puts the plugins it can find into one in-game marketplace.
+A plugin appearing in Omega does not mean it is approved, recommended, or guaranteed to be safe. Omega and SigmaScope publish evidence, classifications and provenance so users and maintainers can make better decisions and report scanner mistakes.
 
-It can show things such as:
+## Repository Map
 
-- what a plugin does;
-- who made it;
-- where it comes from;
-- which repository or repositories publish it;
-- available versions;
-- dependencies;
-- changelogs and project links;
-- security information collected by SigmaScope.
+Omega uses multiple long-lived branches because the client, security services, generated data, runtime sandbox, and website have different release and authority boundaries.
 
-Omega does **not** replace Dalamud's plugin installer.
+| Branch | Purpose |
+| --- | --- |
+| [`main`](https://github.com/dalagab/omega/tree/main) | Omega Dalamud client, client release source, default-branch workflow registrations |
+| [`omega`](https://github.com/dalagab/omega/tree/omega) | Active Omega client implementation branch used by client regression workflows |
+| [`sigmascope`](https://github.com/dalagab/omega/tree/sigmascope) | Security services: SigmaScope, DeltaScope, SRL/Stigma-1, Evidence-v2, Definitions and orchestration |
+| [`rift`](https://github.com/dalagab/omega/tree/rift) | Interdimensional Rift runtime observation, sandboxing, Alpha and canary work |
+| [`catalog-data`](https://github.com/dalagab/omega/tree/catalog-data) | Generated catalog, Definitions and queue state |
+| [`security-evidence-v2`](https://github.com/dalagab/omega/tree/security-evidence-v2) | Published generated Security Evidence data |
+| [`deep-scan-state`](https://github.com/dalagab/omega/tree/deep-scan-state) | Generated deep-scan queue and result state |
+| [`website`](https://github.com/dalagab/omega/tree/website) | Public website source |
 
-## Is every plugin in Omega safe?
+## Main Workflows
 
-No.
+These workflow files live on `main` because GitHub Actions discovers manually dispatched and scheduled workflows from the default branch. Several are launchers or registration copies that immediately hand off to the branch that owns the real implementation.
 
-Omega tries to give you **more information**, not make the decision for you.
-
-A plugin appearing in Omega does not mean it is approved, recommended, or guaranteed to be safe. Omega can show public information and security evidence, but you still choose what you install.
+| Workflow file | Display name | Role |
+| --- | --- | --- |
+| `.github/workflows/regression-tests.yml` | Omega client - build and regression tests | Builds the client branch and runs client regression checks. |
+| `.github/workflows/release.yml` | Omega client - publish release | Builds, attests and publishes tagged Omega client releases. |
+| `.github/workflows/catalog-builder.yml` | Omega catalog - scheduled refresh and security handoff | Starts catalog refresh work and security-service follow-up. |
+| `.github/workflows/source-submissions.yml` | Omega catalog - source submission intake | Receives source-submission issues/manual input and delegates validation. |
+| `.github/workflows/sigmascope.yml` | SigmaScope - scheduled production drain launcher | Scheduled/manual launcher for SigmaScope production drain work. |
+| `.github/workflows/sigmascope-drain-wake.yml` | SigmaScope - coalesced drain wake registration | Default-branch registration wrapper for drain wake dispatch. |
+| `.github/workflows/sigmascope-parallel-drain.yml` | SigmaScope - parallel drain registration | Default-branch registration wrapper for parallel queue drain dispatch. |
+| `.github/workflows/security-orchestration-heartbeat.yml` | Security services - collector heartbeat launcher | Periodically wakes security-service reconciliation. |
+| `.github/workflows/security-orchestration-dispatch.yml` | Security services - internal dispatcher registration | Default-branch registration endpoint for internal security workers. |
 
 ## What is SigmaScope?
 
