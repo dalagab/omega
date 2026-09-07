@@ -24,6 +24,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from security_evidence_v2 import MAX_PUBLISH_FILE_BYTES, SCHEMA, sha256_file  # noqa: E402
+import omega_actions_telemetry as actions_telemetry  # noqa: E402
 
 ORCHESTRATION_DIR = SCRIPT_DIR.parent / "orchestration"
 if str(ORCHESTRATION_DIR) not in sys.path:
@@ -168,6 +169,13 @@ def publish(
             "preflightRevision": str(authorization.get("preflightRevision") or ""),
         }
     message = commit_message or f"Security evidence v2 snapshot {info['evidenceRevision'] or info['indexSha256'][:12]}"
+    if push:
+        actions_telemetry.emit_event(
+            "publication.started", component="sigmascope", stage="evidence-publication", state="publishing",
+            worker={"roleId": "publisher", "label": "Evidence publisher", "state": "publishing"},
+            publication={"stage": "push", "evidenceRevision": str(info.get("evidenceRevision") or "")},
+            message=message,
+        )
     publication = publish_snapshot_tree(
         evidence.resolve(),
         repo=repo.resolve(),
@@ -184,6 +192,14 @@ def publish(
     )
     info.update(publication.as_dict())
     info.update({"repository": str(repo.resolve()), "remote": remote, "branch": branch})
+    if push:
+        actions_telemetry.emit_event(
+            "publication.completed", component="sigmascope", stage="evidence-publication", state="complete",
+            worker={"roleId": "publisher", "label": "Evidence publisher", "state": "idle"},
+            publication={"stage": "push", "evidenceRevision": str(info.get("evidenceRevision") or "")},
+            result={"status": "complete"},
+            message=f"Published Evidence revision {info.get('evidenceRevision') or info.get('indexSha256', '')[:12]}",
+        )
     return info
 
 

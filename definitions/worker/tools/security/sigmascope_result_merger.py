@@ -36,6 +36,7 @@ import sigmascope  # noqa: E402
 import sigmascope_result_bundle  # noqa: E402
 import sigmascope_source_followups  # noqa: E402
 import deep_scan_queue  # noqa: E402
+import omega_actions_telemetry as actions_telemetry  # noqa: E402
 from local_sigmascope_v2_test import summarize as summarize_database  # noqa: E402
 from production_sigmascope_v2_pipeline import (  # noqa: E402
     _copy_evidence_tree,
@@ -366,12 +367,34 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
         raise ValueError(f"serialized SigmaScope merge requires 1..{MAX_BUNDLES} result bundles")
     plan_path = work_dir / "merge-plan.json"
     work_dir.mkdir(parents=True, exist_ok=True)
+    actions_telemetry.emit_event(
+        "worker.started", component="sigmascope", stage="serialized-merge", state="merging",
+        worker={"roleId": "publisher", "label": "Evidence merger", "state": "merging"},
+        progress={"current": 0, "total": len(bundle_roots), "unit": "result bundles"},
+    )
     plan, docs = _timed(
         "validate bundles and build merge plan",
         lambda: sigmascope_result_bundle.build_plan_with_validated_bundles(
             bundle_roots, current_evidence=current_evidence, output=plan_path
         ),
     )
+    for ordinal, doc in enumerate(docs, 1):
+        work = doc.get("work") if isinstance(doc.get("work"), dict) else {}
+        actions_telemetry.emit_event(
+            "bundle.accepted", component="sigmascope", stage="serialized-merge", state="merging",
+            worker={"roleId": "publisher", "label": "Evidence merger", "state": "merging"},
+            subject={
+                "variantId": int(work.get("variantId") or 0),
+                "internalName": str(work.get("internalName") or ""),
+                "version": str(work.get("version") or ""),
+                "workType": str(work.get("workType") or ""),
+            },
+            progress={"current": ordinal, "total": len(docs), "unit": "result bundles"},
+            bundle={
+                "id": str(doc.get("bundleRevision") or ""),
+                "status": str((doc.get("outcome") or {}).get("status") or "accepted"),
+            },
+        )
     if len({int(doc["work"]["variantId"]) for doc in docs}) > MAX_VARIANTS:
         raise ValueError(f"serialized SigmaScope merge exceeds {MAX_VARIANTS} variants")
     definitions_index = _read(definitions / "index.json")
@@ -525,6 +548,13 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
     result["mergeRevision"] = f"sigmascope-merge-v1-{_digest(semantic)[:20]}"
     report.parent.mkdir(parents=True, exist_ok=True)
     write_json(report, result)
+    actions_telemetry.emit_event(
+        "workflow.completed", component="sigmascope", stage="serialized-merge", state="complete",
+        worker={"roleId": "publisher", "label": "Evidence merger", "state": "idle"},
+        progress={"current": len(docs), "total": len(docs), "unit": "result bundles"},
+        result={"status": "complete", "artifactCount": len(successful)},
+        message=f"Validated candidate {result['mergeRevision']} from {len(docs)} result bundle(s)",
+    )
     return result
 
 
